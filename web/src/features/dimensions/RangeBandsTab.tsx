@@ -13,7 +13,7 @@ import { useRangeBands, useReplaceRangeBands } from './api';
 import { showFieldErrors } from './formErrors';
 import type { RangeBand, RangeBandInput } from './types';
 
-/** The editable bands; each one is sent as it is, so dates stay `yyyy-MM-dd` and datetimes ISO UTC strings. */
+/** The editable bands; dates stay `yyyy-MM-dd` and datetimes ISO UTC strings, as the API takes them. */
 interface BandsValues {
   bands: RangeBandInput[];
 }
@@ -32,21 +32,36 @@ export interface RangeBandsTabProps {
  */
 export function RangeBandsTab({ versionId, rangeDataType, isDraft }: RangeBandsTabProps) {
   const bands = useRangeBands(versionId);
-  const members = useLookup('members', versionId);
-  const replace = useReplaceRangeBands(versionId);
-  const values = useMemo(() => ({ bands: (bands.data ?? []).map(toBandInput) }), [bands.data]);
-  const form = useForm<BandsValues>({ values });
-  const { fields, append, remove, move } = useFieldArray({ control: form.control, name: 'bands' });
 
   if (bands.isPending) {
     return <Loading size="sm" />;
   }
+  if (bands.error) {
+    return <ApiErrorAlert error={bands.error} />;
+  }
   if (rangeDataType === null) {
     return <p className="text-sm text-muted-foreground">Set the version's range data type in Settings before editing bands.</p>;
   }
+  return <RangeBandEditor versionId={versionId} bands={bands.data} rangeDataType={rangeDataType} isDraft={isDraft} />;
+}
+
+interface RangeBandEditorProps {
+  versionId: number;
+  bands: RangeBand[];
+  rangeDataType: string;
+  isDraft: boolean;
+}
+
+function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBandEditorProps) {
+  const members = useLookup('members', versionId);
+  const replace = useReplaceRangeBands(versionId);
+  const values = useMemo(() => ({ bands: bands.map(toBandInput) }), [bands]);
+  const form = useForm<BandsValues>({ values });
+  const { fields, append, remove, move } = useFieldArray({ control: form.control, name: 'bands' });
 
   function save(next: BandsValues) {
-    replace.mutate(next.bands, { onError: error => showFieldErrors(form, error) });
+    const saved = next.bands.map(band => withFamilyBounds(band, rangeDataType));
+    replace.mutate(saved, { onError: error => showFieldErrors(form, error) });
   }
 
   return (
@@ -56,7 +71,6 @@ export function RangeBandsTab({ versionId, rangeDataType, isDraft }: RangeBandsT
           <p className="text-sm text-muted-foreground">
             Bands are evaluated in order, and each must start after the previous one ends. An empty bound is unbounded.
           </p>
-          <ApiErrorAlert error={bands.error} />
           {fields.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No bands yet.</p>}
           <SortableRoot
             items={fields.map(field => field.id)}
@@ -178,6 +192,22 @@ function toBandInput(band: RangeBand): RangeBandInput {
     upperDatetime: band.upperDatetime ?? null,
     lowerInclusive: band.lowerInclusive,
     upperInclusive: band.upperInclusive,
+  };
+}
+
+/** A band as the editor saves it: only the bounds of the family it shows, the other families empty. */
+function withFamilyBounds(band: RangeBandInput, rangeDataType: string): RangeBandInput {
+  const isDate = rangeDataType === 'date';
+  const isDatetime = rangeDataType === 'datetime';
+  const isDecimal = !isDate && !isDatetime;
+  return {
+    ...band,
+    lowerDecimal: isDecimal ? band.lowerDecimal : null,
+    upperDecimal: isDecimal ? band.upperDecimal : null,
+    lowerDate: isDate ? band.lowerDate : null,
+    upperDate: isDate ? band.upperDate : null,
+    lowerDatetime: isDatetime ? band.lowerDatetime : null,
+    upperDatetime: isDatetime ? band.upperDatetime : null,
   };
 }
 
