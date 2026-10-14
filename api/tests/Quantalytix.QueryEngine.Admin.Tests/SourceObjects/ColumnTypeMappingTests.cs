@@ -5,11 +5,13 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.SourceObjects;
 
 /// <summary>
-/// Confirms the mapping from StarRocks column types to field types: character types are strings, small integers int32,
-/// BIGINT int64, DECIMAL keeps its precision and scale, LARGEINT is decimal(38,0), floating point is decimal(38,12), and
-/// DATE, DATETIME, BOOLEAN and JSON map to their namesakes; case and display widths are ignored. Every other type maps to
-/// nothing, so the pickers never offer a column the query engine cannot type. The columns endpoint and bulk field creation
-/// both rely on this one mapping.
+/// Confirms the mapping from StarRocks column types, spelled as information_schema writes them, to field types: character
+/// types are strings, small integers int32, BIGINT int64, DECIMAL keeps its precision and scale, floating point is
+/// decimal(38,12), and DATE, DATETIME and JSON map to their namesakes. BOOLEAN and LARGEINT have no names of their own
+/// there: they read <c>tinyint(1)</c> and <c>bigint(20) unsigned</c>, and must still map to boolean and decimal(38,0)
+/// rather than to the TINYINT and BIGINT types, as the live sandbox showed. Case and other display widths are ignored.
+/// Every other type maps to nothing, so the pickers never offer a column the query engine cannot type. The columns
+/// endpoint and bulk field creation both rely on this one mapping.
 /// </summary>
 public sealed class ColumnTypeMappingTests
 {
@@ -22,13 +24,12 @@ public sealed class ColumnTypeMappingTests
     [InlineData("varchar(16)", DataTypes.String, null, null)]
     [InlineData("VARCHAR(65533)", DataTypes.String, null, null)]
     [InlineData("char(2)", DataTypes.String, null, null)]
-    [InlineData("string", DataTypes.String, null, null)]
-    [InlineData("boolean", DataTypes.Boolean, null, null)]
+    [InlineData("tinyint(1)", DataTypes.Boolean, null, null)]
     [InlineData("tinyint(4)", DataTypes.Int32, null, null)]
     [InlineData("smallint(6)", DataTypes.Int32, null, null)]
     [InlineData("int(11)", DataTypes.Int32, null, null)]
     [InlineData("bigint(20)", DataTypes.Int64, null, null)]
-    [InlineData("largeint", DataTypes.Decimal, 38, 0)]
+    [InlineData("bigint(20) unsigned", DataTypes.Decimal, 38, 0)]
     [InlineData("decimal(20,2)", DataTypes.Decimal, 20, 2)]
     [InlineData("DECIMAL(9, 6)", DataTypes.Decimal, 9, 6)]
     [InlineData("decimal128(38,10)", DataTypes.Decimal, 38, 10)]

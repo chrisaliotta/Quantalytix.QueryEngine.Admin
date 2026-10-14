@@ -17,21 +17,30 @@ public static partial class ColumnTypeMapping
     /// <summary>The scale floating-point columns map to.</summary>
     private const int FloatingPointScale = 12;
 
-    /// <summary>Maps a column type, such as <c>varchar(16)</c> or <c>decimal(20,2)</c>, to a field type.</summary>
-    /// <param name="columnType">The column type as information_schema writes it; case and a length or display width are ignored.</param>
+    /// <summary>How information_schema writes a BOOLEAN column; a TINYINT column reads <c>tinyint(4)</c>.</summary>
+    private const string BooleanColumnType = "tinyint(1)";
+
+    /// <summary>How information_schema writes a LARGEINT column; StarRocks has no unsigned BIGINT.</summary>
+    private const string LargeIntColumnType = "bigint(20) unsigned";
+
+    /// <summary>Maps a column type, such as <c>varchar(16)</c> or <c>decimal(20, 2)</c>, to a field type.</summary>
+    /// <param name="columnType">
+    /// The column type as information_schema writes it; case is ignored, and so is a length or display width except the
+    /// ones that tell BOOLEAN and LARGEINT apart from TINYINT and BIGINT.
+    /// </param>
     /// <returns>The field type, or null when the column type has no logical equivalent.</returns>
     public static FieldType? Map(string columnType)
     {
         var type = columnType.Trim().ToLowerInvariant();
         var decimalType = DecimalType().Match(type);
         if (decimalType.Success) return Decimal(Number(decimalType.Groups["precision"]), Number(decimalType.Groups["scale"]));
+        if (type == BooleanColumnType) return Logical(DataTypes.Boolean);
+        if (type == LargeIntColumnType) return Decimal(MaxPrecision, 0);
         return BaseName(type) switch
         {
-            "varchar" or "char" or "string" => Logical(DataTypes.String),
-            "boolean" => Logical(DataTypes.Boolean),
+            "varchar" or "char" => Logical(DataTypes.String),
             "tinyint" or "smallint" or "int" => Logical(DataTypes.Int32),
             "bigint" => Logical(DataTypes.Int64),
-            "largeint" => Decimal(MaxPrecision, 0),
             "float" or "double" => Decimal(MaxPrecision, FloatingPointScale),
             "date" => Logical(DataTypes.Date),
             "datetime" => Logical(DataTypes.Datetime),
