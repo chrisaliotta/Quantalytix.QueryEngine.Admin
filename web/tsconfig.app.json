@@ -4,7 +4,7 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
@@ -16,8 +16,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Aliases (the registry requires the separate @registry alias) */
+    "paths": {
+      "@/*": ["./src/*"],
+      "@registry/*": ["./src/registry/*"]
+    },
+
     /* Linting */
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true

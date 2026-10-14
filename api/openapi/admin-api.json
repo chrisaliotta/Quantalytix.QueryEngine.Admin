@@ -5,22 +5,659 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/health": {
+    "/api/vocabularies": {
       "get": {
         "tags": [
-          "Quantalytix.QueryEngine.Admin.Api"
+          "Vocabularies"
+        ],
+        "summary": "Lists every vocabulary with its allowed values and their definitions.",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Every vocabulary, each with its values in the schema's order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vocabulary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/versions/{kind}/{id}/status": {
+      "put": {
+        "tags": [
+          "VersionStatus"
+        ],
+        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "A `version_kind` value, such as `dimension_version`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The version's surrogate key.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusChangeInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusChangeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The transition applied; the body is the version's new state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The kind or the target status is not a known value.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The lifecycle does not allow moving from the current status to the target; the detail names both.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Publication rules rejected the version and its status is unchanged; `violations` lists why.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Lists every tenant for a SystemAdmin, otherwise only the caller's own tenant. Connection strings are never included.",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The accessible tenants, sorted by tenant ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessibleTenant"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "Session"
+        ],
+        "summary": "Returns the caller's subject, tenant and SystemAdmin role.",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The caller's session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/lookups/{kind}": {
+      "get": {
+        "tags": [
+          "Lookups"
+        ],
+        "summary": "Lists the items of one picker, such as the versions of a dimension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant whose metadata is listed.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "A `lookup_kind` value, such as `dimension-versions`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "description": "The owning row's ID; required for child kinds, optional for `mapping-sets`, ignored otherwise.",
+            "schema": {
+              "type": [
+                "null",
+                "integer"
+              ],
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "200": {
-            "description": "OK"
+            "description": "The picker's items, sorted by key unless the kind has a natural order (versions, levels, members).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LookupItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The kind is not a `lookup_kind` value, or a child kind has no `parentId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     }
   },
+  "components": {
+    "schemas": {
+      "AccessibleTenant": {
+        "required": [
+          "tenantId",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant identity used in tenant-scoped routes."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether query routing is enabled for the tenant."
+          }
+        },
+        "description": "A tenant the caller may administer. It deliberately omits the tenant's connection string."
+      },
+      "LookupItem": {
+        "required": [
+          "id",
+          "key",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The row's surrogate key, which forms reference.",
+            "format": "int64"
+          },
+          "key": {
+            "type": "string",
+            "description": "The row's stable key, such as a dataset key or `v2` for a version."
+          },
+          "label": {
+            "type": "string",
+            "description": "The text the picker shows."
+          },
+          "parentId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "A related row's ID where the kind defines one, such as a member's parent member.",
+            "format": "int64"
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The `publication_status` or `assumption_set_status` of versioned rows."
+          },
+          "classifier": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A vocabulary value that classifies the row, such as a field's data type."
+          }
+        },
+        "description": "One option of a picker: a metadata row reduced to what a select list shows."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RuleViolation": {
+        "required": [
+          "rule",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
+          },
+          "message": {
+            "type": "string",
+            "description": "What is wrong, written for the person editing the version."
+          }
+        },
+        "description": "One reason a publication rule rejects a version."
+      },
+      "RuleViolationProblemDetails": {
+        "required": [
+          "violations"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleViolation"
+            },
+            "description": "The rule violations, each with a snake_case rule code and a message."
+          }
+        },
+        "description": "A 422 problem whose `violations` list every rule that rejected the change."
+      },
+      "SessionInfo": {
+        "required": [
+          "subject",
+          "isSystemAdmin"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "The token's subject."
+          },
+          "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The caller's tenant when the token carries exactly one non-blank tenant claim; otherwise null."
+          },
+          "isSystemAdmin": {
+            "type": "boolean",
+            "description": "Whether the caller is a SystemAdmin, who may administer every tenant."
+          }
+        },
+        "description": "Who the caller is, as the API sees its bearer token."
+      },
+      "StatusChangeInput": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The target status: a `publication_status` value (an `assumption_set_status` value for assumption sets)."
+          }
+        },
+        "description": "A request to move a version to another lifecycle status."
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "VersionState": {
+        "required": [
+          "kind",
+          "id",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "A `version_kind` value."
+          },
+          "id": {
+            "type": "integer",
+            "description": "The version's surrogate key.",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value (an `assumption_set_status` value for assumption sets)."
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the version was published (UTC); null until then.",
+            "format": "date-time"
+          }
+        },
+        "description": "The lifecycle state of one versioned object."
+      },
+      "Vocabulary": {
+        "required": [
+          "name",
+          "description",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The vocabulary key the web client looks values up by, such as `publication_status`."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the vocabulary classifies."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            },
+            "description": "The allowed values, in the schema's order."
+          }
+        },
+        "description": "A controlled vocabulary: the closed set of values a metadata column accepts."
+      },
+      "VocabularyValue": {
+        "required": [
+          "value",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "The value exactly as stored in the metadata column."
+          },
+          "description": {
+            "type": "string",
+            "description": "The schema's definition of the value, condensed to one sentence."
+          }
+        },
+        "description": "One allowed value of a controlled vocabulary."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "A JWT from the identity provider, from dotnet user-jwts, or from POST /development/token on a Development host.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ],
   "tags": [
     {
-      "name": "Quantalytix.QueryEngine.Admin.Api"
+      "name": "Vocabularies"
+    },
+    {
+      "name": "VersionStatus"
+    },
+    {
+      "name": "Tenants"
+    },
+    {
+      "name": "Session"
+    },
+    {
+      "name": "Lookups"
     }
   ]
 }

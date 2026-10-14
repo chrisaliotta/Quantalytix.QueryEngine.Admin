@@ -9,4 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="$(QueryEngineRoot)src/Quantalytix.QueryEngine.Domain/Quantalytix.QueryEngine.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Quantalytix.QueryEngine.Admin.Tests" />
+  </ItemGroup>
 </Project>

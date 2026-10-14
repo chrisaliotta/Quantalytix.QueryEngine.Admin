@@ -1,0 +1,47 @@
+@reference "tailwindcss";
+
+/**
+ * ErrorPage – styling via data-slot and CSS variables.
+ */
+
+/* Content block */
+[data-slot='error-page-content'] {
+  @apply text-center;
+}
+
+/* Status code */
+[data-slot='error-page-status'] {
+  @apply text-6xl font-bold;
+}
+
+/* Title */
+[data-slot='error-page-title'] {
+  @apply mt-4 text-2xl font-semibold;
+}
+
+/* Description */
+[data-slot='error-page-description'] {
+  @apply mt-2 text-(--muted-foreground);
+}
+
+/* Actions container */
+[data-slot='error-page-actions'] {
+  @apply flex flex-wrap items-center justify-center space-x-2;
+}
+
+/* Action button wrapper / default button */
+[data-slot='error-page-action'] {
+  @apply transition-transform duration-150 ease-out;
+}
+
+/**
+ * Example custom styles for ErrorPage (used in Storybook "Custom style" story).
+ * Apply to a wrapper with class .error-page-custom-style to customize via data-slot.
+ */
+.error-page-custom-style [data-slot='error-page-status'] {
+  @apply text-(--destructive);
+}
+
+.error-page-custom-style [data-slot='error-page-title'] {
+  @apply font-bold;
+}

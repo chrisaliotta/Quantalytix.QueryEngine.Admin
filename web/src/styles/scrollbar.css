@@ -1,0 +1,56 @@
+/* Global scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-radius: 3px;
+  margin: 2px 1px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 4px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--muted-foreground);
+}
+
+* {
+  scrollbar-width: 12px;
+  scrollbar-color: var(--secondary) var(--background);
+}
+
+/* Compact, stable horizontal scrollbar for inline AnalysisToolbar filters */
+[data-slot='analysis-toolbar-quick-filters-scroll'] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) transparent;
+}
+
+[data-slot='analysis-toolbar-quick-filters-scroll']::-webkit-scrollbar {
+  height: 4px;
+}
+
+[data-slot='analysis-toolbar-quick-filters-scroll']::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0;
+}
+
+[data-slot='analysis-toolbar-quick-filters-scroll']::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 9999px;
+  border: 0;
+}
+
+[data-slot='analysis-toolbar-quick-filters-scroll']::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

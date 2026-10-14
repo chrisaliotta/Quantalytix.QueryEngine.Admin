@@ -1,0 +1,4 @@
+.monaco-editor {
+  --vscode-editorGutter-background: var(--background) !important;
+  --vscode-editor-background: var(--background) !important;
+}
