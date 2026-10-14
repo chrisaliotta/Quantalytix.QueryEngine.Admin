@@ -1,0 +1,99 @@
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+
+namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
+
+/// <summary>Lists, creates, edits and deletes the versions of datasets. Status changes go through the version workflow.</summary>
+public sealed class DatasetVersionService(
+    ITableGateway<DatasetVersionRecord> versions,
+    DatasetVersionContentStore content,
+    DatasetVersionCloner cloner,
+    IIdGenerator ids)
+{
+    /// <summary>The expression grammar version of a new empty version: the one the query engine parses.</summary>
+    private const string ExpressionLanguageVersion = "1.0";
+
+    /// <summary>Lists the versions of a dataset.</summary>
+    /// <param name="datasetId">The dataset.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The versions, by version number.</returns>
+    public async Task<IReadOnlyList<DatasetVersionRecord>> ListAsync(long datasetId, CancellationToken cancellationToken)
+    {
+        var rows = await versions.ListAsync(new { DatasetId = datasetId }, cancellationToken);
+        return [.. rows.OrderBy(row => row.VersionNumber)];
+    }
+
+    /// <summary>Reads one dataset version.</summary>
+    /// <param name="versionId">The dataset version.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The version.</returns>
+    public Task<DatasetVersionRecord> GetAsync(long versionId, CancellationToken cancellationToken)
+    {
+        return versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a draft with the dataset's next version number: a clone of another version, or an empty version over a source
+    /// object that supports aggregate and detail queries.
+    /// </summary>
+    /// <param name="datasetId">The dataset that owns the new draft.</param>
+    /// <param name="input">The clone source, or the source object of an empty draft.</param>
+    /// <param name="cancellationToken">Cancels the reads and writes.</param>
+    /// <returns>The new draft.</returns>
+    public async Task<DatasetVersionRecord> CreateAsync(long datasetId, DatasetVersionInput input, CancellationToken cancellationToken)
+    {
+        var existing = await versions.ListAsync(new { DatasetId = datasetId }, cancellationToken);
+        var versionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber));
+        if (input.CloneFromVersionId is { } sourceVersionId)
+            return await cloner.CloneAsync(sourceVersionId, datasetId, versionNumber, cancellationToken);
+
+        var version = new DatasetVersionRecord
+        {
+            DatasetVersionId = ids.NextId(),
+            DatasetId = datasetId,
+            VersionNumber = versionNumber,
+            Status = PublicationStatuses.Draft,
+            SourceObjectKind = input.SourceObjectKind!,
+            SourceObject = input.SourceObject!,
+            SupportsAggregate = true,
+            SupportsDetail = true,
+            ExpressionLanguageVersion = ExpressionLanguageVersion
+        };
+        await versions.InsertAsync(version, cancellationToken);
+        return version;
+    }
+
+    /// <summary>Replaces the settings of a draft version.</summary>
+    /// <param name="versionId">The draft version.</param>
+    /// <param name="input">The new settings.</param>
+    /// <param name="cancellationToken">Cancels the read and the write.</param>
+    /// <returns>The updated version.</returns>
+    public async Task<DatasetVersionRecord> UpdateAsync(long versionId, DatasetVersionSettingsInput input, CancellationToken cancellationToken)
+    {
+        var current = await GetAsync(versionId, cancellationToken);
+        var updated = current with
+        {
+            SourceObjectKind = input.SourceObjectKind,
+            SourceObject = input.SourceObject,
+            SupportsAggregate = input.SupportsAggregate,
+            SupportsDetail = input.SupportsDetail,
+            DefaultTimeBindingId = input.DefaultTimeBindingId,
+            ExpressionLanguageVersion = input.ExpressionLanguageVersion,
+            SecurityPolicyKey = input.SecurityPolicyKey,
+            Properties = input.Properties
+        };
+        await versions.UpdateAsync(updated, cancellationToken);
+        return updated;
+    }
+
+    /// <summary>Deletes draft versions with all their content, children first.</summary>
+    /// <param name="versionIds">The draft versions.</param>
+    /// <param name="cancellationToken">Cancels the remaining deletes.</param>
+    /// <returns>A task that completes when the versions are deleted.</returns>
+    public async Task DeleteAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
+    {
+        await content.DeleteAsync(versionIds, cancellationToken);
+        await versions.DeleteAsync(new { DatasetVersionId = versionIds }, cancellationToken);
+    }
+}

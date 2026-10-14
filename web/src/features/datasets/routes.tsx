@@ -1,12 +1,23 @@
 import type { RouteObject } from 'react-router';
-import { PlaceholderPage } from '@/shared/PlaceholderPage';
 import type { RouteHandle } from '@/shared/routeHandle';
+import { DatasetCrumb } from './DatasetCrumb';
+import { DatasetDetailPage } from './DatasetDetailPage';
+import { DatasetListPage } from './DatasetListPage';
 
-/** Datasets routes, mounted under `/t/:tenantId`. */
+/** Datasets routes, mounted under `/t/:tenantId`: the list, and one dataset with `?version=` selecting its version. */
 export const datasetsRoutes: RouteObject[] = [
   {
     path: 'datasets',
-    element: <PlaceholderPage title="Datasets" />,
     handle: { crumb: 'Datasets' } satisfies RouteHandle,
+    children: [
+      { index: true, element: <DatasetListPage /> },
+      {
+        path: ':datasetId',
+        element: <DatasetDetailPage />,
+        handle: {
+          crumb: match => <DatasetCrumb datasetId={Number(match.params.datasetId)} />,
+        } satisfies RouteHandle,
+      },
+    ],
   },
 ];

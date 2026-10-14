@@ -187,6 +187,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/source-objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the tables and views datasets can query; the query engine's `qe_*` and `vw_qe_*` objects are left out. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant whose database is read. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The tables and views, sorted by name. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceObject"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/source-objects/{name}/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the columns of a table or view with the field type each maps to. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant whose database is read. */
+                    tenantId: string;
+                    /** @description The table or view name. */
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The columns in ordinal order; empty for a name the database does not have. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceColumn"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -303,35 +419,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels": {
+    "/api/tenants/{tenantId}/datasets": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists a version's levels. */
+        /** Lists every dataset of the tenant. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant whose datasets are listed. */
                     tenantId: string;
-                    /** @description The dimension version. */
-                    dimensionVersionId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The levels by ordinal, then key. */
+                /** @description The datasets, sorted by key. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DimensionLevelRecord"][];
+                        "application/json": components["schemas"]["DatasetRecord"][];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -355,36 +469,34 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a level to a draft version. */
+        /** Creates a dataset with an empty draft version 1 over a table or view of the tenant database. */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The draft version. */
-                    dimensionVersionId: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["NewLevelInput"];
-                    "application/*+json": components["schemas"]["NewLevelInput"];
+                    "application/json": components["schemas"]["DatasetInput"];
+                    "application/*+json": components["schemas"]["DatasetInput"];
                 };
             };
             responses: {
-                /** @description The created level. */
+                /** @description The new dataset; its draft version 1 is listed under its versions. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
+                        "application/json": components["schemas"]["DatasetRecord"];
                     };
                 };
-                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, the key is already used, or the source object does not exist. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -404,15 +516,6 @@ export interface paths {
                 };
                 /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
                 403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is not a draft. */
-                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -428,180 +531,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}": {
+    "/api/tenants/{tenantId}/datasets/{datasetId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        /** Replaces a level's display name, ordinal, periodicity and leaf flag; its key stays. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The dimension version that owns the level. */
-                    dimensionVersionId: number;
-                    /** @description The level. */
-                    levelId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["LevelInput"];
-                    "application/*+json": components["schemas"]["LevelInput"];
-                };
-            };
-            responses: {
-                /** @description The stored level. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
-                    };
-                };
-                /** @description The level is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Deletes a level of a draft version, unless members use it. */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The dimension version that owns the level. */
-                    dimensionVersionId: number;
-                    /** @description The level. */
-                    levelId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The level is deleted. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description The level is not in the version; the error is keyed `levelId`. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the members that use the level. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists every member of a version; parent links make the tree. */
+        /** Reads one dataset. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The dimension version. */
-                    dimensionVersionId: number;
+                    /** @description The dataset. */
+                    datasetId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The members by sort order, then key. */
+                /** @description The dataset. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DimensionMemberRecord"][];
+                        "application/json": components["schemas"]["DatasetRecord"];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -624,500 +582,33 @@ export interface paths {
                 };
             };
         };
-        put?: never;
-        /** Adds a member to a draft version. */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The draft version. */
-                    dimensionVersionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["NewMemberInput"];
-                    "application/*+json": components["schemas"]["NewMemberInput"];
-                };
-            };
-            responses: {
-                /** @description The created member. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
-                    };
-                };
-                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replaces a member's editable attributes, including its parent and level; its key stays. */
+        /** Changes a dataset's display name and availability, and advances the semantic revision. */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The dimension version that owns the member. */
-                    dimensionVersionId: number;
-                    /** @description The member. */
-                    memberId: number;
+                    /** @description The dataset. */
+                    datasetId: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["MemberInput"];
-                    "application/*+json": components["schemas"]["MemberInput"];
+                    "application/json": components["schemas"]["DatasetUpdateInput"];
+                    "application/*+json": components["schemas"]["DatasetUpdateInput"];
                 };
             };
             responses: {
-                /** @description The stored member. */
+                /** @description The updated dataset. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
-                    };
-                };
-                /** @description The member is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it. */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The dimension version that owns the member. */
-                    dimensionVersionId: number;
-                    /** @description The member. */
-                    memberId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The member is deleted. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description The member is not in the version; the error is keyed `memberId`. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names what references the member. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/order": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The draft version. */
-                    dimensionVersionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["MemberOrderInput"];
-                    "application/*+json": components["schemas"]["MemberOrderInput"];
-                };
-            };
-            responses: {
-                /** @description The version's members after the change, by sort order, then key. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"][];
-                    };
-                };
-                /** @description A member is placed twice or under itself; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimensions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists every dimension of the tenant. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the dimensions. */
-                    tenantId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The dimensions by key, ignoring case. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DimensionRecord"][];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Creates a user-defined dimension and its draft version 1. */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the dimension. */
-                    tenantId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["NewDimensionInput"];
-                    "application/*+json": components["schemas"]["NewDimensionInput"];
-                };
-            };
-            responses: {
-                /** @description The created dimension; its draft version 1 is listed under its versions. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DimensionRecord"];
-                    };
-                };
-                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimensions/{dimensionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Reads one dimension. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the dimension. */
-                    tenantId: string;
-                    /** @description The dimension. */
-                    dimensionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The dimension. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DimensionRecord"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        /**
-         * Edits a dimension's display name, availability and removability. A system dimension keeps its removability. A changed
-         *     display name or availability advances the semantic revision.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the dimension. */
-                    tenantId: string;
-                    /** @description The dimension. */
-                    dimensionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["DimensionInput"];
-                    "application/*+json": components["schemas"]["DimensionInput"];
-                };
-            };
-            responses: {
-                /** @description The stored dimension. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DimensionRecord"];
+                        "application/json": components["schemas"]["DatasetRecord"];
                     };
                 };
                 /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
@@ -1150,25 +641,22 @@ export interface paths {
             };
         };
         post?: never;
-        /**
-         * Deletes a removable dimension whose versions are all drafts and that no binding, mapping set, bridge or assumption set
-         *     references, together with its drafts and their content.
-         */
+        /** Deletes a dataset whose versions are all drafts and that no release lists, with all its versions' content. */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the dimension. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The dimension. */
-                    dimensionId: number;
+                    /** @description The dataset. */
+                    datasetId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The dimension and its drafts are deleted. */
+                /** @description The dataset and its draft versions are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -1193,7 +681,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted; the detail names what blocks the delete. */
+                /** @description A version is validated, published or retired, or a release lists the dataset; the detail names them. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1209,35 +697,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimensions/{dimensionId}/versions": {
+    "/api/tenants/{tenantId}/datasets/{datasetId}/versions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists a dimension's versions with their status and validity windows, from which the effective version follows. */
+        /** Lists the versions of a dataset. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the dimension. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The dimension. */
-                    dimensionId: number;
+                    /** @description The dataset. */
+                    datasetId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The versions by version number, each with `validFrom` and `validTo`. */
+                /** @description The versions, by version number. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DimensionVersionRecord"][];
+                        "application/json": components["schemas"]["DatasetVersionRecord"][];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -1262,39 +750,38 @@ export interface paths {
         };
         put?: never;
         /**
-         * Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies
-         *     the levels, members, range bands and the dimension's mapping versions pinned to the source, and the source's range data
-         *     type unless one is supplied.
+         * Creates a draft version with the dataset's next version number: a clone of an existing version's settings and content,
+         *     or an empty version over a source object.
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the dimension. */
+                    /** @description The tenant that owns the dataset. */
                     tenantId: string;
-                    /** @description The dimension. */
-                    dimensionId: number;
+                    /** @description The dataset. */
+                    datasetId: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["NewDimensionVersionInput"];
-                    "application/*+json": components["schemas"]["NewDimensionVersionInput"];
+                    "application/json": components["schemas"]["DatasetVersionInput"];
+                    "application/*+json": components["schemas"]["DatasetVersionInput"];
                 };
             };
             responses: {
-                /** @description The created draft version. */
+                /** @description The new draft version. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DimensionVersionRecord"];
+                        "application/json": components["schemas"]["DatasetVersionRecord"];
                     };
                 };
-                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1329,14 +816,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}": {
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Reads one dimension version. */
+        /** Reads one dataset version. */
         get: {
             parameters: {
                 query?: never;
@@ -1344,8 +831,8 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The version. */
-                    dimensionVersionId: number;
+                    /** @description The dataset version. */
+                    versionId: number;
                 };
                 cookie?: never;
             };
@@ -1357,7 +844,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DimensionVersionRecord"];
+                        "application/json": components["schemas"]["DatasetVersionRecord"];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -1380,7 +867,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft version's range data type and validity window. */
+        /** Replaces the settings of a draft dataset version. */
         put: {
             parameters: {
                 query?: never;
@@ -1388,28 +875,28 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
-                    dimensionVersionId: number;
+                    /** @description The draft dataset version. */
+                    versionId: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["DimensionVersionInput"];
-                    "application/*+json": components["schemas"]["DimensionVersionInput"];
+                    "application/json": components["schemas"]["DatasetVersionSettingsInput"];
+                    "application/*+json": components["schemas"]["DatasetVersionSettingsInput"];
                 };
             };
             responses: {
-                /** @description The stored version. */
+                /** @description The updated version. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionVersionRecord"];
+                        "application/json": components["schemas"]["DatasetVersionRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, the source object does not exist, or the properties are not JSON. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1449,8 +936,8 @@ export interface paths {
         };
         post?: never;
         /**
-         * Deletes a draft version with its levels, members, range bands, closure rows and the draft mapping versions pinned to it,
-         *     unless a non-draft mapping version, a bridge version, a binding or an assumption set pins it.
+         * Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,
+         *     dependencies and components, measures, time bindings, bindings and fields.
          */
         delete: {
             parameters: {
@@ -1459,14 +946,14 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
-                    dimensionVersionId: number;
+                    /** @description The draft dataset version. */
+                    versionId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The version and its content are deleted. */
+                /** @description The draft and its content are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -1491,7 +978,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names what pins it. */
+                /** @description The version is not a draft. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1507,14 +994,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/range-bands": {
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists the bands of a version of a range dimension. */
+        /** Lists the fields of a dataset version. */
         get: {
             parameters: {
                 query?: never;
@@ -1522,23 +1009,73 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The dimension version whose bands are read or replaced. */
-                    dimensionVersionId: number;
+                    /** @description The dataset version. */
+                    versionId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The bands by ordinal. */
+                /** @description The fields, sorted by key. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["RangeBandRecord"][];
+                        "application/json": components["schemas"]["FieldRecord"][];
                     };
                 };
-                /** @description The version's dimension is not a range dimension; the error is keyed `dimensionVersionId`. */
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a field in a draft dataset version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FieldInput"];
+                    "application/*+json": components["schemas"]["FieldInput"];
+                };
+            };
+            responses: {
+                /** @description The new field. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FieldRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule of its source kind or data type; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1565,12 +1102,32 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
             };
         };
-        /**
-         * Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound
-         *     families, order and overlaps are checked when the version is validated.
-         */
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a field's editable attributes; the key is fixed. Changing how the value is computed clears the materialized column. */
         put: {
             parameters: {
                 query?: never;
@@ -1578,28 +1135,30 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The dimension version whose bands are read or replaced. */
-                    dimensionVersionId: number;
+                    /** @description The dataset version that owns the field. */
+                    versionId: number;
+                    /** @description The field. */
+                    fieldId: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["RangeBandsInput"];
-                    "application/*+json": components["schemas"]["RangeBandsInput"];
+                    "application/json": components["schemas"]["FieldUpdateInput"];
+                    "application/*+json": components["schemas"]["FieldUpdateInput"];
                 };
             };
             responses: {
-                /** @description The stored bands by ordinal. */
+                /** @description The updated field. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["RangeBandRecord"][];
+                        "application/json": components["schemas"]["FieldRecord"];
                     };
                 };
-                /** @description The dimension is not a range dimension, or a band breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description The field is not in the version, or the input breaks a field rule. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1638,7 +1197,590 @@ export interface paths {
             };
         };
         post?: never;
+        /** Deletes a field that no grain, binding, time binding or measure component references. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the field. */
+                    versionId: number;
+                    /** @description The field. */
+                    fieldId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The field is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The field is not in the version. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft, or a grain, binding, time binding or measure component references the field; the detail names them. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/from-columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Creates one `column` field per selected physical column of the version's source object, named and typed from the
+         *     column. Columns without a logical type, or already read by a `column` field of the version, are skipped.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FieldsFromColumnsInput"];
+                    "application/*+json": components["schemas"]["FieldsFromColumnsInput"];
+                };
+            };
+            responses: {
+                /** @description The new fields, in column order; empty when every selected column was skipped. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FieldRecord"][];
+                    };
+                };
+                /** @description No column is selected. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adds a generated column holding a `json_path` field's value to the version's source table, waits for the
+         *     asynchronous schema change to finish, then points the draft field at the column.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the field. */
+                    versionId: number;
+                    /** @description The field. */
+                    fieldId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MaterializeInput"];
+                    "application/*+json": components["schemas"]["MaterializeInput"];
+                };
+            };
+            responses: {
+                /** @description The column exists and the field's materialized column names it. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The field is not in the version, or the column name breaks the identifier pattern. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft, the field is not a json_path field, the source object is a view, or the table already has the column. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialized-column": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Points a `json_path` or `expression` field at an existing column of the version's source object, or clears it. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the field. */
+                    versionId: number;
+                    /** @description The field. */
+                    fieldId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MaterializedColumnInput"];
+                    "application/*+json": components["schemas"]["MaterializedColumnInput"];
+                };
+            };
+            responses: {
+                /** @description The field's materialized column is set or cleared. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The field is not in the version, or the column name breaks the identifier pattern. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft, the field is a column field, or the source object has no such column. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/grains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the grains of a dataset version, each with its fields in ordinal order. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The grains, sorted by key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GrainDetail"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a grain in a draft dataset version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GrainInput"];
+                    "application/*+json": components["schemas"]["GrainInput"];
+                };
+            };
+            responses: {
+                /** @description The new grain. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GrainDetail"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{grainId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Changes a grain's kind and replaces its fields; the key is fixed. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the grain. */
+                    versionId: number;
+                    /** @description The grain. */
+                    grainId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GrainUpdateInput"];
+                    "application/*+json": components["schemas"]["GrainUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description The updated grain. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GrainDetail"];
+                    };
+                };
+                /** @description The grain is not in the version, or the input breaks a field rule. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a grain that no measure time policy selects observations by. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the grain. */
+                    versionId: number;
+                    /** @description The grain. */
+                    grainId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The grain and its fields are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The grain is not in the version. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft, or a measure time policy's selection grain is this grain; the detail names the measures. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1655,164 +1797,288 @@ export interface components {
             /** @description Whether query routing is enabled for the tenant. */
             isEnabled: boolean;
         };
-        /** @description The editable identity attributes of a dimension, as `PUT dimensions/{dimensionId}` takes them. */
-        DimensionInput: {
-            /** @description Human-readable name, at most 256 characters. */
+        /** @description A new dataset: its identity and the source object its first draft version queries. */
+        DatasetInput: {
+            /** @description Stable logical dataset ID that requests name, such as `mortgage.loan_monthly`; fixed once created. */
+            datasetKey: string;
+            /** @description The `source_object_kind` of the first version's source object. */
+            sourceObjectKind: string;
+            /** @description The table or view the first version queries. */
+            sourceObject: string;
+            /** @description Human-readable label. */
             displayName: string;
-            /** @description Administrative availability. */
+            /** @description Administrative availability flag. */
             isEnabled: boolean;
-            /** @description Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one. */
-            isRemovable: boolean;
         };
-        /** @description A `qe_dimension_level` row: an optional business label for a hierarchy level of a dimension version. */
-        DimensionLevelRecord: {
-            /**
-             * Format: int64
-             * @description Primary key.
-             */
-            levelId: number;
-            /**
-             * Format: int64
-             * @description The owning dimension version.
-             */
-            dimensionVersionId: number;
-            /** @description Stable level name. */
-            levelKey: string;
-            /** @description Human-readable label. */
-            displayName: string;
-            /**
-             * Format: int32
-             * @description Business ordering of levels; not the authoritative tree depth.
-             */
-            ordinal: number;
-            /** @description A `periodicity` value for time-oriented levels; null otherwise. */
-            periodicity?: null | string;
-            /** @description Whether this is the business-declared leaf level. */
-            isLeafLevel: boolean;
-        };
-        /** @description A `qe_dimension_member` row: a canonical dimension member or hierarchy node. */
-        DimensionMemberRecord: {
-            /**
-             * Format: int64
-             * @description Surrogate primary key, unique across all dimension versions.
-             */
-            memberId: number;
-            /**
-             * Format: int64
-             * @description The owning dimension version.
-             */
-            dimensionVersionId: number;
-            /** @description Stable member key, unique within the dimension version. */
-            memberKey: string;
-            /** @description Human-readable label. */
-            displayName: string;
-            /** @description Optional longer explanation of the member. */
-            description?: null | string;
-            /**
-             * Format: int64
-             * @description Parent member in the authoritative tree, from the same dimension version.
-             */
-            parentMemberId?: null | number;
-            /**
-             * Format: int64
-             * @description Optional business level.
-             */
-            levelId?: null | number;
-            /** @description Whether source values may map directly to this member. */
-            isAssignable: boolean;
-            /**
-             * Format: int32
-             * @description Presentation ordering within peer groups.
-             */
-            sortOrder: number;
-            /** @description Extensible member metadata as raw JSON text (a JSON column). */
-            properties?: null | string;
-        };
-        /** @description A `qe_dimension` row: the stable identity of a canonical business dimension. */
-        DimensionRecord: {
+        /** @description A `qe_dataset` row: the stable logical dataset identity that a request's `datasetId` resolves. */
+        DatasetRecord: {
             /**
              * Format: int64
              * @description Surrogate primary key.
              */
-            dimensionId: number;
-            /** @description Stable canonical identity such as `Branch` or `RiskGrade`. */
-            dimensionKey: string;
-            /** @description Human-readable name. */
+            datasetId: number;
+            /** @description Stable logical dataset ID exposed to requests. */
+            datasetKey: string;
+            /** @description Human-readable label. */
             displayName: string;
-            /** @description A `dimension_kind` value. */
-            dimensionKind: string;
-            /** @description A `definition_origin` value. */
-            definitionOrigin: string;
-            /** @description When false, the dimension must never be deleted. */
-            isRemovable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description The editable attributes of a draft dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them. */
-        DimensionVersionInput: {
-            /** @description A `range_data_type` value for a range dimension; null for every other kind. */
-            rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC); a version needs one before it is published.
-             */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
-             */
-            validTo?: null | string;
+        /** @description The editable identity attributes of a dataset. DatasetInput adds the attributes fixed at creation. */
+        DatasetUpdateInput: {
+            /** @description Human-readable label. */
+            displayName: string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
         };
-        /** @description A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension. */
-        DimensionVersionRecord: {
+        /** @description A new draft version of a dataset: a clone of an existing version, or an empty version over a source object. */
+        DatasetVersionInput: {
             /**
              * Format: int64
-             * @description Primary key.
+             * @description The version whose settings and content the new draft copies; null for an empty draft.
              */
-            dimensionVersionId: number;
+            cloneFromVersionId?: null | number;
+            /** @description The `source_object_kind` of an empty draft's source object; null for a clone. */
+            sourceObjectKind?: null | string;
+            /** @description The table or view an empty draft queries; null for a clone. */
+            sourceObject?: null | string;
+        };
+        /** @description A `qe_dataset_version` row: the immutable physical and logical definition of a dataset. */
+        DatasetVersionRecord: {
             /**
              * Format: int64
-             * @description The owning dimension.
+             * @description Surrogate primary key.
              */
-            dimensionId: number;
+            datasetVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning logical dataset.
+             */
+            datasetId: number;
             /**
              * Format: int32
-             * @description Monotonic version within the dimension.
+             * @description Monotonic version within the dataset.
              */
             versionNumber: number;
             /** @description A `publication_status` value. */
             status: string;
-            /** @description A `range_data_type` value for range dimensions; null otherwise. */
-            rangeDataType?: null | string;
+            /** @description A `source_object_kind` value. */
+            sourceObjectKind: string;
+            /** @description Physical table or view name, controlled by metadata rather than request input. */
+            sourceObject: string;
+            /** @description Whether the dataset may satisfy aggregate mode. */
+            supportsAggregate: boolean;
+            /** @description Whether the dataset may satisfy detail mode. */
+            supportsDetail: boolean;
             /**
-             * Format: date-time
-             * @description Inclusive semantic-validity start (UTC); required once published.
+             * Format: int64
+             * @description Default time binding when a measure or query does not require another.
              */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive semantic-validity end (UTC); null means open-ended.
-             */
-            validTo?: null | string;
+            defaultTimeBindingId?: null | number;
+            /** @description Version of the expression grammar the stored field and measure expressions use. */
+            expressionLanguageVersion: string;
+            /** @description Optional application authorization policy identifier. */
+            securityPolicyKey?: null | string;
+            /** @description Extension metadata as raw JSON text (a JSON column). */
+            properties?: null | string;
             /**
              * Format: date-time
              * @description Publication time (UTC).
              */
             publishedAt?: null | string;
         };
-        /** @description The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{levelId}` takes them. */
-        LevelInput: {
-            /** @description Human-readable label, at most 256 characters. */
+        /** @description The editable settings of a draft dataset version. */
+        DatasetVersionSettingsInput: {
+            /** @description A `source_object_kind` value. */
+            sourceObjectKind: string;
+            /** @description The table or view the version queries. */
+            sourceObject: string;
+            /** @description Whether the dataset may satisfy aggregate mode. */
+            supportsAggregate: boolean;
+            /** @description Whether the dataset may satisfy detail mode. */
+            supportsDetail: boolean;
+            /**
+             * Format: int64
+             * @description The time binding queries use when a measure or query requires no other; a binding of this version.
+             */
+            defaultTimeBindingId?: null | number;
+            /** @description Version of the expression grammar the stored field and measure expressions use, such as `1.0`. */
+            expressionLanguageVersion: string;
+            /** @description Optional application authorization policy identifier. */
+            securityPolicyKey?: null | string;
+            /** @description Extension metadata as raw JSON text, or null. */
+            properties?: null | string;
+        };
+        /** @description A new field of a draft dataset version. */
+        FieldInput: {
+            /** @description Stable logical field identity, the request-facing grouping ID; fixed once created. */
+            fieldKey: string;
+            /** @description Human-readable field name. */
             displayName: string;
+            /** @description A `field_source_kind` value: `column`, `json_path` or `expression`. */
+            fieldSourceKind: string;
+            /** @description The physical column a `column` field reads, or the JSON column of a `json_path` field. */
+            sourceColumn?: null | string;
+            /** @description The JSON path of a `json_path` field, such as `$.address.state`. */
+            jsonPath?: null | string;
+            /** @description The row expression of an `expression` field, such as `[f.balance] * [f.rate]`. */
+            expressionText?: null | string;
+            /** @description A `data_type` value. */
+            dataType: string;
             /**
              * Format: int32
-             * @description Business ordering of the levels; not the authoritative tree depth.
+             * @description Decimal precision (1-38); required for `decimal` and null otherwise.
              */
-            ordinal: number;
-            /** @description A `periodicity` value for a time-oriented level; null otherwise. */
-            periodicity?: null | string;
-            /** @description Whether this is the business-declared leaf level. */
-            isLeafLevel: boolean;
+            numericPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale (0 up to the precision); required for `decimal` and null otherwise.
+             */
+            numericScale?: null | number;
+            /** @description Whether the logical field may be null. */
+            isNullable: boolean;
+            /** @description Optional semantic unit such as `USD`, `percent` or `days`. */
+            unitKey?: null | string;
+            /** @description Whether the field may appear in detail projection. */
+            isSelectable: boolean;
+            /** @description Whether the field may be referenced in source-row filters. */
+            isFilterable: boolean;
+            /** @description Whether the field may take part in final ordering. */
+            isSortable: boolean;
+            /** @description Whether the field may be used directly as an aggregate grouping dimension. */
+            isGroupable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_field` row: a logical field within an immutable dataset version. */
+        FieldRecord: {
+            /**
+             * Format: int64
+             * @description Surrogate primary key.
+             */
+            fieldId: number;
+            /**
+             * Format: int64
+             * @description The owning dataset version.
+             */
+            datasetVersionId: number;
+            /** @description Stable logical field identity; the request-facing grouping ID. */
+            fieldKey: string;
+            /** @description Human-readable field name. */
+            displayName: string;
+            /** @description A `field_source_kind` value. */
+            fieldSourceKind: string;
+            /** @description Physical source column; for `json_path` fields, the JSON-containing column. */
+            sourceColumn?: null | string;
+            /** @description JSON path used when the field source kind is `json_path`. */
+            jsonPath?: null | string;
+            /** @description Optional optimized physical column equivalent to the JSON or expression source. */
+            materializedColumn?: null | string;
+            /** @description Validated row expression when the field source kind is `expression`. */
+            expressionText?: null | string;
+            /** @description A `data_type` value. */
+            dataType: string;
+            /**
+             * Format: int32
+             * @description Decimal precision when relevant.
+             */
+            numericPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale when relevant.
+             */
+            numericScale?: null | number;
+            /** @description Whether the logical field may be null. */
+            isNullable: boolean;
+            /** @description Optional semantic unit such as `USD`, `percent` or `days`. */
+            unitKey?: null | string;
+            /** @description Whether the field may appear in detail projection. */
+            isSelectable: boolean;
+            /** @description Whether the field may be referenced in source-row filters. */
+            isFilterable: boolean;
+            /** @description Whether the field may take part in final ordering. */
+            isSortable: boolean;
+            /** @description Whether the field may be used directly as an aggregate grouping dimension. */
+            isGroupable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description Physical columns of a version's source object to turn into `column` fields. */
+        FieldsFromColumnsInput: {
+            /** @description The column names; columns without a logical type or already read by a `column` field are skipped. */
+            columns: string[];
+        };
+        /**
+         * @description The editable attributes of a field. FieldInput adds the key, which is fixed at creation. The materialized
+         *     column is set by its own endpoints.
+         */
+        FieldUpdateInput: {
+            /** @description Human-readable field name. */
+            displayName: string;
+            /** @description A `field_source_kind` value: `column`, `json_path` or `expression`. */
+            fieldSourceKind: string;
+            /** @description The physical column a `column` field reads, or the JSON column of a `json_path` field. */
+            sourceColumn?: null | string;
+            /** @description The JSON path of a `json_path` field, such as `$.address.state`. */
+            jsonPath?: null | string;
+            /** @description The row expression of an `expression` field, such as `[f.balance] * [f.rate]`. */
+            expressionText?: null | string;
+            /** @description A `data_type` value. */
+            dataType: string;
+            /**
+             * Format: int32
+             * @description Decimal precision (1-38); required for `decimal` and null otherwise.
+             */
+            numericPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale (0 up to the precision); required for `decimal` and null otherwise.
+             */
+            numericScale?: null | number;
+            /** @description Whether the logical field may be null. */
+            isNullable: boolean;
+            /** @description Optional semantic unit such as `USD`, `percent` or `days`. */
+            unitKey?: null | string;
+            /** @description Whether the field may appear in detail projection. */
+            isSelectable: boolean;
+            /** @description Whether the field may be referenced in source-row filters. */
+            isFilterable: boolean;
+            /** @description Whether the field may take part in final ordering. */
+            isSortable: boolean;
+            /** @description Whether the field may be used directly as an aggregate grouping dimension. */
+            isGroupable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description A dataset grain with its component fields, joined from `qe_dataset_grain` and `qe_dataset_grain_field`. */
+        GrainDetail: {
+            /**
+             * Format: int64
+             * @description The grain's surrogate key.
+             */
+            grainId: number;
+            /** @description Stable metadata name of the grain. */
+            grainKey: string;
+            /** @description A `grain_kind` value. */
+            grainKind: string;
+            /** @description The component fields, in ordinal order. */
+            fieldIds: number[];
+        };
+        /** @description A new grain of a draft dataset version. */
+        GrainInput: {
+            /** @description Stable metadata name of the grain, such as `rowIdentity`; fixed once created. */
+            grainKey: string;
+            /** @description A `grain_kind` value: `row` or `series`. */
+            grainKind: string;
+            /** @description The grain's fields in component order; stored with ordinals 1 to n. */
+            fieldIds: number[];
+        };
+        /** @description The editable attributes of a dataset grain. GrainInput adds the key, which is fixed at creation. */
+        GrainUpdateInput: {
+            /** @description A `grain_kind` value: `row` or `series`. */
+            grainKind: string;
+            /** @description The grain's fields in component order; stored with ordinals 1 to n. */
+            fieldIds: number[];
         };
         /** @description One option of a picker: a metadata row reduced to what a select list shows. */
         LookupItem: {
@@ -1835,147 +2101,15 @@ export interface components {
             /** @description A vocabulary value that classifies the row, such as a field's data type. */
             classifier?: null | string;
         };
-        /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them. */
-        MemberInput: {
-            /** @description Human-readable label, at most 512 characters. */
-            displayName: string;
-            /** @description Optional longer explanation, at most 1024 characters. */
-            description?: null | string;
-            /**
-             * Format: int64
-             * @description The parent member; null for a root. It must belong to the same version, which publication checks.
-             */
-            parentMemberId?: null | number;
-            /**
-             * Format: int64
-             * @description The business level; null for none. It must belong to the same version, which publication checks.
-             */
-            levelId?: null | number;
-            /** @description Whether source values may map directly to the member; false for folder-only nodes. */
-            isAssignable: boolean;
-            /**
-             * Format: int32
-             * @description Presentation order among the member's siblings.
-             */
-            sortOrder: number;
-            /** @description Extensible member metadata as raw JSON text, or null. */
-            properties?: null | string;
+        /** @description The existing physical column a `json_path` or `expression` field reads instead of computing its value. */
+        MaterializedColumnInput: {
+            /** @description A column of the version's source object, or null to compute the value again. */
+            columnName?: null | string;
         };
-        /** @description A reparent or reorder of a draft version's member tree, as `PUT dimension-versions/{dimensionVersionId}/members/order` takes it. */
-        MemberOrderInput: {
-            /** @description The placements to store, one per member; members whose parent and sort order are unchanged are not rewritten. */
-            items: components["schemas"]["MemberPlacement"][];
-        };
-        /** @description Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings. */
-        MemberPlacement: {
-            /**
-             * Format: int64
-             * @description The member being placed.
-             */
-            memberId: number;
-            /**
-             * Format: int64
-             * @description The member's new parent; null for a root.
-             */
-            parentMemberId?: null | number;
-            /**
-             * Format: int32
-             * @description The member's new presentation order among its siblings.
-             */
-            sortOrder: number;
-        };
-        /**
-         * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
-         *     range data type and validity start of its draft version 1.
-         */
-        NewDimensionInput: {
-            /** @description Stable canonical key, unique across dimensions and fixed once created. */
-            dimensionKey: string;
-            /** @description A `dimension_kind` value, fixed once created. */
-            dimensionKind: string;
-            /** @description A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind. */
-            rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC) of version 1, if already known.
-             */
-            validFrom?: null | string;
-            /** @description Human-readable name, at most 256 characters. */
-            displayName: string;
-            /** @description Administrative availability. */
-            isEnabled: boolean;
-            /** @description Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one. */
-            isRemovable: boolean;
-        };
-        /**
-         * @description A new draft version of a dimension, as `POST dimensions/{dimensionId}/versions` takes it: empty, or a clone of an
-         *     existing version. A clone copies the source's range data type unless the input supplies one.
-         */
-        NewDimensionVersionInput: {
-            /**
-             * Format: int64
-             * @description The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.
-             */
-            cloneFromVersionId?: null | number;
-            /** @description A `range_data_type` value for a range dimension; null for every other kind. */
-            rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC); a version needs one before it is published.
-             */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
-             */
-            validTo?: null | string;
-        };
-        /** @description A new level of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/levels` takes it. */
-        NewLevelInput: {
-            /** @description Stable level key, fixed once created; uniqueness within the version is a publication rule. */
-            levelKey: string;
-            /** @description Human-readable label, at most 256 characters. */
-            displayName: string;
-            /**
-             * Format: int32
-             * @description Business ordering of the levels; not the authoritative tree depth.
-             */
-            ordinal: number;
-            /** @description A `periodicity` value for a time-oriented level; null otherwise. */
-            periodicity?: null | string;
-            /** @description Whether this is the business-declared leaf level. */
-            isLeafLevel: boolean;
-        };
-        /** @description A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it. */
-        NewMemberInput: {
-            /**
-             * @description Stable member key, fixed once created: any characters without whitespace at either end, at most 256. Uniqueness within
-             *     the version is a publication rule.
-             */
-            memberKey: string;
-            /** @description Human-readable label, at most 512 characters. */
-            displayName: string;
-            /** @description Optional longer explanation, at most 1024 characters. */
-            description?: null | string;
-            /**
-             * Format: int64
-             * @description The parent member; null for a root. It must belong to the same version, which publication checks.
-             */
-            parentMemberId?: null | number;
-            /**
-             * Format: int64
-             * @description The business level; null for none. It must belong to the same version, which publication checks.
-             */
-            levelId?: null | number;
-            /** @description Whether source values may map directly to the member; false for folder-only nodes. */
-            isAssignable: boolean;
-            /**
-             * Format: int32
-             * @description Presentation order among the member's siblings.
-             */
-            sortOrder: number;
-            /** @description Extensible member metadata as raw JSON text, or null. */
-            properties?: null | string;
+        /** @description The generated column to add to a table for a `json_path` field. */
+        MaterializeInput: {
+            /** @description The new column's name; the source table must not have a column of that name yet. */
+            columnName: string;
         };
         ProblemDetails: {
             type?: null | string;
@@ -1984,108 +2118,6 @@ export interface components {
             status?: null | number;
             detail?: null | string;
             instance?: null | string;
-        };
-        /**
-         * @description One band of a range dimension version. Only the bound family of the version's range data type may be set, which
-         *     publication checks; a null bound is unbounded.
-         */
-        RangeBandInput: {
-            /**
-             * Format: int64
-             * @description The member the band assigns source values to.
-             */
-            memberId: number;
-            /**
-             * Format: double
-             * @description Decimal lower bound, for `range_data_type` decimal.
-             */
-            lowerDecimal?: null | number;
-            /**
-             * Format: double
-             * @description Decimal upper bound, for `range_data_type` decimal.
-             */
-            upperDecimal?: null | number;
-            /**
-             * Format: date-time
-             * @description Date lower bound (`yyyy-MM-dd`), for `range_data_type` date.
-             */
-            lowerDate?: null | string;
-            /**
-             * Format: date-time
-             * @description Date upper bound (`yyyy-MM-dd`), for `range_data_type` date.
-             */
-            upperDate?: null | string;
-            /**
-             * Format: date-time
-             * @description Datetime lower bound (UTC), for `range_data_type` datetime.
-             */
-            lowerDatetime?: null | string;
-            /**
-             * Format: date-time
-             * @description Datetime upper bound (UTC), for `range_data_type` datetime.
-             */
-            upperDatetime?: null | string;
-            /** @description Whether a value equal to the lower bound falls in the band. */
-            lowerInclusive: boolean;
-            /** @description Whether a value equal to the upper bound falls in the band. */
-            upperInclusive: boolean;
-        };
-        /** @description A `qe_range_band` row: a typed range that assigns scalar source values to a member of a range dimension. */
-        RangeBandRecord: {
-            /**
-             * Format: int64
-             * @description The dimension version; first part of the primary key.
-             */
-            dimensionVersionId: number;
-            /**
-             * Format: int32
-             * @description Evaluation order; second part of the primary key.
-             */
-            ordinal: number;
-            /**
-             * Format: int64
-             * @description The member assigned to the band.
-             */
-            memberId: number;
-            /**
-             * Format: double
-             * @description Decimal lower boundary; null means unbounded.
-             */
-            lowerDecimal?: null | number;
-            /**
-             * Format: double
-             * @description Decimal upper boundary; null means unbounded.
-             */
-            upperDecimal?: null | number;
-            /**
-             * Format: date-time
-             * @description Date lower boundary; null means unbounded.
-             */
-            lowerDate?: null | string;
-            /**
-             * Format: date-time
-             * @description Date upper boundary; null means unbounded.
-             */
-            upperDate?: null | string;
-            /**
-             * Format: date-time
-             * @description Datetime lower boundary (UTC); null means unbounded.
-             */
-            lowerDatetime?: null | string;
-            /**
-             * Format: date-time
-             * @description Datetime upper boundary (UTC); null means unbounded.
-             */
-            upperDatetime?: null | string;
-            /** @description Whether the lower boundary is included. */
-            lowerInclusive: boolean;
-            /** @description Whether the upper boundary is included. */
-            upperInclusive: boolean;
-        };
-        /** @description The complete ordered band list of a draft range dimension version, as `PUT dimension-versions/{dimensionVersionId}/range-bands` takes it. */
-        RangeBandsInput: {
-            /** @description The bands in evaluation order; each band's ordinal is its position, starting at 1. */
-            bands: components["schemas"]["RangeBandInput"][];
         };
         /** @description One reason a publication rule rejects a version. */
         RuleViolation: {
@@ -2113,6 +2145,36 @@ export interface components {
             tenantId?: null | string;
             /** @description Whether the caller is a SystemAdmin, who may administer every tenant. */
             isSystemAdmin: boolean;
+        };
+        /** @description A column of a source object with the logical type a field over it gets, as the field pickers offer it. */
+        SourceColumn: {
+            /** @description The column's name. */
+            name: string;
+            /** @description The column's StarRocks type as information_schema writes it, such as `decimal(20,2)`. */
+            columnType: string;
+            /** @description The `data_type` a field over the column gets; null when the type has no logical equivalent, so the column is not offered. */
+            dataType?: null | string;
+            /**
+             * Format: int32
+             * @description The decimal precision a field over the column gets; null unless the data type is `decimal`.
+             */
+            numericPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description The decimal scale a field over the column gets; null unless the data type is `decimal`.
+             */
+            numericScale?: null | number;
+            /** @description Whether the column accepts null. */
+            isNullable: boolean;
+            /** @description Whether StarRocks computes the column from an expression, as it does for a materialized JSON path. */
+            isGenerated: boolean;
+        };
+        /** @description A table or view of the tenant database that a dataset version can query. */
+        SourceObject: {
+            /** @description The object's name in the tenant database. */
+            name: string;
+            /** @description A `source_object_kind` value: `table` or `view`. */
+            kind: string;
         };
         /** @description A request to move a version to another lifecycle status. */
         StatusChangeInput: {
