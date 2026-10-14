@@ -5,8 +5,8 @@ import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries } from '@/api/queryClient';
 import { TextField } from '@/shared/form';
+import { FormDialog } from '@/shared/FormDialog';
 import { useTenantId } from '@/shared/useTenantId';
-import { FormDialog } from './FormDialog';
 import type { DatasetVersion, Field } from './types';
 
 interface MaterializeValues {

@@ -7,13 +7,19 @@ import { invalidateTenantQueries } from '@/api/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { EntityField, FormReadOnlyContext, JsonField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import {
+  EntityField,
+  FormReadOnlyContext,
+  JsonField,
+  SwitchField,
+  TextField,
+  useProblemSubmit,
+  VocabularyField,
+} from '@/shared/form';
 import { useTenantId } from '@/shared/useTenantId';
 import { SourceObjectField } from './SourceObjectField';
 import { emptyToNull } from './text';
 import type { DatasetVersion } from './types';
-import { useProblemSubmit } from './useProblemSubmit';
-
 interface SettingsValues {
   sourceObjectKind: string | null;
   sourceObject: string | null;

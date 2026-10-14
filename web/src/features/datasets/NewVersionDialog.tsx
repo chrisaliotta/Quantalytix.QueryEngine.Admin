@@ -5,8 +5,8 @@ import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries } from '@/api/queryClient';
 import { VocabularyField } from '@/shared/form';
+import { FormDialog } from '@/shared/FormDialog';
 import { useTenantId } from '@/shared/useTenantId';
-import { FormDialog } from './FormDialog';
 import { SourceObjectField } from './SourceObjectField';
 import type { DatasetVersion } from './types';
 

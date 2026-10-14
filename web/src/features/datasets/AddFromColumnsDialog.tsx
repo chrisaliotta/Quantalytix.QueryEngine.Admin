@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries } from '@/api/queryClient';
+import { FormDialog } from '@/shared/FormDialog';
 import { useTenantId } from '@/shared/useTenantId';
 import { ColumnsField } from './ColumnsField';
 import { unusedColumns } from './fieldForm';
-import { FormDialog } from './FormDialog';
 import { useSourceColumns } from './queries';
 import type { DatasetVersion, Field } from './types';
 

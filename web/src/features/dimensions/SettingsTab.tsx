@@ -5,10 +5,9 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { DateTimeField, FormReadOnlyContext, VocabularyField } from '@/shared/form';
+import { DateTimeField, FormReadOnlyContext, showFieldErrors, VocabularyField } from '@/shared/form';
 import { StatusBadge } from '@/shared/StatusBadge';
 import { useDimensionVersion, useUpdateDimensionVersion } from './api';
-import { showFieldErrors } from './formErrors';
 import type { DimensionVersion, DimensionVersionInput } from './types';
 
 export interface SettingsTabProps {

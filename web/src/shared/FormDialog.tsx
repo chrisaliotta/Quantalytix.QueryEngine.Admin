@@ -10,8 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { useProblemSubmit } from './useProblemSubmit';
+import { ApiErrorAlert } from './ApiErrorAlert';
+import { useProblemSubmit } from './form/useProblemSubmit';
 
 export interface FormDialogProps<TValues extends FieldValues> {
   open: boolean;
@@ -24,7 +24,7 @@ export interface FormDialogProps<TValues extends FieldValues> {
   submitLabel: string;
   /** Shown with a spinner while the submit runs, for slow requests such as a schema change. */
   pendingMessage?: string;
-  /** Form fields from `@/shared/form` or this feature. */
+  /** Form fields from `@/shared/form` or the feature. */
   children: ReactNode;
 }
 

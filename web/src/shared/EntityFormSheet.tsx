@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { FormProvider, type FieldValues, type Path, type UseFormReturn } from 'react-hook-form';
+import type { ReactNode } from 'react';
+import { FormProvider, type FieldValues, type UseFormReturn } from 'react-hook-form';
 import {
   Sheet,
   SheetContent,
@@ -8,10 +8,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@registry/components/Sheet';
-import { ApiProblem, toFieldErrors } from '@/api/problemDetails';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { FormReadOnlyContext } from './form/FormReadOnlyContext';
+import { useProblemSubmit } from './form/useProblemSubmit';
 
 export interface EntityFormSheetProps<TValues extends FieldValues> {
   open: boolean;
@@ -70,27 +70,12 @@ function EntityForm<TValues extends FieldValues>({
   readOnly = false,
   children,
 }: EntityFormProps<TValues>) {
-  const [problem, setProblem] = useState<Error | null>(null);
+  const { submit, problem } = useProblemSubmit(form, onSubmit, () => onOpenChange(false));
   const { isSubmitting } = form.formState;
-
-  async function submit(values: TValues) {
-    setProblem(null);
-    try {
-      await onSubmit(values);
-      onOpenChange(false);
-    } catch (error) {
-      if (error instanceof ApiProblem && error.errors) {
-        for (const [name, message] of Object.entries(toFieldErrors(error.errors))) {
-          form.setError(name as Path<TValues>, { type: 'server', message });
-        }
-      }
-      setProblem(error as Error);
-    }
-  }
 
   return (
     <FormProvider {...form}>
-      <form className="flex min-h-0 flex-1 flex-col" onSubmit={form.handleSubmit(submit)}>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
         <FormReadOnlyContext value={readOnly}>
           <fieldset
             data-slot="entity-form-fields"

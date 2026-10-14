@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries } from '@/api/queryClient';
+import { FormDialog } from '@/shared/FormDialog';
 import { useTenantId } from '@/shared/useTenantId';
-import { FormDialog } from './FormDialog';
 import { SourceColumnField } from './SourceColumnField';
 import type { DatasetVersion, Field } from './types';
 

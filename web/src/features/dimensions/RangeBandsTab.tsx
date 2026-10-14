@@ -6,11 +6,18 @@ import { SortableItem, SortableRoot } from '@registry/components/Sortable';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { DateField, DateTimeField, EntityField, FormReadOnlyContext, NumberField, SwitchField } from '@/shared/form';
+import {
+  DateField,
+  DateTimeField,
+  EntityField,
+  FormReadOnlyContext,
+  NumberField,
+  showFieldErrors,
+  SwitchField,
+} from '@/shared/form';
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useRangeBands, useReplaceRangeBands } from './api';
-import { showFieldErrors } from './formErrors';
 import type { RangeBand, RangeBandInput } from './types';
 
 /** The editable bands; dates stay `yyyy-MM-dd` and datetimes ISO UTC strings, as the API takes them. */
