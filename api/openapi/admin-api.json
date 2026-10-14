@@ -1,0 +1,26 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Quantalytix.QueryEngine.Admin.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Quantalytix.QueryEngine.Admin.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Quantalytix.QueryEngine.Admin.Api"
+    }
+  ]
+}
