@@ -1229,6 +1229,1055 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}/entries": {
+      "get": {
+        "tags": [
+          "MappingEntries"
+        ],
+        "summary": "Lists every entry of a mapping version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The mapping version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The entries by source key, compared exactly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionMappingRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MappingEntries"
+        ],
+        "summary": "Replaces every entry of a draft mapping version with the given list.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft mapping version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntriesInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntriesInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored entries by source key, under new entry IDs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionMappingRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A source key is empty, too long or repeated; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MappingEntries"
+        ],
+        "summary": "Adds an entry to a draft mapping version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft mapping version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntryInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntryInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionMappingRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}/entries/{entryId}": {
+      "put": {
+        "tags": [
+          "MappingEntries"
+        ],
+        "summary": "Replaces an entry's source value and member.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The mapping version that owns the entry.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "entryId",
+            "in": "path",
+            "description": "The entry.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntryInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingEntryInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionMappingRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The entry is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MappingEntries"
+        ],
+        "summary": "Deletes an entry of a draft mapping version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The mapping version that owns the entry.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "entryId",
+            "in": "path",
+            "description": "The entry.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The entry is deleted."
+          },
+          "400": {
+            "description": "The entry is not in the version; the error is keyed `entryId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/mapping-sets": {
+      "get": {
+        "tags": [
+          "MappingSets"
+        ],
+        "summary": "Lists every mapping set of the tenant.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping sets.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The mapping sets by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MappingSetRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MappingSets"
+        ],
+        "summary": "Creates a mapping set onto a dimension; it has no versions until one is created.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMappingSetInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMappingSetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created mapping set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingSetRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}": {
+      "get": {
+        "tags": [
+          "MappingSets"
+        ],
+        "summary": "Reads one mapping set.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingSetId",
+            "in": "path",
+            "description": "The mapping set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The mapping set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingSetRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MappingSets"
+        ],
+        "summary": "Edits a mapping set's source namespace and display name; a change advances the semantic revision.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingSetId",
+            "in": "path",
+            "description": "The mapping set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingSetInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingSetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored mapping set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingSetRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MappingSets"
+        ],
+        "summary": "Deletes a mapping set whose versions are all drafts and that no binding references, together with its drafts and\ntheir entries.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingSetId",
+            "in": "path",
+            "description": "The mapping set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The mapping set and its drafts are deleted."
+          },
+          "409": {
+            "description": "Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}/versions": {
+      "get": {
+        "tags": [
+          "MappingVersions"
+        ],
+        "summary": "Lists a mapping set's versions with their status and pinned dimension version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingSetId",
+            "in": "path",
+            "description": "The mapping set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The versions by version number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MappingVersionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MappingVersions"
+        ],
+        "summary": "Creates a draft with the set's next version number, pinned to `dimensionVersionId`: empty, or cloned from\n`cloneFromVersionId`, whose entries move to the members with the same keys in the pinned dimension version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the mapping set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mappingSetId",
+            "in": "path",
+            "description": "The mapping set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMappingVersionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMappingVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created draft, with the source keys of cloned entries whose member key the pinned version lacks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedMappingVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as an unknown dimension version; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}": {
+      "get": {
+        "tags": [
+          "MappingVersions"
+        ],
+        "summary": "Reads one mapping version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The mapping version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingVersionRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MappingVersions"
+        ],
+        "summary": "Deletes a draft mapping version: its entries, then the version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft mapping version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The version and its entries are deleted."
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/lookups/{kind}": {
       "get": {
         "tags": [
@@ -4665,6 +5714,867 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/bridge-versions/{versionId}/mappings": {
+      "get": {
+        "tags": [
+          "BridgeMappings"
+        ],
+        "summary": "Lists every mapping of a bridge version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The bridge version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The mappings by source member ID, then target member ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BridgeMappingRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "BridgeMappings"
+        ],
+        "summary": "Replaces every mapping of a draft bridge version with the given list.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft bridge version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeMappingsInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeMappingsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored mappings by source member ID, then target member ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BridgeMappingRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A pair repeats, a weight is negative, or a value does not fit DECIMAL(38, 12); errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/bridges": {
+      "get": {
+        "tags": [
+          "Bridges"
+        ],
+        "summary": "Lists every bridge of the tenant.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridges.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The bridges by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BridgeRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bridges"
+        ],
+        "summary": "Creates a bridge between two dimensions; it has no versions until one is created.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBridgeInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBridgeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created bridge.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/bridges/{bridgeId}": {
+      "get": {
+        "tags": [
+          "Bridges"
+        ],
+        "summary": "Reads one bridge, including its authoring-only current version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bridgeId",
+            "in": "path",
+            "description": "The bridge.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The bridge.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Bridges"
+        ],
+        "summary": "Edits a bridge's display name and availability; a change advances the semantic revision.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bridgeId",
+            "in": "path",
+            "description": "The bridge.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored bridge.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Bridges"
+        ],
+        "summary": "Deletes a bridge whose versions are all drafts and that no binding uses, together with its drafts and their mappings.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bridgeId",
+            "in": "path",
+            "description": "The bridge.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The bridge and its drafts are deleted."
+          },
+          "409": {
+            "description": "Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/bridges/{bridgeId}/versions": {
+      "get": {
+        "tags": [
+          "BridgeVersions"
+        ],
+        "summary": "Lists a bridge's versions with their endpoint versions, allocation semantics and status.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bridgeId",
+            "in": "path",
+            "description": "The bridge.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The versions by version number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BridgeVersionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "BridgeVersions"
+        ],
+        "summary": "Creates a draft with the bridge's next version number: empty, or cloned from `cloneFromVersionId`, whose mappings\nmove to the members with the same keys in the new endpoint versions.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the bridge.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bridgeId",
+            "in": "path",
+            "description": "The bridge.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBridgeVersionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBridgeVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created draft, with the cloned mappings whose member keys the new endpoint versions lack.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedBridgeVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/bridge-versions/{versionId}": {
+      "get": {
+        "tags": [
+          "BridgeVersions"
+        ],
+        "summary": "Reads one bridge version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The bridge version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeVersionRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "BridgeVersions"
+        ],
+        "summary": "Replaces a draft version's endpoint versions, cardinality and allocation mode; its mappings stay as they are.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft bridge version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeVersionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BridgeVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeVersionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "BridgeVersions"
+        ],
+        "summary": "Deletes a draft version that no binding uses, with its mappings, and clears the bridge's current-version pointer when it\nnamed the version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft bridge version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names the bindings that use it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The version and its mappings are deleted."
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/assumption-sets": {
       "get": {
         "tags": [
@@ -5490,6 +7400,292 @@
         },
         "description": "The editable settings of a draft assumption set; its key is fixed at creation."
       },
+      "BridgeInput": {
+        "required": [
+          "displayName",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability."
+          }
+        },
+        "description": "The editable identity attributes of a bridge, as `PUT bridges/{bridgeId}` takes them."
+      },
+      "BridgeMappingInput": {
+        "required": [
+          "sourceMemberId",
+          "targetMemberId",
+          "factor",
+          "allocationWeight"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceMemberId": {
+            "type": "integer",
+            "description": "A member of the bridge version's source dimension version.",
+            "format": "int64"
+          },
+          "targetMemberId": {
+            "type": "integer",
+            "description": "A member of the bridge version's target dimension version.",
+            "format": "int64"
+          },
+          "factor": {
+            "type": "number",
+            "description": "Signed business-value coefficient, such as `-1` for sign normalization; fits `DECIMAL(38, 12)`.",
+            "format": "double"
+          },
+          "allocationWeight": {
+            "type": "number",
+            "description": "Ownership multiplier of 0 or more; fractional for `partition` allocation; fits `DECIMAL(38, 12)`.",
+            "format": "double"
+          }
+        },
+        "description": "One assignment of a source member to a target member, with its value factor and allocation weight."
+      },
+      "BridgeMappingRecord": {
+        "required": [
+          "bridgeVersionId",
+          "sourceMemberId",
+          "targetMemberId",
+          "factor",
+          "allocationWeight"
+        ],
+        "type": "object",
+        "properties": {
+          "bridgeVersionId": {
+            "type": "integer",
+            "description": "The owning bridge version; first part of the primary key.",
+            "format": "int64"
+          },
+          "sourceMemberId": {
+            "type": "integer",
+            "description": "The source member; second part of the primary key.",
+            "format": "int64"
+          },
+          "targetMemberId": {
+            "type": "integer",
+            "description": "The target member; third part of the primary key.",
+            "format": "int64"
+          },
+          "factor": {
+            "type": "number",
+            "description": "Signed business-value coefficient, such as `-1` for sign normalization.",
+            "format": "double"
+          },
+          "allocationWeight": {
+            "type": "number",
+            "description": "Nonnegative ownership multiplier; fractional for `partition` allocation.",
+            "format": "double"
+          }
+        },
+        "description": "A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version."
+      },
+      "BridgeMappingsInput": {
+        "required": [
+          "mappings"
+        ],
+        "type": "object",
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BridgeMappingInput"
+            },
+            "description": "The mappings; each source and target pair appears once."
+          }
+        },
+        "description": "The complete mapping list of a draft bridge version, as `PUT bridge-versions/{versionId}/mappings` takes it."
+      },
+      "BridgeRecord": {
+        "required": [
+          "bridgeId",
+          "bridgeKey",
+          "displayName",
+          "sourceDimensionId",
+          "targetDimensionId",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "bridgeId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "bridgeKey": {
+            "type": "string",
+            "description": "Stable logical bridge identity."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "sourceDimensionId": {
+            "type": "integer",
+            "description": "The canonical source dimension.",
+            "format": "int64"
+          },
+          "targetDimensionId": {
+            "type": "integer",
+            "description": "The canonical target dimension.",
+            "format": "int64"
+          },
+          "currentBridgeVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Authoring-only pointer to the current bridge version.",
+            "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "A `qe_bridge` row: the stable identity of a semantic remapping from one canonical dimension to another."
+      },
+      "BridgeVersionInput": {
+        "required": [
+          "sourceDimensionVersionId",
+          "targetDimensionVersionId",
+          "cardinality",
+          "allocationMode"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned version of the bridge's source dimension.",
+            "format": "int64"
+          },
+          "targetDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned version of the bridge's target dimension.",
+            "format": "int64"
+          },
+          "cardinality": {
+            "type": "string",
+            "description": "A `cardinality` value: `many_to_one` or `many_to_many`."
+          },
+          "allocationMode": {
+            "type": "string",
+            "description": "An `allocation_mode` value: `none`, `partition` or `replicate`."
+          }
+        },
+        "description": "The editable attributes of a draft bridge version, as `PUT bridge-versions/{versionId}` takes them."
+      },
+      "BridgeVersionRecord": {
+        "required": [
+          "bridgeVersionId",
+          "bridgeId",
+          "versionNumber",
+          "sourceDimensionVersionId",
+          "targetDimensionVersionId",
+          "cardinality",
+          "allocationMode",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "bridgeVersionId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "bridgeId": {
+            "type": "integer",
+            "description": "The owning bridge.",
+            "format": "int64"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "description": "Version number within the bridge.",
+            "format": "int32"
+          },
+          "sourceDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned source dimension version.",
+            "format": "int64"
+          },
+          "targetDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned target dimension version.",
+            "format": "int64"
+          },
+          "cardinality": {
+            "type": "string",
+            "description": "A `cardinality` value."
+          },
+          "allocationMode": {
+            "type": "string",
+            "description": "An `allocation_mode` value."
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value."
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Publication time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_bridge_version` row: pins the source and target dimension versions and the allocation semantics of a bridge."
+      },
+      "CreatedBridgeVersion": {
+        "required": [
+          "version",
+          "droppedMappings"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "description": "The new draft.",
+            "$ref": "#/components/schemas/BridgeVersionRecord"
+          },
+          "droppedMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DroppedBridgeMapping"
+            },
+            "description": "The cloned mappings whose source or target member key no member of the new endpoint version has, by source key, then\ntarget key; empty for an empty draft."
+          }
+        },
+        "description": "A new draft bridge version, with the mappings a clone could not carry over."
+      },
+      "CreatedMappingVersion": {
+        "required": [
+          "version",
+          "droppedSourceKeys"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "description": "The new draft.",
+            "$ref": "#/components/schemas/MappingVersionRecord"
+          },
+          "droppedSourceKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The source keys of the cloned entries whose member key no member of the new draft's dimension version has, in\nordinal order; empty for an empty draft."
+          }
+        },
+        "description": "A new draft mapping version, with the source keys a clone could not carry over."
+      },
       "DatabaseInfoRecord": {
         "required": [
           "singletonId",
@@ -5855,6 +8051,37 @@
         },
         "description": "A `qe_dimension_level` row: an optional business label for a hierarchy level of a dimension version."
       },
+      "DimensionMappingRecord": {
+        "required": [
+          "mappingEntryId",
+          "mappingVersionId",
+          "sourceKeyValue",
+          "memberId"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingEntryId": {
+            "type": "integer",
+            "description": "Surrogate primary key allocated by the metadata service; no business meaning.",
+            "format": "int64"
+          },
+          "mappingVersionId": {
+            "type": "integer",
+            "description": "The mapping version that owns the assignment.",
+            "format": "int64"
+          },
+          "sourceKeyValue": {
+            "type": "string",
+            "description": "Actual scalar source value, unique within the mapping version."
+          },
+          "memberId": {
+            "type": "integer",
+            "description": "The canonical target member, from the mapping version's dimension version.",
+            "format": "int64"
+          }
+        },
+        "description": "A `qe_dimension_mapping` row: maps one actual source value to exactly one canonical member within one mapping version."
+      },
       "DimensionMemberRecord": {
         "required": [
           "memberId",
@@ -6060,6 +8287,24 @@
           }
         },
         "description": "A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension."
+      },
+      "DroppedBridgeMapping": {
+        "required": [
+          "sourceMemberKey",
+          "targetMemberKey"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceMemberKey": {
+            "type": "string",
+            "description": "The key of the mapping's source member."
+          },
+          "targetMemberKey": {
+            "type": "string",
+            "description": "The key of the mapping's target member."
+          }
+        },
+        "description": "A mapping a bridge version clone could not carry over, named by the member keys of the version it was cloned from."
       },
       "FieldInput": {
         "required": [
@@ -6556,6 +8801,139 @@
         },
         "description": "One option of a picker: a metadata row reduced to what a select list shows."
       },
+      "MappingEntriesInput": {
+        "required": [
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MappingEntryInput"
+            },
+            "description": "The entries; each source key appears once."
+          }
+        },
+        "description": "The complete entry list of a draft mapping version, as `PUT mapping-versions/{versionId}/entries` takes it."
+      },
+      "MappingEntryInput": {
+        "required": [
+          "sourceKeyValue",
+          "memberId"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceKeyValue": {
+            "type": "string",
+            "description": "The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,\nat most 512 characters."
+          },
+          "memberId": {
+            "type": "integer",
+            "description": "The member of the mapping version's dimension version that the value maps to.",
+            "format": "int64"
+          }
+        },
+        "description": "One mapping entry: an actual source value and the canonical member it maps to."
+      },
+      "MappingSetInput": {
+        "required": [
+          "sourceNamespace",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceNamespace": {
+            "type": "string",
+            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 characters."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          }
+        },
+        "description": "The editable identity attributes of a mapping set, as `PUT mapping-sets/{mappingSetId}` takes them."
+      },
+      "MappingSetRecord": {
+        "required": [
+          "mappingSetId",
+          "mappingSetKey",
+          "sourceNamespace",
+          "dimensionId",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingSetId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "mappingSetKey": {
+            "type": "string",
+            "description": "Stable mapping-set identity."
+          },
+          "sourceNamespace": {
+            "type": "string",
+            "description": "Namespace identifying the source vocabulary."
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical target dimension.",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label."
+          }
+        },
+        "description": "A `qe_mapping_set` row: the stable identity of a source code system that maps onto one canonical dimension."
+      },
+      "MappingVersionRecord": {
+        "required": [
+          "mappingVersionId",
+          "mappingSetId",
+          "versionNumber",
+          "dimensionVersionId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingVersionId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "mappingSetId": {
+            "type": "integer",
+            "description": "The owning mapping set.",
+            "format": "int64"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "description": "Monotonic version within the mapping set.",
+            "format": "int32"
+          },
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The canonical target dimension version; unique together with the mapping set.",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value."
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Publication time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_mapping_version` row: immutable mapping content associated with one canonical dimension version."
+      },
       "MaterializedColumnInput": {
         "type": "object",
         "properties": {
@@ -6680,6 +9058,79 @@
         },
         "description": "Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings."
       },
+      "NewBridgeInput": {
+        "required": [
+          "bridgeKey",
+          "sourceDimensionId",
+          "targetDimensionId",
+          "displayName",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "bridgeKey": {
+            "type": "string",
+            "description": "Stable key, unique across bridges and fixed once created."
+          },
+          "sourceDimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension the bridge remaps from; fixed once created.",
+            "format": "int64"
+          },
+          "targetDimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension the bridge remaps to; fixed once created.",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability."
+          }
+        },
+        "description": "A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes."
+      },
+      "NewBridgeVersionInput": {
+        "required": [
+          "sourceDimensionVersionId",
+          "targetDimensionVersionId",
+          "cardinality",
+          "allocationMode"
+        ],
+        "type": "object",
+        "properties": {
+          "cloneFromVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint\nversions; null for an empty draft.",
+            "format": "int64"
+          },
+          "sourceDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned version of the bridge's source dimension.",
+            "format": "int64"
+          },
+          "targetDimensionVersionId": {
+            "type": "integer",
+            "description": "The pinned version of the bridge's target dimension.",
+            "format": "int64"
+          },
+          "cardinality": {
+            "type": "string",
+            "description": "A `cardinality` value: `many_to_one` or `many_to_many`."
+          },
+          "allocationMode": {
+            "type": "string",
+            "description": "An `allocation_mode` value: `none`, `partition` or `replicate`."
+          }
+        },
+        "description": "A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its endpoint versions and allocation\nsemantics, and optionally a version whose mappings it copies."
+      },
       "NewDimensionInput": {
         "required": [
           "dimensionKey",
@@ -6800,6 +9251,57 @@
           }
         },
         "description": "A new level of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/levels` takes it."
+      },
+      "NewMappingSetInput": {
+        "required": [
+          "mappingSetKey",
+          "dimensionId",
+          "sourceNamespace",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "mappingSetKey": {
+            "type": "string",
+            "description": "Stable key, unique across mapping sets and fixed once created."
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension the source codes map onto; fixed once created.",
+            "format": "int64"
+          },
+          "sourceNamespace": {
+            "type": "string",
+            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 characters."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          }
+        },
+        "description": "A new mapping set, as `POST mapping-sets` takes it: its fixed key and target dimension, plus its identity attributes."
+      },
+      "NewMappingVersionInput": {
+        "required": [
+          "dimensionVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The dimension version of the set's dimension that the entries' members come from.",
+            "format": "int64"
+          },
+          "cloneFromVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The mapping version whose entries the draft copies, each moved to the member with the same key in\nlong NewMappingVersionInput.DimensionVersionId; null for an empty draft.",
+            "format": "int64"
+          }
+        },
+        "description": "A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: the dimension version\nit maps onto, and optionally a version whose entries it copies."
       },
       "NewMemberInput": {
         "required": [
@@ -7843,6 +10345,15 @@
       "name": "Overview"
     },
     {
+      "name": "MappingEntries"
+    },
+    {
+      "name": "MappingSets"
+    },
+    {
+      "name": "MappingVersions"
+    },
+    {
       "name": "Lookups"
     },
     {
@@ -7871,6 +10382,15 @@
     },
     {
       "name": "Grains"
+    },
+    {
+      "name": "BridgeMappings"
+    },
+    {
+      "name": "Bridges"
+    },
+    {
+      "name": "BridgeVersions"
     },
     {
       "name": "AssumptionSets"
