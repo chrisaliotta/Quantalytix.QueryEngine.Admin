@@ -60,6 +60,7 @@ public sealed class FieldUpdateInputValidator : AbstractValidator<FieldUpdateInp
         {
             RuleFor(input => input.NumericPrecision).NotNull().InclusiveBetween(1, MaxPrecision);
             RuleFor(input => input.NumericScale)
+                .Cascade(CascadeMode.Stop)
                 .NotNull()
                 .GreaterThanOrEqualTo(0)
                 .Must((input, scale) => scale <= input.NumericPrecision)
