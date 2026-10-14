@@ -419,6 +419,1347 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a version's levels. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The levels by ordinal, then key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionLevelRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a level to a draft version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewLevelInput"];
+                    "application/*+json": components["schemas"]["NewLevelInput"];
+                };
+            };
+            responses: {
+                /** @description The created level. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a level's display name, ordinal, periodicity and leaf flag; its key stays. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version that owns the level. */
+                    dimensionVersionId: number;
+                    /** @description The level. */
+                    levelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LevelInput"];
+                    "application/*+json": components["schemas"]["LevelInput"];
+                };
+            };
+            responses: {
+                /** @description The stored level. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
+                    };
+                };
+                /** @description The level is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a level of a draft version, unless members use it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version that owns the level. */
+                    dimensionVersionId: number;
+                    /** @description The level. */
+                    levelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The level is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The level is not in the version; the error is keyed `levelId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the members that use the level. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every member of a version; parent links make the tree. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The members by sort order, then key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionMemberRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a member to a draft version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewMemberInput"];
+                    "application/*+json": components["schemas"]["NewMemberInput"];
+                };
+            };
+            responses: {
+                /** @description The created member. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a member's editable attributes, including its parent and level; its key stays. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version that owns the member. */
+                    dimensionVersionId: number;
+                    /** @description The member. */
+                    memberId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MemberInput"];
+                    "application/*+json": components["schemas"]["MemberInput"];
+                };
+            };
+            responses: {
+                /** @description The stored member. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
+                    };
+                };
+                /** @description The member is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version that owns the member. */
+                    dimensionVersionId: number;
+                    /** @description The member. */
+                    memberId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The member is not in the version; the error is keyed `memberId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names what references the member. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MemberOrderInput"];
+                    "application/*+json": components["schemas"]["MemberOrderInput"];
+                };
+            };
+            responses: {
+                /** @description The version's members after the change, by sort order, then key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionMemberRecord"][];
+                    };
+                };
+                /** @description A member is placed twice or under itself; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every dimension of the tenant. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimensions. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The dimensions by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a user-defined dimension and its draft version 1. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewDimensionInput"];
+                    "application/*+json": components["schemas"]["NewDimensionInput"];
+                };
+            };
+            responses: {
+                /** @description The created dimension; its draft version 1 is listed under its versions. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one dimension. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Edits a dimension's display name, availability and removability. A system dimension keeps its removability. A changed
+         *     display name or availability advances the semantic revision.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DimensionInput"];
+                    "application/*+json": components["schemas"]["DimensionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a removable dimension whose versions are all drafts and that no binding, mapping set, bridge or assumption set
+         *     references, together with its drafts and their content.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The dimension and its drafts are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names what blocks the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a dimension's versions with their status and validity windows, from which the effective version follows. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions by version number, each with `validFrom` and `validTo`. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionVersionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies
+         *     the levels, members, range bands and the dimension's mapping versions pinned to the source, and the source's range data
+         *     type unless one is supplied.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewDimensionVersionInput"];
+                    "application/*+json": components["schemas"]["NewDimensionVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The created draft version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one dimension version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionVersionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft version's range data type and validity window. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DimensionVersionInput"];
+                    "application/*+json": components["schemas"]["DimensionVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["DimensionVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a draft version with its levels, members, range bands, closure rows and the draft mapping versions pinned to it,
+         *     unless a non-draft mapping version, a bridge version, a binding or an assumption set pins it.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft version. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version and its content are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names what pins it. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/range-bands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the bands of a version of a range dimension. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version whose bands are read or replaced. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The bands by ordinal. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RangeBandRecord"][];
+                    };
+                };
+                /** @description The version's dimension is not a range dimension; the error is keyed `dimensionVersionId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound
+         *     families, order and overlaps are checked when the version is validated.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dimension version whose bands are read or replaced. */
+                    dimensionVersionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RangeBandsInput"];
+                    "application/*+json": components["schemas"]["RangeBandsInput"];
+                };
+            };
+            responses: {
+                /** @description The stored bands by ordinal. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RangeBandRecord"][];
+                    };
+                };
+                /** @description The dimension is not a range dimension, or a band breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/datasets": {
         parameters: {
             query?: never;
@@ -1909,6 +3250,151 @@ export interface components {
             /** @description Extension metadata as raw JSON text, or null. */
             properties?: null | string;
         };
+        /** @description The editable identity attributes of a dimension, as `PUT dimensions/{dimensionId}` takes them. */
+        DimensionInput: {
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+            /** @description Administrative availability. */
+            isEnabled: boolean;
+            /** @description Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one. */
+            isRemovable: boolean;
+        };
+        /** @description A `qe_dimension_level` row: an optional business label for a hierarchy level of a dimension version. */
+        DimensionLevelRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            levelId: number;
+            /**
+             * Format: int64
+             * @description The owning dimension version.
+             */
+            dimensionVersionId: number;
+            /** @description Stable level name. */
+            levelKey: string;
+            /** @description Human-readable label. */
+            displayName: string;
+            /**
+             * Format: int32
+             * @description Business ordering of levels; not the authoritative tree depth.
+             */
+            ordinal: number;
+            /** @description A `periodicity` value for time-oriented levels; null otherwise. */
+            periodicity?: null | string;
+            /** @description Whether this is the business-declared leaf level. */
+            isLeafLevel: boolean;
+        };
+        /** @description A `qe_dimension_member` row: a canonical dimension member or hierarchy node. */
+        DimensionMemberRecord: {
+            /**
+             * Format: int64
+             * @description Surrogate primary key, unique across all dimension versions.
+             */
+            memberId: number;
+            /**
+             * Format: int64
+             * @description The owning dimension version.
+             */
+            dimensionVersionId: number;
+            /** @description Stable member key, unique within the dimension version. */
+            memberKey: string;
+            /** @description Human-readable label. */
+            displayName: string;
+            /** @description Optional longer explanation of the member. */
+            description?: null | string;
+            /**
+             * Format: int64
+             * @description Parent member in the authoritative tree, from the same dimension version.
+             */
+            parentMemberId?: null | number;
+            /**
+             * Format: int64
+             * @description Optional business level.
+             */
+            levelId?: null | number;
+            /** @description Whether source values may map directly to this member. */
+            isAssignable: boolean;
+            /**
+             * Format: int32
+             * @description Presentation ordering within peer groups.
+             */
+            sortOrder: number;
+            /** @description Extensible member metadata as raw JSON text (a JSON column). */
+            properties?: null | string;
+        };
+        /** @description A `qe_dimension` row: the stable identity of a canonical business dimension. */
+        DimensionRecord: {
+            /**
+             * Format: int64
+             * @description Surrogate primary key.
+             */
+            dimensionId: number;
+            /** @description Stable canonical identity such as `Branch` or `RiskGrade`. */
+            dimensionKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `dimension_kind` value. */
+            dimensionKind: string;
+            /** @description A `definition_origin` value. */
+            definitionOrigin: string;
+            /** @description When false, the dimension must never be deleted. */
+            isRemovable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description The editable attributes of a draft dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them. */
+        DimensionVersionInput: {
+            /** @description A `range_data_type` value for a range dimension; null for every other kind. */
+            rangeDataType?: null | string;
+            /**
+             * Format: date-time
+             * @description Inclusive validity start (UTC); a version needs one before it is published.
+             */
+            validFrom?: null | string;
+            /**
+             * Format: date-time
+             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
+             */
+            validTo?: null | string;
+        };
+        /** @description A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension. */
+        DimensionVersionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            dimensionVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning dimension.
+             */
+            dimensionId: number;
+            /**
+             * Format: int32
+             * @description Monotonic version within the dimension.
+             */
+            versionNumber: number;
+            /** @description A `publication_status` value. */
+            status: string;
+            /** @description A `range_data_type` value for range dimensions; null otherwise. */
+            rangeDataType?: null | string;
+            /**
+             * Format: date-time
+             * @description Inclusive semantic-validity start (UTC); required once published.
+             */
+            validFrom?: null | string;
+            /**
+             * Format: date-time
+             * @description Exclusive semantic-validity end (UTC); null means open-ended.
+             */
+            validTo?: null | string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC).
+             */
+            publishedAt?: null | string;
+        };
         /** @description A new field of a draft dataset version. */
         FieldInput: {
             /** @description Stable logical field identity, the request-facing grouping ID; fixed once created. */
@@ -2080,6 +3566,20 @@ export interface components {
             /** @description The grain's fields in component order; stored with ordinals 1 to n. */
             fieldIds: number[];
         };
+        /** @description The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{levelId}` takes them. */
+        LevelInput: {
+            /** @description Human-readable label, at most 256 characters. */
+            displayName: string;
+            /**
+             * Format: int32
+             * @description Business ordering of the levels; not the authoritative tree depth.
+             */
+            ordinal: number;
+            /** @description A `periodicity` value for a time-oriented level; null otherwise. */
+            periodicity?: null | string;
+            /** @description Whether this is the business-declared leaf level. */
+            isLeafLevel: boolean;
+        };
         /** @description One option of a picker: a metadata row reduced to what a select list shows. */
         LookupItem: {
             /**
@@ -2111,6 +3611,148 @@ export interface components {
             /** @description The new column's name; the source table must not have a column of that name yet. */
             columnName: string;
         };
+        /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them. */
+        MemberInput: {
+            /** @description Human-readable label, at most 512 characters. */
+            displayName: string;
+            /** @description Optional longer explanation, at most 1024 characters. */
+            description?: null | string;
+            /**
+             * Format: int64
+             * @description The parent member; null for a root. It must belong to the same version, which publication checks.
+             */
+            parentMemberId?: null | number;
+            /**
+             * Format: int64
+             * @description The business level; null for none. It must belong to the same version, which publication checks.
+             */
+            levelId?: null | number;
+            /** @description Whether source values may map directly to the member; false for folder-only nodes. */
+            isAssignable: boolean;
+            /**
+             * Format: int32
+             * @description Presentation order among the member's siblings.
+             */
+            sortOrder: number;
+            /** @description Extensible member metadata as raw JSON text, or null. */
+            properties?: null | string;
+        };
+        /** @description A reparent or reorder of a draft version's member tree, as `PUT dimension-versions/{dimensionVersionId}/members/order` takes it. */
+        MemberOrderInput: {
+            /** @description The placements to store, one per member; members whose parent and sort order are unchanged are not rewritten. */
+            items: components["schemas"]["MemberPlacement"][];
+        };
+        /** @description Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings. */
+        MemberPlacement: {
+            /**
+             * Format: int64
+             * @description The member being placed.
+             */
+            memberId: number;
+            /**
+             * Format: int64
+             * @description The member's new parent; null for a root.
+             */
+            parentMemberId?: null | number;
+            /**
+             * Format: int32
+             * @description The member's new presentation order among its siblings.
+             */
+            sortOrder: number;
+        };
+        /**
+         * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
+         *     range data type and validity start of its draft version 1.
+         */
+        NewDimensionInput: {
+            /** @description Stable canonical key, unique across dimensions and fixed once created. */
+            dimensionKey: string;
+            /** @description A `dimension_kind` value, fixed once created. */
+            dimensionKind: string;
+            /** @description A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind. */
+            rangeDataType?: null | string;
+            /**
+             * Format: date-time
+             * @description Inclusive validity start (UTC) of version 1, if already known.
+             */
+            validFrom?: null | string;
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+            /** @description Administrative availability. */
+            isEnabled: boolean;
+            /** @description Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one. */
+            isRemovable: boolean;
+        };
+        /**
+         * @description A new draft version of a dimension, as `POST dimensions/{dimensionId}/versions` takes it: empty, or a clone of an
+         *     existing version. A clone copies the source's range data type unless the input supplies one.
+         */
+        NewDimensionVersionInput: {
+            /**
+             * Format: int64
+             * @description The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.
+             */
+            cloneFromVersionId?: null | number;
+            /** @description A `range_data_type` value for a range dimension; null for every other kind. */
+            rangeDataType?: null | string;
+            /**
+             * Format: date-time
+             * @description Inclusive validity start (UTC); a version needs one before it is published.
+             */
+            validFrom?: null | string;
+            /**
+             * Format: date-time
+             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
+             */
+            validTo?: null | string;
+        };
+        /** @description A new level of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/levels` takes it. */
+        NewLevelInput: {
+            /** @description Stable level key, fixed once created; uniqueness within the version is a publication rule. */
+            levelKey: string;
+            /** @description Human-readable label, at most 256 characters. */
+            displayName: string;
+            /**
+             * Format: int32
+             * @description Business ordering of the levels; not the authoritative tree depth.
+             */
+            ordinal: number;
+            /** @description A `periodicity` value for a time-oriented level; null otherwise. */
+            periodicity?: null | string;
+            /** @description Whether this is the business-declared leaf level. */
+            isLeafLevel: boolean;
+        };
+        /** @description A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it. */
+        NewMemberInput: {
+            /**
+             * @description Stable member key, fixed once created: any characters without whitespace at either end, at most 256. Uniqueness within
+             *     the version is a publication rule.
+             */
+            memberKey: string;
+            /** @description Human-readable label, at most 512 characters. */
+            displayName: string;
+            /** @description Optional longer explanation, at most 1024 characters. */
+            description?: null | string;
+            /**
+             * Format: int64
+             * @description The parent member; null for a root. It must belong to the same version, which publication checks.
+             */
+            parentMemberId?: null | number;
+            /**
+             * Format: int64
+             * @description The business level; null for none. It must belong to the same version, which publication checks.
+             */
+            levelId?: null | number;
+            /** @description Whether source values may map directly to the member; false for folder-only nodes. */
+            isAssignable: boolean;
+            /**
+             * Format: int32
+             * @description Presentation order among the member's siblings.
+             */
+            sortOrder: number;
+            /** @description Extensible member metadata as raw JSON text, or null. */
+            properties?: null | string;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -2118,6 +3760,108 @@ export interface components {
             status?: null | number;
             detail?: null | string;
             instance?: null | string;
+        };
+        /**
+         * @description One band of a range dimension version. Only the bound family of the version's range data type may be set, which
+         *     publication checks; a null bound is unbounded.
+         */
+        RangeBandInput: {
+            /**
+             * Format: int64
+             * @description The member the band assigns source values to.
+             */
+            memberId: number;
+            /**
+             * Format: double
+             * @description Decimal lower bound, for `range_data_type` decimal.
+             */
+            lowerDecimal?: null | number;
+            /**
+             * Format: double
+             * @description Decimal upper bound, for `range_data_type` decimal.
+             */
+            upperDecimal?: null | number;
+            /**
+             * Format: date-time
+             * @description Date lower bound (`yyyy-MM-dd`), for `range_data_type` date.
+             */
+            lowerDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Date upper bound (`yyyy-MM-dd`), for `range_data_type` date.
+             */
+            upperDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Datetime lower bound (UTC), for `range_data_type` datetime.
+             */
+            lowerDatetime?: null | string;
+            /**
+             * Format: date-time
+             * @description Datetime upper bound (UTC), for `range_data_type` datetime.
+             */
+            upperDatetime?: null | string;
+            /** @description Whether a value equal to the lower bound falls in the band. */
+            lowerInclusive: boolean;
+            /** @description Whether a value equal to the upper bound falls in the band. */
+            upperInclusive: boolean;
+        };
+        /** @description A `qe_range_band` row: a typed range that assigns scalar source values to a member of a range dimension. */
+        RangeBandRecord: {
+            /**
+             * Format: int64
+             * @description The dimension version; first part of the primary key.
+             */
+            dimensionVersionId: number;
+            /**
+             * Format: int32
+             * @description Evaluation order; second part of the primary key.
+             */
+            ordinal: number;
+            /**
+             * Format: int64
+             * @description The member assigned to the band.
+             */
+            memberId: number;
+            /**
+             * Format: double
+             * @description Decimal lower boundary; null means unbounded.
+             */
+            lowerDecimal?: null | number;
+            /**
+             * Format: double
+             * @description Decimal upper boundary; null means unbounded.
+             */
+            upperDecimal?: null | number;
+            /**
+             * Format: date-time
+             * @description Date lower boundary; null means unbounded.
+             */
+            lowerDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Date upper boundary; null means unbounded.
+             */
+            upperDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Datetime lower boundary (UTC); null means unbounded.
+             */
+            lowerDatetime?: null | string;
+            /**
+             * Format: date-time
+             * @description Datetime upper boundary (UTC); null means unbounded.
+             */
+            upperDatetime?: null | string;
+            /** @description Whether the lower boundary is included. */
+            lowerInclusive: boolean;
+            /** @description Whether the upper boundary is included. */
+            upperInclusive: boolean;
+        };
+        /** @description The complete ordered band list of a draft range dimension version, as `PUT dimension-versions/{dimensionVersionId}/range-bands` takes it. */
+        RangeBandsInput: {
+            /** @description The bands in evaluation order; each band's ordinal is its position, starting at 1. */
+            bands: components["schemas"]["RangeBandInput"][];
         };
         /** @description One reason a publication rule rejects a version. */
         RuleViolation: {
