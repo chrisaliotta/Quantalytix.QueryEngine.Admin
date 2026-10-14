@@ -11,7 +11,7 @@ public sealed record NewMappingVersionInput
 
     /// <summary>
     /// The mapping version whose entries the draft copies, each moved to the member with the same key in
-    /// <see cref="DimensionVersionId"/>; null for an empty draft.
+    /// <c>dimensionVersionId</c>; null for an empty draft.
     /// </summary>
     public long? CloneFromVersionId { get; init; }
 }

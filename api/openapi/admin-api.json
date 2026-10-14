@@ -9297,7 +9297,7 @@
               "null",
               "integer"
             ],
-            "description": "The mapping version whose entries the draft copies, each moved to the member with the same key in\nlong NewMappingVersionInput.DimensionVersionId; null for an empty draft.",
+            "description": "The mapping version whose entries the draft copies, each moved to the member with the same key in\n`dimensionVersionId`; null for an empty draft.",
             "format": "int64"
           }
         },
