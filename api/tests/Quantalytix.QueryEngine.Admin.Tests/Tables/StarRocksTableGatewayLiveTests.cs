@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
@@ -11,17 +12,31 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Tables;
 
 /// <summary>
-/// Confirms against the live sandbox tenant that StarRocks runs the statements the table gateway generates: one multi-row
-/// INSERT with a JSON column written through PARSE_JSON, a re-insert that upserts by key, an UPDATE by key and a DELETE with
-/// an IN filter, after which no rows remain. The database-free tests check the SQL text; only a live round trip shows that
-/// StarRocks accepts it and returns the values as written. Opt in with <c>QE_ADMIN_LIVE_SANDBOX=true</c>; the control-plane
-/// connection comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The test writes only to tenant
+/// Confirms against the live sandbox tenant that StarRocks runs the statements the table gateway generates and returns the
+/// values as written: one multi-row INSERT whose rows hold a JSON column written through PARSE_JSON, a null JSON column and
+/// both boolean values; a re-insert of an existing key, which replaces that row; an UPDATE by key that changes the status, a
+/// boolean, the JSON column and the publication time, which reads back as UTC; and a DELETE with an IN filter, after which no
+/// rows remain. The database-free tests check the SQL text; only a live round trip shows that StarRocks accepts it and that
+/// every column type maps back onto the record. Opt in with <c>QE_ADMIN_LIVE_SANDBOX=true</c>; the control-plane connection
+/// comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The test writes only to tenant
 /// <c>sandbox</c>, never to the database behind the query engine's golden cases.
 /// </summary>
 public sealed class StarRocksTableGatewayLiveTests
 {
     /// <summary>The tenant whose database exists for write testing.</summary>
     private const string SandboxTenantId = "sandbox";
+
+    /// <summary>The JSON the insert writes to the first row's <c>properties</c> column.</summary>
+    private const string InsertedProperties = """{"origin":"admin-api-live-test","tags":["a","b"],"n":1}""";
+
+    /// <summary>The JSON the update writes to the first row's <c>properties</c> column.</summary>
+    private const string UpdatedProperties = """{"origin":"admin-api-live-test","step":"updated"}""";
+
+    /// <summary>
+    /// The publication time the update writes. Its fraction is below half a second, so the stored value keeps the same whole
+    /// second whether the column truncates or rounds sub-second digits.
+    /// </summary>
+    private static readonly DateTime PublicationTime = new DateTime(2026, 10, 14, 17, 30, 15, DateTimeKind.Utc).AddTicks(1234567);
 
     /// <summary>Whether the live round trip is enabled.</summary>
     public static bool IsEnabled
@@ -46,34 +61,39 @@ public sealed class StarRocksTableGatewayLiveTests
         var gateway = scope.ServiceProvider.GetRequiredService<ITableGateway<DatasetVersionRecord>>();
         var ids = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
         var datasetId = ids.NextId();
-        DatasetVersionRecord[] versions =
-        [
-            DatasetVersion(ids.NextId(), datasetId, 1, """{"origin":"admin-api-live-test","tags":["a","b"],"n":1}"""),
-            DatasetVersion(ids.NextId(), datasetId, 2, null)
-        ];
-        var filter = new { DatasetVersionId = versions.Select(version => version.DatasetVersionId).ToArray() };
+        var withJson = DatasetVersion(ids.NextId(), datasetId, 1, InsertedProperties);
+        var withoutJson = DatasetVersion(ids.NextId(), datasetId, 2, null) with { SupportsDetail = false };
+        var filter = new { DatasetVersionId = new[] { withJson.DatasetVersionId, withoutJson.DatasetVersionId } };
 
-        await gateway.InsertManyAsync(versions, token);
+        await gateway.InsertManyAsync([withJson, withoutJson], token);
         try
         {
-            var inserted = await gateway.ListAsync(filter, token);
-            var upserted = versions[1] with { SourceObject = "loan_performance" };
+            var inserted = await RowsAsync(gateway, filter, token);
+            Assert.Equal(2, inserted.Count);
+            Assert.Equal(withJson with { Properties = null }, inserted[withJson.DatasetVersionId] with { Properties = null });
+            AssertSameJson(InsertedProperties, inserted[withJson.DatasetVersionId].Properties);
+            Assert.Equal(withoutJson, inserted[withoutJson.DatasetVersionId]);
+
+            var upserted = withoutJson with { SourceObject = "loan_performance" };
             await gateway.InsertAsync(upserted, token);
-            var published = versions[0] with
+            var afterUpsert = await RowsAsync(gateway, filter, token);
+            Assert.Equal(2, afterUpsert.Count);
+            Assert.Equal(upserted, afterUpsert[upserted.DatasetVersionId]);
+
+            var published = withJson with
             {
                 Status = PublicationStatuses.Published,
                 SupportsDetail = false,
-                Properties = """{"origin":"admin-api-live-test","step":"updated"}""",
-                PublishedAt = new DateTime(2026, 10, 14, 17, 30, 15, DateTimeKind.Utc).AddTicks(1234567)
+                Properties = UpdatedProperties,
+                PublishedAt = PublicationTime
             };
             await gateway.UpdateAsync(published, token);
-            var changed = await gateway.ListAsync(filter, token);
-            await File.WriteAllLinesAsync("/tmp/qe-live-observations.txt",
-            [
-                .. inserted.Select(row => $"inserted: {row}"),
-                .. changed.Select(row => $"changed: {row}"),
-                .. changed.Select(row => $"published_at kind={row.PublishedAt?.Kind} ticks={row.PublishedAt?.Ticks} expected={published.PublishedAt?.Ticks}")
-            ], token);
+            var afterUpdate = await RowsAsync(gateway, filter, token);
+            var updated = afterUpdate[published.DatasetVersionId];
+            Assert.Equal(published with { Properties = null, PublishedAt = null }, updated with { Properties = null, PublishedAt = null });
+            AssertSameJson(UpdatedProperties, updated.Properties);
+            AssertSameSecond(PublicationTime, updated.PublishedAt);
+            Assert.Equal(upserted, afterUpdate[upserted.DatasetVersionId]);
         }
         finally
         {
@@ -81,6 +101,43 @@ public sealed class StarRocksTableGatewayLiveTests
         }
 
         Assert.Empty(await gateway.ListAsync(filter, token));
+    }
+
+    /// <summary>The rows a filter matches, by dataset version ID.</summary>
+    private static async Task<Dictionary<long, DatasetVersionRecord>> RowsAsync(
+        ITableGateway<DatasetVersionRecord> gateway,
+        object filter,
+        CancellationToken cancellationToken)
+    {
+        var rows = await gateway.ListAsync(filter, cancellationToken);
+        return rows.ToDictionary(row => row.DatasetVersionId);
+    }
+
+    /// <summary>
+    /// Asserts that a JSON column read back holds the JSON value written. StarRocks may reformat JSON text, so the values are
+    /// compared rather than the text.
+    /// </summary>
+    private static void AssertSameJson(string written, string? read)
+    {
+        Assert.NotNull(read);
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(written), JsonNode.Parse(read)), $"Wrote {written} but read {read}.");
+    }
+
+    /// <summary>
+    /// Asserts that a DATETIME read back is UTC and has the whole second written. Sub-second digits are not compared, because
+    /// the column's sub-second precision on this cluster is not yet verified.
+    /// </summary>
+    private static void AssertSameSecond(DateTime written, DateTime? read)
+    {
+        var value = Assert.NotNull(read);
+        Assert.Equal(DateTimeKind.Utc, value.Kind);
+        Assert.Equal(WholeSeconds(written), WholeSeconds(value));
+    }
+
+    /// <summary>A time without its fraction of a second.</summary>
+    private static DateTime WholeSeconds(DateTime value)
+    {
+        return value.AddTicks(-(value.Ticks % TimeSpan.TicksPerSecond));
     }
 
     /// <summary>The StarRocks infrastructure as the API registers it, scoped to the sandbox tenant.</summary>

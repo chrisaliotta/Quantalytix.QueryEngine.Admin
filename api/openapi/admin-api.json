@@ -13,7 +13,7 @@
         "summary": "Lists every vocabulary with its allowed values and their definitions.",
         "responses": {
           "401": {
-            "description": "Unauthorized",
+            "description": "The request has no valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -91,7 +91,7 @@
         },
         "responses": {
           "401": {
-            "description": "Unauthorized",
+            "description": "The request has no valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -101,7 +101,7 @@
             }
           },
           "403": {
-            "description": "Forbidden",
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -161,7 +161,7 @@
         "summary": "Lists every tenant for a SystemAdmin, otherwise only the caller's own tenant. Connection strings are never included.",
         "responses": {
           "401": {
-            "description": "Unauthorized",
+            "description": "The request has no valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -194,7 +194,7 @@
         "summary": "Returns the caller's subject, tenant and SystemAdmin role.",
         "responses": {
           "401": {
-            "description": "Unauthorized",
+            "description": "The request has no valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -256,7 +256,7 @@
         ],
         "responses": {
           "401": {
-            "description": "Unauthorized",
+            "description": "The request has no valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -266,7 +266,7 @@
             }
           },
           "403": {
-            "description": "Forbidden",
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -50,7 +50,13 @@ public sealed class RecordSchemaTests
         SchemaDdl.Parse($"{File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Schema", "ddl_srdb_bi.sql"))}\n{TenantDirectoryDdl}");
 
     /// <summary>Every record type in the table catalog.</summary>
-    public static TheoryData<Type> Records => [.. TableCatalog.Tables.Keys];
+    public static TheoryData<Type> Records
+    {
+        get
+        {
+            return [.. TableCatalog.Tables.Keys];
+        }
+    }
 
     /// <summary>The record's properties, in snake_case and declaration order, are the table's columns in DDL order.</summary>
     /// <param name="record">A metadata record type.</param>

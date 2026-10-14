@@ -24,6 +24,8 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <returns>The version's new state; 409 when the lifecycle forbids the transition; 422 with the violations when rules reject it.</returns>
     /// <response code="200">The transition applied; the body is the version's new state.</response>
     /// <response code="400">The kind or the target status is not a known value.</response>
+    /// <response code="401">The request has no valid bearer token.</response>
+    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The lifecycle does not allow moving from the current status to the target; the detail names both.</response>
     /// <response code="422">Publication rules rejected the version and its status is unchanged; <c>violations</c> lists why.</response>
     [HttpPut("{kind}/{id:long}/status")]

@@ -30,7 +30,7 @@ export interface paths {
                         "application/json": components["schemas"]["Vocabulary"][];
                     };
                 };
-                /** @description Unauthorized */
+                /** @description The request has no valid bearer token. */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -65,7 +65,9 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
+                    /** @description A `version_kind` value, such as `dimension_version`. */
                     kind: string;
+                    /** @description The version's surrogate key. */
                     id: number;
                 };
                 cookie?: never;
@@ -95,7 +97,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
-                /** @description Unauthorized */
+                /** @description The request has no valid bearer token. */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -104,7 +106,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -166,7 +168,7 @@ export interface paths {
                         "application/json": components["schemas"]["AccessibleTenant"][];
                     };
                 };
-                /** @description Unauthorized */
+                /** @description The request has no valid bearer token. */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -211,7 +213,7 @@ export interface paths {
                         "application/json": components["schemas"]["SessionInfo"];
                     };
                 };
-                /** @description Unauthorized */
+                /** @description The request has no valid bearer token. */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -241,12 +243,14 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description The owning row's ID; required for child kinds, optional for `mapping-sets`, ignored otherwise. */
                     parentId?: null | number;
                 };
                 header?: never;
                 path: {
                     /** @description The tenant whose metadata is listed. */
                     tenantId: string;
+                    /** @description A `lookup_kind` value, such as `dimension-versions`. */
                     kind: string;
                 };
                 cookie?: never;
@@ -271,7 +275,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
-                /** @description Unauthorized */
+                /** @description The request has no valid bearer token. */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -280,7 +284,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Forbidden */
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
                 403: {
                     headers: {
                         [name: string]: unknown;
