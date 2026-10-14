@@ -31,7 +31,7 @@ public sealed class TenantCreateInputValidator : AbstractValidator<TenantCreateI
         RuleFor(input => input.ConnectionString)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .MaximumLength(4096)
+            .MustFitVarchar(4096)
             .MustRouteToTenant(verification, input => input.TenantId);
     }
 }

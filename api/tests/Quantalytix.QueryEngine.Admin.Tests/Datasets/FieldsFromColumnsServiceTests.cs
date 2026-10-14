@@ -29,7 +29,7 @@ public sealed class FieldsFromColumnsServiceTests
         Column("loan_id", "varchar(16)"),
         Column("as_of_date", "date"),
         Column("branch_code", "varchar(16)"),
-        Column("is_active", "boolean"),
+        Column("is_active", "tinyint(1)"),
         Column("interest_rate", "decimal(9,6)"),
         Column("risk_score", "double"),
         Column("attributes", "json"),

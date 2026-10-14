@@ -3,7 +3,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// <summary>The editable identity attributes of a dimension, as <c>PUT dimensions/{dimensionId}</c> takes them.</summary>
 public record DimensionInput
 {
-    /// <summary>Human-readable name, at most 256 characters.</summary>
+    /// <summary>Human-readable name, at most 256 bytes of UTF-8 text.</summary>
     public required string DisplayName { get; init; }
 
     /// <summary>Administrative availability.</summary>

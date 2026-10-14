@@ -4705,7 +4705,7 @@ export interface components {
         };
         /** @description The editable identity attributes of a dimension, as `PUT dimensions/{dimensionId}` takes them. */
         DimensionInput: {
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
             isEnabled: boolean;
@@ -5021,7 +5021,7 @@ export interface components {
         };
         /** @description The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{levelId}` takes them. */
         LevelInput: {
-            /** @description Human-readable label, at most 256 characters. */
+            /** @description Human-readable label, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /**
              * Format: int32
@@ -5066,9 +5066,9 @@ export interface components {
         };
         /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them. */
         MemberInput: {
-            /** @description Human-readable label, at most 512 characters. */
+            /** @description Human-readable label, at most 512 bytes of UTF-8 text. */
             displayName: string;
-            /** @description Optional longer explanation, at most 1024 characters. */
+            /** @description Optional longer explanation, at most 1024 bytes of UTF-8 text. */
             description?: null | string;
             /**
              * Format: int64
@@ -5129,7 +5129,7 @@ export interface components {
              * @description Inclusive validity start (UTC) of version 1, if already known.
              */
             validFrom?: null | string;
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
             isEnabled: boolean;
@@ -5163,7 +5163,7 @@ export interface components {
         NewLevelInput: {
             /** @description Stable level key, fixed once created; uniqueness within the version is a publication rule. */
             levelKey: string;
-            /** @description Human-readable label, at most 256 characters. */
+            /** @description Human-readable label, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /**
              * Format: int32
@@ -5182,9 +5182,9 @@ export interface components {
              *     the version is a publication rule.
              */
             memberKey: string;
-            /** @description Human-readable label, at most 512 characters. */
+            /** @description Human-readable label, at most 512 bytes of UTF-8 text. */
             displayName: string;
-            /** @description Optional longer explanation, at most 1024 characters. */
+            /** @description Optional longer explanation, at most 1024 bytes of UTF-8 text. */
             description?: null | string;
             /**
              * Format: int64

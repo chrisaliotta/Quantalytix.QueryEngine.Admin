@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
@@ -8,6 +9,6 @@ public sealed class DimensionInputValidator : AbstractValidator<DimensionInput>
     /// <summary>Declares the rules.</summary>
     public DimensionInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
     }
 }
