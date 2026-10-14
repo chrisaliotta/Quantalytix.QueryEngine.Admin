@@ -1,5 +1,4 @@
 using Dapper;
-using MySqlConnector;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Connections;
@@ -8,8 +7,8 @@ namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.TenantVerificat
 
 /// <summary>
 /// Opens a candidate tenant connection string with the API's connection settings and reads its <c>qe_database_info</c>
-/// row. This is the start-of-request check of external input, so a malformed string, a refused connection or a missing
-/// table becomes a failure reason instead of an error.
+/// row. This is the start-of-request check of external input, so any failure, such as a malformed string, a refused
+/// connection or a missing table, becomes a failure reason instead of an error; only a cancelled request propagates.
 /// </summary>
 public sealed class TenantDatabaseVerifier(IStarRocksConnectionFactory connections) : ITenantDatabaseVerifier
 {
@@ -34,7 +33,7 @@ public sealed class TenantDatabaseVerifier(IStarRocksConnectionFactory connectio
             if (info is null) return new TenantDatabaseProbe { Failure = "The database's qe_database_info table has no row 1." };
             return new TenantDatabaseProbe { DatabaseInfo = info };
         }
-        catch (Exception exception) when (exception is MySqlException or ArgumentException or FormatException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return new TenantDatabaseProbe { Failure = $"The connection could not be opened or qe_database_info could not be read: {exception.Message}" };
         }
