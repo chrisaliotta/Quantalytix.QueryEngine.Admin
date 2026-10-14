@@ -186,6 +186,368 @@
         }
       }
     },
+    "/api/system/tenants": {
+      "get": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Lists every tenant in the directory, ordered by tenant ID.",
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The directory entries, ordered by tenant ID, with masked connection strings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantDirectoryEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Registers a tenant after verifying that its connection string routes to the tenant's own metadata database.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The tenant was registered; the body is its entry with a masked connection string.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDirectoryEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field breaks a rule; a `connectionString` error gives the reason verification failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/tenants/{tenantId}": {
+      "get": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Reads one tenant's directory entry.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The directory entry with a masked connection string.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDirectoryEntry"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Changes a tenant's provider, cache lifetime and, when one is given, its verified connection string.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The updated entry with a masked connection string.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDirectoryEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field breaks a rule; a `connectionString` error gives the reason verification failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/tenants/{tenantId}/enabled": {
+      "put": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Permits or stops query routing for a tenant.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantEnabledInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantEnabledInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The updated entry with a masked connection string.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDirectoryEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/tenants/verify": {
+      "post": {
+        "tags": [
+          "SystemTenants"
+        ],
+        "summary": "Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name\nthe tenant and have metadata schema version 4.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantVerifyInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantVerifyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The test ran; `isValid` and `message` give its outcome.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantConnectionCheck"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The tenant ID or the connection string is missing or too long.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/source-objects": {
       "get": {
         "tags": [
@@ -326,6 +688,540 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/releases": {
+      "get": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Lists the tenant's releases, newest first, with whether each is active and how many datasets it pins.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the releases.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The release summaries, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Creates a draft release, copying the manifest of `copyFromReleaseId` when it is given.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseCreateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The release was created; the body is the new draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticReleaseRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The key is malformed or taken, or the release to copy does not exist.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/releases/{releaseId}": {
+      "get": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Reads one release.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "path",
+            "description": "The release.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The release.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticReleaseRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Deletes a draft release and its manifest.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "path",
+            "description": "The draft release.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The release is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The release and its manifest are deleted."
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/releases/{releaseId}/datasets": {
+      "get": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Lists a release's manifest: the dataset version it pins for each dataset.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "path",
+            "description": "The release.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The manifest rows, ordered by dataset.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseDatasetRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Replaces a draft release's manifest.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "path",
+            "description": "The draft release.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseManifestInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseManifestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The release is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored manifest rows, ordered by dataset.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseDatasetRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A dataset does not exist, or a dataset or dataset version appears more than once.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/releases/{releaseId}/activate": {
+      "post": {
+        "tags": [
+          "Releases"
+        ],
+        "summary": "Makes a published release the one runtime queries use: sets `qe_database_info.active_release_id` and\n`updated_at`, and advances the semantic revision.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the release.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "path",
+            "description": "The published release.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The release is active; the body is the updated database info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseInfoRecord"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The release is not published, so nothing changed; the detail names its status.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/overview": {
+      "get": {
+        "tags": [
+          "Overview"
+        ],
+        "summary": "Reads the tenant's identity and semantic revision, its active release, its counts and its drafts in progress.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant to summarize.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The tenant overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOverview"
                 }
               }
             }
@@ -3768,6 +4664,611 @@
           }
         }
       }
+    },
+    "/api/tenants/{tenantId}/assumption-sets": {
+      "get": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Lists the tenant's assumption sets, ordered by key.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption sets.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The assumption sets, ordered by key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssumptionSetRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Creates a draft assumption set without pins.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionSetCreateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionSetCreateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The assumption set was created; the body is the new draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssumptionSetRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The key is malformed or taken, the display name is missing, or the effective time is not UTC.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}": {
+      "get": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Reads one assumption set.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The assumption set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssumptionSetRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Changes a draft assumption set's display name, description and effective time.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The draft assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionSetUpdateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionSetUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assumption set is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The updated assumption set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssumptionSetRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The display name is missing or too long, or the effective time is not UTC.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Deletes a draft assumption set and its pins.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The draft assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assumption set is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The assumption set and its pins are deleted."
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/dimensions": {
+      "get": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Lists an assumption set's pins: the dimension version it captures for each dimension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The pins, ordered by dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Replaces a draft assumption set's pins.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The draft assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionPinsInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionPinsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assumption set is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored pins, ordered by dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A dimension does not exist or appears more than once.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/capture": {
+      "post": {
+        "tags": [
+          "AssumptionSets"
+        ],
+        "summary": "Pins, for each given dimension, its published version effective at the set's `effective_at`\n(`valid_from &lt;= effective_at &lt; valid_to`, a null `valid_to` being open-ended), replacing the pins of\nthose dimensions. A dimension without such a version is left unpinned.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the assumption set.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assumptionSetId",
+            "in": "path",
+            "description": "The draft assumption set.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionCaptureInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionCaptureInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The assumption set is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "All of the set's pins after the capture, ordered by dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No dimension is named, or a dimension does not exist.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3789,6 +5290,250 @@
           }
         },
         "description": "A tenant the caller may administer. It deliberately omits the tenant's connection string."
+      },
+      "AssumptionCaptureInput": {
+        "required": [
+          "dimensionIds"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The dimensions to capture."
+          }
+        },
+        "description": "A request to pin, for each dimension, the published version effective at the assumption set's `effective_at`."
+      },
+      "AssumptionPinInput": {
+        "required": [
+          "dimensionId",
+          "dimensionVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension.",
+            "format": "int64"
+          },
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The version of the dimension that the set pins.",
+            "format": "int64"
+          }
+        },
+        "description": "One pin of an assumption set: the exact dimension version it captures for a dimension."
+      },
+      "AssumptionPinsInput": {
+        "required": [
+          "dimensions"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssumptionPinInput"
+            },
+            "description": "One pin per dimension."
+          }
+        },
+        "description": "An assumption set's complete list of pins, which replaces the current one."
+      },
+      "AssumptionSetCreateInput": {
+        "required": [
+          "assumptionSetKey",
+          "displayName",
+          "effectiveAt"
+        ],
+        "type": "object",
+        "properties": {
+          "assumptionSetKey": {
+            "type": "string",
+            "description": "The stable logical name, unique and fixed once created, such as `FY2026_Q3_CLOSE`."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The human-readable label."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional business purpose or provenance."
+          },
+          "effectiveAt": {
+            "type": "string",
+            "description": "The semantic time (UTC) at which capturing resolves the effective dimension versions.",
+            "format": "date-time"
+          }
+        },
+        "description": "A request to create a draft assumption set."
+      },
+      "AssumptionSetDimensionRecord": {
+        "required": [
+          "assumptionSetId",
+          "dimensionId",
+          "dimensionVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "assumptionSetId": {
+            "type": "integer",
+            "description": "The owning assumption set; first part of the primary key.",
+            "format": "int64"
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension; second part of the primary key.",
+            "format": "int64"
+          },
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The exact dimension version captured; authoritative, never re-derived.",
+            "format": "int64"
+          }
+        },
+        "description": "A `qe_assumption_set_dimension` row: pins the exact immutable version of one dimension in an assumption set."
+      },
+      "AssumptionSetRecord": {
+        "required": [
+          "assumptionSetId",
+          "assumptionSetKey",
+          "displayName",
+          "effectiveAt",
+          "status",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "assumptionSetId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "assumptionSetKey": {
+            "type": "string",
+            "description": "Stable logical name such as `FY2026_Q3_CLOSE`."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional business purpose or provenance."
+          },
+          "effectiveAt": {
+            "type": "string",
+            "description": "Semantic timestamp (UTC) used to resolve which versions to capture.",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "description": "An `assumption_set_status` value."
+          },
+          "contentHash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional deterministic hash of the pinned-version manifest."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Finalization time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_assumption_set` row: an optional, manually created snapshot that pins exact dimension versions for reproducible reporting."
+      },
+      "AssumptionSetUpdateInput": {
+        "required": [
+          "displayName",
+          "effectiveAt"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "The human-readable label."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional business purpose or provenance."
+          },
+          "effectiveAt": {
+            "type": "string",
+            "description": "The semantic time (UTC) at which capturing resolves the effective dimension versions.",
+            "format": "date-time"
+          }
+        },
+        "description": "The editable settings of a draft assumption set; its key is fixed at creation."
+      },
+      "DatabaseInfoRecord": {
+        "required": [
+          "singletonId",
+          "tenantKey",
+          "metadataSchemaVersion",
+          "semanticRevision",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "singletonId": {
+            "type": "integer",
+            "description": "Always `1`.",
+            "format": "int32"
+          },
+          "tenantKey": {
+            "type": "string",
+            "description": "Tenant-local identity marker."
+          },
+          "metadataSchemaVersion": {
+            "type": "integer",
+            "description": "Database metadata contract version (currently `4`).",
+            "format": "int32"
+          },
+          "semanticRevision": {
+            "type": "integer",
+            "description": "Monotonic revision the query engine uses to invalidate cached metadata.",
+            "format": "int64"
+          },
+          "activeReleaseId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The runtime-active `qe_semantic_release.release_id`.",
+            "format": "int64"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last publication metadata change (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release."
       },
       "DatasetInput": {
         "required": [
@@ -5115,6 +6860,100 @@
         },
         "description": "A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it."
       },
+      "OverviewCounts": {
+        "required": [
+          "datasets",
+          "dimensions",
+          "mappingSets",
+          "bridges",
+          "releases",
+          "assumptionSets",
+          "activeMeasures"
+        ],
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "integer",
+            "description": "The number of datasets.",
+            "format": "int32"
+          },
+          "dimensions": {
+            "type": "integer",
+            "description": "The number of canonical dimensions.",
+            "format": "int32"
+          },
+          "mappingSets": {
+            "type": "integer",
+            "description": "The number of mapping sets.",
+            "format": "int32"
+          },
+          "bridges": {
+            "type": "integer",
+            "description": "The number of bridges.",
+            "format": "int32"
+          },
+          "releases": {
+            "type": "integer",
+            "description": "The number of semantic releases, whatever their status.",
+            "format": "int32"
+          },
+          "assumptionSets": {
+            "type": "integer",
+            "description": "The number of assumption sets, whatever their status.",
+            "format": "int32"
+          },
+          "activeMeasures": {
+            "type": "integer",
+            "description": "The number of measures of the dataset versions the active release pins: the measures queries can use.",
+            "format": "int32"
+          }
+        },
+        "description": "How much semantic metadata a tenant holds."
+      },
+      "OverviewDrafts": {
+        "required": [
+          "datasetVersions",
+          "dimensionVersions",
+          "mappingVersions",
+          "bridgeVersions",
+          "releases",
+          "assumptionSets"
+        ],
+        "type": "object",
+        "properties": {
+          "datasetVersions": {
+            "type": "integer",
+            "description": "Draft dataset versions.",
+            "format": "int32"
+          },
+          "dimensionVersions": {
+            "type": "integer",
+            "description": "Draft dimension versions.",
+            "format": "int32"
+          },
+          "mappingVersions": {
+            "type": "integer",
+            "description": "Draft mapping versions.",
+            "format": "int32"
+          },
+          "bridgeVersions": {
+            "type": "integer",
+            "description": "Draft bridge versions.",
+            "format": "int32"
+          },
+          "releases": {
+            "type": "integer",
+            "description": "Draft semantic releases.",
+            "format": "int32"
+          },
+          "assumptionSets": {
+            "type": "integer",
+            "description": "Draft assumption sets.",
+            "format": "int32"
+          }
+        },
+        "description": "The number of rows in `draft` status per versioned kind: the work in progress."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -5323,6 +7162,113 @@
         },
         "description": "The complete ordered band list of a draft range dimension version, as `PUT dimension-versions/{dimensionVersionId}/range-bands` takes it."
       },
+      "ReleaseCreateInput": {
+        "required": [
+          "releaseKey"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseKey": {
+            "type": "string",
+            "description": "The stable release label, unique among the tenant's releases, such as `development/baseline`."
+          },
+          "copyFromReleaseId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The release whose manifest rows the new draft copies; null starts with an empty manifest.",
+            "format": "int64"
+          }
+        },
+        "description": "A request to create a draft semantic release, optionally starting from another release's manifest."
+      },
+      "ReleaseDatasetInput": {
+        "required": [
+          "datasetId",
+          "datasetVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "integer",
+            "description": "The logical dataset.",
+            "format": "int64"
+          },
+          "datasetVersionId": {
+            "type": "integer",
+            "description": "The version of the dataset that the release pins.",
+            "format": "int64"
+          }
+        },
+        "description": "One manifest row: the dataset version a release pins for a dataset."
+      },
+      "ReleaseDatasetRecord": {
+        "required": [
+          "releaseId",
+          "datasetId",
+          "datasetVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseId": {
+            "type": "integer",
+            "description": "The semantic release; first part of the primary key.",
+            "format": "int64"
+          },
+          "datasetId": {
+            "type": "integer",
+            "description": "The logical dataset; second part of the primary key.",
+            "format": "int64"
+          },
+          "datasetVersionId": {
+            "type": "integer",
+            "description": "The dataset version the release pins.",
+            "format": "int64"
+          }
+        },
+        "description": "A `qe_release_dataset` row: pins exactly one structural dataset version per logical dataset in a semantic release."
+      },
+      "ReleaseManifestInput": {
+        "required": [
+          "datasets"
+        ],
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseDatasetInput"
+            },
+            "description": "One row per dataset the release pins."
+          }
+        },
+        "description": "A release's complete manifest, which replaces the current one."
+      },
+      "ReleaseSummary": {
+        "required": [
+          "release",
+          "isActive",
+          "datasetCount"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "description": "The release row.",
+            "$ref": "#/components/schemas/SemanticReleaseRecord"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether `qe_database_info.active_release_id` points at the release, so runtime queries use it."
+          },
+          "datasetCount": {
+            "type": "integer",
+            "description": "The number of datasets the release's manifest pins.",
+            "format": "int32"
+          }
+        },
+        "description": "A semantic release as the release list shows it: the row, whether it is the active release, and the size of its manifest."
+      },
       "RuleViolation": {
         "required": [
           "rule",
@@ -5387,6 +7333,51 @@
           }
         },
         "description": "A 422 problem whose `violations` list every rule that rejected the change."
+      },
+      "SemanticReleaseRecord": {
+        "required": [
+          "releaseId",
+          "releaseKey",
+          "status",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseId": {
+            "type": "integer",
+            "description": "Surrogate primary key.",
+            "format": "int64"
+          },
+          "releaseKey": {
+            "type": "string",
+            "description": "Stable release label."
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value."
+          },
+          "contentHash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional deterministic hash of the release definition graph."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Publication time (UTC); null until published.",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_semantic_release` row: the immutable manifest root for one coherent structural semantic model."
       },
       "SessionInfo": {
         "required": [
@@ -5494,6 +7485,201 @@
           }
         },
         "description": "A request to move a version to another lifecycle status."
+      },
+      "TenantConnectionCheck": {
+        "required": [
+          "isValid",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "isValid": {
+            "type": "boolean",
+            "description": "Whether the connection opens a metadata schema version 4 database that belongs to the tenant."
+          },
+          "message": {
+            "type": "string",
+            "description": "What the connection reached, or why it is rejected."
+          }
+        },
+        "description": "The result of verifying a tenant connection string, which the tenant editor's \"Test connection\" button shows."
+      },
+      "TenantCreateInput": {
+        "required": [
+          "tenantId",
+          "providerId",
+          "connectionString",
+          "isEnabled",
+          "metadataCacheSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The trusted tenant identity, unique and fixed once created; the database's `tenant_key` must equal it."
+          },
+          "providerId": {
+            "type": "string",
+            "description": "The registered provider, a `provider_id` value."
+          },
+          "connectionString": {
+            "type": "string",
+            "description": "The literal connection string, including the tenant database; it is verified before it is stored."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether query routing is permitted for the tenant."
+          },
+          "metadataCacheSeconds": {
+            "type": "integer",
+            "description": "The suggested metadata cache lifetime, in seconds.",
+            "format": "int32"
+          }
+        },
+        "description": "A request to register a tenant in the tenant directory."
+      },
+      "TenantDirectoryEntry": {
+        "required": [
+          "tenantId",
+          "providerId",
+          "connectionString",
+          "isEnabled",
+          "metadataCacheSeconds",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The trusted tenant identity."
+          },
+          "providerId": {
+            "type": "string",
+            "description": "The registered provider, a `provider_id` value."
+          },
+          "connectionString": {
+            "type": "string",
+            "description": "The tenant's connection string with its password replaced by `*****`."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether query routing is permitted for the tenant."
+          },
+          "metadataCacheSeconds": {
+            "type": "integer",
+            "description": "The suggested metadata cache lifetime, in seconds.",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The last routing-record update time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A `query_control.qe_tenant_directory` row as the API returns it: the connection string's password is masked."
+      },
+      "TenantEnabledInput": {
+        "required": [
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether query routing is permitted for the tenant."
+          }
+        },
+        "description": "A request to permit or stop query routing for a tenant."
+      },
+      "TenantOverview": {
+        "required": [
+          "tenantKey",
+          "metadataSchemaVersion",
+          "semanticRevision",
+          "counts",
+          "drafts"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantKey": {
+            "type": "string",
+            "description": "The tenant-local identity marker, `qe_database_info.tenant_key`."
+          },
+          "metadataSchemaVersion": {
+            "type": "integer",
+            "description": "The database's metadata contract version.",
+            "format": "int32"
+          },
+          "semanticRevision": {
+            "type": "integer",
+            "description": "The revision the query engine keys its metadata cache by.",
+            "format": "int64"
+          },
+          "activeRelease": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The release runtime queries use; null when the tenant has none.",
+                "$ref": "#/components/schemas/SemanticReleaseRecord"
+              }
+            ]
+          },
+          "counts": {
+            "description": "How much metadata the tenant holds.",
+            "$ref": "#/components/schemas/OverviewCounts"
+          },
+          "drafts": {
+            "description": "The drafts in progress.",
+            "$ref": "#/components/schemas/OverviewDrafts"
+          }
+        },
+        "description": "A tenant's metadata at a glance: its identity and revision, the active release, its counts and its drafts."
+      },
+      "TenantUpdateInput": {
+        "required": [
+          "providerId",
+          "metadataCacheSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "description": "The registered provider, a `provider_id` value."
+          },
+          "connectionString": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A new connection string, which is verified before it is stored; null keeps the current one."
+          },
+          "metadataCacheSeconds": {
+            "type": "integer",
+            "description": "The suggested metadata cache lifetime, in seconds.",
+            "format": "int32"
+          }
+        },
+        "description": "An edit of a tenant directory row; the tenant ID is fixed and enabling has its own request."
+      },
+      "TenantVerifyInput": {
+        "required": [
+          "tenantId",
+          "connectionString"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant the connection string must route to."
+          },
+          "connectionString": {
+            "type": "string",
+            "description": "The candidate connection string."
+          }
+        },
+        "description": "A connection string to test for a tenant, without storing it."
       },
       "ValidationProblemDetails": {
         "type": "object",
@@ -5642,10 +7828,19 @@
       "name": "Tenants"
     },
     {
+      "name": "SystemTenants"
+    },
+    {
       "name": "SourceObjects"
     },
     {
       "name": "Session"
+    },
+    {
+      "name": "Releases"
+    },
+    {
+      "name": "Overview"
     },
     {
       "name": "Lookups"
@@ -5676,6 +7871,9 @@
     },
     {
       "name": "Grains"
+    },
+    {
+      "name": "AssumptionSets"
     }
   ]
 }
