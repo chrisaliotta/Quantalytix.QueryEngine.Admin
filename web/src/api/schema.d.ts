@@ -1173,6 +1173,279 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/measures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the measures of a dataset version with their components, formula dependencies and time policies. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The measures, sorted by key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeasureDetail"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a measure in a draft dataset version, then derives the version's formula dependencies. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MeasureInput"];
+                    "application/*+json": components["schemas"]["MeasureInput"];
+                };
+            };
+            responses: {
+                /** @description The new measure, with the measures its formula depends on. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeasureDetail"];
+                    };
+                };
+                /** @description The input breaks a rule of its measure kind, output type or time policy; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/measures/{measureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replaces a measure's attributes, components and time policy, then derives the version's formula dependencies again;
+         *     the key is fixed.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the measure. */
+                    versionId: number;
+                    /** @description The measure. */
+                    measureId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MeasureUpdateInput"];
+                    "application/*+json": components["schemas"]["MeasureUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description The updated measure, with the measures its formula depends on. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeasureDetail"];
+                    };
+                };
+                /** @description The measure is not in the version, or the input breaks a measure rule. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a measure with its components, dependencies and time policy, unless another formula depends on it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the measure. */
+                    versionId: number;
+                    /** @description The measure. */
+                    measureId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The measure and its child rows are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The measure is not in the version. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the formulas that depend on the measure. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/lookups/{kind}": {
         parameters: {
             query?: never;
@@ -3952,6 +4225,282 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the bindings of a dataset version, each with its time extension. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The bindings, sorted by display name. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BindingDetail"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a binding in a draft dataset version, with its time extension when it is a time binding. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft dataset version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BindingInput"];
+                    "application/*+json": components["schemas"]["BindingInput"];
+                };
+            };
+            responses: {
+                /** @description The new binding. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BindingDetail"];
+                    };
+                };
+                /** @description The input breaks a rule of its binding kind, grouping mode or time extension; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{bindingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replaces a binding's attributes and time extension. A binding whose kind changes away from `time` loses its
+         *     time extension.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the binding. */
+                    versionId: number;
+                    /** @description The binding. */
+                    bindingId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BindingInput"];
+                    "application/*+json": components["schemas"]["BindingInput"];
+                };
+            };
+            responses: {
+                /** @description The updated binding. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BindingDetail"];
+                    };
+                };
+                /** @description The binding is not in the version, or the input breaks a binding rule. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a binding and its time extension, unless it is required, a bridge binding remaps it, a measure's time policy
+         *     requires it, or it is the version's default time binding.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The dataset version that owns the binding. */
+                    versionId: number;
+                    /** @description The binding. */
+                    bindingId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The binding and its time extension are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The binding is not in the version. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names what blocks the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/assumption-sets": {
         parameters: {
             query?: never;
@@ -4561,6 +5110,96 @@ export interface components {
              */
             effectiveAt: string;
         };
+        /** @description A dimension binding with its time extension, joined from `qe_dimension_binding` and `qe_time_binding`. */
+        BindingDetail: {
+            /** @description The binding. */
+            binding: components["schemas"]["DimensionBindingRecord"];
+            timeBinding?: null | components["schemas"]["TimeBindingRecord"];
+            /**
+             * Format: int64
+             * @description The bridge that owns the binding's bridge version, so an editor can offer that bridge's versions; null when the
+             *     binding has no bridge version.
+             */
+            bridgeId?: null | number;
+        };
+        /**
+         * @description The attributes of a dimension binding of a draft dataset version, plus the time extension of a `time` binding.
+         *     Bindings have no key, so the same input creates a binding and replaces one.
+         */
+        BindingInput: {
+            /** @description Human-readable role name, such as `Origination branch`. */
+            displayName: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.
+             */
+            dimensionId: null | number;
+            /**
+             * Format: int64
+             * @description An explicit version of the dimension; null resolves the published version effective at query time.
+             */
+            pinnedDimensionVersionId?: null | number;
+            /** @description A `binding_kind` value: `direct`, `mapped`, `range`, `bridge` or `time`. */
+            bindingKind: string;
+            /**
+             * Format: int64
+             * @description The request-facing field the binding reads. Required for `direct`, `mapped`, `range` and `time`
+             *     bindings; optional for `bridge` bindings, where it gives the binding a request-facing field key.
+             */
+            sourceFieldId?: null | number;
+            /**
+             * Format: int64
+             * @description The source vocabulary of a `mapped` binding; null for every other kind.
+             */
+            mappingSetId?: null | number;
+            /**
+             * Format: int64
+             * @description The binding of the same version that a `bridge` binding remaps; null for every other kind.
+             */
+            sourceBindingId?: null | number;
+            /**
+             * Format: int64
+             * @description The bridge version a `bridge` binding remaps through; null for every other kind.
+             */
+            bridgeVersionId?: null | number;
+            /** @description A `grouping_mode` value: `member`, `level`, `ancestor` or `depth`. */
+            groupingMode: string;
+            /**
+             * Format: int64
+             * @description The level to group at; required for `level` grouping and null otherwise.
+             */
+            groupingLevelId?: null | number;
+            /**
+             * Format: int64
+             * @description The ancestor member to group at; required for `ancestor` grouping and null otherwise.
+             */
+            groupingAncestorMemberId?: null | number;
+            /**
+             * Format: int32
+             * @description The closure depth to group at, 0 or more; required for `depth` grouping and null otherwise.
+             */
+            groupingDepth?: null | number;
+            /** @description A `ragged_behavior` value: what grouping does with a member that has no ancestor at the requested level. */
+            raggedBehavior: string;
+            /** @description A `default_period_alignment` value. */
+            defaultPeriodAlignment: string;
+            /** @description An `unmapped_behavior` value: what happens to rows whose source value maps to no member. */
+            unmappedBehavior: string;
+            /**
+             * Format: int64
+             * @description The member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise.
+             */
+            unknownMemberId?: null | number;
+            /** @description Whether the binding is a dataset fixture that must not be removed or disabled. */
+            isRequired: boolean;
+            /** @description Whether the semantic route may take part in aggregate grouping. */
+            isGroupable: boolean;
+            /** @description Whether the dimension may take part in dimension-aware filters. */
+            isFilterable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            timeBinding?: null | components["schemas"]["TimeBindingInput"];
+        };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
             /**
@@ -4702,6 +5341,89 @@ export interface components {
             securityPolicyKey?: null | string;
             /** @description Extension metadata as raw JSON text, or null. */
             properties?: null | string;
+        };
+        /** @description A `qe_dimension_binding` row: a semantic classification route from a dataset field to a canonical dimension. */
+        DimensionBindingRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            bindingId: number;
+            /**
+             * Format: int64
+             * @description The dataset version exposing the dimension.
+             */
+            datasetVersionId: number;
+            /** @description Human-readable role name. */
+            displayName: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension.
+             */
+            dimensionId: number;
+            /**
+             * Format: int64
+             * @description Optional explicit dimension version; null resolves the published version valid at query time.
+             */
+            pinnedDimensionVersionId?: null | number;
+            /** @description A `binding_kind` value. */
+            bindingKind: string;
+            /**
+             * Format: int64
+             * @description The request-facing field for source-backed bindings.
+             */
+            sourceFieldId?: null | number;
+            /**
+             * Format: int64
+             * @description The source vocabulary when the binding kind is `mapped`.
+             */
+            mappingSetId?: null | number;
+            /**
+             * Format: int64
+             * @description The existing source binding when the binding kind is `bridge`.
+             */
+            sourceBindingId?: null | number;
+            /**
+             * Format: int64
+             * @description The bridge version when the binding kind is `bridge`.
+             */
+            bridgeVersionId?: null | number;
+            /** @description A `grouping_mode` value. */
+            groupingMode: string;
+            /**
+             * Format: int64
+             * @description The level to group at when the grouping mode is `level`.
+             */
+            groupingLevelId?: null | number;
+            /**
+             * Format: int64
+             * @description The ancestor to group at when the grouping mode is `ancestor`.
+             */
+            groupingAncestorMemberId?: null | number;
+            /**
+             * Format: int32
+             * @description The closure depth to group at when the grouping mode is `depth`.
+             */
+            groupingDepth?: null | number;
+            /** @description A `ragged_behavior` value. */
+            raggedBehavior: string;
+            /** @description A `default_period_alignment` value. */
+            defaultPeriodAlignment: string;
+            /** @description An `unmapped_behavior` value. */
+            unmappedBehavior: string;
+            /**
+             * Format: int64
+             * @description The member unmapped rows route to when the unmapped behavior is `unknown`.
+             */
+            unknownMemberId?: null | number;
+            /** @description Dataset fixture flag; a required binding must never be removed or disabled. */
+            isRequired: boolean;
+            /** @description Whether the semantic route may take part in aggregate grouping. */
+            isGroupable: boolean;
+            /** @description Whether the dimension may take part in dimension-aware filters. */
+            isFilterable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
         };
         /** @description The editable identity attributes of a dimension, as `PUT dimensions/{dimensionId}` takes them. */
         DimensionInput: {
@@ -5063,6 +5785,316 @@ export interface components {
         MaterializeInput: {
             /** @description The new column's name; the source table must not have a column of that name yet. */
             columnName: string;
+        };
+        /** @description A field a measure reads, in one role (schema section 13). */
+        MeasureComponentInput: {
+            /** @description A `component_role` value, such as `value` or `weight`; each role appears once per measure. */
+            componentRole: string;
+            /**
+             * Format: int64
+             * @description The field of the measure's dataset version that supplies the role; null only until a form chooses one, and rejected.
+             */
+            fieldId: null | number;
+        };
+        /** @description A `qe_measure_component` row: associates a source field with a role of a measure. */
+        MeasureComponentRecord: {
+            /**
+             * Format: int64
+             * @description The owning measure; first part of the primary key.
+             */
+            measureId: number;
+            /** @description A `component_role` value; second part of the primary key. */
+            componentRole: string;
+            /**
+             * Format: int64
+             * @description The field that supplies the role.
+             */
+            fieldId: number;
+        };
+        /**
+         * @description A measure with its components, the measures its formula depends on and its time policy, joined from `qe_measure`,
+         *     `qe_measure_component`, `qe_measure_dependency` and `qe_measure_time_policy`.
+         */
+        MeasureDetail: {
+            /** @description The measure. */
+            measure: components["schemas"]["MeasureRecord"];
+            /** @description The fields the measure reads, by role. */
+            components: components["schemas"]["MeasureComponentRecord"][];
+            /** @description The measures of the version the formula references, derived from its expression; empty for other kinds. */
+            dependencyMeasureIds: number[];
+            timePolicy?: null | components["schemas"]["MeasureTimePolicyRecord"];
+        };
+        /** @description A new measure of a draft dataset version. */
+        MeasureInput: {
+            /** @description The request-facing measure ID, unique within the version; fixed once created. */
+            measureKey: string;
+            /** @description Human-readable measure name. */
+            displayName: string;
+            /**
+             * @description A `measure_kind` value: `aggregate`, `weighted_sum`, `weighted_average`,
+             *     `period_average`, `formula` or `specialized`.
+             */
+            measureKind: string;
+            /** @description An `aggregation_function` value; required for `aggregate` measures and optional for `specialized` ones. */
+            aggregationFunction?: null | string;
+            /** @description The formula of a `formula` measure over other measures of the version, such as `[m.interest] / [m.balance]`. */
+            expressionText?: null | string;
+            /** @description An optional row predicate over fields that limits the rows the measure reads, such as `[f.status] = 'open'`. */
+            rowFilterExpression?: null | string;
+            /** @description A `value_null_behavior` value. */
+            valueNullBehavior: string;
+            /** @description A `negative_weight_behavior` value. */
+            negativeWeightBehavior: string;
+            /** @description An `empty_set_behavior` value. */
+            emptySetBehavior: string;
+            /** @description A `bridge_factor_behavior` value. */
+            bridgeFactorBehavior: string;
+            /** @description A `bridge_allocation_behavior` value. */
+            bridgeAllocationBehavior: string;
+            /** @description A `total_behavior` value. */
+            totalBehavior: string;
+            /** @description A `measure_output_data_type` value. */
+            outputDataType: string;
+            /**
+             * Format: int32
+             * @description Display precision (1-38); required for `decimal` outputs and null otherwise.
+             */
+            outputPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Display scale (0 up to the precision); required for `decimal` outputs and null otherwise.
+             */
+            outputScale?: null | number;
+            /**
+             * Format: int32
+             * @description Precision (1-38) of the decimal the engine accumulates products in; null only while a form leaves it empty, and rejected.
+             */
+            accumulatorPrecision: null | number;
+            /**
+             * Format: int32
+             * @description Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in; null is rejected.
+             */
+            accumulatorScale: null | number;
+            /** @description A `rounding_mode` value, or null when the client should not round. */
+            roundingMode?: null | string;
+            /** @description Optional unit, currency or rate label, such as `USD` or `percent`. */
+            unitKey?: null | string;
+            /** @description The allowlisted implementation of a `specialized` measure; null for every other kind. */
+            implementationKey?: null | string;
+            /** @description The implementation version of a `specialized` measure; null for every other kind. */
+            implementationVersion?: null | string;
+            /** @description The implementation configuration of a `specialized` measure, as JSON text; null for every other kind. */
+            configurationJson?: null | string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            /** @description The fields the measure reads, each in its own role; empty for formulas. */
+            components: components["schemas"]["MeasureComponentInput"][];
+            timePolicy?: null | components["schemas"]["MeasureTimePolicyInput"];
+        };
+        /** @description A `qe_measure` row: a backend-defined measure that a request's column measure resolves. */
+        MeasureRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            measureId: number;
+            /**
+             * Format: int64
+             * @description The owning dataset version.
+             */
+            datasetVersionId: number;
+            /** @description Request-facing backend measure ID. */
+            measureKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `measure_kind` value. */
+            measureKind: string;
+            /** @description An `aggregation_function` value for ordinary aggregate measures. */
+            aggregationFunction?: null | string;
+            /** @description Validated measure-level expression for `formula` measures. */
+            expressionText?: null | string;
+            /** @description Optional validated source-row eligibility predicate. */
+            rowFilterExpression?: null | string;
+            /** @description A `value_null_behavior` value. */
+            valueNullBehavior: string;
+            /** @description A `negative_weight_behavior` value. */
+            negativeWeightBehavior: string;
+            /** @description An `empty_set_behavior` value. */
+            emptySetBehavior: string;
+            /** @description A `bridge_factor_behavior` value. */
+            bridgeFactorBehavior: string;
+            /** @description A `bridge_allocation_behavior` value. */
+            bridgeAllocationBehavior: string;
+            /** @description A `total_behavior` value. */
+            totalBehavior: string;
+            /** @description A `measure_output_data_type` value. */
+            outputDataType: string;
+            /**
+             * Format: int32
+             * @description Decimal precision for displaying the output.
+             */
+            outputPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale for displaying the output.
+             */
+            outputScale?: null | number;
+            /**
+             * Format: int32
+             * @description Internal decimal accumulator precision.
+             */
+            accumulatorPrecision: number;
+            /**
+             * Format: int32
+             * @description Internal decimal accumulator scale.
+             */
+            accumulatorScale: number;
+            /** @description A `rounding_mode` value, or null when the measure names none. */
+            roundingMode?: null | string;
+            /** @description Optional unit, currency or rate label. */
+            unitKey?: null | string;
+            /** @description Allowlisted implementation identity for `specialized` measures. */
+            implementationKey?: null | string;
+            /** @description Version of the specialized implementation. */
+            implementationVersion?: null | string;
+            /** @description Implementation-specific configuration as raw JSON text (a JSON column). */
+            configurationJson?: null | string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description The temporal observation-selection and duration policy of a measure (schema section 14). */
+        MeasureTimePolicyInput: {
+            /**
+             * Format: int64
+             * @description The time binding the measure requires; null uses the query's or the dataset's default time binding.
+             */
+            requiredTimeBindingId?: null | number;
+            /**
+             * Format: int64
+             * @description The `series` grain observations are selected per; required when the observation selection is not `all`.
+             */
+            selectionGrainId?: null | number;
+            /** @description An `observation_selection` value. */
+            observationSelection: string;
+            /** @description A `value_time_role` value. */
+            valueTimeRole: string;
+            /** @description A `boundary_match` value. */
+            boundaryMatch: string;
+            /**
+             * Format: int64
+             * @description How far back, in seconds, a boundary match may look for a prior observation; required for `on_or_before` and
+             *     `strictly_before` matching, because the lookback must be finite.
+             */
+            maxLookbackSeconds?: null | number;
+            /** @description A `duration_unit` value. */
+            durationUnit: string;
+            /** @description A `partial_interval_behavior` value. */
+            partialIntervalBehavior: string;
+            /** @description A `missing_period_behavior` value. */
+            missingPeriodBehavior: string;
+        };
+        /** @description A `qe_measure_time_policy` row: the optional temporal observation-selection and duration policy of a measure. */
+        MeasureTimePolicyRecord: {
+            /**
+             * Format: int64
+             * @description Primary key; also the owning measure.
+             */
+            measureId: number;
+            /**
+             * Format: int64
+             * @description Time binding the measure requires; null uses the query or default binding.
+             */
+            requiredTimeBindingId?: null | number;
+            /**
+             * Format: int64
+             * @description The `series` grain selection runs over before dimensional aggregation.
+             */
+            selectionGrainId?: null | number;
+            /** @description An `observation_selection` value. */
+            observationSelection: string;
+            /** @description A `value_time_role` value. */
+            valueTimeRole: string;
+            /** @description A `boundary_match` value. */
+            boundaryMatch: string;
+            /**
+             * Format: int64
+             * @description Maximum prior-observation search distance, in seconds, for non-exact boundary matching.
+             */
+            maxLookbackSeconds?: null | number;
+            /** @description A `duration_unit` value. */
+            durationUnit: string;
+            /** @description A `partial_interval_behavior` value. */
+            partialIntervalBehavior: string;
+            /** @description A `missing_period_behavior` value. */
+            missingPeriodBehavior: string;
+        };
+        /**
+         * @description The editable attributes of a measure with its components and optional time policy. MeasureInput adds the
+         *     key, which is fixed at creation. The formula dependencies are derived from the expression, never sent.
+         */
+        MeasureUpdateInput: {
+            /** @description Human-readable measure name. */
+            displayName: string;
+            /**
+             * @description A `measure_kind` value: `aggregate`, `weighted_sum`, `weighted_average`,
+             *     `period_average`, `formula` or `specialized`.
+             */
+            measureKind: string;
+            /** @description An `aggregation_function` value; required for `aggregate` measures and optional for `specialized` ones. */
+            aggregationFunction?: null | string;
+            /** @description The formula of a `formula` measure over other measures of the version, such as `[m.interest] / [m.balance]`. */
+            expressionText?: null | string;
+            /** @description An optional row predicate over fields that limits the rows the measure reads, such as `[f.status] = 'open'`. */
+            rowFilterExpression?: null | string;
+            /** @description A `value_null_behavior` value. */
+            valueNullBehavior: string;
+            /** @description A `negative_weight_behavior` value. */
+            negativeWeightBehavior: string;
+            /** @description An `empty_set_behavior` value. */
+            emptySetBehavior: string;
+            /** @description A `bridge_factor_behavior` value. */
+            bridgeFactorBehavior: string;
+            /** @description A `bridge_allocation_behavior` value. */
+            bridgeAllocationBehavior: string;
+            /** @description A `total_behavior` value. */
+            totalBehavior: string;
+            /** @description A `measure_output_data_type` value. */
+            outputDataType: string;
+            /**
+             * Format: int32
+             * @description Display precision (1-38); required for `decimal` outputs and null otherwise.
+             */
+            outputPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Display scale (0 up to the precision); required for `decimal` outputs and null otherwise.
+             */
+            outputScale?: null | number;
+            /**
+             * Format: int32
+             * @description Precision (1-38) of the decimal the engine accumulates products in; null only while a form leaves it empty, and rejected.
+             */
+            accumulatorPrecision: null | number;
+            /**
+             * Format: int32
+             * @description Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in; null is rejected.
+             */
+            accumulatorScale: null | number;
+            /** @description A `rounding_mode` value, or null when the client should not round. */
+            roundingMode?: null | string;
+            /** @description Optional unit, currency or rate label, such as `USD` or `percent`. */
+            unitKey?: null | string;
+            /** @description The allowlisted implementation of a `specialized` measure; null for every other kind. */
+            implementationKey?: null | string;
+            /** @description The implementation version of a `specialized` measure; null for every other kind. */
+            implementationVersion?: null | string;
+            /** @description The implementation configuration of a `specialized` measure, as JSON text; null for every other kind. */
+            configurationJson?: null | string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            /** @description The fields the measure reads, each in its own role; empty for formulas. */
+            components: components["schemas"]["MeasureComponentInput"][];
+            timePolicy?: null | components["schemas"]["MeasureTimePolicyInput"];
         };
         /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them. */
         MemberInput: {
@@ -5618,6 +6650,65 @@ export interface components {
             tenantId: string;
             /** @description The candidate connection string. */
             connectionString: string;
+        };
+        /** @description The time extension of a `time` binding (schema section 12), stored in `qe_time_binding`. */
+        TimeBindingInput: {
+            /** @description A `time_value_type` value: `date` or `timestamp`. */
+            timeValueType: string;
+            /** @description An `observation_kind` value: `instant`, `snapshot` or `interval`. */
+            observationKind: string;
+            /** @description The IANA time zone timestamp values are recorded in, such as `America/Chicago`; null for dates. */
+            sourceTimeZone?: null | string;
+            /** @description A `periodicity` value, or null for irregular or instant observations. */
+            nativePeriodicity?: null | string;
+            /**
+             * Format: int64
+             * @description The field holding each interval's exclusive end, where the native periodicity cannot derive it.
+             */
+            intervalEndFieldId?: null | number;
+            /** @description The `periodicity` values queries may group this time axis by, each named once. */
+            allowedPeriodicities: string[];
+            /** @description The IANA time zone of queries that name none, usually `UTC`. */
+            defaultQueryTimeZone: string;
+            /** @description A `cumulative_origin` value: `output_range_start` or `fixed_start`. */
+            cumulativeOrigin: string;
+            /**
+             * Format: date-time
+             * @description The UTC start of cumulative calculations; required for the `fixed_start` origin and null otherwise.
+             */
+            cumulativeFixedStart?: null | string;
+        };
+        /** @description A `qe_time_binding` row: the one-to-one time extension of a dimension binding whose kind is `time`. */
+        TimeBindingRecord: {
+            /**
+             * Format: int64
+             * @description Primary key; also the extended dimension binding.
+             */
+            bindingId: number;
+            /** @description A `time_value_type` value. */
+            timeValueType: string;
+            /** @description An `observation_kind` value. */
+            observationKind: string;
+            /** @description IANA time zone for timestamp sources; null for date-only values. */
+            sourceTimeZone?: null | string;
+            /** @description A `periodicity` value, or null for irregular or instant observations. */
+            nativePeriodicity?: null | string;
+            /**
+             * Format: int64
+             * @description Exclusive interval-end field when intervals cannot be derived from the native periodicity.
+             */
+            intervalEndFieldId?: null | number;
+            /** @description JSON array (raw text) of the `periodicity` values the source supports. */
+            allowedPeriodicitiesJson: string;
+            /** @description Default request time zone, usually `UTC`. */
+            defaultQueryTimeZone: string;
+            /** @description A `cumulative_origin` value. */
+            cumulativeOrigin: string;
+            /**
+             * Format: date-time
+             * @description Cumulative start (UTC) when the cumulative origin is `fixed_start`.
+             */
+            cumulativeFixedStart?: null | string;
         };
         ValidationProblemDetails: {
             type?: null | string;
