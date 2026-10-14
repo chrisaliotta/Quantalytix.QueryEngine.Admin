@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
@@ -8,6 +8,7 @@ import { FieldSeparator } from '@/components/ui/field';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { EntityField, SwitchField, TextField, VocabularyField } from '@/shared/form';
 import type { LookupItem } from '@/shared/types';
+import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { bindingFormValues, toBindingInput, type BindingFormValues } from './bindingForm';
 import { GroupingFields } from './GroupingFields';
@@ -35,7 +36,8 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
     control: form.control,
     name: ['bindingKind', 'dimensionId', 'pinnedDimensionVersionId', 'bridgeId'],
   });
-  useStaleReferenceClearing(form);
+  const dimensions = useLookup('dimensions');
+  useStaleReferenceClearing(form, { kind, dimensionId, pinnedVersionId, bridgeId }, dimensions.data);
   const save = useMutation({
     mutationFn: async (values: BindingFormValues) => {
       const body = toBindingInput(values);
@@ -129,28 +131,44 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
   );
 }
 
+/** The sheet's choices that other references depend on. */
+interface ReferenceChoices {
+  kind: string | null;
+  dimensionId: number | null;
+  pinnedVersionId: number | null;
+  bridgeId: number | null;
+}
+
 /**
  * Clears the references that belong to a dimension, a pinned version or a bridge once the user picks another one: the
- * pickers then list another parent's rows, so the old choices could only fail validation.
+ * pickers then list another parent's rows, so the old choices could only fail validation. A kind that binds only
+ * dimensions of its own kind clears a dimension of another kind the same way. It runs after render, never inside a form
+ * notification, so watchers keep seeing the cleared values.
  */
-function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>) {
+function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>, choices: ReferenceChoices, dimensions: LookupItem[] | undefined) {
+  const { kind, dimensionId, pinnedVersionId, bridgeId } = choices;
+  const previous = useRef(choices);
   useEffect(() => {
-    const subscription = form.watch((_, { name }) => {
-      if (name === 'dimensionId') {
-        form.setValue('pinnedDimensionVersionId', null);
-        form.setValue('mappingSetId', null);
-      }
-      if (name === 'dimensionId' || name === 'pinnedDimensionVersionId') {
-        form.setValue('groupingLevelId', null);
-        form.setValue('groupingAncestorMemberId', null);
-        form.setValue('unknownMemberId', null);
-      }
-      if (name === 'bridgeId') {
-        form.setValue('bridgeVersionId', null);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+    const before = previous.current;
+    previous.current = { kind, dimensionId, pinnedVersionId, bridgeId };
+    const fitsKind = dimensionKindFilter(kind);
+    const dimension = dimensions?.find(item => item.id === dimensionId);
+    if (kind !== before.kind && fitsKind && dimension && !fitsKind(dimension)) {
+      form.setValue('dimensionId', null);
+    }
+    if (dimensionId !== before.dimensionId) {
+      form.setValue('pinnedDimensionVersionId', null);
+      form.setValue('mappingSetId', null);
+    }
+    if (dimensionId !== before.dimensionId || pinnedVersionId !== before.pinnedVersionId) {
+      form.setValue('groupingLevelId', null);
+      form.setValue('groupingAncestorMemberId', null);
+      form.setValue('unknownMemberId', null);
+    }
+    if (bridgeId !== before.bridgeId) {
+      form.setValue('bridgeVersionId', null);
+    }
+  }, [form, dimensions, kind, dimensionId, pinnedVersionId, bridgeId]);
 }
 
 /** Range and time bindings bind only dimensions of their own kind; other kinds offer every dimension. */

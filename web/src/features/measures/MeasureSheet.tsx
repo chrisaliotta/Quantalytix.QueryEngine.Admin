@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
@@ -52,7 +52,7 @@ export function MeasureSheet({ versionId, detail, isDraft, onClose }: MeasureShe
     control: form.control,
     name: ['measureKind', 'outputDataType', 'hasTimePolicy', 'components'],
   });
-  useComponentPruning(form);
+  useComponentPruning(form, kind);
   const measures = useLookup('measures', versionId);
   const fields = useLookup('fields', versionId);
   const measureKeys = measures.data?.map(item => item.key).filter(key => key !== detail?.measure.measureKey);
@@ -184,14 +184,17 @@ export function MeasureSheet({ versionId, detail, isDraft, onClose }: MeasureShe
   );
 }
 
-/** Drops the components whose role a newly chosen kind does not read, so the editor shows exactly what is sent. */
-function useComponentPruning(form: UseFormReturn<MeasureFormValues>) {
+/**
+ * Drops the components whose role a newly chosen kind does not read, so the editor shows exactly what is sent. It runs
+ * after render, never inside a form notification, so watchers keep seeing the pruned rows.
+ */
+function useComponentPruning(form: UseFormReturn<MeasureFormValues>, kind: string | null) {
+  const previousKind = useRef(kind);
   useEffect(() => {
-    const subscription = form.watch((values, { name }) => {
-      if (name === 'measureKind') {
-        form.setValue('components', keepRolesOf(values.measureKind ?? null, form.getValues('components')));
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+    if (kind === previousKind.current) {
+      return;
+    }
+    previousKind.current = kind;
+    form.setValue('components', keepRolesOf(kind, form.getValues('components')));
+  }, [form, kind]);
 }
