@@ -1,17 +1,20 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Mappings;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// Checks a complete mapping list: factors and weights fit the <c>DECIMAL(38, 12)</c> columns, weights are 0 or more, and
-/// each source and target pair appears once, because the pair is the table's key and a repeat would silently replace the
-/// first. Whether the members belong to the endpoint versions and the weights suit the allocation mode are publication
-/// rules, because they depend on the version.
+/// Checks a complete mapping list: factors and weights fit the <c>DECIMAL(38, 12)</c> columns, weights are 0 or more, every
+/// member exists, and each source and target pair appears once, because the pair is the table's key and a repeat would
+/// silently replace the first. Whether the members belong to the endpoint versions and the weights suit the allocation mode
+/// are publication rules, because they depend on the version.
 /// </summary>
 public sealed class BridgeMappingsInputValidator : AbstractValidator<BridgeMappingsInput>
 {
     /// <summary>Declares the rules.</summary>
-    public BridgeMappingsInputValidator()
+    /// <param name="members">Reads the mapped members.</param>
+    public BridgeMappingsInputValidator(ITableGateway<DimensionMemberRecord> members)
     {
         RuleForEach(input => input.Mappings).ChildRules(mapping =>
         {
@@ -27,5 +30,6 @@ public sealed class BridgeMappingsInputValidator : AbstractValidator<BridgeMappi
             foreach (var (sourceMemberId, targetMemberId) in repeated)
                 context.AddFailure($"Source member {sourceMemberId} is mapped to target member {targetMemberId} more than once.");
         });
+        RuleFor(input => input.Mappings).MustReferenceExistingMembers(members, mapping => [mapping.SourceMemberId, mapping.TargetMemberId]);
     }
 }
