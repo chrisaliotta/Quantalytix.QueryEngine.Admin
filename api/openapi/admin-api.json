@@ -1036,7 +1036,7 @@
           "200": {
             "description": "The updated version.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DatasetVersionRecord"
                 }
@@ -1256,7 +1256,7 @@
           "200": {
             "description": "The new field.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FieldRecord"
                 }
@@ -1362,7 +1362,7 @@
           "200": {
             "description": "The updated field.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FieldRecord"
                 }
@@ -1540,7 +1540,7 @@
           "200": {
             "description": "The new fields, in column order; empty when every selected column was skipped.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
@@ -1899,7 +1899,7 @@
           "200": {
             "description": "The new grain.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GrainDetail"
                 }
@@ -2005,7 +2005,7 @@
           "200": {
             "description": "The updated grain.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GrainDetail"
                 }

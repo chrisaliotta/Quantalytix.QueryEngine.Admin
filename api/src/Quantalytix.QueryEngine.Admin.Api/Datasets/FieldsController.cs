@@ -28,7 +28,7 @@ public sealed class FieldsController(
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK, "application/json")]
     public async Task<ActionResult<IReadOnlyList<FieldRecord>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await fields.ListAsync(versionId, cancellationToken));
@@ -47,7 +47,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
+    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Create(string tenantId, long versionId, FieldInput input, CancellationToken cancellationToken)
     {
@@ -69,7 +69,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{fieldId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
+    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Update(
         string tenantId,
@@ -117,7 +117,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPost("from-columns")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<FieldRecord>>> CreateFromColumns(
         string tenantId,

@@ -25,7 +25,7 @@ public sealed class DatasetVersionsController(DatasetVersionService versions) : 
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{versionId:long}")]
-    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK)]
+    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK, "application/json")]
     public async Task<ActionResult<DatasetVersionRecord>> Get(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await versions.GetAsync(versionId, cancellationToken));
@@ -44,7 +44,7 @@ public sealed class DatasetVersionsController(DatasetVersionService versions) : 
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{versionId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK)]
+    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetVersionRecord>> Update(
         string tenantId,

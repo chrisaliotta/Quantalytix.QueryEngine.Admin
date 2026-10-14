@@ -21,7 +21,7 @@ public sealed class SourceObjectsController(SourceObjectService sourceObjects) :
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<SourceObject>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<SourceObject>>(StatusCodes.Status200OK, "application/json")]
     public async Task<ActionResult<IReadOnlyList<SourceObject>>> List(string tenantId, CancellationToken cancellationToken)
     {
         return Ok(await sourceObjects.ListAsync(cancellationToken));
@@ -36,7 +36,7 @@ public sealed class SourceObjectsController(SourceObjectService sourceObjects) :
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{name}/columns")]
-    [ProducesResponseType<IReadOnlyList<SourceColumn>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<SourceColumn>>(StatusCodes.Status200OK, "application/json")]
     public async Task<ActionResult<IReadOnlyList<SourceColumn>>> ListColumns(string tenantId, string name, CancellationToken cancellationToken)
     {
         return Ok(await sourceObjects.ListColumnsAsync(name, cancellationToken));
