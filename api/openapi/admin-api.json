@@ -8283,7 +8283,7 @@
         "properties": {
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           },
           "isEnabled": {
             "type": "boolean",
@@ -9848,7 +9848,7 @@
         "properties": {
           "sourceKeyValue": {
             "type": "string",
-            "description": "The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,\nat most 512 characters."
+            "description": "The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,\nat most 512 bytes of UTF-8 text."
           },
           "memberId": {
             "type": "integer",
@@ -9867,11 +9867,11 @@
         "properties": {
           "sourceNamespace": {
             "type": "string",
-            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 characters."
+            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 bytes of UTF-8 text."
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           }
         },
         "description": "The editable identity attributes of a mapping set, as `PUT mapping-sets/{mappingSetId}` takes them."
@@ -10822,7 +10822,7 @@
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           },
           "isEnabled": {
             "type": "boolean",
@@ -11010,11 +11010,11 @@
           },
           "sourceNamespace": {
             "type": "string",
-            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 characters."
+            "description": "Namespace of the source vocabulary, such as `core_banking`; at most 128 bytes of UTF-8 text."
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           }
         },
         "description": "A new mapping set, as `POST mapping-sets` takes it: its fixed key and target dimension, plus its identity attributes."

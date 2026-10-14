@@ -6747,7 +6747,7 @@ export interface components {
         };
         /** @description The editable identity attributes of a bridge, as `PUT bridges/{bridgeId}` takes them. */
         BridgeInput: {
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
             isEnabled: boolean;
@@ -7525,7 +7525,7 @@ export interface components {
         MappingEntryInput: {
             /**
              * @description The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,
-             *     at most 512 characters.
+             *     at most 512 bytes of UTF-8 text.
              */
             sourceKeyValue: string;
             /**
@@ -7536,9 +7536,9 @@ export interface components {
         };
         /** @description The editable identity attributes of a mapping set, as `PUT mapping-sets/{mappingSetId}` takes them. */
         MappingSetInput: {
-            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 characters. */
+            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 bytes of UTF-8 text. */
             sourceNamespace: string;
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
         };
         /** @description A `qe_mapping_set` row: the stable identity of a source code system that maps onto one canonical dimension. */
@@ -7973,7 +7973,7 @@ export interface components {
              * @description The canonical dimension the bridge remaps to; fixed once created.
              */
             targetDimensionId: number;
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
             isEnabled: boolean;
@@ -8075,9 +8075,9 @@ export interface components {
              * @description The canonical dimension the source codes map onto; fixed once created.
              */
             dimensionId: number;
-            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 characters. */
+            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 bytes of UTF-8 text. */
             sourceNamespace: string;
-            /** @description Human-readable name, at most 256 characters. */
+            /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
         };
         /**

@@ -5,7 +5,7 @@ public sealed record MappingEntryInput
 {
     /// <summary>
     /// The actual scalar source value, stored exactly as given: <c>003000</c> and <c>3000</c> are different values. Not empty,
-    /// at most 512 characters.
+    /// at most 512 bytes of UTF-8 text.
     /// </summary>
     public required string SourceKeyValue { get; init; }
 

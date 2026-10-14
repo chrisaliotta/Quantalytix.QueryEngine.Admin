@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
@@ -17,7 +18,7 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
     /// <summary>Declares the rules.</summary>
     public BindingInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.DimensionId).NotNull();
         RuleFor(input => input.BindingKind).MustBeIn(BindingKinds.Definition);
         RuleFor(input => input.GroupingMode).MustBeIn(GroupingModes.Definition);

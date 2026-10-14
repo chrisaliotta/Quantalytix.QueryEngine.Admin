@@ -4,7 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
 /// <summary>
-/// Checks one entry: a source value within the 512-character column, and a member that exists. Whether the member belongs
+/// Checks one entry: a source value within the 512-byte column, and a member that exists. Whether the member belongs
 /// to the pinned dimension version and is assignable are publication rules, because they depend on the version.
 /// </summary>
 public sealed class MappingEntryInputValidator : AbstractValidator<MappingEntryInput>

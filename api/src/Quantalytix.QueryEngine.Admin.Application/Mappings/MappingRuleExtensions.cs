@@ -6,13 +6,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 /// <summary>FluentValidation rules of the mapping entry inputs, one of which the bridge mapping list shares.</summary>
 public static class MappingRuleExtensions
 {
-    /// <summary>Requires an actual source value: not empty and within the 512-character column. The value is kept exactly as given.</summary>
+    /// <summary>Requires an actual source value: not empty and within the 512-byte column. The value is kept exactly as given.</summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for a source value property of the input.</param>
     /// <returns>The rule, for further configuration.</returns>
-    public static IRuleBuilderOptions<T, string> MustBeSourceKeyValue<T>(this IRuleBuilder<T, string> rule)
+    public static IRuleBuilderOptions<T, string?> MustBeSourceKeyValue<T>(this IRuleBuilder<T, string> rule)
     {
-        return rule.NotEmpty().MaximumLength(512);
+        return rule.NotEmpty().MustFitVarchar(512);
     }
 
     /// <summary>
