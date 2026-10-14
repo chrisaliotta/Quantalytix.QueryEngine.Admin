@@ -187,6 +187,357 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every tenant in the directory, ordered by tenant ID. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The directory entries, ordered by tenant ID, with masked connection strings. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantDirectoryEntry"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Registers a tenant after verifying that its connection string routes to the tenant's own metadata database. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TenantCreateInput"];
+                    "application/*+json": components["schemas"]["TenantCreateInput"];
+                };
+            };
+            responses: {
+                /** @description The tenant was registered; the body is its entry with a masked connection string. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantDirectoryEntry"];
+                    };
+                };
+                /** @description A field breaks a rule; a `connectionString` error gives the reason verification failed. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/{tenantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one tenant's directory entry. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The directory entry with a masked connection string. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantDirectoryEntry"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Changes a tenant's provider, cache lifetime and, when one is given, its verified connection string. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TenantUpdateInput"];
+                    "application/*+json": components["schemas"]["TenantUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description The updated entry with a masked connection string. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantDirectoryEntry"];
+                    };
+                };
+                /** @description A field breaks a rule; a `connectionString` error gives the reason verification failed. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/{tenantId}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Permits or stops query routing for a tenant. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TenantEnabledInput"];
+                    "application/*+json": components["schemas"]["TenantEnabledInput"];
+                };
+            };
+            responses: {
+                /** @description The updated entry with a masked connection string. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantDirectoryEntry"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name
+         *     the tenant and have metadata schema version 4.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TenantVerifyInput"];
+                    "application/*+json": components["schemas"]["TenantVerifyInput"];
+                };
+            };
+            responses: {
+                /** @description The test ran; `isValid` and `message` give its outcome. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantConnectionCheck"];
+                    };
+                };
+                /** @description The tenant ID or the connection string is missing or too long. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me": {
         parameters: {
             query?: never;
@@ -215,6 +566,480 @@ export interface paths {
                 };
                 /** @description The request has no valid bearer token. */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the tenant's releases, newest first, with whether each is active and how many datasets it pins. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the releases. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The release summaries, newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseSummary"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a draft release, copying the manifest of `copyFromReleaseId` when it is given. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReleaseCreateInput"];
+                    "application/*+json": components["schemas"]["ReleaseCreateInput"];
+                };
+            };
+            responses: {
+                /** @description The release was created; the body is the new draft. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SemanticReleaseRecord"];
+                    };
+                };
+                /** @description The key is malformed or taken, or the release to copy does not exist. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/releases/{releaseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one release. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The release. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SemanticReleaseRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Deletes a draft release and its manifest. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The draft release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The release and its manifest are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The release is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/releases/{releaseId}/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a release's manifest: the dataset version it pins for each dataset. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The manifest rows, ordered by dataset. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseDatasetRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft release's manifest. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The draft release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReleaseManifestInput"];
+                    "application/*+json": components["schemas"]["ReleaseManifestInput"];
+                };
+            };
+            responses: {
+                /** @description The stored manifest rows, ordered by dataset. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ReleaseDatasetRecord"][];
+                    };
+                };
+                /** @description A dataset does not exist, or a dataset or dataset version appears more than once. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The release is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/releases/{releaseId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Makes a published release the one runtime queries use: sets `qe_database_info.active_release_id` and
+         *     `updated_at`, and advances the semantic revision.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The published release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The release is active; the body is the updated database info. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DatabaseInfoRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The release is not published, so nothing changed; the detail names its status. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads the tenant's identity and semantic revision, its active release, its counts and its drafts in progress. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant to summarize. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The tenant overview. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantOverview"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -303,6 +1128,504 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/assumption-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the tenant's assumption sets, ordered by key. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption sets. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The assumption sets, ordered by key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssumptionSetRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a draft assumption set without pins. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssumptionSetCreateInput"];
+                    "application/*+json": components["schemas"]["AssumptionSetCreateInput"];
+                };
+            };
+            responses: {
+                /** @description The assumption set was created; the body is the new draft. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssumptionSetRecord"];
+                    };
+                };
+                /** @description The key is malformed or taken, the display name is missing, or the effective time is not UTC. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one assumption set. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The assumption set. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssumptionSetRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Changes a draft assumption set's display name, description and effective time. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The draft assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssumptionSetUpdateInput"];
+                    "application/*+json": components["schemas"]["AssumptionSetUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description The updated assumption set. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["AssumptionSetRecord"];
+                    };
+                };
+                /** @description The display name is missing or too long, or the effective time is not UTC. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The assumption set is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a draft assumption set and its pins. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The draft assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The assumption set and its pins are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The assumption set is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists an assumption set's pins: the dimension version it captures for each dimension. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The pins, ordered by dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssumptionSetDimensionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft assumption set's pins. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The draft assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssumptionPinsInput"];
+                    "application/*+json": components["schemas"]["AssumptionPinsInput"];
+                };
+            };
+            responses: {
+                /** @description The stored pins, ordered by dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["AssumptionSetDimensionRecord"][];
+                    };
+                };
+                /** @description A dimension does not exist or appears more than once. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The assumption set is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pins, for each given dimension, its published version effective at the set's `effective_at`
+         *     (`valid_from &lt;= effective_at &lt; valid_to`, a null `valid_to` being open-ended), replacing the pins of
+         *     those dimensions. A dimension without such a version is left unpinned.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the assumption set. */
+                    tenantId: string;
+                    /** @description The draft assumption set. */
+                    assumptionSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssumptionCaptureInput"];
+                    "application/*+json": components["schemas"]["AssumptionCaptureInput"];
+                };
+            };
+            responses: {
+                /** @description All of the set's pins after the capture, ordered by dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["AssumptionSetDimensionRecord"][];
+                    };
+                };
+                /** @description No dimension is named, or a dimension does not exist. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The assumption set is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -313,6 +1636,136 @@ export interface components {
             tenantId: string;
             /** @description Whether query routing is enabled for the tenant. */
             isEnabled: boolean;
+        };
+        /** @description A request to pin, for each dimension, the published version effective at the assumption set's `effective_at`. */
+        AssumptionCaptureInput: {
+            /** @description The dimensions to capture. */
+            dimensionIds: number[];
+        };
+        /** @description One pin of an assumption set: the exact dimension version it captures for a dimension. */
+        AssumptionPinInput: {
+            /**
+             * Format: int64
+             * @description The canonical dimension.
+             */
+            dimensionId: number;
+            /**
+             * Format: int64
+             * @description The version of the dimension that the set pins.
+             */
+            dimensionVersionId: number;
+        };
+        /** @description An assumption set's complete list of pins, which replaces the current one. */
+        AssumptionPinsInput: {
+            /** @description One pin per dimension. */
+            dimensions: components["schemas"]["AssumptionPinInput"][];
+        };
+        /** @description A request to create a draft assumption set. */
+        AssumptionSetCreateInput: {
+            /** @description The stable logical name, unique and fixed once created, such as `FY2026_Q3_CLOSE`. */
+            assumptionSetKey: string;
+            /** @description The human-readable label. */
+            displayName: string;
+            /** @description The optional business purpose or provenance. */
+            description?: null | string;
+            /**
+             * Format: date-time
+             * @description The semantic time (UTC) at which capturing resolves the effective dimension versions.
+             */
+            effectiveAt: string;
+        };
+        /** @description A `qe_assumption_set_dimension` row: pins the exact immutable version of one dimension in an assumption set. */
+        AssumptionSetDimensionRecord: {
+            /**
+             * Format: int64
+             * @description The owning assumption set; first part of the primary key.
+             */
+            assumptionSetId: number;
+            /**
+             * Format: int64
+             * @description The canonical dimension; second part of the primary key.
+             */
+            dimensionId: number;
+            /**
+             * Format: int64
+             * @description The exact dimension version captured; authoritative, never re-derived.
+             */
+            dimensionVersionId: number;
+        };
+        /** @description A `qe_assumption_set` row: an optional, manually created snapshot that pins exact dimension versions for reproducible reporting. */
+        AssumptionSetRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            assumptionSetId: number;
+            /** @description Stable logical name such as `FY2026_Q3_CLOSE`. */
+            assumptionSetKey: string;
+            /** @description Human-readable label. */
+            displayName: string;
+            /** @description Optional business purpose or provenance. */
+            description?: null | string;
+            /**
+             * Format: date-time
+             * @description Semantic timestamp (UTC) used to resolve which versions to capture.
+             */
+            effectiveAt: string;
+            /** @description An `assumption_set_status` value. */
+            status: string;
+            /** @description Optional deterministic hash of the pinned-version manifest. */
+            contentHash?: null | string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Finalization time (UTC).
+             */
+            publishedAt?: null | string;
+        };
+        /** @description The editable settings of a draft assumption set; its key is fixed at creation. */
+        AssumptionSetUpdateInput: {
+            /** @description The human-readable label. */
+            displayName: string;
+            /** @description The optional business purpose or provenance. */
+            description?: null | string;
+            /**
+             * Format: date-time
+             * @description The semantic time (UTC) at which capturing resolves the effective dimension versions.
+             */
+            effectiveAt: string;
+        };
+        /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
+        DatabaseInfoRecord: {
+            /**
+             * Format: int32
+             * @description Always `1`.
+             */
+            singletonId: number;
+            /** @description Tenant-local identity marker. */
+            tenantKey: string;
+            /**
+             * Format: int32
+             * @description Database metadata contract version (currently `4`).
+             */
+            metadataSchemaVersion: number;
+            /**
+             * Format: int64
+             * @description Monotonic revision the query engine uses to invalidate cached metadata.
+             */
+            semanticRevision: number;
+            /**
+             * Format: int64
+             * @description The runtime-active `qe_semantic_release.release_id`.
+             */
+            activeReleaseId?: null | number;
+            /**
+             * Format: date-time
+             * @description Last publication metadata change (UTC).
+             */
+            updatedAt: string;
         };
         /** @description One option of a picker: a metadata row reduced to what a select list shows. */
         LookupItem: {
@@ -335,6 +1788,77 @@ export interface components {
             /** @description A vocabulary value that classifies the row, such as a field's data type. */
             classifier?: null | string;
         };
+        /** @description How much semantic metadata a tenant holds. */
+        OverviewCounts: {
+            /**
+             * Format: int32
+             * @description The number of datasets.
+             */
+            datasets: number;
+            /**
+             * Format: int32
+             * @description The number of canonical dimensions.
+             */
+            dimensions: number;
+            /**
+             * Format: int32
+             * @description The number of mapping sets.
+             */
+            mappingSets: number;
+            /**
+             * Format: int32
+             * @description The number of bridges.
+             */
+            bridges: number;
+            /**
+             * Format: int32
+             * @description The number of semantic releases, whatever their status.
+             */
+            releases: number;
+            /**
+             * Format: int32
+             * @description The number of assumption sets, whatever their status.
+             */
+            assumptionSets: number;
+            /**
+             * Format: int32
+             * @description The number of measures of the dataset versions the active release pins: the measures queries can use.
+             */
+            activeMeasures: number;
+        };
+        /** @description The number of rows in `draft` status per versioned kind: the work in progress. */
+        OverviewDrafts: {
+            /**
+             * Format: int32
+             * @description Draft dataset versions.
+             */
+            datasetVersions: number;
+            /**
+             * Format: int32
+             * @description Draft dimension versions.
+             */
+            dimensionVersions: number;
+            /**
+             * Format: int32
+             * @description Draft mapping versions.
+             */
+            mappingVersions: number;
+            /**
+             * Format: int32
+             * @description Draft bridge versions.
+             */
+            bridgeVersions: number;
+            /**
+             * Format: int32
+             * @description Draft semantic releases.
+             */
+            releases: number;
+            /**
+             * Format: int32
+             * @description Draft assumption sets.
+             */
+            assumptionSets: number;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -342,6 +1866,64 @@ export interface components {
             status?: null | number;
             detail?: null | string;
             instance?: null | string;
+        };
+        /** @description A request to create a draft semantic release, optionally starting from another release's manifest. */
+        ReleaseCreateInput: {
+            /** @description The stable release label, unique among the tenant's releases, such as `development/baseline`. */
+            releaseKey: string;
+            /**
+             * Format: int64
+             * @description The release whose manifest rows the new draft copies; null starts with an empty manifest.
+             */
+            copyFromReleaseId?: null | number;
+        };
+        /** @description One manifest row: the dataset version a release pins for a dataset. */
+        ReleaseDatasetInput: {
+            /**
+             * Format: int64
+             * @description The logical dataset.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description The version of the dataset that the release pins.
+             */
+            datasetVersionId: number;
+        };
+        /** @description A `qe_release_dataset` row: pins exactly one structural dataset version per logical dataset in a semantic release. */
+        ReleaseDatasetRecord: {
+            /**
+             * Format: int64
+             * @description The semantic release; first part of the primary key.
+             */
+            releaseId: number;
+            /**
+             * Format: int64
+             * @description The logical dataset; second part of the primary key.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description The dataset version the release pins.
+             */
+            datasetVersionId: number;
+        };
+        /** @description A release's complete manifest, which replaces the current one. */
+        ReleaseManifestInput: {
+            /** @description One row per dataset the release pins. */
+            datasets: components["schemas"]["ReleaseDatasetInput"][];
+        };
+        /** @description A semantic release as the release list shows it: the row, whether it is the active release, and the size of its manifest. */
+        ReleaseSummary: {
+            /** @description The release row. */
+            release: components["schemas"]["SemanticReleaseRecord"];
+            /** @description Whether `qe_database_info.active_release_id` points at the release, so runtime queries use it. */
+            isActive: boolean;
+            /**
+             * Format: int32
+             * @description The number of datasets the release's manifest pins.
+             */
+            datasetCount: number;
         };
         /** @description One reason a publication rule rejects a version. */
         RuleViolation: {
@@ -361,6 +1943,30 @@ export interface components {
             /** @description The rule violations, each with a snake_case rule code and a message. */
             violations: components["schemas"]["RuleViolation"][];
         };
+        /** @description A `qe_semantic_release` row: the immutable manifest root for one coherent structural semantic model. */
+        SemanticReleaseRecord: {
+            /**
+             * Format: int64
+             * @description Surrogate primary key.
+             */
+            releaseId: number;
+            /** @description Stable release label. */
+            releaseKey: string;
+            /** @description A `publication_status` value. */
+            status: string;
+            /** @description Optional deterministic hash of the release definition graph. */
+            contentHash?: null | string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC); null until published.
+             */
+            publishedAt?: null | string;
+        };
         /** @description Who the caller is, as the API sees its bearer token. */
         SessionInfo: {
             /** @description The token's subject. */
@@ -374,6 +1980,94 @@ export interface components {
         StatusChangeInput: {
             /** @description The target status: a `publication_status` value (an `assumption_set_status` value for assumption sets). */
             status: string;
+        };
+        /** @description The result of verifying a tenant connection string, which the tenant editor's "Test connection" button shows. */
+        TenantConnectionCheck: {
+            /** @description Whether the connection opens a metadata schema version 4 database that belongs to the tenant. */
+            isValid: boolean;
+            /** @description What the connection reached, or why it is rejected. */
+            message: string;
+        };
+        /** @description A request to register a tenant in the tenant directory. */
+        TenantCreateInput: {
+            /** @description The trusted tenant identity, unique and fixed once created; the database's `tenant_key` must equal it. */
+            tenantId: string;
+            /** @description The registered provider, a `provider_id` value. */
+            providerId: string;
+            /** @description The literal connection string, including the tenant database; it is verified before it is stored. */
+            connectionString: string;
+            /** @description Whether query routing is permitted for the tenant. */
+            isEnabled: boolean;
+            /**
+             * Format: int32
+             * @description The suggested metadata cache lifetime, in seconds.
+             */
+            metadataCacheSeconds: number;
+        };
+        /** @description A `query_control.qe_tenant_directory` row as the API returns it: the connection string's password is masked. */
+        TenantDirectoryEntry: {
+            /** @description The trusted tenant identity. */
+            tenantId: string;
+            /** @description The registered provider, a `provider_id` value. */
+            providerId: string;
+            /** @description The tenant's connection string with its password replaced by `*****`. */
+            connectionString: string;
+            /** @description Whether query routing is permitted for the tenant. */
+            isEnabled: boolean;
+            /**
+             * Format: int32
+             * @description The suggested metadata cache lifetime, in seconds.
+             */
+            metadataCacheSeconds: number;
+            /**
+             * Format: date-time
+             * @description The last routing-record update time (UTC).
+             */
+            updatedAt: string;
+        };
+        /** @description A request to permit or stop query routing for a tenant. */
+        TenantEnabledInput: {
+            /** @description Whether query routing is permitted for the tenant. */
+            isEnabled: boolean;
+        };
+        /** @description A tenant's metadata at a glance: its identity and revision, the active release, its counts and its drafts. */
+        TenantOverview: {
+            /** @description The tenant-local identity marker, `qe_database_info.tenant_key`. */
+            tenantKey: string;
+            /**
+             * Format: int32
+             * @description The database's metadata contract version.
+             */
+            metadataSchemaVersion: number;
+            /**
+             * Format: int64
+             * @description The revision the query engine keys its metadata cache by.
+             */
+            semanticRevision: number;
+            activeRelease?: null | components["schemas"]["SemanticReleaseRecord"];
+            /** @description How much metadata the tenant holds. */
+            counts: components["schemas"]["OverviewCounts"];
+            /** @description The drafts in progress. */
+            drafts: components["schemas"]["OverviewDrafts"];
+        };
+        /** @description An edit of a tenant directory row; the tenant ID is fixed and enabling has its own request. */
+        TenantUpdateInput: {
+            /** @description The registered provider, a `provider_id` value. */
+            providerId: string;
+            /** @description A new connection string, which is verified before it is stored; null keeps the current one. */
+            connectionString?: null | string;
+            /**
+             * Format: int32
+             * @description The suggested metadata cache lifetime, in seconds.
+             */
+            metadataCacheSeconds: number;
+        };
+        /** @description A connection string to test for a tenant, without storing it. */
+        TenantVerifyInput: {
+            /** @description The tenant the connection string must route to. */
+            tenantId: string;
+            /** @description The candidate connection string. */
+            connectionString: string;
         };
         ValidationProblemDetails: {
             type?: null | string;
