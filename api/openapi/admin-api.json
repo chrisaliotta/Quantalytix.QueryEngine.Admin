@@ -1229,6 +1229,352 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/measures": {
+      "get": {
+        "tags": [
+          "Measures"
+        ],
+        "summary": "Lists the measures of a dataset version with their components, formula dependencies and time policies.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The measures, sorted by key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeasureDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Measures"
+        ],
+        "summary": "Creates a measure in a draft dataset version, then derives the version's formula dependencies.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft dataset version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasureInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasureInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The new measure, with the measures its formula depends on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a rule of its measure kind, output type or time policy; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/measures/{measureId}": {
+      "put": {
+        "tags": [
+          "Measures"
+        ],
+        "summary": "Replaces a measure's attributes, components and time policy, then derives the version's formula dependencies again;\nthe key is fixed.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version that owns the measure.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "measureId",
+            "in": "path",
+            "description": "The measure.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasureUpdateInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasureUpdateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The updated measure, with the measures its formula depends on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The measure is not in the version, or the input breaks a measure rule.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Measures"
+        ],
+        "summary": "Deletes a measure with its components, dependencies and time policy, unless another formula depends on it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version that owns the measure.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "measureId",
+            "in": "path",
+            "description": "The measure.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names the formulas that depend on the measure.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The measure and its child rows are deleted."
+          },
+          "400": {
+            "description": "The measure is not in the version.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/lookups/{kind}": {
       "get": {
         "tags": [
@@ -4665,6 +5011,352 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings": {
+      "get": {
+        "tags": [
+          "Bindings"
+        ],
+        "summary": "Lists the bindings of a dataset version, each with its time extension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The bindings, sorted by display name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BindingDetail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bindings"
+        ],
+        "summary": "Creates a binding in a draft dataset version, with its time extension when it is a time binding.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft dataset version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The new binding.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BindingDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a rule of its binding kind, grouping mode or time extension; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{bindingId}": {
+      "put": {
+        "tags": [
+          "Bindings"
+        ],
+        "summary": "Replaces a binding's attributes and time extension. A binding whose kind changes away from `time` loses its\ntime extension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version that owns the binding.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "bindingId",
+            "in": "path",
+            "description": "The binding.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The updated binding.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BindingDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The binding is not in the version, or the input breaks a binding rule.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Bindings"
+        ],
+        "summary": "Deletes a binding and its time extension, unless it is required, a bridge binding remaps it, a measure's time policy\nrequires it, or it is the version's default time binding.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The dataset version that owns the binding.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "bindingId",
+            "in": "path",
+            "description": "The binding.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names what blocks the delete.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The binding and its time extension are deleted."
+          },
+          "400": {
+            "description": "The binding is not in the version.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/assumption-sets": {
       "get": {
         "tags": [
@@ -5490,6 +6182,185 @@
         },
         "description": "The editable settings of a draft assumption set; its key is fixed at creation."
       },
+      "BindingDetail": {
+        "required": [
+          "binding"
+        ],
+        "type": "object",
+        "properties": {
+          "binding": {
+            "description": "The binding.",
+            "$ref": "#/components/schemas/DimensionBindingRecord"
+          },
+          "timeBinding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The time extension of a `time` binding; null for every other kind.",
+                "$ref": "#/components/schemas/TimeBindingRecord"
+              }
+            ]
+          },
+          "bridgeId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge that owns the binding's bridge version, so an editor can offer that bridge's versions; null when the\nbinding has no bridge version.",
+            "format": "int64"
+          }
+        },
+        "description": "A dimension binding with its time extension, joined from `qe_dimension_binding` and `qe_time_binding`."
+      },
+      "BindingInput": {
+        "required": [
+          "displayName",
+          "dimensionId",
+          "bindingKind",
+          "groupingMode",
+          "raggedBehavior",
+          "defaultPeriodAlignment",
+          "unmappedBehavior",
+          "isRequired",
+          "isGroupable",
+          "isFilterable",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable role name, such as `Origination branch`."
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension the binding classifies its field into.",
+            "format": "int64"
+          },
+          "pinnedDimensionVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "An explicit version of the dimension; null resolves the published version effective at query time.",
+            "format": "int64"
+          },
+          "bindingKind": {
+            "type": "string",
+            "description": "A `binding_kind` value: `direct`, `mapped`, `range`, `bridge` or `time`."
+          },
+          "sourceFieldId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The request-facing field the binding reads. Required for `direct`, `mapped`, `range` and `time`\nbindings; optional for `bridge` bindings, where it gives the binding a request-facing field key.",
+            "format": "int64"
+          },
+          "mappingSetId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The source vocabulary of a `mapped` binding; null for every other kind.",
+            "format": "int64"
+          },
+          "sourceBindingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The binding of the same version that a `bridge` binding remaps; null for every other kind.",
+            "format": "int64"
+          },
+          "bridgeVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge version a `bridge` binding remaps through; null for every other kind.",
+            "format": "int64"
+          },
+          "groupingMode": {
+            "type": "string",
+            "description": "A `grouping_mode` value: `member`, `level`, `ancestor` or `depth`."
+          },
+          "groupingLevelId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The level to group at; required for `level` grouping and null otherwise.",
+            "format": "int64"
+          },
+          "groupingAncestorMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The ancestor member to group at; required for `ancestor` grouping and null otherwise.",
+            "format": "int64"
+          },
+          "groupingDepth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The closure depth to group at, 0 or more; required for `depth` grouping and null otherwise.",
+            "format": "int32"
+          },
+          "raggedBehavior": {
+            "type": "string",
+            "description": "A `ragged_behavior` value: what grouping does with a member that has no ancestor at the requested level."
+          },
+          "defaultPeriodAlignment": {
+            "type": "string",
+            "description": "A `default_period_alignment` value."
+          },
+          "unmappedBehavior": {
+            "type": "string",
+            "description": "An `unmapped_behavior` value: what happens to rows whose source value maps to no member."
+          },
+          "unknownMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise.",
+            "format": "int64"
+          },
+          "isRequired": {
+            "type": "boolean",
+            "description": "Whether the binding is a dataset fixture that must not be removed or disabled."
+          },
+          "isGroupable": {
+            "type": "boolean",
+            "description": "Whether the semantic route may take part in aggregate grouping."
+          },
+          "isFilterable": {
+            "type": "boolean",
+            "description": "Whether the dimension may take part in dimension-aware filters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          },
+          "timeBinding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The time extension; required for `time` bindings and absent for every other kind.",
+                "$ref": "#/components/schemas/TimeBindingInput"
+              }
+            ]
+          }
+        },
+        "description": "The attributes of a dimension binding of a draft dataset version, plus the time extension of a `time` binding.\nBindings have no key, so the same input creates a binding and replaces one."
+      },
       "DatabaseInfoRecord": {
         "required": [
           "singletonId",
@@ -5783,6 +6654,154 @@
           }
         },
         "description": "The editable settings of a draft dataset version."
+      },
+      "DimensionBindingRecord": {
+        "required": [
+          "bindingId",
+          "datasetVersionId",
+          "displayName",
+          "dimensionId",
+          "bindingKind",
+          "groupingMode",
+          "raggedBehavior",
+          "defaultPeriodAlignment",
+          "unmappedBehavior",
+          "isRequired",
+          "isGroupable",
+          "isFilterable",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "datasetVersionId": {
+            "type": "integer",
+            "description": "The dataset version exposing the dimension.",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable role name."
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension.",
+            "format": "int64"
+          },
+          "pinnedDimensionVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Optional explicit dimension version; null resolves the published version valid at query time.",
+            "format": "int64"
+          },
+          "bindingKind": {
+            "type": "string",
+            "description": "A `binding_kind` value."
+          },
+          "sourceFieldId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The request-facing field for source-backed bindings.",
+            "format": "int64"
+          },
+          "mappingSetId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The source vocabulary when the binding kind is `mapped`.",
+            "format": "int64"
+          },
+          "sourceBindingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The existing source binding when the binding kind is `bridge`.",
+            "format": "int64"
+          },
+          "bridgeVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge version when the binding kind is `bridge`.",
+            "format": "int64"
+          },
+          "groupingMode": {
+            "type": "string",
+            "description": "A `grouping_mode` value."
+          },
+          "groupingLevelId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The level to group at when the grouping mode is `level`.",
+            "format": "int64"
+          },
+          "groupingAncestorMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The ancestor to group at when the grouping mode is `ancestor`.",
+            "format": "int64"
+          },
+          "groupingDepth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The closure depth to group at when the grouping mode is `depth`.",
+            "format": "int32"
+          },
+          "raggedBehavior": {
+            "type": "string",
+            "description": "A `ragged_behavior` value."
+          },
+          "defaultPeriodAlignment": {
+            "type": "string",
+            "description": "A `default_period_alignment` value."
+          },
+          "unmappedBehavior": {
+            "type": "string",
+            "description": "An `unmapped_behavior` value."
+          },
+          "unknownMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The member unmapped rows route to when the unmapped behavior is `unknown`.",
+            "format": "int64"
+          },
+          "isRequired": {
+            "type": "boolean",
+            "description": "Dataset fixture flag; a required binding must never be removed or disabled."
+          },
+          "isGroupable": {
+            "type": "boolean",
+            "description": "Whether the semantic route may take part in aggregate grouping."
+          },
+          "isFilterable": {
+            "type": "boolean",
+            "description": "Whether the dimension may take part in dimension-aware filters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "A `qe_dimension_binding` row: a semantic classification route from a dataset field to a canonical dimension."
       },
       "DimensionInput": {
         "required": [
@@ -6581,6 +7600,707 @@
           }
         },
         "description": "The generated column to add to a table for a `json_path` field."
+      },
+      "MeasureComponentInput": {
+        "required": [
+          "componentRole",
+          "fieldId"
+        ],
+        "type": "object",
+        "properties": {
+          "componentRole": {
+            "type": "string",
+            "description": "A `component_role` value, such as `value` or `weight`; each role appears once per measure."
+          },
+          "fieldId": {
+            "type": "integer",
+            "description": "The field of the measure's dataset version that supplies the role.",
+            "format": "int64"
+          }
+        },
+        "description": "A field a measure reads, in one role (schema section 13)."
+      },
+      "MeasureComponentRecord": {
+        "required": [
+          "measureId",
+          "componentRole",
+          "fieldId"
+        ],
+        "type": "object",
+        "properties": {
+          "measureId": {
+            "type": "integer",
+            "description": "The owning measure; first part of the primary key.",
+            "format": "int64"
+          },
+          "componentRole": {
+            "type": "string",
+            "description": "A `component_role` value; second part of the primary key."
+          },
+          "fieldId": {
+            "type": "integer",
+            "description": "The field that supplies the role.",
+            "format": "int64"
+          }
+        },
+        "description": "A `qe_measure_component` row: associates a source field with a role of a measure."
+      },
+      "MeasureDetail": {
+        "required": [
+          "measure",
+          "components",
+          "dependencyMeasureIds"
+        ],
+        "type": "object",
+        "properties": {
+          "measure": {
+            "description": "The measure.",
+            "$ref": "#/components/schemas/MeasureRecord"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeasureComponentRecord"
+            },
+            "description": "The fields the measure reads, by role."
+          },
+          "dependencyMeasureIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The measures of the version the formula references, derived from its expression; empty for other kinds."
+          },
+          "timePolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The time policy, or null when the measure has none.",
+                "$ref": "#/components/schemas/MeasureTimePolicyRecord"
+              }
+            ]
+          }
+        },
+        "description": "A measure with its components, the measures its formula depends on and its time policy, joined from `qe_measure`,\n`qe_measure_component`, `qe_measure_dependency` and `qe_measure_time_policy`."
+      },
+      "MeasureInput": {
+        "required": [
+          "measureKey",
+          "displayName",
+          "measureKind",
+          "valueNullBehavior",
+          "negativeWeightBehavior",
+          "emptySetBehavior",
+          "bridgeFactorBehavior",
+          "bridgeAllocationBehavior",
+          "totalBehavior",
+          "outputDataType",
+          "accumulatorPrecision",
+          "accumulatorScale",
+          "isEnabled",
+          "components"
+        ],
+        "type": "object",
+        "properties": {
+          "measureKey": {
+            "type": "string",
+            "description": "The request-facing measure ID, unique within the version; fixed once created."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable measure name."
+          },
+          "measureKind": {
+            "type": "string",
+            "description": "A `measure_kind` value: `aggregate`, `weighted_sum`, `weighted_average`,\n`period_average`, `formula` or `specialized`."
+          },
+          "aggregationFunction": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An `aggregation_function` value; required for `aggregate` measures and optional for `specialized` ones."
+          },
+          "expressionText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The formula of a `formula` measure over other measures of the version, such as `[m.interest] / [m.balance]`."
+          },
+          "rowFilterExpression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An optional row predicate over fields that limits the rows the measure reads, such as `[f.status] = 'open'`."
+          },
+          "valueNullBehavior": {
+            "type": "string",
+            "description": "A `value_null_behavior` value."
+          },
+          "negativeWeightBehavior": {
+            "type": "string",
+            "description": "A `negative_weight_behavior` value."
+          },
+          "emptySetBehavior": {
+            "type": "string",
+            "description": "An `empty_set_behavior` value."
+          },
+          "bridgeFactorBehavior": {
+            "type": "string",
+            "description": "A `bridge_factor_behavior` value."
+          },
+          "bridgeAllocationBehavior": {
+            "type": "string",
+            "description": "A `bridge_allocation_behavior` value."
+          },
+          "totalBehavior": {
+            "type": "string",
+            "description": "A `total_behavior` value."
+          },
+          "outputDataType": {
+            "type": "string",
+            "description": "A `measure_output_data_type` value."
+          },
+          "outputPrecision": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Display precision (1-38); required for `decimal` outputs and null otherwise.",
+            "format": "int32"
+          },
+          "outputScale": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Display scale (0 up to the precision); required for `decimal` outputs and null otherwise.",
+            "format": "int32"
+          },
+          "accumulatorPrecision": {
+            "type": "integer",
+            "description": "Precision (1-38) of the decimal the engine accumulates products in.",
+            "format": "int32"
+          },
+          "accumulatorScale": {
+            "type": "integer",
+            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in.",
+            "format": "int32"
+          },
+          "roundingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value, or null when the client should not round."
+          },
+          "unitKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional unit, currency or rate label, such as `USD` or `percent`."
+          },
+          "implementationKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The allowlisted implementation of a `specialized` measure; null for every other kind."
+          },
+          "implementationVersion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The implementation version of a `specialized` measure; null for every other kind."
+          },
+          "configurationJson": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The implementation configuration of a `specialized` measure, as JSON text; null for every other kind."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeasureComponentInput"
+            },
+            "description": "The fields the measure reads, each in its own role; empty for formulas."
+          },
+          "timePolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The temporal policy; required for `period_average` measures and optional for every other kind.",
+                "$ref": "#/components/schemas/MeasureTimePolicyInput"
+              }
+            ]
+          }
+        },
+        "description": "A new measure of a draft dataset version."
+      },
+      "MeasureRecord": {
+        "required": [
+          "measureId",
+          "datasetVersionId",
+          "measureKey",
+          "displayName",
+          "measureKind",
+          "valueNullBehavior",
+          "negativeWeightBehavior",
+          "emptySetBehavior",
+          "bridgeFactorBehavior",
+          "bridgeAllocationBehavior",
+          "totalBehavior",
+          "outputDataType",
+          "accumulatorPrecision",
+          "accumulatorScale",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "measureId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "datasetVersionId": {
+            "type": "integer",
+            "description": "The owning dataset version.",
+            "format": "int64"
+          },
+          "measureKey": {
+            "type": "string",
+            "description": "Request-facing backend measure ID."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "measureKind": {
+            "type": "string",
+            "description": "A `measure_kind` value."
+          },
+          "aggregationFunction": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An `aggregation_function` value for ordinary aggregate measures."
+          },
+          "expressionText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Validated measure-level expression for `formula` measures."
+          },
+          "rowFilterExpression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional validated source-row eligibility predicate."
+          },
+          "valueNullBehavior": {
+            "type": "string",
+            "description": "A `value_null_behavior` value."
+          },
+          "negativeWeightBehavior": {
+            "type": "string",
+            "description": "A `negative_weight_behavior` value."
+          },
+          "emptySetBehavior": {
+            "type": "string",
+            "description": "An `empty_set_behavior` value."
+          },
+          "bridgeFactorBehavior": {
+            "type": "string",
+            "description": "A `bridge_factor_behavior` value."
+          },
+          "bridgeAllocationBehavior": {
+            "type": "string",
+            "description": "A `bridge_allocation_behavior` value."
+          },
+          "totalBehavior": {
+            "type": "string",
+            "description": "A `total_behavior` value."
+          },
+          "outputDataType": {
+            "type": "string",
+            "description": "A `measure_output_data_type` value."
+          },
+          "outputPrecision": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Decimal precision for displaying the output.",
+            "format": "int32"
+          },
+          "outputScale": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Decimal scale for displaying the output.",
+            "format": "int32"
+          },
+          "accumulatorPrecision": {
+            "type": "integer",
+            "description": "Internal decimal accumulator precision.",
+            "format": "int32"
+          },
+          "accumulatorScale": {
+            "type": "integer",
+            "description": "Internal decimal accumulator scale.",
+            "format": "int32"
+          },
+          "roundingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value, or null when the measure names none."
+          },
+          "unitKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional unit, currency or rate label."
+          },
+          "implementationKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Allowlisted implementation identity for `specialized` measures."
+          },
+          "implementationVersion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Version of the specialized implementation."
+          },
+          "configurationJson": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Implementation-specific configuration as raw JSON text (a JSON column)."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "A `qe_measure` row: a backend-defined measure that a request's column measure resolves."
+      },
+      "MeasureTimePolicyInput": {
+        "required": [
+          "observationSelection",
+          "valueTimeRole",
+          "boundaryMatch",
+          "durationUnit",
+          "partialIntervalBehavior",
+          "missingPeriodBehavior"
+        ],
+        "type": "object",
+        "properties": {
+          "requiredTimeBindingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The time binding the measure requires; null uses the query's or the dataset's default time binding.",
+            "format": "int64"
+          },
+          "selectionGrainId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The `series` grain observations are selected per; required when the observation selection is not `all`.",
+            "format": "int64"
+          },
+          "observationSelection": {
+            "type": "string",
+            "description": "An `observation_selection` value."
+          },
+          "valueTimeRole": {
+            "type": "string",
+            "description": "A `value_time_role` value."
+          },
+          "boundaryMatch": {
+            "type": "string",
+            "description": "A `boundary_match` value."
+          },
+          "maxLookbackSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "How far back, in seconds, a boundary match may look for a prior observation; required for `on_or_before` and\n`strictly_before` matching, because the lookback must be finite.",
+            "format": "int64"
+          },
+          "durationUnit": {
+            "type": "string",
+            "description": "A `duration_unit` value."
+          },
+          "partialIntervalBehavior": {
+            "type": "string",
+            "description": "A `partial_interval_behavior` value."
+          },
+          "missingPeriodBehavior": {
+            "type": "string",
+            "description": "A `missing_period_behavior` value."
+          }
+        },
+        "description": "The temporal observation-selection and duration policy of a measure (schema section 14)."
+      },
+      "MeasureTimePolicyRecord": {
+        "required": [
+          "measureId",
+          "observationSelection",
+          "valueTimeRole",
+          "boundaryMatch",
+          "durationUnit",
+          "partialIntervalBehavior",
+          "missingPeriodBehavior"
+        ],
+        "type": "object",
+        "properties": {
+          "measureId": {
+            "type": "integer",
+            "description": "Primary key; also the owning measure.",
+            "format": "int64"
+          },
+          "requiredTimeBindingId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Time binding the measure requires; null uses the query or default binding.",
+            "format": "int64"
+          },
+          "selectionGrainId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The `series` grain selection runs over before dimensional aggregation.",
+            "format": "int64"
+          },
+          "observationSelection": {
+            "type": "string",
+            "description": "An `observation_selection` value."
+          },
+          "valueTimeRole": {
+            "type": "string",
+            "description": "A `value_time_role` value."
+          },
+          "boundaryMatch": {
+            "type": "string",
+            "description": "A `boundary_match` value."
+          },
+          "maxLookbackSeconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Maximum prior-observation search distance, in seconds, for non-exact boundary matching.",
+            "format": "int64"
+          },
+          "durationUnit": {
+            "type": "string",
+            "description": "A `duration_unit` value."
+          },
+          "partialIntervalBehavior": {
+            "type": "string",
+            "description": "A `partial_interval_behavior` value."
+          },
+          "missingPeriodBehavior": {
+            "type": "string",
+            "description": "A `missing_period_behavior` value."
+          }
+        },
+        "description": "A `qe_measure_time_policy` row: the optional temporal observation-selection and duration policy of a measure."
+      },
+      "MeasureUpdateInput": {
+        "required": [
+          "displayName",
+          "measureKind",
+          "valueNullBehavior",
+          "negativeWeightBehavior",
+          "emptySetBehavior",
+          "bridgeFactorBehavior",
+          "bridgeAllocationBehavior",
+          "totalBehavior",
+          "outputDataType",
+          "accumulatorPrecision",
+          "accumulatorScale",
+          "isEnabled",
+          "components"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable measure name."
+          },
+          "measureKind": {
+            "type": "string",
+            "description": "A `measure_kind` value: `aggregate`, `weighted_sum`, `weighted_average`,\n`period_average`, `formula` or `specialized`."
+          },
+          "aggregationFunction": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An `aggregation_function` value; required for `aggregate` measures and optional for `specialized` ones."
+          },
+          "expressionText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The formula of a `formula` measure over other measures of the version, such as `[m.interest] / [m.balance]`."
+          },
+          "rowFilterExpression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An optional row predicate over fields that limits the rows the measure reads, such as `[f.status] = 'open'`."
+          },
+          "valueNullBehavior": {
+            "type": "string",
+            "description": "A `value_null_behavior` value."
+          },
+          "negativeWeightBehavior": {
+            "type": "string",
+            "description": "A `negative_weight_behavior` value."
+          },
+          "emptySetBehavior": {
+            "type": "string",
+            "description": "An `empty_set_behavior` value."
+          },
+          "bridgeFactorBehavior": {
+            "type": "string",
+            "description": "A `bridge_factor_behavior` value."
+          },
+          "bridgeAllocationBehavior": {
+            "type": "string",
+            "description": "A `bridge_allocation_behavior` value."
+          },
+          "totalBehavior": {
+            "type": "string",
+            "description": "A `total_behavior` value."
+          },
+          "outputDataType": {
+            "type": "string",
+            "description": "A `measure_output_data_type` value."
+          },
+          "outputPrecision": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Display precision (1-38); required for `decimal` outputs and null otherwise.",
+            "format": "int32"
+          },
+          "outputScale": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Display scale (0 up to the precision); required for `decimal` outputs and null otherwise.",
+            "format": "int32"
+          },
+          "accumulatorPrecision": {
+            "type": "integer",
+            "description": "Precision (1-38) of the decimal the engine accumulates products in.",
+            "format": "int32"
+          },
+          "accumulatorScale": {
+            "type": "integer",
+            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in.",
+            "format": "int32"
+          },
+          "roundingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value, or null when the client should not round."
+          },
+          "unitKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional unit, currency or rate label, such as `USD` or `percent`."
+          },
+          "implementationKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The allowlisted implementation of a `specialized` measure; null for every other kind."
+          },
+          "implementationVersion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The implementation version of a `specialized` measure; null for every other kind."
+          },
+          "configurationJson": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The implementation configuration of a `specialized` measure, as JSON text; null for every other kind."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeasureComponentInput"
+            },
+            "description": "The fields the measure reads, each in its own role; empty for formulas."
+          },
+          "timePolicy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The temporal policy; required for `period_average` measures and optional for every other kind.",
+                "$ref": "#/components/schemas/MeasureTimePolicyInput"
+              }
+            ]
+          }
+        },
+        "description": "The editable attributes of a measure with its components and optional time policy. MeasureInput adds the\nkey, which is fixed at creation. The formula dependencies are derived from the expression, never sent."
       },
       "MemberInput": {
         "required": [
@@ -7681,6 +9401,141 @@
         },
         "description": "A connection string to test for a tenant, without storing it."
       },
+      "TimeBindingInput": {
+        "required": [
+          "timeValueType",
+          "observationKind",
+          "allowedPeriodicities",
+          "defaultQueryTimeZone",
+          "cumulativeOrigin"
+        ],
+        "type": "object",
+        "properties": {
+          "timeValueType": {
+            "type": "string",
+            "description": "A `time_value_type` value: `date` or `timestamp`."
+          },
+          "observationKind": {
+            "type": "string",
+            "description": "An `observation_kind` value: `instant`, `snapshot` or `interval`."
+          },
+          "sourceTimeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The IANA time zone timestamp values are recorded in, such as `America/Chicago`; null for dates."
+          },
+          "nativePeriodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value, or null for irregular or instant observations."
+          },
+          "intervalEndFieldId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The field holding each interval's exclusive end, where the native periodicity cannot derive it.",
+            "format": "int64"
+          },
+          "allowedPeriodicities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The `periodicity` values queries may group this time axis by, each named once."
+          },
+          "defaultQueryTimeZone": {
+            "type": "string",
+            "description": "The IANA time zone of queries that name none, usually `UTC`."
+          },
+          "cumulativeOrigin": {
+            "type": "string",
+            "description": "A `cumulative_origin` value: `output_range_start` or `fixed_start`."
+          },
+          "cumulativeFixedStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The UTC start of cumulative calculations; required for the `fixed_start` origin and null otherwise.",
+            "format": "date-time"
+          }
+        },
+        "description": "The time extension of a `time` binding (schema section 12), stored in `qe_time_binding`."
+      },
+      "TimeBindingRecord": {
+        "required": [
+          "bindingId",
+          "timeValueType",
+          "observationKind",
+          "allowedPeriodicitiesJson",
+          "defaultQueryTimeZone",
+          "cumulativeOrigin"
+        ],
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "integer",
+            "description": "Primary key; also the extended dimension binding.",
+            "format": "int64"
+          },
+          "timeValueType": {
+            "type": "string",
+            "description": "A `time_value_type` value."
+          },
+          "observationKind": {
+            "type": "string",
+            "description": "An `observation_kind` value."
+          },
+          "sourceTimeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IANA time zone for timestamp sources; null for date-only values."
+          },
+          "nativePeriodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value, or null for irregular or instant observations."
+          },
+          "intervalEndFieldId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Exclusive interval-end field when intervals cannot be derived from the native periodicity.",
+            "format": "int64"
+          },
+          "allowedPeriodicitiesJson": {
+            "type": "string",
+            "description": "JSON array (raw text) of the `periodicity` values the source supports."
+          },
+          "defaultQueryTimeZone": {
+            "type": "string",
+            "description": "Default request time zone, usually `UTC`."
+          },
+          "cumulativeOrigin": {
+            "type": "string",
+            "description": "A `cumulative_origin` value."
+          },
+          "cumulativeFixedStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Cumulative start (UTC) when the cumulative origin is `fixed_start`.",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_time_binding` row: the one-to-one time extension of a dimension binding whose kind is `time`."
+      },
       "ValidationProblemDetails": {
         "type": "object",
         "properties": {
@@ -7843,6 +9698,9 @@
       "name": "Overview"
     },
     {
+      "name": "Measures"
+    },
+    {
       "name": "Lookups"
     },
     {
@@ -7871,6 +9729,9 @@
     },
     {
       "name": "Grains"
+    },
+    {
+      "name": "Bindings"
     },
     {
       "name": "AssumptionSets"
