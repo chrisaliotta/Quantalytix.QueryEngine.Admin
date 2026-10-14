@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 
@@ -8,8 +9,8 @@ public sealed class AssumptionSetUpdateInputValidator : AbstractValidator<Assump
     /// <summary>Declares the rules.</summary>
     public AssumptionSetUpdateInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
-        RuleFor(input => input.Description).MaximumLength(1024);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
+        RuleFor(input => input.Description).MustFitVarchar(1024);
         RuleFor(input => input.EffectiveAt).MustBeUtc();
     }
 }

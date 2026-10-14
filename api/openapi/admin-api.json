@@ -5794,7 +5794,7 @@
         "properties": {
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           },
           "isEnabled": {
             "type": "boolean",
@@ -6489,7 +6489,7 @@
         "properties": {
           "displayName": {
             "type": "string",
-            "description": "Human-readable label, at most 256 characters."
+            "description": "Human-readable label, at most 256 bytes of UTF-8 text."
           },
           "ordinal": {
             "type": "integer",
@@ -6592,14 +6592,14 @@
         "properties": {
           "displayName": {
             "type": "string",
-            "description": "Human-readable label, at most 512 characters."
+            "description": "Human-readable label, at most 512 bytes of UTF-8 text."
           },
           "description": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional longer explanation, at most 1024 characters."
+            "description": "Optional longer explanation, at most 1024 bytes of UTF-8 text."
           },
           "parentMemberId": {
             "type": [
@@ -6715,7 +6715,7 @@
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable name, at most 256 characters."
+            "description": "Human-readable name, at most 256 bytes of UTF-8 text."
           },
           "isEnabled": {
             "type": "boolean",
@@ -6780,7 +6780,7 @@
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable label, at most 256 characters."
+            "description": "Human-readable label, at most 256 bytes of UTF-8 text."
           },
           "ordinal": {
             "type": "integer",
@@ -6816,14 +6816,14 @@
           },
           "displayName": {
             "type": "string",
-            "description": "Human-readable label, at most 512 characters."
+            "description": "Human-readable label, at most 512 bytes of UTF-8 text."
           },
           "description": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional longer explanation, at most 1024 characters."
+            "description": "Optional longer explanation, at most 1024 bytes of UTF-8 text."
           },
           "parentMemberId": {
             "type": [

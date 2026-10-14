@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -21,7 +22,7 @@ public sealed class TenantUpdateInputValidator : AbstractValidator<TenantUpdateI
         RuleFor(input => input.ConnectionString)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .MaximumLength(4096)
+            .MustFitVarchar(4096)
             .MustRouteToTenant(verification, _ => tenant.TenantId)
             .When(input => input.ConnectionString is not null);
     }

@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
@@ -15,8 +16,8 @@ public sealed class NewMemberInputValidator : AbstractValidator<NewMemberInput>
         RuleFor(input => input.MemberKey)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .MaximumLength(256)
             .Must(key => key.Trim() == key)
-            .WithMessage("'{PropertyName}' must not start or end with whitespace.");
+            .WithMessage("'{PropertyName}' must not start or end with whitespace.")
+            .MustFitVarchar(256);
     }
 }

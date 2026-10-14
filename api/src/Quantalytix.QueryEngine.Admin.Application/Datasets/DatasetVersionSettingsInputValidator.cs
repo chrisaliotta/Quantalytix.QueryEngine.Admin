@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -18,8 +19,8 @@ public sealed class DatasetVersionSettingsInputValidator : AbstractValidator<Dat
         RuleFor(input => input.SourceObjectKind)
             .MustBeIn(SourceObjectKinds.Definition)
             .DependentRules(() => RuleFor(input => input.SourceObject).MustBeSourceObject(input => input.SourceObjectKind, sourceObjects));
-        RuleFor(input => input.ExpressionLanguageVersion).NotEmpty().MaximumLength(32);
-        RuleFor(input => input.SecurityPolicyKey).MaximumLength(128);
+        RuleFor(input => input.ExpressionLanguageVersion).NotEmpty().MustFitVarchar(32);
+        RuleFor(input => input.SecurityPolicyKey).MustFitVarchar(128);
         RuleFor(input => input.Properties).Must(BeJsonOrNull).WithMessage("'{PropertyName}' must be JSON text.");
     }
 

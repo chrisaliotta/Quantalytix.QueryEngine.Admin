@@ -3,10 +3,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// <summary>The editable attributes of a member, as <c>PUT dimension-versions/{dimensionVersionId}/members/{memberId}</c> takes them.</summary>
 public record MemberInput
 {
-    /// <summary>Human-readable label, at most 512 characters.</summary>
+    /// <summary>Human-readable label, at most 512 bytes of UTF-8 text.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Optional longer explanation, at most 1024 characters.</summary>
+    /// <summary>Optional longer explanation, at most 1024 bytes of UTF-8 text.</summary>
     public string? Description { get; init; }
 
     /// <summary>The parent member; null for a root. It must belong to the same version, which publication checks.</summary>

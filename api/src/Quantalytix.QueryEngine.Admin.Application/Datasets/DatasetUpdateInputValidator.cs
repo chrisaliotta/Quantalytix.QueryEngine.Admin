@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
@@ -8,6 +9,6 @@ public sealed class DatasetUpdateInputValidator : AbstractValidator<DatasetUpdat
     /// <summary>Declares the rules.</summary>
     public DatasetUpdateInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
     }
 }

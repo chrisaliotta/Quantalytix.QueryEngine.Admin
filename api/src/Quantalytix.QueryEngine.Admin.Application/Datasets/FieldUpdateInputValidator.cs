@@ -1,5 +1,6 @@
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
@@ -17,7 +18,7 @@ public sealed class FieldUpdateInputValidator : AbstractValidator<FieldUpdateInp
     /// <summary>Declares the rules.</summary>
     public FieldUpdateInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.FieldSourceKind).MustBeIn(FieldSourceKinds.Definition);
         RuleFor(input => input.DataType).MustBeIn(DataTypes.Definition);
         RuleFor(input => input.SourceColumn)
@@ -28,8 +29,8 @@ public sealed class FieldUpdateInputValidator : AbstractValidator<FieldUpdateInp
             .MaximumLength(512)
             .Matches(DatasetPatterns.JsonPath())
             .WithMessage(DatasetPatterns.JsonPathMessage);
-        RuleFor(input => input.ExpressionText).MaximumLength(8192);
-        RuleFor(input => input.UnitKey).MaximumLength(64);
+        RuleFor(input => input.ExpressionText).MustFitVarchar(8192);
+        RuleFor(input => input.UnitKey).MustFitVarchar(64);
 
         When(input => input.FieldSourceKind == FieldSourceKinds.Column, () =>
         {
