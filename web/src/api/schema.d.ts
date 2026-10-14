@@ -1446,6 +1446,851 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every entry of a mapping version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The mapping version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The entries by source key, compared exactly. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionMappingRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces every entry of a draft mapping version with the given list. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft mapping version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MappingEntriesInput"];
+                    "application/*+json": components["schemas"]["MappingEntriesInput"];
+                };
+            };
+            responses: {
+                /** @description The stored entries by source key, under new entry IDs. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionMappingRecord"][];
+                    };
+                };
+                /** @description A source key is empty, too long or repeated; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Adds an entry to a draft mapping version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft mapping version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MappingEntryInput"];
+                    "application/*+json": components["schemas"]["MappingEntryInput"];
+                };
+            };
+            responses: {
+                /** @description The created entry. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionMappingRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces an entry's source value and member. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The mapping version that owns the entry. */
+                    versionId: number;
+                    /** @description The entry. */
+                    entryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MappingEntryInput"];
+                    "application/*+json": components["schemas"]["MappingEntryInput"];
+                };
+            };
+            responses: {
+                /** @description The stored entry. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionMappingRecord"];
+                    };
+                };
+                /** @description The entry is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes an entry of a draft mapping version. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The mapping version that owns the entry. */
+                    versionId: number;
+                    /** @description The entry. */
+                    entryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The entry is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The entry is not in the version; the error is keyed `entryId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every mapping set of the tenant. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping sets. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The mapping sets by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingSetRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a mapping set onto a dimension; it has no versions until one is created. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewMappingSetInput"];
+                    "application/*+json": components["schemas"]["NewMappingSetInput"];
+                };
+            };
+            responses: {
+                /** @description The created mapping set. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingSetRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one mapping set. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                    /** @description The mapping set. */
+                    mappingSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The mapping set. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingSetRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Edits a mapping set's source namespace and display name; a change advances the semantic revision. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                    /** @description The mapping set. */
+                    mappingSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MappingSetInput"];
+                    "application/*+json": components["schemas"]["MappingSetInput"];
+                };
+            };
+            responses: {
+                /** @description The stored mapping set. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingSetRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a mapping set whose versions are all drafts and that no binding references, together with its drafts and
+         *     their entries.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                    /** @description The mapping set. */
+                    mappingSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The mapping set and its drafts are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names the non-draft versions and bindings that block the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a mapping set's versions with their status and pinned dimension version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                    /** @description The mapping set. */
+                    mappingSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions by version number. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingVersionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a draft with the set's next version number, pinned to `dimensionVersionId`: empty, or cloned from
+         *     `cloneFromVersionId`, whose entries move to the members with the same keys in the pinned dimension version.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the mapping set. */
+                    tenantId: string;
+                    /** @description The mapping set. */
+                    mappingSetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewMappingVersionInput"];
+                    "application/*+json": components["schemas"]["NewMappingVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The created draft, with the source keys of cloned entries whose member key the pinned version lacks. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreatedMappingVersion"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as an unknown dimension version; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one mapping version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The mapping version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MappingVersionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Deletes a draft mapping version: its entries, then the version. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft mapping version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version and its entries are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/lookups/{kind}": {
         parameters: {
             query?: never;
@@ -4225,6 +5070,706 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/bridge-versions/{versionId}/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every mapping of a bridge version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The bridge version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The mappings by source member ID, then target member ID. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeMappingRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces every mapping of a draft bridge version with the given list. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft bridge version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BridgeMappingsInput"];
+                    "application/*+json": components["schemas"]["BridgeMappingsInput"];
+                };
+            };
+            responses: {
+                /** @description The stored mappings by source member ID, then target member ID. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeMappingRecord"][];
+                    };
+                };
+                /** @description A pair repeats, a weight is negative, or a value does not fit DECIMAL(38, 12); errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every bridge of the tenant. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridges. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The bridges by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a bridge between two dimensions; it has no versions until one is created. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewBridgeInput"];
+                    "application/*+json": components["schemas"]["NewBridgeInput"];
+                };
+            };
+            responses: {
+                /** @description The created bridge. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one bridge, including its authoring-only current version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                    /** @description The bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The bridge. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Edits a bridge's display name and availability; a change advances the semantic revision. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                    /** @description The bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BridgeInput"];
+                    "application/*+json": components["schemas"]["BridgeInput"];
+                };
+            };
+            responses: {
+                /** @description The stored bridge. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a bridge whose versions are all drafts and that no binding uses, together with its drafts and their mappings. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                    /** @description The bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The bridge and its drafts are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names the non-draft versions and bindings that block the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a bridge's versions with their endpoint versions, allocation semantics and status. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                    /** @description The bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions by version number. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeVersionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a draft with the bridge's next version number: empty, or cloned from `cloneFromVersionId`, whose mappings
+         *     move to the members with the same keys in the new endpoint versions.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the bridge. */
+                    tenantId: string;
+                    /** @description The bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewBridgeVersionInput"];
+                    "application/*+json": components["schemas"]["NewBridgeVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The created draft, with the cloned mappings whose member keys the new endpoint versions lack. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreatedBridgeVersion"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridge-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one bridge version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The bridge version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeVersionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft version's endpoint versions, cardinality and allocation mode; its mappings stay as they are. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft bridge version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BridgeVersionInput"];
+                    "application/*+json": components["schemas"]["BridgeVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BridgeVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a draft version that no binding uses, with its mappings, and clears the bridge's current-version pointer when it
+         *     named the version.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft bridge version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version and its mappings are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the bindings that use it. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings": {
         parameters: {
             query?: never;
@@ -5200,6 +6745,174 @@ export interface components {
             isEnabled: boolean;
             timeBinding?: null | components["schemas"]["TimeBindingInput"];
         };
+        /** @description The editable identity attributes of a bridge, as `PUT bridges/{bridgeId}` takes them. */
+        BridgeInput: {
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+            /** @description Administrative availability. */
+            isEnabled: boolean;
+        };
+        /** @description One assignment of a source member to a target member, with its value factor and allocation weight. */
+        BridgeMappingInput: {
+            /**
+             * Format: int64
+             * @description A member of the bridge version's source dimension version.
+             */
+            sourceMemberId: number;
+            /**
+             * Format: int64
+             * @description A member of the bridge version's target dimension version.
+             */
+            targetMemberId: number;
+            /**
+             * Format: double
+             * @description Signed business-value coefficient, such as `-1` for sign normalization; fits `DECIMAL(38, 12)`.
+             */
+            factor: number;
+            /**
+             * Format: double
+             * @description Ownership multiplier of 0 or more; fractional for `partition` allocation; fits `DECIMAL(38, 12)`.
+             */
+            allocationWeight: number;
+        };
+        /** @description A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version. */
+        BridgeMappingRecord: {
+            /**
+             * Format: int64
+             * @description The owning bridge version; first part of the primary key.
+             */
+            bridgeVersionId: number;
+            /**
+             * Format: int64
+             * @description The source member; second part of the primary key.
+             */
+            sourceMemberId: number;
+            /**
+             * Format: int64
+             * @description The target member; third part of the primary key.
+             */
+            targetMemberId: number;
+            /**
+             * Format: double
+             * @description Signed business-value coefficient, such as `-1` for sign normalization.
+             */
+            factor: number;
+            /**
+             * Format: double
+             * @description Nonnegative ownership multiplier; fractional for `partition` allocation.
+             */
+            allocationWeight: number;
+        };
+        /** @description The complete mapping list of a draft bridge version, as `PUT bridge-versions/{versionId}/mappings` takes it. */
+        BridgeMappingsInput: {
+            /** @description The mappings; each source and target pair appears once. */
+            mappings: components["schemas"]["BridgeMappingInput"][];
+        };
+        /** @description A `qe_bridge` row: the stable identity of a semantic remapping from one canonical dimension to another. */
+        BridgeRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            bridgeId: number;
+            /** @description Stable logical bridge identity. */
+            bridgeKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /**
+             * Format: int64
+             * @description The canonical source dimension.
+             */
+            sourceDimensionId: number;
+            /**
+             * Format: int64
+             * @description The canonical target dimension.
+             */
+            targetDimensionId: number;
+            /**
+             * Format: int64
+             * @description Authoring-only pointer to the current bridge version.
+             */
+            currentBridgeVersionId?: null | number;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description The editable attributes of a draft bridge version, as `PUT bridge-versions/{versionId}` takes them. */
+        BridgeVersionInput: {
+            /**
+             * Format: int64
+             * @description The pinned version of the bridge's source dimension.
+             */
+            sourceDimensionVersionId: number;
+            /**
+             * Format: int64
+             * @description The pinned version of the bridge's target dimension.
+             */
+            targetDimensionVersionId: number;
+            /** @description A `cardinality` value: `many_to_one` or `many_to_many`. */
+            cardinality: string;
+            /** @description An `allocation_mode` value: `none`, `partition` or `replicate`. */
+            allocationMode: string;
+        };
+        /** @description A `qe_bridge_version` row: pins the source and target dimension versions and the allocation semantics of a bridge. */
+        BridgeVersionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            bridgeVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning bridge.
+             */
+            bridgeId: number;
+            /**
+             * Format: int32
+             * @description Version number within the bridge.
+             */
+            versionNumber: number;
+            /**
+             * Format: int64
+             * @description The pinned source dimension version.
+             */
+            sourceDimensionVersionId: number;
+            /**
+             * Format: int64
+             * @description The pinned target dimension version.
+             */
+            targetDimensionVersionId: number;
+            /** @description A `cardinality` value. */
+            cardinality: string;
+            /** @description An `allocation_mode` value. */
+            allocationMode: string;
+            /** @description A `publication_status` value. */
+            status: string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC).
+             */
+            publishedAt?: null | string;
+        };
+        /** @description A new draft bridge version, with the mappings a clone could not carry over. */
+        CreatedBridgeVersion: {
+            /** @description The new draft. */
+            version: components["schemas"]["BridgeVersionRecord"];
+            /**
+             * @description The cloned mappings whose source or target member key no member of the new endpoint version has, by source key, then
+             *     target key; empty for an empty draft.
+             */
+            droppedMappings: components["schemas"]["DroppedBridgeMapping"][];
+        };
+        /** @description A new draft mapping version, with the source keys a clone could not carry over. */
+        CreatedMappingVersion: {
+            /** @description The new draft. */
+            version: components["schemas"]["MappingVersionRecord"];
+            /**
+             * @description The source keys of the cloned entries whose member key no member of the new draft's dimension version has, in
+             *     ordinal order; empty for an empty draft.
+             */
+            droppedSourceKeys: string[];
+        };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
             /**
@@ -5460,6 +7173,26 @@ export interface components {
             /** @description Whether this is the business-declared leaf level. */
             isLeafLevel: boolean;
         };
+        /** @description A `qe_dimension_mapping` row: maps one actual source value to exactly one canonical member within one mapping version. */
+        DimensionMappingRecord: {
+            /**
+             * Format: int64
+             * @description Surrogate primary key allocated by the metadata service; no business meaning.
+             */
+            mappingEntryId: number;
+            /**
+             * Format: int64
+             * @description The mapping version that owns the assignment.
+             */
+            mappingVersionId: number;
+            /** @description Actual scalar source value, unique within the mapping version. */
+            sourceKeyValue: string;
+            /**
+             * Format: int64
+             * @description The canonical target member, from the mapping version's dimension version.
+             */
+            memberId: number;
+        };
         /** @description A `qe_dimension_member` row: a canonical dimension member or hierarchy node. */
         DimensionMemberRecord: {
             /**
@@ -5569,6 +7302,13 @@ export interface components {
              * @description Publication time (UTC).
              */
             publishedAt?: null | string;
+        };
+        /** @description A mapping a bridge version clone could not carry over, named by the member keys of the version it was cloned from. */
+        DroppedBridgeMapping: {
+            /** @description The key of the mapping's source member. */
+            sourceMemberKey: string;
+            /** @description The key of the mapping's target member. */
+            targetMemberKey: string;
         };
         /** @description A new field of a draft dataset version. */
         FieldInput: {
@@ -5775,6 +7515,80 @@ export interface components {
             status?: null | string;
             /** @description A vocabulary value that classifies the row, such as a field's data type. */
             classifier?: null | string;
+        };
+        /** @description The complete entry list of a draft mapping version, as `PUT mapping-versions/{versionId}/entries` takes it. */
+        MappingEntriesInput: {
+            /** @description The entries; each source key appears once. */
+            entries: components["schemas"]["MappingEntryInput"][];
+        };
+        /** @description One mapping entry: an actual source value and the canonical member it maps to. */
+        MappingEntryInput: {
+            /**
+             * @description The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,
+             *     at most 512 characters.
+             */
+            sourceKeyValue: string;
+            /**
+             * Format: int64
+             * @description The member of the mapping version's dimension version that the value maps to.
+             */
+            memberId: number;
+        };
+        /** @description The editable identity attributes of a mapping set, as `PUT mapping-sets/{mappingSetId}` takes them. */
+        MappingSetInput: {
+            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 characters. */
+            sourceNamespace: string;
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+        };
+        /** @description A `qe_mapping_set` row: the stable identity of a source code system that maps onto one canonical dimension. */
+        MappingSetRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            mappingSetId: number;
+            /** @description Stable mapping-set identity. */
+            mappingSetKey: string;
+            /** @description Namespace identifying the source vocabulary. */
+            sourceNamespace: string;
+            /**
+             * Format: int64
+             * @description The canonical target dimension.
+             */
+            dimensionId: number;
+            /** @description Human-readable label. */
+            displayName: string;
+        };
+        /** @description A `qe_mapping_version` row: immutable mapping content associated with one canonical dimension version. */
+        MappingVersionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            mappingVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning mapping set.
+             */
+            mappingSetId: number;
+            /**
+             * Format: int32
+             * @description Monotonic version within the mapping set.
+             */
+            versionNumber: number;
+            /**
+             * Format: int64
+             * @description The canonical target dimension version; unique together with the mapping set.
+             */
+            dimensionVersionId: number;
+            /** @description A `publication_status` value. */
+            status: string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC).
+             */
+            publishedAt?: null | string;
         };
         /** @description The existing physical column a `json_path` or `expression` field reads instead of computing its value. */
         MaterializedColumnInput: {
@@ -6145,6 +7959,51 @@ export interface components {
              */
             sortOrder: number;
         };
+        /** @description A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes. */
+        NewBridgeInput: {
+            /** @description Stable key, unique across bridges and fixed once created. */
+            bridgeKey: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension the bridge remaps from; fixed once created.
+             */
+            sourceDimensionId: number;
+            /**
+             * Format: int64
+             * @description The canonical dimension the bridge remaps to; fixed once created.
+             */
+            targetDimensionId: number;
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+            /** @description Administrative availability. */
+            isEnabled: boolean;
+        };
+        /**
+         * @description A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its endpoint versions and allocation
+         *     semantics, and optionally a version whose mappings it copies.
+         */
+        NewBridgeVersionInput: {
+            /**
+             * Format: int64
+             * @description The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint
+             *     versions; null for an empty draft.
+             */
+            cloneFromVersionId?: null | number;
+            /**
+             * Format: int64
+             * @description The pinned version of the bridge's source dimension.
+             */
+            sourceDimensionVersionId: number;
+            /**
+             * Format: int64
+             * @description The pinned version of the bridge's target dimension.
+             */
+            targetDimensionVersionId: number;
+            /** @description A `cardinality` value: `many_to_one` or `many_to_many`. */
+            cardinality: string;
+            /** @description An `allocation_mode` value: `none`, `partition` or `replicate`. */
+            allocationMode: string;
+        };
         /**
          * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
          *     range data type and validity start of its draft version 1.
@@ -6206,6 +8065,37 @@ export interface components {
             periodicity?: null | string;
             /** @description Whether this is the business-declared leaf level. */
             isLeafLevel: boolean;
+        };
+        /** @description A new mapping set, as `POST mapping-sets` takes it: its fixed key and target dimension, plus its identity attributes. */
+        NewMappingSetInput: {
+            /** @description Stable key, unique across mapping sets and fixed once created. */
+            mappingSetKey: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension the source codes map onto; fixed once created.
+             */
+            dimensionId: number;
+            /** @description Namespace of the source vocabulary, such as `core_banking`; at most 128 characters. */
+            sourceNamespace: string;
+            /** @description Human-readable name, at most 256 characters. */
+            displayName: string;
+        };
+        /**
+         * @description A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: the dimension version
+         *     it maps onto, and optionally a version whose entries it copies.
+         */
+        NewMappingVersionInput: {
+            /**
+             * Format: int64
+             * @description The dimension version of the set's dimension that the entries' members come from.
+             */
+            dimensionVersionId: number;
+            /**
+             * Format: int64
+             * @description The mapping version whose entries the draft copies, each moved to the member with the same key in
+             *     `dimensionVersionId`; null for an empty draft.
+             */
+            cloneFromVersionId?: null | number;
         };
         /** @description A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it. */
         NewMemberInput: {
