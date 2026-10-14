@@ -6,6 +6,6 @@ public sealed record MeasureComponentInput
     /// <summary>A <c>component_role</c> value, such as <c>value</c> or <c>weight</c>; each role appears once per measure.</summary>
     public required string ComponentRole { get; init; }
 
-    /// <summary>The field of the measure's dataset version that supplies the role.</summary>
-    public required long FieldId { get; init; }
+    /// <summary>The field of the measure's dataset version that supplies the role; null only until a form chooses one, and rejected.</summary>
+    public required long? FieldId { get; init; }
 }

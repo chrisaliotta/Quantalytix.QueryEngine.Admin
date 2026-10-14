@@ -6235,8 +6235,11 @@
             "description": "Human-readable role name, such as `Origination branch`."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension the binding classifies its field into.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.",
             "format": "int64"
           },
           "pinnedDimensionVersionId": {
@@ -7613,8 +7616,11 @@
             "description": "A `component_role` value, such as `value` or `weight`; each role appears once per measure."
           },
           "fieldId": {
-            "type": "integer",
-            "description": "The field of the measure's dataset version that supplies the role.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The field of the measure's dataset version that supplies the role; null only until a form chooses one, and rejected.",
             "format": "int64"
           }
         },
@@ -7783,13 +7789,19 @@
             "format": "int32"
           },
           "accumulatorPrecision": {
-            "type": "integer",
-            "description": "Precision (1-38) of the decimal the engine accumulates products in.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Precision (1-38) of the decimal the engine accumulates products in; null only while a form leaves it empty, and rejected.",
             "format": "int32"
           },
           "accumulatorScale": {
-            "type": "integer",
-            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in; null is rejected.",
             "format": "int32"
           },
           "roundingMode": {
@@ -8233,13 +8245,19 @@
             "format": "int32"
           },
           "accumulatorPrecision": {
-            "type": "integer",
-            "description": "Precision (1-38) of the decimal the engine accumulates products in.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Precision (1-38) of the decimal the engine accumulates products in; null only while a form leaves it empty, and rejected.",
             "format": "int32"
           },
           "accumulatorScale": {
-            "type": "integer",
-            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in; null is rejected.",
             "format": "int32"
           },
           "roundingMode": {

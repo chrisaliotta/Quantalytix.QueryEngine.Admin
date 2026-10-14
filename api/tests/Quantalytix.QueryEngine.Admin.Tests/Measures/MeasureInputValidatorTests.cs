@@ -80,15 +80,17 @@ public sealed class MeasureInputValidatorTests
         _validator.TestValidate(input).ShouldHaveValidationErrorFor(measure => measure.Components).WithErrorMessage("'aggregate' measures take no 'weight' component.");
     }
 
-    /// <summary>A measure reads one field per role, and roles are vocabulary values.</summary>
+    /// <summary>A measure reads one field per role, roles are vocabulary values, and each component names its field.</summary>
     [Fact]
-    public void ComponentRoles_AreUniqueVocabularyValues()
+    public void Components_HaveUniqueVocabularyRolesAndAField()
     {
         var repeated = Measure(MeasureKinds.Aggregate) with { Components = [Component(ComponentRoles.Value, 1), Component(ComponentRoles.Value, 2)] };
         var unknown = Measure(MeasureKinds.Specialized) with { Components = [Component("multiplier", 1)] };
+        var withoutField = Measure(MeasureKinds.Aggregate) with { Components = [Component(ComponentRoles.Value, null)] };
 
         _validator.TestValidate(repeated).ShouldHaveValidationErrorFor(measure => measure.Components);
         Assert.True(HasError(_validator.TestValidate(unknown), "Components[0].ComponentRole"));
+        Assert.True(HasError(_validator.TestValidate(withoutField), "Components[0].FieldId"));
     }
 
     /// <summary>A formula combines measures only: it parses, reads no fields, and has no components.</summary>
@@ -180,14 +182,17 @@ public sealed class MeasureInputValidatorTests
         Assert.Equal(scaleFails, HasError(result, nameof(MeasureInput.OutputScale)));
     }
 
-    /// <summary>The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it.</summary>
+    /// <summary>The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it, both given.</summary>
     [Fact]
     public void Accumulator_MustBeAStarRocksDecimal()
     {
-        var result = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = 39, AccumulatorScale = 40 });
+        var outOfRange = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = 39, AccumulatorScale = 40 });
+        var missing = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = null, AccumulatorScale = null });
 
-        result.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
-        result.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
+        outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
+        outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
+        missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
+        missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
     }
 
     /// <summary>
@@ -272,7 +277,7 @@ public sealed class MeasureInputValidatorTests
     }
 
     /// <summary>A component of a role.</summary>
-    private static MeasureComponentInput Component(string role, long fieldId)
+    private static MeasureComponentInput Component(string role, long? fieldId)
     {
         return new MeasureComponentInput { ComponentRole = role, FieldId = fieldId };
     }

@@ -51,8 +51,10 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
             .Must(text => ExpressionInspector.Inspect(text!).MeasureKeys.Count == 0)
             .WithMessage("A row filter tests the fields of each source row, such as [f.status] = 'open'; it cannot reference measures.")
             .When(input => input.RowFilterExpression is not null);
-        RuleFor(input => input.AccumulatorPrecision).InclusiveBetween(1, MaxPrecision);
+        RuleFor(input => input.AccumulatorPrecision).NotNull().InclusiveBetween(1, MaxPrecision);
         RuleFor(input => input.AccumulatorScale)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
             .GreaterThanOrEqualTo(0)
             .Must((input, scale) => scale <= input.AccumulatorPrecision)
             .WithMessage("'{PropertyName}' must not exceed the accumulator precision.");

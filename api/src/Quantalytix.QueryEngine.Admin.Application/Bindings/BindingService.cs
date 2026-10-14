@@ -131,7 +131,7 @@ public sealed class BindingService(
             BindingId = bindingId,
             DatasetVersionId = versionId,
             DisplayName = input.DisplayName,
-            DimensionId = input.DimensionId,
+            DimensionId = input.DimensionId!.Value,
             PinnedDimensionVersionId = input.PinnedDimensionVersionId,
             BindingKind = input.BindingKind,
             SourceFieldId = input.SourceFieldId,

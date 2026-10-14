@@ -51,11 +51,11 @@ public record MeasureUpdateInput
     /// <summary>Display scale (0 up to the precision); required for <c>decimal</c> outputs and null otherwise.</summary>
     public int? OutputScale { get; init; }
 
-    /// <summary>Precision (1-38) of the decimal the engine accumulates products in.</summary>
-    public required int AccumulatorPrecision { get; init; }
+    /// <summary>Precision (1-38) of the decimal the engine accumulates products in; null only while a form leaves it empty, and rejected.</summary>
+    public required int? AccumulatorPrecision { get; init; }
 
-    /// <summary>Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in.</summary>
-    public required int AccumulatorScale { get; init; }
+    /// <summary>Scale (0 up to the accumulator precision) of the decimal the engine accumulates products in; null is rejected.</summary>
+    public required int? AccumulatorScale { get; init; }
 
     /// <summary>A <c>rounding_mode</c> value, or null when the client should not round.</summary>
     public string? RoundingMode { get; init; }

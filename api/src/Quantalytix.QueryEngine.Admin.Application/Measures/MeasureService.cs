@@ -105,7 +105,7 @@ public sealed class MeasureService(
             {
                 MeasureId = measure.MeasureId,
                 ComponentRole = component.ComponentRole,
-                FieldId = component.FieldId
+                FieldId = component.FieldId!.Value
             })
         ];
         await components.InsertManyAsync(componentRows, cancellationToken);
@@ -159,8 +159,8 @@ public sealed class MeasureService(
             OutputDataType = input.OutputDataType,
             OutputPrecision = input.OutputPrecision,
             OutputScale = input.OutputScale,
-            AccumulatorPrecision = input.AccumulatorPrecision,
-            AccumulatorScale = input.AccumulatorScale,
+            AccumulatorPrecision = input.AccumulatorPrecision!.Value,
+            AccumulatorScale = input.AccumulatorScale!.Value,
             RoundingMode = input.RoundingMode,
             UnitKey = input.UnitKey,
             ImplementationKey = input.ImplementationKey,

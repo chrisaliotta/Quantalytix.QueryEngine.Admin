@@ -18,6 +18,7 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
     public BindingInputValidator()
     {
         RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DimensionId).NotNull();
         RuleFor(input => input.BindingKind).MustBeIn(BindingKinds.Definition);
         RuleFor(input => input.GroupingMode).MustBeIn(GroupingModes.Definition);
         RuleFor(input => input.RaggedBehavior).MustBeIn(RaggedBehaviors.Definition);

@@ -9,8 +9,8 @@ public sealed record BindingInput
     /// <summary>Human-readable role name, such as <c>Origination branch</c>.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>The canonical dimension the binding classifies its field into.</summary>
-    public required long DimensionId { get; init; }
+    /// <summary>The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.</summary>
+    public required long? DimensionId { get; init; }
 
     /// <summary>An explicit version of the dimension; null resolves the published version effective at query time.</summary>
     public long? PinnedDimensionVersionId { get; init; }

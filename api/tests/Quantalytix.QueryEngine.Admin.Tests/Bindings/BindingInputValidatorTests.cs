@@ -30,6 +30,13 @@ public sealed class BindingInputValidatorTests
         _validator.TestValidate(Binding(kind)).ShouldNotHaveAnyValidationErrors();
     }
 
+    /// <summary>A binding classifies into a dimension, so one must be chosen; the error lands on the dimension, not in a binding failure.</summary>
+    [Fact]
+    public void Dimension_IsRequired()
+    {
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { DimensionId = null }).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
+    }
+
     /// <summary>Every kind but bridge classifies a source field's value, so it needs the field; a bridge binding may omit it.</summary>
     /// <param name="kind">The binding's kind.</param>
     /// <param name="required">Whether the source field is required.</param>
