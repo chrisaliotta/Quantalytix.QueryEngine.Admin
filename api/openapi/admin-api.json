@@ -300,6 +300,1668 @@
           }
         }
       }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels": {
+      "get": {
+        "tags": [
+          "DimensionLevels"
+        ],
+        "summary": "Lists a version's levels.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The levels by ordinal, then key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionLevelRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "DimensionLevels"
+        ],
+        "summary": "Adds a level to a draft version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The draft version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewLevelInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewLevelInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created level.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionLevelRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}": {
+      "put": {
+        "tags": [
+          "DimensionLevels"
+        ],
+        "summary": "Replaces a level's display name, ordinal, periodicity and leaf flag; its key stays.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version that owns the level.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "levelId",
+            "in": "path",
+            "description": "The level.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored level.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionLevelRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The level is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DimensionLevels"
+        ],
+        "summary": "Deletes a level of a draft version, unless members use it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version that owns the level.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "levelId",
+            "in": "path",
+            "description": "The level.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names the members that use the level.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The level is deleted."
+          },
+          "400": {
+            "description": "The level is not in the version; the error is keyed `levelId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members": {
+      "get": {
+        "tags": [
+          "DimensionMembers"
+        ],
+        "summary": "Lists every member of a version; parent links make the tree.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The members by sort order, then key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionMemberRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "DimensionMembers"
+        ],
+        "summary": "Adds a member to a draft version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The draft version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMemberInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMemberInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created member.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionMemberRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}": {
+      "put": {
+        "tags": [
+          "DimensionMembers"
+        ],
+        "summary": "Replaces a member's editable attributes, including its parent and level; its key stays.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version that owns the member.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "description": "The member.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored member.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionMemberRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The member is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DimensionMembers"
+        ],
+        "summary": "Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version that owns the member.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "description": "The member.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names what references the member.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The member is deleted."
+          },
+          "400": {
+            "description": "The member is not in the version; the error is keyed `memberId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/order": {
+      "put": {
+        "tags": [
+          "DimensionMembers"
+        ],
+        "summary": "Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The draft version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberOrderInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberOrderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The version's members after the change, by sort order, then key.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionMemberRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A member is placed twice or under itself; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimensions": {
+      "get": {
+        "tags": [
+          "Dimensions"
+        ],
+        "summary": "Lists every dimension of the tenant.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimensions.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The dimensions by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Dimensions"
+        ],
+        "summary": "Creates a user-defined dimension and its draft version 1.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDimensionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDimensionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created dimension; its draft version 1 is listed under its versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}": {
+      "get": {
+        "tags": [
+          "Dimensions"
+        ],
+        "summary": "Reads one dimension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Dimensions"
+        ],
+        "summary": "Edits a dimension's display name, availability and removability. A system dimension keeps its removability. A changed\ndisplay name or availability advances the semantic revision.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Dimensions"
+        ],
+        "summary": "Deletes a removable dimension whose versions are all drafts and that no binding, mapping set, bridge or assumption set\nreferences, together with its drafts and their content.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The dimension and its drafts are deleted."
+          },
+          "409": {
+            "description": "Nothing was deleted; the detail names what blocks the delete.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/versions": {
+      "get": {
+        "tags": [
+          "DimensionVersions"
+        ],
+        "summary": "Lists a dimension's versions with their status and validity windows, from which the effective version follows.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The versions by version number, each with `validFrom` and `validTo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionVersionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "DimensionVersions"
+        ],
+        "summary": "Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies\nthe levels, members, range bands and the dimension's mapping versions pinned to the source, and the source's range data\ntype unless one is supplied.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDimensionVersionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDimensionVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created draft version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionVersionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}": {
+      "get": {
+        "tags": [
+          "DimensionVersions"
+        ],
+        "summary": "Reads one dimension version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionVersionRecord"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "DimensionVersions"
+        ],
+        "summary": "Replaces a draft version's range data type and validity window.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The draft version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionVersionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored version.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DimensionVersionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DimensionVersions"
+        ],
+        "summary": "Deletes a draft version with its levels, members, range bands, closure rows and the draft mapping versions pinned to it,\nunless a non-draft mapping version, a bridge version, a binding or an assumption set pins it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The draft version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is not a draft, or the detail names what pins it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The version and its content are deleted."
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/range-bands": {
+      "get": {
+        "tags": [
+          "RangeBands"
+        ],
+        "summary": "Lists the bands of a version of a range dimension.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version whose bands are read or replaced.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The bands by ordinal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RangeBandRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The version's dimension is not a range dimension; the error is keyed `dimensionVersionId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RangeBands"
+        ],
+        "summary": "Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound\nfamilies, order and overlaps are checked when the version is validated.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionVersionId",
+            "in": "path",
+            "description": "The dimension version whose bands are read or replaced.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangeBandsInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangeBandsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is not a draft.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored bands by ordinal.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RangeBandRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The dimension is not a range dimension, or a band breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -321,6 +1983,314 @@
           }
         },
         "description": "A tenant the caller may administer. It deliberately omits the tenant's connection string."
+      },
+      "DimensionInput": {
+        "required": [
+          "displayName",
+          "isEnabled",
+          "isRemovable"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability."
+          },
+          "isRemovable": {
+            "type": "boolean",
+            "description": "Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one."
+          }
+        },
+        "description": "The editable identity attributes of a dimension, as `PUT dimensions/{dimensionId}` takes them."
+      },
+      "DimensionLevelRecord": {
+        "required": [
+          "levelId",
+          "dimensionVersionId",
+          "levelKey",
+          "displayName",
+          "ordinal",
+          "isLeafLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "levelId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The owning dimension version.",
+            "format": "int64"
+          },
+          "levelKey": {
+            "type": "string",
+            "description": "Stable level name."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label."
+          },
+          "ordinal": {
+            "type": "integer",
+            "description": "Business ordering of levels; not the authoritative tree depth.",
+            "format": "int32"
+          },
+          "periodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value for time-oriented levels; null otherwise."
+          },
+          "isLeafLevel": {
+            "type": "boolean",
+            "description": "Whether this is the business-declared leaf level."
+          }
+        },
+        "description": "A `qe_dimension_level` row: an optional business label for a hierarchy level of a dimension version."
+      },
+      "DimensionMemberRecord": {
+        "required": [
+          "memberId",
+          "dimensionVersionId",
+          "memberKey",
+          "displayName",
+          "isAssignable",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "description": "Surrogate primary key, unique across all dimension versions.",
+            "format": "int64"
+          },
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The owning dimension version.",
+            "format": "int64"
+          },
+          "memberKey": {
+            "type": "string",
+            "description": "Stable member key, unique within the dimension version."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional longer explanation of the member."
+          },
+          "parentMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Parent member in the authoritative tree, from the same dimension version.",
+            "format": "int64"
+          },
+          "levelId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Optional business level.",
+            "format": "int64"
+          },
+          "isAssignable": {
+            "type": "boolean",
+            "description": "Whether source values may map directly to this member."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Presentation ordering within peer groups.",
+            "format": "int32"
+          },
+          "properties": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Extensible member metadata as raw JSON text (a JSON column)."
+          }
+        },
+        "description": "A `qe_dimension_member` row: a canonical dimension member or hierarchy node."
+      },
+      "DimensionRecord": {
+        "required": [
+          "dimensionId",
+          "dimensionKey",
+          "displayName",
+          "dimensionKind",
+          "definitionOrigin",
+          "isRemovable",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionId": {
+            "type": "integer",
+            "description": "Surrogate primary key.",
+            "format": "int64"
+          },
+          "dimensionKey": {
+            "type": "string",
+            "description": "Stable canonical identity such as `Branch` or `RiskGrade`."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "dimensionKind": {
+            "type": "string",
+            "description": "A `dimension_kind` value."
+          },
+          "definitionOrigin": {
+            "type": "string",
+            "description": "A `definition_origin` value."
+          },
+          "isRemovable": {
+            "type": "boolean",
+            "description": "When false, the dimension must never be deleted."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "A `qe_dimension` row: the stable identity of a canonical business dimension."
+      },
+      "DimensionVersionInput": {
+        "type": "object",
+        "properties": {
+          "rangeDataType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `range_data_type` value for a range dimension; null for every other kind."
+          },
+          "validFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Inclusive validity start (UTC); a version needs one before it is published.",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.",
+            "format": "date-time"
+          }
+        },
+        "description": "The editable attributes of a draft dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them."
+      },
+      "DimensionVersionRecord": {
+        "required": [
+          "dimensionVersionId",
+          "dimensionId",
+          "versionNumber",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "Primary key.",
+            "format": "int64"
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The owning dimension.",
+            "format": "int64"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "description": "Monotonic version within the dimension.",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value."
+          },
+          "rangeDataType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `range_data_type` value for range dimensions; null otherwise."
+          },
+          "validFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Inclusive semantic-validity start (UTC); required once published.",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Exclusive semantic-validity end (UTC); null means open-ended.",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Publication time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension."
+      },
+      "LevelInput": {
+        "required": [
+          "displayName",
+          "ordinal",
+          "isLeafLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label, at most 256 characters."
+          },
+          "ordinal": {
+            "type": "integer",
+            "description": "Business ordering of the levels; not the authoritative tree depth.",
+            "format": "int32"
+          },
+          "periodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value for a time-oriented level; null otherwise."
+          },
+          "isLeafLevel": {
+            "type": "boolean",
+            "description": "Whether this is the business-declared leaf level."
+          }
+        },
+        "description": "The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{levelId}` takes them."
       },
       "LookupItem": {
         "required": [
@@ -368,6 +2338,284 @@
         },
         "description": "One option of a picker: a metadata row reduced to what a select list shows."
       },
+      "MemberInput": {
+        "required": [
+          "displayName",
+          "isAssignable",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label, at most 512 characters."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional longer explanation, at most 1024 characters."
+          },
+          "parentMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The parent member; null for a root. It must belong to the same version, which publication checks.",
+            "format": "int64"
+          },
+          "levelId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The business level; null for none. It must belong to the same version, which publication checks.",
+            "format": "int64"
+          },
+          "isAssignable": {
+            "type": "boolean",
+            "description": "Whether source values may map directly to the member; false for folder-only nodes."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Presentation order among the member's siblings.",
+            "format": "int32"
+          },
+          "properties": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Extensible member metadata as raw JSON text, or null."
+          }
+        },
+        "description": "The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them."
+      },
+      "MemberOrderInput": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberPlacement"
+            },
+            "description": "The placements to store, one per member; members whose parent and sort order are unchanged are not rewritten."
+          }
+        },
+        "description": "A reparent or reorder of a draft version's member tree, as `PUT dimension-versions/{dimensionVersionId}/members/order` takes it."
+      },
+      "MemberPlacement": {
+        "required": [
+          "memberId",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "description": "The member being placed.",
+            "format": "int64"
+          },
+          "parentMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The member's new parent; null for a root.",
+            "format": "int64"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "The member's new presentation order among its siblings.",
+            "format": "int32"
+          }
+        },
+        "description": "Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings."
+      },
+      "NewDimensionInput": {
+        "required": [
+          "dimensionKey",
+          "dimensionKind",
+          "displayName",
+          "isEnabled",
+          "isRemovable"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionKey": {
+            "type": "string",
+            "description": "Stable canonical key, unique across dimensions and fixed once created."
+          },
+          "dimensionKind": {
+            "type": "string",
+            "description": "A `dimension_kind` value, fixed once created."
+          },
+          "rangeDataType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind."
+          },
+          "validFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Inclusive validity start (UTC) of version 1, if already known.",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name, at most 256 characters."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability."
+          },
+          "isRemovable": {
+            "type": "boolean",
+            "description": "Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one."
+          }
+        },
+        "description": "A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the\nrange data type and validity start of its draft version 1."
+      },
+      "NewDimensionVersionInput": {
+        "type": "object",
+        "properties": {
+          "cloneFromVersionId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.",
+            "format": "int64"
+          },
+          "rangeDataType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `range_data_type` value for a range dimension; null for every other kind."
+          },
+          "validFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Inclusive validity start (UTC); a version needs one before it is published.",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.",
+            "format": "date-time"
+          }
+        },
+        "description": "A new draft version of a dimension, as `POST dimensions/{dimensionId}/versions` takes it: empty, or a clone of an\nexisting version. A clone copies the source's range data type unless the input supplies one."
+      },
+      "NewLevelInput": {
+        "required": [
+          "levelKey",
+          "displayName",
+          "ordinal",
+          "isLeafLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "levelKey": {
+            "type": "string",
+            "description": "Stable level key, fixed once created; uniqueness within the version is a publication rule."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label, at most 256 characters."
+          },
+          "ordinal": {
+            "type": "integer",
+            "description": "Business ordering of the levels; not the authoritative tree depth.",
+            "format": "int32"
+          },
+          "periodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value for a time-oriented level; null otherwise."
+          },
+          "isLeafLevel": {
+            "type": "boolean",
+            "description": "Whether this is the business-declared leaf level."
+          }
+        },
+        "description": "A new level of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/levels` takes it."
+      },
+      "NewMemberInput": {
+        "required": [
+          "memberKey",
+          "displayName",
+          "isAssignable",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "memberKey": {
+            "type": "string",
+            "description": "Stable member key, fixed once created: any characters without whitespace at either end, at most 256. Uniqueness within\nthe version is a publication rule."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable label, at most 512 characters."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional longer explanation, at most 1024 characters."
+          },
+          "parentMemberId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The parent member; null for a root. It must belong to the same version, which publication checks.",
+            "format": "int64"
+          },
+          "levelId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The business level; null for none. It must belong to the same version, which publication checks.",
+            "format": "int64"
+          },
+          "isAssignable": {
+            "type": "boolean",
+            "description": "Whether source values may map directly to the member; false for folder-only nodes."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Presentation order among the member's siblings.",
+            "format": "int32"
+          },
+          "properties": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Extensible member metadata as raw JSON text, or null."
+          }
+        },
+        "description": "A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -403,6 +2651,178 @@
             ]
           }
         }
+      },
+      "RangeBandInput": {
+        "required": [
+          "memberId",
+          "lowerInclusive",
+          "upperInclusive"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "description": "The member the band assigns source values to.",
+            "format": "int64"
+          },
+          "lowerDecimal": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Decimal lower bound, for `range_data_type` decimal.",
+            "format": "double"
+          },
+          "upperDecimal": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Decimal upper bound, for `range_data_type` decimal.",
+            "format": "double"
+          },
+          "lowerDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Date lower bound (`yyyy-MM-dd`), for `range_data_type` date.",
+            "format": "date-time"
+          },
+          "upperDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Date upper bound (`yyyy-MM-dd`), for `range_data_type` date.",
+            "format": "date-time"
+          },
+          "lowerDatetime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Datetime lower bound (UTC), for `range_data_type` datetime.",
+            "format": "date-time"
+          },
+          "upperDatetime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Datetime upper bound (UTC), for `range_data_type` datetime.",
+            "format": "date-time"
+          },
+          "lowerInclusive": {
+            "type": "boolean",
+            "description": "Whether a value equal to the lower bound falls in the band."
+          },
+          "upperInclusive": {
+            "type": "boolean",
+            "description": "Whether a value equal to the upper bound falls in the band."
+          }
+        },
+        "description": "One band of a range dimension version. Only the bound family of the version's range data type may be set, which\npublication checks; a null bound is unbounded."
+      },
+      "RangeBandRecord": {
+        "required": [
+          "dimensionVersionId",
+          "ordinal",
+          "memberId",
+          "lowerInclusive",
+          "upperInclusive"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionVersionId": {
+            "type": "integer",
+            "description": "The dimension version; first part of the primary key.",
+            "format": "int64"
+          },
+          "ordinal": {
+            "type": "integer",
+            "description": "Evaluation order; second part of the primary key.",
+            "format": "int32"
+          },
+          "memberId": {
+            "type": "integer",
+            "description": "The member assigned to the band.",
+            "format": "int64"
+          },
+          "lowerDecimal": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Decimal lower boundary; null means unbounded.",
+            "format": "double"
+          },
+          "upperDecimal": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Decimal upper boundary; null means unbounded.",
+            "format": "double"
+          },
+          "lowerDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Date lower boundary; null means unbounded.",
+            "format": "date-time"
+          },
+          "upperDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Date upper boundary; null means unbounded.",
+            "format": "date-time"
+          },
+          "lowerDatetime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Datetime lower boundary (UTC); null means unbounded.",
+            "format": "date-time"
+          },
+          "upperDatetime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Datetime upper boundary (UTC); null means unbounded.",
+            "format": "date-time"
+          },
+          "lowerInclusive": {
+            "type": "boolean",
+            "description": "Whether the lower boundary is included."
+          },
+          "upperInclusive": {
+            "type": "boolean",
+            "description": "Whether the upper boundary is included."
+          }
+        },
+        "description": "A `qe_range_band` row: a typed range that assigns scalar source values to a member of a range dimension."
+      },
+      "RangeBandsInput": {
+        "required": [
+          "bands"
+        ],
+        "type": "object",
+        "properties": {
+          "bands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RangeBandInput"
+            },
+            "description": "The bands in evaluation order; each band's ordinal is its position, starting at 1."
+          }
+        },
+        "description": "The complete ordered band list of a draft range dimension version, as `PUT dimension-versions/{dimensionVersionId}/range-bands` takes it."
       },
       "RuleViolation": {
         "required": [
@@ -658,6 +3078,21 @@
     },
     {
       "name": "Lookups"
+    },
+    {
+      "name": "DimensionLevels"
+    },
+    {
+      "name": "DimensionMembers"
+    },
+    {
+      "name": "Dimensions"
+    },
+    {
+      "name": "DimensionVersions"
+    },
+    {
+      "name": "RangeBands"
     }
   ]
 }
