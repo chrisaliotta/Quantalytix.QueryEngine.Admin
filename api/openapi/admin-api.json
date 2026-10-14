@@ -556,7 +556,7 @@
           "200": {
             "description": "The created level.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DimensionLevelRecord"
                 }
@@ -662,7 +662,7 @@
           "200": {
             "description": "The stored level.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DimensionLevelRecord"
                 }
@@ -902,7 +902,7 @@
           "200": {
             "description": "The created member.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DimensionMemberRecord"
                 }
@@ -1008,7 +1008,7 @@
           "200": {
             "description": "The stored member.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DimensionMemberRecord"
                 }
@@ -1186,7 +1186,7 @@
           "200": {
             "description": "The version's members after the change, by sort order, then key.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
@@ -1827,7 +1827,7 @@
           "200": {
             "description": "The stored version.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DimensionVersionRecord"
                 }
@@ -2057,7 +2057,7 @@
           "200": {
             "description": "The stored bands by ordinal.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {

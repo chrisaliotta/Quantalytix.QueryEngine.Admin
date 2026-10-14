@@ -497,7 +497,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
+                        "application/json": components["schemas"]["DimensionLevelRecord"];
                     };
                 };
                 /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
@@ -580,7 +580,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionLevelRecord"];
+                        "application/json": components["schemas"]["DimensionLevelRecord"];
                     };
                 };
                 /** @description The level is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
@@ -767,7 +767,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
+                        "application/json": components["schemas"]["DimensionMemberRecord"];
                     };
                 };
                 /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
@@ -850,7 +850,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"];
+                        "application/json": components["schemas"]["DimensionMemberRecord"];
                     };
                 };
                 /** @description The member is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
@@ -993,7 +993,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionMemberRecord"][];
+                        "application/json": components["schemas"]["DimensionMemberRecord"][];
                     };
                 };
                 /** @description A member is placed twice or under itself; errors are keyed by camelCase JSON path. */
@@ -1522,7 +1522,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["DimensionVersionRecord"];
+                        "application/json": components["schemas"]["DimensionVersionRecord"];
                     };
                 };
                 /** @description The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path. */
@@ -1712,7 +1712,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["RangeBandRecord"][];
+                        "application/json": components["schemas"]["RangeBandRecord"][];
                     };
                 };
                 /** @description The dimension is not a range dimension, or a band breaks a field rule; errors are keyed by camelCase JSON path. */
