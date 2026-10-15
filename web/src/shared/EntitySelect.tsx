@@ -1,4 +1,4 @@
-import { Combobox } from '@registry/components/Combobox';
+import { Combobox, type ComboboxItem } from '@registry/components/Combobox';
 import { ClearSelectionButton } from './ClearSelectionButton';
 import { lookupItemText } from './lookupItemText';
 import type { LookupItem, LookupKind } from './types';
@@ -18,7 +18,10 @@ export interface EntitySelectProps {
   placeholder?: string;
 }
 
-/** Searchable picker over lookup items, labelled by key and label (`lookupItemText`); the value is the item id. */
+/**
+ * Searchable picker over lookup items, labelled by key and label (`lookupItemText`); the value is the item id. A value
+ * the options do not list, such as one the filter hides or a reference to another version, shows its raw ID.
+ */
 export function EntitySelect({
   lookupKind,
   parentId,
@@ -45,6 +48,7 @@ export function EntitySelect({
           data={options}
           value={value === null ? '' : String(value)}
           onValueChange={next => onChange(Number(next))}
+          selectedItemRenderer={item => <SelectedItem item={item} value={value} isLoaded={lookup.isSuccess} />}
           placeholder={resolvePlaceholder(placeholder, isWaitingForParent, lookup.isLoading)}
           emptyMessage="No matching items."
           disabled={disabled || isWaitingForParent || lookup.isLoading}
@@ -56,6 +60,17 @@ export function EntitySelect({
       {lookup.error && <p className="text-sm text-destructive">{lookup.error.message}</p>}
     </div>
   );
+}
+
+/** The trigger's text: the selected option, or once the options have loaded, the raw ID of a value they do not list. */
+function SelectedItem({ item, value, isLoaded }: { item: ComboboxItem | undefined; value: number | null; isLoaded: boolean }) {
+  if (item) {
+    return item.label;
+  }
+  if (!isLoaded) {
+    return null;
+  }
+  return <span className="text-muted-foreground">{value} (not in list)</span>;
 }
 
 function resolvePlaceholder(placeholder: string, isWaitingForParent: boolean, isLoading: boolean) {
