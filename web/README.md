@@ -8,6 +8,12 @@ It uses Tailwind v4, shadcn components (`src/components/ui`) and the in-house `@
 TanStack Query, react-hook-form, and openapi-fetch typed from the API's OpenAPI document. The API owns every validation
 rule: forms show its `ValidationProblemDetails` on their fields rather than checking input themselves.
 
+## Architecture
+
+The [architecture pages](docs/architecture/README.md) describe the app with Mermaid diagrams: its topology and source
+layers, the composition chain from the providers down to the pages, how the data layer, forms and version editing work,
+and its critical flows, from sign-in to activating a release.
+
 ## Prerequisites
 
 - Node.js and pnpm 11; `package.json` pins `pnpm@11.10.0` through `packageManager`.

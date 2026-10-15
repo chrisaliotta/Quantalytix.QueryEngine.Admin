@@ -2,7 +2,7 @@
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
 datasets, fields, grains, dimensions, members, mappings, bridges, bindings, measures, their versions, releases and the
-tenant directory. Drafts never reach queries. The engine reads only published rows through the `vw_qe_*` views, and
+tenant directory. Drafts never reach queries: the engine loads published metadata through the `vw_qe_*` views, and
 dataset versions reach it only through an activated release.
 
 | Project | Holds |
@@ -11,6 +11,12 @@ dataset versions reach it only through an activated release.
 | `src/Quantalytix.QueryEngine.Admin.Application` | Feature services, input validators, publication and retirement rules, the version workflow |
 | `src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks` | Table gateways (Dapper), source-object introspection, schema changes, tenant connection checks |
 | `tests/Quantalytix.QueryEngine.Admin.Tests` | xUnit v3 tests on Microsoft.Testing.Platform |
+
+## Architecture
+
+The [architecture pages](docs/architecture/README.md) describe the API with Mermaid diagrams: its runtime components and
+composition root, the request pipeline and error responses, the core and per-feature class diagrams, the version
+lifecycle, and the sequence of each key write.
 
 ## Prerequisites
 
