@@ -10,7 +10,7 @@ export { NumberField } from './NumberField';
 export { PasswordField } from './PasswordField';
 export { showFieldErrors } from './showFieldErrors';
 export { SwitchField } from './SwitchField';
-export { TextAreaField } from './TextAreaField';
+export { TextAreaField, type TextAreaFieldProps } from './TextAreaField';
 export { TextField } from './TextField';
 export { useFormField, type FormFieldProps } from './useFormField';
 export { useProblemSubmit } from './useProblemSubmit';

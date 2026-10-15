@@ -1,8 +1,7 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
-import { Textarea } from '@/components/ui/textarea';
 import { problemOnLines, type PastedRows, type UnresolvedLine } from './bulkLists';
-import { FormFieldLayout, useFormField, type FormFieldProps } from './form';
+import { TextAreaField } from './form';
 import { FormDialog } from './FormDialog';
 
 interface BulkPasteValues {
@@ -65,27 +64,16 @@ export function BulkPasteDialog<TRow>({
       onSubmit={submit}
       submitLabel={`Replace with ${count(pasted.rows.length, noun)}`}
     >
-      <LinesField name="text" label="Lines" description="Spaces around values are ignored; leading zeros are kept." />
-      <UnresolvedLines lines={pasted.unresolved} />
-    </FormDialog>
-  );
-}
-
-/** A monospace textarea of unwrapped lines that scrolls instead of growing past a screenful. */
-function LinesField({ name, label, description }: FormFieldProps) {
-  const { field, id, error, isDisabled } = useFormField(name);
-  return (
-    <FormFieldLayout id={id} label={label} description={description} error={error}>
-      <Textarea
-        {...field}
-        id={id}
+      <TextAreaField
+        name="text"
+        label="Lines"
+        description="Spaces around values are ignored; leading zeros are kept."
+        className="max-h-80 min-h-40 overflow-auto font-mono text-xs md:text-xs"
         wrap="off"
         spellCheck={false}
-        className="max-h-80 min-h-40 overflow-auto font-mono text-xs md:text-xs"
-        disabled={isDisabled}
-        aria-invalid={error !== undefined}
       />
-    </FormFieldLayout>
+      <UnresolvedLines lines={pasted.unresolved} />
+    </FormDialog>
   );
 }
 
