@@ -11,13 +11,17 @@ rule: forms show its `ValidationProblemDetails` on their fields rather than chec
 ## Prerequisites
 
 - Node.js and pnpm 11; `package.json` pins `pnpm@11.10.0` through `packageManager`.
-- The admin API, running and allowing this app's origin in `Cors:AllowedOrigins` (see `../api/README.md`).
+- The admin API, running on `http://localhost:5180` (see `../api/README.md`).
 
 ## Configuration
 
 `VITE_API_BASE_URL` is the admin API's base URL, without a trailing slash. Vite inlines it at build time, so set it per
-environment, for example in `.env.production` or the CI build step. `.env.development` points at
-`http://localhost:5180`, and `.env.example` documents the variable.
+environment, for example in `.env.production` or the CI build step, and allow the app's origin in the API's
+`Cors:AllowedOrigins`. `.env.example` documents the variable.
+
+In development, `.env.development` leaves it empty: the app calls its own origin, and the dev server proxies `/api` and
+`/development` to `http://localhost:5180` (`server.proxy` in `vite.config.ts`). The browser then needs no CORS entry and
+no route to the API's port, which matters when it runs outside the machine or WSL instance that runs the servers.
 
 ## Develop
 

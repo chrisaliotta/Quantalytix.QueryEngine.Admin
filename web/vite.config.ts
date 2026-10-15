@@ -16,6 +16,12 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // The API's `http` launch profile. Calls reach it through the dev server's own origin, so a browser on another
+    // machine or outside WSL needs neither a CORS entry for its origin nor a route to the API's port.
+    proxy: {
+      '/api': 'http://localhost:5180',
+      '/development': 'http://localhost:5180',
+    },
   },
   test: {
     include: ['src/**/*.test.ts'],
