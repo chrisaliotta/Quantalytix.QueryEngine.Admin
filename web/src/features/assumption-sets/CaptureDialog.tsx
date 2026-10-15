@@ -11,8 +11,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { formatDateTime } from '@/shared/formatDateTime';
 import { useLookup } from '@/shared/useLookup';
+import { formatDateTime } from '@/shared/utcTime';
 import { selectedDimensionIds } from './captureSelection';
 import type { AssumptionSet } from './types';
 import { useCaptureAssumptionPins } from './useAssumptionSets';

@@ -4,10 +4,10 @@ import { Loading } from '@registry/components/Loading';
 import type { components } from '@/api/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { formatDateTime } from '@/shared/formatDateTime';
 import { PageHeader } from '@/shared/PageHeader';
 import { StatusBadge } from '@/shared/StatusBadge';
 import { useTenantId } from '@/shared/useTenantId';
+import { formatDateTime } from '@/shared/utcTime';
 import { useOverview } from './useOverview';
 
 type TenantOverview = components['schemas']['TenantOverview'];

@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { Save } from 'lucide-react';
 import { useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { DateTimeField, FormReadOnlyContext, useProblemSubmit, VocabularyField } from '@/shared/form';
 import { StatusBadge } from '@/shared/StatusBadge';
+import { formatDateTime } from '@/shared/utcTime';
 import { useDimensionVersion, useUpdateDimensionVersion } from './api';
 import type { DimensionVersion, DimensionVersionInput } from './types';
 
@@ -41,7 +41,7 @@ export function SettingsTab({ versionId, isRange, isDraft }: SettingsTabProps) {
               <StatusBadge status={version.data.status} />
             </dd>
             <dt className="text-muted-foreground">Published at</dt>
-            <dd>{formatTime(version.data.publishedAt)}</dd>
+            <dd>{formatDateTime(version.data.publishedAt)}</dd>
           </dl>
           {(isRange || version.data.rangeDataType) && (
             <VocabularyField
@@ -81,11 +81,4 @@ function toSettings(version: DimensionVersion): DimensionVersionInput {
     validFrom: version.validFrom ?? null,
     validTo: version.validTo ?? null,
   };
-}
-
-function formatTime(time: string | null | undefined) {
-  if (!time) {
-    return '—';
-  }
-  return format(new Date(time), 'yyyy-MM-dd HH:mm');
 }
