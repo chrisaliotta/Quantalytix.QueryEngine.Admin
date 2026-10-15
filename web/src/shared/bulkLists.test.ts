@@ -1,8 +1,8 @@
 /**
  * Why these tests exist: bulk paste turns free text into the list a bulk replace stores, so the reader must keep the
  * values as typed and report each line it cannot use by its line number. The API answers a bad item by its list index,
- * which a paste form has no field for: the errors must name the pasted line instead, and must stay off form paths that
- * react-hook-form would keep, because a kept error on such a path blocks every later submit of the form.
+ * which a paste form has no field for, so the errors must name the pasted line instead; a form that edits one item of
+ * the list must show that item's errors on its own fields.
  */
 import { describe, expect, it } from 'vitest';
 import { ApiProblem } from '@/api/problemDetails';
@@ -52,7 +52,7 @@ describe('problemOnLines', () => {
 });
 
 describe('problemOnItem', () => {
-  it("puts the edited item's errors on its fields and every other error under root", () => {
+  it("puts the edited item's errors on its fields and keeps every other error's key", () => {
     const problem = new ApiProblem(400, {
       title: 'One or more validation errors occurred.',
       errors: {
@@ -65,7 +65,7 @@ describe('problemOnItem', () => {
 
     expect(placed.errors).toEqual({
       allocationWeight: ["'allocationWeight' must be greater than or equal to '0'."],
-      'root.mappings': ['Source member 1 is mapped to target member 11 more than once.'],
+      mappings: ['Source member 1 is mapped to target member 11 more than once.'],
     });
   });
 });
