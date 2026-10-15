@@ -9,10 +9,10 @@ import { invalidateTenantQueries } from '@/api/queryClient';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
+import { EnabledBadge } from '@/shared/EnabledBadge';
 import { PageHeader } from '@/shared/PageHeader';
 import { useTenantId } from '@/shared/useTenantId';
 import { DatasetEditSheet } from './DatasetEditSheet';
-import { EnabledBadge } from './EnabledBadge';
 import type { Dataset } from './types';
 
 /**

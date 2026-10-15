@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { EnabledBadge } from '@/features/datasets/EnabledBadge';
+import { EnabledBadge } from '@/shared/EnabledBadge';
 import { EntityListPage } from '@/shared/EntityListPage';
 import { useLookup } from '@/shared/useLookup';
 import { useBridges } from './api';

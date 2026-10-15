@@ -6,14 +6,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
+import { formatDateTime } from '@/shared/formatDateTime';
 import { PageHeader } from '@/shared/PageHeader';
+import { PinnedVersionsTable } from '@/shared/PinnedVersionsTable';
 import { useLookup } from '@/shared/useLookup';
+import { useSheetForm } from '@/shared/useSheetForm';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
 import { ActivateReleaseButton } from './ActivateReleaseButton';
-import { formatDateTime } from './formatDateTime';
 import { NewReleaseSheet } from './NewReleaseSheet';
-import { PinnedVersionsTable } from './PinnedVersionsTable';
 import type { ReleaseCreateInput, SemanticRelease } from './types';
 import {
   useActivateRelease,
@@ -23,7 +24,6 @@ import {
   useReleases,
   useSaveReleaseDatasets,
 } from './useReleases';
-import { useSheetForm } from './useSheetForm';
 
 /**
  * One release: its lifecycle (validate, publish, retire, delete draft), activation, and the

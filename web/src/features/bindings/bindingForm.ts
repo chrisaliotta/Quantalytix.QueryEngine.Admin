@@ -1,4 +1,4 @@
-import { emptyToNull } from '@/features/datasets/text';
+import { emptyToNull } from '@/shared/text';
 import type { BindingDetail, BindingInput, TimeBinding, TimeBindingInput } from './types';
 
 /** Values of the binding sheet's time section; text inputs hold '' where the API takes null. */

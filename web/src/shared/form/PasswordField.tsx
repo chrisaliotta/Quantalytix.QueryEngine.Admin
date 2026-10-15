@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
-import { FormFieldLayout, useFormField, type FormFieldProps } from '@/shared/form';
+import { FormFieldLayout } from './FormFieldLayout';
+import { useFormField, type FormFieldProps } from './useFormField';
 
 /** Password input for secrets such as connection strings, which the API never returns; value is a string. */
 export function PasswordField({ name, label, description, disabled }: FormFieldProps) {

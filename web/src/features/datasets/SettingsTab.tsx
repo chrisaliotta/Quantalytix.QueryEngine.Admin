@@ -16,9 +16,9 @@ import {
   useProblemSubmit,
   VocabularyField,
 } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useTenantId } from '@/shared/useTenantId';
 import { SourceObjectField } from './SourceObjectField';
-import { emptyToNull } from './text';
 import type { DatasetVersion } from './types';
 interface SettingsValues {
   sourceObjectKind: string | null;

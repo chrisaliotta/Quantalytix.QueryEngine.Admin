@@ -1,7 +1,6 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { NumberField, TextField, VocabularyField } from '@/shared/form';
-import { PasswordField } from './PasswordField';
+import { NumberField, PasswordField, TextField, VocabularyField } from '@/shared/form';
 import { TestConnectionButton } from './TestConnectionButton';
 import type { TenantEditValues } from './types';
 import { useUpdateTenant } from './useSystemTenants';

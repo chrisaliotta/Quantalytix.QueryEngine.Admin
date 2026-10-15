@@ -7,6 +7,7 @@ export { FormReadOnlyContext } from './FormReadOnlyContext';
 export { JsonField } from './JsonField';
 export { MultiVocabularyField, type MultiVocabularyFieldProps } from './MultiVocabularyField';
 export { NumberField } from './NumberField';
+export { PasswordField } from './PasswordField';
 export { showFieldErrors } from './showFieldErrors';
 export { SwitchField } from './SwitchField';
 export { TextAreaField } from './TextAreaField';

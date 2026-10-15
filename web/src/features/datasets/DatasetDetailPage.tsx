@@ -10,11 +10,11 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
+import { selectedVersion } from '@/shared/versionSelection';
 import { DatasetHeader } from './DatasetHeader';
 import { DatasetVersionTabs } from './DatasetVersionTabs';
 import { NewVersionDialog } from './NewVersionDialog';
 import { useDataset } from './queries';
-import { selectVersionId } from './versionSelection';
 
 /**
  * One dataset: its identity, its versions with their lifecycle actions, and the editor of the version that
@@ -29,8 +29,9 @@ export function DatasetDetailPage() {
   const dataset = useDataset(datasetId);
   const versions = useLookup('dataset-versions', datasetId);
   const versionItems = versions.data ?? [];
-  const versionId = selectVersionId(versionItems, searchParams.get('version'));
-  const isDraft = versionItems.find(version => version.id === versionId)?.status === 'draft';
+  const selected = selectedVersion(versionItems, searchParams.get('version'));
+  const versionId = selected?.id ?? null;
+  const isDraft = selected?.status === 'draft';
 
   function selectVersion(id: number) {
     setSearchParams({ version: String(id) });

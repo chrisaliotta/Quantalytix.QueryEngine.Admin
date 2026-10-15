@@ -2,11 +2,11 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { EntitySelect } from '@/shared/EntitySelect';
-import { EntityTable } from '@/shared/EntityTable';
-import type { LookupItem } from '@/shared/types';
-import { useLookup } from '@/shared/useLookup';
+import { ApiErrorAlert } from './ApiErrorAlert';
+import { EntitySelect } from './EntitySelect';
+import { EntityTable } from './EntityTable';
+import type { LookupItem } from './types';
+import { useLookup } from './useLookup';
 
 /** The version of one dataset or dimension that a release or an assumption set pins. */
 export interface PinnedVersion {
