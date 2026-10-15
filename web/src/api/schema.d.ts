@@ -57,7 +57,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time. */
+        /**
+         * Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its
+         *     retirement rules, and publishing stamps the publication time.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -124,7 +127,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Publication rules rejected the version and its status is unchanged; `violations` lists why. */
+                /** @description Publication or retirement rules rejected the transition and the status is unchanged; `violations` lists why. */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4065,7 +4068,7 @@ export interface paths {
                         "application/json": components["schemas"]["DatasetVersionRecord"];
                     };
                 };
-                /** @description The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist. */
+                /** @description The clone source is not a version of this dataset, a clone names a source object, or an empty draft's source object does not exist. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4220,8 +4223,8 @@ export interface paths {
         };
         post?: never;
         /**
-         * Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,
-         *     dependencies and components, measures, time bindings, bindings and fields.
+         * Deletes a draft dataset version that no release manifest pins, with all its content, children first: grain fields,
+         *     grains, measure time policies, dependencies and components, measures, time bindings, bindings and fields.
          */
         delete: {
             parameters: {
@@ -4262,7 +4265,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is not a draft, or a release manifest pins it; the detail names the releases. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6981,7 +6984,7 @@ export interface components {
         DatasetVersionInput: {
             /**
              * Format: int64
-             * @description The version whose settings and content the new draft copies; null for an empty draft.
+             * @description A version of the same dataset whose settings and content the new draft copies; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
             /** @description The `source_object_kind` of an empty draft's source object; null for a clone. */
@@ -7985,8 +7988,8 @@ export interface components {
         NewBridgeVersionInput: {
             /**
              * Format: int64
-             * @description The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint
-             *     versions; null for an empty draft.
+             * @description A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new
+             *     endpoint versions; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
             /**
@@ -8034,7 +8037,8 @@ export interface components {
         NewDimensionVersionInput: {
             /**
              * Format: int64
-             * @description The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.
+             * @description A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for
+             *     an empty draft.
              */
             cloneFromVersionId?: null | number;
             /** @description A `range_data_type` value for a range dimension; null for every other kind. */
@@ -8092,7 +8096,7 @@ export interface components {
             dimensionVersionId: number;
             /**
              * Format: int64
-             * @description The mapping version whose entries the draft copies, each moved to the member with the same key in
+             * @description A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in
              *     `dimensionVersionId`; null for an empty draft.
              */
             cloneFromVersionId?: null | number;

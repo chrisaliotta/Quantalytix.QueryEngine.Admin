@@ -11,9 +11,9 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class AdminControllersServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers controllers with the global <see cref="ValidationFilter"/>, JSON as the only body format, camelCase JSON
-    /// (also used for OpenAPI schemas), camelCase FluentValidation paths, and, outside Development, removes the Development
-    /// controllers.
+    /// Registers controllers with the global <see cref="ValidationFilter"/>, binding errors keyed like its errors
+    /// (<see cref="BindingErrorResults"/>), JSON as the only body format, camelCase JSON (also used for OpenAPI schemas),
+    /// camelCase FluentValidation paths, and, outside Development, removes the Development controllers.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="environment">The host environment, which decides whether Development controllers exist.</param>
@@ -32,6 +32,7 @@ public static class AdminControllersServiceCollectionExtensions
                 options.InputFormatters.OfType<SystemTextJsonInputFormatter>().Single().SupportedMediaTypes.Remove("text/json");
             })
             .AddJsonOptions(options => ConfigureJson(options.JsonSerializerOptions))
+            .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = BindingErrorResults.Create)
             .ConfigureApplicationPartManager(manager =>
             {
                 if (!environment.IsDevelopment()) manager.FeatureProviders.Add(new DevelopmentControllerFeatureProvider());

@@ -76,6 +76,15 @@ public sealed class FieldInputValidatorTests
         _validator.TestValidate(input).ShouldHaveValidationErrorFor(field => field.ExpressionText);
     }
 
+    /// <summary>The query engine renders field expressions with no request parameters bound, so one cannot read <c>@name</c>.</summary>
+    [Fact]
+    public void ExpressionField_CannotReadRequestParameters()
+    {
+        var input = Field(FieldSourceKinds.Expression) with { ExpressionText = "[f.balance] * @rate" };
+
+        _validator.TestValidate(input).ShouldHaveValidationErrorFor(field => field.ExpressionText);
+    }
+
     /// <summary>
     /// A decimal needs a precision of 1-38 and a scale from 0 up to the precision. A missing precision is reported on the
     /// precision alone, not also as a scale that exceeds it.

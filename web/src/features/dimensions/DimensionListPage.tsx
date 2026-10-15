@@ -2,8 +2,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EnabledBadge } from '@/shared/EnabledBadge';
 import { EntityListPage } from '@/shared/EntityListPage';
 import { useDimensions } from './api';
 import { NewDimensionSheet } from './NewDimensionSheet';
@@ -53,11 +53,4 @@ export function DimensionListPage() {
       )}
     </>
   );
-}
-
-function EnabledBadge({ enabled }: { enabled: boolean }) {
-  if (enabled) {
-    return <Badge variant="secondary">Enabled</Badge>;
-  }
-  return <Badge variant="outline">Disabled</Badge>;
 }

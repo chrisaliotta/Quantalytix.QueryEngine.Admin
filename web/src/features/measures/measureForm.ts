@@ -1,4 +1,4 @@
-import { emptyToNull } from '@/features/datasets/text';
+import { emptyToNull } from '@/shared/text';
 import type { MeasureDetail, MeasureInput, MeasureTimePolicy, MeasureTimePolicyInput, MeasureUpdateInput } from './types';
 
 /** One row of the components editor: a role and the field that supplies it. */

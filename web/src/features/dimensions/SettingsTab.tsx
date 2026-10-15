@@ -1,12 +1,12 @@
-import { format } from 'date-fns';
 import { Save } from 'lucide-react';
 import { useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { DateTimeField, FormReadOnlyContext, showFieldErrors, VocabularyField } from '@/shared/form';
+import { DateTimeField, FormReadOnlyContext, useProblemSubmit, VocabularyField } from '@/shared/form';
 import { StatusBadge } from '@/shared/StatusBadge';
+import { formatDateTime } from '@/shared/utcTime';
 import { useDimensionVersion, useUpdateDimensionVersion } from './api';
 import type { DimensionVersion, DimensionVersionInput } from './types';
 
@@ -22,6 +22,7 @@ export function SettingsTab({ versionId, isRange, isDraft }: SettingsTabProps) {
   const update = useUpdateDimensionVersion(versionId);
   const values = useMemo(() => version.data && toSettings(version.data), [version.data]);
   const form = useForm<DimensionVersionInput>({ values });
+  const { submit, problem } = useProblemSubmit(form, update.mutateAsync);
 
   if (version.isPending) {
     return <Loading size="sm" />;
@@ -30,21 +31,17 @@ export function SettingsTab({ versionId, isRange, isDraft }: SettingsTabProps) {
     return <ApiErrorAlert error={version.error} />;
   }
 
-  function save(next: DimensionVersionInput) {
-    update.mutate(next, { onError: error => showFieldErrors(form, error) });
-  }
-
   return (
     <FormProvider {...form}>
       <FormReadOnlyContext value={!isDraft}>
-        <form data-slot="settings-tab" className="max-w-xl space-y-5" onSubmit={form.handleSubmit(save)}>
+        <form data-slot="settings-tab" className="max-w-xl space-y-5" onSubmit={submit}>
           <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
             <dt className="text-muted-foreground">Status</dt>
             <dd>
               <StatusBadge status={version.data.status} />
             </dd>
             <dt className="text-muted-foreground">Published at</dt>
-            <dd>{formatTime(version.data.publishedAt)}</dd>
+            <dd>{formatDateTime(version.data.publishedAt)}</dd>
           </dl>
           {(isRange || version.data.rangeDataType) && (
             <VocabularyField
@@ -65,7 +62,7 @@ export function SettingsTab({ versionId, isRange, isDraft }: SettingsTabProps) {
             label="Valid to"
             description="Exclusive end; empty means open-ended. Publishing a later version closes it."
           />
-          <ApiErrorAlert error={update.error} />
+          <ApiErrorAlert error={problem} />
           {isDraft && (
             <Button type="submit" disabled={!form.formState.isDirty || update.isPending}>
               <Save />
@@ -84,11 +81,4 @@ function toSettings(version: DimensionVersion): DimensionVersionInput {
     validFrom: version.validFrom ?? null,
     validTo: version.validTo ?? null,
   };
-}
-
-function formatTime(time: string | null | undefined) {
-  if (!time) {
-    return '—';
-  }
-  return format(new Date(time), 'yyyy-MM-dd HH:mm');
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -28,7 +29,7 @@ public sealed class FieldsController(
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<FieldRecord>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await fields.ListAsync(versionId, cancellationToken));
@@ -47,7 +48,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Create(string tenantId, long versionId, FieldInput input, CancellationToken cancellationToken)
     {
@@ -69,7 +70,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{fieldId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Update(
         string tenantId,
@@ -96,8 +97,8 @@ public sealed class FieldsController(
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] FieldReference reference, CancellationToken cancellationToken)
     {
-        var refusal = await fields.DeleteAsync(reference, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Field is in use");
+        var conflict = await fields.DeleteAsync(reference, cancellationToken);
+        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }
 
@@ -117,7 +118,7 @@ public sealed class FieldsController(
     /// <response code="409">The version is not a draft.</response>
     [HttpPost("from-columns")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<FieldRecord>>> CreateFromColumns(
         string tenantId,

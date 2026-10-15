@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
@@ -11,12 +12,7 @@ public sealed class GrainInputValidator : AbstractValidator<GrainInput>
     /// <summary>Declares the rules.</summary>
     public GrainInputValidator()
     {
-        RuleFor(input => input.GrainKey)
-            .Cascade(CascadeMode.Stop)
-            .NotEmpty()
-            .MaximumLength(128)
-            .Matches(DatasetPatterns.Key())
-            .WithMessage(DatasetPatterns.KeyMessage);
+        RuleFor(input => input.GrainKey).Cascade(CascadeMode.Stop).MustBeKey(128);
         Include(new GrainUpdateInputValidator());
     }
 }

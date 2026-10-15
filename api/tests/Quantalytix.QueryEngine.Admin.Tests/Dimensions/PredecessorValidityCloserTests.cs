@@ -56,6 +56,7 @@ public sealed class PredecessorValidityCloserTests
         var workflow = new VersionWorkflow(
             new VersionStoreRegistry([new DimensionVersionStore(_versions)]),
             [],
+            [],
             [new PredecessorValidityCloser(_versions)],
             new SemanticRevision(_databaseInfo, _time),
             _time);

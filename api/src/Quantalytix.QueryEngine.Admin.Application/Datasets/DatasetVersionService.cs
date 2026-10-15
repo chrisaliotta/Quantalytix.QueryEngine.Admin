@@ -7,6 +7,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// <summary>Lists, creates, edits and deletes the versions of datasets. Status changes go through the version workflow.</summary>
 public sealed class DatasetVersionService(
     ITableGateway<DatasetVersionRecord> versions,
+    ITableGateway<ReleaseDatasetRecord> releaseDatasets,
+    ITableGateway<SemanticReleaseRecord> releases,
     DatasetVersionContentStore content,
     DatasetVersionCloner cloner,
     IIdGenerator ids)
@@ -85,6 +87,27 @@ public sealed class DatasetVersionService(
         };
         await versions.UpdateAsync(updated, cancellationToken);
         return updated;
+    }
+
+    /// <summary>
+    /// Deletes a draft version with all its content, unless a release manifest pins it: the manifest row would then name a
+    /// version that no longer exists.
+    /// </summary>
+    /// <param name="versionId">The draft version.</param>
+    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
+    /// <returns>Null when the version was deleted; otherwise the detail naming the releases that pin it.</returns>
+    public async Task<string?> DeleteDraftAsync(long versionId, CancellationToken cancellationToken)
+    {
+        var version = await GetAsync(versionId, cancellationToken);
+        var pins = await releaseDatasets.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
+        var pinning = await releases.ListAsync(new { ReleaseId = pins.Select(pin => pin.ReleaseId).ToArray() }, cancellationToken);
+        var blockers = new DeleteBlockers($"Dataset version v{version.VersionNumber}");
+        blockers.AddNamed("pinned by releases", pinning.Select(release => $"'{release.ReleaseKey}'"));
+        var conflict = blockers.Detail();
+        if (conflict is not null) return conflict;
+
+        await DeleteAsync([versionId], cancellationToken);
+        return null;
     }
 
     /// <summary>Deletes draft versions with all their content, children first.</summary>

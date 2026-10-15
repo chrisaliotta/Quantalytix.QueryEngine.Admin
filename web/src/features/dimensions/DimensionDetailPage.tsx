@@ -12,6 +12,7 @@ import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
+import { selectedVersion } from '@/shared/versionSelection';
 import { useDeleteDimension, useDeleteDimensionVersion, useDimension } from './api';
 import { DimensionIdentitySheet } from './DimensionIdentitySheet';
 import { LevelsTab } from './LevelsTab';
@@ -148,13 +149,4 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
       />
     </div>
   );
-}
-
-/** The version named by `?version=`, or the latest one when the parameter names none of the dimension's versions. */
-function selectedVersion(versions: LookupItem[], requested: string | null): LookupItem | null {
-  const match = versions.find(version => String(version.id) === requested);
-  if (match) {
-    return match;
-  }
-  return versions.at(-1) ?? null;
 }

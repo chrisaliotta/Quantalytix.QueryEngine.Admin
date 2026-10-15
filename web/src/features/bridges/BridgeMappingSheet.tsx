@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form';
-import { problemOnItem } from '@/features/mappings/bulkLists';
+import { problemOnItem } from '@/shared/bulkLists';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { EntityField, NumberField } from '@/shared/form';
 import { useReplaceBridgeMappings } from './api';

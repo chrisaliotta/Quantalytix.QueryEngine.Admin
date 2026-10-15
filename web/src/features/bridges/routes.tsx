@@ -1,24 +1,20 @@
 import type { RouteObject } from 'react-router';
 import type { RouteHandle } from '@/shared/routeHandle';
 import { BridgeCrumb } from './BridgeCrumb';
-import { BridgeListPage } from './BridgeListPage';
 
 /**
- * Bridges routes, mounted under `/t/:tenantId`: the list and one bridge (`?version=` selects the version). The detail
- * page loads on first visit.
+ * Bridges routes, mounted under `/t/:tenantId`: the list and one bridge (`?version=` selects the version). Each page
+ * loads on its first visit, as its own chunk.
  */
 export const bridgesRoutes: RouteObject[] = [
   {
     path: 'bridges',
     handle: { crumb: 'Bridges' } satisfies RouteHandle,
     children: [
-      { index: true, element: <BridgeListPage /> },
+      { index: true, lazy: { Component: async () => (await import('./BridgeListPage')).BridgeListPage } },
       {
         path: ':bridgeId',
-        lazy: async () => {
-          const { BridgeDetailPage } = await import('./BridgeDetailPage');
-          return { Component: BridgeDetailPage };
-        },
+        lazy: { Component: async () => (await import('./BridgeDetailPage')).BridgeDetailPage },
         handle: {
           crumb: match => <BridgeCrumb bridgeId={Number(match.params.bridgeId)} />,
         } satisfies RouteHandle,

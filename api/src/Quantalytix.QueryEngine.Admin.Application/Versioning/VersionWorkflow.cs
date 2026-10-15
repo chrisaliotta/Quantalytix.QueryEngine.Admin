@@ -5,12 +5,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
 /// Moves versions through their lifecycle: checks the transition, derives data and runs the publication rules when a
-/// version leaves draft, writes the status, cascades a publish and advances the semantic revision when published content
-/// reaches queries directly.
+/// version leaves draft, runs the retirement rules when a published version is retired, writes the status, cascades a
+/// publish and advances the semantic revision when published content reaches queries directly.
 /// </summary>
 public sealed class VersionWorkflow(
     VersionStoreRegistry stores,
-    IEnumerable<IPublicationRule> rules,
+    IEnumerable<IPublicationRule> publicationRules,
+    IEnumerable<IRetirementRule> retirementRules,
     IEnumerable<IVersionLifecycleHandler> handlers,
     SemanticRevision semanticRevision,
     TimeProvider time)
@@ -39,10 +40,17 @@ public sealed class VersionWorkflow(
         if (!VersionTransitions.IsAllowed(kind, current.Status, targetStatus))
             return new TransitionResult { Outcome = TransitionOutcome.NotAllowed, State = current, Violations = [] };
 
-        if (VersionTransitions.RunsRules(kind, current.Status, targetStatus))
+        if (VersionTransitions.RunsPublicationRules(kind, current.Status, targetStatus))
         {
             foreach (var handler in HandlersOf(kind)) await handler.OnValidatingAsync(id, cancellationToken);
-            var violations = await EvaluateRulesAsync(kind, id, cancellationToken);
+            var violations = await EvaluateRulesAsync(publicationRules, kind, id, cancellationToken);
+            if (violations.Count > 0)
+                return new TransitionResult { Outcome = TransitionOutcome.Rejected, State = current, Violations = violations };
+        }
+
+        if (VersionTransitions.RunsRetirementRules(current.Status, targetStatus))
+        {
+            var violations = await EvaluateRulesAsync(retirementRules, kind, id, cancellationToken);
             if (violations.Count > 0)
                 return new TransitionResult { Outcome = TransitionOutcome.Rejected, State = current, Violations = violations };
         }
@@ -70,8 +78,12 @@ public sealed class VersionWorkflow(
         return handlers.Where(handler => handler.Kind == kind);
     }
 
-    /// <summary>Runs every publication rule of a kind, one after another, and collects their violations.</summary>
-    private async Task<IReadOnlyList<RuleViolation>> EvaluateRulesAsync(string kind, long id, CancellationToken cancellationToken)
+    /// <summary>Runs every rule of a kind, one after another in registration order, and collects their violations.</summary>
+    private static async Task<IReadOnlyList<RuleViolation>> EvaluateRulesAsync(
+        IEnumerable<IVersionRule> rules,
+        string kind,
+        long id,
+        CancellationToken cancellationToken)
     {
         var violations = new List<RuleViolation>();
         foreach (var rule in rules.Where(rule => rule.Kind == kind)) violations.AddRange(await rule.EvaluateAsync(id, cancellationToken));

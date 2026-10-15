@@ -43,7 +43,7 @@
         "tags": [
           "VersionStatus"
         ],
-        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time.",
+        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its\nretirement rules, and publishing stamps the publication time.",
         "parameters": [
           {
             "name": "tenantId",
@@ -141,7 +141,7 @@
             }
           },
           "422": {
-            "description": "Publication rules rejected the version and its status is unchanged; `violations` lists why.",
+            "description": "Publication or retirement rules rejected the transition and the status is unchanged; `violations` lists why.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4842,7 +4842,7 @@
             }
           },
           "400": {
-            "description": "The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist.",
+            "description": "The clone source is not a version of this dataset, a clone names a source object, or an empty draft's source object does not exist.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5012,7 +5012,7 @@
         "tags": [
           "DatasetVersions"
         ],
-        "summary": "Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,\ndependencies and components, measures, time bindings, bindings and fields.",
+        "summary": "Deletes a draft dataset version that no release manifest pins, with all its content, children first: grain fields,\ngrains, measure time policies, dependencies and components, measures, time bindings, bindings and fields.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5056,7 +5056,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is not a draft, or a release manifest pins it; the detail names the releases.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8693,7 +8693,7 @@
               "null",
               "integer"
             ],
-            "description": "The version whose settings and content the new draft copies; null for an empty draft.",
+            "description": "A version of the same dataset whose settings and content the new draft copies; null for an empty draft.",
             "format": "int64"
           },
           "sourceObjectKind": {
@@ -10845,7 +10845,7 @@
               "null",
               "integer"
             ],
-            "description": "The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint\nversions; null for an empty draft.",
+            "description": "A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new\nendpoint versions; null for an empty draft.",
             "format": "int64"
           },
           "sourceDimensionVersionId": {
@@ -10925,7 +10925,7 @@
               "null",
               "integer"
             ],
-            "description": "The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.",
+            "description": "A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for\nan empty draft.",
             "format": "int64"
           },
           "rangeDataType": {
@@ -11035,7 +11035,7 @@
               "null",
               "integer"
             ],
-            "description": "The mapping version whose entries the draft copies, each moved to the member with the same key in\n`dimensionVersionId`; null for an empty draft.",
+            "description": "A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in\n`dimensionVersionId`; null for an empty draft.",
             "format": "int64"
           }
         },

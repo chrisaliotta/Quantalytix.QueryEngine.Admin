@@ -1,13 +1,14 @@
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
+using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
-/// Checks a new dataset version. A clone names an existing version and no source object, because it keeps its source's;
-/// an empty draft names a source object that the tenant database has, of the named kind.
+/// Checks a new dataset version. A clone names a version of the route's dataset and no source object, because it keeps its
+/// source's; an empty draft names a source object that the tenant database has, of the named kind.
 /// </summary>
 public sealed class DatasetVersionInputValidator : AbstractValidator<DatasetVersionInput>
 {
@@ -17,14 +18,15 @@ public sealed class DatasetVersionInputValidator : AbstractValidator<DatasetVers
     /// <summary>Declares the rules.</summary>
     /// <param name="versions">The tenant's dataset versions, which a clone source must be one of.</param>
     /// <param name="sourceObjects">The tenant's source objects.</param>
-    public DatasetVersionInputValidator(ITableGateway<DatasetVersionRecord> versions, SourceObjectService sourceObjects)
+    /// <param name="route">Names the dataset the new version belongs to.</param>
+    public DatasetVersionInputValidator(ITableGateway<DatasetVersionRecord> versions, SourceObjectService sourceObjects, IRequestRoute route)
     {
         When(input => input.CloneFromVersionId is not null, () =>
         {
             RuleFor(input => input.CloneFromVersionId)
                 .MustAsync(async (versionId, cancellationToken) =>
-                    (await versions.ListAsync(new { DatasetVersionId = versionId }, cancellationToken)).Count == 1)
-                .WithMessage(input => $"Dataset version {input.CloneFromVersionId} does not exist.");
+                    (await versions.ListAsync(new { DatasetVersionId = versionId, DatasetId = route.Id("datasetId") }, cancellationToken)).Count == 1)
+                .WithMessage(input => $"Dataset version {input.CloneFromVersionId} is not a version of this dataset.");
             RuleFor(input => input.SourceObjectKind).Null().WithMessage(CloneKeepsSourceMessage);
             RuleFor(input => input.SourceObject).Null().WithMessage(CloneKeepsSourceMessage);
         }).Otherwise(() =>

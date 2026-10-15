@@ -1,11 +1,12 @@
 import { Copy, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Combobox } from '@registry/components/Combobox';
 import { TruncatedText } from '@registry/components/TruncatedText';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
+import { lookupItemText } from './lookupItemText';
 import { StatusBadge } from './StatusBadge';
 import type { LookupItem, VersionKind, VersionStatus, VersionStatusResult } from './types';
 import { useVersionTransition } from './useVersionTransition';
@@ -25,6 +26,8 @@ export interface VersionHeaderProps {
   onDeleteVersion?: (id: number) => void;
   /** Called after a status change succeeded, e.g. to select or refetch the version. */
   onTransitioned?: (result: VersionStatusResult) => void;
+  /** Replaces the confirmation text of the transitions to these statuses, e.g. a warning before retiring a release. */
+  confirmDescriptions?: Partial<Record<VersionStatus, ReactNode>>;
 }
 
 type Confirmation = Omit<ConfirmDialogProps, 'open' | 'onOpenChange'>;
@@ -32,7 +35,7 @@ type Confirmation = Omit<ConfirmDialogProps, 'open' | 'onOpenChange'>;
 /**
  * Version picker for one versioned entity: status badge, the lifecycle actions valid for the
  * selected version, and create/clone actions. Rejected transitions (409, or 422 with rule
- * violations) are shown inline.
+ * violations) are shown inline while the version they were for stays selected.
  */
 export function VersionHeader({
   kind,
@@ -43,16 +46,13 @@ export function VersionHeader({
   onCloneVersion,
   onDeleteVersion,
   onTransitioned,
+  confirmDescriptions,
 }: VersionHeaderProps) {
   const transition = useVersionTransition(kind);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const selected = versions.find(version => version.id === selectedVersionId);
   const status = selected?.status as VersionStatus | undefined;
-
-  function selectVersion(id: number) {
-    transition.reset();
-    onSelectVersion(id);
-  }
+  const transitionError = transition.variables?.id === selectedVersionId ? transition.error : null;
 
   function requestTransition(version: LookupItem, action: VersionTransition) {
     const run = () =>
@@ -66,7 +66,8 @@ export function VersionHeader({
         }
       );
     if (action.confirm) {
-      setConfirmation({ ...action.confirm, confirmLabel: action.label, onConfirm: run });
+      const description = confirmDescriptions?.[action.to] ?? action.confirm.description;
+      setConfirmation({ ...action.confirm, description, confirmLabel: action.label, onConfirm: run });
       return;
     }
     run();
@@ -88,7 +89,7 @@ export function VersionHeader({
         <VersionPicker
           versions={versions}
           selectedVersionId={selectedVersionId}
-          onSelectVersion={selectVersion}
+          onSelectVersion={onSelectVersion}
         />
         {selected && status && (
           <>
@@ -132,7 +133,7 @@ export function VersionHeader({
           )}
         </div>
       </div>
-      <ApiErrorAlert error={transition.error} />
+      <ApiErrorAlert error={transitionError} />
       {confirmation && (
         <ConfirmDialog open onOpenChange={() => setConfirmation(null)} {...confirmation} />
       )}
@@ -152,7 +153,7 @@ function VersionPicker({
       size="sm"
       data={versions.map(version => ({
         value: String(version.id),
-        label: `${version.key} — ${version.label}`,
+        label: lookupItemText(version),
       }))}
       value={selectedVersionId === null ? '' : String(selectedVersionId)}
       onValueChange={value => onSelectVersion(Number(value))}

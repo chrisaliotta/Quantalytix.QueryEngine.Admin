@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
@@ -22,7 +23,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<DatasetRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<DatasetRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<DatasetRecord>>> List(string tenantId, CancellationToken cancellationToken)
     {
         return Ok(await datasets.ListAsync(cancellationToken));
@@ -38,7 +39,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Create(string tenantId, DatasetInput input, CancellationToken cancellationToken)
     {
@@ -54,7 +55,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{datasetId:long}")]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DatasetRecord>> Get(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
         return Ok(await datasets.GetAsync(datasetId, cancellationToken));
@@ -71,7 +72,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{datasetId:long}")]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Update(
         string tenantId,
@@ -96,8 +97,8 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
-        var refusal = await datasets.DeleteAsync(datasetId, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Dataset cannot be deleted");
+        var conflict = await datasets.DeleteAsync(datasetId, cancellationToken);
+        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }
 
@@ -110,7 +111,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{datasetId:long}/versions")]
-    [ProducesResponseType<IReadOnlyList<DatasetVersionRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<DatasetVersionRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<DatasetVersionRecord>>> ListVersions(
         string tenantId,
         long datasetId,
@@ -129,11 +130,11 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The new draft version.</returns>
     /// <response code="200">The new draft version.</response>
-    /// <response code="400">The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist.</response>
+    /// <response code="400">The clone source is not a version of this dataset, a clone names a source object, or an empty draft's source object does not exist.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{datasetId:long}/versions")]
-    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetVersionRecord>> CreateVersion(
         string tenantId,

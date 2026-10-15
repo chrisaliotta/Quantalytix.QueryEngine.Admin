@@ -10,9 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatDateTime } from '@/features/releases/formatDateTime';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { useLookup } from '@/shared/useLookup';
+import { formatDateTime } from '@/shared/utcTime';
 import { selectedDimensionIds } from './captureSelection';
 import type { AssumptionSet } from './types';
 import { useCaptureAssumptionPins } from './useAssumptionSets';

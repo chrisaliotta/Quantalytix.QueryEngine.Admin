@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
@@ -21,21 +20,6 @@ public sealed class DatasetVersionSettingsInputValidator : AbstractValidator<Dat
             .DependentRules(() => RuleFor(input => input.SourceObject).MustBeSourceObject(input => input.SourceObjectKind, sourceObjects));
         RuleFor(input => input.ExpressionLanguageVersion).NotEmpty().MustFitVarchar(32);
         RuleFor(input => input.SecurityPolicyKey).MustFitVarchar(128);
-        RuleFor(input => input.Properties).Must(BeJsonOrNull).WithMessage("'{PropertyName}' must be JSON text.");
-    }
-
-    /// <summary>Whether text is absent or parses as JSON.</summary>
-    private static bool BeJsonOrNull(string? text)
-    {
-        if (text is null) return true;
-        try
-        {
-            using var document = JsonDocument.Parse(text);
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+        RuleFor(input => input.Properties).MustBeJson();
     }
 }

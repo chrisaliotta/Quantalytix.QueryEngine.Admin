@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
+namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>Collects what blocks a delete and words the detail of the 409 answer, naming the blocking rows.</summary>
 /// <param name="subject">What is being deleted, such as <c>Member 'CA'</c>.</param>

@@ -11,9 +11,6 @@ internal static partial class DatasetPatterns
     /// <summary>The validation message of a value that does not match <see cref="DatasetKey"/>.</summary>
     public const string DatasetKeyMessage = "'{PropertyName}' must start with a letter or digit and contain only letters, digits, '_', '.' and '-'.";
 
-    /// <summary>The validation message of a value that does not match <see cref="Key"/>.</summary>
-    public const string KeyMessage = "'{PropertyName}' must start with a letter and contain only letters, digits and '_'.";
-
     /// <summary>The validation message of a value that does not match <see cref="ColumnName"/>.</summary>
     public const string ColumnNameMessage = "'{PropertyName}' must start with a letter or '_' and contain only letters, digits and '_'.";
 
@@ -24,11 +21,6 @@ internal static partial class DatasetPatterns
     /// <returns>The compiled pattern.</returns>
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_.-]*\z")]
     public static partial Regex DatasetKey();
-
-    /// <summary>A field or grain key: a letter, then letters, digits or <c>_</c>.</summary>
-    /// <returns>The compiled pattern.</returns>
-    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9_]*\z")]
-    public static partial Regex Key();
 
     /// <summary>A physical column name: a letter or <c>_</c>, then letters, digits or <c>_</c>.</summary>
     /// <returns>The compiled pattern.</returns>

@@ -12,8 +12,8 @@ import {
   EntityField,
   FormReadOnlyContext,
   NumberField,
-  showFieldErrors,
   SwitchField,
+  useProblemSubmit,
 } from '@/shared/form';
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
@@ -65,16 +65,14 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
   const values = useMemo(() => ({ bands: bands.map(toBandInput) }), [bands]);
   const form = useForm<BandsValues>({ values });
   const { fields, append, remove, move } = useFieldArray({ control: form.control, name: 'bands' });
-
-  function save(next: BandsValues) {
-    const saved = next.bands.map(band => withFamilyBounds(band, rangeDataType));
-    replace.mutate(saved, { onError: error => showFieldErrors(form, error) });
-  }
+  const { submit, problem } = useProblemSubmit(form, next =>
+    replace.mutateAsync(next.bands.map(band => withFamilyBounds(band, rangeDataType)))
+  );
 
   return (
     <FormProvider {...form}>
       <FormReadOnlyContext value={!isDraft}>
-        <form data-slot="range-bands-tab" className="space-y-3" onSubmit={form.handleSubmit(save)}>
+        <form data-slot="range-bands-tab" className="space-y-3" onSubmit={submit}>
           <p className="text-sm text-muted-foreground">
             Bands are evaluated in order, and each must start after the previous one ends. An empty bound is unbounded.
           </p>
@@ -136,7 +134,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
               ))}
             </div>
           </SortableRoot>
-          <ApiErrorAlert error={replace.error} />
+          <ApiErrorAlert error={problem} />
           {isDraft && (
             <div className="flex flex-wrap items-center gap-2">
               <Button

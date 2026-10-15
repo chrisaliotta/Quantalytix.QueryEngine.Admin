@@ -7,8 +7,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 public sealed record NewBridgeVersionInput : BridgeVersionInput
 {
     /// <summary>
-    /// The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint
-    /// versions; null for an empty draft.
+    /// A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new
+    /// endpoint versions; null for an empty draft.
     /// </summary>
     public long? CloneFromVersionId { get; init; }
 }

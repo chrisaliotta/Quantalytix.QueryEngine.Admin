@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
@@ -11,12 +12,7 @@ public sealed class FieldInputValidator : AbstractValidator<FieldInput>
     /// <summary>Declares the rules.</summary>
     public FieldInputValidator()
     {
-        RuleFor(input => input.FieldKey)
-            .Cascade(CascadeMode.Stop)
-            .NotEmpty()
-            .MaximumLength(128)
-            .Matches(DatasetPatterns.Key())
-            .WithMessage(DatasetPatterns.KeyMessage);
+        RuleFor(input => input.FieldKey).Cascade(CascadeMode.Stop).MustBeKey(128);
         Include(new FieldUpdateInputValidator());
     }
 }

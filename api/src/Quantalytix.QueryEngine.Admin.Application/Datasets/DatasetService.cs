@@ -74,25 +74,20 @@ public sealed class DatasetService(
     /// </summary>
     /// <param name="datasetId">The dataset.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the dataset was deleted; otherwise why it was kept, naming the versions or releases in the way.</returns>
+    /// <returns>Null when the dataset was deleted; otherwise the detail naming the versions and releases in the way.</returns>
     public async Task<string?> DeleteAsync(long datasetId, CancellationToken cancellationToken)
     {
         var dataset = await GetAsync(datasetId, cancellationToken);
         var datasetVersions = await versions.ListAsync(new { DatasetId = datasetId }, cancellationToken);
-        var kept = datasetVersions.Where(version => version.Status != PublicationStatuses.Draft).OrderBy(version => version.VersionNumber).ToList();
-        if (kept.Count > 0)
-        {
-            var listed = string.Join(", ", kept.Select(version => $"v{version.VersionNumber} is {version.Status}"));
-            return $"Dataset '{dataset.DatasetKey}' can only be deleted while all its versions are drafts: {listed}.";
-        }
-
         var memberships = await releaseDatasets.ListAsync(new { DatasetId = datasetId }, cancellationToken);
-        if (memberships.Count > 0)
-        {
-            var listing = await releases.ListAsync(new { ReleaseId = memberships.Select(row => row.ReleaseId).ToArray() }, cancellationToken);
-            var releaseKeys = string.Join(", ", listing.Select(release => $"'{release.ReleaseKey}'").Order(StringComparer.OrdinalIgnoreCase));
-            return $"Dataset '{dataset.DatasetKey}' is listed by releases {releaseKeys}; remove it from them first.";
-        }
+        var listing = await releases.ListAsync(new { ReleaseId = memberships.Select(row => row.ReleaseId).ToArray() }, cancellationToken);
+        var blockers = new DeleteBlockers($"Dataset '{dataset.DatasetKey}'");
+        blockers.AddNamed(
+            "it has non-draft versions",
+            datasetVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
+        blockers.AddNamed("listed by releases", listing.Select(release => $"'{release.ReleaseKey}'"));
+        var conflict = blockers.Detail();
+        if (conflict is not null) return conflict;
 
         await versionService.DeleteAsync([.. datasetVersions.Select(version => version.DatasetVersionId)], cancellationToken);
         await datasets.DeleteAsync(new { DatasetId = datasetId }, cancellationToken);

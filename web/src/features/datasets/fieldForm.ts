@@ -1,4 +1,4 @@
-import { emptyToNull } from './text';
+import { emptyToNull } from '@/shared/text';
 import type { Field, FieldInput, FieldUpdateInput, SourceColumn } from './types';
 
 /** Values of the field sheet; text inputs hold '' where the API takes null. */

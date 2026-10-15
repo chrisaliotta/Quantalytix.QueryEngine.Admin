@@ -46,8 +46,8 @@ export function readPastedLines<TRow>(
 
 /**
  * Puts a bulk replace's validation errors on one form field, each naming the pasted line of the item it concerns. The
- * API keys item errors by list index, such as `entries[3].sourceKeyValue`; a paste form has no field there, and
- * react-hook-form keeps an error on such a path and refuses every later submit.
+ * API keys item errors by list index, such as `entries[3].sourceKeyValue`, which a paste form has no field for and its
+ * user cannot match to a line.
  */
 export function problemOnLines(error: unknown, list: string, lineNumbers: number[], field: string): unknown {
   if (!(error instanceof ApiProblem) || !error.errors) {
@@ -65,15 +65,14 @@ export function problemOnLines(error: unknown, list: string, lineNumbers: number
 
 /**
  * Re-keys a bulk replace's validation errors for a form that edits the list item at `index`: that item's errors land
- * on the form's fields of the same names, and every other error moves under react-hook-form's `root`, which only the
- * summary shows and the next submit clears.
+ * on the form's fields of the same names, and every other error keeps its key for the summary.
  */
 export function problemOnItem(error: unknown, list: string, index: number): unknown {
   if (!(error instanceof ApiProblem) || !error.errors) {
     return error;
   }
   const errors = Object.fromEntries(
-    Object.entries(error.errors).map(([key, messages]) => [itemField(key, list, index), messages])
+    Object.entries(error.errors).map(([key, messages]) => [itemField(key, `${list}[${index}].`), messages])
   );
   return withErrors(error, errors);
 }
@@ -87,13 +86,12 @@ function itemIndex(key: string, list: string): number | null {
   return Number(match[2]);
 }
 
-/** The form path of an error key: the field of the edited item, or a path under `root` for any other key. */
-function itemField(key: string, list: string, index: number): string {
-  const prefix = `${list}[${index}].`;
-  if (key.startsWith(prefix)) {
-    return key.slice(prefix.length);
+/** The form path of an error key: the field of the edited item when the key has the item's prefix, otherwise the key. */
+function itemField(key: string, itemPrefix: string): string {
+  if (key.startsWith(itemPrefix)) {
+    return key.slice(itemPrefix.length);
   }
-  return `root.${key}`;
+  return key;
 }
 
 /** The same problem with other validation errors. */

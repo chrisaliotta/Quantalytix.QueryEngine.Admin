@@ -1,4 +1,4 @@
-import { BulkPasteDialog } from '@/features/mappings/BulkPasteDialog';
+import { BulkPasteDialog } from '@/shared/BulkPasteDialog';
 import type { LookupItem } from '@/shared/types';
 import { useReplaceBridgeMappings } from './api';
 import { MAPPING_LINE_FORMAT, readMappingLines, writeMappingLines } from './mappingLines';

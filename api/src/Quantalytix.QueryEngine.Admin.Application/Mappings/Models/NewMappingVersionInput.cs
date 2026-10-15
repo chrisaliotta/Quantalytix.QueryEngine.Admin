@@ -10,7 +10,7 @@ public sealed record NewMappingVersionInput
     public required long DimensionVersionId { get; init; }
 
     /// <summary>
-    /// The mapping version whose entries the draft copies, each moved to the member with the same key in
+    /// A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in
     /// <c>dimensionVersionId</c>; null for an empty draft.
     /// </summary>
     public long? CloneFromVersionId { get; init; }

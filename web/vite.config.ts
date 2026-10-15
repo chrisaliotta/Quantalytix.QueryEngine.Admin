@@ -19,5 +19,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
+    // A zone away from UTC, so a time shown or edited in local time instead of UTC fails on every machine.
+    env: { TZ: 'Asia/Tokyo' },
   },
 });

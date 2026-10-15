@@ -4,17 +4,17 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
-import { selectVersionId } from '@/features/datasets/versionSelection';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
+import { DroppedOnCloneAlert } from '@/shared/DroppedOnCloneAlert';
 import { PageHeader } from '@/shared/PageHeader';
 import { StatusBadge } from '@/shared/StatusBadge';
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
+import { selectedVersion } from '@/shared/versionSelection';
 import { useDeleteMappingSet, useDeleteMappingVersion, useMappingSet } from './api';
-import { DroppedOnCloneAlert } from './DroppedOnCloneAlert';
 import { MappingEntries } from './MappingEntries';
 import { MappingSetIdentitySheet } from './MappingSetIdentitySheet';
 import { NewMappingVersionDialog } from './NewMappingVersionDialog';
@@ -55,8 +55,8 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
 
   const versionItems = versions.data ?? [];
   const dimensionVersionItems = dimensionVersions.data ?? [];
-  const versionId = selectVersionId(versionItems, searchParams.get('version'));
-  const selected = versionItems.find(version => version.id === versionId) ?? null;
+  const selected = selectedVersion(versionItems, searchParams.get('version'));
+  const versionId = selected?.id ?? null;
   const pinned = dimensionVersionItems.find(version => version.id === selected?.parentId);
   const dimensionKey = dimensions.data?.find(dimension => dimension.id === mappingSet.dimensionId)?.key ?? '';
 
@@ -92,9 +92,7 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
       />
       <ApiErrorAlert error={deleteMappingSet.error} />
 
-      {/* Keyed by version: a rejected transition of one version must not stay on screen for the next. */}
       <VersionHeader
-        key={versionId}
         kind="mapping_version"
         versions={versionItems.map(version => ({ ...version, label: pinnedLabel(version, dimensionVersionItems) }))}
         selectedVersionId={versionId}
