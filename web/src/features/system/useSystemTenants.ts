@@ -2,16 +2,17 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
+import { tenantsQueryKey } from '@/shared/useTenants';
 import type { TenantCreateInput, TenantUpdateInput } from './types';
 
 /** Query key of the tenant directory; it is control-plane data, so it has no tenant segment. */
 const TENANT_DIRECTORY_KEY = ['system-tenants'] as const;
 
-/** Refreshes the directory and the tenant switcher's list (`useTenants`, key `['tenants']`) after a write. */
+/** Refreshes the directory and the tenant switcher's list (`useTenants`) after a write. */
 function invalidateTenantDirectory() {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: TENANT_DIRECTORY_KEY }),
-    queryClient.invalidateQueries({ queryKey: ['tenants'] }),
+    queryClient.invalidateQueries({ queryKey: tenantsQueryKey() }),
   ]);
 }
 
