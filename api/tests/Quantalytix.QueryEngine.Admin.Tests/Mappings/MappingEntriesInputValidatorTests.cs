@@ -9,8 +9,9 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Mappings;
 
 /// <summary>
 /// Confirms the bulk entry list check: source values are compared exactly, so <c>003000</c> and <c>3000</c> both pass, a
-/// value listed twice is rejected once by name, an empty value is rejected, and a member that does not exist is named. A
-/// bulk paste replaces every entry of the draft, so these are caught before anything is deleted.
+/// value listed twice is rejected once by name, an empty value is rejected, a value longer than its VARCHAR(512) column in
+/// UTF-8 bytes is rejected, and a member that does not exist is named. A bulk paste deletes every entry of the draft before
+/// it inserts the new list, so these are caught before anything is deleted.
 /// </summary>
 public sealed class MappingEntriesInputValidatorTests
 {
@@ -48,6 +49,20 @@ public sealed class MappingEntriesInputValidatorTests
         result.ShouldHaveValidationErrorFor("Entries[1].SourceKeyValue");
         result.ShouldHaveValidationErrorFor(input => input.Entries).WithErrorMessage("Member 9 does not exist.");
         Assert.Equal(2, result.Errors.Count);
+    }
+
+    /// <summary>
+    /// StarRocks counts the column's 512 in UTF-8 bytes: 257 two-byte characters fail on their entry, while 256 fill the
+    /// column exactly and pass.
+    /// </summary>
+    /// <returns>A task that completes when the validation is checked.</returns>
+    [Fact]
+    public async Task ValueLongerThanTheColumnInBytes_Fails()
+    {
+        var result = await ValidateAsync((new string('é', 256), 1), (new string('é', 257), 2));
+
+        result.ShouldHaveValidationErrorFor("Entries[1].SourceKeyValue");
+        Assert.Single(result.Errors);
     }
 
     /// <summary>Validates an entry list of the given source values and members.</summary>

@@ -1,6 +1,7 @@
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Measures;
@@ -14,9 +15,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 /// </summary>
 public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdateInput>
 {
-    /// <summary>The largest decimal precision StarRocks supports.</summary>
-    private const int MaxPrecision = 38;
-
     /// <summary>The message of an implementation attribute on a measure that is not specialized.</summary>
     private const string OnlySpecializedUses = "Only specialized measures name an implementation, so '{PropertyName}' must be empty.";
 
@@ -30,7 +28,7 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
     /// <summary>Declares the rules.</summary>
     public MeasureUpdateInputValidator()
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.MeasureKind).MustBeIn(MeasureKinds.Definition);
         RuleFor(input => input.AggregationFunction).MustBeIn(AggregationFunctions.Definition);
         RuleFor(input => input.ValueNullBehavior).MustBeIn(ValueNullBehaviors.Definition);
@@ -41,23 +39,18 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
         RuleFor(input => input.TotalBehavior).MustBeIn(TotalBehaviors.Definition);
         RuleFor(input => input.OutputDataType).MustBeIn(MeasureOutputDataTypes.Definition);
         RuleFor(input => input.RoundingMode).MustBeIn(RoundingModes.Definition);
-        RuleFor(input => input.UnitKey).MaximumLength(64);
-        RuleFor(input => input.ExpressionText).MaximumLength(8192);
+        RuleFor(input => input.UnitKey).MustFitVarchar(64);
+        RuleFor(input => input.ExpressionText).MustFitVarchar(8192);
         RuleFor(input => input.RowFilterExpression)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .MaximumLength(8192)
+            .MustFitVarchar(8192)
             .MustBeValidExpression()
             .Must(text => ExpressionInspector.Inspect(text!).MeasureKeys.Count == 0)
             .WithMessage("A row filter tests the fields of each source row, such as [f.status] = 'open'; it cannot reference measures.")
             .When(input => input.RowFilterExpression is not null);
-        RuleFor(input => input.AccumulatorPrecision).NotNull().InclusiveBetween(1, MaxPrecision);
-        RuleFor(input => input.AccumulatorScale)
-            .Cascade(CascadeMode.Stop)
-            .NotNull()
-            .GreaterThanOrEqualTo(0)
-            .Must((input, scale) => scale <= input.AccumulatorPrecision)
-            .WithMessage("'{PropertyName}' must not exceed the accumulator precision.");
+        RuleFor(input => input.AccumulatorPrecision).MustBeDecimalPrecision();
+        RuleFor(input => input.AccumulatorScale).MustBeDecimalScale(input => input.AccumulatorPrecision, "accumulator precision");
 
         RuleForEach(input => input.Components).SetValidator(new MeasureComponentInputValidator());
         RuleFor(input => input.Components)
@@ -101,8 +94,8 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
         });
         When(input => input.MeasureKind == MeasureKinds.Specialized, () =>
         {
-            RuleFor(input => input.ImplementationKey).NotEmpty().WithMessage(KindRequires(MeasureKinds.Specialized)).MaximumLength(128);
-            RuleFor(input => input.ImplementationVersion).NotEmpty().WithMessage(KindRequires(MeasureKinds.Specialized)).MaximumLength(32);
+            RuleFor(input => input.ImplementationKey).NotEmpty().WithMessage(KindRequires(MeasureKinds.Specialized)).MustFitVarchar(128);
+            RuleFor(input => input.ImplementationVersion).NotEmpty().WithMessage(KindRequires(MeasureKinds.Specialized)).MustFitVarchar(32);
             RuleFor(input => input.ConfigurationJson).MustBeJson();
         }).Otherwise(() =>
         {
@@ -113,13 +106,8 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
 
         When(input => input.OutputDataType == MeasureOutputDataTypes.Decimal, () =>
         {
-            RuleFor(input => input.OutputPrecision).NotNull().InclusiveBetween(1, MaxPrecision);
-            RuleFor(input => input.OutputScale)
-                .Cascade(CascadeMode.Stop)
-                .NotNull()
-                .GreaterThanOrEqualTo(0)
-                .Must((input, scale) => scale <= input.OutputPrecision)
-                .WithMessage("'{PropertyName}' must not exceed the output precision.");
+            RuleFor(input => input.OutputPrecision).MustBeDecimalPrecision();
+            RuleFor(input => input.OutputScale).MustBeDecimalScale(input => input.OutputPrecision, "output precision");
         }).Otherwise(() =>
         {
             RuleFor(input => input.OutputPrecision).Null().WithMessage("Only decimal outputs have a precision, so '{PropertyName}' must be empty.");

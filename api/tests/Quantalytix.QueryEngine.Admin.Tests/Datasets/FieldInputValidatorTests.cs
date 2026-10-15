@@ -76,7 +76,10 @@ public sealed class FieldInputValidatorTests
         _validator.TestValidate(input).ShouldHaveValidationErrorFor(field => field.ExpressionText);
     }
 
-    /// <summary>A decimal needs a precision of 1-38 and a scale from 0 up to the precision.</summary>
+    /// <summary>
+    /// A decimal needs a precision of 1-38 and a scale from 0 up to the precision. A missing precision is reported on the
+    /// precision alone, not also as a scale that exceeds it.
+    /// </summary>
     /// <param name="precision">The precision sent.</param>
     /// <param name="scale">The scale sent.</param>
     /// <param name="precisionFails">Whether the precision is rejected.</param>
@@ -86,6 +89,7 @@ public sealed class FieldInputValidatorTests
     [InlineData(38, 38, false, false)]
     [InlineData(1, 0, false, false)]
     [InlineData(null, null, true, true)]
+    [InlineData(null, 2, true, false)]
     [InlineData(0, 0, true, false)]
     [InlineData(39, 2, true, false)]
     [InlineData(10, 11, false, true)]

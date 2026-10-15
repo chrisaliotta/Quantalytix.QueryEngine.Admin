@@ -12,9 +12,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// </summary>
 public sealed class FieldUpdateInputValidator : AbstractValidator<FieldUpdateInput>
 {
-    /// <summary>The largest decimal precision StarRocks supports.</summary>
-    private const int MaxPrecision = 38;
-
     /// <summary>Declares the rules.</summary>
     public FieldUpdateInputValidator()
     {
@@ -59,13 +56,8 @@ public sealed class FieldUpdateInputValidator : AbstractValidator<FieldUpdateInp
 
         When(input => input.DataType == DataTypes.Decimal, () =>
         {
-            RuleFor(input => input.NumericPrecision).NotNull().InclusiveBetween(1, MaxPrecision);
-            RuleFor(input => input.NumericScale)
-                .Cascade(CascadeMode.Stop)
-                .NotNull()
-                .GreaterThanOrEqualTo(0)
-                .Must((input, scale) => scale <= input.NumericPrecision)
-                .WithMessage("'{PropertyName}' must not exceed the precision.");
+            RuleFor(input => input.NumericPrecision).MustBeDecimalPrecision();
+            RuleFor(input => input.NumericScale).MustBeDecimalScale(input => input.NumericPrecision, "precision");
         }).Otherwise(() =>
         {
             RuleFor(input => input.NumericPrecision).Null().WithMessage("Only decimal fields have a precision, so '{PropertyName}' must be empty.");

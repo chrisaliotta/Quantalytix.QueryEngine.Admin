@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
@@ -8,7 +9,7 @@ public sealed class MappingSetInputValidator : AbstractValidator<MappingSetInput
     /// <summary>Declares the rules.</summary>
     public MappingSetInputValidator()
     {
-        RuleFor(input => input.SourceNamespace).NotEmpty().MaximumLength(128);
-        RuleFor(input => input.DisplayName).NotEmpty().MaximumLength(256);
+        RuleFor(input => input.SourceNamespace).NotEmpty().MustFitVarchar(128);
+        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
     }
 }

@@ -158,7 +158,10 @@ public sealed class MeasureInputValidatorTests
         result.ShouldHaveValidationErrorFor(measure => measure.ConfigurationJson);
     }
 
-    /// <summary>A decimal output needs a precision of 1-38 and a scale from 0 up to the precision; other outputs carry neither.</summary>
+    /// <summary>
+    /// A decimal output needs a precision of 1-38 and a scale from 0 up to the precision; other outputs carry neither. A
+    /// missing precision is reported on the precision alone, not also as a scale that exceeds it.
+    /// </summary>
     /// <param name="dataType">The output data type sent.</param>
     /// <param name="precision">The output precision sent.</param>
     /// <param name="scale">The output scale sent.</param>
@@ -168,6 +171,7 @@ public sealed class MeasureInputValidatorTests
     [InlineData(MeasureOutputDataTypes.Decimal, 20, 2, false, false)]
     [InlineData(MeasureOutputDataTypes.Decimal, 38, 38, false, false)]
     [InlineData(MeasureOutputDataTypes.Decimal, null, null, true, true)]
+    [InlineData(MeasureOutputDataTypes.Decimal, null, 2, true, false)]
     [InlineData(MeasureOutputDataTypes.Decimal, 39, 2, true, false)]
     [InlineData(MeasureOutputDataTypes.Decimal, 10, 11, false, true)]
     [InlineData(MeasureOutputDataTypes.Int64, null, null, false, false)]
@@ -182,17 +186,23 @@ public sealed class MeasureInputValidatorTests
         Assert.Equal(scaleFails, HasError(result, nameof(MeasureInput.OutputScale)));
     }
 
-    /// <summary>The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it, both given.</summary>
+    /// <summary>
+    /// The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it, both given. A missing precision
+    /// is reported on the precision alone.
+    /// </summary>
     [Fact]
     public void Accumulator_MustBeAStarRocksDecimal()
     {
         var outOfRange = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = 39, AccumulatorScale = 40 });
         var missing = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = null, AccumulatorScale = null });
+        var precisionMissing = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = null });
 
         outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
         outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
         missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
         missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
+        precisionMissing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
+        precisionMissing.ShouldNotHaveValidationErrorFor(measure => measure.AccumulatorScale);
     }
 
     /// <summary>
