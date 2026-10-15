@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -90,8 +91,8 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] GrainReference reference, CancellationToken cancellationToken)
     {
-        var refusal = await grains.DeleteAsync(reference, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Grain is in use");
+        var conflict = await grains.DeleteAsync(reference, cancellationToken);
+        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }
 }

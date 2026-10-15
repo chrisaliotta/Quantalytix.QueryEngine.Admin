@@ -64,17 +64,16 @@ public sealed class GrainService(
     /// <summary>Deletes a grain that no measure time policy selects observations by: its fields first, then the grain.</summary>
     /// <param name="reference">The grain and its draft version.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the grain was deleted; otherwise why it was kept, naming the measures whose time policies use it.</returns>
+    /// <returns>Null when the grain was deleted; otherwise the detail naming the measures whose time policies use it.</returns>
     public async Task<string?> DeleteAsync(GrainReference reference, CancellationToken cancellationToken)
     {
         var grain = await grains.GetAsync(new { reference.GrainId }, cancellationToken);
         var policies = await timePolicies.ListAsync(new { SelectionGrainId = reference.GrainId }, cancellationToken);
-        if (policies.Count > 0)
-        {
-            var selecting = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
-            var measureKeys = string.Join(", ", selecting.Select(measure => $"'{measure.MeasureKey}'").Order(StringComparer.OrdinalIgnoreCase));
-            return $"Grain '{grain.GrainKey}' is the selection grain of the time policies of measures {measureKeys}.";
-        }
+        var selecting = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
+        var blockers = new DeleteBlockers($"Grain '{grain.GrainKey}'");
+        blockers.AddNamed("it is the selection grain of the time policies of measures", selecting.Select(measure => $"'{measure.MeasureKey}'"));
+        var conflict = blockers.Detail();
+        if (conflict is not null) return conflict;
 
         await grainFields.DeleteAsync(new { reference.GrainId }, cancellationToken);
         await grains.DeleteAsync(new { reference.GrainId }, cancellationToken);

@@ -47,12 +47,15 @@ public sealed class FieldService(ITableGateway<FieldRecord> fields, FieldUsage u
     /// <summary>Deletes a field that no grain, binding, time binding or measure component references.</summary>
     /// <param name="reference">The field and its draft version.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
-    /// <returns>Null when the field was deleted; otherwise why it was kept, naming the rows that reference it.</returns>
+    /// <returns>Null when the field was deleted; otherwise the detail naming the rows that reference it.</returns>
     public async Task<string?> DeleteAsync(FieldReference reference, CancellationToken cancellationToken)
     {
         var field = await fields.GetAsync(new { reference.FieldId }, cancellationToken);
-        var uses = await usage.ListAsync(field.FieldId, cancellationToken);
-        if (uses.Count > 0) return $"Field '{field.FieldKey}' is used by {string.Join(", ", uses)}; remove those references first.";
+        var blockers = new DeleteBlockers($"Field '{field.FieldKey}'");
+        blockers.AddNamed("it is used by", await usage.ListAsync(field.FieldId, cancellationToken));
+        var conflict = blockers.Detail();
+        if (conflict is not null) return conflict;
+
         await fields.DeleteAsync(new { reference.FieldId }, cancellationToken);
         return null;
     }

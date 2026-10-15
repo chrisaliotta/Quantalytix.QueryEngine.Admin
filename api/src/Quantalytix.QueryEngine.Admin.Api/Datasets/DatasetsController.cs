@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
@@ -96,8 +97,8 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
-        var refusal = await datasets.DeleteAsync(datasetId, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Dataset cannot be deleted");
+        var conflict = await datasets.DeleteAsync(datasetId, cancellationToken);
+        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }
 

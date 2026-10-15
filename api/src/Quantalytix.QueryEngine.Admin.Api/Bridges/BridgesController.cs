@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Dimensions;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
