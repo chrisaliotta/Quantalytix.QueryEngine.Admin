@@ -1,5 +1,6 @@
 import { Combobox } from '@registry/components/Combobox';
 import { ClearSelectionButton } from './ClearSelectionButton';
+import { lookupItemText } from './lookupItemText';
 import type { LookupItem, LookupKind } from './types';
 import { useLookup } from './useLookup';
 
@@ -17,7 +18,7 @@ export interface EntitySelectProps {
   placeholder?: string;
 }
 
-/** Searchable picker over lookup items, labelled `key — label`; the value is the item id. */
+/** Searchable picker over lookup items, labelled by key and label (`lookupItemText`); the value is the item id. */
 export function EntitySelect({
   lookupKind,
   parentId,
@@ -32,7 +33,7 @@ export function EntitySelect({
   const items = lookup.data ?? [];
   const options = (filter ? items.filter(filter) : items).map(item => ({
     value: String(item.id),
-    label: `${item.key} — ${item.label}`,
+    label: lookupItemText(item),
   }));
   const isWaitingForParent = parentId === null;
 

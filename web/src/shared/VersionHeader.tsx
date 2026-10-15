@@ -6,6 +6,7 @@ import { TruncatedText } from '@registry/components/TruncatedText';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
+import { lookupItemText } from './lookupItemText';
 import { StatusBadge } from './StatusBadge';
 import type { LookupItem, VersionKind, VersionStatus, VersionStatusResult } from './types';
 import { useVersionTransition } from './useVersionTransition';
@@ -152,7 +153,7 @@ function VersionPicker({
       size="sm"
       data={versions.map(version => ({
         value: String(version.id),
-        label: `${version.key} — ${version.label}`,
+        label: lookupItemText(version),
       }))}
       value={selectedVersionId === null ? '' : String(selectedVersionId)}
       onValueChange={value => onSelectVersion(Number(value))}
