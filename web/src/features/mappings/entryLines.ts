@@ -1,5 +1,5 @@
+import { readPastedLines, type PastedRows } from '@/shared/bulkLists';
 import type { LookupItem } from '@/shared/types';
-import { readPastedLines, type PastedRows } from './bulkLists';
 import type { MappingEntry, MappingEntryInput } from './types';
 
 /** The line format of pasted entries. */

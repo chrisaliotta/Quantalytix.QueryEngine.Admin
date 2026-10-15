@@ -1,9 +1,9 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
-import { FormFieldLayout, useFormField, type FormFieldProps } from '@/shared/form';
-import { FormDialog } from '@/shared/FormDialog';
 import { problemOnLines, type PastedRows, type UnresolvedLine } from './bulkLists';
+import { FormFieldLayout, useFormField, type FormFieldProps } from './form';
+import { FormDialog } from './FormDialog';
 
 interface BulkPasteValues {
   text: string;

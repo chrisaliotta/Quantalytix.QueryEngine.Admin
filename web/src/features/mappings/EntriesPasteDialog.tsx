@@ -1,6 +1,6 @@
+import { BulkPasteDialog } from '@/shared/BulkPasteDialog';
 import type { LookupItem } from '@/shared/types';
 import { useReplaceEntries } from './api';
-import { BulkPasteDialog } from './BulkPasteDialog';
 import { ENTRY_LINE_FORMAT, readEntryLines, writeEntryLines } from './entryLines';
 import type { MappingEntry } from './types';
 

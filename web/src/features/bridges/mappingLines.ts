@@ -1,4 +1,4 @@
-import { readPastedLines, type PastedRows } from '@/features/mappings/bulkLists';
+import { readPastedLines, type PastedRows } from '@/shared/bulkLists';
 import type { LookupItem } from '@/shared/types';
 import type { BridgeMapping, BridgeMappingInput } from './types';
 import { decimalText } from './weights';
