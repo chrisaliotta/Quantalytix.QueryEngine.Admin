@@ -6,6 +6,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// </summary>
 public sealed record NewDimensionVersionInput : DimensionVersionInput
 {
-    /// <summary>The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.</summary>
+    /// <summary>
+    /// A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for
+    /// an empty draft.
+    /// </summary>
     public long? CloneFromVersionId { get; init; }
 }

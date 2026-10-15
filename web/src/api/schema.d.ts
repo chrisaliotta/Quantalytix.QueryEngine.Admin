@@ -4068,7 +4068,7 @@ export interface paths {
                         "application/json": components["schemas"]["DatasetVersionRecord"];
                     };
                 };
-                /** @description The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist. */
+                /** @description The clone source is not a version of this dataset, a clone names a source object, or an empty draft's source object does not exist. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -6984,7 +6984,7 @@ export interface components {
         DatasetVersionInput: {
             /**
              * Format: int64
-             * @description The version whose settings and content the new draft copies; null for an empty draft.
+             * @description A version of the same dataset whose settings and content the new draft copies; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
             /** @description The `source_object_kind` of an empty draft's source object; null for a clone. */
@@ -7988,8 +7988,8 @@ export interface components {
         NewBridgeVersionInput: {
             /**
              * Format: int64
-             * @description The bridge version whose mappings the draft copies, each moved to the members with the same keys in the new endpoint
-             *     versions; null for an empty draft.
+             * @description A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new
+             *     endpoint versions; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
             /**
@@ -8037,7 +8037,8 @@ export interface components {
         NewDimensionVersionInput: {
             /**
              * Format: int64
-             * @description The version whose levels, members, range bands and mapping versions the new draft copies; null for an empty draft.
+             * @description A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for
+             *     an empty draft.
              */
             cloneFromVersionId?: null | number;
             /** @description A `range_data_type` value for a range dimension; null for every other kind. */
@@ -8095,7 +8096,7 @@ export interface components {
             dimensionVersionId: number;
             /**
              * Format: int64
-             * @description The mapping version whose entries the draft copies, each moved to the member with the same key in
+             * @description A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in
              *     `dimensionVersionId`; null for an empty draft.
              */
             cloneFromVersionId?: null | number;

@@ -130,7 +130,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The new draft version.</returns>
     /// <response code="200">The new draft version.</response>
-    /// <response code="400">The clone source does not exist, a clone names a source object, or an empty draft's source object does not exist.</response>
+    /// <response code="400">The clone source is not a version of this dataset, a clone names a source object, or an empty draft's source object does not exist.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{datasetId:long}/versions")]
