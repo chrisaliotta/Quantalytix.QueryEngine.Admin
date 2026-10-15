@@ -43,7 +43,7 @@
         "tags": [
           "VersionStatus"
         ],
-        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time.",
+        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its\nretirement rules, and publishing stamps the publication time.",
         "parameters": [
           {
             "name": "tenantId",
@@ -141,7 +141,7 @@
             }
           },
           "422": {
-            "description": "Publication rules rejected the version and its status is unchanged; `violations` lists why.",
+            "description": "Publication or retirement rules rejected the transition and the status is unchanged; `violations` lists why.",
             "content": {
               "application/problem+json": {
                 "schema": {

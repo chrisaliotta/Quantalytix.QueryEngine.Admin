@@ -67,6 +67,7 @@ public sealed class CurrentBridgeVersionUpdaterTests
         return new VersionWorkflow(
             new VersionStoreRegistry([new BridgeVersionStore(_versions)]),
             [],
+            [],
             [new CurrentBridgeVersionUpdater(_versions, _bridges)],
             new SemanticRevision(_databaseInfo, _time),
             _time);

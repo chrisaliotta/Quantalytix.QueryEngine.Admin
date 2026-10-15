@@ -194,7 +194,7 @@ public sealed class VersionWorkflowTests
             new DatasetVersionStore(_datasetVersions),
             new AssumptionSetStore(_assumptionSets)
         ]);
-        return new VersionWorkflow(stores, rules, handlers, new SemanticRevision(_databaseInfo, _time), _time);
+        return new VersionWorkflow(stores, rules, [], handlers, new SemanticRevision(_databaseInfo, _time), _time);
     }
 
     /// <summary>A rule of a kind that logs to this test's log and reports the given violations.</summary>

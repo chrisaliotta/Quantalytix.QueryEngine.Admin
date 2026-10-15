@@ -15,7 +15,8 @@ namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
 public sealed class VersionStatusController(VersionWorkflow workflow) : ControllerBase
 {
     /// <summary>
-    /// Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time.
+    /// Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its
+    /// retirement rules, and publishing stamps the publication time.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="version">The version's kind and ID.</param>
@@ -27,7 +28,7 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The lifecycle does not allow moving from the current status to the target; the detail names both.</response>
-    /// <response code="422">Publication rules rejected the version and its status is unchanged; <c>violations</c> lists why.</response>
+    /// <response code="422">Publication or retirement rules rejected the transition and the status is unchanged; <c>violations</c> lists why.</response>
     [HttpPut("{kind}/{id:long}/status")]
     [ProducesResponseType<VersionState>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

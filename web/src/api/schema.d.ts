@@ -57,7 +57,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Changes a version's status. Leaving draft runs the kind's publication rules; publishing stamps the publication time. */
+        /**
+         * Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its
+         *     retirement rules, and publishing stamps the publication time.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -124,7 +127,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Publication rules rejected the version and its status is unchanged; `violations` lists why. */
+                /** @description Publication or retirement rules rejected the transition and the status is unchanged; `violations` lists why. */
                 422: {
                     headers: {
                         [name: string]: unknown;

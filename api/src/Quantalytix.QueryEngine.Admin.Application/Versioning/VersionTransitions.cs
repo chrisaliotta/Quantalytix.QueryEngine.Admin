@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 /// <summary>
 /// The lifecycle every versioned kind follows. Most kinds move draft → validated → published → retired and may return
 /// from validated to draft; assumption sets have no validated state and move draft → published → retired. Leaving draft
-/// runs the publication rules.
+/// runs the publication rules, and retiring runs the retirement rules.
 /// </summary>
 public static class VersionTransitions
 {
@@ -38,9 +38,18 @@ public static class VersionTransitions
     /// <param name="from">The current status.</param>
     /// <param name="to">The target status.</param>
     /// <returns>True for draft → validated, and for draft → published of an assumption set.</returns>
-    public static bool RunsRules(string kind, string from, string to)
+    public static bool RunsPublicationRules(string kind, string from, string to)
     {
         if (kind == VersionKinds.AssumptionSet) return from == AssumptionSetStatuses.Draft && to == AssumptionSetStatuses.Published;
         return from == PublicationStatuses.Draft && to == PublicationStatuses.Validated;
+    }
+
+    /// <summary>Whether a transition runs the retirement rules before it applies; every kind retires the same way.</summary>
+    /// <param name="from">The current status.</param>
+    /// <param name="to">The target status.</param>
+    /// <returns>True for published → retired.</returns>
+    public static bool RunsRetirementRules(string from, string to)
+    {
+        return from == PublicationStatuses.Published && to == PublicationStatuses.Retired;
     }
 }
