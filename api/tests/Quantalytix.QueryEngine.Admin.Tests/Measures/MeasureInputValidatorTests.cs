@@ -93,17 +93,19 @@ public sealed class MeasureInputValidatorTests
         Assert.True(HasError(_validator.TestValidate(withoutField), "Components[0].FieldId"));
     }
 
-    /// <summary>A formula combines measures only: it parses, reads no fields, and has no components.</summary>
+    /// <summary>A formula combines measures only: it parses, reads no fields or request parameters, and has no components.</summary>
     [Fact]
     public void Formula_ReadsMeasuresOnlyAndHasNoComponents()
     {
         var readingFields = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] / [f.balance]", Components = [Component(ComponentRoles.Value, 1)] };
+        var readingParameters = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] * @scale" };
         var unparsable = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] /" };
         var empty = Measure(MeasureKinds.Formula) with { ExpressionText = null };
 
         var result = _validator.TestValidate(readingFields);
         result.ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
         result.ShouldHaveValidationErrorFor(measure => measure.Components).WithErrorMessage("'formula' measures take no 'value' component.");
+        _validator.TestValidate(readingParameters).ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
         _validator.TestValidate(unparsable).ShouldHaveValidationErrorFor(measure => measure.ExpressionText).WithErrorMessage(ExpressionError("[m.interest] /"));
         _validator.TestValidate(empty).ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
     }
@@ -117,12 +119,13 @@ public sealed class MeasureInputValidatorTests
         _validator.TestValidate(input).ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
     }
 
-    /// <summary>A row filter must parse and read fields only.</summary>
+    /// <summary>A row filter must parse and read fields only, never measures or request parameters.</summary>
     /// <param name="filter">The filter sent.</param>
     /// <param name="valid">Whether it is accepted.</param>
     [Theory]
     [InlineData("[f.status] = 'open'", true)]
     [InlineData("[f.balance] > [m.averageBalance]", false)]
+    [InlineData("[f.status] = @status", false)]
     [InlineData("[f.status] =", false)]
     [InlineData("", false)]
     public void RowFilter_MustParseAndReadFieldsOnly(string filter, bool valid)
