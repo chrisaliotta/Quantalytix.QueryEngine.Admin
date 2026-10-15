@@ -28,7 +28,7 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<MeasureDetail>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<MeasureDetail>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<MeasureDetail>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await measures.ListAsync(versionId, cancellationToken));
@@ -47,7 +47,7 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MeasureDetail>> Create(string tenantId, long versionId, MeasureInput input, CancellationToken cancellationToken)
     {
@@ -70,7 +70,7 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{measureId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MeasureDetail>> Update(
         string tenantId,

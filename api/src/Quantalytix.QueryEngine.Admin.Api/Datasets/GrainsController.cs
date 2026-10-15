@@ -25,7 +25,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<GrainDetail>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<GrainDetail>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<GrainDetail>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await grains.ListAsync(versionId, cancellationToken));
@@ -44,7 +44,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<GrainDetail>> Create(string tenantId, long versionId, GrainInput input, CancellationToken cancellationToken)
     {
@@ -64,7 +64,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{grainId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<GrainDetail>> Update(
         string tenantId,

@@ -23,7 +23,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<DatasetRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<DatasetRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<DatasetRecord>>> List(string tenantId, CancellationToken cancellationToken)
     {
         return Ok(await datasets.ListAsync(cancellationToken));
@@ -39,7 +39,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Create(string tenantId, DatasetInput input, CancellationToken cancellationToken)
     {
@@ -55,7 +55,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{datasetId:long}")]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DatasetRecord>> Get(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
         return Ok(await datasets.GetAsync(datasetId, cancellationToken));
@@ -72,7 +72,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{datasetId:long}")]
-    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Update(
         string tenantId,
@@ -111,7 +111,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{datasetId:long}/versions")]
-    [ProducesResponseType<IReadOnlyList<DatasetVersionRecord>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<DatasetVersionRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<DatasetVersionRecord>>> ListVersions(
         string tenantId,
         long datasetId,
@@ -134,7 +134,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{datasetId:long}/versions")]
-    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetVersionRecord>> CreateVersion(
         string tenantId,

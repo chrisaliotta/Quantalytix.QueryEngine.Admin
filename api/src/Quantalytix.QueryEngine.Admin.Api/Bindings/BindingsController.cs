@@ -28,7 +28,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<BindingDetail>>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<IReadOnlyList<BindingDetail>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<BindingDetail>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
     {
         return Ok(await bindings.ListAsync(versionId, cancellationToken));
@@ -47,7 +47,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BindingDetail>> Create(string tenantId, long versionId, BindingInput input, CancellationToken cancellationToken)
     {
@@ -70,7 +70,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     /// <response code="409">The version is not a draft.</response>
     [HttpPut("{bindingId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
-    [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BindingDetail>> Update(
         string tenantId,
