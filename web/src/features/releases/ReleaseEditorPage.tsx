@@ -1,8 +1,6 @@
-import { TriangleAlert } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { Loading } from '@registry/components/Loading';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
@@ -24,6 +22,10 @@ import {
   useReleases,
   useSaveReleaseDatasets,
 } from './useReleases';
+
+/** The Retire confirmation of the active release, which the API refuses to retire because queries run on it. */
+const ACTIVE_RELEASE_RETIREMENT =
+  'This is the active release, so queries use it and it cannot be retired. Activate another release first, then retire this one.';
 
 /**
  * One release: its lifecycle (validate, publish, retire, delete draft), activation, and the
@@ -71,8 +73,8 @@ export function ReleaseEditorPage() {
         onSelectVersion={id => navigate(`/t/${tenantId}/releases/${id}`)}
         onCloneVersion={sourceId => newRelease.open({ releaseKey: '', copyFromReleaseId: sourceId })}
         onDeleteVersion={id => deleteRelease.mutate(id, { onSuccess: () => navigate(`/t/${tenantId}/releases`) })}
+        confirmDescriptions={isActive ? { retired: ACTIVE_RELEASE_RETIREMENT } : undefined}
       />
-      {isActive && release.data?.status === 'published' && <ActiveReleaseRetireWarning />}
       <ApiErrorAlert error={release.error ?? activate.error ?? deleteRelease.error} />
       {release.data && <ManifestCard release={release.data} />}
       <NewReleaseSheet {...newRelease.sheetProps} />
@@ -99,20 +101,6 @@ function ReleaseActivation(props: {
       isPending={props.isPending}
       onActivate={() => props.onActivate(props.release)}
     />
-  );
-}
-
-/** Shown on the active release: retiring it would leave queries without a published active release. */
-function ActiveReleaseRetireWarning() {
-  return (
-    <Alert data-slot="active-release-retire-warning">
-      <TriangleAlert className="text-amber-500" />
-      <AlertTitle>This is the active release</AlertTitle>
-      <AlertDescription>
-        Queries use this release. Retiring it leaves the tenant without a published active release, so queries fail until
-        another release is activated. Activate another release before you retire this one.
-      </AlertDescription>
-    </Alert>
   );
 }
 

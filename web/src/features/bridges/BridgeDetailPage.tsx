@@ -107,9 +107,7 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
       />
       <ApiErrorAlert error={deleteBridge.error} />
 
-      {/* Keyed by version: a rejected transition of one version must not stay on screen for the next. */}
       <VersionHeader
-        key={versionId}
         kind="bridge_version"
         versions={versionItems.map(item => ({ ...item, label: versionLabel(item, bridge.currentBridgeVersionId) }))}
         selectedVersionId={versionId}

@@ -92,9 +92,7 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
       />
       <ApiErrorAlert error={deleteMappingSet.error} />
 
-      {/* Keyed by version: a rejected transition of one version must not stay on screen for the next. */}
       <VersionHeader
-        key={versionId}
         kind="mapping_version"
         versions={versionItems.map(version => ({ ...version, label: pinnedLabel(version, dimensionVersionItems) }))}
         selectedVersionId={versionId}
