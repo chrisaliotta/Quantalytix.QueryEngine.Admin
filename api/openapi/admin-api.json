@@ -5012,7 +5012,7 @@
         "tags": [
           "DatasetVersions"
         ],
-        "summary": "Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,\ndependencies and components, measures, time bindings, bindings and fields.",
+        "summary": "Deletes a draft dataset version that no release manifest pins, with all its content, children first: grain fields,\ngrains, measure time policies, dependencies and components, measures, time bindings, bindings and fields.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5056,7 +5056,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is not a draft, or a release manifest pins it; the detail names the releases.",
             "content": {
               "application/problem+json": {
                 "schema": {

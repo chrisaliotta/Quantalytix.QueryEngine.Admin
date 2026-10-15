@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -56,23 +57,24 @@ public sealed class DatasetVersionsController(DatasetVersionService versions) : 
     }
 
     /// <summary>
-    /// Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,
-    /// dependencies and components, measures, time bindings, bindings and fields.
+    /// Deletes a draft dataset version that no release manifest pins, with all its content, children first: grain fields,
+    /// grains, measure time policies, dependencies and components, measures, time bindings, bindings and fields.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="versionId">The draft dataset version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content.</returns>
+    /// <returns>No content; 409 when a release manifest pins the version.</returns>
     /// <response code="204">The draft and its content are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is not a draft, or a release manifest pins it; the detail names the releases.</response>
     [HttpDelete("{versionId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string tenantId, long versionId, CancellationToken cancellationToken)
     {
-        await versions.DeleteAsync([versionId], cancellationToken);
+        var conflict = await versions.DeleteDraftAsync(versionId, cancellationToken);
+        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }
 }

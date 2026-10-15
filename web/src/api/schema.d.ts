@@ -4223,8 +4223,8 @@ export interface paths {
         };
         post?: never;
         /**
-         * Deletes a draft dataset version with all its content, children first: grain fields, grains, measure time policies,
-         *     dependencies and components, measures, time bindings, bindings and fields.
+         * Deletes a draft dataset version that no release manifest pins, with all its content, children first: grain fields,
+         *     grains, measure time policies, dependencies and components, measures, time bindings, bindings and fields.
          */
         delete: {
             parameters: {
@@ -4265,7 +4265,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is not a draft, or a release manifest pins it; the detail names the releases. */
                 409: {
                     headers: {
                         [name: string]: unknown;
