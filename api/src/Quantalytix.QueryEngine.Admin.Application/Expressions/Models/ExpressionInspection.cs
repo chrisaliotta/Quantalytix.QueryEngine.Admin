@@ -18,6 +18,9 @@ public sealed record ExpressionInspection
     /// <summary>The distinct keys of the <c>[m.key]</c> measure references, in reading order.</summary>
     public required IReadOnlyList<string> MeasureKeys { get; init; }
 
+    /// <summary>The distinct keys of the <c>[d.key]</c> dimension member references, in reading order.</summary>
+    public required IReadOnlyList<string> DimensionKeys { get; init; }
+
     /// <summary>The distinct names of the <c>@name</c> request parameter references, without the <c>@</c>, in reading order.</summary>
     public required IReadOnlyList<string> ParameterNames { get; init; }
 }

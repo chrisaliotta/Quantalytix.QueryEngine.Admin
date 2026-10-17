@@ -24,6 +24,7 @@ builder.Services.AddDimensionsFeature();
 builder.Services.AddMappingsAndBridgesFeature();
 builder.Services.AddBindingsAndMeasuresFeature();
 builder.Services.AddReleasesAndSystemFeature();
+builder.Services.AddCalculationModelsAndReportsFeature();
 
 var app = builder.Build();
 

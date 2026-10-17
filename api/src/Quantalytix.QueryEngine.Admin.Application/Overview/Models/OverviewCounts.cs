@@ -21,6 +21,12 @@ public sealed record OverviewCounts
     /// <summary>The number of assumption sets, whatever their status.</summary>
     public required int AssumptionSets { get; init; }
 
+    /// <summary>The number of calculation models.</summary>
+    public required int CalculationModels { get; init; }
+
+    /// <summary>The number of reports.</summary>
+    public required int Reports { get; init; }
+
     /// <summary>The number of measures of the dataset versions the active release pins: the measures queries can use.</summary>
     public required int ActiveMeasures { get; init; }
 }

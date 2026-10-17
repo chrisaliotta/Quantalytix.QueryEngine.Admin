@@ -21,6 +21,12 @@ public static class VersionKinds
     /// <summary>Snapshot that pins exact dimension versions (<c>qe_assumption_set</c>).</summary>
     public const string AssumptionSet = "assumption_set";
 
+    /// <summary>Variables, sources, profiles, formulas and calculation dimensions of a model (<c>qe_calculation_model_version</c>).</summary>
+    public const string CalculationModelVersion = "calculation_model_version";
+
+    /// <summary>Lines, columns and defaults of a report over one model version (<c>qe_report_version</c>).</summary>
+    public const string ReportVersion = "report_version";
+
     /// <summary>The vocabulary's definition, as the web client and validators read it.</summary>
     public static readonly Vocabulary Definition = new()
     {
@@ -33,7 +39,13 @@ public static class VersionKinds
             new() { Value = MappingVersion, Description = "Source-code mapping content for one dimension version (qe_mapping_version)." },
             new() { Value = BridgeVersion, Description = "Pinned endpoints and assignments of a bridge (qe_bridge_version)." },
             new() { Value = SemanticRelease, Description = "Manifest of the structural semantic model (qe_semantic_release)." },
-            new() { Value = AssumptionSet, Description = "Snapshot that pins exact dimension versions (qe_assumption_set)." }
+            new() { Value = AssumptionSet, Description = "Snapshot that pins exact dimension versions (qe_assumption_set)." },
+            new()
+            {
+                Value = CalculationModelVersion,
+                Description = "Variables, sources, profiles, formulas and calculation dimensions of a model (qe_calculation_model_version)."
+            },
+            new() { Value = ReportVersion, Description = "Lines, columns and defaults of a report over one model version (qe_report_version)." }
         ]
     };
 }

@@ -18,7 +18,8 @@ public sealed class VersionWorkflow(
 {
     /// <summary>
     /// The kinds whose published content queries resolve without a release activation, so publishing or retiring one must
-    /// invalidate cached metadata. Dataset versions and releases reach queries only through release activation.
+    /// invalidate cached metadata. Dataset, calculation model and report versions, and releases, reach queries only through
+    /// the activated release that pins them.
     /// </summary>
     private static readonly FrozenSet<string> RevisionKinds = FrozenSet.Create(
         StringComparer.Ordinal,

@@ -46,6 +46,13 @@ public static class VocabularyCatalog
         Cardinalities.Definition,
         AllocationModes.Definition,
         ProviderIds.Definition,
+        SelectionScopes.Definition,
+        VariableMissingBehaviors.Definition,
+        CalculationValueKinds.Definition,
+        RouteKinds.Definition,
+        ReportLineKinds.Definition,
+        ReportValueKinds.Definition,
+        ClassificationTimes.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

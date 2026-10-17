@@ -11,4 +11,12 @@ public interface IRequestRoute
     /// <param name="placeholder">The placeholder's name, such as <c>datasetId</c>.</param>
     /// <returns>The ID.</returns>
     long Id(string placeholder);
+
+    /// <summary>
+    /// The ID a route placeholder holds, or null when the route has none, such as the item ID of an edit that a create route
+    /// lacks, so one rule can check both.
+    /// </summary>
+    /// <param name="placeholder">The placeholder's name, such as <c>itemId</c>.</param>
+    /// <returns>The ID, or null.</returns>
+    long? OptionalId(string placeholder);
 }

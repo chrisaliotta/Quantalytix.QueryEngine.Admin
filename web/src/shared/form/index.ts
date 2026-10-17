@@ -5,6 +5,7 @@ export { ExpressionField, type ExpressionFieldProps } from './ExpressionField';
 export { FormFieldLayout, type FormFieldLayoutProps } from './FormFieldLayout';
 export { FormReadOnlyContext } from './FormReadOnlyContext';
 export { JsonField } from './JsonField';
+export { KeyField, type KeyFieldProps } from './KeyField';
 export { MultiVocabularyField, type MultiVocabularyFieldProps } from './MultiVocabularyField';
 export { NumberField } from './NumberField';
 export { PasswordField } from './PasswordField';

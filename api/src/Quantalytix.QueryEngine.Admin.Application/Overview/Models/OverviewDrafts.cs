@@ -20,4 +20,10 @@ public sealed record OverviewDrafts
 
     /// <summary>Draft assumption sets.</summary>
     public required int AssumptionSets { get; init; }
+
+    /// <summary>Draft calculation model versions.</summary>
+    public required int ModelVersions { get; init; }
+
+    /// <summary>Draft report versions.</summary>
+    public required int ReportVersions { get; init; }
 }

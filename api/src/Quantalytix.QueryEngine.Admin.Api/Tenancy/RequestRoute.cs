@@ -14,4 +14,13 @@ public sealed class RequestRoute(IHttpContextAccessor httpContextAccessor) : IRe
         var value = (string)httpContextAccessor.HttpContext!.GetRouteValue(placeholder)!;
         return long.Parse(value, CultureInfo.InvariantCulture);
     }
+
+    /// <summary>The ID a route placeholder holds, or null when the route has none.</summary>
+    /// <param name="placeholder">The placeholder's name, such as <c>itemId</c>.</param>
+    /// <returns>The ID, or null.</returns>
+    public long? OptionalId(string placeholder)
+    {
+        if (httpContextAccessor.HttpContext!.GetRouteValue(placeholder) is not string value) return null;
+        return long.Parse(value, CultureInfo.InvariantCulture);
+    }
 }

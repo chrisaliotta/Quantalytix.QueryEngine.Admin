@@ -106,6 +106,34 @@ public sealed class OverviewTests
         AssumptionSet(301, AssumptionSetStatuses.Draft),
         AssumptionSet(302, AssumptionSetStatuses.Published));
 
+    /// <summary>One calculation model.</summary>
+    private readonly InMemoryTableGateway<CalculationModelRecord> _models = new(new CalculationModelRecord
+    {
+        ModelId = 401,
+        ModelKey = "yield",
+        DisplayName = "Yield",
+        IsEnabled = true
+    });
+
+    /// <summary>The model's published v1 and draft v2.</summary>
+    private readonly InMemoryTableGateway<CalculationModelVersionRecord> _modelVersions = new(
+        ModelVersion(411, PublicationStatuses.Published),
+        ModelVersion(412, PublicationStatuses.Draft));
+
+    /// <summary>Two reports.</summary>
+    private readonly InMemoryTableGateway<ReportRecord> _reports = new(Report(601), Report(602));
+
+    /// <summary>One draft report version.</summary>
+    private readonly InMemoryTableGateway<ReportVersionRecord> _reportVersions = new(new ReportVersionRecord
+    {
+        ReportVersionId = 611,
+        ReportId = 601,
+        VersionNumber = 1,
+        ReportDimensionId = 300,
+        ModelVersionId = 411,
+        Status = PublicationStatuses.Draft
+    });
+
     /// <summary>The overview reports the tenant's identity and active release, counts every identity row, and counts drafts per kind.</summary>
     /// <returns>A task that completes when the overview is checked.</returns>
     [Fact]
@@ -118,10 +146,31 @@ public sealed class OverviewTests
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
-            new OverviewCounts { Datasets = 2, Dimensions = 3, MappingSets = 1, Bridges = 1, Releases = 3, AssumptionSets = 2, ActiveMeasures = 3 },
+            new OverviewCounts
+            {
+                Datasets = 2,
+                Dimensions = 3,
+                MappingSets = 1,
+                Bridges = 1,
+                Releases = 3,
+                AssumptionSets = 2,
+                CalculationModels = 1,
+                Reports = 2,
+                ActiveMeasures = 3
+            },
             overview.Counts);
         Assert.Equal(
-            new OverviewDrafts { DatasetVersions = 2, DimensionVersions = 2, MappingVersions = 1, BridgeVersions = 0, Releases = 1, AssumptionSets = 1 },
+            new OverviewDrafts
+            {
+                DatasetVersions = 2,
+                DimensionVersions = 2,
+                MappingVersions = 1,
+                BridgeVersions = 0,
+                Releases = 1,
+                AssumptionSets = 1,
+                ModelVersions = 1,
+                ReportVersions = 1
+            },
             overview.Drafts);
     }
 
@@ -152,7 +201,11 @@ public sealed class OverviewTests
             _mappingVersions,
             _bridges,
             _bridgeVersions,
-            _assumptionSets);
+            _assumptionSets,
+            _models,
+            _modelVersions,
+            _reports,
+            _reportVersions);
     }
 
     /// <summary>The sandbox tenant's database info, pointing at the given active release.</summary>
@@ -167,6 +220,27 @@ public sealed class OverviewTests
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created
         };
+    }
+
+    /// <summary>A version of the yield model.</summary>
+    private static CalculationModelVersionRecord ModelVersion(long modelVersionId, string status)
+    {
+        return new CalculationModelVersionRecord
+        {
+            ModelVersionId = modelVersionId,
+            ModelId = 401,
+            VersionNumber = (int)(modelVersionId % 10),
+            Status = status,
+            CalendarKey = "gregorian",
+            CurrencyCode = "USD",
+            FormulaLanguageVersion = "1.0"
+        };
+    }
+
+    /// <summary>A report.</summary>
+    private static ReportRecord Report(long reportId)
+    {
+        return new ReportRecord { ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", IsEnabled = true };
     }
 
     /// <summary>A release.</summary>

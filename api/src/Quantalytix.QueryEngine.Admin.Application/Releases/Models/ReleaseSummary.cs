@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
-/// <summary>A semantic release as the release list shows it: the row, whether it is the active release, and the size of its manifest.</summary>
+/// <summary>A semantic release as the release list shows it: the row, whether it is the active release, and how much it pins.</summary>
 public sealed record ReleaseSummary
 {
     /// <summary>The release row.</summary>
@@ -13,4 +13,7 @@ public sealed record ReleaseSummary
 
     /// <summary>The number of datasets the release's manifest pins.</summary>
     public required int DatasetCount { get; init; }
+
+    /// <summary>The number of reports the release pins.</summary>
+    public required int ReportCount { get; init; }
 }

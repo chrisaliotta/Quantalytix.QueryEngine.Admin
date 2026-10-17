@@ -11,9 +11,9 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class ReleasesAndSystemFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Releases and System slice's services, publication rules and retirement rule, all scoped: releases and
-    /// their activation, assumption sets, the tenant overview, and the tenant directory with its connection verification and
-    /// masking. The slice has no lifecycle handlers.
+    /// Registers the Releases and System slice's services, publication rules and retirement rule, all scoped: releases with
+    /// their report pins and activation, assumption sets, the tenant overview, and the tenant directory with its connection
+    /// verification and masking. The slice has no lifecycle handlers.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -28,6 +28,11 @@ public static class ReleasesAndSystemFeatureServiceCollectionExtensions
         services.AddScoped<IPublicationRule, BoundDimensionsResolvableRule>();
         services.AddScoped<IPublicationRule, MappedBindingsResolvableRule>();
         services.AddScoped<IPublicationRule, BridgeBindingsResolvableRule>();
+        services.AddScoped<ReleaseReportReader>();
+        services.AddScoped<IPublicationRule, PinnedReportVersionPublishedRule>();
+        services.AddScoped<IPublicationRule, ReportSourcesResolveRule>();
+        services.AddScoped<IPublicationRule, ReportItemVersionRule>();
+        services.AddScoped<IPublicationRule, CalculationRoutesResolveRule>();
         services.AddScoped<IRetirementRule, ReleaseNotActiveRule>();
 
         services.AddScoped<AssumptionSetService>();

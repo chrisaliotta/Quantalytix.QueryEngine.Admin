@@ -1,0 +1,57 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+
+namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+
+/// <summary>Lists and replaces the columns of report versions: the model metrics a report returns, in order.</summary>
+[ApiController]
+[Route("api/tenants/{tenantId}/report-versions/{versionId:long}/columns")]
+[Authorize(Policy = AdminPolicies.TenantAccess)]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+public sealed class ReportColumnsController(ReportColumnService columns) : ControllerBase
+{
+    /// <summary>Lists a report version's columns in display order.</summary>
+    /// <param name="tenantId">The tenant that owns the version.</param>
+    /// <param name="versionId">The report version.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The columns.</returns>
+    /// <response code="200">The columns in display order.</response>
+    /// <response code="401">The request has no valid bearer token.</response>
+    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<ReportColumnRecord>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ReportColumnRecord>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
+    {
+        return Ok(await columns.ListAsync(versionId, cancellationToken));
+    }
+
+    /// <summary>Replaces a draft report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid.</summary>
+    /// <param name="tenantId">The tenant that owns the version.</param>
+    /// <param name="versionId">The draft report version.</param>
+    /// <param name="input">The complete columns.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The stored columns.</returns>
+    /// <response code="200">The columns in display order.</response>
+    /// <response code="400">A column key is reserved or repeated, a metric is not in the model version, or a line still names a removed column; errors are keyed by camelCase JSON path.</response>
+    /// <response code="401">The request has no valid bearer token.</response>
+    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
+    /// <response code="409">The version is not a draft.</response>
+    [HttpPut]
+    [RequireDraft(VersionKinds.ReportVersion, "versionId")]
+    [ProducesResponseType<IReadOnlyList<ReportColumnRecord>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    public async Task<ActionResult<IReadOnlyList<ReportColumnRecord>>> Replace(
+        string tenantId,
+        long versionId,
+        ReportColumnsInput input,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await columns.ReplaceAsync(versionId, input, cancellationToken));
+    }
+}

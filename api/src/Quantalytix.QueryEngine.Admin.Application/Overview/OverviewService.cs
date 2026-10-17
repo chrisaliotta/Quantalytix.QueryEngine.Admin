@@ -17,7 +17,11 @@ public sealed class OverviewService(
     ITableGateway<MappingVersionRecord> mappingVersions,
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> bridgeVersions,
-    ITableGateway<AssumptionSetRecord> assumptionSets)
+    ITableGateway<AssumptionSetRecord> assumptionSets,
+    ITableGateway<CalculationModelRecord> models,
+    ITableGateway<CalculationModelVersionRecord> modelVersions,
+    ITableGateway<ReportRecord> reports,
+    ITableGateway<ReportVersionRecord> reportVersions)
 {
     /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
     private const int SingletonId = 1;
@@ -45,6 +49,8 @@ public sealed class OverviewService(
                 Bridges = (await bridges.ListAsync(null, cancellationToken)).Count,
                 Releases = releaseRows.Count,
                 AssumptionSets = assumptionSetRows.Count,
+                CalculationModels = (await models.ListAsync(null, cancellationToken)).Count,
+                Reports = (await reports.ListAsync(null, cancellationToken)).Count,
                 ActiveMeasures = await CountActiveMeasuresAsync(info.ActiveReleaseId, cancellationToken)
             },
             Drafts = new OverviewDrafts
@@ -54,7 +60,9 @@ public sealed class OverviewService(
                 MappingVersions = (await mappingVersions.ListAsync(drafts, cancellationToken)).Count,
                 BridgeVersions = (await bridgeVersions.ListAsync(drafts, cancellationToken)).Count,
                 Releases = releaseRows.Count(release => release.Status == PublicationStatuses.Draft),
-                AssumptionSets = assumptionSetRows.Count(set => set.Status == AssumptionSetStatuses.Draft)
+                AssumptionSets = assumptionSetRows.Count(set => set.Status == AssumptionSetStatuses.Draft),
+                ModelVersions = (await modelVersions.ListAsync(drafts, cancellationToken)).Count,
+                ReportVersions = (await reportVersions.ListAsync(drafts, cancellationToken)).Count
             }
         };
     }

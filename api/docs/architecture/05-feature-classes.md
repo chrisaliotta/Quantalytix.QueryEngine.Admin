@@ -526,7 +526,7 @@ Every save derives the dependency rows of every formula of the version again, be
 
 ## Releases and overview
 
-The drawing shows semantic releases, their manifests of pinned dataset versions, activation, and the tenant overview. It matters because activation is the only way a dataset version reaches queries.
+The drawing shows semantic releases, their manifests of pinned dataset versions and their report pins, activation, and the tenant overview. It matters because activation is the only way a dataset or report version reaches queries, and the release rules are where a report's keys are checked against the dataset versions they will resolve in.
 
 ```mermaid
 classDiagram
@@ -539,6 +539,8 @@ classDiagram
         +DeleteAsync(releaseId, cancellationToken)
         +ListDatasetsAsync(releaseId, cancellationToken)
         +ReplaceDatasetsAsync(releaseId, input, cancellationToken)
+        +ListReportsAsync(releaseId, cancellationToken)
+        +ReplaceReportsAsync(releaseId, input, cancellationToken)
     }
     class ReleaseActivator {
         +ActivateAsync(releaseId, cancellationToken) Task~ReleaseActivationResult~
@@ -552,6 +554,15 @@ classDiagram
     class ReleaseManifestReader {
         +ListDatasetsAsync(releaseId, cancellationToken)
         +ListBindingsAsync(releaseId, cancellationToken)
+    }
+    class ReleaseReportReader {
+        +ReadAsync(releaseId, cancellationToken) Task~ReleaseReports~
+    }
+    class ReleaseReports {
+        <<record>>
+        +Reports
+        +Datasets
+        +SelectedVersion(binding) long
     }
     class OverviewService {
         +GetAsync(cancellationToken) Task~TenantOverview~
@@ -584,24 +595,35 @@ classDiagram
     BoundDimensionsResolvableRule --> ReleaseManifestReader
     MappedBindingsResolvableRule --> ReleaseManifestReader
     BridgeBindingsResolvableRule --> ReleaseManifestReader
+    IPublicationRule <|.. PinnedReportVersionPublishedRule
+    IPublicationRule <|.. ReportSourcesResolveRule
+    IPublicationRule <|.. ReportItemVersionRule
+    IPublicationRule <|.. CalculationRoutesResolveRule
+    PinnedReportVersionPublishedRule --> ReleaseReportReader
+    ReportSourcesResolveRule --> ReleaseReportReader
+    ReportItemVersionRule --> ReleaseReportReader
+    CalculationRoutesResolveRule --> ReleaseReportReader
+    ReleaseReportReader ..> ReleaseReports : returns
 ```
 
-- **Routes:** `api/tenants/{tenantId}/releases` (`ReleasesController`, including `{releaseId:long}/datasets` and `{releaseId:long}/activate`), `api/tenants/{tenantId}/overview` (`OverviewController`).
-- **Publication rules** (`semantic_release`): `manifest_not_empty` (`ManifestNotEmptyRule`), `pinned_version_belongs_to_dataset` (`PinnedVersionBelongsToDatasetRule`), `pinned_version_published` (`PinnedDatasetVersionPublishedRule`), `bound_dimensions_resolvable` (`BoundDimensionsResolvableRule`), `mapped_bindings_resolvable` (`MappedBindingsResolvableRule`), `bridge_bindings_resolvable` (`BridgeBindingsResolvableRule`).
+- **Routes:** `api/tenants/{tenantId}/releases` (`ReleasesController`, including `{releaseId:long}/datasets`, `{releaseId:long}/reports` and `{releaseId:long}/activate`), `api/tenants/{tenantId}/overview` (`OverviewController`).
+- **Publication rules** (`semantic_release`): `manifest_not_empty` (`ManifestNotEmptyRule`), `pinned_version_belongs_to_dataset` (`PinnedVersionBelongsToDatasetRule`), `pinned_version_published` (`PinnedDatasetVersionPublishedRule`), `bound_dimensions_resolvable` (`BoundDimensionsResolvableRule`), `mapped_bindings_resolvable` (`MappedBindingsResolvableRule`), `bridge_bindings_resolvable` (`BridgeBindingsResolvableRule`), `pinned_report_version_published` (`PinnedReportVersionPublishedRule`), `report_sources_resolve` (`ReportSourcesResolveRule`), `report_item_version_consistent` (`ReportItemVersionRule`), `calculation_routes_resolve` (`CalculationRoutesResolveRule`).
 - **Retirement rules:** `release_not_active` (`ReleaseNotActiveRule`). **Lifecycle handlers:** none.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
-A release is created as a draft, optionally with a copy of another release's manifest. Validating, publishing and retiring go through the version status endpoint with kind `semantic_release`; activation has its own endpoint, refuses a release that is not published, and advances the semantic revision. `OverviewService` only reads: the tenant's identity, schema version, revision and active release, counts, and drafts in progress.
+A release is created as a draft, optionally with a copy of another release's manifest and report pins. A report pin names a report and one of its versions; the input check accepts each report once, and the release rules do the rest. `ReleaseReportReader` loads each pinned report version with the content of the model version it reads, and the fields, bindings, time bindings and measures of every dataset version the release pins. The four report rules then check that each pinned version is published; that every enabled source reads a pinned dataset whose version resolves the source's report field (a member-grouped classification into the report dimension, pinned to one version), time field, measure and filter fields; that a report's sources share one report-item version, with one root, holding every line and target member; and that every route produces its calculation dimension, with one version selection per dimension. A bridge binding's selection is its bridge version's target. Validating, publishing and retiring go through the version status endpoint with kind `semantic_release`; activation has its own endpoint, refuses a release that is not published, and advances the semantic revision. `OverviewService` only reads: the tenant's identity, schema version, revision and active release, counts, and drafts in progress.
 
 | Class | Records |
 | --- | --- |
-| `ReleaseService` | `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `DatabaseInfoRecord` |
+| `ReleaseService` | `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `ReleaseReportRecord`, `DatabaseInfoRecord` |
+| `ReleaseReportReader` | `ReleaseReportRecord`, `ReleaseDatasetRecord`, `ReportRecord`, `ReportVersionRecord`, `ReportLineRecord`, `VariableRecord`, `VariableSourceRecord`, `CalculationDimensionRecord`, `CalculationRouteRecord`, `DatasetRecord`, `FieldRecord`, `DimensionBindingRecord`, `TimeBindingRecord`, `MeasureRecord`, `BridgeVersionRecord` |
+| `ReportItemVersionRule` | `DimensionMemberRecord`, besides the reader |
 | `ReleaseActivator` | `SemanticReleaseRecord`, `DatabaseInfoRecord` |
 | `ReleaseManifestReader` | `ReleaseDatasetRecord`, `DatasetRecord`, `DimensionBindingRecord` |
 | `ReleaseNotActiveRule` | `DatabaseInfoRecord`, `SemanticReleaseRecord` |
-| `OverviewService` | `DatabaseInfoRecord`, `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `DatasetVersionRecord`, `MeasureRecord`, `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `AssumptionSetRecord` |
+| `OverviewService` | `DatabaseInfoRecord`, `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `DatasetVersionRecord`, `MeasureRecord`, `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `AssumptionSetRecord`, `CalculationModelRecord`, `CalculationModelVersionRecord`, `ReportRecord`, `ReportVersionRecord` |
 
-**Sources:** [ReleasesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Releases/ReleasesController.cs), [OverviewController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Overview/OverviewController.cs), [ReleaseService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [ReleaseActivationResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/Models/ReleaseActivationResult.cs), [ReleaseManifestReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseManifestReader.cs), [ReleaseNotActiveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseNotActiveRule.cs), [release rules](../../src/Quantalytix.QueryEngine.Admin.Application/Releases), [OverviewService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Overview/OverviewService.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
+**Sources:** [ReleasesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Releases/ReleasesController.cs), [OverviewController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Overview/OverviewController.cs), [ReleaseService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [ReleaseActivationResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/Models/ReleaseActivationResult.cs), [ReleaseManifestReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseManifestReader.cs), [ReleaseNotActiveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseNotActiveRule.cs), [ReleaseReportReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseReportReader.cs), [release rules](../../src/Quantalytix.QueryEngine.Admin.Application/Releases), [OverviewService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Overview/OverviewService.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
 ## Assumption sets
 
@@ -720,7 +742,7 @@ classDiagram
 - **Publication rules, retirement rules and lifecycle handlers:** none; tenant directory rows are not versioned.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), which also maps `ITenantDatabaseVerifier` to `TenantDatabaseVerifier` and `IConnectionStringMasker` to `ConnectionStringMasker`.
 
-A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens and its database's `qe_database_info` names the tenant and has metadata schema version 4. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
+A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens and its database's `qe_database_info` names the tenant and has metadata schema version 7. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
 
 | Class | Records |
 | --- | --- |
@@ -728,3 +750,143 @@ A connection string is external input, so it is verified whenever one is supplie
 | `TenantCreateInputValidator` | `TenantDirectoryRecord`, to check that the tenant ID is unused |
 
 **Sources:** [SystemTenantsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/SystemTenants/SystemTenantsController.cs), [SystemTenantService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/SystemTenantService.cs), [TenantConnectionVerification.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionVerification.cs), [ITenantDatabaseVerifier.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/ITenantDatabaseVerifier.cs), [IConnectionStringMasker.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/IConnectionStringMasker.cs), [TenantConnectionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionRuleExtensions.cs), [TenantCreateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantCreateInputValidator.cs), [TenantUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantUpdateInputValidator.cs), [TenantDatabaseVerifier.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/TenantVerification/TenantDatabaseVerifier.cs), [ConnectionStringMasker.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/TenantVerification/ConnectionStringMasker.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
+
+## Calculation models and reports
+
+The drawing shows the calculation-model slice and the report slice. A model version holds variables, their sources, source profiles, calculated measures, calculation dimensions and their routes; a report version reads one model version and holds its columns and line tree. It matters because everything a source or route names in a dataset is a key, so nothing here pins a dataset or dimension version: the release that pins a report version decides where its keys resolve, and the release rules above check them there.
+
+```mermaid
+classDiagram
+    direction TB
+    class CalculationModelsController
+    class CalculationModelVersionsController
+    class VariablesController
+    class VariableSourcesController
+    class SourceProfilesController
+    class CalculatedMeasuresController
+    class CalculationDimensionsController
+    class CalculationRoutesController
+    class ReportsController
+    class ReportVersionsController
+    class ReportColumnsController
+    class ReportLinesController
+    class IModelVersionContent~TItem, TInput~ {
+        <<interface>>
+        +ListAsync(versionId, cancellationToken)
+        +BelongsAsync(versionId, itemId, cancellationToken) Task~bool~
+        +CreateAsync(versionId, input, cancellationToken)
+        +UpdateAsync(versionId, itemId, input, cancellationToken)
+        +DeleteAsync(itemId, cancellationToken) Task~string~
+    }
+    class ModelVersionRows~TRecord, TInput~ {
+        <<abstract>>
+    }
+    class ModelItemReferenceValidator~TItem, TInput~
+    class CalculationModelService
+    class CalculationModelVersionService {
+        +CreateAsync(modelId, input, cancellationToken)
+        +RemoveAsync(versionIds, cancellationToken)
+        +ReportReadersAsync(versionIds, cancellationToken)
+    }
+    class ModelVersionCloner {
+        +CloneAsync(sourceVersionId, targetVersionId, cancellationToken)
+    }
+    class ModelContentRemover
+    class ReportUses
+    class ModelKeys
+    class ReportService
+    class ReportVersionService {
+        +CreateAsync(reportId, input, cancellationToken) Task~CreatedReportVersion~
+        +ReleaseNamesAsync(versionIds, cancellationToken)
+    }
+    class ReportVersionCloner {
+        +CloneAsync(sourceVersionId, target, cancellationToken) Task~CreatedReportVersion~
+    }
+    class ReportColumnService {
+        +ReplaceAsync(versionId, input, cancellationToken)
+    }
+    class ReportLineService {
+        +ReplaceAsync(versionId, input, cancellationToken)
+    }
+    class ModelMetricsReader {
+        +ReadAsync(modelVersionId, cancellationToken) Task~ModelMetrics~
+        +ReadForReportAsync(reportVersionId, cancellationToken) Task~ModelMetrics~
+    }
+    class IVersionLifecycleHandler {
+        <<interface>>
+    }
+    class IPublicationRule {
+        <<interface>>
+    }
+    CalculationModelsController --> CalculationModelService
+    CalculationModelVersionsController --> CalculationModelVersionService
+    VariablesController --> IModelVersionContent
+    VariableSourcesController --> IModelVersionContent
+    SourceProfilesController --> IModelVersionContent
+    CalculatedMeasuresController --> IModelVersionContent
+    CalculationDimensionsController --> IModelVersionContent
+    CalculationRoutesController --> IModelVersionContent
+    IModelVersionContent <|.. ModelVersionRows
+    IModelVersionContent <|.. SourceProfileService
+    ModelVersionRows <|-- VariableService
+    ModelVersionRows <|-- VariableSourceService
+    ModelVersionRows <|-- CalculatedMeasureService
+    ModelVersionRows <|-- CalculationDimensionService
+    ModelVersionRows <|-- CalculationRouteService
+    ModelItemReferenceValidator --> IModelVersionContent : BelongsAsync
+    CalculationModelService --> CalculationModelVersionService
+    CalculationModelVersionService --> ModelVersionCloner
+    CalculationModelVersionService --> ModelContentRemover
+    CalculationModelVersionService --> ReportUses
+    VariableService --> ModelContentRemover
+    VariableService --> ReportUses
+    SourceProfileService --> ReportUses
+    CalculatedMeasureService --> ReportUses
+    ReportsController --> ReportService
+    ReportVersionsController --> ReportVersionService
+    ReportColumnsController --> ReportColumnService
+    ReportLinesController --> ReportLineService
+    ReportService --> ReportVersionService
+    ReportService --> SemanticRevision
+    ReportVersionService --> ReportVersionCloner
+    ReportVersionCloner --> ModelMetricsReader
+    ReportColumnService --> ModelMetricsReader
+    ReportLineService --> ModelMetricsReader
+    IVersionLifecycleHandler <|.. CurrentModelVersionUpdater
+    IVersionLifecycleHandler <|.. CurrentReportVersionUpdater
+    IPublicationRule <|.. FormulaReferencesResolveRule
+    IPublicationRule <|.. FormulasAcyclicRule
+    IPublicationRule <|.. ProfilesCompleteRule
+    IPublicationRule <|.. ModelVersionPublishedRule
+    IPublicationRule <|.. DefaultProfileEnabledRule
+    IPublicationRule <|.. ReportDefaultsResolveRule
+    IPublicationRule <|.. ColumnKeysDistinctRule
+```
+
+- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`); under `api/tenants/{tenantId}`, `calculation-models/{modelId:long}/versions` and `model-versions/{versionId:long}` (`CalculationModelVersionsController`); under `api/tenants/{tenantId}/model-versions/{versionId:long}`, `variables` (`VariablesController`), `variable-sources` (`VariableSourcesController`), `profiles` (`SourceProfilesController`), `calculated-measures` (`CalculatedMeasuresController`), `calculation-dimensions` (`CalculationDimensionsController`) and `routes` (`CalculationRoutesController`), each with `{itemId:long}` for an edit or delete; `api/tenants/{tenantId}/reports` (`ReportsController`); under `api/tenants/{tenantId}`, `reports/{reportId:long}/versions` and `report-versions/{versionId:long}` (`ReportVersionsController`); `api/tenants/{tenantId}/report-versions/{versionId:long}/columns` (`ReportColumnsController`) and `.../lines` (`ReportLinesController`).
+- **Publication rules** (`calculation_model_version`): `formula_references_resolve` (`FormulaReferencesResolveRule`), `formulas_acyclic` (`FormulasAcyclicRule`), `profiles_complete` (`ProfilesCompleteRule`). (`report_version`): `model_version_published` (`ModelVersionPublishedRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`).
+- **Retirement rules:** none. **Lifecycle handlers:** `CurrentModelVersionUpdater` and `CurrentReportVersionUpdater` (`OnPublishedAsync`).
+- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each content service as its `IModelVersionContent<TItem, TInput>` with the closed `ModelItemReferenceValidator<TItem, TInput>` that checks its `{itemId}` routes.
+
+Models and reports are created without versions. Model content rows keep their IDs across edits, because report columns, profile picks and routes reference them by ID; variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`. A model version clone copies every content row through one `IdRemap`. A report version names its model version when it is created; a clone follows each column's metric key, and each formula line's calculated measure key, into the new model version, drops what the new model lacks, hands a dropped line's children to its parent, and returns the dropped keys in `CreatedReportVersion`. Columns are replaced as an ordered list and lines as a tree in pre-order; a row that keeps its key keeps its ID. Deletes are blocked through `ReportUses` while a report column returns a variable, a column or formula line uses a calculated measure, a report version defaults to a profile or reads a model version, or a release pins a report version.
+
+| Class | Records |
+| --- | --- |
+| `CalculationModelService` | `CalculationModelRecord`, `CalculationModelVersionRecord` |
+| `CalculationModelVersionService` | `CalculationModelRecord`, `CalculationModelVersionRecord` |
+| `ModelVersionCloner` | `VariableRecord`, `VariableSourceRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `CalculatedMeasureRecord`, `CalculationDimensionRecord`, `CalculationRouteRecord` |
+| `ModelContentRemover` | `VariableRecord`, `VariableSourceRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `CalculatedMeasureRecord`, `CalculationDimensionRecord`, `CalculationRouteRecord` |
+| `VariableService`, `VariableSourceService`, `CalculatedMeasureService`, `CalculationDimensionService`, `CalculationRouteService` | Their own record each |
+| `SourceProfileService` | `SourceProfileRecord`, `SourceProfileVariableRecord` |
+| `ModelKeys` | `VariableRecord`, `CalculatedMeasureRecord` |
+| `ReportUses` | `ReportRecord`, `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord` |
+| `CurrentModelVersionUpdater` | `CalculationModelVersionRecord`, `CalculationModelRecord` |
+| `ReportService` | `ReportRecord`, `ReportVersionRecord` |
+| `ReportVersionService` | `ReportRecord`, `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReleaseReportRecord`, `SemanticReleaseRecord` |
+| `ReportVersionCloner` | `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord` |
+| `ReportColumnService` | `ReportColumnRecord` |
+| `ReportLineService` | `ReportLineRecord`, `ReportColumnRecord` |
+| `ModelMetricsReader` | `ReportVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
+| `CurrentReportVersionUpdater` | `ReportVersionRecord`, `ReportRecord` |
+
+**Sources:** [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Reports), [IModelVersionContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/IModelVersionContent.cs), [ModelVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelVersionRows.cs), [ModelItemReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelItemReferenceValidator.cs), [model services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels), [report services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/Reports), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs).

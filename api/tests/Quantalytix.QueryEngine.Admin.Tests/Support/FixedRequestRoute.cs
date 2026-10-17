@@ -13,4 +13,12 @@ public sealed class FixedRequestRoute(IReadOnlyDictionary<string, long> ids) : I
     {
         return ids[placeholder];
     }
+
+    /// <summary>The ID a route placeholder holds, or null when the route has none.</summary>
+    /// <param name="placeholder">The placeholder's name.</param>
+    /// <returns>The fixed ID, or null.</returns>
+    public long? OptionalId(string placeholder)
+    {
+        return ids.TryGetValue(placeholder, out var id) ? id : null;
+    }
 }

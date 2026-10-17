@@ -3,9 +3,12 @@
 #
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
 #     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding through the seed mapping set
-#     loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. Then it creates release
-#     ${PREFIX}acceptance as a copy of the active release plus that version, validates, publishes and activates it, checks
-#     GetCatalog and Execute on the engine, and re-activates the release that was active before.
+#     loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors calculation
+#     model ${PREFIX}margin over the seed GL monthly datasets (2 variables, their sources, a profile, a yield formula and a
+#     branch calculation dimension) and report ${PREFIX}margin over it (3 columns, member and formula lines), and publishes
+#     both. Then it creates release ${PREFIX}acceptance as a copy of the active release plus the dataset version and the
+#     report version, validates, publishes and activates it, checks GetCatalog, Execute, GetReportCatalog and ExecuteReport
+#     on the engine, and re-activates the release that was active before.
 #   PREFIX=zz_live_ DATASET_KEY=zz_bm_loans MEASURES="zzBmBalance zzBmRate zzBmBalanceRate zzBmEndingBalance" ./qe-acceptance.sh
 #     Releases an existing dataset's latest published version instead of authoring one.
 #   PREFIX=zz_w2_ AUTHOR_CHECK_ONLY=1 ./qe-acceptance.sh
@@ -15,8 +18,8 @@
 # admin API running in Development at $ADMIN. When $ENGINE does not answer, it starts the engine host from its built DLL
 # under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes only to tenant sandbox and never
 # prints the control-plane connection string.
-# It leaves ${PREFIX}loans (published v1, when authored) and ${PREFIX}acceptance (published, inactive). Published objects
-# are immutable, so every run needs a new PREFIX.
+# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (published v1) and
+# ${PREFIX}acceptance (published, inactive). Published objects are immutable, so every run needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
@@ -26,6 +29,8 @@ ENGINE_DLL=${ENGINE_DLL:-bin/Debug/net10.0/Quantalytix.QueryEngine.Host.dll}
 MEASURES=${MEASURES:-balance avgRate balanceRate endingBalance}
 RANGE_START=${RANGE_START:-2026-01-01}
 RANGE_END=${RANGE_END:-2026-04-01}
+REPORT_RANGE_START=${REPORT_RANGE_START:-2024-01-01}
+REPORT_RANGE_END=${REPORT_RANGE_END:-2024-04-01}
 SECRETS=$HOME/.microsoft/usersecrets/Quantalytix.QueryEngine.Admin.Api.Development/secrets.json
 API=$ADMIN/api/tenants/sandbox
 W=$(mktemp -d /tmp/qe-acceptance.XXXXXX)
@@ -47,6 +52,9 @@ call() {
 
 # py EXPR: prints a Python expression over the last response, r.
 py() { python3 -c "import json; r = json.load(open('$W/last.json')); print($1)"; }
+
+# json EXPR: prints a Python expression as JSON, for bodies that nest JSON text.
+json() { python3 -c "import json; print(json.dumps($1))"; }
 
 # measure KEY KIND OVERRIDES_JSON: a measure body with the defaults of a decimal(20, 2) output.
 measure() {
@@ -111,6 +119,56 @@ author_dataset() {
   call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"published"}'
 }
 
+# Authors model and report ${PREFIX}margin over the seed GL monthly datasets and publishes both. Sources name keys only; the
+# release that pins the report decides which dataset and report-item versions they resolve in.
+author_report() {
+  REPORT_KEY=${PREFIX}margin
+  call GET /lookups/datasets 200
+  local balances income
+  balances=$(py "[d['id'] for d in r if d['key'] == 'bank.balance_monthly'][0]")
+  income=$(py "[d['id'] for d in r if d['key'] == 'bank.income_monthly'][0]")
+  call GET /lookups/dimensions 200
+  local report_items branch
+  report_items=$(py "[d['id'] for d in r if d['key'] == 'ReportItem'][0]")
+  branch=$(py "[d['id'] for d in r if d['key'] == 'Branch'][0]")
+
+  call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'isEnabled': True}")"
+  call POST "/calculation-models/$(py "r['modelId']")/versions" 200 '{"currencyCode":"USD","cloneFromVersionId":null}'
+  MODEL_VERSION=$(py "r['modelVersionId']")
+  local M=/model-versions/$MODEL_VERSION
+  local variable="'targetMemberKey': None, 'selectionScope': 'all_mapped', 'missingBehavior': 'null'"
+  call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'variableRole': 'average_balance', $variable}")"
+  local v_balance v_income s_balance s_income
+  v_balance=$(py "r['variableId']")
+  call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'variableRole': 'interest_income', $variable}")"
+  v_income=$(py "r['variableId']")
+  call POST "$M/variable-sources" 200 "$(json "{'variableId': $v_balance, 'sourceKey': 'gl_monthly_balance', 'datasetId': $balances, 'reportFieldKey': 'reportItem', 'timeFieldKey': 'reportingPeriod', 'measureKey': 'periodAverage', 'sourceFilterJson': None, 'isEnabled': True}")"
+  s_balance=$(py "r['variableSourceId']")
+  call POST "$M/variable-sources" 200 "$(json "{'variableId': $v_income, 'sourceKey': 'gl_interest_income', 'datasetId': $income, 'reportFieldKey': 'reportItem', 'timeFieldKey': 'reportingPeriod', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}}), 'isEnabled': True}")"
+  s_income=$(py "r['variableSourceId']")
+  call POST "$M/profiles" 200 "$(json "{'profileKey': 'gl_monthly', 'displayName': 'GL monthly balances', 'isEnabled': True, 'picks': [{'variableId': $v_balance, 'variableSourceId': $s_balance}, {'variableId': $v_income, 'variableSourceId': $s_income}]}")"
+  local profile dimension
+  profile=$(py "r['profile']['sourceProfileId']")
+  call POST "$M/calculated-measures" 200 "$(json "{'measureKey': 'YIELD', 'displayName': 'Yield', 'expressionText': '[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays', 'outputDataType': 'decimal', 'outputPrecision': 28, 'outputScale': 6, 'roundingMode': None, 'unitKey': None, 'displayFormat': 'percent'}")"
+  call POST "$M/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'valueKind': 'canonical', 'dimensionId': $branch, 'valueDataType': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
+  dimension=$(py "r['calculationDimensionId']")
+  for dataset in "$balances" "$income"; do
+    call POST "$M/routes" 200 "$(json "{'calculationDimensionId': $dimension, 'datasetId': $dataset, 'variableSourceId': None, 'routeKind': 'semantic', 'fieldKey': 'branch'}")"
+  done
+  call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"validated"}'
+  call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"published"}'
+
+  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'isEnabled': True, 'payloadJson': None}")"
+  REPORT=$(py "r['reportId']")
+  call POST "/reports/$REPORT/versions" 200 "$(json "{'reportDimensionId': $report_items, 'modelVersionId': $MODEL_VERSION, 'defaultSourceProfileId': $profile, 'payloadJson': None, 'defaultFilterJson': None, 'defaultSettingsJson': json.dumps({'periodicity': 'month', 'timeZone': 'UTC'}), 'defaultPivotJson': None, 'cloneFromVersionId': None}")"
+  REPORT_VERSION=$(py "r['version']['reportVersionId']")
+  local R=/report-versions/$REPORT_VERSION
+  call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': name, 'valueKind': kind, 'metricKey': metric, 'displayFormat': display, 'isVisible': True, 'payloadJson': None} for key, name, kind, metric, display in [('avgBalance', 'Average balance', 'variable', 'AVERAGE_BALANCE', 'currency'), ('interestIncome', 'Interest income', 'variable', 'INTEREST_INCOME', 'currency'), ('yield', 'Yield', 'calculated', 'YIELD', 'percent')]]}")"
+  call PUT "$R/lines" 200 "$(json "{'lines': [{'reportLineId': None, 'lineKey': key, 'displayName': name, 'lineKind': kind, 'parentLineKey': parent, 'reportMemberKey': member, 'calculatedMeasureKey': measure, 'valueColumnKey': column, 'isVisible': True, 'payloadJson': None, 'settingsJson': None} for key, name, kind, parent, member, measure, column in [('total', 'Total', 'member', None, 'TOTAL', None, None), ('loans', 'Loans', 'member', 'total', 'LOANS', None, None), ('reportYield', 'Report yield', 'formula', None, None, 'YIELD', 'yield')]]}")"
+  call PUT "/versions/report_version/$REPORT_VERSION/status" 200 '{"status":"validated"}'
+  call PUT "/versions/report_version/$REPORT_VERSION/status" 200 '{"status":"published"}'
+}
+
 find_published_version() {
   call GET /lookups/datasets 200
   DATASET=$(py "[d['id'] for d in r if d['key'] == '$DATASET_KEY'][0]")
@@ -145,6 +203,8 @@ restore() {
 
 if [ -n "${DATASET_KEY:-}" ]; then find_published_version; else author_dataset; fi
 echo "Dataset $DATASET_KEY: version $VERSION"
+author_report
+echo "Report $REPORT_KEY: version $REPORT_VERSION over model version $MODEL_VERSION"
 
 call GET /overview 200
 ORIGINAL_ID=$(py "r['activeRelease']['releaseId']")
@@ -153,6 +213,8 @@ call POST /releases 201 "{\"releaseKey\":\"${PREFIX}acceptance\",\"copyFromRelea
 RELEASE=$(py "r['releaseId']")
 call GET "/releases/$RELEASE/datasets" 200
 call PUT "/releases/$RELEASE/datasets" 200 "$(py "json.dumps({'datasets': [{'datasetId': x['datasetId'], 'datasetVersionId': x['datasetVersionId']} for x in r] + [{'datasetId': $DATASET, 'datasetVersionId': $VERSION}]})")"
+call GET "/releases/$RELEASE/reports" 200
+call PUT "/releases/$RELEASE/reports" 200 "$(py "json.dumps({'reports': [{'reportId': x['reportId'], 'reportVersionId': x['reportVersionId']} for x in r] + [{'reportId': $REPORT, 'reportVersionId': $REPORT_VERSION}]})")"
 call PUT "/versions/semantic_release/$RELEASE/status" 200 '{"status":"validated"}'
 call PUT "/versions/semantic_release/$RELEASE/status" 200 '{"status":"published"}'
 ORIGINAL=$ORIGINAL_ID
@@ -172,6 +234,12 @@ print(json.dumps({"requestId": "acceptance-" + dataset, "queries": [{
     "measures": [{"kind": "column", "id": key} for key in measures],
     "orderBy": [{"field": "asOfDate"}, {"field": "branchCode"}]}]}))
 EOF
+python3 - "$REPORT_KEY" "$REPORT_RANGE_START" "$REPORT_RANGE_END" > "$W/report.json" <<'EOF'
+import json, sys
+report, start, end = sys.argv[1], sys.argv[2], sys.argv[3]
+print(json.dumps({"requestId": "acceptance-" + report, "reportKey": report, "dimensions": ["branch"], "includeTotals": True,
+    "time": {"periodicity": "month", "timeZone": "UTC", "range": {"start": start, "endExclusive": end}}}))
+EOF
 
 mkdir -p "$W/hub"
 cat > "$W/hub/hub.cs" <<'EOF'
@@ -181,9 +249,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 
-// Usage: dotnet run hub.cs -- <engineUrl> <tenant> <expectedReleaseKey> <datasetKey> <requestFile>
-// Exits 0 when GetCatalog reports the expected release and lists the dataset, and every query of the request returns rows.
+// Usage: dotnet run hub.cs -- <engineUrl> <tenant> <expectedReleaseKey> <datasetKey> <requestFile> <reportKey> <reportRequestFile>
+// Exits 0 when GetCatalog reports the expected release and lists the dataset, every query of the request returns rows,
+// GetReportCatalog lists the report, and every table of the report request returns rows.
 var (engineUrl, tenant, expectedReleaseKey, datasetKey, requestFile) = (args[0], args[1], args[2], args[3], args[4]);
+var (reportKey, reportRequestFile) = (args[5], args[6]);
 
 using var http = new HttpClient();
 var tokenResponse = await http.PostAsJsonAsync($"{engineUrl}/development/token", new { tenantId = tenant, systemAdmin = true });
@@ -241,9 +311,33 @@ foreach (var result in response.GetProperty("queries").EnumerateArray())
     }
 }
 
-var passed = releaseKey == expectedReleaseKey && allReturnedRows;
-Console.WriteLine(passed ? "PASS" : $"FAIL: expected release {expectedReleaseKey} and rows from every query.");
+var reportCatalog = await connection.InvokeAsync<JsonElement>("GetReportCatalog", new { reportKeys = new[] { reportKey } });
+var catalogReports = reportCatalog.GetProperty("reports").EnumerateArray().ToList();
+Console.WriteLine($"GetReportCatalog: releaseKey={Text(reportCatalog, "releaseKey")} reports={catalogReports.Count}");
+foreach (var item in catalogReports)
+{
+    Console.WriteLine($"  report {Text(item, "key")} v{Text(item, "version")} model={Text(item, "modelKey")} v{Text(item, "modelVersion")} reportDimension={Text(item, "reportDimensionKey")} columns={item.GetProperty("columns").GetArrayLength()} lines={item.GetProperty("lines").GetArrayLength()}");
+}
+
+var reportRequest = JsonDocument.Parse(File.ReadAllText(reportRequestFile)).RootElement;
+var report = await connection.InvokeAsync<JsonElement>("ExecuteReport", reportRequest);
+Console.WriteLine($"ExecuteReport: status={Text(report, "status")} error={Text(report, "error")} sources={report.GetProperty("sources").GetArrayLength()}");
+var tables = report.GetProperty("tables").EnumerateArray().ToList();
+var everyTableReturnedRows = tables.Count > 0;
+foreach (var table in tables)
+{
+    var rows = table.GetProperty("rows").EnumerateArray().ToList();
+    everyTableReturnedRows &= rows.Count > 0;
+    Console.WriteLine($"  table [{string.Join(", ", table.GetProperty("dimensions").EnumerateArray())}]: rows={rows.Count}");
+    foreach (var row in rows.Take(8))
+    {
+        Console.WriteLine($"    {row}");
+    }
+}
+
+var passed = releaseKey == expectedReleaseKey && allReturnedRows && catalogReports.Count == 1 && everyTableReturnedRows;
+Console.WriteLine(passed ? "PASS" : $"FAIL: expected release {expectedReleaseKey}, rows from every query, report {reportKey} in the report catalog and rows in every report table.");
 return passed ? 0 : 1;
 EOF
-dotnet run "$W/hub/hub.cs" -- "$ENGINE" sandbox "${PREFIX}acceptance" "$DATASET_KEY" "$W/request.json" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
+dotnet run "$W/hub/hub.cs" -- "$ENGINE" sandbox "${PREFIX}acceptance" "$DATASET_KEY" "$W/request.json" "$REPORT_KEY" "$W/report.json" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
 PASSED=1

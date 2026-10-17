@@ -1,0 +1,84 @@
+import { useForm } from 'react-hook-form';
+import { EntityFormSheet } from '@/shared/EntityFormSheet';
+import { ExpressionField, NumberField, TextField, VocabularyField } from '@/shared/form';
+import { useLookup } from '@/shared/useLookup';
+import { useSaveModelContent } from './api';
+import { contentSheetTitle, optionalText } from './contentSheet';
+import type { CalculatedMeasure } from './types';
+
+/** Values of the calculated measure sheet; a choice not made yet is null. */
+interface CalculatedMeasureValues {
+  measureKey: string;
+  displayName: string;
+  expressionText: string;
+  outputDataType: string | null;
+  outputPrecision: number | null;
+  outputScale: number | null;
+  roundingMode: string | null;
+  unitKey: string | null;
+  displayFormat: string;
+}
+
+export interface CalculatedMeasureSheetProps {
+  versionId: number;
+  /** The measure to edit or view; null to create one. */
+  measure: CalculatedMeasure | null;
+  readOnly: boolean;
+  onClose: () => void;
+}
+
+/**
+ * Creates, edits or shows a calculated measure. Its formula reads variables and calculated measures as `[m.KEY]`, and
+ * the `@periodDays` and `@yearDays` of the period it is evaluated for.
+ */
+export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }: CalculatedMeasureSheetProps) {
+  const save = useSaveModelContent('calculated-measures', versionId, measure?.calculatedMeasureId ?? null);
+  const variables = useLookup('variables', versionId);
+  const measures = useLookup('calculated-measures', versionId);
+  const metricKeys = [...(variables.data ?? []), ...(measures.data ?? [])].map(item => item.key);
+  const form = useForm<CalculatedMeasureValues>({
+    defaultValues: {
+      measureKey: measure?.measureKey ?? '',
+      displayName: measure?.displayName ?? '',
+      expressionText: measure?.expressionText ?? '',
+      outputDataType: measure?.outputDataType ?? 'decimal',
+      outputPrecision: measure?.outputPrecision ?? 28,
+      outputScale: measure?.outputScale ?? 6,
+      roundingMode: measure?.roundingMode ?? null,
+      unitKey: measure?.unitKey ?? null,
+      displayFormat: measure?.displayFormat ?? 'number',
+    },
+  });
+
+  function submit(values: CalculatedMeasureValues) {
+    return save({ ...values, outputDataType: values.outputDataType ?? '', unitKey: optionalText(values.unitKey) });
+  }
+
+  return (
+    <EntityFormSheet
+      open
+      onOpenChange={open => !open && onClose()}
+      title={contentSheetTitle('calculated measure', measure?.measureKey ?? null, readOnly)}
+      description="Variables and calculated measures share one key namespace. Report values are not rounded; clients round by the output scale."
+      form={form}
+      onSubmit={submit}
+      readOnly={readOnly}
+      width="40rem"
+    >
+      <TextField name="measureKey" label="Key" description="A letter, then letters, digits or underscores." />
+      <TextField name="displayName" label="Name" />
+      <ExpressionField
+        name="expressionText"
+        label="Formula"
+        measureKeys={metricKeys}
+        description="For example [m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays. Division by zero gives null."
+      />
+      <VocabularyField name="outputDataType" label="Output type" vocabulary="measure_output_data_type" />
+      <NumberField name="outputPrecision" label="Precision" description="Total digits of a decimal output." />
+      <NumberField name="outputScale" label="Scale" description="Digits after the point that clients show." />
+      <VocabularyField name="roundingMode" label="Rounding" vocabulary="rounding_mode" allowEmpty />
+      <TextField name="unitKey" label="Unit" description="Optional, such as USD." />
+      <TextField name="displayFormat" label="Display format" description="How clients format the value, such as percent or currency." />
+    </EntityFormSheet>
+  );
+}

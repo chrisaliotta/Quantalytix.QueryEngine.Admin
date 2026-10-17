@@ -481,7 +481,7 @@ export interface paths {
         put?: never;
         /**
          * Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name
-         *     the tenant and have metadata schema version 4.
+         *     the tenant and have metadata schema version 7.
          */
         post: {
             parameters: {
@@ -697,6 +697,834 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a report version's columns in display order. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The columns in display order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportColumnRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportColumnsInput"];
+                    "application/*+json": components["schemas"]["ReportColumnsInput"];
+                };
+            };
+            responses: {
+                /** @description The columns in display order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportColumnRecord"][];
+                    };
+                };
+                /** @description A column key is reserved or repeated, a metric is not in the model version, or a line still names a removed column; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a report version's lines in pre-order: each line before its children, siblings in display order. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The lines in pre-order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportLineRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportLinesInput"];
+                    "application/*+json": components["schemas"]["ReportLinesInput"];
+                };
+            };
+            responses: {
+                /** @description The lines in pre-order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportLineRecord"][];
+                    };
+                };
+                /** @description A line key repeats, a parent is not an earlier line, or a line's member, measure or column does not resolve; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every report of the tenant. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the reports. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The reports by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a report; it has no versions until one is created. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewReportInput"];
+                    "application/*+json": components["schemas"]["NewReportInput"];
+                };
+            };
+            responses: {
+                /** @description The created report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one report, including its current version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Edits a report's display name, type, availability and payload; a change advances the semantic revision. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportInput"];
+                    "application/*+json": components["schemas"]["ReportInput"];
+                };
+            };
+            responses: {
+                /** @description The stored report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a report whose versions are all drafts that no release pins, together with their lines and columns. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The report and its drafts are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names the non-draft versions and releases that block the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a report's versions with their report dimension, model version, defaults and status. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions by version number. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportVersionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a draft with the report's next version number: empty, or cloned from `cloneFromVersionId`, whose columns
+         *     and lines move to the metrics with the same keys in the new model version.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewReportVersionInput"];
+                    "application/*+json": components["schemas"]["NewReportVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The created draft, with the cloned columns and lines whose metrics the new model version lacks. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreatedReportVersion"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a clone source of another report; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one report version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportVersionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Replaces a draft version's report dimension, default profile and defaults; its model version, lines and columns stay as
+         *     they are.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportVersionInput"];
+                    "application/*+json": components["schemas"]["ReportVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a draft version that no release pins, with its lines and columns, and clears the report's current-version
+         *     pointer when it named the version.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version, its lines and its columns are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the releases that pin it. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1004,6 +1832,131 @@ export interface paths {
                     };
                 };
                 /** @description A dataset does not exist, or a dataset or dataset version appears more than once. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The release is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/releases/{releaseId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a release's report pins: the report version it pins for each report. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The report pins, ordered by report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseReportRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft release's report pins; validating the release checks that each pinned report resolves in it. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the release. */
+                    tenantId: string;
+                    /** @description The draft release. */
+                    releaseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReleaseReportsInput"];
+                    "application/*+json": components["schemas"]["ReleaseReportsInput"];
+                };
+            };
+            responses: {
+                /** @description The stored report pins, ordered by report. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseReportRecord"][];
+                    };
+                };
+                /** @description A report appears more than once, or a pinned version is not a version of its report. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5073,6 +6026,2201 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's calculated measures. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The calculated measures by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculatedMeasureRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a calculated measure to a draft model version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculatedMeasureInput"];
+                    "application/*+json": components["schemas"]["CalculatedMeasureInput"];
+                };
+            };
+            responses: {
+                /** @description The created calculated measure. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculatedMeasureRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a formula that does not parse or reads a dataset field; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a calculated measure of a draft model version, keeping its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculatedMeasureInput"];
+                    "application/*+json": components["schemas"]["CalculatedMeasureInput"];
+                };
+            };
+            responses: {
+                /** @description The stored calculated measure. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculatedMeasureRecord"];
+                    };
+                };
+                /** @description The calculated measure is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a calculated measure of a draft model version, unless a report column returns it or a formula line evaluates it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The calculated measure is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The calculated measure is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the report columns and lines that use the measure. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/calculation-dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's calculation dimensions. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The calculation dimensions by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationDimensionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a calculation dimension to a draft model version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculationDimensionInput"];
+                    "application/*+json": components["schemas"]["CalculationDimensionInput"];
+                };
+            };
+            responses: {
+                /** @description The created calculation dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationDimensionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/calculation-dimensions/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a calculation dimension of a draft model version, keeping its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculationDimensionInput"];
+                    "application/*+json": components["schemas"]["CalculationDimensionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored calculation dimension. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationDimensionRecord"];
+                    };
+                };
+                /** @description The calculation dimension is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a calculation dimension of a draft model version with its routes. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The calculation dimension is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The calculation dimension is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every calculation model of the tenant. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the models. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The models by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a calculation model; it has no versions until one is created. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewCalculationModelInput"];
+                    "application/*+json": components["schemas"]["NewCalculationModelInput"];
+                };
+            };
+            responses: {
+                /** @description The created model. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one calculation model, including its current version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The model. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Edits a calculation model's display name and availability; reports pin model versions, so neither reaches queries. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculationModelInput"];
+                    "application/*+json": components["schemas"]["CalculationModelInput"];
+                };
+            };
+            responses: {
+                /** @description The stored model. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a calculation model whose versions are all drafts that no report reads, together with their content. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The model and its drafts are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names the non-draft versions and report versions that block the delete. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a calculation model's versions with their currency and status. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions by version number. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelVersionRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a draft with the model's next version number: empty, or cloned from `cloneFromVersionId` with all its
+         *     variables, sources, profiles, calculated measures, calculation dimensions and routes.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewModelVersionInput"];
+                    "application/*+json": components["schemas"]["NewModelVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The created draft. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a clone source of another model; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads one calculation model version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Replaces a draft version's currency; its content stays as it is. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModelVersionInput"];
+                    "application/*+json": components["schemas"]["ModelVersionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored version. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a draft version that no report version reads, with its content, and clears the model's current-version pointer
+         *     when it named the version.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The version and its content are deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the report versions that read it. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's calculation routes. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The routes by field key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationRouteRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a route to a draft model version; whether its field produces the dimension in the dataset version a release pins is a release rule. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculationRouteInput"];
+                    "application/*+json": components["schemas"]["CalculationRouteInput"];
+                };
+            };
+            responses: {
+                /** @description The created route. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationRouteRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a second default route for the dimension and dataset; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/routes/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a route of a draft model version, keeping its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalculationRouteInput"];
+                    "application/*+json": components["schemas"]["CalculationRouteInput"];
+                };
+            };
+            responses: {
+                /** @description The stored route. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalculationRouteRecord"];
+                    };
+                };
+                /** @description The route is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a route of a draft model version. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The route is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The route is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's source profiles. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The profiles by key, ignoring case, each with its picks by variable. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceProfile"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a source profile with its picks to a draft model version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SourceProfileInput"];
+                    "application/*+json": components["schemas"]["SourceProfileInput"];
+                };
+            };
+            responses: {
+                /** @description The created profile. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceProfile"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a pick of another variable's source; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/profiles/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a source profile of a draft model version and all its picks, keeping the profile's ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SourceProfileInput"];
+                    "application/*+json": components["schemas"]["SourceProfileInput"];
+                };
+            };
+            responses: {
+                /** @description The stored profile. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceProfile"];
+                    };
+                };
+                /** @description The profile is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a source profile of a draft model version with its picks, unless a report version runs under it by default. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The profile is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The profile is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the report versions whose default profile it is. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/variables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's variables. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The variables by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a variable to a draft model version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VariableInput"];
+                    "application/*+json": components["schemas"]["VariableInput"];
+                };
+            };
+            responses: {
+                /** @description The created variable. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a key another variable or calculated measure of the version has; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/variables/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a variable of a draft model version, keeping its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VariableInput"];
+                    "application/*+json": components["schemas"]["VariableInput"];
+                };
+            };
+            responses: {
+                /** @description The stored variable. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableRecord"];
+                    };
+                };
+                /** @description The variable is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a variable of a draft model version with its sources and their profile picks and override routes, unless a report column returns it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The variable is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The variable is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft, or the detail names the report columns that return the variable. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/variable-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model version's variable sources. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The sources by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableSourceRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Adds a variable source to a draft model version; whether its keys resolve in the dataset version a release pins is a release rule. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The draft model version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VariableSourceInput"];
+                    "application/*+json": components["schemas"]["VariableSourceInput"];
+                };
+            };
+            responses: {
+                /** @description The created source. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableSourceRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a filter that is not a filter node; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/model-versions/{versionId}/variable-sources/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces a variable source of a draft model version, keeping its ID. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VariableSourceInput"];
+                    "application/*+json": components["schemas"]["VariableSourceInput"];
+                };
+            };
+            responses: {
+                /** @description The stored source. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VariableSourceRecord"];
+                    };
+                };
+                /** @description The source is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a variable source of a draft model version with the profile picks and override routes that name it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description The model version that owns the row. */
+                    versionId: number;
+                    /** @description The row. */
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The source is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The source is not in the version; the error is keyed `itemId`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: the version is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/bridge-versions/{versionId}/mappings": {
         parameters: {
             query?: never;
@@ -6896,6 +10044,235 @@ export interface components {
              */
             publishedAt?: null | string;
         };
+        /** @description A calculated measure of a draft model version, as its create and edit endpoints take it. */
+        CalculatedMeasureInput: {
+            /** @description Key, unique among the version's variables and calculated measures. */
+            measureKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Expression over `[m.KEY]` references and the `@periodDays` and `@yearDays` parameters. */
+            expressionText: string;
+            /** @description A `measure_output_data_type` value. */
+            outputDataType: string;
+            /**
+             * Format: int32
+             * @description Decimal precision of the output for display.
+             */
+            outputPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale of the output for display.
+             */
+            outputScale?: null | number;
+            /** @description A `rounding_mode` value, or null for half to even. */
+            roundingMode?: null | string;
+            /** @description Optional unit, such as a currency code. */
+            unitKey?: null | string;
+            /** @description Presentation hint such as `number`, `percent` or `currency`. */
+            displayFormat: string;
+        };
+        /** @description A `qe_calculated_measure` row: a formula over a model version's variables and other calculated measures. */
+        CalculatedMeasureRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            calculatedMeasureId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /** @description Key, unique among the version's variables and calculated measures. */
+            measureKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Expression over `[m.KEY]` references and the `@periodDays` and `@yearDays` parameters. */
+            expressionText: string;
+            /** @description A `measure_output_data_type` value. */
+            outputDataType: string;
+            /**
+             * Format: int32
+             * @description Decimal precision of the output for display.
+             */
+            outputPrecision?: null | number;
+            /**
+             * Format: int32
+             * @description Decimal scale of the output for display.
+             */
+            outputScale?: null | number;
+            /** @description A `rounding_mode` value, or null for half to even. */
+            roundingMode?: null | string;
+            /** @description Optional unit, such as a currency code. */
+            unitKey?: null | string;
+            /** @description Presentation hint such as `number`, `percent` or `currency`. */
+            displayFormat: string;
+        };
+        /** @description A calculation dimension of a draft model version, as its create and edit endpoints take it. */
+        CalculationDimensionInput: {
+            /** @description Key, unique among the version's calculation dimensions. */
+            dimensionKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `calculation_value_kind` value. */
+            valueKind: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension of a `canonical` calculation dimension; null for `scalar`.
+             */
+            dimensionId?: null | number;
+            /** @description The shared raw value type of a `scalar` calculation dimension, a `data_type` value; null for `canonical`. */
+            valueDataType?: null | string;
+            /** @description Whether reports may break out by it. */
+            isGroupable: boolean;
+            /** @description Whether report filters may compare it. */
+            isFilterable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_calculation_dimension` row: a dimension shared by a model version's datasets, which reports break out and filter by. */
+        CalculationDimensionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            calculationDimensionId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /** @description Key, unique among the version's calculation dimensions. */
+            dimensionKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `calculation_value_kind` value. */
+            valueKind: string;
+            /**
+             * Format: int64
+             * @description The canonical dimension of a `canonical` calculation dimension; the release decides its version.
+             */
+            dimensionId?: null | number;
+            /** @description The shared raw value type of a `scalar` calculation dimension. */
+            valueDataType?: null | string;
+            /** @description Whether reports may break out by it. */
+            isGroupable: boolean;
+            /** @description Whether report filters may compare it. */
+            isFilterable: boolean;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description The editable identity attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
+        CalculationModelInput: {
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_calculation_model` row: the stable identity of a calculation model, which reports read their figures from. */
+        CalculationModelRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            modelId: number;
+            /** @description Stable logical model identity. */
+            modelKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /**
+             * Format: int64
+             * @description Authoring-only pointer to the most recently published model version.
+             */
+            currentModelVersionId?: null | number;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_calculation_model_version` row: one immutable version of a calculation model: its variables, sources, profiles, formulas and calculation dimensions. */
+        CalculationModelVersionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            modelVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning model.
+             */
+            modelId: number;
+            /**
+             * Format: int32
+             * @description Version number within the model.
+             */
+            versionNumber: number;
+            /** @description A `publication_status` value. */
+            status: string;
+            /** @description The calendar its periods follow; `gregorian`. */
+            calendarKey: string;
+            /** @description The ISO 4217 currency of its monetary figures. */
+            currencyCode: string;
+            /** @description The expression grammar version its formulas use. */
+            formulaLanguageVersion: string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC).
+             */
+            publishedAt?: null | string;
+        };
+        /** @description A calculation dimension route of a draft model version, as its create and edit endpoints take it. */
+        CalculationRouteInput: {
+            /**
+             * Format: int64
+             * @description The calculation dimension of the version the route produces.
+             */
+            calculationDimensionId: number;
+            /**
+             * Format: int64
+             * @description The dataset the route reads.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description A source of the version, over the same dataset, whose route this overrides; null for the dataset's default route.
+             */
+            variableSourceId?: null | number;
+            /** @description A `route_kind` value: `semantic` for a canonical dimension, `field` for a scalar one. */
+            routeKind: string;
+            /** @description The dataset field that produces the dimension. */
+            fieldKey: string;
+        };
+        /** @description A `qe_calculation_dimension_binding` row: the field that produces a calculation dimension in one dataset, or for one source. */
+        CalculationRouteRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            calculationBindingId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /**
+             * Format: int64
+             * @description The calculation dimension.
+             */
+            calculationDimensionId: number;
+            /**
+             * Format: int64
+             * @description The dataset the route reads.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description The source the route overrides the dataset's default route for; null for the default.
+             */
+            variableSourceId?: null | number;
+            /** @description A `route_kind` value. */
+            routeKind: string;
+            /** @description The dataset field that produces the dimension. */
+            fieldKey: string;
+        };
         /** @description A new draft bridge version, with the mappings a clone could not carry over. */
         CreatedBridgeVersion: {
             /** @description The new draft. */
@@ -6915,6 +10292,15 @@ export interface components {
              *     ordinal order; empty for an empty draft.
              */
             droppedSourceKeys: string[];
+        };
+        /** @description A new draft report version, with the columns and lines a clone could not carry into its model version. */
+        CreatedReportVersion: {
+            /** @description The new draft. */
+            version: components["schemas"]["ReportVersionRecord"];
+            /** @description The keys of the cloned columns whose metric key the draft's model version lacks. */
+            droppedColumns: string[];
+            /** @description The keys of the cloned formula lines whose calculated measure or value column the draft lacks. */
+            droppedLines: string[];
         };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
@@ -7962,6 +11348,11 @@ export interface components {
              */
             sortOrder: number;
         };
+        /** @description The editable attributes of a draft model version, as `PUT model-versions/{versionId}` takes them. */
+        ModelVersionInput: {
+            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
+            currencyCode: string;
+        };
         /** @description A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes. */
         NewBridgeInput: {
             /** @description Stable key, unique across bridges and fixed once created. */
@@ -8006,6 +11397,15 @@ export interface components {
             cardinality: string;
             /** @description An `allocation_mode` value: `none`, `partition` or `replicate`. */
             allocationMode: string;
+        };
+        /** @description A new calculation model, as `POST calculation-models` takes it: its fixed key plus its identity attributes. */
+        NewCalculationModelInput: {
+            /** @description Stable key, unique across calculation models and fixed once created. */
+            modelKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
         };
         /**
          * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
@@ -8132,6 +11532,67 @@ export interface components {
             /** @description Extensible member metadata as raw JSON text, or null. */
             properties?: null | string;
         };
+        /**
+         * @description A new draft version of a calculation model, as `POST calculation-models/{modelId}/versions` takes it: its attributes,
+         *     and optionally a version of the same model whose content it copies.
+         */
+        NewModelVersionInput: {
+            /**
+             * Format: int64
+             * @description A version of the same model whose variables, sources, profiles, formulas and dimensions the draft copies; null for an empty draft.
+             */
+            cloneFromVersionId?: null | number;
+            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
+            currencyCode: string;
+        };
+        /** @description A new report, as `POST reports` takes it: its fixed key plus its identity attributes. */
+        NewReportInput: {
+            /** @description Stable key, unique across reports and fixed once created. */
+            reportKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Free-form classification such as `margin_analysis`. */
+            reportType: string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            /** @description Optional catalog payload passed through to clients. */
+            payloadJson?: null | string;
+        };
+        /**
+         * @description A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and model version
+         *     it reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies.
+         */
+        NewReportVersionInput: {
+            /**
+             * Format: int64
+             * @description The canonical dimension whose members the member lines name.
+             */
+            reportDimensionId: number;
+            /**
+             * Format: int64
+             * @description The calculation model version the report reads.
+             */
+            modelVersionId: number;
+            /**
+             * Format: int64
+             * @description A version of the same report whose lines and columns the draft copies, each metric followed by key into the draft's
+             *     model version; null for an empty draft.
+             */
+            cloneFromVersionId?: null | number;
+            /**
+             * Format: int64
+             * @description A profile of the version's model version that requests run under when they name none.
+             */
+            defaultSourceProfileId?: null | number;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+            /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
+            defaultFilterJson?: null | string;
+            /** @description Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients. */
+            defaultSettingsJson?: null | string;
+            /** @description Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys. */
+            defaultPivotJson?: null | string;
+        };
         /** @description How much semantic metadata a tenant holds. */
         OverviewCounts: {
             /**
@@ -8164,6 +11625,16 @@ export interface components {
              * @description The number of assumption sets, whatever their status.
              */
             assumptionSets: number;
+            /**
+             * Format: int32
+             * @description The number of calculation models.
+             */
+            calculationModels: number;
+            /**
+             * Format: int32
+             * @description The number of reports.
+             */
+            reports: number;
             /**
              * Format: int32
              * @description The number of measures of the dataset versions the active release pins: the measures queries can use.
@@ -8202,6 +11673,16 @@ export interface components {
              * @description Draft assumption sets.
              */
             assumptionSets: number;
+            /**
+             * Format: int32
+             * @description Draft calculation model versions.
+             */
+            modelVersions: number;
+            /**
+             * Format: int32
+             * @description Draft report versions.
+             */
+            reportVersions: number;
         };
         ProblemDetails: {
             type?: null | string;
@@ -8359,7 +11840,43 @@ export interface components {
             /** @description One row per dataset the release pins. */
             datasets: components["schemas"]["ReleaseDatasetInput"][];
         };
-        /** @description A semantic release as the release list shows it: the row, whether it is the active release, and the size of its manifest. */
+        /** @description One report pin: the report version a release pins for a report. */
+        ReleaseReportInput: {
+            /**
+             * Format: int64
+             * @description The report.
+             */
+            reportId: number;
+            /**
+             * Format: int64
+             * @description The version of the report that the release pins.
+             */
+            reportVersionId: number;
+        };
+        /** @description A `qe_release_report` row: the report version a release pins for one report. */
+        ReleaseReportRecord: {
+            /**
+             * Format: int64
+             * @description The release; first part of the primary key.
+             */
+            releaseId: number;
+            /**
+             * Format: int64
+             * @description The report; second part of the primary key.
+             */
+            reportId: number;
+            /**
+             * Format: int64
+             * @description The pinned version of the report.
+             */
+            reportVersionId: number;
+        };
+        /** @description A release's complete report pins, which replace the current ones. */
+        ReleaseReportsInput: {
+            /** @description One pin per report the release serves. */
+            reports: components["schemas"]["ReleaseReportInput"][];
+        };
+        /** @description A semantic release as the release list shows it: the row, whether it is the active release, and how much it pins. */
         ReleaseSummary: {
             /** @description The release row. */
             release: components["schemas"]["SemanticReleaseRecord"];
@@ -8370,6 +11887,261 @@ export interface components {
              * @description The number of datasets the release's manifest pins.
              */
             datasetCount: number;
+            /**
+             * Format: int32
+             * @description The number of reports the release pins.
+             */
+            reportCount: number;
+        };
+        /** @description One column of a report version's complete, ordered column list. */
+        ReportColumnInput: {
+            /**
+             * Format: int64
+             * @description The column's ID when it already exists, which keeps the formula lines that place values in it; null for a new column.
+             */
+            reportColumnId?: null | number;
+            /** @description Key, unique among the version's columns; `line` and `period` are reserved. */
+            columnKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `report_value_kind` value. */
+            valueKind: string;
+            /** @description The variable or calculated measure key of the report's model version that the column returns. */
+            metricKey: string;
+            /** @description Presentation hint such as `number`, `percent` or `currency`. */
+            displayFormat?: null | string;
+            /** @description Whether a request without columns returns the column. */
+            isVisible: boolean;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+        };
+        /** @description A `qe_report_column` row: one returned field of a report version: a model variable or calculated measure. */
+        ReportColumnRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            reportColumnId: number;
+            /**
+             * Format: int64
+             * @description The owning report version.
+             */
+            reportVersionId: number;
+            /** @description Key, unique among the version's columns. */
+            columnKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `report_value_kind` value. */
+            valueKind: string;
+            /**
+             * Format: int64
+             * @description The variable of a `variable` column.
+             */
+            variableId?: null | number;
+            /**
+             * Format: int64
+             * @description The calculated measure of a `calculated` column.
+             */
+            calculatedMeasureId?: null | number;
+            /**
+             * Format: int32
+             * @description Order among the version's columns.
+             */
+            sortOrder: number;
+            /** @description Presentation hint such as `number`, `percent` or `currency`. */
+            displayFormat?: null | string;
+            /** @description Whether a request without columns returns the column. */
+            isVisible: boolean;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+        };
+        /** @description The complete column list of a draft report version, as `PUT report-versions/{versionId}/columns` takes it, in order. */
+        ReportColumnsInput: {
+            /** @description The columns in their presentation order. */
+            columns: components["schemas"]["ReportColumnInput"][];
+        };
+        /** @description The editable identity attributes of a report, as `PUT reports/{reportId}` takes them. */
+        ReportInput: {
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Free-form classification such as `margin_analysis`. */
+            reportType: string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            /** @description Optional catalog payload passed through to clients. */
+            payloadJson?: null | string;
+        };
+        /** @description One line of a report version's complete line tree. */
+        ReportLineInput: {
+            /**
+             * Format: int64
+             * @description The line's ID when it already exists; null for a new line.
+             */
+            reportLineId?: null | number;
+            /** @description Key, unique among the version's lines. */
+            lineKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `report_line_kind` value. */
+            lineKind: string;
+            /** @description The key of the enclosing line, which comes earlier in the list; null for a top-level line. */
+            parentLineKey?: null | string;
+            /** @description The report-item member a `member` line shows. */
+            reportMemberKey?: null | string;
+            /** @description The calculated measure key of the report's model version that a `formula` line evaluates. */
+            calculatedMeasureKey?: null | string;
+            /** @description The key of the column a `formula` line places its value in. */
+            valueColumnKey?: null | string;
+            /** @description Display default passed through to clients. */
+            isVisible: boolean;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+            /** @description Optional presentation settings passed through to clients. */
+            settingsJson?: null | string;
+        };
+        /** @description A `qe_report_line` row: one line of a report version's line tree. */
+        ReportLineRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            reportLineId: number;
+            /**
+             * Format: int64
+             * @description The owning report version.
+             */
+            reportVersionId: number;
+            /** @description Key, unique among the version's lines. */
+            lineKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `report_line_kind` value. */
+            lineKind: string;
+            /**
+             * Format: int64
+             * @description The enclosing line; null for a top-level line.
+             */
+            parentReportLineId?: null | number;
+            /** @description The report-item member of a `member` line. */
+            reportMemberKey?: null | string;
+            /**
+             * Format: int64
+             * @description The calculated measure of a `formula` line.
+             */
+            calculatedMeasureId?: null | number;
+            /**
+             * Format: int64
+             * @description The column a `formula` line places its value in.
+             */
+            valueColumnId?: null | number;
+            /**
+             * Format: int32
+             * @description Order among the line's siblings.
+             */
+            sortOrder: number;
+            /** @description Display default passed through to clients. */
+            isVisible: boolean;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+            /** @description Reserved: line filters are not yet supported. */
+            filterJson?: null | string;
+            /** @description Optional presentation settings passed through to clients. */
+            settingsJson?: null | string;
+        };
+        /**
+         * @description The complete line tree of a draft report version, as `PUT report-versions/{versionId}/lines` takes it: lines in
+         *     pre-order, each parent before its children, siblings in their presentation order.
+         */
+        ReportLinesInput: {
+            /** @description The lines in pre-order. */
+            lines: components["schemas"]["ReportLineInput"][];
+        };
+        /** @description A `qe_report` row: the stable identity of a report. */
+        ReportRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            reportId: number;
+            /** @description Stable logical report identity. */
+            reportKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Free-form classification such as `margin_analysis`. */
+            reportType: string;
+            /**
+             * Format: int64
+             * @description Authoring-only pointer to the most recently published report version.
+             */
+            currentReportVersionId?: null | number;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
+            /** @description Optional catalog payload passed through to clients. */
+            payloadJson?: null | string;
+        };
+        /** @description The editable attributes of a draft report version, as `PUT report-versions/{versionId}` takes them. */
+        ReportVersionInput: {
+            /**
+             * Format: int64
+             * @description A profile of the version's model version that requests run under when they name none.
+             */
+            defaultSourceProfileId?: null | number;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+            /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
+            defaultFilterJson?: null | string;
+            /** @description Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients. */
+            defaultSettingsJson?: null | string;
+            /** @description Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys. */
+            defaultPivotJson?: null | string;
+        };
+        /** @description A `qe_report_version` row: one immutable version of a report: its dimension, model version, defaults, lines and columns. */
+        ReportVersionRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            reportVersionId: number;
+            /**
+             * Format: int64
+             * @description The owning report.
+             */
+            reportId: number;
+            /**
+             * Format: int32
+             * @description Version number within the report.
+             */
+            versionNumber: number;
+            /**
+             * Format: int64
+             * @description The canonical dimension whose members the member lines name.
+             */
+            reportDimensionId: number;
+            /**
+             * Format: int64
+             * @description The calculation model version the report reads.
+             */
+            modelVersionId?: null | number;
+            /**
+             * Format: int64
+             * @description The profile a request runs under when it names none.
+             */
+            defaultSourceProfileId?: null | number;
+            /** @description A `publication_status` value. */
+            status: string;
+            /**
+             * Format: date-time
+             * @description Publication time (UTC).
+             */
+            publishedAt?: null | string;
+            /** @description Optional presentation payload passed through to clients. */
+            payloadJson?: null | string;
+            /** @description Optional filter over calculation dimensions, ANDed with every request's. */
+            defaultFilterJson?: null | string;
+            /** @description Optional defaults; only `periodicity` and `timeZone` affect execution. */
+            defaultSettingsJson?: null | string;
+            /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
+            defaultPivotJson?: null | string;
         };
         /** @description One reason a publication rule rejects a version. */
         RuleViolation: {
@@ -8452,6 +12224,74 @@ export interface components {
             /** @description A `source_object_kind` value: `table` or `view`. */
             kind: string;
         };
+        /** @description A source profile with the source it picks for each variable. */
+        SourceProfile: {
+            /** @description The profile row. */
+            profile: components["schemas"]["SourceProfileRecord"];
+            /** @description The profile's picks, by variable ID. */
+            picks: components["schemas"]["SourceProfileVariableRecord"][];
+        };
+        /** @description A source profile of a draft model version with its complete pick list, as its create and edit endpoints take it. */
+        SourceProfileInput: {
+            /** @description Key, unique among the version's profiles. */
+            profileKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Whether report requests may run under the profile. */
+            isEnabled: boolean;
+            /** @description The source the profile picks for each variable; each variable appears once. */
+            picks: components["schemas"]["SourceProfilePick"][];
+        };
+        /** @description The source a profile picks for one variable. */
+        SourceProfilePick: {
+            /**
+             * Format: int64
+             * @description The variable.
+             */
+            variableId: number;
+            /**
+             * Format: int64
+             * @description The picked source, one of the variable's.
+             */
+            variableSourceId: number;
+        };
+        /** @description A `qe_calculation_source_profile` row: a named choice of one source per variable of a model version. */
+        SourceProfileRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            sourceProfileId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /** @description Key, unique among the version's profiles. */
+            profileKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Whether report requests may run under the profile. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_calculation_source_profile_variable` row: the source one profile picks for one variable. */
+        SourceProfileVariableRecord: {
+            /**
+             * Format: int64
+             * @description The profile; first part of the primary key.
+             */
+            sourceProfileId: number;
+            /**
+             * Format: int64
+             * @description The variable; second part of the primary key.
+             */
+            variableId: number;
+            /**
+             * Format: int64
+             * @description The picked source, one of the variable's.
+             */
+            variableSourceId: number;
+        };
         /** @description A request to move a version to another lifecycle status. */
         StatusChangeInput: {
             /** @description The target status: a `publication_status` value (an `assumption_set_status` value for assumption sets). */
@@ -8459,7 +12299,7 @@ export interface components {
         };
         /** @description The result of verifying a tenant connection string, which the tenant editor's "Test connection" button shows. */
         TenantConnectionCheck: {
-            /** @description Whether the connection opens a metadata schema version 4 database that belongs to the tenant. */
+            /** @description Whether the connection opens a metadata schema version 7 database that belongs to the tenant. */
             isValid: boolean;
             /** @description What the connection reached, or why it is rejected. */
             message: string;
@@ -8614,6 +12454,108 @@ export interface components {
             errors?: {
                 [key: string]: string[];
             };
+        };
+        /** @description A variable of a draft model version, as its create and edit endpoints take it. */
+        VariableInput: {
+            /** @description Key, unique among the version's variables and calculated measures. */
+            variableKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Free-form classification such as `average_balance`. */
+            variableRole: string;
+            /** @description The report-item member a `descendants` or `exact` variable reads; null for `all_mapped`. */
+            targetMemberKey?: null | string;
+            /** @description A `selection_scope` value. */
+            selectionScope: string;
+            /** @description A `variable_missing_behavior` value. */
+            missingBehavior: string;
+        };
+        /** @description A `qe_variable` row: a logical input of a model version, which a source profile fills from one of its sources. */
+        VariableRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            variableId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /** @description Key, unique among the version's variables and calculated measures. */
+            variableKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description Free-form classification such as `average_balance`. */
+            variableRole: string;
+            /** @description The report-item member a `descendants` or `exact` variable reads. */
+            targetMemberKey?: null | string;
+            /** @description A `selection_scope` value. */
+            selectionScope: string;
+            /** @description A `variable_missing_behavior` value. */
+            missingBehavior: string;
+        };
+        /** @description A variable source of a draft model version, as its create and edit endpoints take it. */
+        VariableSourceInput: {
+            /**
+             * Format: int64
+             * @description The variable of the version that the source supplies.
+             */
+            variableId: number;
+            /** @description Key, unique among the version's sources. */
+            sourceKey: string;
+            /**
+             * Format: int64
+             * @description The dataset; the release that pins the report decides its version.
+             */
+            datasetId: number;
+            /** @description The dataset field whose binding classifies rows into the report dimension. */
+            reportFieldKey: string;
+            /** @description The dataset time field the source's periods are read on. */
+            timeFieldKey: string;
+            /** @description The dataset measure that supplies the variable. */
+            measureKey: string;
+            /** @description Optional structured filter over the dataset's fields, in the query contract's `filterNode` vocabulary. */
+            sourceFilterJson?: null | string;
+            /** @description Whether profiles may pick the source. */
+            isEnabled: boolean;
+        };
+        /** @description A `qe_variable_source` row: one dataset measure that can supply a variable, named by key in the dataset version a release pins. */
+        VariableSourceRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            variableSourceId: number;
+            /**
+             * Format: int64
+             * @description The owning model version.
+             */
+            modelVersionId: number;
+            /**
+             * Format: int64
+             * @description The variable the source supplies.
+             */
+            variableId: number;
+            /** @description Key, unique among the version's sources. */
+            sourceKey: string;
+            /**
+             * Format: int64
+             * @description The dataset; the release decides its version.
+             */
+            datasetId: number;
+            /** @description The field whose binding classifies rows into the report dimension. */
+            reportFieldKey: string;
+            /** @description The time field the source's periods are read on. */
+            timeFieldKey: string;
+            /** @description The dataset measure that supplies the variable. */
+            measureKey: string;
+            /** @description Optional structured filter over the dataset's fields. */
+            sourceFilterJson?: null | string;
+            /** @description A `classification_as_of` value. */
+            classificationAsOf: string;
+            /** @description Whether profiles may pick the source. */
+            isEnabled: boolean;
         };
         /** @description The lifecycle state of one versioned object. */
         VersionState: {

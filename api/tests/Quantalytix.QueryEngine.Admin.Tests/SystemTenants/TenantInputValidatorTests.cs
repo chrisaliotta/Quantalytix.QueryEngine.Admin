@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.SystemTenants;
 
 /// <summary>
 /// Confirms that a tenant connection string is accepted only when the database it reaches belongs to the tenant and has
-/// metadata schema version 4: a tenant-key mismatch, a wrong schema version or an unreachable database becomes an error on
+/// the metadata schema version this API supports: a tenant-key mismatch, a wrong schema version or an unreachable database becomes an error on
 /// <c>connectionString</c> that gives the reason, and a good connection passes. On an edit, a supplied connection string is
 /// verified against the route's tenant and an omitted one is not verified at all. The tenant directory is the engine's
 /// only routing table, so a wrong route would serve one tenant another tenant's metadata.
@@ -27,7 +27,7 @@ public sealed class TenantInputValidatorTests
     [Fact]
     public async Task TenantKeyMismatch_Fails()
     {
-        var result = await ValidateCreateAsync(Reached("development", 4));
+        var result = await ValidateCreateAsync(Reached("development", TenantConnectionVerification.SupportedSchemaVersion));
 
         Assert.Equal("The database belongs to tenant 'development', not 'sandbox'.", ConnectionStringError(result));
     }
@@ -39,7 +39,7 @@ public sealed class TenantInputValidatorTests
     {
         var result = await ValidateCreateAsync(Reached(TenantId, 3));
 
-        Assert.Equal("The database has metadata schema version 3; this API requires version 4.", ConnectionStringError(result));
+        Assert.Equal("The database has metadata schema version 3; this API requires version 7.", ConnectionStringError(result));
     }
 
     /// <summary>A connection that cannot be opened reports the verifier's reason.</summary>
@@ -52,12 +52,12 @@ public sealed class TenantInputValidatorTests
         Assert.Equal("Unable to connect to any of the specified MySQL hosts.", ConnectionStringError(result));
     }
 
-    /// <summary>A connection to the tenant's own schema version 4 database passes.</summary>
+    /// <summary>A connection to the tenant's own database at the supported schema version passes.</summary>
     /// <returns>A task that completes when the validation is checked.</returns>
     [Fact]
     public async Task GoodConnection_Passes()
     {
-        var result = await ValidateCreateAsync(Reached(TenantId, 4));
+        var result = await ValidateCreateAsync(Reached(TenantId, TenantConnectionVerification.SupportedSchemaVersion));
 
         Assert.True(result.IsValid);
     }
@@ -67,7 +67,7 @@ public sealed class TenantInputValidatorTests
     [Fact]
     public async Task Update_VerifiesAgainstTheRouteTenant()
     {
-        var verifier = new FakeTenantDatabaseVerifier(Reached("development", 4));
+        var verifier = new FakeTenantDatabaseVerifier(Reached("development", TenantConnectionVerification.SupportedSchemaVersion));
 
         var result = await ValidateUpdateAsync(verifier, ConnectionString);
 

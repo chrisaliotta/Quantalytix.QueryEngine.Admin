@@ -10,5 +10,8 @@
     <!-- Root of the query engine checkout whose Domain project supplies the expression parser. Override with an environment variable of the same name. -->
     <QueryEngineRoot Condition="'$(QueryEngineRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'Quantalytix.QueryEngine'))</QueryEngineRoot>
     <QueryEngineRoot>$([MSBuild]::EnsureTrailingSlash('$(QueryEngineRoot)'))</QueryEngineRoot>
+    <!-- Root of the seed kit whose schema DDL the records mirror. Override with an environment variable of the same name. -->
+    <SeedKitRoot Condition="'$(SeedKitRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'database', 'srdb_ebm'))</SeedKitRoot>
+    <SeedKitRoot>$([MSBuild]::EnsureTrailingSlash('$(SeedKitRoot)'))</SeedKitRoot>
   </PropertyGroup>
 </Project>

@@ -8,7 +8,7 @@ import { EntityTable } from './EntityTable';
 import type { LookupItem } from './types';
 import { useLookup } from './useLookup';
 
-/** The version of one dataset or dimension that a release or an assumption set pins. */
+/** The version of one dataset, dimension or report that a release or an assumption set pins. */
 export interface PinnedVersion {
   identityId: number;
   versionId: number;
@@ -22,9 +22,9 @@ interface PinRow {
 
 export interface PinnedVersionsTableProps {
   /** Lookup kind of the pinned identities. */
-  identityLookup: 'datasets' | 'dimensions';
+  identityLookup: 'datasets' | 'dimensions' | 'reports';
   /** Lookup kind of their versions, which are listed per identity. */
-  versionLookup: 'dataset-versions' | 'dimension-versions';
+  versionLookup: 'dataset-versions' | 'dimension-versions' | 'report-versions';
   /** What an identity is called, e.g. `Dataset`, for the column header and the add picker. */
   identityLabel: string;
   /** The saved pins; remount the table (`key`) when they are refetched so editing starts from them. */
@@ -38,7 +38,7 @@ export interface PinnedVersionsTableProps {
 }
 
 /**
- * Editable list of pinned versions, one row per dataset or dimension, each with a picker of its
+ * Editable list of pinned versions, one row per dataset, dimension or report, each with a picker of its
  * published versions. Rows are added and removed locally; "Save" sends the whole list.
  */
 export function PinnedVersionsTable({

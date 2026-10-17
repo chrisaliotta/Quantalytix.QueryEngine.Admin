@@ -20,7 +20,15 @@ public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
         LookupKinds.Levels,
         LookupKinds.Members,
         LookupKinds.MappingVersions,
-        LookupKinds.BridgeVersions);
+        LookupKinds.BridgeVersions,
+        LookupKinds.ModelVersions,
+        LookupKinds.Variables,
+        LookupKinds.VariableSources,
+        LookupKinds.SourceProfiles,
+        LookupKinds.CalculatedMeasures,
+        LookupKinds.CalculationDimensions,
+        LookupKinds.ReportVersions,
+        LookupKinds.ReportColumns);
 
     /// <summary>Declares the rules.</summary>
     public LookupQueryValidator()

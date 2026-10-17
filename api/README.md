@@ -1,9 +1,9 @@
 # Query Engine Admin API
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
-datasets, fields, grains, dimensions, members, mappings, bridges, bindings, measures, their versions, releases and the
-tenant directory. Drafts never reach queries: the engine loads published metadata through the `vw_qe_*` views, and
-dataset versions reach it only through an activated release.
+datasets, fields, grains, dimensions, members, mappings, bridges, bindings, measures, calculation models, reports, their
+versions, releases and the tenant directory. Drafts never reach queries: the engine loads published metadata through the
+`vw_qe_*` views, and dataset and report versions reach it only through an activated release.
 
 | Project | Holds |
 |---|---|
@@ -22,8 +22,8 @@ lifecycle, and the sequence of each key write.
 
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
-  `Quantalytix.QueryEngine.Domain` project for the expression parser, and the tests read `schema/ddl_srdb_bi.sql`
-  beside it.
+  `Quantalytix.QueryEngine.Domain` project for the expression parser.
+- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_16.sql`.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 
 ## Configuration
@@ -31,6 +31,8 @@ lifecycle, and the sequence of each key write.
 - **`QueryEngineRoot`:** the path of the query engine checkout. MSBuild defaults to `../../Quantalytix.QueryEngine`
   from `api/`. Anywhere else, such as a git worktree, set an environment variable of the same name:
   `export QueryEngineRoot=/path/to/Quantalytix.QueryEngine/`.
+- **`SeedKitRoot`:** the path of the seed kit. MSBuild defaults to `../../database/srdb_ebm` from `api/`; an
+  environment variable of the same name overrides it.
 - **`ConnectionStrings:ControlPlane`:** the `query_control` database, whose `qe_tenant_directory` routes each tenant
   to its own database. Keep it in user secrets, never in `appsettings*.json`:
 
@@ -105,10 +107,12 @@ Commit both files with the API change that produced them.
 `tools/acceptance/qe-acceptance.sh` proves that metadata authored here reaches the engine. In tenant `sandbox` it:
 
 1. authors dataset `${PREFIX}loans` and publishes its v1;
-2. creates release `${PREFIX}acceptance` as a copy of the active release plus that version;
-3. validates, publishes and activates the release;
-4. runs `GetCatalog` and `Execute` on the engine;
-5. re-activates the release that was active before.
+2. authors calculation model `${PREFIX}margin` over the seed GL monthly datasets and report `${PREFIX}margin` over it,
+   and publishes both;
+3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version and the report version;
+4. validates, publishes and activates the release;
+5. runs `GetCatalog`, `Execute`, `GetReportCatalog` and `ExecuteReport` on the engine;
+6. re-activates the release that was active before.
 
 Before you run it:
 
@@ -116,8 +120,10 @@ Before you run it:
 - Set `QueryEngineRoot`. When the engine is not running, the script starts its built host from there and stops it at
   the end.
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
-- Use a new `PREFIX` for every run. Published objects are immutable, so each run leaves `${PREFIX}loans` and
-  `${PREFIX}acceptance` behind.
+- Load the seed kit into tenant `sandbox`: the report reads its `bank.balance_monthly` and `bank.income_monthly`
+  datasets, its `ReportItem` and `Branch` dimensions, and its 2024 data.
+- Use a new `PREFIX` for every run. Published objects are immutable, so each run leaves `${PREFIX}loans`, the
+  `${PREFIX}margin` model and report, and `${PREFIX}acceptance` behind.
 
 ```bash
 dotnet run --project src/Quantalytix.QueryEngine.Admin.Api --launch-profile http -- --urls http://localhost:5186 &

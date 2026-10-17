@@ -57,6 +57,36 @@ public static class LookupKinds
     /// <summary>Assumption sets.</summary>
     public const string AssumptionSets = "assumption-sets";
 
+    /// <summary>Calculation models.</summary>
+    public const string CalculationModels = "calculation-models";
+
+    /// <summary>Versions of a calculation model; the parent is the model.</summary>
+    public const string ModelVersions = "model-versions";
+
+    /// <summary>Variables of a model version; the parent is the model version.</summary>
+    public const string Variables = "variables";
+
+    /// <summary>Variable sources of a model version; the parent is the model version.</summary>
+    public const string VariableSources = "variable-sources";
+
+    /// <summary>Source profiles of a model version; the parent is the model version.</summary>
+    public const string SourceProfiles = "source-profiles";
+
+    /// <summary>Calculated measures of a model version; the parent is the model version.</summary>
+    public const string CalculatedMeasures = "calculated-measures";
+
+    /// <summary>Calculation dimensions of a model version; the parent is the model version.</summary>
+    public const string CalculationDimensions = "calculation-dimensions";
+
+    /// <summary>Reports.</summary>
+    public const string Reports = "reports";
+
+    /// <summary>Versions of a report; the parent is the report.</summary>
+    public const string ReportVersions = "report-versions";
+
+    /// <summary>Columns of a report version; the parent is the report version.</summary>
+    public const string ReportColumns = "report-columns";
+
     /// <summary>The vocabulary's definition, as the web client and validators read it.</summary>
     public static readonly Vocabulary Definition = new()
     {
@@ -80,7 +110,17 @@ public static class LookupKinds
             new() { Value = Bridges, Description = "Bridges." },
             new() { Value = BridgeVersions, Description = "Versions of a bridge; the parent is the bridge." },
             new() { Value = Releases, Description = "Semantic releases." },
-            new() { Value = AssumptionSets, Description = "Assumption sets." }
+            new() { Value = AssumptionSets, Description = "Assumption sets." },
+            new() { Value = CalculationModels, Description = "Calculation models." },
+            new() { Value = ModelVersions, Description = "Versions of a calculation model; the parent is the model." },
+            new() { Value = Variables, Description = "Variables of a model version; the parent is the model version." },
+            new() { Value = VariableSources, Description = "Variable sources of a model version; the parent is the model version." },
+            new() { Value = SourceProfiles, Description = "Source profiles of a model version; the parent is the model version." },
+            new() { Value = CalculatedMeasures, Description = "Calculated measures of a model version; the parent is the model version." },
+            new() { Value = CalculationDimensions, Description = "Calculation dimensions of a model version; the parent is the model version." },
+            new() { Value = Reports, Description = "Reports." },
+            new() { Value = ReportVersions, Description = "Versions of a report; the parent is the report." },
+            new() { Value = ReportColumns, Description = "Columns of a report version; the parent is the report version." }
         ]
     };
 }

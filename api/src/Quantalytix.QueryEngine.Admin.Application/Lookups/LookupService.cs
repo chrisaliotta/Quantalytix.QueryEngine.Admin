@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Lookups;
 
 /// <summary>
 /// Serves every picker list of the web app from the tenant's metadata tables, so each feature can offer references to
-/// another feature's rows without depending on it.
+/// another feature's rows without depending on it. <see cref="CalculationLookups"/> serves the calculation and report kinds.
 /// </summary>
 public sealed class LookupService(
     ITableGateway<DatasetRecord> datasets,
@@ -26,7 +26,8 @@ public sealed class LookupService(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<SemanticReleaseRecord> releases,
-    ITableGateway<AssumptionSetRecord> assumptionSets)
+    ITableGateway<AssumptionSetRecord> assumptionSets,
+    CalculationLookups calculations)
 {
     /// <summary>Lists one picker. Items are sorted by key unless the kind has a natural order.</summary>
     /// <param name="kind">A <c>lookup_kind</c> value, already validated by <see cref="LookupQueryValidator"/>.</param>
@@ -54,6 +55,9 @@ public sealed class LookupService(
             LookupKinds.BridgeVersions => BridgeVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Releases => ReleasesAsync(cancellationToken),
             LookupKinds.AssumptionSets => AssumptionSetsAsync(cancellationToken),
+            LookupKinds.CalculationModels or LookupKinds.ModelVersions or LookupKinds.Variables or LookupKinds.VariableSources
+                or LookupKinds.SourceProfiles or LookupKinds.CalculatedMeasures or LookupKinds.CalculationDimensions or LookupKinds.Reports
+                or LookupKinds.ReportVersions or LookupKinds.ReportColumns => calculations.ListAsync(kind, parentId, cancellationToken),
             _ => throw new UnreachableException($"Lookup kind '{kind}' passed validation but has no list.")
         };
     }
