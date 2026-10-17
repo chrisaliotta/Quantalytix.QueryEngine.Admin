@@ -81,7 +81,7 @@ flowchart TB
     Ui --> Lib
 ```
 
-- No feature imports the shell, the auth folder or another feature, with one exception: `DatasetVersionTabs` in `src/features/datasets` renders `BindingsTab` from `src/features/bindings` and `MeasuresTab` from `src/features/measures`. Those two folders have no routes of their own.
+- No feature imports the shell, the auth folder or another feature, with two exceptions: `DatasetVersionTabs` in `src/features/datasets` renders `BindingsTab` from `src/features/bindings` and `MeasuresTab` from `src/features/measures`, folders that have no routes of their own; and `ReportDetailPage` and `ReportVersionPanel` in `src/features/reports` read a report version's model version through `useModelVersion` from `src/features/calculation-models`.
 - `src/api/client.ts` reads and clears the token with `readSession` and `clearSession` from `src/auth/session.ts`, while `src/auth` uses `apiClient`, `unwrap` and `ApiProblem`. `session.ts` imports nothing, so the two folders do not form a module cycle.
 - `src/shared` imports no feature, no shell code and nothing from `src/auth`. It reaches the API through four hooks, drawn in [shared building blocks](03-how-it-works.md#shared-building-blocks).
 - Registry components import shadcn components and `cn`, and each other through the `@registry` alias. oxlint skips `src/components/ui`, `src/registry` and `src/hooks/use-mobile.ts`.

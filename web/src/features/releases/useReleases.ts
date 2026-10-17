@@ -4,7 +4,7 @@ import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries, queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import type { ReleaseCreateInput, ReleaseDataset } from './types';
+import type { ReleaseCreateInput, ReleaseDataset, ReleaseReport } from './types';
 
 /** Query-key prefix of a tenant's releases, their manifests included. */
 export function releasesQueryKey(tenantId: string) {
@@ -19,7 +19,7 @@ function invalidateReleases(tenantId: string) {
   ]);
 }
 
-/** The tenant's releases, newest first, each with whether it is active and how many datasets it pins. */
+/** The tenant's releases, newest first, each with whether it is active and how many datasets and reports it pins. */
 export function useReleases() {
   const tenantId = useTenantId();
   return useQuery({
@@ -57,7 +57,21 @@ export function useReleaseDatasets(releaseId: number) {
   });
 }
 
-/** Creates a draft release, optionally copying another release's manifest. */
+/** The report pins of one release. */
+export function useReleaseReports(releaseId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: [...releasesQueryKey(tenantId), releaseId, 'reports'],
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/releases/{releaseId}/reports', {
+          params: { path: { tenantId, releaseId } },
+        })
+      ),
+  });
+}
+
+/** Creates a draft release, optionally copying another release's manifest and report pins. */
 export function useCreateRelease() {
   const tenantId = useTenantId();
   return useMutation({
@@ -67,7 +81,7 @@ export function useCreateRelease() {
   });
 }
 
-/** Deletes a draft release and its manifest. */
+/** Deletes a draft release with its manifest and report pins. */
 export function useDeleteRelease() {
   const tenantId = useTenantId();
   return useMutation({
@@ -90,6 +104,21 @@ export function useSaveReleaseDatasets(releaseId: number) {
         await apiClient.PUT('/api/tenants/{tenantId}/releases/{releaseId}/datasets', {
           params: { path: { tenantId, releaseId } },
           body: { datasets },
+        })
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: releasesQueryKey(tenantId) }),
+  });
+}
+
+/** Replaces the report pins of a draft release. */
+export function useSaveReleaseReports(releaseId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (reports: Pick<ReleaseReport, 'reportId' | 'reportVersionId'>[]) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/releases/{releaseId}/reports', {
+          params: { path: { tenantId, releaseId } },
+          body: { reports },
         })
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: releasesQueryKey(tenantId) }),

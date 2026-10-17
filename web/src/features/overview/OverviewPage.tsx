@@ -49,6 +49,8 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
           <Stat label="Bridges" value={counts.bridges} to={`${base}/bridges`} />
           <Stat label="Releases" value={counts.releases} to={`${base}/releases`} />
           <Stat label="Assumption sets" value={counts.assumptionSets} to={`${base}/assumption-sets`} />
+          <Stat label="Calculation models" value={counts.calculationModels} to={`${base}/calculation-models`} />
+          <Stat label="Reports" value={counts.reports} to={`${base}/reports`} />
           <Stat label="Active measures" value={counts.activeMeasures} />
         </StatList>
       </OverviewCard>
@@ -60,6 +62,8 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
           <Stat label="Bridge versions" value={drafts.bridgeVersions} to={`${base}/bridges`} />
           <Stat label="Releases" value={drafts.releases} to={`${base}/releases`} />
           <Stat label="Assumption sets" value={drafts.assumptionSets} to={`${base}/assumption-sets`} />
+          <Stat label="Model versions" value={drafts.modelVersions} to={`${base}/calculation-models`} />
+          <Stat label="Report versions" value={drafts.reportVersions} to={`${base}/reports`} />
         </StatList>
       </OverviewCard>
     </div>

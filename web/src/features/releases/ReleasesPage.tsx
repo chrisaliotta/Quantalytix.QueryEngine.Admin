@@ -19,6 +19,7 @@ interface ReleaseRow {
   status: string;
   isActive: boolean;
   datasetCount: number;
+  reportCount: number;
   createdAt: string;
   publishedAt: string | null;
 }
@@ -28,6 +29,7 @@ const COLUMNS: ColumnDef<ReleaseRow>[] = [
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
   { accessorKey: 'isActive', header: 'Active', cell: ({ row }) => row.original.isActive && <Badge>Active</Badge> },
   { accessorKey: 'datasetCount', header: 'Datasets' },
+  { accessorKey: 'reportCount', header: 'Reports' },
   { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => formatDateTime(row.original.createdAt) },
   { accessorKey: 'publishedAt', header: 'Published', cell: ({ row }) => formatDateTime(row.original.publishedAt) },
 ];
@@ -44,7 +46,7 @@ export function ReleasesPage() {
     <>
       <EntityListPage
         title="Releases"
-        description="A release pins one dataset version per dataset. Queries use the active release."
+        description="A release pins one dataset version per dataset and one report version per report. Queries use the active release."
         actions={
           <Button onClick={() => newRelease.open({ releaseKey: '', copyFromReleaseId: activeReleaseId })}>
             <Plus />
@@ -70,6 +72,7 @@ function toRow(summary: ReleaseSummary): ReleaseRow {
     status: summary.release.status,
     isActive: summary.isActive,
     datasetCount: summary.datasetCount,
+    reportCount: summary.reportCount,
     createdAt: summary.release.createdAt,
     publishedAt: summary.release.publishedAt ?? null,
   };

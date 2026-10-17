@@ -96,12 +96,14 @@ Query keys decide what TanStack Query caches and what a write refreshes. Tenant-
 | `['dimensions', tenantId, ...]`, `['dimension-versions', ...]`, `['dimension-levels', ...]`, `['dimension-members', ...]`, `['range-bands', ...]` | `dimensions/api.ts`; `useDimensionVersions` in bindings | `refresh` of the changed keys and lookup kinds; `setQueryData` after a member reorder or a band replace |
 | `['mapping-sets', tenantId, ...]`, `['mapping-entries', tenantId, versionId]` | `mappings/api.ts` | The changed keys and lookups; `setQueryData` after a bulk entry replace |
 | `['bridges', tenantId, ...]`, `['bridge-versions', ...]`, `['bridge-mappings', ...]` | `bridges/api.ts` | The changed keys and lookups; `setQueryData` after a bulk mapping replace |
+| `['calculation-models', tenantId, ...]`, `['model-versions', ...]`, `['model-content', tenantId, versionId, kind]` | `calculation-models/api.ts` | The changed keys and lookups; a content write refreshes `['model-content', tenantId, versionId]` and the content lookups |
+| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]` | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column or line replace |
 | `['releases', tenantId, ...]` | `useReleases.ts` | `invalidateReleases` or the release keys; `invalidateTenantQueries` after an activation |
 | `['assumption-sets', tenantId, ...]` | `useAssumptionSets.ts` | `invalidateAssumptionSets` or the set keys |
 
 `invalidateTenantQueries(tenantId)` marks stale every query whose key has the tenant ID as its second element, and active queries refetch at once. It runs after every version status change, every dataset, binding and measure write, a dataset clone and a release activation. It never reaches the four control-plane keys. A tenant switch changes every tenant-scoped key, so the new tenant's data is fetched while the old tenant's stays cached.
 
-**Sources:** [queryClient.ts](../../src/api/queryClient.ts), [SessionProvider.tsx](../../src/auth/SessionProvider.tsx), [useVocabularies.ts](../../src/shared/useVocabularies.ts), [useTenants.ts](../../src/shared/useTenants.ts), [useSystemTenants.ts](../../src/features/system/useSystemTenants.ts), [useLookup.ts](../../src/shared/useLookup.ts), [useOverview.ts](../../src/features/overview/useOverview.ts), [datasets/queries.ts](../../src/features/datasets/queries.ts), [bindings/queries.ts](../../src/features/bindings/queries.ts), [measures/queries.ts](../../src/features/measures/queries.ts), [dimensions/api.ts](../../src/features/dimensions/api.ts), [mappings/api.ts](../../src/features/mappings/api.ts), [bridges/api.ts](../../src/features/bridges/api.ts), [useReleases.ts](../../src/features/releases/useReleases.ts), [useAssumptionSets.ts](../../src/features/assumption-sets/useAssumptionSets.ts), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts).
+**Sources:** [queryClient.ts](../../src/api/queryClient.ts), [SessionProvider.tsx](../../src/auth/SessionProvider.tsx), [useVocabularies.ts](../../src/shared/useVocabularies.ts), [useTenants.ts](../../src/shared/useTenants.ts), [useSystemTenants.ts](../../src/features/system/useSystemTenants.ts), [useLookup.ts](../../src/shared/useLookup.ts), [useOverview.ts](../../src/features/overview/useOverview.ts), [datasets/queries.ts](../../src/features/datasets/queries.ts), [bindings/queries.ts](../../src/features/bindings/queries.ts), [measures/queries.ts](../../src/features/measures/queries.ts), [dimensions/api.ts](../../src/features/dimensions/api.ts), [mappings/api.ts](../../src/features/mappings/api.ts), [bridges/api.ts](../../src/features/bridges/api.ts), [calculation-models/api.ts](../../src/features/calculation-models/api.ts), [reports/api.ts](../../src/features/reports/api.ts), [useReleases.ts](../../src/features/releases/useReleases.ts), [useAssumptionSets.ts](../../src/features/assumption-sets/useAssumptionSets.ts), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts).
 
 ## Pickers
 
@@ -139,7 +141,7 @@ flowchart LR
 
 | `LookupKind` | `parentId` |
 | --- | --- |
-| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets` | None |
+| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None |
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
 | `dimension-versions` | Dimension |
@@ -147,6 +149,10 @@ flowchart LR
 | `mapping-sets` | Optional dimension |
 | `mapping-versions` | Mapping set |
 | `bridge-versions` | Bridge |
+| `model-versions` | Calculation model |
+| `variables`, `variable-sources`, `source-profiles`, `calculated-measures`, `calculation-dimensions` | Model version (a source's own `parentId` is its variable) |
+| `report-versions` | Report |
+| `report-columns` | Report version |
 
 **Sources:** [useLookup.ts](../../src/shared/useLookup.ts), [useVocabularies.ts](../../src/shared/useVocabularies.ts), [EntitySelect.tsx](../../src/shared/EntitySelect.tsx), [VocabularySelect.tsx](../../src/shared/VocabularySelect.tsx), [EntityField.tsx](../../src/shared/form/EntityField.tsx), [VocabularyField.tsx](../../src/shared/form/VocabularyField.tsx), [MultiVocabularyField.tsx](../../src/shared/form/MultiVocabularyField.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [types.ts](../../src/shared/types.ts), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [GrainFieldsField.tsx](../../src/features/datasets/GrainFieldsField.tsx), [ComponentsField.tsx](../../src/features/measures/ComponentsField.tsx), [NewDatasetSheet.tsx](../../src/features/datasets/NewDatasetSheet.tsx), [GrainSheet.tsx](../../src/features/datasets/GrainSheet.tsx), [TenantsPage.tsx](../../src/features/system/TenantsPage.tsx).
 
@@ -169,7 +175,7 @@ flowchart TB
     ReadOnly["FormReadOnlyContext"]
     subgraph fields ["src/shared/form"]
         TextFields["TextField, TextAreaField, PasswordField, NumberField"]
-        PickerFields["EntityField, VocabularyField, MultiVocabularyField"]
+        PickerFields["EntityField, KeyField, VocabularyField, MultiVocabularyField"]
         DateFields["DateField, DateTimeField"]
         EditorFields["ExpressionField, JsonField"]
         Toggle["SwitchField"]
@@ -211,18 +217,19 @@ flowchart TB
 | `DateTimeField` | `datetime-local` input edited in UTC, labelled "(UTC)" | ISO 8601 UTC string or null |
 | `VocabularyField`, `MultiVocabularyField` | `VocabularySelect`; registry `MultiSelect` | A value or null; a list of values |
 | `EntityField` | `EntitySelect` | Item ID or null |
+| `KeyField` | Registry `Combobox` over the given lookup items, such as `useLatestVersionItems` of a dataset's fields | Item key or null, for references by key |
 | `ExpressionField` | `ExpressionEditor` (Monaco) with `[f.` and `[m.` completion | Expression text |
 | `JsonField` | Shared `JsonEditor` (CodeMirror) | Raw JSON text |
 
-**Sources:** [EntityFormSheet.tsx](../../src/shared/EntityFormSheet.tsx), [FormDialog.tsx](../../src/shared/FormDialog.tsx), [useProblemSubmit.ts](../../src/shared/form/useProblemSubmit.ts), [showFieldErrors.ts](../../src/shared/form/showFieldErrors.ts), [useFormField.ts](../../src/shared/form/useFormField.ts), [FormFieldLayout.tsx](../../src/shared/form/FormFieldLayout.tsx), [FormReadOnlyContext.ts](../../src/shared/form/FormReadOnlyContext.ts), [index.ts](../../src/shared/form/index.ts), [TextField.tsx](../../src/shared/form/TextField.tsx), [TextAreaField.tsx](../../src/shared/form/TextAreaField.tsx), [PasswordField.tsx](../../src/shared/form/PasswordField.tsx), [NumberField.tsx](../../src/shared/form/NumberField.tsx), [SwitchField.tsx](../../src/shared/form/SwitchField.tsx), [DateField.tsx](../../src/shared/form/DateField.tsx), [DateTimeField.tsx](../../src/shared/form/DateTimeField.tsx), [VocabularyField.tsx](../../src/shared/form/VocabularyField.tsx), [MultiVocabularyField.tsx](../../src/shared/form/MultiVocabularyField.tsx), [EntityField.tsx](../../src/shared/form/EntityField.tsx), [ExpressionField.tsx](../../src/shared/form/ExpressionField.tsx), [JsonField.tsx](../../src/shared/form/JsonField.tsx), [useSheetForm.ts](../../src/shared/useSheetForm.ts), [SettingsTab.tsx](../../src/features/datasets/SettingsTab.tsx), [dimensions/SettingsTab.tsx](../../src/features/dimensions/SettingsTab.tsx), [RangeBandsTab.tsx](../../src/features/dimensions/RangeBandsTab.tsx), [fieldForm.ts](../../src/features/datasets/fieldForm.ts), [fieldForm.test.ts](../../src/features/datasets/fieldForm.test.ts).
+**Sources:** [EntityFormSheet.tsx](../../src/shared/EntityFormSheet.tsx), [FormDialog.tsx](../../src/shared/FormDialog.tsx), [useProblemSubmit.ts](../../src/shared/form/useProblemSubmit.ts), [showFieldErrors.ts](../../src/shared/form/showFieldErrors.ts), [useFormField.ts](../../src/shared/form/useFormField.ts), [FormFieldLayout.tsx](../../src/shared/form/FormFieldLayout.tsx), [FormReadOnlyContext.ts](../../src/shared/form/FormReadOnlyContext.ts), [index.ts](../../src/shared/form/index.ts), [TextField.tsx](../../src/shared/form/TextField.tsx), [TextAreaField.tsx](../../src/shared/form/TextAreaField.tsx), [PasswordField.tsx](../../src/shared/form/PasswordField.tsx), [NumberField.tsx](../../src/shared/form/NumberField.tsx), [SwitchField.tsx](../../src/shared/form/SwitchField.tsx), [DateField.tsx](../../src/shared/form/DateField.tsx), [DateTimeField.tsx](../../src/shared/form/DateTimeField.tsx), [VocabularyField.tsx](../../src/shared/form/VocabularyField.tsx), [MultiVocabularyField.tsx](../../src/shared/form/MultiVocabularyField.tsx), [EntityField.tsx](../../src/shared/form/EntityField.tsx), [ExpressionField.tsx](../../src/shared/form/ExpressionField.tsx), [JsonField.tsx](../../src/shared/form/JsonField.tsx), [KeyField.tsx](../../src/shared/form/KeyField.tsx), [useLatestVersionItems.ts](../../src/shared/useLatestVersionItems.ts), [useSheetForm.ts](../../src/shared/useSheetForm.ts), [SettingsTab.tsx](../../src/features/datasets/SettingsTab.tsx), [dimensions/SettingsTab.tsx](../../src/features/dimensions/SettingsTab.tsx), [RangeBandsTab.tsx](../../src/features/dimensions/RangeBandsTab.tsx), [fieldForm.ts](../../src/features/datasets/fieldForm.ts), [fieldForm.test.ts](../../src/features/datasets/fieldForm.test.ts).
 
 ## Version lifecycle
 
-Six kinds of resource are versioned, and `VersionHeader` offers the status changes that their lifecycle allows from the selected version's status. The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
+Eight kinds of resource are versioned, and `VersionHeader` offers the status changes that their lifecycle allows from the selected version's status. The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
 
 ```mermaid
 flowchart LR
-    subgraph versioned ["dataset, dimension, mapping and bridge versions, and releases"]
+    subgraph versioned ["dataset, dimension, mapping, bridge, calculation model and report versions, and releases"]
         Draft["draft"]
         Validated["validated"]
         Published["published"]
@@ -253,6 +260,8 @@ flowchart LR
 | `bridge_version` | `BridgeDetailPage` | Versions |
 | `semantic_release` | `ReleaseEditorPage` | Versions |
 | `assumption_set` | `AssumptionSetEditorPage` | Assumption sets |
+| `calculation_model_version` | `CalculationModelDetailPage` | Versions |
+| `report_version` | `ReportDetailPage` | Versions |
 
 **Sources:** [versionTransitions.ts](../../src/shared/versionTransitions.ts), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [types.ts](../../src/shared/types.ts), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx).
 
@@ -263,7 +272,7 @@ One component wires the version picker, the status badge and the lifecycle actio
 ```mermaid
 flowchart TB
     Page["versioned page"]
-    Lookup["useLookup of the version kind: dataset-versions, dimension-versions, mapping-versions, bridge-versions, releases or assumption-sets"]
+    Lookup["useLookup of the version kind: dataset-versions, dimension-versions, mapping-versions, bridge-versions, model-versions, report-versions, releases or assumption-sets"]
     Select["selectedVersion(versions, searchParams.get('version'))"]
     Header["VersionHeader(kind, versions, selectedVersionId, callbacks)"]
     Picker["VersionPicker: Combobox, lookupItemText, StatusBadge per item"]
@@ -276,7 +285,7 @@ flowchart TB
     Alert["ApiErrorAlert: the transition error while it is for the selected version"]
     Callbacks["page callbacks: onCreateVersion, onCloneVersion, onDeleteVersion, onTransitioned"]
     Page --> Lookup
-    Page -->|"datasets, dimensions, mapping sets, bridges"| Select
+    Page -->|"datasets, dimensions, mapping sets, bridges, calculation models, reports"| Select
     Page --> Header
     Header --> Picker
     Header --> Badge
@@ -289,7 +298,7 @@ flowchart TB
     Mutation -->|"onSuccess"| Invalidate
 ```
 
-- `selectedVersion` returns the version that `?version=` names, or else the latest, since lookups list versions by version number. A missing or stale parameter, such as a deleted draft's ID, falls back to the latest. The dataset page pushes a history entry when it selects a version; the dimension, mapping set and bridge pages replace the current one.
+- `selectedVersion` returns the version that `?version=` names, or else the latest, since lookups list versions by version number. A missing or stale parameter, such as a deleted draft's ID, falls back to the latest. The dataset page pushes a history entry when it selects a version; the dimension, mapping set, bridge, calculation model and report pages replace the current one.
 - `VersionHeader` shows the transition error only while `transition.variables.id` is the selected version, so a 422 list stays with the version it was for: it hides when another version is selected and shows again when that one is selected, until the next transition.
 - After a successful change `VersionHeader` shows a toast and calls `onTransitioned`; `useVersionTransition` has already invalidated every query of the tenant.
 - A version that is not a draft renders read-only, but `VersionHeader` keeps offering its transitions, "Clone selected" and "New version"; see [flow 11](04-critical-flows.md#11-read-only-rendering-of-non-drafts).
@@ -300,10 +309,12 @@ flowchart TB
 | `DimensionDetailPage` | `?version=` | `NewVersionSheet` | `NewVersionSheet` with the source | `useDeleteDimensionVersion` |
 | `MappingSetDetailPage` | `?version=` | `NewMappingVersionDialog` | `NewMappingVersionDialog` with the source | `useDeleteMappingVersion` |
 | `BridgeDetailPage` | `?version=` | `NewBridgeVersionDialog` | `NewBridgeVersionDialog` with the source's values | `useDeleteBridgeVersion` |
+| `CalculationModelDetailPage` | `?version=` | `NewModelVersionDialog` | `NewModelVersionDialog` with `cloneFromVersionId` | `useDeleteModelVersion` |
+| `ReportDetailPage` | `?version=` | `NewReportVersionDialog` | `NewReportVersionDialog` with the source's values | `useDeleteReportVersion` |
 | `ReleaseEditorPage` | Route `releases/:releaseId` | None | `NewReleaseSheet` with `copyFromReleaseId` | `useDeleteRelease` |
 | `AssumptionSetEditorPage` | Route `assumption-sets/:assumptionSetId` | None | None | `useDeleteAssumptionSet` |
 
-**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionSelection.ts](../../src/shared/versionSelection.ts), [versionSelection.test.ts](../../src/shared/versionSelection.test.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [StatusBadge.tsx](../../src/shared/StatusBadge.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx).
+**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionSelection.ts](../../src/shared/versionSelection.ts), [versionSelection.test.ts](../../src/shared/versionSelection.test.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [StatusBadge.tsx](../../src/shared/StatusBadge.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [CalculationModelDetailPage.tsx](../../src/features/calculation-models/CalculationModelDetailPage.tsx), [ReportDetailPage.tsx](../../src/features/reports/ReportDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx).
 
 ## Conventions: UTC, lazy pages and editors
 
@@ -398,7 +409,7 @@ flowchart TB
 | `MultiSelect` | `MultiVocabularyField`, `ColumnsField`, `CaptureDialog` |
 | `CodeEditor`, `JsonEditor` | The shared `CodeEditor` and `JsonEditor` wrappers |
 | `NumericInput`, `DatePicker`, `BehaviorSwitch` | `NumberField`, `DateField`, `SwitchField` |
-| `Sortable`, `Nestable` | `GrainFieldsField` and `RangeBandsTab`; `MembersTab` and `MemberTreeRow` |
+| `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `ReportLinesTab` and `ReportLineRow` |
 | `TruncatedText`, `IconTooltip` | `VersionHeader`, `FieldsTab`, `TenantsPage`; `VocabularySelect` |
 | `pages/ErrorPage` | `RequireSession`, `TenantRedirect`, `NotFoundPage`, `RouteErrorPage` |
 

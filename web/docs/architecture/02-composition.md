@@ -54,7 +54,7 @@ flowchart TB
     TenantRoute["t/:tenantId: AppShell"]
     Boundary["pathless: errorElement RouteErrorPage"]
     TenantIndex["index: Navigate to overview, replace"]
-    FeatureRoutes["spread: overviewRoutes, datasetsRoutes, dimensionsRoutes, mappingsRoutes, bridgesRoutes, releasesRoutes, assumptionSetsRoutes, systemRoutes"]
+    FeatureRoutes["spread: overviewRoutes, datasetsRoutes, dimensionsRoutes, mappingsRoutes, bridgesRoutes, releasesRoutes, assumptionSetsRoutes, calculationModelsRoutes, reportsRoutes, systemRoutes"]
     ShellNotFound["*: NotFoundPage inside the shell"]
     OuterNotFound["*: NotFoundPage"]
     BrowserRouter --> LoginRoute
@@ -81,9 +81,11 @@ flowchart TB
 | `bridges` | `bridges`, `bridges/:bridgeId` | `BridgeListPage`, `BridgeDetailPage` | `'Bridges'`, `BridgeCrumb` |
 | `releases` | `releases`, `releases/:releaseId` | `ReleasesPage`, `ReleaseEditorPage` | `'Releases'`, `ReleaseCrumb` |
 | `assumption-sets` | `assumption-sets`, `assumption-sets/:assumptionSetId` | `AssumptionSetsPage`, `AssumptionSetEditorPage` | `'Assumption sets'`, `AssumptionSetCrumb` |
+| `calculation-models` | `calculation-models`, `calculation-models/:modelId` | `CalculationModelListPage`, `CalculationModelDetailPage` | `'Calculation models'`, `CalculationModelCrumb` |
+| `reports` | `reports`, `reports/:reportId` | `ReportListPage`, `ReportDetailPage` | `'Reports'`, `ReportCrumb` |
 | `system` | `system/tenants` | `TenantsPage` | `'Tenants'` |
 
-**Sources:** [router.tsx](../../src/app/router.tsx), [errorPages.tsx](../../src/app/errorPages.tsx), [RequireSession.tsx](../../src/auth/RequireSession.tsx), [TenantRedirect.tsx](../../src/app/TenantRedirect.tsx), [overview/routes.tsx](../../src/features/overview/routes.tsx), [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [dimensions/routes.tsx](../../src/features/dimensions/routes.tsx), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [bridges/routes.tsx](../../src/features/bridges/routes.tsx), [releases/routes.tsx](../../src/features/releases/routes.tsx), [assumption-sets/routes.tsx](../../src/features/assumption-sets/routes.tsx), [system/routes.tsx](../../src/features/system/routes.tsx).
+**Sources:** [router.tsx](../../src/app/router.tsx), [errorPages.tsx](../../src/app/errorPages.tsx), [RequireSession.tsx](../../src/auth/RequireSession.tsx), [TenantRedirect.tsx](../../src/app/TenantRedirect.tsx), [overview/routes.tsx](../../src/features/overview/routes.tsx), [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [dimensions/routes.tsx](../../src/features/dimensions/routes.tsx), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [bridges/routes.tsx](../../src/features/bridges/routes.tsx), [releases/routes.tsx](../../src/features/releases/routes.tsx), [assumption-sets/routes.tsx](../../src/features/assumption-sets/routes.tsx), [calculation-models/routes.tsx](../../src/features/calculation-models/routes.tsx), [reports/routes.tsx](../../src/features/reports/routes.tsx), [system/routes.tsx](../../src/features/system/routes.tsx).
 
 ## A feature's routes and breadcrumbs
 
@@ -112,7 +114,7 @@ flowchart LR
 
 - `lazy: { Component }` imports the page module when its route first matches. The `routes.tsx` files and the crumb components they import load with the app; the page modules do not.
 - `RouteHandle` in `src/shared/routeHandle.ts` types `handle.crumb` as a string or a function of the match that returns a node. `AppBreadcrumbs` renders the last crumb as the current page and the others as links to their match's pathname.
-- Dataset, dimension, mapping set and bridge pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. Release and assumption set editors are versions themselves, so their version picker navigates to `releases/:releaseId` or `assumption-sets/:assumptionSetId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui).
+- Dataset, dimension, mapping set, bridge, calculation model and report pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. Release and assumption set editors are versions themselves, so their version picker navigates to `releases/:releaseId` or `assumption-sets/:assumptionSetId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui).
 
 **Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [routeHandle.ts](../../src/shared/routeHandle.ts), [AppBreadcrumbs.tsx](../../src/app/AppBreadcrumbs.tsx), [DatasetCrumb.tsx](../../src/features/datasets/DatasetCrumb.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [versionSelection.ts](../../src/shared/versionSelection.ts).
 
@@ -154,7 +156,7 @@ Hiding the System group only changes the navigation: `system/tenants` is registe
 | Part | What it shows |
 | --- | --- |
 | `AppSidebar` | A header link to `/t/{tenantId}/overview` and one group per `NavGroup` from `getNavigation`. Each item links to `/t/{tenantId}/{path}` and is active while the pathname starts with that link |
-| `navigation.ts` | Semantic model: Overview, Datasets, Dimensions, Mappings, Bridges, Releases, Assumption sets. System (`systemAdminOnly`): Tenants at `system/tenants` |
+| `navigation.ts` | Semantic model: Overview, Datasets, Dimensions, Mappings, Bridges, Releases, Assumption sets. Reporting: Calculation models, Reports. System (`systemAdminOnly`): Tenants at `system/tenants` |
 | `AppBreadcrumbs` | One crumb per matched route that has `handle.crumb` |
 | `TenantSwitcher` | A tenant `Combobox` for SystemAdmins; a badge with the route's tenant for everyone else |
 | `ThemeToggle` | Switches `setTheme` between `dark` and `light` |
@@ -217,7 +219,7 @@ flowchart LR
     MappingApi -->|"invalidateQueries on its keys, setQueryData"| Cache
 ```
 
-- Two write styles exist. Datasets, bindings and measures keep their read hooks in `queries.ts` and declare each write as a `useMutation` in the component that uses it; on success it calls `invalidateTenantQueries`. Dimensions, mappings and bridges keep reads and writes in `api.ts`, releases in `useReleases.ts`, assumption sets in `useAssumptionSets.ts` and the tenant directory in `useSystemTenants.ts`. Those writes invalidate the keys they change and the `lookupQueryKey` prefixes of the lookups they affect, and the bulk replaces put the stored list straight into the cache with `setQueryData`.
+- Two write styles exist. Datasets, bindings and measures keep their read hooks in `queries.ts` and declare each write as a `useMutation` in the component that uses it; on success it calls `invalidateTenantQueries`. Dimensions, mappings, bridges, calculation models and reports keep reads and writes in `api.ts`, releases in `useReleases.ts`, assumption sets in `useAssumptionSets.ts` and the tenant directory in `useSystemTenants.ts`. Those writes invalidate the keys they change and the `lookupQueryKey` prefixes of the lookups they affect, and the bulk replaces put the stored list straight into the cache with `setQueryData`.
 - Dataset hooks use `['datasets', tenantId, ...]`, `['dataset-versions', tenantId, versionId]`, `['fields', tenantId, versionId]`, `['grains', tenantId, versionId]`, `['source-objects', tenantId]` and `['source-columns', tenantId, name]`. Mapping hooks use `['mapping-sets', tenantId, ...]` and `['mapping-entries', tenantId, versionId]`.
 - A version status change on any page goes through `useVersionTransition`, which calls `invalidateTenantQueries`.
 
@@ -230,6 +232,8 @@ flowchart LR
 | `dimensions` | `api.ts` | `refresh` of its query keys and lookup kinds; `setQueryData` after a member reorder and a range-band replace |
 | `mappings` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk entry replace |
 | `bridges` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk mapping replace |
+| `calculation-models` | `api.ts`; the six content kinds share `useModelContent` and its writes, typed by `ModelContentTypes` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade |
+| `reports` | `api.ts` | Its keys and lookups; `setQueryData` after a column or line replace |
 | `releases` | `useReleases.ts` | `invalidateReleases` (`['releases', tenantId]` and the `releases` lookup) or the release keys; activation calls `invalidateTenantQueries` |
 | `assumption-sets` | `useAssumptionSets.ts` | `invalidateAssumptionSets` (`['assumption-sets', tenantId]` and its lookup) or the set keys |
 | `system` | `useSystemTenants.ts` | `invalidateTenantDirectory`: `['system-tenants']` and `['tenants']` |

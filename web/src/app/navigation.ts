@@ -2,7 +2,9 @@ import {
   ArrowLeftRight,
   Boxes,
   Building2,
+  Calculator,
   Database,
+  FileSpreadsheet,
   LayoutDashboard,
   Rocket,
   SlidersHorizontal,
@@ -35,6 +37,13 @@ const NAVIGATION: NavGroup[] = [
       { title: 'Bridges', path: 'bridges', icon: Waypoints },
       { title: 'Releases', path: 'releases', icon: Rocket },
       { title: 'Assumption sets', path: 'assumption-sets', icon: SlidersHorizontal },
+    ],
+  },
+  {
+    title: 'Reporting',
+    items: [
+      { title: 'Calculation models', path: 'calculation-models', icon: Calculator },
+      { title: 'Reports', path: 'reports', icon: FileSpreadsheet },
     ],
   },
   {
