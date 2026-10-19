@@ -15,7 +15,7 @@ public static class AggregationFunctions
     /// <summary>Largest value.</summary>
     public const string Max = "max";
 
-    /// <summary>Number of non-null values.</summary>
+    /// <summary>Number of non-null values, or of rows when the measure has no value component.</summary>
     public const string Count = "count";
 
     /// <summary>Number of distinct non-null values.</summary>
@@ -32,7 +32,7 @@ public static class AggregationFunctions
             new() { Value = Avg, Description = "Arithmetic mean of the values." },
             new() { Value = Min, Description = "Smallest value." },
             new() { Value = Max, Description = "Largest value." },
-            new() { Value = Count, Description = "Number of non-null values." },
+            new() { Value = Count, Description = "Number of non-null values, or of rows when the measure has no value component." },
             new() { Value = CountDistinct, Description = "Number of distinct non-null values." }
         ]
     };

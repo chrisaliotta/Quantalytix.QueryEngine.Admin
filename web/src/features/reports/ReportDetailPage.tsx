@@ -65,9 +65,9 @@ function ReportDetail({ report }: { report: Report }) {
       modelVersionId: null,
       defaultSourceProfileId: null,
       defaultSettingsJson: DEFAULT_SETTINGS,
-      payloadJson: null,
-      defaultFilterJson: null,
-      defaultPivotJson: null,
+      payloadJson: '',
+      defaultFilterJson: '',
+      defaultPivotJson: '',
       cloneFromVersionId: null,
     });
   }
@@ -80,10 +80,10 @@ function ReportDetail({ report }: { report: Report }) {
         modelId: modelVersion.data?.modelId ?? null,
         modelVersionId: source.modelVersionId ?? null,
         defaultSourceProfileId: source.defaultSourceProfileId ?? null,
-        defaultSettingsJson: source.defaultSettingsJson ?? null,
-        payloadJson: source.payloadJson ?? null,
-        defaultFilterJson: source.defaultFilterJson ?? null,
-        defaultPivotJson: source.defaultPivotJson ?? null,
+        defaultSettingsJson: source.defaultSettingsJson ?? '',
+        payloadJson: source.payloadJson ?? '',
+        defaultFilterJson: source.defaultFilterJson ?? '',
+        defaultPivotJson: source.defaultPivotJson ?? '',
         cloneFromVersionId: sourceId,
       });
     }

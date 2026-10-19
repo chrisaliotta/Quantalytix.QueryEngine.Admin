@@ -44,6 +44,20 @@ public sealed class MeasureInputValidatorTests
         result.ShouldHaveValidationErrorFor(measure => measure.Components).WithErrorMessage("'aggregate' measures need a 'value' component.");
     }
 
+    /// <summary>
+    /// A count without a value component counts rows, as the query engine compiles it, so a row count such as the seed kit's
+    /// <c>rowCount</c> is valid; a distinct count still needs the value whose distinct entries it counts.
+    /// </summary>
+    [Fact]
+    public void Count_MayOmitTheValueComponent()
+    {
+        var rowCount = Measure(MeasureKinds.Aggregate) with { AggregationFunction = AggregationFunctions.Count, Components = [] };
+        var distinctCount = rowCount with { AggregationFunction = AggregationFunctions.CountDistinct };
+
+        _validator.TestValidate(rowCount).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(distinctCount).ShouldHaveValidationErrorFor(measure => measure.Components).WithErrorMessage("'aggregate' measures need a 'value' component.");
+    }
+
     /// <summary>Weighted measures need a value and a weight component and take no aggregation function.</summary>
     /// <param name="kind">The weighted kind.</param>
     [Theory]

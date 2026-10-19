@@ -53,7 +53,7 @@ sequenceDiagram
 
 - `unwrap` throws an `ApiProblem` when the token request fails; `signIn` rejects, and `LoginPage` shows the error in an `ApiErrorAlert` under the form.
 - `state.from` is set when `RequireSession` sent the user to `/login`, so a deep link opens again after sign-in.
-- The form starts with tenant `sandbox` and the SystemAdmin box ticked. The token endpoint exists only on a Development API host.
+- The form starts with tenant `development` and the SystemAdmin box ticked. The token endpoint exists only on a Development API host.
 
 **Sources:** [LoginPage.tsx](../../src/auth/LoginPage.tsx), [SessionProvider.tsx](../../src/auth/SessionProvider.tsx), [AuthClient.ts](../../src/auth/AuthClient.ts), [session.ts](../../src/auth/session.ts), [client.ts](../../src/api/client.ts), [problemDetails.ts](../../src/api/problemDetails.ts), [RequireSession.tsx](../../src/auth/RequireSession.tsx), [TenantRedirect.tsx](../../src/app/TenantRedirect.tsx), [useTenants.ts](../../src/shared/useTenants.ts), [vite.config.ts](../../vite.config.ts), [DevelopmentTokenController.cs](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Development/DevelopmentTokenController.cs), [SessionController.cs](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Session/SessionController.cs).
 

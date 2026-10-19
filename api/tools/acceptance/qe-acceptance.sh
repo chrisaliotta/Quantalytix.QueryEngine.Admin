@@ -16,14 +16,17 @@
 #
 # Run it outside the shell sandbox: it calls localhost and StarRocks. It needs curl, python3 and the .NET 10 SDK, and the
 # admin API running in Development at $ADMIN. When $ENGINE does not answer, it starts the engine host from its built DLL
-# under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes only to tenant sandbox and never
-# prints the control-plane connection string.
+# under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant $TENANT, development by
+# default, and never prints the control-plane connection string. While it runs, its release is the tenant's active
+# release, so don't run the engine's golden cases at the same time.
 # It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (published v1) and
-# ${PREFIX}acceptance (published, inactive). Published objects are immutable, so every run needs a new PREFIX.
+# ${PREFIX}acceptance (published, inactive) until the seed kit is reloaded. Published objects are immutable, so every run
+# needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
 ENGINE=${ENGINE:-http://localhost:5098}
+TENANT=${TENANT:-development}
 ENGINE_HOST_DIR=${ENGINE_HOST_DIR:-${QueryEngineRoot:?Set QueryEngineRoot to the query engine checkout}/src/Quantalytix.QueryEngine.Host}
 ENGINE_DLL=${ENGINE_DLL:-bin/Debug/net10.0/Quantalytix.QueryEngine.Host.dll}
 MEASURES=${MEASURES:-balance avgRate balanceRate endingBalance}
@@ -32,13 +35,13 @@ RANGE_END=${RANGE_END:-2026-04-01}
 REPORT_RANGE_START=${REPORT_RANGE_START:-2024-01-01}
 REPORT_RANGE_END=${REPORT_RANGE_END:-2024-04-01}
 SECRETS=$HOME/.microsoft/usersecrets/Quantalytix.QueryEngine.Admin.Api.Development/secrets.json
-API=$ADMIN/api/tenants/sandbox
+API=$ADMIN/api/tenants/$TENANT
 W=$(mktemp -d /tmp/qe-acceptance.XXXXXX)
 ORIGINAL=""
 PASSED=0
 
 TOKEN=$(curl -sf -m 30 -X POST "$ADMIN/development/token" -H 'Content-Type: application/json' \
-  -d '{"tenantId":"sandbox","systemAdmin":true}' | python3 -c 'import json, sys; print(json.load(sys.stdin)["accessToken"])')
+  -d "{\"tenantId\":\"$TENANT\",\"systemAdmin\":true}" | python3 -c 'import json, sys; print(json.load(sys.stdin)["accessToken"])')
 
 # call METHOD PATH STATUS [BODY]: stops the script unless the admin API answers STATUS; the body lands in $W/last.json.
 call() {
@@ -339,5 +342,5 @@ var passed = releaseKey == expectedReleaseKey && allReturnedRows && catalogRepor
 Console.WriteLine(passed ? "PASS" : $"FAIL: expected release {expectedReleaseKey}, rows from every query, report {reportKey} in the report catalog and rows in every report table.");
 return passed ? 0 : 1;
 EOF
-dotnet run "$W/hub/hub.cs" -- "$ENGINE" sandbox "${PREFIX}acceptance" "$DATASET_KEY" "$W/request.json" "$REPORT_KEY" "$W/report.json" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
+dotnet run "$W/hub/hub.cs" -- "$ENGINE" "$TENANT" "${PREFIX}acceptance" "$DATASET_KEY" "$W/request.json" "$REPORT_KEY" "$W/report.json" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
 PASSED=1

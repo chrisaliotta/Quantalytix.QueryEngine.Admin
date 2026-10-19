@@ -1,19 +1,19 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { JsonField, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useLookup } from '@/shared/useLookup';
-import { optionalJson } from './reportForm';
 import type { ReportColumnInput } from './types';
 
-/** Values of the column sheet; a choice not made yet is null. */
+/** Values of the column sheet; a choice not made yet is null, and optional text is empty for none. */
 interface ReportColumnValues {
   columnKey: string;
   displayName: string;
   valueKind: string | null;
   metricKey: string | null;
-  displayFormat: string | null;
+  displayFormat: string;
   isVisible: boolean;
-  payloadJson: string | null;
+  payloadJson: string;
 }
 
 export interface ReportColumnSheetProps {
@@ -37,9 +37,9 @@ export function ReportColumnSheet({ modelVersionId, column, readOnly, onSave, on
       displayName: column?.displayName ?? '',
       valueKind: column?.valueKind ?? 'variable',
       metricKey: column?.metricKey ?? null,
-      displayFormat: column?.displayFormat ?? null,
+      displayFormat: column?.displayFormat ?? '',
       isVisible: column?.isVisible ?? true,
-      payloadJson: column?.payloadJson ?? null,
+      payloadJson: column?.payloadJson ?? '',
     },
   });
   const isVariable = useWatch({ control: form.control, name: 'valueKind' }) === 'variable';
@@ -51,9 +51,9 @@ export function ReportColumnSheet({ modelVersionId, column, readOnly, onSave, on
       displayName: values.displayName,
       valueKind: values.valueKind ?? '',
       metricKey: values.metricKey ?? '',
-      displayFormat: values.displayFormat?.trim() ? values.displayFormat : null,
+      displayFormat: emptyToNull(values.displayFormat),
       isVisible: values.isVisible,
-      payloadJson: optionalJson(values.payloadJson),
+      payloadJson: emptyToNull(values.payloadJson),
     });
   }
 

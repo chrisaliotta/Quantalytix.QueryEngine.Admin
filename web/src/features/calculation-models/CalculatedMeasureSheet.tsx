@@ -1,12 +1,13 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { ExpressionField, NumberField, TextField, VocabularyField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useLookup } from '@/shared/useLookup';
 import { useSaveModelContent } from './api';
-import { contentSheetTitle, optionalText } from './contentSheet';
+import { contentSheetTitle } from './contentSheet';
 import type { CalculatedMeasure } from './types';
 
-/** Values of the calculated measure sheet; a choice not made yet is null. */
+/** Values of the calculated measure sheet; a choice not made yet is null, and an optional text is empty for none. */
 interface CalculatedMeasureValues {
   measureKey: string;
   displayName: string;
@@ -15,7 +16,7 @@ interface CalculatedMeasureValues {
   outputPrecision: number | null;
   outputScale: number | null;
   roundingMode: string | null;
-  unitKey: string | null;
+  unitKey: string;
   displayFormat: string;
 }
 
@@ -45,13 +46,13 @@ export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }
       outputPrecision: measure?.outputPrecision ?? 28,
       outputScale: measure?.outputScale ?? 6,
       roundingMode: measure?.roundingMode ?? null,
-      unitKey: measure?.unitKey ?? null,
+      unitKey: measure?.unitKey ?? '',
       displayFormat: measure?.displayFormat ?? 'number',
     },
   });
 
   function submit(values: CalculatedMeasureValues) {
-    return save({ ...values, outputDataType: values.outputDataType ?? '', unitKey: optionalText(values.unitKey) });
+    return save({ ...values, outputDataType: values.outputDataType ?? '', unitKey: emptyToNull(values.unitKey) });
   }
 
   return (

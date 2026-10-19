@@ -1,16 +1,17 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { TextField, VocabularyField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useSaveModelContent } from './api';
-import { contentSheetTitle, optionalText } from './contentSheet';
+import { contentSheetTitle } from './contentSheet';
 import type { ModelContentInput, Variable } from './types';
 
-/** Values of the variable sheet; a choice not made yet is null. */
+/** Values of the variable sheet; a choice not made yet is null, and an optional text is empty for none. */
 interface VariableValues {
   variableKey: string;
   displayName: string;
   variableRole: string;
-  targetMemberKey: string | null;
+  targetMemberKey: string;
   selectionScope: string | null;
   missingBehavior: string | null;
 }
@@ -31,7 +32,7 @@ export function VariableSheet({ versionId, variable, readOnly, onClose }: Variab
       variableKey: variable?.variableKey ?? '',
       displayName: variable?.displayName ?? '',
       variableRole: variable?.variableRole ?? '',
-      targetMemberKey: variable?.targetMemberKey ?? null,
+      targetMemberKey: variable?.targetMemberKey ?? '',
       selectionScope: variable?.selectionScope ?? 'descendants',
       missingBehavior: variable?.missingBehavior ?? 'null',
     },
@@ -40,7 +41,7 @@ export function VariableSheet({ versionId, variable, readOnly, onClose }: Variab
   function submit(values: VariableValues) {
     const body: ModelContentInput<'variables'> = {
       ...values,
-      targetMemberKey: optionalText(values.targetMemberKey),
+      targetMemberKey: emptyToNull(values.targetMemberKey),
       selectionScope: values.selectionScope ?? '',
       missingBehavior: values.missingBehavior ?? '',
     };

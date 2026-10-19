@@ -58,8 +58,9 @@ public sealed class MeasureUpdateInputValidator : AbstractValidator<MeasureUpdat
         RuleFor(input => input.Components)
             .Custom((components, context) =>
             {
+                var measure = context.InstanceToValidate;
                 var roles = components.Select(component => component.ComponentRole);
-                foreach (var problem in MeasureComponentRoles.Problems(context.InstanceToValidate.MeasureKind, roles)) context.AddFailure(problem);
+                foreach (var problem in MeasureComponentRoles.Problems(measure.MeasureKind, measure.AggregationFunction, roles)) context.AddFailure(problem);
             })
             .When(input => Kinds.Contains(input.MeasureKind));
         RuleFor(input => input.TimePolicy!).SetValidator(new MeasureTimePolicyInputValidator());

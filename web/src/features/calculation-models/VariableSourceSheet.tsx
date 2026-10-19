@@ -1,15 +1,16 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { EntityField, JsonField, KeyField, SwitchField, TextField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useLatestVersionItems } from '@/shared/useLatestVersionItems';
 import { useSaveModelContent } from './api';
-import { contentSheetTitle, optionalText } from './contentSheet';
+import { contentSheetTitle } from './contentSheet';
 import type { VariableSource } from './types';
 
 /** Data types a time field can have. */
 const TIME_TYPES = ['date', 'datetime', 'timestamp'];
 
-/** Values of the source sheet; a choice not made yet is null, and the filter is JSON text. */
+/** Values of the source sheet; a choice not made yet is null, and the filter is JSON text, empty for none. */
 interface VariableSourceValues {
   variableId: number | null;
   sourceKey: string;
@@ -17,7 +18,7 @@ interface VariableSourceValues {
   reportFieldKey: string | null;
   timeFieldKey: string | null;
   measureKey: string | null;
-  sourceFilterJson: string | null;
+  sourceFilterJson: string;
   isEnabled: boolean;
 }
 
@@ -43,7 +44,7 @@ export function VariableSourceSheet({ versionId, source, readOnly, onClose }: Va
       reportFieldKey: source?.reportFieldKey ?? null,
       timeFieldKey: source?.timeFieldKey ?? null,
       measureKey: source?.measureKey ?? null,
-      sourceFilterJson: source?.sourceFilterJson ?? null,
+      sourceFilterJson: source?.sourceFilterJson ?? '',
       isEnabled: source?.isEnabled ?? true,
     },
   });
@@ -59,7 +60,7 @@ export function VariableSourceSheet({ versionId, source, readOnly, onClose }: Va
       reportFieldKey: values.reportFieldKey ?? '',
       timeFieldKey: values.timeFieldKey ?? '',
       measureKey: values.measureKey ?? '',
-      sourceFilterJson: optionalText(values.sourceFilterJson),
+      sourceFilterJson: emptyToNull(values.sourceFilterJson),
       isEnabled: values.isEnabled,
     });
   }

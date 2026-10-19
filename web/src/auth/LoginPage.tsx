@@ -24,7 +24,7 @@ export function LoginPage() {
   const { session, isLoading, signIn } = useSession();
   const location = useLocation();
   const form = useForm<SignInRequest>({
-    defaultValues: { tenantId: 'sandbox', systemAdmin: true },
+    defaultValues: { tenantId: 'development', systemAdmin: true },
   });
   const signInMutation = useMutation({ mutationFn: signIn });
 

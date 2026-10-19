@@ -1,8 +1,9 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
+import { emptyToNull } from '@/shared/text';
 import { useUpdateReport } from './api';
 import { ReportIdentityFields } from './ReportIdentityFields';
-import { optionalJson, type ReportValues } from './reportForm';
+import type { ReportValues } from './reportForm';
 import type { Report } from './types';
 
 export interface ReportIdentitySheetProps {
@@ -18,7 +19,7 @@ export function ReportIdentitySheet({ report, onClose }: ReportIdentitySheetProp
       displayName: report.displayName,
       reportType: report.reportType,
       isEnabled: report.isEnabled,
-      payloadJson: report.payloadJson ?? null,
+      payloadJson: report.payloadJson ?? '',
     },
   });
 
@@ -29,7 +30,7 @@ export function ReportIdentitySheet({ report, onClose }: ReportIdentitySheetProp
       title={`Edit ${report.reportKey}`}
       description="A change refreshes the query engine's cached report definitions."
       form={form}
-      onSubmit={values => update.mutateAsync({ ...values, payloadJson: optionalJson(values.payloadJson) })}
+      onSubmit={values => update.mutateAsync({ ...values, payloadJson: emptyToNull(values.payloadJson) })}
     >
       <ReportIdentityFields />
     </EntityFormSheet>

@@ -1,9 +1,10 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { TextField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useCreateReport } from './api';
 import { ReportIdentityFields } from './ReportIdentityFields';
-import { optionalJson, type ReportValues } from './reportForm';
+import type { ReportValues } from './reportForm';
 import type { Report } from './types';
 
 /** Values of the new-report sheet: the identity attributes and the key. */
@@ -20,11 +21,11 @@ export interface NewReportSheetProps {
 export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
   const create = useCreateReport();
   const form = useForm<NewReportValues>({
-    defaultValues: { reportKey: '', displayName: '', reportType: '', isEnabled: true, payloadJson: null },
+    defaultValues: { reportKey: '', displayName: '', reportType: '', isEnabled: true, payloadJson: '' },
   });
 
   async function submit(values: NewReportValues) {
-    onCreated(await create.mutateAsync({ ...values, payloadJson: optionalJson(values.payloadJson) }));
+    onCreated(await create.mutateAsync({ ...values, payloadJson: emptyToNull(values.payloadJson) }));
   }
 
   return (

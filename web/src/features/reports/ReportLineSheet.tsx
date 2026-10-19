@@ -1,12 +1,12 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { JsonField, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useLatestVersionItems } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
-import { optionalJson } from './reportForm';
 import type { ReportLineInput, ReportVersion } from './types';
 
-/** Values of the line sheet; a choice not made yet is null. */
+/** Values of the line sheet; a choice not made yet is null, and JSON is text, empty for none. */
 interface ReportLineValues {
   lineKey: string;
   displayName: string;
@@ -15,8 +15,8 @@ interface ReportLineValues {
   calculatedMeasureKey: string | null;
   valueColumnKey: string | null;
   isVisible: boolean;
-  payloadJson: string | null;
-  settingsJson: string | null;
+  payloadJson: string;
+  settingsJson: string;
 }
 
 export interface ReportLineSheetProps {
@@ -47,8 +47,8 @@ export function ReportLineSheet({ version, line, readOnly, onSave, onClose }: Re
       calculatedMeasureKey: line?.calculatedMeasureKey ?? null,
       valueColumnKey: line?.valueColumnKey ?? null,
       isVisible: line?.isVisible ?? true,
-      payloadJson: line?.payloadJson ?? null,
-      settingsJson: line?.settingsJson ?? null,
+      payloadJson: line?.payloadJson ?? '',
+      settingsJson: line?.settingsJson ?? '',
     },
   });
   const lineKind = useWatch({ control: form.control, name: 'lineKind' });
@@ -63,8 +63,8 @@ export function ReportLineSheet({ version, line, readOnly, onSave, onClose }: Re
       calculatedMeasureKey: lineKind === 'formula' ? values.calculatedMeasureKey : null,
       valueColumnKey: lineKind === 'formula' ? values.valueColumnKey : null,
       isVisible: values.isVisible,
-      payloadJson: optionalJson(values.payloadJson),
-      settingsJson: optionalJson(values.settingsJson),
+      payloadJson: emptyToNull(values.payloadJson),
+      settingsJson: emptyToNull(values.settingsJson),
     });
   }
 

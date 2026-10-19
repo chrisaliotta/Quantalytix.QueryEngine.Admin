@@ -11,8 +11,3 @@ export function contentSheetTitle(noun: string, key: string | null, readOnly: bo
   }
   return `Edit ${key}`;
 }
-
-/** A text field's value as the API takes an optional text: null when it is blank. */
-export function optionalText(value: string | null) {
-  return value?.trim() ? value : null;
-}

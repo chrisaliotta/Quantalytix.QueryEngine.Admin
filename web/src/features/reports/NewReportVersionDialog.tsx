@@ -1,21 +1,21 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityField, JsonField } from '@/shared/form';
 import { FormDialog } from '@/shared/FormDialog';
+import { emptyToNull } from '@/shared/text';
 import { useCreateReportVersion } from './api';
-import { optionalJson } from './reportForm';
 import type { CreatedReportVersion, Report } from './types';
 
-/** Values of the new-version dialog; the model only narrows the model versions offered, and is not sent. */
+/** Values of the new-version dialog; the model only narrows the model versions offered, and is not sent. JSON is text, empty for none. */
 export interface NewReportVersionValues {
   reportDimensionId: number | null;
   modelId: number | null;
   modelVersionId: number | null;
   defaultSourceProfileId: number | null;
-  defaultSettingsJson: string | null;
+  defaultSettingsJson: string;
   /** Carried from a clone source; the version's settings sheet edits them. */
-  payloadJson: string | null;
-  defaultFilterJson: string | null;
-  defaultPivotJson: string | null;
+  payloadJson: string;
+  defaultFilterJson: string;
+  defaultPivotJson: string;
   cloneFromVersionId: number | null;
 }
 
@@ -42,10 +42,10 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
       ...values,
       reportDimensionId: values.reportDimensionId ?? 0,
       modelVersionId: values.modelVersionId ?? 0,
-      payloadJson: optionalJson(values.payloadJson),
-      defaultFilterJson: optionalJson(values.defaultFilterJson),
-      defaultSettingsJson: optionalJson(values.defaultSettingsJson),
-      defaultPivotJson: optionalJson(values.defaultPivotJson),
+      payloadJson: emptyToNull(values.payloadJson),
+      defaultFilterJson: emptyToNull(values.defaultFilterJson),
+      defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
+      defaultPivotJson: emptyToNull(values.defaultPivotJson),
     });
     onCreated(created);
   }

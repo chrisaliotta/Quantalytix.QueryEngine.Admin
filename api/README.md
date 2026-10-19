@@ -71,8 +71,8 @@ dotnet test --solution Quantalytix.QueryEngine.Admin.slnx --no-build
 - Don't pass `-maxcpucount` to `dotnet test`. The platform forwards it to the test app, which then runs no tests.
 - To run one class, use the xUnit runner from the test project's directory:
   `./bin/Debug/net10.0/Quantalytix.QueryEngine.Admin.Tests -class <full class name>`.
-- The live gateway round trip is skipped unless you opt in with `QE_ADMIN_LIVE_SANDBOX=true`. It writes and then deletes
-  its own rows in tenant `sandbox`, so it needs the control-plane secret and the cluster.
+- The live gateway round trip is skipped unless you opt in with `QE_ADMIN_LIVE_GATEWAY=true`. It writes and then deletes
+  its own rows in tenant `development`, so it needs the control-plane secret and the cluster.
 
 ## Run
 
@@ -85,7 +85,7 @@ another port. Development hosts issue tokens for any tenant:
 
 ```bash
 curl -s -X POST http://localhost:5180/development/token -H 'Content-Type: application/json' \
-  -d '{"tenantId":"sandbox","systemAdmin":true}'
+  -d '{"tenantId":"development","systemAdmin":true}'
 ```
 
 The response's `accessToken` is a bearer token for eight hours. The signing key lives in memory, so tokens die when the
@@ -104,7 +104,8 @@ Commit both files with the API change that produced them.
 
 ## End-to-end acceptance
 
-`tools/acceptance/qe-acceptance.sh` proves that metadata authored here reaches the engine. In tenant `sandbox` it:
+`tools/acceptance/qe-acceptance.sh` proves that metadata authored here reaches the engine. In tenant `development`, or
+the tenant `TENANT` names, it:
 
 1. authors dataset `${PREFIX}loans` and publishes its v1;
 2. authors calculation model `${PREFIX}margin` over the seed GL monthly datasets and report `${PREFIX}margin` over it,
@@ -120,10 +121,12 @@ Before you run it:
 - Set `QueryEngineRoot`. When the engine is not running, the script starts its built host from there and stops it at
   the end.
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
-- Load the seed kit into tenant `sandbox`: the report reads its `bank.balance_monthly` and `bank.income_monthly`
-  datasets, its `ReportItem` and `Branch` dimensions, and its 2024 data.
+- Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
+  `bank.income_monthly` datasets, its `ReportItem` and `Branch` dimensions, and its 2024 data.
 - Use a new `PREFIX` for every run. Published objects are immutable, so each run leaves `${PREFIX}loans`, the
-  `${PREFIX}margin` model and report, and `${PREFIX}acceptance` behind.
+  `${PREFIX}margin` model and report, and `${PREFIX}acceptance` behind until you reload the seed kit.
+- Don't run the engine's golden cases at the same time: while the script runs, its release is the tenant's active
+  release.
 
 ```bash
 dotnet run --project src/Quantalytix.QueryEngine.Admin.Api --launch-profile http -- --urls http://localhost:5186 &
@@ -131,5 +134,6 @@ PREFIX=zz_try_ tools/acceptance/qe-acceptance.sh
 ```
 
 The script's header describes its other modes: releasing an existing dataset, or checking the authoring path without
-leaving objects. `tools/CreateSandboxTenant.cs` is the one-shot tool that rebuilt the sandbox database as a copy of the
-development tenant's. It drops `srdb_admin_sandbox` first.
+leaving objects. To keep its objects out of the development tenant, run `tools/CreateSandboxTenant.cs` first. It copies
+the development tenant's database into tenant `sandbox`, dropping `srdb_admin_sandbox` first. Then run the script with
+`TENANT=sandbox`.

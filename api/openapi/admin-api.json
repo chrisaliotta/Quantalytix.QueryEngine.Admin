@@ -5554,6 +5554,41 @@
         }
       }
     },
+    "/development/token": {
+      "post": {
+        "tags": [
+          "DevelopmentToken"
+        ],
+        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The signed token, valid for eight hours or until the host restarts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/datasets": {
       "get": {
         "tags": [
@@ -13295,6 +13330,52 @@
         },
         "description": "The editable settings of a draft dataset version."
       },
+      "DevelopmentTokenRequest": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries, such as `development`."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
+          }
+        },
+        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
+      },
+      "DevelopmentTokenResponse": {
+        "required": [
+          "accessToken",
+          "tenantId",
+          "systemAdmin",
+          "expiresUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The signed JWT to send as `Authorization: Bearer ...`."
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role."
+          },
+          "expiresUtc": {
+            "type": "string",
+            "description": "When the token expires.",
+            "format": "date-time"
+          }
+        },
+        "description": "A bearer token issued by a Development host."
+      },
       "DimensionBindingRecord": {
         "required": [
           "bindingId",
@@ -17842,6 +17923,9 @@
     },
     {
       "name": "RangeBands"
+    },
+    {
+      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"

@@ -1,17 +1,17 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { EntityField, JsonField } from '@/shared/form';
+import { emptyToNull } from '@/shared/text';
 import { useUpdateReportVersion } from './api';
-import { optionalJson } from './reportForm';
 import type { ReportVersion } from './types';
 
-/** Values of the version settings sheet; the defaults are JSON text. */
+/** Values of the version settings sheet; the defaults are JSON text, empty for none. */
 interface ReportVersionValues {
   defaultSourceProfileId: number | null;
-  payloadJson: string | null;
-  defaultFilterJson: string | null;
-  defaultSettingsJson: string | null;
-  defaultPivotJson: string | null;
+  payloadJson: string;
+  defaultFilterJson: string;
+  defaultSettingsJson: string;
+  defaultPivotJson: string;
 }
 
 export interface ReportVersionSheetProps {
@@ -29,20 +29,20 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
   const form = useForm<ReportVersionValues>({
     defaultValues: {
       defaultSourceProfileId: version.defaultSourceProfileId ?? null,
-      payloadJson: version.payloadJson ?? null,
-      defaultFilterJson: version.defaultFilterJson ?? null,
-      defaultSettingsJson: version.defaultSettingsJson ?? null,
-      defaultPivotJson: version.defaultPivotJson ?? null,
+      payloadJson: version.payloadJson ?? '',
+      defaultFilterJson: version.defaultFilterJson ?? '',
+      defaultSettingsJson: version.defaultSettingsJson ?? '',
+      defaultPivotJson: version.defaultPivotJson ?? '',
     },
   });
 
   function submit(values: ReportVersionValues) {
     return update.mutateAsync({
       defaultSourceProfileId: values.defaultSourceProfileId,
-      payloadJson: optionalJson(values.payloadJson),
-      defaultFilterJson: optionalJson(values.defaultFilterJson),
-      defaultSettingsJson: optionalJson(values.defaultSettingsJson),
-      defaultPivotJson: optionalJson(values.defaultPivotJson),
+      payloadJson: emptyToNull(values.payloadJson),
+      defaultFilterJson: emptyToNull(values.defaultFilterJson),
+      defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
+      defaultPivotJson: emptyToNull(values.defaultPivotJson),
     });
   }
 

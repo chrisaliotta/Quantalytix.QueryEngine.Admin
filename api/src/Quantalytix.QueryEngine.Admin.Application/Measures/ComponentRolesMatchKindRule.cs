@@ -30,7 +30,7 @@ public sealed class ComponentRolesMatchKindRule(ITableGateway<MeasureRecord> mea
         [
             .. versionMeasures
                 .OrderBy(measure => measure.MeasureKey, StringComparer.Ordinal)
-                .SelectMany(measure => MeasureComponentRoles.Problems(measure.MeasureKind, roles[measure.MeasureId])
+                .SelectMany(measure => MeasureComponentRoles.Problems(measure.MeasureKind, measure.AggregationFunction, roles[measure.MeasureId])
                     .Select(problem => new RuleViolation { Rule = Code, Message = $"Measure '{measure.MeasureKey}': {problem}" }))
         ];
     }

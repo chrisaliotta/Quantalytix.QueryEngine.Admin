@@ -12,19 +12,19 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Tables;
 
 /// <summary>
-/// Confirms against the live sandbox tenant that StarRocks runs the statements the table gateway generates and returns the
+/// Confirms against the development tenant that StarRocks runs the statements the table gateway generates and returns the
 /// values as written: one multi-row INSERT whose rows hold a JSON column written through PARSE_JSON, a null JSON column and
 /// both boolean values; a re-insert of an existing key, which replaces that row; an UPDATE by key that changes the status, a
 /// boolean, the JSON column and the publication time, which reads back as UTC; and a DELETE with an IN filter, after which no
 /// rows remain. The database-free tests check the SQL text; only a live round trip shows that StarRocks accepts it and that
-/// every column type maps back onto the record. Opt in with <c>QE_ADMIN_LIVE_SANDBOX=true</c>; the control-plane connection
-/// comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The test writes only to tenant
-/// <c>sandbox</c>, never to the database behind the query engine's golden cases.
+/// every column type maps back onto the record. Opt in with <c>QE_ADMIN_LIVE_GATEWAY=true</c>; the control-plane connection
+/// comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The rows belong to a new dataset ID that no
+/// release pins, and the test deletes them, so the query engine and its golden cases never read them.
 /// </summary>
 public sealed class StarRocksTableGatewayLiveTests
 {
-    /// <summary>The tenant whose database exists for write testing.</summary>
-    private const string SandboxTenantId = "sandbox";
+    /// <summary>The tenant whose database the round trip writes to.</summary>
+    private const string TenantId = "development";
 
     /// <summary>The JSON the insert writes to the first row's <c>properties</c> column.</summary>
     private const string InsertedProperties = """{"origin":"admin-api-live-test","tags":["a","b"],"n":1}""";
@@ -43,7 +43,7 @@ public sealed class StarRocksTableGatewayLiveTests
     {
         get
         {
-            return string.Equals(Environment.GetEnvironmentVariable("QE_ADMIN_LIVE_SANDBOX"), "true", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(Environment.GetEnvironmentVariable("QE_ADMIN_LIVE_GATEWAY"), "true", StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -52,11 +52,11 @@ public sealed class StarRocksTableGatewayLiveTests
     /// JSON, DATETIME, boolean and null values.
     /// </summary>
     /// <returns>A task that completes when the round trip is checked and its rows are deleted.</returns>
-    [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_SANDBOX=true to run the live round trip against tenant sandbox.")]
-    public async Task GatewayStatements_RoundTripThroughTheSandbox()
+    [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_GATEWAY=true to run the live round trip against tenant development.")]
+    public async Task GatewayStatements_RoundTripThroughStarRocks()
     {
         var token = TestContext.Current.CancellationToken;
-        await using var services = SandboxServices();
+        await using var services = TenantServices();
         await using var scope = services.CreateAsyncScope();
         var gateway = scope.ServiceProvider.GetRequiredService<ITableGateway<DatasetVersionRecord>>();
         var ids = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
@@ -140,8 +140,8 @@ public sealed class StarRocksTableGatewayLiveTests
         return value.AddTicks(-(value.Ticks % TimeSpan.TicksPerSecond));
     }
 
-    /// <summary>The StarRocks infrastructure as the API registers it, scoped to the sandbox tenant.</summary>
-    private static ServiceProvider SandboxServices()
+    /// <summary>The StarRocks infrastructure as the API registers it, scoped to the development tenant.</summary>
+    private static ServiceProvider TenantServices()
     {
         var configuration = new ConfigurationBuilder()
             .AddUserSecrets(typeof(AdminPolicies).Assembly)
@@ -150,7 +150,7 @@ public sealed class StarRocksTableGatewayLiveTests
         return new ServiceCollection()
             .AddSingleton<IConfiguration>(configuration)
             .AddStarRocksInfrastructure(configuration)
-            .AddSingleton<ITenantContext>(new FixedTenantContext(SandboxTenantId))
+            .AddSingleton<ITenantContext>(new FixedTenantContext(TenantId))
             .BuildServiceProvider();
     }
 
