@@ -75,7 +75,11 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
         vocabulary="subtotal_position"
         description="Whether a member's values come before or after the rows under it; a member without values always comes first."
       />
-      <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
+      <JsonField
+        name="defaultSettingsJson"
+        label="Default settings"
+        description='Such as {"periodicity":"month","timeZone":"UTC","layout":"statement"}. A list layout lets requests filter, order and page the whole table.'
+      />
       <JsonField
         name="defaultPivotJson"
         label="Default pivot"
@@ -84,7 +88,7 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
       <JsonField
         name="defaultFilterJson"
         label="Default filter"
-        description="A structured filter over calculation dimensions, ANDed with every request's filter."
+        description="A structured filter over calculation dimensions, ANDed with every request's where. A parameter operand makes every request supply its value."
       />
       <JsonField name="payloadJson" label="Payload" description="Optional JSON that clients read; the engine passes it through." />
     </EntityFormSheet>

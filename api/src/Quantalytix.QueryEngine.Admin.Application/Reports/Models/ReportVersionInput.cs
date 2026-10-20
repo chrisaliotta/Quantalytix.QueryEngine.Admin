@@ -12,10 +12,10 @@ public record ReportVersionInput
     /// <summary>Optional presentation payload passed through to clients.</summary>
     public string? PayloadJson { get; init; }
 
-    /// <summary>Optional structured filter over calculation dimensions, ANDed with every request's.</summary>
+    /// <summary>Optional structured filter over calculation dimensions, the default where; its <c>parameter</c> operands every request supplies.</summary>
     public string? DefaultFilterJson { get; init; }
 
-    /// <summary>Optional defaults: <c>periodicity</c> and <c>timeZone</c> affect execution, other entries pass through to clients.</summary>
+    /// <summary>Optional defaults: <c>periodicity</c>, <c>timeZone</c> and <c>layout</c> affect execution, other entries pass through.</summary>
     public string? DefaultSettingsJson { get; init; }
 
     /// <summary>Optional <c>rowDimensions</c> and <c>columnDimensions</c> lists of calculation-dimension keys.</summary>

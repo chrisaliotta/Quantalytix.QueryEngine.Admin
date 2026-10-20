@@ -52,6 +52,7 @@ public static class VocabularyCatalog
         ReportLineKinds.Definition,
         ReportValueKinds.Definition,
         SubtotalPositions.Definition,
+        ReportLayouts.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

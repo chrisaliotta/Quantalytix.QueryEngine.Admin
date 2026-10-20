@@ -77,8 +77,11 @@ public static class ExpressionRuleExtensions
     /// <param name="rule">The rule for the filter's JSON text.</param>
     /// <param name="operandType">The only operand type the filter may compare: <c>field</c> or <c>dimension</c>.</param>
     /// <param name="reads">What the filter reads, for the message, such as <c>the dataset's fields</c>.</param>
+    /// <param name="readsParameters">Whether the filter may also compare <c>parameter</c> operands, which every request then supplies,
+    /// as a report's default filter may. <c>periodDays</c> and <c>yearDays</c> stay the calculated measures' own.</param>
     /// <returns>The rule, for further configuration.</returns>
-    public static IRuleBuilderOptionsConditions<T, string?> MustBeFilterOver<T>(this IRuleBuilder<T, string?> rule, string operandType, string reads)
+    public static IRuleBuilderOptionsConditions<T, string?> MustBeFilterOver<T>(
+        this IRuleBuilder<T, string?> rule, string operandType, string reads, bool readsParameters = false)
     {
         return rule.Custom((json, context) =>
         {
@@ -91,7 +94,14 @@ public static class ExpressionRuleExtensions
             }
 
             foreach (var operand in inspection.Operands.Where(operand => operand.Type != operandType))
-                context.AddFailure($"'{context.DisplayName}' compares {reads} only, not the {operand.Type} '{operand.Id}'.");
+            {
+                if (readsParameters && operand.Type == "parameter")
+                {
+                    if (CalculatedMeasureParameters.Contains(operand.Id))
+                        context.AddFailure($"'{context.DisplayName}' cannot compare @{operand.Id}, which calculated measures read for each period.");
+                }
+                else context.AddFailure($"'{context.DisplayName}' compares {reads} only, not the {operand.Type} '{operand.Id}'.");
+            }
         });
     }
 

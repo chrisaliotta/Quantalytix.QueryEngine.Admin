@@ -84,7 +84,11 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
         vocabulary="subtotal_position"
         description="Whether a member's values come before or after the rows under it."
       />
-      <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
+      <JsonField
+        name="defaultSettingsJson"
+        label="Default settings"
+        description='Such as {"periodicity":"month","timeZone":"UTC","layout":"statement"}. A list layout lets requests filter, order and page the whole table.'
+      />
     </FormDialog>
   );
 }

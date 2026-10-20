@@ -15466,14 +15466,14 @@
               "null",
               "string"
             ],
-            "description": "Optional structured filter over calculation dimensions, ANDed with every request's."
+            "description": "Optional structured filter over calculation dimensions, the default where; its `parameter` operands every request supplies."
           },
           "defaultSettingsJson": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients."
+            "description": "Optional defaults: `periodicity`, `timeZone` and `layout` affect execution, other entries pass through."
           },
           "defaultPivotJson": {
             "type": [
@@ -16490,14 +16490,14 @@
               "null",
               "string"
             ],
-            "description": "Optional structured filter over calculation dimensions, ANDed with every request's."
+            "description": "Optional structured filter over calculation dimensions, the default where; its `parameter` operands every request supplies."
           },
           "defaultSettingsJson": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients."
+            "description": "Optional defaults: `periodicity`, `timeZone` and `layout` affect execution, other entries pass through."
           },
           "defaultPivotJson": {
             "type": [

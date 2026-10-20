@@ -5901,6 +5901,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/development/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issues a bearer token for a tenant, optionally with the SystemAdmin role. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DevelopmentTokenRequest"];
+                    "application/*+json": components["schemas"]["DevelopmentTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description The signed token, valid for eight hours or until the host restarts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DevelopmentTokenResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/datasets": {
         parameters: {
             query?: never;
@@ -10260,6 +10301,27 @@ export interface components {
             /** @description Extension metadata as raw JSON text, or null. */
             properties?: null | string;
         };
+        /** @description The tenant a development token names, and whether it carries the SystemAdmin role. */
+        DevelopmentTokenRequest: {
+            /** @description The tenant claim the token carries, such as `development`. */
+            tenantId: string;
+            /** @description Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false. */
+            systemAdmin?: boolean;
+        };
+        /** @description A bearer token issued by a Development host. */
+        DevelopmentTokenResponse: {
+            /** @description The signed JWT to send as `Authorization: Bearer ...`. */
+            accessToken: string;
+            /** @description The tenant claim the token carries. */
+            tenantId: string;
+            /** @description Whether the token carries the SystemAdmin role. */
+            systemAdmin: boolean;
+            /**
+             * Format: date-time
+             * @description When the token expires.
+             */
+            expiresUtc: string;
+        };
         /**
          * @description A `qe_dimension_binding` row: how a field of a dataset version classifies rows into a canonical dimension. A direct,
          *     mapped, range or bridge binding binds the field to a role; a time binding names its dimension.
@@ -11353,9 +11415,9 @@ export interface components {
             subtotalPosition: string;
             /** @description Optional presentation payload passed through to clients. */
             payloadJson?: null | string;
-            /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
+            /** @description Optional structured filter over calculation dimensions, the default where; its `parameter` operands every request supplies. */
             defaultFilterJson?: null | string;
-            /** @description Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients. */
+            /** @description Optional defaults: `periodicity`, `timeZone` and `layout` affect execution, other entries pass through. */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys. */
             defaultPivotJson?: null | string;
@@ -11861,9 +11923,9 @@ export interface components {
             subtotalPosition: string;
             /** @description Optional presentation payload passed through to clients. */
             payloadJson?: null | string;
-            /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
+            /** @description Optional structured filter over calculation dimensions, the default where; its `parameter` operands every request supplies. */
             defaultFilterJson?: null | string;
-            /** @description Optional defaults: `periodicity` and `timeZone` affect execution, other entries pass through to clients. */
+            /** @description Optional defaults: `periodicity`, `timeZone` and `layout` affect execution, other entries pass through. */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys. */
             defaultPivotJson?: null | string;
