@@ -7,10 +7,9 @@ import { usePublishedVersion } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { CalculationDimensionsTab } from './CalculationDimensionsTab';
-import { CalculationRoutesTab } from './CalculationRoutesTab';
 import { ReportColumnsTab } from './ReportColumnsTab';
 import { ReportRowsTab } from './ReportRowsTab';
-import { ReportVariableTargetsTab } from './ReportVariableTargetsTab';
+import { ReportVariableScopesTab } from './ReportVariableScopesTab';
 import { ReportVersionSheet } from './ReportVersionSheet';
 import { SourceProfilesTab } from './SourceProfilesTab';
 import type { Report, ReportVersion } from './types';
@@ -24,7 +23,7 @@ export interface ReportVersionPanelProps {
 
 /**
  * The selected report version: the calculation model it reads, its defaults, editable on a draft or the published version,
- * above its sources, profiles, calculation dimensions, routes, targets, columns and rows. Requests read the model version
+ * above its sources, profiles, calculation dimensions, variable scopes, columns and rows. Requests read the model version
  * their assumption set pins, by default its published one, which the panel links to.
  */
 export function ReportVersionPanel({ report, version, isEditable }: ReportVersionPanelProps) {
@@ -66,8 +65,7 @@ export function ReportVersionPanel({ report, version, isEditable }: ReportVersio
           <TabsTrigger value="sources">Sources</TabsTrigger>
           <TabsTrigger value="profiles">Profiles</TabsTrigger>
           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
-          <TabsTrigger value="routes">Routes</TabsTrigger>
-          <TabsTrigger value="targets">Targets</TabsTrigger>
+          <TabsTrigger value="scopes">Variable scope</TabsTrigger>
           <TabsTrigger value="columns">Columns</TabsTrigger>
           <TabsTrigger value="rows">Rows</TabsTrigger>
         </TabsList>
@@ -80,11 +78,8 @@ export function ReportVersionPanel({ report, version, isEditable }: ReportVersio
         <TabsContent value="dimensions">
           <CalculationDimensionsTab versionId={versionId} isEditable={isEditable} />
         </TabsContent>
-        <TabsContent value="routes">
-          <CalculationRoutesTab versionId={versionId} isEditable={isEditable} />
-        </TabsContent>
-        <TabsContent value="targets">
-          <ReportVariableTargetsTab report={report} version={version} isEditable={isEditable} />
+        <TabsContent value="scopes">
+          <ReportVariableScopesTab report={report} version={version} isEditable={isEditable} />
         </TabsContent>
         <TabsContent value="columns">
           <ReportColumnsTab version={version} isEditable={isEditable} />

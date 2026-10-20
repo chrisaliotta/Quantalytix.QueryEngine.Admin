@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 public sealed class VariableSourceService(ITableGateway<VariableSourceRecord> sources, ReportContentRemover remover, IIdGenerator ids)
     : ReportVersionRows<VariableSourceRecord, VariableSourceInput>(sources, ids)
 {
-    /// <summary>Deletes a source with the profile picks and override routes that name it.</summary>
+    /// <summary>Deletes a source with the profile picks that name it.</summary>
     /// <param name="itemId">The source.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>Null: a source is always deleted.</returns>
@@ -56,6 +56,7 @@ public sealed class VariableSourceService(ITableGateway<VariableSourceRecord> so
             DatasetId = input.DatasetId,
             ClassificationKind = input.Classification.Kind,
             ClassificationFieldKey = input.Classification.FieldKey,
+            ClassificationRoleId = input.Classification.RoleId,
             MappingSetId = input.Classification.MappingSetId,
             BridgeId = input.Classification.BridgeId,
             TimeFieldKey = input.TimeFieldKey,

@@ -3,7 +3,7 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 
-/// <summary>Registration hook owned by the Dimensions slice (dimensions, versions, levels, members, closure and range bands).</summary>
+/// <summary>Registration hook owned by the Dimensions slice (dimensions, roles, versions, levels, members, closure and range bands).</summary>
 public static class DimensionsFeatureServiceCollectionExtensions
 {
     /// <summary>
@@ -15,6 +15,7 @@ public static class DimensionsFeatureServiceCollectionExtensions
     public static IServiceCollection AddDimensionsFeature(this IServiceCollection services)
     {
         services.AddScoped<DimensionService>();
+        services.AddScoped<DimensionRoleService>();
         services.AddScoped<DimensionVersionService>();
         services.AddScoped<DimensionLevelService>();
         services.AddScoped<DimensionMemberService>();

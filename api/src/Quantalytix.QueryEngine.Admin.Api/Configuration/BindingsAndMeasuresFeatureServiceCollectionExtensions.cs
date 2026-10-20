@@ -8,24 +8,25 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class BindingsAndMeasuresFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the binding and measure services, the formula dependency deriver, and the dataset version publication rules
-    /// for bindings and measures, all scoped to the request.
+    /// Registers the binding and measure services, the binding namer other slices share, the formula dependency deriver, and the
+    /// dataset version publication rules for bindings and measures, all scoped to the request.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddBindingsAndMeasuresFeature(this IServiceCollection services)
     {
         services.AddScoped<BindingService>();
+        services.AddScoped<BindingNames>();
         services.AddScoped<MeasureService>();
         services.AddScoped<MeasureDependencyDeriver>();
         services.AddScoped<IPublicationRule, BindingFieldsInVersionRule>();
         services.AddScoped<IPublicationRule, BindingSourceFieldGroupableRule>();
-        services.AddScoped<IPublicationRule, OneBindingPerFieldRule>();
+        services.AddScoped<IPublicationRule, BoundRolesDistinctRule>();
         services.AddScoped<IPublicationRule, MappedBindingMappingSetDimensionRule>();
         services.AddScoped<IPublicationRule, RangeBindingDimensionKindRule>();
         services.AddScoped<IPublicationRule, TimeBindingDimensionKindRule>();
         services.AddScoped<IPublicationRule, BridgeBindingRouteRule>();
-        services.AddScoped<IPublicationRule, GroupingReferencesInVersionRule>();
+        services.AddScoped<IPublicationRule, UnknownMembersInVersionRule>();
         services.AddScoped<IPublicationRule, MeasureKeyUniqueRule>();
         services.AddScoped<IPublicationRule, ComponentFieldsInVersionRule>();
         services.AddScoped<IPublicationRule, ComponentRolesMatchKindRule>();

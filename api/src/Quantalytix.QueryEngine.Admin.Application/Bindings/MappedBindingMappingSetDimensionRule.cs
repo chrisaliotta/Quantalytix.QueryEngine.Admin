@@ -9,8 +9,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 /// through the mapping version of that set for the resolved version of the bound dimension, so a set of another dimension
 /// would map onto members the binding cannot hold.
 /// </summary>
-public sealed class MappedBindingMappingSetDimensionRule(ITableGateway<DimensionBindingRecord> bindings, ITableGateway<MappingSetRecord> mappingSets)
-    : IPublicationRule
+public sealed class MappedBindingMappingSetDimensionRule(
+    ITableGateway<DimensionBindingRecord> bindings,
+    ITableGateway<MappingSetRecord> mappingSets,
+    BindingNames names) : IPublicationRule
 {
     /// <summary>The rule's violation code.</summary>
     public const string Code = "mapped_binding_mapping_set_dimension";
@@ -26,22 +28,22 @@ public sealed class MappedBindingMappingSetDimensionRule(ITableGateway<Dimension
     {
         var mapped = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken))
             .Where(binding => binding.BindingKind == BindingKinds.Mapped && binding.MappingSetId is not null)
-            .OrderBy(binding => binding.DisplayName, StringComparer.Ordinal)
             .ToList();
+        var named = await names.OfAsync(mapped, cancellationToken);
         var sets = (await mappingSets.ListAsync(new { MappingSetId = mapped.Select(binding => binding.MappingSetId!.Value).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(mappingSet => mappingSet.MappingSetId);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in mapped)
+        foreach (var binding in mapped.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
         {
             var mappingSetId = binding.MappingSetId!.Value;
             if (!sets.TryGetValue(mappingSetId, out var mappingSet))
             {
-                violations.Add(Violation($"Mapped binding '{binding.DisplayName}' maps through mapping set {mappingSetId}, which does not exist."));
+                violations.Add(Violation($"Mapped binding '{named[binding.BindingId]}' maps through mapping set {mappingSetId}, which does not exist."));
             }
             else if (mappingSet.DimensionId != binding.DimensionId)
             {
-                violations.Add(Violation($"Mapped binding '{binding.DisplayName}' maps through mapping set '{mappingSet.MappingSetKey}', which targets another dimension than the binding."));
+                violations.Add(Violation($"Mapped binding '{named[binding.BindingId]}' maps through mapping set '{mappingSet.MappingSetKey}', which targets another dimension than the binding."));
             }
         }
 

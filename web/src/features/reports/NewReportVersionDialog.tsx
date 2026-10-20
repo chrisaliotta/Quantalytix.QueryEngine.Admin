@@ -69,7 +69,7 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
         lookupKind="report-versions"
         parentId={report.reportId}
         allowEmpty
-        description="Optional: the version whose sources, profiles, dimensions, routes, targets, columns and rows the draft copies."
+        description="Optional: the version whose sources, profiles, dimensions, variable scopes, columns and rows the draft copies."
       />
       <KeyField
         name="defaultProfileKey"

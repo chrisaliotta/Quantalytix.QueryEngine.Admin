@@ -1,18 +1,21 @@
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// Lists the level and member keys that live objects name in a dimension: bindings of published dataset versions, entries of
-/// published mapping versions, mappings of published bridge versions, and the member options, overlay row parents, variable
-/// targets and calculation dimension groupings of published report versions. They resolve the keys in the dimension's published
-/// version, so publishing another version or deleting from the published one must keep the keys.
+/// Lists the level and member keys that live objects name in a dimension: the unknown members of bindings of published dataset
+/// versions, entries of published mapping versions, mappings of published bridge versions, and the member options, overlay row
+/// parents, variable scopes and the groupings of calculation dimensions on the dimension's roles of published report versions.
+/// They resolve the keys in the dimension's published version, so publishing another version or deleting from the published one
+/// must keep the keys.
 /// </summary>
 public sealed class DimensionConsumers(
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<DatasetVersionRecord> datasetVersions,
     ITableGateway<DimensionBindingRecord> bindings,
+    ITableGateway<DimensionRoleRecord> roles,
     ITableGateway<MappingSetRecord> mappingSets,
     ITableGateway<MappingVersionRecord> mappingVersions,
     ITableGateway<DimensionMappingRecord> mappingEntries,
@@ -23,8 +26,9 @@ public sealed class DimensionConsumers(
     ITableGateway<ReportVersionRecord> reportVersions,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
     ITableGateway<ReportLineRecord> reportLines,
-    ITableGateway<ReportVariableTargetRecord> targets,
-    ITableGateway<CalculationDimensionRecord> calculationDimensions)
+    ITableGateway<ReportVariableScopeRecord> scopes,
+    ITableGateway<CalculationDimensionRecord> calculationDimensions,
+    BindingNames names)
 {
     /// <summary>Lists every key the live objects name in a dimension.</summary>
     /// <param name="dimensionId">The dimension.</param>
@@ -41,24 +45,19 @@ public sealed class DimensionConsumers(
         ];
     }
 
-    /// <summary>The grouping level, grouping ancestor and unknown member keys of the bindings of published dataset versions.</summary>
+    /// <summary>The unknown member keys of the bindings of published dataset versions.</summary>
     private async Task<IEnumerable<KeyReference>> BindingsAsync(long dimensionId, CancellationToken cancellationToken)
     {
         var published = await datasetVersions.ListAsync(new { Status = PublicationStatuses.Published }, cancellationToken);
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = published.Select(version => version.DatasetId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
         var datasetOf = published.ToDictionary(version => version.DatasetVersionId, version => datasetKeys[version.DatasetId]);
-        var bound = await bindings.ListAsync(new { DimensionId = dimensionId, DatasetVersionId = datasetOf.Keys.ToArray() }, cancellationToken);
-        return bound.SelectMany(binding =>
-        {
-            var consumer = $"Binding '{binding.DisplayName}' of dataset '{datasetOf[binding.DatasetVersionId]}'";
-            return new[]
-            {
-                binding.GroupingLevelKey is { } level ? KeyReference.Level(level, consumer) : null,
-                binding.GroupingAncestorMemberKey is { } ancestor ? KeyReference.Member(ancestor, consumer) : null,
-                binding.UnknownMemberKey is { } unknown ? KeyReference.Member(unknown, consumer) : null
-            }.OfType<KeyReference>();
-        });
+        var routing = (await bindings.ListAsync(new { DimensionId = dimensionId, DatasetVersionId = datasetOf.Keys.ToArray() }, cancellationToken))
+            .Where(binding => binding.UnknownMemberKey is not null)
+            .ToList();
+        var named = await names.OfAsync(routing, cancellationToken);
+        return routing.Select(binding =>
+            KeyReference.Member(binding.UnknownMemberKey!, $"Binding '{named[binding.BindingId]}' of dataset '{datasetOf[binding.DatasetVersionId]}'"));
     }
 
     /// <summary>The member keys of the entries of the published versions of the dimension's mapping sets.</summary>
@@ -96,7 +95,7 @@ public sealed class DimensionConsumers(
 
     /// <summary>
     /// The member keys the published versions of reports on the dimension name: member options, the parents of overlay rows that are
-    /// no overlay row, and variable targets; and the grouping keys of published report versions' calculation dimensions on it.
+    /// no overlay row, and variable scopes; and the grouping keys of published report versions' calculation dimensions on its roles.
     /// </summary>
     private async Task<IEnumerable<KeyReference>> ReportsAsync(long dimensionId, CancellationToken cancellationToken)
     {
@@ -108,16 +107,17 @@ public sealed class DimensionConsumers(
         var options = await memberOptions.ListAsync(new { ReportVersionId = onDimension }, cancellationToken);
         var lines = await reportLines.ListAsync(new { ReportVersionId = onDimension }, cancellationToken);
         var overlayKeys = lines.Select(line => (line.ReportVersionId, line.LineKey)).ToHashSet();
-        var targeting = await targets.ListAsync(new { ReportVersionId = onDimension }, cancellationToken);
-        var grouping = await calculationDimensions.ListAsync(new { ReportVersionId = reportOf.Keys.ToArray(), DimensionId = dimensionId }, cancellationToken);
+        var scoping = await scopes.ListAsync(new { ReportVersionId = onDimension }, cancellationToken);
+        var roleIds = (await roles.ListAsync(new { DimensionId = dimensionId }, cancellationToken)).Select(role => role.RoleId).ToArray();
+        var grouping = await calculationDimensions.ListAsync(new { ReportVersionId = reportOf.Keys.ToArray(), RoleId = roleIds }, cancellationToken);
         return
         [
             .. options.Select(option => KeyReference.Member(option.MemberKey, $"Member option of report '{reportOf[option.ReportVersionId].ReportKey}'")),
             .. lines
                 .Where(line => line.ParentKey is { } parent && !overlayKeys.Contains((line.ReportVersionId, parent)))
                 .Select(line => KeyReference.Member(line.ParentKey!, $"Row '{line.LineKey}' of report '{reportOf[line.ReportVersionId].ReportKey}'")),
-            .. targeting.Select(target =>
-                KeyReference.Member(target.TargetMemberKey, $"Target of variable '{target.VariableKey}' of report '{reportOf[target.ReportVersionId].ReportKey}'")),
+            .. scoping.Select(scope =>
+                KeyReference.Member(scope.ScopeMemberKey, $"Scope of variable '{scope.VariableKey}' of report '{reportOf[scope.ReportVersionId].ReportKey}'")),
             .. grouping.SelectMany(dimension =>
             {
                 var consumer = $"Calculation dimension '{dimension.DimensionKey}' of report '{reportOf[dimension.ReportVersionId].ReportKey}'";

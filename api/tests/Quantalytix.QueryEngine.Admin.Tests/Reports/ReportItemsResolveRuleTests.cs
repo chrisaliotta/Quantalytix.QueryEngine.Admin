@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms <c>report_items_resolve</c>: the report dimension's published version must have one root, every member option and
-/// variable target must name one of its members, every overlay row must sit under one of its members or another overlay row, and no
+/// variable scope must name one of its members, every overlay row must sit under one of its members or another overlay row, and no
 /// overlay row may take a member's key, because rows are keyed by both. Sources classify into the version the active assumption set
 /// pins; the orchestrator lays the rows out from its members and evaluates formula rows at its root.
 /// </summary>
@@ -32,7 +32,7 @@ public sealed class ReportItemsResolveRuleTests
     }
 
     /// <summary>
-    /// A second root, an option for liabilities, a row under equity, a row keyed like the assets member and a target at equity are each
+    /// A second root, an option for liabilities, a row under equity, a row keyed like the assets member and a scope at equity are each
     /// reported.
     /// </summary>
     /// <returns>A task that completes when the rule is checked.</returns>
@@ -44,7 +44,7 @@ public sealed class ReportItemsResolveRuleTests
         await _fixture.MemberOptions.InsertAsync(MemberOption("liabilities"), cancellationToken);
         await _fixture.Lines.InsertAsync(Line(11, "notes", ReportLineKinds.Section, "equity", 0), cancellationToken);
         await _fixture.Lines.InsertAsync(Line(12, "assets", ReportLineKinds.Section, null, 2), cancellationToken);
-        await _fixture.Targets.InsertAsync(Target("balance", "equity"), cancellationToken);
+        await _fixture.Scopes.InsertAsync(Scope("balance", "equity"), cancellationToken);
 
         var violations = await EvaluateAsync(Rule(), ReportVersionId);
 
@@ -53,7 +53,7 @@ public sealed class ReportItemsResolveRuleTests
              "Report 'balance_sheet' has an option for member 'liabilities', which the published version of the report dimension lacks.",
              "Report 'balance_sheet' row 'notes' sits under 'equity', which is no overlay row and no member the published version of the report dimension has.",
              "Report 'balance_sheet' row 'assets' has the key of a member of the report dimension; rows are keyed by both.",
-             "Report 'balance_sheet' targets variable 'balance' at member 'equity', which the published version of the report dimension lacks."],
+             "Report 'balance_sheet' scopes variable 'balance' to member 'equity', which the published version of the report dimension lacks."],
             violations.Select(violation => violation.Message));
     }
 

@@ -44,7 +44,7 @@ public sealed class CalculationLookups(
             LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculatedMeasureId, Key = row.MeasureKey, Label = row.DisplayName, Classifier = row.DisplayFormat })),
             LookupKinds.CalculationDimensions => Sorted((await calculationDimensions.ListAsync(new { ReportVersionId = parentId }, cancellationToken))
-                .Select(row => new LookupItem { Id = row.CalculationDimensionId, Key = row.DimensionKey, Label = row.DisplayName, Classifier = row.ValueKind })),
+                .Select(row => new LookupItem { Id = row.CalculationDimensionId, Key = row.DimensionKey, Label = row.DisplayName, Classifier = row.GroupingMode })),
             LookupKinds.Reports => Sorted((await reports.ListAsync(null, cancellationToken))
                 .Select(row => new LookupItem { Id = row.ReportId, Key = row.ReportKey, Label = row.DisplayName, Classifier = row.ReportType })),
             LookupKinds.ReportVersions => [.. (await reportVersions.ListAsync(new { ReportId = parentId }, cancellationToken))

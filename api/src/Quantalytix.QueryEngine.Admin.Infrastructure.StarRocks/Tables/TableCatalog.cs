@@ -22,6 +22,7 @@ public static class TableCatalog
         [typeof(DatasetGrainFieldRecord)] = Tenant(
             "qe_dataset_grain_field", [nameof(DatasetGrainFieldRecord.GrainId), nameof(DatasetGrainFieldRecord.Ordinal)], []),
         [typeof(DimensionRecord)] = Tenant("qe_dimension", [nameof(DimensionRecord.DimensionId)], []),
+        [typeof(DimensionRoleRecord)] = Tenant("qe_dimension_role", [nameof(DimensionRoleRecord.RoleId)], []),
         [typeof(DimensionVersionRecord)] = Tenant("qe_dimension_version", [nameof(DimensionVersionRecord.DimensionVersionId)], []),
         [typeof(DimensionLevelRecord)] = Tenant("qe_dimension_level", [nameof(DimensionLevelRecord.LevelId)], []),
         [typeof(DimensionMemberRecord)] = Tenant(
@@ -86,8 +87,6 @@ public static class TableCatalog
         [typeof(CalculatedMeasureRecord)] = Tenant("qe_calculated_measure", [nameof(CalculatedMeasureRecord.CalculatedMeasureId)], []),
         [typeof(CalculationDimensionRecord)] = Tenant(
             "qe_calculation_dimension", [nameof(CalculationDimensionRecord.CalculationDimensionId)], []),
-        [typeof(CalculationRouteRecord)] = Tenant(
-            "qe_calculation_dimension_binding", [nameof(CalculationRouteRecord.CalculationBindingId)], []),
         [typeof(ReportRecord)] = Tenant("qe_report", [nameof(ReportRecord.ReportId)], [nameof(ReportRecord.PayloadJson)]),
         [typeof(ReportVersionRecord)] = Tenant(
             "qe_report_version",
@@ -106,8 +105,8 @@ public static class TableCatalog
             "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)]),
         [typeof(ReportMemberOptionRecord)] = Tenant(
             "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportVersionId), nameof(ReportMemberOptionRecord.MemberKey)], []),
-        [typeof(ReportVariableTargetRecord)] = Tenant(
-            "qe_report_variable_target", [nameof(ReportVariableTargetRecord.ReportVersionId), nameof(ReportVariableTargetRecord.VariableKey)], [])
+        [typeof(ReportVariableScopeRecord)] = Tenant(
+            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportVersionId), nameof(ReportVariableScopeRecord.VariableKey)], [])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>

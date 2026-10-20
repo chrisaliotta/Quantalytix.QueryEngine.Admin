@@ -93,11 +93,11 @@ Query keys decide what TanStack Query caches and what a write refreshes. Tenant-
 | `['lookups', tenantId, kind, parentId]` | `useLookup` | The `lookupQueryKey(tenantId, kind)` prefix after a write that changes that kind; `invalidateTenantQueries` |
 | `['overview', tenantId]` | `useOverview` | `invalidateTenantQueries` |
 | `['datasets', tenantId, ...]`, `['dataset-versions', ...]`, `['fields', ...]`, `['grains', ...]`, `['source-objects', tenantId]`, `['source-columns', tenantId, name]`, `['bindings', ...]`, `['measures', ...]` | `queries.ts` of datasets, bindings and measures | `invalidateTenantQueries` |
-| `['dimensions', tenantId, ...]`, `['dimension-versions', ...]`, `['dimension-levels', ...]`, `['dimension-members', ...]`, `['range-bands', ...]` | `dimensions/api.ts` | `refresh` of the changed keys and lookup kinds; `setQueryData` after a member reorder or a band replace |
+| `['dimensions', tenantId, ...]`, `['dimension-roles', ...]`, `['dimension-versions', ...]`, `['dimension-levels', ...]`, `['dimension-members', ...]`, `['range-bands', ...]` | `dimensions/api.ts` | `refresh` of the changed keys and lookup kinds; `setQueryData` after a member reorder or a band replace |
 | `['mapping-sets', tenantId, ...]`, `['mapping-entries', tenantId, versionId]` | `mappings/api.ts` | The changed keys and lookups; `setQueryData` after a bulk entry replace |
 | `['bridges', tenantId, ...]`, `['bridge-versions', ...]`, `['bridge-mappings', ...]` | `bridges/api.ts` | The changed keys and lookups; `setQueryData` after a bulk mapping replace |
 | `['calculation-models', tenantId, ...]`, `['model-versions', ...]` | `calculation-models/api.ts` | The changed keys and lookups |
-| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]`, `['report-member-options', ...]`, `['report-variable-targets', ...]`; `['dimension-members', ...]` of the report dimension's published version | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column, overlay row, member option or target replace |
+| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]`, `['report-member-options', ...]`, `['report-variable-scopes', ...]`; `['dimension-members', ...]` of the report dimension's published version | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column, overlay row, member option or variable scope replace |
 | `['version-content', tenantId, scope, versionId, kind]`, where the scope is `model-versions` or `report-versions` | `shared/versionContent.ts` | A content write refreshes `['version-content', tenantId, scope, versionId]` and the scope's content lookups |
 | `['releases', tenantId, ...]` | `useReleases.ts` | `invalidateReleases` or the release keys; `invalidateTenantQueries` after an activation |
 | `['assumption-sets', tenantId, ...]` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; `invalidateTenantQueries` after a publish |
@@ -143,6 +143,7 @@ flowchart LR
 | `LookupKind` | `parentId` |
 | --- | --- |
 | `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None |
+| `dimension-roles` | Optional dimension (each role's `parentId` is its template, its `classifier` the template's kind, and its label reads like "Servicing branch · Branch") |
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
 | `dimension-versions` | Dimension |
@@ -154,7 +155,7 @@ flowchart LR
 | `variables`, `calculated-measures` | Model version |
 | `report-versions` | Report |
 | `variable-sources`, `source-profiles`, `calculation-dimensions`, `report-columns` | Report version (a source's `classifier` is its variable's key) |
-| `classified-fields` | Dataset version (each field's `parentId` is the dimension its binding groups members of) |
+| `bound-roles` | Dataset version (the roles it binds into members with an enabled binding; each role's `parentId` is its template) |
 | `bridges` | Optional source dimension (each bridge's `parentId` is its target dimension) |
 
 **Sources:** [useLookup.ts](../../src/shared/useLookup.ts), [useVocabularies.ts](../../src/shared/useVocabularies.ts), [EntitySelect.tsx](../../src/shared/EntitySelect.tsx), [VocabularySelect.tsx](../../src/shared/VocabularySelect.tsx), [EntityField.tsx](../../src/shared/form/EntityField.tsx), [VocabularyField.tsx](../../src/shared/form/VocabularyField.tsx), [MultiVocabularyField.tsx](../../src/shared/form/MultiVocabularyField.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [types.ts](../../src/shared/types.ts), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [GrainFieldsField.tsx](../../src/features/datasets/GrainFieldsField.tsx), [ComponentsField.tsx](../../src/features/measures/ComponentsField.tsx), [NewDatasetSheet.tsx](../../src/features/datasets/NewDatasetSheet.tsx), [GrainSheet.tsx](../../src/features/datasets/GrainSheet.tsx), [TenantsPage.tsx](../../src/features/system/TenantsPage.tsx).
@@ -313,6 +314,7 @@ flowchart TB
 - After a successful change `VersionHeader` shows a toast and calls `onTransitioned`; `useVersionTransition` has already invalidated every query of the tenant.
 - A published living version offers "Validate", which runs the publication rules without changing the version: a pass shows a toast, and violations show in a destructive alert under the header, kept with the version they were for like a transition error.
 - A version that cannot change renders read-only, but `VersionHeader` keeps offering its transitions, "Clone selected" and "New version"; see [flow 11](04-critical-flows.md#11-editable-and-read-only-versions).
+- Roles are not versioned. The dimension page's Roles tab, the first tab unless the dimension is a time dimension, which has no roles, shows the same roles whichever version is selected; `RoleSheet` always edits, and a role's key is fixed once created. `NewDimensionSheet` creates a dimension's first role with it, its key and name following the dimension's until changed.
 
 | Page | Selection | New version | Clone selected | Delete draft |
 | --- | --- | --- | --- | --- |

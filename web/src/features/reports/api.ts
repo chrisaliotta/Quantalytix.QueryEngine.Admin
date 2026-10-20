@@ -11,7 +11,7 @@ import type {
   ReportInput,
   ReportLineInput,
   ReportMemberOptionInput,
-  ReportVariableTargetInput,
+  ReportVariableScopeInput,
   ReportVersionInput,
 } from './types';
 
@@ -36,8 +36,8 @@ function memberOptionsKey(tenantId: string, versionId: number) {
   return ['report-member-options', tenantId, versionId] as const;
 }
 
-function variableTargetsKey(tenantId: string, versionId: number) {
-  return ['report-variable-targets', tenantId, versionId] as const;
+function variableScopesKey(tenantId: string, versionId: number) {
+  return ['report-variable-scopes', tenantId, versionId] as const;
 }
 
 /** The dimensions feature's key of a dimension version's members, so a member edit there refreshes the report's rows. */
@@ -126,14 +126,14 @@ export function useReportMemberOptions(versionId: number) {
   });
 }
 
-/** The variable targets of a report version; a variable without one reads every row its sources classify. */
-export function useReportVariableTargets(versionId: number) {
+/** The variable scopes of a report version; a variable without one reads every row its sources classify. */
+export function useReportVariableScopes(versionId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: variableTargetsKey(tenantId, versionId),
+    queryKey: variableScopesKey(tenantId, versionId),
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/variable-targets', {
+        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes', {
           params: { path: { tenantId, versionId } },
         })
       ),
@@ -289,19 +289,19 @@ export function useReplaceReportMemberOptions(versionId: number) {
   });
 }
 
-/** Replaces the variable targets of a draft or published version; the stored targets replace the cached list. */
-export function useReplaceReportVariableTargets(versionId: number) {
+/** Replaces the variable scopes of a draft or published version; the stored scopes replace the cached list. */
+export function useReplaceReportVariableScopes(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (targets: ReportVariableTargetInput[]) =>
+    mutationFn: async (scopes: ReportVariableScopeInput[]) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/variable-targets', {
+        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes', {
           params: { path: { tenantId, versionId } },
-          body: { targets },
+          body: { scopes },
         })
       ),
-    onSuccess: targets => {
-      queryClient.setQueryData(variableTargetsKey(tenantId, versionId), targets);
+    onSuccess: scopes => {
+      queryClient.setQueryData(variableScopesKey(tenantId, versionId), scopes);
     },
   });
 }

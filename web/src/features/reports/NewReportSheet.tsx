@@ -46,7 +46,7 @@ export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
         name="reportDimensionId"
         label="Report dimension"
         lookupKind="dimensions"
-        description="The hierarchy whose members are the report's rows, which sources classify into and targets name."
+        description="The hierarchy whose members are the report's rows, which sources classify into and variable scopes name."
       />
       <ReportIdentityFields />
     </EntityFormSheet>

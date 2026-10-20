@@ -1,8 +1,9 @@
 /**
- * Why these tests exist: the binding sheet shows only the references of the chosen kind, the grouping reference of the
- * chosen mode and the time section of time bindings. Values the user picked before switching kind or mode stay in the
- * hidden inputs; sending them would fail API validation on inputs the user can no longer see. They also pin how a
- * stored time extension's JSON periodicities load back into the sheet.
+ * Why these tests exist: the binding sheet shows only the references of the chosen kind, a role for a breakout binding or a
+ * dimension for a time binding, and the time section of time bindings. Values the user picked before switching kind stay in
+ * the hidden inputs; sending them would fail API validation on inputs the user can no longer see. They also pin how a stored
+ * time extension's JSON periodicities load back into the sheet, and that a role binding's stored dimension, its role's
+ * template, does not load as a time dimension.
  */
 import { describe, expect, it } from 'vitest';
 import { bindingFormValues, toBindingInput, type BindingFormValues } from './bindingForm';
@@ -11,7 +12,7 @@ import type { BindingDetail } from './types';
 describe('toBindingInput', () => {
   const values: BindingFormValues = {
     ...bindingFormValues(),
-    displayName: 'Branch',
+    roleId: 81,
     dimensionId: 7000,
     sourceFieldId: 1,
     mappingSetId: 30,
@@ -34,20 +35,9 @@ describe('toBindingInput', () => {
     expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ mappingSetId: null, bridgeId: null });
   });
 
-  it('sends only the grouping reference of the chosen mode', () => {
-    const grouped = { ...values, groupingLevelKey: 'region', groupingAncestorMemberKey: 'NE', groupingDepth: 2 };
-
-    expect(toBindingInput({ ...grouped, groupingMode: 'level' })).toMatchObject({
-      groupingLevelKey: 'region',
-      groupingAncestorMemberKey: null,
-      groupingDepth: null,
-    });
-    expect(toBindingInput({ ...grouped, groupingMode: 'depth' })).toMatchObject({ groupingLevelKey: null, groupingDepth: 2 });
-    expect(toBindingInput({ ...grouped, groupingMode: 'member' })).toMatchObject({
-      groupingLevelKey: null,
-      groupingAncestorMemberKey: null,
-      groupingDepth: null,
-    });
+  it('sends the role of a breakout binding and the dimension of a time binding', () => {
+    expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ roleId: 81, dimensionId: null });
+    expect(toBindingInput({ ...values, bindingKind: 'time' })).toMatchObject({ roleId: null, dimensionId: 7000 });
   });
 
   it('sends the unknown member only when unmapped rows route to it', () => {
@@ -76,24 +66,24 @@ describe('toBindingInput', () => {
 });
 
 describe('bindingFormValues', () => {
+  const binding: BindingDetail['binding'] = {
+    bindingId: 21,
+    datasetVersionId: 100,
+    dimensionId: 7000,
+    bindingKind: 'time',
+    sourceFieldId: 2,
+    raggedBehavior: 'null',
+    defaultPeriodAlignment: 'observation',
+    unmappedBehavior: 'null',
+    isRequired: true,
+    isGroupable: true,
+    isFilterable: true,
+    isEnabled: true,
+  };
+
   it('loads a stored time extension, parsing its periodicities', () => {
     const detail: BindingDetail = {
-      binding: {
-        bindingId: 21,
-        datasetVersionId: 100,
-        displayName: 'As of',
-        dimensionId: 7000,
-        bindingKind: 'time',
-        sourceFieldId: 2,
-        groupingMode: 'member',
-        raggedBehavior: 'null',
-        defaultPeriodAlignment: 'observation',
-        unmappedBehavior: 'null',
-        isRequired: true,
-        isGroupable: true,
-        isFilterable: true,
-        isEnabled: true,
-      },
+      binding,
       timeBinding: {
         bindingId: 21,
         timeValueType: 'timestamp',
@@ -108,6 +98,12 @@ describe('bindingFormValues', () => {
     const loaded = bindingFormValues(detail);
 
     expect(loaded.timeBinding).toMatchObject({ timeValueType: 'timestamp', sourceTimeZone: 'Europe/London', allowedPeriodicities: ['day', 'month'] });
-    expect(loaded).toMatchObject({ isRequired: true, bridgeId: null });
+    expect(loaded).toMatchObject({ isRequired: true, bridgeId: null, roleId: null, dimensionId: 7000 });
+  });
+
+  it("loads a role binding by its role, leaving the template out of the time dimension", () => {
+    const loaded = bindingFormValues({ binding: { ...binding, bindingKind: 'direct', roleId: 81 } });
+
+    expect(loaded).toMatchObject({ roleId: 81, dimensionId: null });
   });
 });

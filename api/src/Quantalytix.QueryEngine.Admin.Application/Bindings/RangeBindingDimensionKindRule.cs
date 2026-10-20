@@ -8,8 +8,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 /// Requires a range binding to bind a <c>range</c> dimension: a range binding assigns each scalar value through the range
 /// bands of the resolved dimension version, and only range dimensions have bands.
 /// </summary>
-public sealed class RangeBindingDimensionKindRule(ITableGateway<DimensionBindingRecord> bindings, ITableGateway<DimensionRecord> dimensions)
-    : IPublicationRule
+public sealed class RangeBindingDimensionKindRule(
+    ITableGateway<DimensionBindingRecord> bindings,
+    ITableGateway<DimensionRecord> dimensions,
+    BindingNames names) : IPublicationRule
 {
     /// <summary>The rule's violation code.</summary>
     public const string Code = "range_binding_dimension_kind";
@@ -25,22 +27,22 @@ public sealed class RangeBindingDimensionKindRule(ITableGateway<DimensionBinding
     {
         var ranged = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken))
             .Where(binding => binding.BindingKind == BindingKinds.Range)
-            .OrderBy(binding => binding.DisplayName, StringComparer.Ordinal)
             .ToList();
+        var named = await names.OfAsync(ranged, cancellationToken);
         var bound = (await dimensions.ListAsync(new { DimensionId = ranged.Select(binding => binding.DimensionId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(dimension => dimension.DimensionId);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in ranged)
+        foreach (var binding in ranged.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
         {
             if (!bound.TryGetValue(binding.DimensionId, out var dimension))
             {
-                violations.Add(Violation($"Range binding '{binding.DisplayName}' binds dimension {binding.DimensionId}, which does not exist."));
+                violations.Add(Violation($"Range binding '{named[binding.BindingId]}' binds dimension {binding.DimensionId}, which does not exist."));
             }
             else if (dimension.DimensionKind != DimensionKinds.Range)
             {
                 violations.Add(Violation(
-                    $"Range binding '{binding.DisplayName}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension."));
+                    $"Range binding '{named[binding.BindingId]}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension."));
             }
         }
 

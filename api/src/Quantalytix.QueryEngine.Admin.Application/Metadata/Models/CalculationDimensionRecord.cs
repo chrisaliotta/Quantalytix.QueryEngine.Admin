@@ -1,6 +1,9 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_calculation_dimension</c> row: a dimension shared by a report version's datasets, which runs break out and filter by.</summary>
+/// <summary>
+/// A <c>qe_calculation_dimension</c> row: a dimension shared by a report version's datasets, which runs break out and filter by.
+/// It reads a dimension role, grouped as it says; a source reaches it when its dataset binds the role.
+/// </summary>
 public sealed record CalculationDimensionRecord
 {
     /// <summary>Primary key.</summary>
@@ -15,17 +18,11 @@ public sealed record CalculationDimensionRecord
     /// <summary>Human-readable name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>A <c>calculation_value_kind</c> value.</summary>
-    public required string ValueKind { get; init; }
+    /// <summary>The role every source reads; queries use the version of its dimension their assumption set pins.</summary>
+    public required long RoleId { get; init; }
 
-    /// <summary>The canonical dimension of a <c>canonical</c> calculation dimension; queries use the version their assumption set pins.</summary>
-    public long? DimensionId { get; init; }
-
-    /// <summary>The shared raw value type of a <c>scalar</c> calculation dimension.</summary>
-    public string? ValueDataType { get; init; }
-
-    /// <summary>A <c>grouping_mode</c> value of a <c>canonical</c> calculation dimension: how its routes group members.</summary>
-    public string? GroupingMode { get; init; }
+    /// <summary>A <c>grouping_mode</c> value: how the role's members group.</summary>
+    public required string GroupingMode { get; init; }
 
     /// <summary>The key of the level to group at when the grouping mode is <c>level</c>.</summary>
     public string? GroupingLevelKey { get; init; }

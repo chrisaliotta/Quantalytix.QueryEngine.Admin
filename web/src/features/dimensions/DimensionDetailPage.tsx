@@ -20,6 +20,7 @@ import { LevelsTab } from './LevelsTab';
 import { MembersTab } from './MembersTab';
 import { NewVersionSheet } from './NewVersionSheet';
 import { RangeBandsTab } from './RangeBandsTab';
+import { RolesTab } from './RolesTab';
 import { SettingsTab } from './SettingsTab';
 import type { Dimension } from './types';
 
@@ -28,7 +29,10 @@ interface NewVersionRequest {
   source: LookupItem | null;
 }
 
-/** One dimension: identity, version picker with lifecycle actions, and the selected version's content in tabs. */
+/**
+ * One dimension: identity, version picker with lifecycle actions, and tabs: the roles, which apply to every version and which a
+ * time dimension has none of, then the selected version's content.
+ */
 export function DimensionDetailPage() {
   const dimensionId = Number(useParams().dimensionId);
   const dimension = useDimension(dimensionId);
@@ -56,6 +60,7 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
   const versionList = versions.data ?? [];
   const selected = selectedVersion(versionList, searchParams.get('version'));
   const isRange = dimension.dimensionKind === 'range';
+  const hasRoles = dimension.dimensionKind !== 'time';
   const isEditable = isEditableVersion('dimension_version', selected?.status as VersionStatus | undefined);
 
   function selectVersion(versionId: number) {
@@ -97,13 +102,19 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
       <ApiErrorAlert error={deleteVersion.error} />
 
       {selected && (
-        <Tabs defaultValue="members">
+        <Tabs defaultValue={hasRoles ? 'roles' : 'members'}>
           <TabsList>
+            {hasRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="levels">Levels</TabsTrigger>
             {isRange && <TabsTrigger value="range-bands">Range bands</TabsTrigger>}
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
+          {hasRoles && (
+            <TabsContent value="roles">
+              <RolesTab dimensionId={dimension.dimensionId} />
+            </TabsContent>
+          )}
           <TabsContent value="members">
             <MembersTab key={selected.id} dimension={dimension} versionId={selected.id} isEditable={isEditable} />
           </TabsContent>
@@ -136,7 +147,7 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${dimension.dimensionKey}?`}
-        description="The dimension and its draft versions are deleted. A dimension with validated, published or retired versions, or one that bindings, mapping sets or bridges reference, is kept."
+        description="The dimension, its roles and its draft versions are deleted. A dimension with validated, published or retired versions, or one that bindings, mapping sets, bridges, reports or calculation dimensions reference, is kept."
         confirmLabel="Delete dimension"
         destructive
         onConfirm={() =>

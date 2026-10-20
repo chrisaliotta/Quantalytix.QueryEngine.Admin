@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 /// grouping at all, the binding flag only whether its semantic route groups, and the query engine refuses to group by a
 /// field that is not groupable before it looks at the binding.
 /// </summary>
-public sealed class BindingSourceFieldGroupableRule(ITableGateway<DimensionBindingRecord> bindings, ITableGateway<FieldRecord> fields)
+public sealed class BindingSourceFieldGroupableRule(ITableGateway<DimensionBindingRecord> bindings, ITableGateway<FieldRecord> fields, BindingNames names)
     : IPublicationRule
 {
     /// <summary>The rule's violation code.</summary>
@@ -26,18 +26,19 @@ public sealed class BindingSourceFieldGroupableRule(ITableGateway<DimensionBindi
     {
         var versionFilter = new { DatasetVersionId = versionId };
         var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
+        var named = await names.OfAsync(versionBindings, cancellationToken);
         var versionFields = await fields.ListAsync(versionFilter, cancellationToken);
         return
         [
             .. versionBindings
                 .Where(binding => binding.IsGroupable)
-                .Join(versionFields, binding => binding.SourceFieldId, field => (long?)field.FieldId, (binding, field) => (Binding: binding, Field: field))
+                .Join(versionFields, binding => binding.SourceFieldId, field => (long?)field.FieldId, (binding, field) => (Name: named[binding.BindingId], Field: field))
                 .Where(pair => !pair.Field.IsGroupable)
-                .OrderBy(pair => pair.Binding.DisplayName, StringComparer.Ordinal)
+                .OrderBy(pair => pair.Name, StringComparer.Ordinal)
                 .Select(pair => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Binding '{pair.Binding.DisplayName}' is groupable, but its source field '{pair.Field.FieldKey}' is not; " +
+                    Message = $"Binding '{pair.Name}' is groupable, but its source field '{pair.Field.FieldKey}' is not; " +
                         "make the field groupable or the binding not groupable."
                 })
         ];

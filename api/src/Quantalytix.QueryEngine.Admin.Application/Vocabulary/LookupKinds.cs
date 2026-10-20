@@ -15,8 +15,8 @@ public static class LookupKinds
     /// <summary>Fields of a dataset version; the parent is the dataset version.</summary>
     public const string Fields = "fields";
 
-    /// <summary>Fields of a dataset version whose binding groups members of a canonical dimension; the parent is the dataset version.</summary>
-    public const string ClassifiedFields = "classified-fields";
+    /// <summary>Roles a dataset version binds into members, which a bridge can start from; the parent is the dataset version.</summary>
+    public const string BoundRoles = "bound-roles";
 
     /// <summary>Grains of a dataset version; the parent is the dataset version.</summary>
     public const string Grains = "grains";
@@ -32,6 +32,9 @@ public static class LookupKinds
 
     /// <summary>Canonical dimensions.</summary>
     public const string Dimensions = "dimensions";
+
+    /// <summary>Roles of dimensions, each pointing at its template; an optional parent narrows them to one dimension.</summary>
+    public const string DimensionRoles = "dimension-roles";
 
     /// <summary>Versions of a dimension; the parent is the dimension.</summary>
     public const string DimensionVersions = "dimension-versions";
@@ -100,12 +103,13 @@ public static class LookupKinds
             new() { Value = Datasets, Description = "Datasets." },
             new() { Value = DatasetVersions, Description = "Versions of a dataset; the parent is the dataset." },
             new() { Value = Fields, Description = "Fields of a dataset version; the parent is the dataset version." },
-            new() { Value = ClassifiedFields, Description = "Fields of a dataset version whose binding groups members of a canonical dimension, each pointing at that dimension; the parent is the dataset version." },
+            new() { Value = BoundRoles, Description = "Roles a dataset version binds into members with an enabled binding, each pointing at its template dimension; the parent is the dataset version." },
             new() { Value = Grains, Description = "Grains of a dataset version; the parent is the dataset version." },
             new() { Value = Bindings, Description = "Dimension bindings of a dataset version; the parent is the dataset version." },
             new() { Value = TimeBindings, Description = "Dimension bindings with a time extension; the parent is the dataset version." },
             new() { Value = Measures, Description = "Measures of a dataset version; the parent is the dataset version." },
             new() { Value = Dimensions, Description = "Canonical dimensions." },
+            new() { Value = DimensionRoles, Description = "Roles of dimensions, labeled with their template and classified by its kind, each pointing at the template; an optional parent narrows them to one dimension." },
             new() { Value = DimensionVersions, Description = "Versions of a dimension; the parent is the dimension." },
             new() { Value = Levels, Description = "Levels of a dimension version; the parent is the dimension version." },
             new() { Value = Members, Description = "Members of a dimension version; the parent is the dimension version." },

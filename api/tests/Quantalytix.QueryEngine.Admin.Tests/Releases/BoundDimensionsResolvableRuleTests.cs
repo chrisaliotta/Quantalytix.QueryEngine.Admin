@@ -39,26 +39,26 @@ public sealed class BoundDimensionsResolvableRuleTests
     [Fact]
     public async Task DimensionWithoutPublishedVersion_IsReported()
     {
-        var violation = Assert.Single(await EvaluateAsync(Binding(32, DatasetVersionId, "Product", 200, BindingKinds.Direct)));
+        var violation = Assert.Single(await EvaluateAsync(Binding(32, DatasetVersionId, ProductRoleId, 200, BindingKinds.Direct)));
 
         Assert.Equal("bound_dimensions_resolvable", violation.Rule);
-        Assert.Equal("Binding 'Product' of dataset 'loans' binds dimension 'Product', which has no published version.", violation.Message);
+        Assert.Equal("Binding 'product' of dataset 'loans' binds dimension 'Product', which has no published version.", violation.Message);
     }
 
-    /// <summary>A binding of Branch resolves in its published v1, and a time binding needs no dimension version.</summary>
+    /// <summary>A binding of the branch role resolves in Branch's published v1, and a time binding needs no dimension version.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task PublishedVersionAndTimeBinding_Pass()
     {
         Assert.Empty(await EvaluateAsync(
-            Binding(31, DatasetVersionId, "Branch", 100, BindingKinds.Direct),
-            Binding(33, DatasetVersionId, "As of date", 300, BindingKinds.Time)));
+            Binding(31, DatasetVersionId, BranchRoleId, 100, BindingKinds.Direct),
+            Binding(33, DatasetVersionId, null, 300, BindingKinds.Time) with { SourceFieldId = AsOfFieldId }));
     }
 
     /// <summary>Evaluates the rule with the given bindings of the pinned dataset version.</summary>
     private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
     {
-        var reader = new ReleaseManifestReader(_manifest, _datasets, new InMemoryTableGateway<DimensionBindingRecord>(bindings));
+        var reader = Reader(_manifest, _datasets, bindings);
         var rule = new BoundDimensionsResolvableRule(reader, _dimensionVersions, _dimensions);
         return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
     }

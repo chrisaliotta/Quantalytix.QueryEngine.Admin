@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// <c>report_metrics_resolve</c>: every column returns a variable or calculated measure of the model version, by its value kind and
-/// key, every formula row evaluates a calculated measure of it, and every target, source and profile pick names a variable of it,
+/// key, every formula row evaluates a calculated measure of it, and every scope, source and profile pick names a variable of it,
 /// because the orchestrator reads the metrics by key. Report versions and calculation model versions both run the rule.
 /// </summary>
 /// <param name="kind">The kind the rule is registered for.</param>
@@ -35,8 +35,8 @@ public sealed class ReportMetricsResolveRule(string kind, ReportGraphReader read
                 violations.Add(Violation($"{subject} column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the model version."));
             foreach (var line in report.Lines.Where(line => line.CalculatedMeasureKey is { } key && !measures.Contains(key)))
                 violations.Add(Violation($"{subject} row '{line.LineKey}' evaluates '{line.CalculatedMeasureKey}', which is no calculated measure of the model version."));
-            foreach (var target in report.Targets.Where(target => !variables.Contains(target.VariableKey)))
-                violations.Add(Violation($"{subject} targets '{target.VariableKey}', which is no variable of the model version."));
+            foreach (var scope in report.Scopes.Where(scope => !variables.Contains(scope.VariableKey)))
+                violations.Add(Violation($"{subject} scopes '{scope.VariableKey}', which is no variable of the model version."));
             foreach (var source in report.Sources.Where(source => !variables.Contains(source.VariableKey)))
                 violations.Add(Violation($"{subject} source '{source.SourceKey}' supplies '{source.VariableKey}', which is no variable of the model version."));
             foreach (var pick in report.Picks.Where(pick => !variables.Contains(pick.VariableKey)))

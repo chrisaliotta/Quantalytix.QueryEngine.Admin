@@ -1,10 +1,8 @@
 /**
- * Why these tests exist: a source classifies into the report's dimension and a route into its calculation dimension's, and
- * the API refuses a classification that leads anywhere else. The source and route sheets share one classification section
- * whose pickers must offer only what the API accepts: every field for a direct or mapped classification but only
- * member-grouped fields for a bridge, and for a route that reuses a binding only fields whose binding groups members of the
- * target; bridges from the chosen field's dimension; and mapping sets and bridges into the target. They also pin down that
- * the body carries only the reference its kind uses.
+ * Why these tests exist: a source classifies into the report's dimension, and the API refuses a classification that leads
+ * anywhere else or a bridge from a role of another dimension. The source sheet's classification section must offer only what
+ * the API accepts: the bridges from the chosen bound role's template, and mapping sets and bridges into the report's dimension.
+ * They also pin down that the body carries only the references its kind uses: a bridge its role and no field.
  */
 import { describe, expect, it } from 'vitest';
 import type { LookupItem } from '@/shared/types';
@@ -14,40 +12,31 @@ function item(id: number, key: string, parentId: number | null = null): LookupIt
   return { id, key, label: key, parentId };
 }
 
-const fields = [item(1, 'account'), item(2, 'branchKey'), item(3, 'memo'), item(4, 'branch')];
-const classifiedFields = [item(1, 'account', 800), item(4, 'branch', 600)];
+const boundRoles = [item(85, 'account', 800), item(86, 'branch', 600)];
 
 describe('classificationOptions', () => {
-  it('offers every field to a direct or mapped classification, and only member-grouped fields to a bridge', () => {
-    expect(classificationOptions({ kind: 'mapped', fieldKey: null }, 500, fields, classifiedFields).fields).toBe(fields);
-    expect(classificationOptions({ kind: 'bridge', fieldKey: null }, 500, fields, classifiedFields).fields).toBe(classifiedFields);
+  it("offers the bridges of the chosen role's template, and none before a role is chosen", () => {
+    expect(classificationOptions(85, 500, boundRoles).bridgeSourceDimensionId).toBe(800);
+    expect(classificationOptions(null, 500, boundRoles).bridgeSourceDimensionId).toBeNull();
   });
 
-  it('offers a route that reuses a binding only the fields whose binding groups members of the target', () => {
-    expect(classificationOptions({ kind: 'binding', fieldKey: null }, 600, fields, classifiedFields).fields).toEqual([item(4, 'branch', 600)]);
-  });
-
-  it("offers the bridges of the chosen field's dimension, and none before a member-grouped field is chosen", () => {
-    expect(classificationOptions({ kind: 'bridge', fieldKey: 'account' }, 500, fields, classifiedFields).bridgeSourceDimensionId).toBe(800);
-    expect(classificationOptions({ kind: 'bridge', fieldKey: null }, 500, fields, classifiedFields).bridgeSourceDimensionId).toBeNull();
-  });
-
-  it('keeps the mapping sets and bridges that lead into the target', () => {
-    const { leadsIntoTarget } = classificationOptions({ kind: 'mapped', fieldKey: 'branchKey' }, 500, fields, classifiedFields);
+  it("keeps the mapping sets and bridges that lead into the report's dimension", () => {
+    const { leadsIntoTarget } = classificationOptions(null, 500, boundRoles);
 
     expect([item(62, 'into_target', 500), item(63, 'elsewhere', 600)].filter(leadsIntoTarget).map(set => set.key)).toEqual(['into_target']);
   });
 });
 
 describe('toClassificationInput', () => {
-  it('sends only the reference the kind uses', () => {
-    const values = { kind: 'bridge', fieldKey: 'account', mappingSetId: 62, bridgeId: 95 };
+  it('sends only the references the kind uses', () => {
+    const values = { kind: 'bridge', fieldKey: 'account', roleId: 85, mappingSetId: 62, bridgeId: 95 };
 
-    expect(toClassificationInput(values)).toEqual({ kind: 'bridge', fieldKey: 'account', mappingSetId: null, bridgeId: 95 });
-    expect(toClassificationInput({ ...values, kind: 'direct' })).toEqual({
-      kind: 'direct',
+    expect(toClassificationInput(values)).toEqual({ kind: 'bridge', fieldKey: null, roleId: 85, mappingSetId: null, bridgeId: 95 });
+    expect(toClassificationInput({ ...values, kind: 'mapped' })).toEqual({
+      kind: 'mapped',
       fieldKey: 'account',
-      mappingSetId: null,
+      roleId: null,
+      mappingSetId: 62,
       bridgeId: null,
     });
   });

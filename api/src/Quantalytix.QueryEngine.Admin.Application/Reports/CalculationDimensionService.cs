@@ -2,20 +2,20 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>The calculation dimensions of report versions: the shared dimensions runs break out and filter by.</summary>
-public sealed class CalculationDimensionService(
-    ITableGateway<CalculationDimensionRecord> dimensions,
-    ReportContentRemover remover,
-    IIdGenerator ids)
+/// <summary>
+/// The calculation dimensions of report versions: the shared dimensions runs break out and filter by, each a role grouped as it
+/// says, which every source reads through its dataset's binding of the role.
+/// </summary>
+public sealed class CalculationDimensionService(ITableGateway<CalculationDimensionRecord> dimensions, IIdGenerator ids)
     : ReportVersionRows<CalculationDimensionRecord, CalculationDimensionInput>(dimensions, ids)
 {
-    /// <summary>Deletes a calculation dimension with its routes; the version's defaults name calculation dimensions by key, which publication checks.</summary>
+    /// <summary>Deletes a calculation dimension; the version's defaults name calculation dimensions by key, which publication checks.</summary>
     /// <param name="itemId">The calculation dimension.</param>
-    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <param name="cancellationToken">Cancels the delete.</param>
     /// <returns>Null: a calculation dimension is always deleted.</returns>
     public override async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
     {
-        await remover.RemoveDimensionsAsync([itemId], cancellationToken);
+        await Rows.DeleteAsync(Key(itemId), cancellationToken);
         return null;
     }
 
@@ -56,9 +56,7 @@ public sealed class CalculationDimensionService(
             ReportVersionId = versionId,
             DimensionKey = input.DimensionKey,
             DisplayName = input.DisplayName,
-            ValueKind = input.ValueKind,
-            DimensionId = input.DimensionId,
-            ValueDataType = input.ValueDataType,
+            RoleId = input.RoleId,
             GroupingMode = input.GroupingMode,
             GroupingLevelKey = input.GroupingLevelKey,
             GroupingAncestorMemberKey = input.GroupingAncestorMemberKey,

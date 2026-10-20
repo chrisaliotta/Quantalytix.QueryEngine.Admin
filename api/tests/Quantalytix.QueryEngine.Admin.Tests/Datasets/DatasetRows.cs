@@ -54,18 +54,17 @@ internal static class DatasetRows
         return new DatasetGrainFieldRecord { GrainId = grainId, Ordinal = ordinal, FieldId = fieldId };
     }
 
-    /// <summary>A binding of a version to dimension 7000, grouping by member.</summary>
-    public static DimensionBindingRecord Binding(long bindingId, long versionId, string displayName, string bindingKind, long? sourceFieldId)
+    /// <summary>A binding of a version to dimension 7000: of a role of it, or with no role for a time binding.</summary>
+    public static DimensionBindingRecord Binding(long bindingId, long versionId, long? roleId, string bindingKind, long? sourceFieldId)
     {
         return new DimensionBindingRecord
         {
             BindingId = bindingId,
             DatasetVersionId = versionId,
-            DisplayName = displayName,
+            RoleId = roleId,
             DimensionId = 7000,
             BindingKind = bindingKind,
             SourceFieldId = sourceFieldId,
-            GroupingMode = GroupingModes.Member,
             RaggedBehavior = RaggedBehaviors.Null,
             DefaultPeriodAlignment = PeriodAlignments.Observation,
             UnmappedBehavior = UnmappedBehaviors.Null,

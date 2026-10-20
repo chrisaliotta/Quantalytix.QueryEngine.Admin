@@ -1,79 +1,58 @@
 import type { LookupItem } from '@/shared/types';
 import type { ClassificationInput } from './types';
 
-/** Values of a sheet's classification section; a choice not made yet is null. */
+/** Values of a source sheet's classification section; a choice not made yet is null. */
 export interface ClassificationValues {
   kind: string | null;
   fieldKey: string | null;
+  roleId: number | null;
   mappingSetId: number | null;
   bridgeId: number | null;
 }
 
-/** What the pickers of a classification offer, for its kind and chosen field. */
+/** What the pickers of a classification offer, for its chosen role. */
 export interface ClassificationOptions {
-  /** The fields the classification can read; null while they load. */
-  fields: LookupItem[] | null;
-  /** The dimension whose bridges a bridge classification offers: the one the chosen field's binding groups; null until then. */
+  /** The dimension whose bridges a bridge classification offers: the chosen role's template; null until a role is chosen. */
   bridgeSourceDimensionId: number | null;
-  /** Keeps a mapping set or bridge that leads into the target dimension. */
+  /** Keeps a mapping set or bridge that leads into the report's dimension. */
   leadsIntoTarget: (item: LookupItem) => boolean;
 }
 
 /**
- * The options of a classification into a target dimension, which the API checks the same way when the classification is
- * saved or a release is validated: a `direct` or `mapped` classification reads any field of the dataset, a `mapped` one through
- * a mapping set into the target; a `bridge` one reads a field whose binding groups members of a dimension, through a bridge from
- * that dimension into the target; and a route's `binding` kind reads a field whose own binding groups members of the target,
- * which the route reuses.
- * @param fields The fields of the dataset's latest version.
- * @param classifiedFields Its fields whose binding groups members, each pointing at the dimension it groups.
+ * The options of a classification into the report's dimension, which the API checks the same way when the source is saved or
+ * a release is validated: a `direct` or `mapped` classification reads any field of the dataset, a `mapped` one through a
+ * mapping set into the report's dimension; a `bridge` one starts from a role the dataset binds into members, through a bridge
+ * from the role's template into the report's dimension.
+ * @param roleId The bridge classification's chosen role.
+ * @param targetDimensionId The report's dimension.
+ * @param boundRoles The roles the dataset's latest version binds into members, each pointing at its template.
  */
-export function classificationOptions(
-  classification: Pick<ClassificationValues, 'kind' | 'fieldKey'>,
-  targetDimensionId: number | null,
-  fields: LookupItem[] | null,
-  classifiedFields: LookupItem[] | null
-): ClassificationOptions {
-  const leadsIntoTarget = (item: LookupItem) => item.parentId === targetDimensionId;
+export function classificationOptions(roleId: number | null, targetDimensionId: number | null, boundRoles: LookupItem[] | null): ClassificationOptions {
   return {
-    fields: fieldsOf(classification.kind, fields, classifiedFields, leadsIntoTarget),
-    bridgeSourceDimensionId: classifiedFields?.find(field => field.key === classification.fieldKey)?.parentId ?? null,
-    leadsIntoTarget,
+    bridgeSourceDimensionId: boundRoles?.find(role => role.id === roleId)?.parentId ?? null,
+    leadsIntoTarget: item => item.parentId === targetDimensionId,
   };
 }
 
-/** The fields a kind can read, or null while they load. */
-function fieldsOf(
-  kind: string | null,
-  fields: LookupItem[] | null,
-  classifiedFields: LookupItem[] | null,
-  leadsIntoTarget: (item: LookupItem) => boolean
-) {
-  if (kind === 'bridge') {
-    return classifiedFields;
-  }
-  if (kind === 'binding') {
-    return classifiedFields && classifiedFields.filter(leadsIntoTarget);
-  }
-  return fields;
-}
-
-/** The values of a stored classification, or of a new one of the default kind when there is none. */
-export function classificationValues(stored: ClassificationInput | null, defaultKind = 'direct'): ClassificationValues {
+/** The values of a stored classification, or of a new direct one when there is none. */
+export function classificationValues(stored: ClassificationInput | null): ClassificationValues {
   return {
-    kind: stored?.kind ?? defaultKind,
+    kind: stored?.kind ?? 'direct',
     fieldKey: stored?.fieldKey ?? null,
+    roleId: stored?.roleId ?? null,
     mappingSetId: stored?.mappingSetId ?? null,
     bridgeId: stored?.bridgeId ?? null,
   };
 }
 
-/** The body of the values: only the reference the kind uses, because the section hides the other one. */
+/** The body of the values: only the references the kind uses, because the section hides the others. */
 export function toClassificationInput(values: ClassificationValues): ClassificationInput {
+  const isBridge = values.kind === 'bridge';
   return {
     kind: values.kind ?? '',
-    fieldKey: values.fieldKey ?? '',
+    fieldKey: isBridge ? null : (values.fieldKey ?? ''),
+    roleId: isBridge ? values.roleId : null,
     mappingSetId: values.kind === 'mapped' ? values.mappingSetId : null,
-    bridgeId: values.kind === 'bridge' ? values.bridgeId : null,
+    bridgeId: isBridge ? values.bridgeId : null,
   };
 }

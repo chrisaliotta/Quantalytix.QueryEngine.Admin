@@ -2,11 +2,12 @@
 # End-to-end acceptance of Query Engine Admin: a dataset authored through the admin API reaches the query engine.
 #
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
-#     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding through the seed mapping set
-#     loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors calculation
-#     model ${PREFIX}margin (2 variables and a yield formula) and report ${PREFIX}margin over it on the seed MarginStatement
-#     dimension (GL monthly sources bridged into the statement, a profile, a branch calculation dimension routed through each
-#     GL dataset's own branch binding, 3 columns, a member option and a formula row), and publishes both, which repoints the
+#     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding of the seed branch role through the
+#     seed mapping set loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors
+#     calculation model ${PREFIX}margin (2 variables and a yield formula) and report ${PREFIX}margin over it on the seed
+#     MarginStatement dimension (GL monthly sources bridged into the statement from the seed account role, a profile, a branch
+#     calculation dimension on the seed branch role, which each GL dataset binds, 3 columns, a member option and a formula
+#     row), and publishes both, which repoints the
 #     active assumption set at them, and captures assumption set ${PREFIX}backtest, which keeps the release active at that
 #     moment. Then it creates release ${PREFIX}acceptance as a copy of the active release plus the
 #     dataset version, validates, publishes and activates it, renames the published report's yield column live, checks
@@ -96,7 +97,8 @@ author_dataset() {
   series=$(py "r['grainId']")
   call POST "$V/grains" 200 "{\"grainKey\":\"rowIdentity\",\"grainKind\":\"row\",\"fieldIds\":[$F_LOAN,$F_DATE]}"
 
-  # Seed objects are only referenced: the Calendar time dimension and the loan.branch mapping set onto Branch.
+  # Seed objects are only referenced: the Calendar time dimension, the loan.branch mapping set onto Branch, and Branch's
+  # branch role, which requests then name the binding by.
   call GET /lookups/dimensions 200
   local calendar
   calendar=$(py "[d['id'] for d in r if d['key'] == 'Calendar'][0]")
@@ -104,9 +106,12 @@ author_dataset() {
   local mapset branch
   mapset=$(py "[s['id'] for s in r if s['key'] == 'loan.branch'][0]")
   branch=$(py "[s['parentId'] for s in r if s['key'] == 'loan.branch'][0]")
-  local common='"groupingMode":"member","raggedBehavior":"null","defaultPeriodAlignment":"observation","unmappedBehavior":"null","isGroupable":true,"isFilterable":true,"isEnabled":true'
-  call POST "$V/bindings" 200 "{\"displayName\":\"Branch\",\"dimensionId\":$branch,\"bindingKind\":\"mapped\",\"sourceFieldId\":$F_BRANCH,\"mappingSetId\":$mapset,\"isRequired\":false,$common}"
-  call POST "$V/bindings" 200 "{\"displayName\":\"As of\",\"dimensionId\":$calendar,\"bindingKind\":\"time\",\"sourceFieldId\":$F_DATE,\"isRequired\":true,$common,\"timeBinding\":{\"timeValueType\":\"date\",\"observationKind\":\"snapshot\",\"sourceTimeZone\":null,\"nativePeriodicity\":\"day\",\"intervalEndFieldId\":null,\"allowedPeriodicities\":[\"day\",\"month\",\"quarter\",\"year\"],\"defaultQueryTimeZone\":\"UTC\",\"cumulativeOrigin\":\"output_range_start\",\"cumulativeFixedStart\":null}}"
+  call GET "/lookups/dimension-roles?parentId=$branch" 200
+  local branch_role
+  branch_role=$(py "[d['id'] for d in r if d['key'] == 'branch'][0]")
+  local common='"raggedBehavior":"null","defaultPeriodAlignment":"observation","unmappedBehavior":"null","isGroupable":true,"isFilterable":true,"isEnabled":true'
+  call POST "$V/bindings" 200 "{\"roleId\":$branch_role,\"bindingKind\":\"mapped\",\"sourceFieldId\":$F_BRANCH,\"mappingSetId\":$mapset,\"isRequired\":false,$common}"
+  call POST "$V/bindings" 200 "{\"dimensionId\":$calendar,\"bindingKind\":\"time\",\"sourceFieldId\":$F_DATE,\"isRequired\":true,$common,\"timeBinding\":{\"timeValueType\":\"date\",\"observationKind\":\"snapshot\",\"sourceTimeZone\":null,\"nativePeriodicity\":\"day\",\"intervalEndFieldId\":null,\"allowedPeriodicities\":[\"day\",\"month\",\"quarter\",\"year\"],\"defaultQueryTimeZone\":\"UTC\",\"cumulativeOrigin\":\"output_range_start\",\"cumulativeFixedStart\":null}}"
   local time_binding
   time_binding=$(py "r['binding']['bindingId']")
 
@@ -129,10 +134,10 @@ author_dataset() {
 
 # Authors model ${PREFIX}margin, which holds the metrics, and report ${PREFIX}margin over it on the seed MarginStatement
 # dimension, whose version holds the data and the rows, and publishes both. The report's rows are the statement's members; its
-# sources bridge each GL account into them through the seed bridge gl_account_to_margin, and its branch routes reuse each GL
-# dataset's own branch binding, which the dataset needs a route to choose among its several Branch bindings. Sources name keys
-# only: the active release decides which dataset versions they resolve in, and the active assumption set which dimension, bridge
-# and mapping versions.
+# sources bridge each GL account into them from the seed account role through the seed bridge gl_account_to_margin, and its
+# branch calculation dimension reads the seed branch role, which each GL dataset binds once. Sources name keys and roles only:
+# the active release decides which dataset versions they resolve in, and the active assumption set which dimension, bridge and
+# mapping versions.
 author_report() {
   REPORT_KEY=${PREFIX}margin
   call GET /lookups/datasets 200
@@ -140,9 +145,12 @@ author_report() {
   balances=$(py "[d['id'] for d in r if d['key'] == 'bank.balance_monthly'][0]")
   income=$(py "[d['id'] for d in r if d['key'] == 'bank.income_monthly'][0]")
   call GET /lookups/dimensions 200
-  local statement branch
+  local statement
   statement=$(py "[d['id'] for d in r if d['key'] == 'MarginStatement'][0]")
-  branch=$(py "[d['id'] for d in r if d['key'] == 'Branch'][0]")
+  call GET /lookups/dimension-roles 200
+  local account_role branch_role
+  account_role=$(py "[d['id'] for d in r if d['key'] == 'account'][0]")
+  branch_role=$(py "[d['id'] for d in r if d['key'] == 'branch'][0]")
   call GET /lookups/bridges 200
   local accounts
   accounts=$(py "[d['id'] for d in r if d['key'] == 'gl_account_to_margin'][0]")
@@ -163,18 +171,14 @@ author_report() {
   call POST "/reports/$REPORT/versions" 200 "$(json "{'modelId': $MODEL, 'defaultProfileKey': 'gl_monthly', 'subtotalPosition': 'above', 'payloadJson': None, 'defaultFilterJson': None, 'defaultSettingsJson': json.dumps({'periodicity': 'month', 'timeZone': 'UTC'}), 'defaultPivotJson': None, 'cloneFromVersionId': None}")"
   REPORT_VERSION=$(py "r['reportVersionId']")
   local R=/report-versions/$REPORT_VERSION
-  local bridged="'classification': {'kind': 'bridge', 'fieldKey': 'account', 'mappingSetId': None, 'bridgeId': $accounts}"
-  local s_balance s_income dimension
+  local bridged="'classification': {'kind': 'bridge', 'fieldKey': None, 'roleId': $account_role, 'mappingSetId': None, 'bridgeId': $accounts}"
+  local s_balance s_income
   call POST "$R/variable-sources" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'sourceKey': 'gl_monthly_balance', 'datasetId': $balances, $bridged, 'timeFieldKey': 'reportingPeriod', 'measureKey': 'periodAverage', 'sourceFilterJson': None, 'isEnabled': True}")"
   s_balance=$(py "r['variableSourceId']")
   call POST "$R/variable-sources" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'sourceKey': 'gl_interest_income', 'datasetId': $income, $bridged, 'timeFieldKey': 'reportingPeriod', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}}), 'isEnabled': True}")"
   s_income=$(py "r['variableSourceId']")
   call POST "$R/profiles" 200 "$(json "{'profileKey': 'gl_monthly', 'displayName': 'GL monthly balances', 'isEnabled': True, 'picks': [{'variableKey': 'AVERAGE_BALANCE', 'variableSourceId': $s_balance}, {'variableKey': 'INTEREST_INCOME', 'variableSourceId': $s_income}]}")"
-  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'valueKind': 'canonical', 'dimensionId': $branch, 'valueDataType': None, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
-  dimension=$(py "r['calculationDimensionId']")
-  for dataset in "$balances" "$income"; do
-    call POST "$R/routes" 200 "$(json "{'calculationDimensionId': $dimension, 'datasetId': $dataset, 'variableSourceId': None, 'classification': {'kind': 'binding', 'fieldKey': 'branch', 'mappingSetId': None, 'bridgeId': None}}")"
-  done
+  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'roleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
   call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
   call PUT "$R/member-options" 200 "$(json "{'options': [{'memberKey': 'ASSETS', 'displayName': None, 'isVisible': True, 'showsValues': False}]}")"
   call PUT "$R/lines" 200 "$(json "{'lines': [{'reportLineId': None, 'lineKey': 'reportYield', 'displayName': 'Report yield', 'lineKind': 'formula', 'parentKey': None, 'calculatedMeasureKey': 'YIELD', 'valueColumnKey': 'yield', 'sortOrder': 99, 'isVisible': True, 'payloadJson': None, 'settingsJson': None}]}")"
@@ -251,9 +255,9 @@ dataset, measures, start, end = sys.argv[1], sys.argv[2].split(), sys.argv[3], s
 print(json.dumps({"requestId": "acceptance-" + dataset, "queries": [{
     "id": "byBranch", "datasetId": dataset, "mode": "aggregate",
     "time": {"dimension": "asOfDate", "periodicity": "month", "timeZone": "UTC", "range": {"start": start, "endExclusive": end}},
-    "dimensions": [{"id": "branchCode"}],
+    "dimensions": [{"id": "branch"}],
     "measures": [{"kind": "column", "id": key} for key in measures],
-    "orderBy": [{"field": "asOfDate"}, {"field": "branchCode"}]}]}))
+    "orderBy": [{"field": "asOfDate"}, {"field": "branch"}]}]}))
 EOF
 python3 - "$REPORT_KEY" "$REPORT_RANGE_START" "$REPORT_RANGE_END" > "$W/report.json" <<'EOF'
 import json, sys

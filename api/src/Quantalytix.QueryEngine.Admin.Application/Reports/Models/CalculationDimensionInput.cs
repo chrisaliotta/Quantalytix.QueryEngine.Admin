@@ -11,17 +11,11 @@ public sealed record CalculationDimensionInput : IGroupingInput
     /// <summary>Human-readable name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>A <c>calculation_value_kind</c> value.</summary>
-    public required string ValueKind { get; init; }
+    /// <summary>The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.</summary>
+    public required long RoleId { get; init; }
 
-    /// <summary>The canonical dimension of a <c>canonical</c> calculation dimension; null for <c>scalar</c>.</summary>
-    public long? DimensionId { get; init; }
-
-    /// <summary>The shared raw value type of a <c>scalar</c> calculation dimension, a <c>data_type</c> value; null for <c>canonical</c>.</summary>
-    public string? ValueDataType { get; init; }
-
-    /// <summary>A <c>grouping_mode</c> value: how a <c>canonical</c> calculation dimension's routes group members; null for <c>scalar</c>.</summary>
-    public string? GroupingMode { get; init; }
+    /// <summary>A <c>grouping_mode</c> value: how runs group the role's members.</summary>
+    public required string GroupingMode { get; init; }
 
     /// <summary>The key of the level to group at when the grouping mode is <c>level</c>.</summary>
     public string? GroupingLevelKey { get; init; }

@@ -8,10 +8,11 @@ using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Confirms <c>report_sources_resolve</c>: a source that reads a dataset the release does not pin is reported; its classification
-/// field must be an enabled field of the pinned dataset version, and for a bridge one whose binding groups members of the bridge's
-/// source dimension; and its time field, measure and filter fields must each resolve. The engine trusts these keys. The rule runs in
-/// two scopes: a release checks every published report, and a report version checks itself against the active release.
+/// Confirms <c>report_sources_resolve</c>: a source that reads a dataset the release does not pin is reported; a direct or mapped
+/// classification's field must be an enabled field of the pinned dataset version, and a bridge classification's role must have an
+/// enabled binding into members there; and its time field, measure and filter fields must each resolve. The engine trusts these
+/// keys. The rule runs in two scopes: a release checks every published report, and a report version checks itself against the
+/// active release.
 /// </summary>
 public sealed class ReportSourcesResolveRuleTests
 {
@@ -53,24 +54,31 @@ public sealed class ReportSourcesResolveRuleTests
     }
 
     /// <summary>
-    /// A bridge classification starts from the members its field's binding groups: the bridge from accounts reads <c>gl_account</c>,
-    /// whose binding groups accounts by member, and is reported once that binding groups at a level instead.
+    /// A bridge classification starts from the members its role's binding classifies: the bridge from accounts reads the account
+    /// role, which GL binds directly, and is reported once that binding is disabled, because the engine would classify nothing.
     /// </summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task BridgeClassification_NeedsAMemberGroupedBindingOfTheBridgesSource()
+    public async Task BridgeClassification_NeedsAnEnabledMemberBindingOfItsRole()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await _fixture.Sources.InsertAsync(
-            Source(71, "balance", "gl_balance", GlDatasetId) with { ClassificationKind = ClassificationKinds.Bridge, BridgeId = AccountBridgeId }, cancellationToken);
+            Source(72, "balance", "gl_bridged", GlDatasetId) with
+            {
+                ClassificationKind = ClassificationKinds.Bridge,
+                ClassificationFieldKey = null,
+                ClassificationRoleId = AccountRoleId,
+                BridgeId = AccountBridgeId
+            },
+            cancellationToken);
         Assert.Empty(await EvaluateAsync(Rule(VersionKinds.SemanticRelease), ReleaseId));
 
         var binding = await _fixture.Bindings.GetAsync(new { BindingId = 31L }, cancellationToken);
-        await _fixture.Bindings.InsertAsync(binding with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "category" }, cancellationToken);
+        await _fixture.Bindings.UpdateAsync(binding with { IsEnabled = false }, cancellationToken);
         var violation = Assert.Single(await EvaluateAsync(Rule(VersionKinds.SemanticRelease), ReleaseId));
 
         Assert.Equal(
-            "Report 'balance_sheet' source 'gl_balance' classifies by 'gl_account' of 'gl', whose binding groups no members of the source dimension of bridge 'zz_map_bridge_95'.",
+            "Report 'balance_sheet' source 'gl_bridged' bridges from role 'gl_account', which 'gl' binds into no members with an enabled binding.",
             violation.Message);
     }
 

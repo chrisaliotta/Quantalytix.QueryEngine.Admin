@@ -15,14 +15,14 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// The tables the report rules read, seeded with one published report that resolves. Release 900 is active and pins GL version 11,
-/// whose <c>gl_account</c> is bound into account dimension 800, whose <c>as_of_date</c> is a time binding and whose <c>region</c> is
-/// a binding into region dimension 600. Report <c>balance_sheet</c> over dimension 500 reads model 40, whose published version 41 has
-/// variable <c>balance</c> and calculated measure <c>yield</c>. The report's published v1 returns <c>balance</c> in column
-/// <c>amount</c>, targets it at member <c>assets</c>, fills it from GL's <c>balance</c> classified by the member keys
-/// <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and routes calculation dimension
-/// <c>region</c> to GL's <c>region</c>. Version 501 of dimension 500 is published, with <c>total</c> at the root and <c>assets</c>
-/// under it; bridge 95 leads from accounts into dimension 500. Model version 42 is an empty draft, and the loans dataset exists but
-/// is not pinned. Tests change rows to break one thing.
+/// whose <c>gl_account</c> binds role <c>gl_account</c> of account dimension 800, whose <c>as_of_date</c> is a time binding and
+/// whose <c>region</c> binds role <c>region</c> of region dimension 600. Report <c>balance_sheet</c> over dimension 500 reads model
+/// 40, whose published version 41 has variable <c>balance</c> and calculated measure <c>yield</c>. The report's published v1 returns
+/// <c>balance</c> in column <c>amount</c>, scopes it to member <c>assets</c>, fills it from GL's <c>balance</c> classified by the
+/// member keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
+/// dimension <c>region</c> on the region role. Version 501 of dimension 500 is published, with <c>total</c> at the root and
+/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. Model version 42 is an empty draft, and the loans
+/// dataset exists but is not pinned. Tests change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
 {
@@ -46,6 +46,12 @@ internal sealed class ReportGraphFixture
 
     /// <summary>The bridge from accounts into the report's dimension.</summary>
     public const long AccountBridgeId = 95;
+
+    /// <summary>The account role GL's <c>gl_account</c> binds, which a bridge source can start from.</summary>
+    public const long AccountRoleId = 85;
+
+    /// <summary>The region role GL's <c>region</c> binds, which the region calculation dimension reads.</summary>
+    public const long RegionRoleId = 86;
 
     /// <summary>The database info: release 900 is active.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
@@ -76,8 +82,8 @@ internal sealed class ReportGraphFixture
     /// <summary>No member options.</summary>
     public InMemoryTableGateway<ReportMemberOptionRecord> MemberOptions { get; } = new();
 
-    /// <summary>The balance variable's target, assets.</summary>
-    public InMemoryTableGateway<ReportVariableTargetRecord> Targets { get; } = new(Target("balance", "assets"));
+    /// <summary>The balance variable's scope, assets.</summary>
+    public InMemoryTableGateway<ReportVariableScopeRecord> Scopes { get; } = new(Scope("balance", "assets"));
 
     /// <summary>The base profile.</summary>
     public InMemoryTableGateway<SourceProfileRecord> Profiles { get; } = new(Profile(75, "base"));
@@ -88,11 +94,13 @@ internal sealed class ReportGraphFixture
     /// <summary>The GL source of the balance variable.</summary>
     public InMemoryTableGateway<VariableSourceRecord> Sources { get; } = new(Source(71, "balance", "gl_balance", GlDatasetId));
 
-    /// <summary>The region calculation dimension.</summary>
-    public InMemoryTableGateway<CalculationDimensionRecord> Dimensions { get; } = new(CalculationDimension(81, "region", 600));
+    /// <summary>The region calculation dimension, on the region role.</summary>
+    public InMemoryTableGateway<CalculationDimensionRecord> Dimensions { get; } = new(CalculationDimension(81, "region", RegionRoleId));
 
-    /// <summary>GL's default route of the region dimension.</summary>
-    public InMemoryTableGateway<CalculationRouteRecord> Routes { get; } = new(Route(91, 81, GlDatasetId, "region"));
+    /// <summary>The account and region roles.</summary>
+    public InMemoryTableGateway<DimensionRoleRecord> Roles { get; } = new(
+        DimensionRows.Role(AccountRoleId, "gl_account", AccountDimensionId),
+        DimensionRows.Role(RegionRoleId, "region", 600));
 
     /// <summary>Model 40's published version 41 and draft version 42.</summary>
     public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(ModelVersion(), ModelVersion(DraftModelVersionId, PublicationStatuses.Draft));
@@ -116,11 +124,11 @@ internal sealed class ReportGraphFixture
         ColumnField(6, LoansVersionId, "as_of_date", "as_of_date", DataTypes.Date),
         ColumnField(7, LoansVersionId, "region", "region"));
 
-    /// <summary>GL's bindings: accounts, the as-of date, and region.</summary>
+    /// <summary>GL's bindings: the account role, the as-of date, and the region role.</summary>
     public InMemoryTableGateway<DimensionBindingRecord> Bindings { get; } = new(
-        Binding(31, GlVersionId, "GL account", AccountDimensionId, BindingKinds.Direct) with { SourceFieldId = 1 },
-        Binding(32, GlVersionId, "As of", 700, BindingKinds.Time) with { SourceFieldId = 2 },
-        Binding(33, GlVersionId, "Region", 600, BindingKinds.Direct) with { SourceFieldId = 3 });
+        Binding(31, GlVersionId, AccountRoleId, AccountDimensionId, BindingKinds.Direct) with { SourceFieldId = 1 },
+        Binding(32, GlVersionId, null, 700, BindingKinds.Time) with { SourceFieldId = 2 },
+        Binding(33, GlVersionId, RegionRoleId, 600, BindingKinds.Direct) with { SourceFieldId = 3 });
 
     /// <summary>The time extension of GL's as-of binding.</summary>
     public InMemoryTableGateway<TimeBindingRecord> TimeBindings { get; } = new(TimeBinding(32));
@@ -131,10 +139,6 @@ internal sealed class ReportGraphFixture
     /// <summary>The bridge from accounts into the report's dimension.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(BridgeRows.Bridge(AccountBridgeId, AccountDimensionId, ReportDimensionId));
 
-    /// <summary>The bridge's published, many-to-one version.</summary>
-    public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } =
-        new(BridgeRows.BridgeVersion(96, AccountBridgeId, 1, Cardinalities.ManyToOne, AllocationModes.None, PublicationStatuses.Published));
-
     /// <summary>Version 501 of the report dimension, published.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(501, ReportDimensionId, 1, PublicationStatuses.Published));
 
@@ -143,14 +147,14 @@ internal sealed class ReportGraphFixture
         DimensionRows.Member(1, 501, "total"),
         DimensionRows.Member(2, 501, "assets", parentId: 1));
 
-    /// <summary>Pins loans v21, with a binding of its <c>gl_account</c> into accounts and a time binding of its as-of date.</summary>
+    /// <summary>Pins loans v21, with a binding of its <c>gl_account</c> to the account role and a time binding of its as-of date.</summary>
     /// <returns>A task that completes when the rows are stored.</returns>
     public async Task PinLoansAsync()
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
         await Manifest.InsertAsync(Pin(LoansDatasetId, LoansVersionId), cancellationToken);
-        await Bindings.InsertAsync(Binding(34, LoansVersionId, "Loan GL account", AccountDimensionId, BindingKinds.Direct) with { SourceFieldId = 5 }, cancellationToken);
-        await Bindings.InsertAsync(Binding(35, LoansVersionId, "Loan as of", 700, BindingKinds.Time) with { SourceFieldId = 6 }, cancellationToken);
+        await Bindings.InsertAsync(Binding(34, LoansVersionId, AccountRoleId, AccountDimensionId, BindingKinds.Direct) with { SourceFieldId = 5 }, cancellationToken);
+        await Bindings.InsertAsync(Binding(35, LoansVersionId, null, 700, BindingKinds.Time) with { SourceFieldId = 6 }, cancellationToken);
         await TimeBindings.InsertAsync(TimeBinding(35), cancellationToken);
         await Measures.InsertAsync(Measure(42, LoansVersionId, "balance", MeasureKinds.Aggregate), cancellationToken);
     }
@@ -160,9 +164,9 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            DatabaseInfo, Manifest, Reports, ReportVersions, Columns, Lines, MemberOptions, Targets, Profiles, Picks, Sources, Dimensions, Routes, ModelVersions,
+            DatabaseInfo, Manifest, Reports, ReportVersions, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, Dimensions, ModelVersions,
             new ModelMetricsReader(ReportVersions, ModelVersions, Variables, CalculatedMeasures),
-            Variables, CalculatedMeasures, Datasets, Fields, Bindings, TimeBindings, Measures, Bridges, BridgeVersions);
+            Variables, CalculatedMeasures, Datasets, Fields, Bindings, TimeBindings, Measures, Bridges, Roles);
     }
 
     /// <summary>The published dimension reader over these tables.</summary>

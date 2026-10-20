@@ -1,6 +1,6 @@
 import type { LookupItem } from '../types';
 
-/** The grouping values of a binding or calculation dimension sheet; a choice not made yet is null. */
+/** The grouping values of a calculation dimension sheet; a choice not made yet is null. */
 export interface GroupingValues {
   groupingMode: string | null;
   groupingLevelKey: string | null;
@@ -17,10 +17,10 @@ export function toGroupingReferences(values: GroupingValues) {
   };
 }
 
-/** Says which dimension version the level and member pickers of a grouping list, or why they list none. */
+/** Says which dimension version the level and member pickers of a role's template list, or why they list none. */
 export function groupingSource(dimensionId: number | null, members: LookupItem[] | null) {
   if (dimensionId === null) {
-    return 'Choose a dimension first.';
+    return 'Choose a role first.';
   }
   if (members !== null && members.length === 0) {
     return 'The dimension has no published version with members yet; publish one to choose from it.';

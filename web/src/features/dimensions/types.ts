@@ -5,6 +5,15 @@ type Schemas = components['schemas'];
 /** A canonical dimension (`qe_dimension`). */
 export type Dimension = Schemas['DimensionRecord'];
 
+/** A named use of a dimension, its template, that bindings and calculation dimensions name (`qe_dimension_role`). */
+export type DimensionRole = Schemas['DimensionRoleRecord'];
+
+/** Body of `POST dimensions/{dimensionId}/roles`, and the first role of `POST dimensions`. */
+export type NewDimensionRoleInput = Schemas['NewDimensionRoleInput'];
+
+/** Body of `PUT dimensions/{dimensionId}/roles/{roleId}`. */
+export type DimensionRoleInput = Schemas['DimensionRoleInput'];
+
 /** A dimension version with its status and validity window (`qe_dimension_version`). */
 export type DimensionVersion = Schemas['DimensionVersionRecord'];
 

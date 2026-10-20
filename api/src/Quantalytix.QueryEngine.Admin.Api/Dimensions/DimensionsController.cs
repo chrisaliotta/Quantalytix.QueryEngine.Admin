@@ -29,12 +29,12 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
         return Ok(await dimensions.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a user-defined dimension and its draft version 1.</summary>
+    /// <summary>Creates a user-defined dimension, its draft version 1 and, unless it is a time dimension, its first role.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
-    /// <param name="input">The new dimension's key, kind and identity, plus version 1's range data type.</param>
+    /// <param name="input">The new dimension's key, kind and identity, plus version 1's range data type and the first role.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created dimension.</returns>
-    /// <response code="200">The created dimension; its draft version 1 is listed under its versions.</response>
+    /// <response code="200">The created dimension; its draft version 1 is listed under its versions and its first role under its roles.</response>
     /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>

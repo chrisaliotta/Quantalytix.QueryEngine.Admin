@@ -3,6 +3,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
+using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
@@ -28,6 +29,12 @@ public sealed class BridgeBindingRouteRuleTests
     /// <summary>Bridge 40 leads from branch to region; bridge 50 from another dimension to region.</summary>
     private readonly InMemoryTableGateway<BridgeRecord> _bridges = new(Bridge(40, "branchToRegion", BranchDimension), Bridge(50, "productToRegion", 9000));
 
+    /// <summary>The bound roles, whose keys name the bindings: branch (81), region (82) and regionAgain (83).</summary>
+    private readonly InMemoryTableGateway<DimensionRoleRecord> _roles = new(
+        DimensionRows.Role(81, "branch", BranchDimension),
+        DimensionRows.Role(82, "region", RegionDimension),
+        DimensionRows.Role(83, "regionAgain", RegionDimension));
+
     /// <summary>A bridge from the source binding's dimension to the bridge binding's dimension passes.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
@@ -46,7 +53,7 @@ public sealed class BridgeBindingRouteRuleTests
         var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceBindingId: 21, bridgeId: 40)));
 
         Assert.Equal(BridgeBindingRouteRule.Code, violation.Rule);
-        Assert.Equal("Bridge binding 'Region' remaps binding 21, which is not a binding of this version.", violation.Message);
+        Assert.Equal("Bridge binding 'region' remaps binding 21, which is not a binding of this version.", violation.Message);
     }
 
     /// <summary>A bridge that starts at another dimension than the source binding's is reported.</summary>
@@ -56,7 +63,7 @@ public sealed class BridgeBindingRouteRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeId: 50)));
 
-        Assert.Equal("Bridge binding 'Region' uses bridge 'productToRegion', which starts at another dimension than its source binding 'Branch'.", violation.Message);
+        Assert.Equal("Bridge binding 'region' uses bridge 'productToRegion', which starts at another dimension than its source binding 'branch'.", violation.Message);
     }
 
     /// <summary>A bridge that ends at another dimension than the bridge binding's is reported.</summary>
@@ -68,7 +75,7 @@ public sealed class BridgeBindingRouteRuleTests
 
         var violation = Assert.Single(await EvaluateAsync(Source(), binding));
 
-        Assert.Equal("Bridge binding 'Region' uses bridge 'branchToRegion', which ends at another dimension than the binding.", violation.Message);
+        Assert.Equal("Bridge binding 'region' uses bridge 'branchToRegion', which ends at another dimension than the binding.", violation.Message);
     }
 
     /// <summary>Bridge bindings that remap each other form a route without a start; each one on it is reported.</summary>
@@ -77,30 +84,31 @@ public sealed class BridgeBindingRouteRuleTests
     public async Task BridgeBindingsRemappingEachOther_AreReported()
     {
         var first = BridgeBinding(sourceBindingId: 23, bridgeId: 40);
-        var second = BridgeBinding(sourceBindingId: 22, bridgeId: 40) with { BindingId = 23, DisplayName = "Region again" };
+        var second = BridgeBinding(sourceBindingId: 22, bridgeId: 40) with { BindingId = 23, RoleId = 83 };
 
         var cycles = (await EvaluateAsync(first, second)).Where(violation => violation.Message.EndsWith("leads back to itself through its source bindings.", StringComparison.Ordinal));
 
-        Assert.Equal(["Region", "Region again"], cycles.Select(violation => violation.Message.Split('\'')[1]));
+        Assert.Equal(["region", "regionAgain"], cycles.Select(violation => violation.Message.Split('\'')[1]));
     }
 
     /// <summary>Evaluates the rule on the given bindings.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
     {
-        var rule = new BridgeBindingRouteRule(new InMemoryTableGateway<DimensionBindingRecord>(bindings), _bridges);
+        var rule = new BridgeBindingRouteRule(
+            new InMemoryTableGateway<DimensionBindingRecord>(bindings), _bridges, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
         return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>The source binding 21: a mapped binding named Branch of the branch dimension.</summary>
+    /// <summary>The source binding 21: a mapped binding of the branch role.</summary>
     private static DimensionBindingRecord Source()
     {
-        return DatasetRows.Binding(21, VersionId, "Branch", BindingKinds.Mapped, 1) with { DimensionId = BranchDimension, MappingSetId = 30 };
+        return DatasetRows.Binding(21, VersionId, 81, BindingKinds.Mapped, 1) with { DimensionId = BranchDimension, MappingSetId = 30 };
     }
 
-    /// <summary>The bridge binding 22, named Region, of the region dimension.</summary>
+    /// <summary>The bridge binding 22, of the region role.</summary>
     private static DimensionBindingRecord BridgeBinding(long sourceBindingId, long bridgeId)
     {
-        return DatasetRows.Binding(22, VersionId, "Region", BindingKinds.Bridge, null) with
+        return DatasetRows.Binding(22, VersionId, 82, BindingKinds.Bridge, null) with
         {
             DimensionId = RegionDimension,
             SourceBindingId = sourceBindingId,

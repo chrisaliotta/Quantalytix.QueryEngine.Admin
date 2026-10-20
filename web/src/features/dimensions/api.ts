@@ -7,11 +7,13 @@ import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import type {
   DimensionInput,
+  DimensionRoleInput,
   DimensionVersionInput,
   LevelInput,
   MemberInput,
   MemberPlacement,
   NewDimensionInput,
+  NewDimensionRoleInput,
   NewDimensionVersionInput,
   NewLevelInput,
   NewMemberInput,
@@ -21,6 +23,10 @@ import type {
 // Query keys start with [resource, tenantId] so invalidateTenantQueries reaches them.
 function dimensionsKey(tenantId: string) {
   return ['dimensions', tenantId] as const;
+}
+
+function rolesKey(tenantId: string, dimensionId: number) {
+  return ['dimension-roles', tenantId, dimensionId] as const;
 }
 
 function versionKey(tenantId: string, versionId: number) {
@@ -63,6 +69,20 @@ export function useDimension(dimensionId: number) {
     queryFn: async () =>
       unwrap(
         await apiClient.GET('/api/tenants/{tenantId}/dimensions/{dimensionId}', {
+          params: { path: { tenantId, dimensionId } },
+        })
+      ),
+  });
+}
+
+/** The roles of a dimension, by key; they apply to every version. */
+export function useRoles(dimensionId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: rolesKey(tenantId, dimensionId),
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles', {
           params: { path: { tenantId, dimensionId } },
         })
       ),
@@ -126,13 +146,57 @@ export function useRangeBands(versionId: number) {
   });
 }
 
-/** Creates a dimension with its draft version 1. */
+/** Creates a dimension with its draft version 1 and, unless it is a time dimension, its first role. */
 export function useCreateDimension() {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (body: NewDimensionInput) =>
       unwrap(await apiClient.POST('/api/tenants/{tenantId}/dimensions', { params: { path: { tenantId } }, body })),
-    onSuccess: () => refresh(tenantId, [dimensionsKey(tenantId)], ['dimensions']),
+    onSuccess: () => refresh(tenantId, [dimensionsKey(tenantId)], ['dimensions', 'dimension-roles']),
+  });
+}
+
+/** Adds a role to a dimension. */
+export function useCreateRole(dimensionId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (body: NewDimensionRoleInput) =>
+      unwrap(
+        await apiClient.POST('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles', {
+          params: { path: { tenantId, dimensionId } },
+          body,
+        })
+      ),
+    onSuccess: () => refresh(tenantId, [rolesKey(tenantId, dimensionId)], ['dimension-roles']),
+  });
+}
+
+/** Edits a role's name and description; its key stays fixed. */
+export function useUpdateRole(dimensionId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async ({ roleId, body }: { roleId: number; body: DimensionRoleInput }) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}', {
+          params: { path: { tenantId, dimensionId, roleId } },
+          body,
+        })
+      ),
+    onSuccess: () => refresh(tenantId, [rolesKey(tenantId, dimensionId)], ['dimension-roles', 'bound-roles']),
+  });
+}
+
+/** Deletes a role; a 409 names the bindings, calculation dimensions and variable sources that name it. */
+export function useDeleteRole(dimensionId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (roleId: number) =>
+      unwrap(
+        await apiClient.DELETE('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}', {
+          params: { path: { tenantId, dimensionId, roleId } },
+        })
+      ),
+    onSuccess: () => refresh(tenantId, [rolesKey(tenantId, dimensionId)], ['dimension-roles']),
   });
 }
 

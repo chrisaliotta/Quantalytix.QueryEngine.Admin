@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -19,6 +20,7 @@ public sealed class LookupService(
     ITableGateway<TimeBindingRecord> timeBindings,
     ITableGateway<MeasureRecord> measures,
     ITableGateway<DimensionRecord> dimensions,
+    ITableGateway<DimensionRoleRecord> roles,
     ITableGateway<DimensionVersionRecord> dimensionVersions,
     ITableGateway<DimensionLevelRecord> levels,
     ITableGateway<DimensionMemberRecord> members,
@@ -28,11 +30,12 @@ public sealed class LookupService(
     ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<SemanticReleaseRecord> releases,
     ITableGateway<AssumptionSetRecord> assumptionSets,
+    BindingNames bindingNames,
     CalculationLookups calculations)
 {
     /// <summary>Lists one picker. Items are sorted by key unless the kind has a natural order.</summary>
     /// <param name="kind">A <c>lookup_kind</c> value, already validated by <see cref="LookupQueryValidator"/>.</param>
-    /// <param name="parentId">The owning row's ID; present for child kinds, optional for <c>mapping-sets</c> and <c>bridges</c>.</param>
+    /// <param name="parentId">The owning row's ID; present for child kinds, optional for <c>dimension-roles</c>, <c>mapping-sets</c> and <c>bridges</c>.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The picker's items.</returns>
     public Task<IReadOnlyList<LookupItem>> ListAsync(string kind, long? parentId, CancellationToken cancellationToken)
@@ -42,12 +45,13 @@ public sealed class LookupService(
             LookupKinds.Datasets => DatasetsAsync(cancellationToken),
             LookupKinds.DatasetVersions => DatasetVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Fields => FieldsAsync(parentId!.Value, cancellationToken),
-            LookupKinds.ClassifiedFields => ClassifiedFieldsAsync(parentId!.Value, cancellationToken),
+            LookupKinds.BoundRoles => BoundRolesAsync(parentId!.Value, cancellationToken),
             LookupKinds.Grains => GrainsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Bindings => BindingsAsync(parentId!.Value, cancellationToken),
             LookupKinds.TimeBindings => TimeBindingsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Measures => MeasuresAsync(parentId!.Value, cancellationToken),
             LookupKinds.Dimensions => DimensionsAsync(cancellationToken),
+            LookupKinds.DimensionRoles => DimensionRolesAsync(parentId, cancellationToken),
             LookupKinds.DimensionVersions => DimensionVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Levels => LevelsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Members => MembersAsync(parentId!.Value, cancellationToken),
@@ -101,21 +105,21 @@ public sealed class LookupService(
     }
 
     /// <summary>
-    /// The fields of one dataset version whose binding groups members of a canonical dimension, each pointing at that dimension:
-    /// the fields a bridge classification can start from.
+    /// The roles one dataset version binds into members with an enabled binding, each pointing at its template and classified by
+    /// binding kind: the roles a bridge classification can start from.
     /// </summary>
-    private async Task<IReadOnlyList<LookupItem>> ClassifiedFieldsAsync(long datasetVersionId, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<LookupItem>> BoundRolesAsync(long datasetVersionId, CancellationToken cancellationToken)
     {
-        var versionFields = (await fields.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken)).ToDictionary(field => field.FieldId);
-        var grouping = (await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken))
-            .Where(binding => binding.SourceFieldId is not null && ClassificationFields.GroupsMembers(binding));
-        return SortByKey(grouping.Select(binding => (Field: versionFields[binding.SourceFieldId!.Value], binding.DimensionId)).Select(pair => new LookupItem
+        var feeding = (await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken))
+            .Where(ClassificationFields.FeedsBridges)
+            .DistinctBy(binding => binding.RoleId)
+            .ToList();
+        var bound = (await roles.ListAsync(new { RoleId = feeding.Select(binding => binding.RoleId!.Value).ToArray() }, cancellationToken))
+            .ToDictionary(role => role.RoleId);
+        return SortByKey(feeding.Select(binding =>
         {
-            Id = pair.Field.FieldId,
-            Key = pair.Field.FieldKey,
-            Label = pair.Field.DisplayName,
-            ParentId = pair.DimensionId,
-            Classifier = pair.Field.DataType
+            var role = bound[binding.RoleId!.Value];
+            return new LookupItem { Id = role.RoleId, Key = role.RoleKey, Label = role.DisplayName, ParentId = role.DimensionId, Classifier = binding.BindingKind };
         }));
     }
 
@@ -132,30 +136,36 @@ public sealed class LookupService(
         }));
     }
 
-    /// <summary>The dimension bindings of one dataset version, classified by binding kind. Bindings have no key, so their ID is it.</summary>
+    /// <summary>
+    /// The dimension bindings of one dataset version, labeled by the role they bind or a time binding's field, and classified by
+    /// binding kind. Bindings have no key, so their ID is it.
+    /// </summary>
     private async Task<IReadOnlyList<LookupItem>> BindingsAsync(long datasetVersionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken);
+        var names = await bindingNames.OfAsync(rows, cancellationToken);
         return SortByKey(rows.Select(row => new LookupItem
         {
             Id = row.BindingId,
             Key = BindingKey(row.BindingId),
-            Label = row.DisplayName,
+            Label = names[row.BindingId],
             Classifier = row.BindingKind
         }));
     }
 
-    /// <summary>The bindings of one dataset version that have a time extension, classified by time value type.</summary>
+    /// <summary>The bindings of one dataset version that have a time extension, labeled by their field and classified by time value type.</summary>
     private async Task<IReadOnlyList<LookupItem>> TimeBindingsAsync(long datasetVersionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken);
         var extensions = await timeBindings.ListAsync(new { BindingId = rows.Select(row => row.BindingId).ToArray() }, cancellationToken);
         var timeValueTypes = extensions.ToDictionary(extension => extension.BindingId, extension => extension.TimeValueType);
-        return SortByKey(rows.Where(row => timeValueTypes.ContainsKey(row.BindingId)).Select(row => new LookupItem
+        var timed = rows.Where(row => timeValueTypes.ContainsKey(row.BindingId)).ToList();
+        var names = await bindingNames.OfAsync(timed, cancellationToken);
+        return SortByKey(timed.Select(row => new LookupItem
         {
             Id = row.BindingId,
             Key = BindingKey(row.BindingId),
-            Label = row.DisplayName,
+            Label = names[row.BindingId],
             Classifier = timeValueTypes[row.BindingId]
         }));
     }
@@ -183,6 +193,27 @@ public sealed class LookupService(
             Key = row.DimensionKey,
             Label = row.DisplayName,
             Classifier = row.DimensionKind
+        }));
+    }
+
+    /// <summary>
+    /// The roles of one dimension, or of every dimension, labeled like <c>Servicing branch · Branch</c>, each pointing at its
+    /// template and classified by the template's kind.
+    /// </summary>
+    private async Task<IReadOnlyList<LookupItem>> DimensionRolesAsync(long? dimensionId, CancellationToken cancellationToken)
+    {
+        object? filter = null;
+        if (dimensionId is not null) filter = new { DimensionId = dimensionId.Value };
+        var rows = await roles.ListAsync(filter, cancellationToken);
+        var templates = (await dimensions.ListAsync(new { DimensionId = rows.Select(row => row.DimensionId).Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(dimension => dimension.DimensionId);
+        return SortByKey(rows.Select(row => new LookupItem
+        {
+            Id = row.RoleId,
+            Key = row.RoleKey,
+            Label = $"{row.DisplayName} · {templates[row.DimensionId].DisplayName}",
+            ParentId = row.DimensionId,
+            Classifier = templates[row.DimensionId].DimensionKind
         }));
     }
 

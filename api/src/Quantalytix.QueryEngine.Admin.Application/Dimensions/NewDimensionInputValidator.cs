@@ -5,14 +5,16 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// Checks a new dimension: a unique, well-formed key, a known kind, and a range data type exactly when the kind is
-/// <c>range</c>, because only range dimensions assign members from typed bands.
+/// Checks a new dimension: a unique, well-formed key, a known kind, a range data type exactly when the kind is <c>range</c>,
+/// because only range dimensions assign members from typed bands, and a first role exactly when the kind is not <c>time</c>,
+/// because time bindings name their dimension and every other binding binds a role.
 /// </summary>
 public sealed class NewDimensionInputValidator : AbstractValidator<NewDimensionInput>
 {
     /// <summary>Declares the rules.</summary>
     /// <param name="dimensions">Reads existing dimension keys.</param>
-    public NewDimensionInputValidator(ITableGateway<DimensionRecord> dimensions)
+    /// <param name="roles">Reads existing role keys.</param>
+    public NewDimensionInputValidator(ITableGateway<DimensionRecord> dimensions, ITableGateway<DimensionRoleRecord> roles)
     {
         Include(new DimensionInputValidator());
         RuleFor(input => input.DimensionKey)
@@ -30,5 +32,13 @@ public sealed class NewDimensionInputValidator : AbstractValidator<NewDimensionI
             .WithMessage("'{PropertyName}' must be null unless the dimension kind is range.")
             .When(input => input.DimensionKind != DimensionKinds.Range);
         RuleFor(input => input.RangeDataType).MustBeIn(RangeDataTypes.Definition);
+        When(input => input.DimensionKind == DimensionKinds.Time, () =>
+        {
+            RuleFor(input => input.DefaultRole).Null().WithMessage("A time dimension has no roles, so '{PropertyName}' must be absent.");
+        }).Otherwise(() =>
+        {
+            RuleFor(input => input.DefaultRole).NotNull().WithMessage("'{PropertyName}' is required, because bindings bind a role of the dimension.");
+            RuleFor(input => input.DefaultRole!).SetValidator(new NewDimensionRoleInputValidator(roles));
+        });
     }
 }

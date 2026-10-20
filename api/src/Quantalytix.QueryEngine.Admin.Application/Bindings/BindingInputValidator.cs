@@ -1,16 +1,15 @@
 using FluentValidation;
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
 /// <summary>
-/// Checks a binding against schema section 11: vocabulary values, the references each binding kind requires and forbids,
-/// the grouping key each grouping mode needs, the unknown member key of the <c>unknown</c> unmapped behavior, and that a
-/// required binding stays enabled. <see cref="TimeBindingInputValidator"/> checks the time extension. Whether the referenced
-/// rows belong to the version and whether the keys resolve in the dimension's published version is left to the publication
-/// rules, which see the route too.
+/// Checks a binding against schema section 11: vocabulary values, the role a breakout binding binds or the dimension a time
+/// binding names, the references each binding kind requires and forbids, the unknown member key of the <c>unknown</c>
+/// unmapped behavior, and that a required binding stays enabled. <see cref="TimeBindingInputValidator"/> checks the time
+/// extension. Whether the referenced rows belong to the version and whether the keys resolve in the dimension's published
+/// version is left to the publication rules, which see the route too.
 /// </summary>
 public sealed class BindingInputValidator : AbstractValidator<BindingInput>
 {
@@ -18,12 +17,24 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
     private static readonly string[] SourceBackedKinds = [BindingKinds.Direct, BindingKinds.Mapped, BindingKinds.Range, BindingKinds.Time];
 
     /// <summary>Declares the rules.</summary>
-    public BindingInputValidator()
+    /// <param name="roles">Reads the role a binding names.</param>
+    public BindingInputValidator(ITableGateway<DimensionRoleRecord> roles)
     {
-        RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
-        RuleFor(input => input.DimensionId).NotNull();
         RuleFor(input => input.BindingKind).MustBeIn(BindingKinds.Definition);
-        Include(new GroupingInputValidator<BindingInput>(256));
+        When(input => input.BindingKind == BindingKinds.Time, () =>
+        {
+            RuleFor(input => input.DimensionId).NotNull().WithMessage(KindRequires(BindingKinds.Time));
+            RuleFor(input => input.RoleId).Null().WithMessage("A time binding names its time dimension, so '{PropertyName}' must be empty.");
+        }).Otherwise(() =>
+        {
+            RuleFor(input => input.RoleId)
+                .Cascade(CascadeMode.Stop)
+                .NotNull()
+                .WithMessage(input => KindRequires(input.BindingKind))
+                .MustAsync(async (roleId, cancellationToken) => (await roles.ListAsync(new { RoleId = roleId }, cancellationToken)).Count == 1)
+                .WithMessage("Role {PropertyValue} does not exist.");
+            RuleFor(input => input.DimensionId).Null().WithMessage("The binding classifies into its role's dimension, so '{PropertyName}' must be empty.");
+        });
         RuleFor(input => input.RaggedBehavior).MustBeIn(RaggedBehaviors.Definition);
         RuleFor(input => input.DefaultPeriodAlignment).MustBeIn(PeriodAlignments.Definition);
         RuleFor(input => input.UnmappedBehavior).MustBeIn(UnmappedBehaviors.Definition);

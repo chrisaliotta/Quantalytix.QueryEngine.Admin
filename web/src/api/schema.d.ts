@@ -1046,276 +1046,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/report-versions/{versionId}/routes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists a report version's calculation routes. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The report version. */
-                    versionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The routes by field key, ignoring case. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationRouteRecord"][];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Adds a route to a draft or published report version; whether its field produces the dimension in the dataset version a release pins is a release rule. */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The draft or published report version. */
-                    versionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalculationRouteInput"];
-                    "application/*+json": components["schemas"]["CalculationRouteInput"];
-                };
-            };
-            responses: {
-                /** @description The created route. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationRouteRecord"];
-                    };
-                };
-                /** @description The input breaks a field rule, such as a second default route for the dimension and dataset; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is neither a draft nor published. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/report-versions/{versionId}/routes/{itemId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replaces a route of a draft or published report version, keeping its ID. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
-                    /** @description The row. */
-                    itemId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CalculationRouteInput"];
-                    "application/*+json": components["schemas"]["CalculationRouteInput"];
-                };
-            };
-            responses: {
-                /** @description The stored route. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationRouteRecord"];
-                    };
-                };
-                /** @description The route is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is neither a draft nor published. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Deletes a route of a draft or published report version. */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
-                    /** @description The row. */
-                    itemId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The route is deleted. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description The route is not in the version; the error is keyed `itemId`. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Nothing was deleted: the version is neither a draft nor published. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/tenants/{tenantId}/report-versions/{versionId}/columns": {
         parameters: {
             query?: never;
@@ -1969,14 +1699,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/report-versions/{versionId}/variable-targets": {
+    "/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists a report version's variable targets. */
+        /** Lists a report version's variable scopes. */
         get: {
             parameters: {
                 query?: never;
@@ -1991,13 +1721,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The targets by variable key. */
+                /** @description The scopes by variable key. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ReportVariableTargetRecord"][];
+                        "application/json": components["schemas"]["ReportVariableScopeRecord"][];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -2020,7 +1750,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft or published report version's variable targets; whether the model has each variable and the report's dimension each member is a publication rule. */
+        /** Replaces a draft or published report version's variable scopes; whether the model has each variable and the report's dimension each member is a publication rule. */
         put: {
             parameters: {
                 query?: never;
@@ -2035,21 +1765,21 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["ReportVariableTargetsInput"];
-                    "application/*+json": components["schemas"]["ReportVariableTargetsInput"];
+                    "application/json": components["schemas"]["ReportVariableScopesInput"];
+                    "application/*+json": components["schemas"]["ReportVariableScopesInput"];
                 };
             };
             responses: {
-                /** @description The targets by variable key. */
+                /** @description The scopes by variable key. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ReportVariableTargetRecord"][];
+                        "application/json": components["schemas"]["ReportVariableScopeRecord"][];
                     };
                 };
-                /** @description A variable is targeted twice, or a target breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description A variable is scoped twice, or a scope breaks a field rule; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5213,6 +4943,249 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the roles of a dimension. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The roles by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRoleRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a role of a dimension. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The dimension, the role's template. */
+                    dimensionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewDimensionRoleInput"];
+                    "application/*+json": components["schemas"]["NewDimensionRoleInput"];
+                };
+            };
+            responses: {
+                /** @description The created role. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRoleRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits a role's display name and description; a change advances the semantic revision. The key stays fixed. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The role's dimension. */
+                    dimensionId: number;
+                    /** @description The role. */
+                    roleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DimensionRoleInput"];
+                    "application/*+json": components["schemas"]["DimensionRoleInput"];
+                };
+            };
+            responses: {
+                /** @description The stored role. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRoleRecord"];
+                    };
+                };
+                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a role that no binding, calculation dimension or variable source names. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the dimension. */
+                    tenantId: string;
+                    /** @description The role's dimension. */
+                    dimensionId: number;
+                    /** @description The role. */
+                    roleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The role is deleted. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted; the detail names the bindings, calculation dimensions and variable sources that name the role. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/dimensions": {
         parameters: {
             query?: never;
@@ -5263,7 +5236,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Creates a user-defined dimension and its draft version 1. */
+        /** Creates a user-defined dimension, its draft version 1 and, unless it is a time dimension, its first role. */
         post: {
             parameters: {
                 query?: never;
@@ -5281,7 +5254,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description The created dimension; its draft version 1 is listed under its versions. */
+                /** @description The created dimension; its draft version 1 is listed under its versions and its first role under its roles. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -9748,30 +9721,38 @@ export interface components {
             /** @description An optional note, such as the close the snapshot records. */
             description?: null | string;
         };
-        /** @description A dimension binding with its time extension, joined from `qe_dimension_binding` and `qe_time_binding`. */
+        /**
+         * @description A dimension binding with the role it binds its field to and its time extension, joined from `qe_dimension_binding`,
+         *     `qe_dimension_role` and `qe_time_binding`.
+         */
         BindingDetail: {
             /** @description The binding. */
             binding: components["schemas"]["DimensionBindingRecord"];
+            role?: null | components["schemas"]["DimensionRoleRecord"];
             timeBinding?: null | components["schemas"]["TimeBindingRecord"];
         };
         /**
          * @description The attributes of a dimension binding of a draft dataset version, plus the time extension of a `time` binding.
-         *     Bindings have no key, so the same input creates a binding and replaces one.
+         *     Bindings have no key, so the same input creates a binding and replaces one. A direct, mapped, range or bridge binding
+         *     binds its field to a role, whose dimension it classifies into; a time binding names its time dimension.
          */
         BindingInput: {
-            /** @description Human-readable role name, such as `Origination branch`. */
-            displayName: string;
             /**
              * Format: int64
-             * @description The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.
+             * @description The role a direct, mapped, range or bridge binding binds its field to; null for a `time` binding.
              */
-            dimensionId: null | number;
+            roleId?: null | number;
+            /**
+             * Format: int64
+             * @description The time dimension of a `time` binding; null for every other kind, which classifies into its role's dimension.
+             */
+            dimensionId?: null | number;
             /** @description A `binding_kind` value: `direct`, `mapped`, `range`, `bridge` or `time`. */
             bindingKind: string;
             /**
              * Format: int64
-             * @description The request-facing field the binding reads. Required for `direct`, `mapped`, `range` and `time`
-             *     bindings; optional for `bridge` bindings, where it gives the binding a request-facing field key.
+             * @description The field the binding reads. Required for `direct`, `mapped`, `range` and `time` bindings; optional
+             *     for `bridge` bindings, which remap the members of their source binding.
              */
             sourceFieldId?: null | number;
             /**
@@ -9789,18 +9770,7 @@ export interface components {
              * @description The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins.
              */
             bridgeId?: null | number;
-            /** @description A `grouping_mode` value: `member`, `level`, `ancestor` or `depth`. */
-            groupingMode: string;
-            /** @description The key of the level to group at; required for `level` grouping and null otherwise. */
-            groupingLevelKey?: null | string;
-            /** @description The key of the ancestor member to group under; required for `ancestor` grouping and null otherwise. */
-            groupingAncestorMemberKey?: null | string;
-            /**
-             * Format: int32
-             * @description The closure depth to group at, 0 or more; required for `depth` grouping and null otherwise.
-             */
-            groupingDepth?: null | number;
-            /** @description A `ragged_behavior` value: what grouping does with a member that has no ancestor at the requested level. */
+            /** @description A `ragged_behavior` value: what a grouping does with a member that has no ancestor at the requested level. */
             raggedBehavior: string;
             /** @description A `default_period_alignment` value. */
             defaultPeriodAlignment: string;
@@ -9810,7 +9780,7 @@ export interface components {
             unknownMemberKey?: null | string;
             /** @description Whether the binding is a dataset fixture that must not be removed or disabled. */
             isRequired: boolean;
-            /** @description Whether the semantic route may take part in aggregate grouping. */
+            /** @description Whether the binding may take part in aggregate grouping. */
             isGroupable: boolean;
             /** @description Whether the dimension may take part in dimension-aware filters. */
             isFilterable: boolean;
@@ -10007,17 +9977,13 @@ export interface components {
             dimensionKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /** @description A `calculation_value_kind` value. */
-            valueKind: string;
             /**
              * Format: int64
-             * @description The canonical dimension of a `canonical` calculation dimension; null for `scalar`.
+             * @description The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.
              */
-            dimensionId?: null | number;
-            /** @description The shared raw value type of a `scalar` calculation dimension, a `data_type` value; null for `canonical`. */
-            valueDataType?: null | string;
-            /** @description A `grouping_mode` value: how a `canonical` calculation dimension's routes group members; null for `scalar`. */
-            groupingMode?: null | string;
+            roleId: number;
+            /** @description A `grouping_mode` value: how runs group the role's members. */
+            groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
             groupingLevelKey?: null | string;
             /** @description The key of the ancestor member to group under when the grouping mode is `ancestor`. */
@@ -10034,7 +10000,10 @@ export interface components {
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by. */
+        /**
+         * @description A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by.
+         *     It reads a dimension role, grouped as it says; a source reaches it when its dataset binds the role.
+         */
         CalculationDimensionRecord: {
             /**
              * Format: int64
@@ -10050,17 +10019,13 @@ export interface components {
             dimensionKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /** @description A `calculation_value_kind` value. */
-            valueKind: string;
             /**
              * Format: int64
-             * @description The canonical dimension of a `canonical` calculation dimension; queries use the version their assumption set pins.
+             * @description The role every source reads; queries use the version of its dimension their assumption set pins.
              */
-            dimensionId?: null | number;
-            /** @description The shared raw value type of a `scalar` calculation dimension. */
-            valueDataType?: null | string;
-            /** @description A `grouping_mode` value of a `canonical` calculation dimension: how its routes group members. */
-            groupingMode?: null | string;
+            roleId: number;
+            /** @description A `grouping_mode` value: how the role's members group. */
+            groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
             groupingLevelKey?: null | string;
             /** @description The key of the ancestor member to group under when the grouping mode is `ancestor`. */
@@ -10129,85 +10094,26 @@ export interface components {
              */
             publishedAt?: null | string;
         };
-        /** @description A calculation dimension route of an editable report version, as its create and edit endpoints take it. */
-        CalculationRouteInput: {
-            /**
-             * Format: int64
-             * @description The calculation dimension of the version the route produces.
-             */
-            calculationDimensionId: number;
-            /**
-             * Format: int64
-             * @description The dataset the route reads.
-             */
-            datasetId: number;
-            /**
-             * Format: int64
-             * @description A source of the version, over the same dataset, whose route this overrides; null for the dataset's default route.
-             */
-            variableSourceId?: null | number;
-            /** @description How the route produces its dimension: `field` for a scalar calculation dimension, otherwise a classification into the canonical one. */
-            classification: components["schemas"]["ClassificationInput"];
-        };
-        /**
-         * @description A `qe_calculation_dimension_binding` row: how one dataset, or one source, produces a calculation dimension: a raw field,
-         *     or a classification into the calculation dimension's dimension.
-         */
-        CalculationRouteRecord: {
-            /**
-             * Format: int64
-             * @description Primary key.
-             */
-            calculationBindingId: number;
-            /**
-             * Format: int64
-             * @description The owning report version.
-             */
-            reportVersionId: number;
-            /**
-             * Format: int64
-             * @description The calculation dimension.
-             */
-            calculationDimensionId: number;
-            /**
-             * Format: int64
-             * @description The dataset the route reads.
-             */
-            datasetId: number;
-            /**
-             * Format: int64
-             * @description The source the route overrides the dataset's default route for; null for the default.
-             */
-            variableSourceId?: null | number;
-            /** @description A `route_kind` value. */
-            routeKind: string;
-            /** @description The dataset field the route reads. */
-            fieldKey: string;
-            /**
-             * Format: int64
-             * @description The mapping set of a `mapped` route, into the calculation dimension's dimension.
-             */
-            mappingSetId?: null | number;
-            /**
-             * Format: int64
-             * @description The bridge of a `bridge` route, into the calculation dimension's dimension.
-             */
-            bridgeId?: null | number;
-        };
-        /** @description How a source's or route's dataset rows reach the members of the canonical dimension it classifies into. */
+        /** @description How a variable source's dataset rows reach the members of the report's dimension. */
         ClassificationInput: {
-            /** @description A `classification_kind` value for a source; a `route_kind` value for a route. */
+            /** @description A `classification_kind` value. */
             kind: string;
-            /** @description The dataset field the classification reads; for `bridge`, a field whose binding groups by member into the bridge's source dimension. */
-            fieldKey: string;
+            /** @description The dataset field a `direct` or `mapped` classification reads; null for `bridge`, which reads its role's binding. */
+            fieldKey?: null | string;
             /**
              * Format: int64
-             * @description The mapping set of a `mapped` classification, which must map into the target dimension.
+             * @description The role a `bridge` classification starts from, whose template must be the bridge's source dimension; the source's
+             *     dataset version binds it by member. Null for every other kind.
+             */
+            roleId?: null | number;
+            /**
+             * Format: int64
+             * @description The mapping set of a `mapped` classification, which must map into the report's dimension.
              */
             mappingSetId?: null | number;
             /**
              * Format: int64
-             * @description The bridge of a `bridge` classification, whose target must be the target dimension.
+             * @description The bridge of a `bridge` classification, whose target must be the report's dimension.
              */
             bridgeId?: null | number;
         };
@@ -10353,7 +10259,10 @@ export interface components {
             /** @description Extension metadata as raw JSON text, or null. */
             properties?: null | string;
         };
-        /** @description A `qe_dimension_binding` row: a semantic classification route from a dataset field to a canonical dimension. */
+        /**
+         * @description A `qe_dimension_binding` row: how a field of a dataset version classifies rows into a canonical dimension. A direct,
+         *     mapped, range or bridge binding binds the field to a role; a time binding names its dimension.
+         */
         DimensionBindingRecord: {
             /**
              * Format: int64
@@ -10365,18 +10274,21 @@ export interface components {
              * @description The dataset version exposing the dimension.
              */
             datasetVersionId: number;
-            /** @description Human-readable role name. */
-            displayName: string;
             /**
              * Format: int64
-             * @description The canonical dimension.
+             * @description The role the field is bound to, whose key requests name the binding by; null for a time binding.
+             */
+            roleId?: null | number;
+            /**
+             * Format: int64
+             * @description The canonical dimension: the role's dimension, or the time binding's.
              */
             dimensionId: number;
             /** @description A `binding_kind` value. */
             bindingKind: string;
             /**
              * Format: int64
-             * @description The request-facing field for source-backed bindings.
+             * @description The field whose values the binding classifies.
              */
             sourceFieldId?: null | number;
             /**
@@ -10394,18 +10306,7 @@ export interface components {
              * @description The bridge when the binding kind is `bridge`; queries use the version their assumption set pins.
              */
             bridgeId?: null | number;
-            /** @description A `grouping_mode` value. */
-            groupingMode: string;
-            /** @description The key of the level to group at when the grouping mode is `level`. */
-            groupingLevelKey?: null | string;
-            /** @description The key of the ancestor member to group under when the grouping mode is `ancestor`. */
-            groupingAncestorMemberKey?: null | string;
-            /**
-             * Format: int32
-             * @description The closure depth to group at when the grouping mode is `depth`.
-             */
-            groupingDepth?: null | number;
-            /** @description A `ragged_behavior` value. */
+            /** @description A `ragged_behavior` value: what a row whose member lacks a requested ancestor groups under. */
             raggedBehavior: string;
             /** @description A `default_period_alignment` value. */
             defaultPeriodAlignment: string;
@@ -10415,7 +10316,7 @@ export interface components {
             unknownMemberKey?: null | string;
             /** @description Dataset fixture flag; a required binding must never be removed or disabled. */
             isRequired: boolean;
-            /** @description Whether the semantic route may take part in aggregate grouping. */
+            /** @description Whether the binding may take part in aggregate grouping. */
             isGroupable: boolean;
             /** @description Whether the dimension may take part in dimension-aware filters. */
             isFilterable: boolean;
@@ -10531,6 +10432,35 @@ export interface components {
             isRemovable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+        };
+        /** @description The editable attributes of a dimension role, as `PUT dimensions/{dimensionId}/roles/{roleId}` takes them. */
+        DimensionRoleInput: {
+            /** @description Human-readable name the catalog shows, such as `Servicing branch`; at most 256 bytes of UTF-8 text. */
+            displayName: string;
+            /** @description Optional description the catalog shows; at most 1024 bytes of UTF-8 text. */
+            description?: null | string;
+        };
+        /**
+         * @description A `qe_dimension_role` row: a named use of a dimension, its template, such as Servicing branch of Branch. Bindings,
+         *     calculation dimensions and bridge sources name it, and requests name its key.
+         */
+        DimensionRoleRecord: {
+            /**
+             * Format: int64
+             * @description Primary key.
+             */
+            roleId: number;
+            /**
+             * Format: int64
+             * @description The template dimension, fixed once created.
+             */
+            dimensionId: number;
+            /** @description The dimension ID requests use, unique in the tenant and fixed once created. */
+            roleKey: string;
+            /** @description Human-readable name the catalog shows. */
+            displayName: string;
+            /** @description Optional description the catalog shows. */
+            description?: null | string;
         };
         /** @description The editable attributes of a dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them. */
         DimensionVersionInput: {
@@ -11254,8 +11184,8 @@ export interface components {
             isEnabled: boolean;
         };
         /**
-         * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
-         *     range data type of its draft version 1.
+         * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, the
+         *     range data type of its draft version 1, and its first role.
          */
         NewDimensionInput: {
             /** @description Stable canonical key, unique across dimensions and fixed once created. */
@@ -11264,12 +11194,25 @@ export interface components {
             dimensionKind: string;
             /** @description A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind. */
             rangeDataType?: null | string;
+            defaultRole?: null | components["schemas"]["NewDimensionRoleInput"];
             /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
             isEnabled: boolean;
             /** @description Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one. */
             isRemovable: boolean;
+        };
+        /**
+         * @description A new dimension role, as `POST dimensions/{dimensionId}/roles` takes it and a new dimension names its first role: its
+         *     fixed key and its editable attributes.
+         */
+        NewDimensionRoleInput: {
+            /** @description The dimension ID requests use, such as `servicingBranch`; unique in the tenant and fixed once created. */
+            roleKey: string;
+            /** @description Human-readable name the catalog shows, such as `Servicing branch`; at most 256 bytes of UTF-8 text. */
+            displayName: string;
+            /** @description Optional description the catalog shows; at most 1024 bytes of UTF-8 text. */
+            description?: null | string;
         };
         /**
          * @description A new draft version of a dimension, as `POST dimensions/{dimensionId}/versions` takes it: empty, or a clone of an
@@ -11878,17 +11821,17 @@ export interface components {
             /** @description Optional catalog payload passed through to clients. */
             payloadJson?: null | string;
         };
-        /** @description The member of the report's dimension one variable reads at. */
-        ReportVariableTargetInput: {
+        /** @description The member of the report's dimension whose branch one variable reads. */
+        ReportVariableScopeInput: {
             /** @description The key of the model variable. */
             variableKey: string;
-            /** @description The member of the report's dimension the variable reads. */
-            targetMemberKey: string;
+            /** @description The member of the report's dimension the variable is scoped to. */
+            scopeMemberKey: string;
             /** @description A `selection_scope` value: `exact` or `descendants`. */
             selectionScope: string;
         };
-        /** @description A `qe_report_variable_target` row: the member of the report dimension a report version reads one variable at. */
-        ReportVariableTargetRecord: {
+        /** @description A `qe_report_variable_scope` row: the member of the report dimension whose branch of the report one variable reads. */
+        ReportVariableScopeRecord: {
             /**
              * Format: int64
              * @description The owning report version; first part of the primary key.
@@ -11896,18 +11839,18 @@ export interface components {
             reportVersionId: number;
             /** @description The key of the model's variable; second part of the primary key. */
             variableKey: string;
-            /** @description The member of the report dimension the variable reads. */
-            targetMemberKey: string;
-            /** @description A `selection_scope` value other than `all_mapped`, which a variable without a target reads. */
+            /** @description The member of the report dimension the variable is scoped to. */
+            scopeMemberKey: string;
+            /** @description A `selection_scope` value other than `all_mapped`, which a variable without a scope reads. */
             selectionScope: string;
         };
         /**
-         * @description The complete variable targets of an editable report version, as `PUT report-versions/{versionId}/variable-targets` takes
-         *     them; a variable without a target reads every row its sources classify.
+         * @description The complete variable scopes of an editable report version, as `PUT report-versions/{versionId}/variable-scopes` takes
+         *     them; a variable without a scope reads every row its sources classify.
          */
-        ReportVariableTargetsInput: {
-            /** @description One target per targeted variable. */
-            targets: components["schemas"]["ReportVariableTargetInput"][];
+        ReportVariableScopesInput: {
+            /** @description One scope per scoped variable. */
+            scopes: components["schemas"]["ReportVariableScopeInput"][];
         };
         /** @description The editable attributes of a report version, as `PUT report-versions/{versionId}` takes them. */
         ReportVersionInput: {
@@ -12360,8 +12303,13 @@ export interface components {
             datasetId: number;
             /** @description A `classification_kind` value. */
             classificationKind: string;
-            /** @description The dataset field the classification reads. */
-            classificationFieldKey: string;
+            /** @description The dataset field a `direct` or `mapped` classification reads. */
+            classificationFieldKey?: null | string;
+            /**
+             * Format: int64
+             * @description The role whose dataset binding a `bridge` classification starts from.
+             */
+            classificationRoleId?: null | number;
             /**
              * Format: int64
              * @description The mapping set of a `mapped` classification, into the report's dimension.

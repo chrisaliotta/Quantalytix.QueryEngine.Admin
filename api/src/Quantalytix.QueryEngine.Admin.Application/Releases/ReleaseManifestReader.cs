@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
@@ -10,7 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 public sealed class ReleaseManifestReader(
     ITableGateway<ReleaseDatasetRecord> manifest,
     ITableGateway<DatasetRecord> datasets,
-    ITableGateway<DimensionBindingRecord> bindings)
+    ITableGateway<DimensionBindingRecord> bindings,
+    BindingNames names)
 {
     /// <summary>Lists a release's manifest rows with the keys of their datasets, ordered by dataset key.</summary>
     /// <param name="releaseId">The release.</param>
@@ -38,12 +40,13 @@ public sealed class ReleaseManifestReader(
         var pinned = await ListDatasetsAsync(releaseId, cancellationToken);
         var datasetKeys = pinned.ToDictionary(dataset => dataset.Row.DatasetVersionId, dataset => dataset.DatasetKey);
         var rows = await bindings.ListAsync(new { DatasetVersionId = datasetKeys.Keys.ToArray() }, cancellationToken);
+        var named = await names.OfAsync(rows, cancellationToken);
         return
         [
             .. rows
-                .Select(binding => new PinnedBinding { DatasetKey = datasetKeys[binding.DatasetVersionId], Binding = binding })
+                .Select(binding => new PinnedBinding { DatasetKey = datasetKeys[binding.DatasetVersionId], Binding = binding, Name = named[binding.BindingId] })
                 .OrderBy(binding => binding.DatasetKey, StringComparer.Ordinal)
-                .ThenBy(binding => binding.Binding.DisplayName, StringComparer.Ordinal)
+                .ThenBy(binding => binding.Name, StringComparer.Ordinal)
         ];
     }
 }

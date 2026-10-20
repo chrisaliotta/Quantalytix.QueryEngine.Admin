@@ -5,31 +5,41 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
 /// <summary>
 /// Lists, creates, replaces and deletes the dimension bindings of dataset versions together with the time extensions of
-/// their time bindings. The binding row is written before its extension and deleted after it.
+/// their time bindings. The binding row is written before its extension and deleted after it. A binding of a role holds the
+/// role's dimension, which never changes, so every rule that compares dimensions reads it from the binding.
 /// </summary>
 public sealed class BindingService(
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<TimeBindingRecord> timeBindings,
+    ITableGateway<DimensionRoleRecord> roles,
     ITableGateway<DatasetVersionRecord> versions,
     ITableGateway<MeasureTimePolicyRecord> timePolicies,
     ITableGateway<MeasureRecord> measures,
+    BindingNames names,
     IIdGenerator ids)
 {
     /// <summary>Lists the bindings of a dataset version.</summary>
     /// <param name="versionId">The dataset version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The bindings sorted by display name, each with its time extension.</returns>
+    /// <returns>The bindings sorted by role key, time bindings first, each with its role and time extension.</returns>
     public async Task<IReadOnlyList<BindingDetail>> ListAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
         var extensions = (await timeBindings.ListAsync(new { BindingId = rows.Select(row => row.BindingId).ToArray() }, cancellationToken))
             .ToDictionary(extension => extension.BindingId);
+        var bound = (await roles.ListAsync(new { RoleId = rows.Select(row => row.RoleId).OfType<long>().Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(role => role.RoleId);
         return
         [
             .. rows
-                .OrderBy(row => row.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(row => row.BindingId)
-                .Select(row => new BindingDetail { Binding = row, TimeBinding = extensions.GetValueOrDefault(row.BindingId) })
+                .Select(row => new BindingDetail
+                {
+                    Binding = row,
+                    Role = row.RoleId is { } roleId ? bound[roleId] : null,
+                    TimeBinding = extensions.GetValueOrDefault(row.BindingId)
+                })
+                .OrderBy(detail => detail.Role?.RoleKey ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(detail => detail.Binding.BindingId)
         ];
     }
 
@@ -40,9 +50,9 @@ public sealed class BindingService(
     /// <returns>The new binding.</returns>
     public async Task<BindingDetail> CreateAsync(long versionId, BindingInput input, CancellationToken cancellationToken)
     {
-        var binding = ToRecord(ids.NextId(), versionId, input);
+        var (binding, role) = await ToRecordAsync(ids.NextId(), versionId, input, cancellationToken);
         await bindings.InsertAsync(binding, cancellationToken);
-        return await SaveExtensionAsync(binding, input, cancellationToken);
+        return await SaveExtensionAsync(binding, role, input, cancellationToken);
     }
 
     /// <summary>
@@ -55,9 +65,9 @@ public sealed class BindingService(
     /// <returns>The updated binding.</returns>
     public async Task<BindingDetail> UpdateAsync(BindingReference reference, BindingInput input, CancellationToken cancellationToken)
     {
-        var binding = ToRecord(reference.BindingId, reference.VersionId, input);
+        var (binding, role) = await ToRecordAsync(reference.BindingId, reference.VersionId, input, cancellationToken);
         await bindings.UpdateAsync(binding, cancellationToken);
-        return await SaveExtensionAsync(binding, input, cancellationToken);
+        return await SaveExtensionAsync(binding, role, input, cancellationToken);
     }
 
     /// <summary>
@@ -74,10 +84,11 @@ public sealed class BindingService(
         var bridged = await bindings.ListAsync(new { SourceBindingId = reference.BindingId }, cancellationToken);
         var policies = await timePolicies.ListAsync(new { RequiredTimeBindingId = reference.BindingId }, cancellationToken);
         var requiring = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
+        var named = await names.OfAsync([binding, .. bridged], cancellationToken);
 
-        var blockers = new DeleteBlockers($"Binding '{binding.DisplayName}'");
+        var blockers = new DeleteBlockers($"Binding '{named[binding.BindingId]}'");
         if (binding.IsRequired) blockers.Add("it is a required binding of the dataset");
-        blockers.AddNamed("it is the source binding of bridge bindings", bridged.Select(row => $"'{row.DisplayName}'"));
+        blockers.AddNamed("it is the source binding of bridge bindings", bridged.Select(row => $"'{named[row.BindingId]}'"));
         blockers.AddNamed("it is the required time binding of measures", requiring.Select(measure => $"'{measure.MeasureKey}'"));
         if (version.DefaultTimeBindingId == reference.BindingId) blockers.Add("it is the version's default time binding");
         if (blockers.Detail() is { } detail) return detail;
@@ -88,7 +99,8 @@ public sealed class BindingService(
     }
 
     /// <summary>Writes the time extension of a time binding, or deletes the extension of any other kind.</summary>
-    private async Task<BindingDetail> SaveExtensionAsync(DimensionBindingRecord binding, BindingInput input, CancellationToken cancellationToken)
+    private async Task<BindingDetail> SaveExtensionAsync(
+        DimensionBindingRecord binding, DimensionRoleRecord? role, BindingInput input, CancellationToken cancellationToken)
     {
         TimeBindingRecord? extension = null;
         if (input.TimeBinding is { } timeBinding)
@@ -101,27 +113,25 @@ public sealed class BindingService(
             await timeBindings.DeleteAsync(new { binding.BindingId }, cancellationToken);
         }
 
-        return new BindingDetail { Binding = binding, TimeBinding = extension };
+        return new BindingDetail { Binding = binding, Role = role, TimeBinding = extension };
     }
 
-    /// <summary>A binding row holding the input's attributes.</summary>
-    private static DimensionBindingRecord ToRecord(long bindingId, long versionId, BindingInput input)
+    /// <summary>A binding row holding the input's attributes and the dimension of its role, or of a time binding its own.</summary>
+    private async Task<(DimensionBindingRecord Binding, DimensionRoleRecord? Role)> ToRecordAsync(
+        long bindingId, long versionId, BindingInput input, CancellationToken cancellationToken)
     {
-        return new DimensionBindingRecord
+        var role = input.RoleId is { } roleId ? await roles.GetAsync(new { RoleId = roleId }, cancellationToken) : null;
+        var binding = new DimensionBindingRecord
         {
             BindingId = bindingId,
             DatasetVersionId = versionId,
-            DisplayName = input.DisplayName,
-            DimensionId = input.DimensionId!.Value,
+            RoleId = input.RoleId,
+            DimensionId = role?.DimensionId ?? input.DimensionId!.Value,
             BindingKind = input.BindingKind,
             SourceFieldId = input.SourceFieldId,
             MappingSetId = input.MappingSetId,
             SourceBindingId = input.SourceBindingId,
             BridgeId = input.BridgeId,
-            GroupingMode = input.GroupingMode,
-            GroupingLevelKey = input.GroupingLevelKey,
-            GroupingAncestorMemberKey = input.GroupingAncestorMemberKey,
-            GroupingDepth = input.GroupingDepth,
             RaggedBehavior = input.RaggedBehavior,
             DefaultPeriodAlignment = input.DefaultPeriodAlignment,
             UnmappedBehavior = input.UnmappedBehavior,
@@ -131,6 +141,7 @@ public sealed class BindingService(
             IsFilterable = input.IsFilterable,
             IsEnabled = input.IsEnabled
         };
+        return (binding, role);
     }
 
     /// <summary>A time extension row holding the input's attributes; the allowed periodicities become a JSON array.</summary>

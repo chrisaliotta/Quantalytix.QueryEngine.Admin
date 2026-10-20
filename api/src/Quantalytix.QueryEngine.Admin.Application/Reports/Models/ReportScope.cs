@@ -16,9 +16,9 @@ public sealed record ReportScope
     /// <summary>The keys of every dataset a report's sources read, by dataset ID, pinned or not.</summary>
     public required IReadOnlyDictionary<long, string> DatasetKeys { get; init; }
 
-    /// <summary>Every bridge a report's sources and routes classify through, by bridge ID.</summary>
+    /// <summary>Every bridge a report's sources classify through, by bridge ID.</summary>
     public required IReadOnlyDictionary<long, BridgeRecord> Bridges { get; init; }
 
-    /// <summary>The cardinality of the published version of every bridge a report's routes classify through, by bridge ID.</summary>
-    public required IReadOnlyDictionary<long, string> BridgeCardinalities { get; init; }
+    /// <summary>The key of every role a report's sources bridge from, by role ID.</summary>
+    public required IReadOnlyDictionary<long, string> RoleKeys { get; init; }
 }

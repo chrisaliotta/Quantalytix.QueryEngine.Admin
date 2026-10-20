@@ -8,7 +8,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 public sealed class DimensionService(
     ITableGateway<DimensionRecord> dimensions,
     ITableGateway<DimensionVersionRecord> versions,
+    ITableGateway<DimensionRoleRecord> roles,
     DimensionVersionService dimensionVersions,
+    DimensionRoleService dimensionRoles,
     DimensionVersionRemover remover,
     DimensionDeleteChecks deleteChecks,
     SemanticRevision semanticRevision,
@@ -32,7 +34,7 @@ public sealed class DimensionService(
         return dimensions.GetAsync(new { DimensionId = dimensionId }, cancellationToken);
     }
 
-    /// <summary>Creates a user-defined dimension and its draft version 1.</summary>
+    /// <summary>Creates a user-defined dimension, its draft version 1 and, unless it is a time dimension, its first role.</summary>
     /// <param name="input">The new dimension, already validated.</param>
     /// <param name="cancellationToken">Cancels the writes.</param>
     /// <returns>The stored dimension.</returns>
@@ -51,6 +53,7 @@ public sealed class DimensionService(
         await dimensions.InsertAsync(dimension, cancellationToken);
         var firstVersion = new NewDimensionVersionInput { RangeDataType = input.RangeDataType };
         await dimensionVersions.CreateAsync(dimension.DimensionId, firstVersion, cancellationToken);
+        if (input.DefaultRole is { } role) await dimensionRoles.CreateAsync(dimension.DimensionId, role, cancellationToken);
         return dimension;
     }
 
@@ -79,7 +82,7 @@ public sealed class DimensionService(
 
     /// <summary>
     /// Deletes a removable dimension whose versions are all drafts and that nothing references: its drafts with their
-    /// content first, then the dimension.
+    /// content first, then its roles, which nothing names, then the dimension.
     /// </summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
@@ -91,6 +94,7 @@ public sealed class DimensionService(
         var conflict = await deleteChecks.DimensionAsync(dimension, ownVersions, cancellationToken);
         if (conflict is not null) return conflict;
         await remover.RemoveAsync([.. ownVersions.Select(version => version.DimensionVersionId)], cancellationToken);
+        await roles.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
         await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
         return null;
     }

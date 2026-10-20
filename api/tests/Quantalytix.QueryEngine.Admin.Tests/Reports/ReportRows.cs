@@ -85,12 +85,12 @@ internal static class ReportRows
         return new ReportMemberOptionRecord { ReportVersionId = ReportVersionId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
     }
 
-    /// <summary>A target that reads a variable at a member and its descendants.</summary>
-    public static ReportVariableTargetRecord Target(string variableKey, string targetMemberKey)
+    /// <summary>A scope that reads a variable at a member and its descendants.</summary>
+    public static ReportVariableScopeRecord Scope(string variableKey, string scopeMemberKey)
     {
-        return new ReportVariableTargetRecord
+        return new ReportVariableScopeRecord
         {
-            ReportVersionId = ReportVersionId, VariableKey = variableKey, TargetMemberKey = targetMemberKey, SelectionScope = SelectionScopes.Descendants
+            ReportVersionId = ReportVersionId, VariableKey = variableKey, ScopeMemberKey = scopeMemberKey, SelectionScope = SelectionScopes.Descendants
         };
     }
 
@@ -124,8 +124,8 @@ internal static class ReportRows
         return new SourceProfileVariableRecord { SourceProfileId = profileId, VariableKey = variableKey, VariableSourceId = sourceId };
     }
 
-    /// <summary>An enabled, groupable and filterable calculation dimension that groups the members of a canonical dimension.</summary>
-    public static CalculationDimensionRecord CalculationDimension(long calculationDimensionId, string dimensionKey, long dimensionId)
+    /// <summary>An enabled, groupable and filterable calculation dimension that groups a role's members by member.</summary>
+    public static CalculationDimensionRecord CalculationDimension(long calculationDimensionId, string dimensionKey, long roleId)
     {
         return new CalculationDimensionRecord
         {
@@ -133,26 +133,11 @@ internal static class ReportRows
             ReportVersionId = ReportVersionId,
             DimensionKey = dimensionKey,
             DisplayName = dimensionKey,
-            ValueKind = CalculationValueKinds.Canonical,
-            DimensionId = dimensionId,
+            RoleId = roleId,
             GroupingMode = GroupingModes.Member,
             IsGroupable = true,
             IsFilterable = true,
             IsEnabled = true
-        };
-    }
-
-    /// <summary>A dataset's default route of a calculation dimension; set <c>VariableSourceId</c> for a source override.</summary>
-    public static CalculationRouteRecord Route(long routeId, long calculationDimensionId, long datasetId, string fieldKey, string routeKind = ClassificationKinds.Direct)
-    {
-        return new CalculationRouteRecord
-        {
-            CalculationBindingId = routeId,
-            ReportVersionId = ReportVersionId,
-            CalculationDimensionId = calculationDimensionId,
-            DatasetId = datasetId,
-            RouteKind = routeKind,
-            FieldKey = fieldKey
         };
     }
 }

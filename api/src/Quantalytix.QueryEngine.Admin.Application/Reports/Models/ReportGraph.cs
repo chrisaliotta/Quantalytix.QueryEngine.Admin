@@ -24,8 +24,8 @@ public sealed record ReportGraph
     /// <summary>The version's member options.</summary>
     public required IReadOnlyList<ReportMemberOptionRecord> MemberOptions { get; init; }
 
-    /// <summary>The version's variable targets.</summary>
-    public required IReadOnlyList<ReportVariableTargetRecord> Targets { get; init; }
+    /// <summary>The version's variable scopes.</summary>
+    public required IReadOnlyList<ReportVariableScopeRecord> Scopes { get; init; }
 
     /// <summary>The version's source profiles.</summary>
     public required IReadOnlyList<SourceProfileRecord> Profiles { get; init; }
@@ -38,9 +38,6 @@ public sealed record ReportGraph
 
     /// <summary>The version's enabled calculation dimensions.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
-
-    /// <summary>The version's routes.</summary>
-    public required IReadOnlyList<CalculationRouteRecord> Routes { get; init; }
 
     /// <summary>The model version the report is checked against; null while the model has no published version.</summary>
     public required CalculationModelVersionRecord? Model { get; init; }

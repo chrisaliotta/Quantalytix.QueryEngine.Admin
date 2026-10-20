@@ -11,7 +11,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
 /// <summary>
 /// Confirms which report rows block deleting a model's metrics: published report versions resolve metric keys in the model's
-/// published version, so a variable one of their columns returns, sources supply, targets or reads through a calculated measure, and
+/// published version, so a variable one of their columns returns, sources supply, scopes or reads through a calculated measure, and
 /// a calculated measure a column returns or a formula row evaluates, cannot be deleted from that version; the same key in a draft
 /// model version blocks nothing, because no report reads drafts.
 /// </summary>
@@ -20,7 +20,7 @@ public sealed class ReportUsesTests
     /// <summary>The draft version of model 40.</summary>
     private const long DraftModelVersionId = 42;
 
-    /// <summary>The published balance sheet returns balance and yield, places yield in the nim row, fills balance from GL and targets it.</summary>
+    /// <summary>The published balance sheet returns balance and yield, places yield in the nim row, fills balance from GL and scopes it.</summary>
     private readonly ReportUses _uses = Uses();
 
     /// <summary>The published version's variable is read in every way a report reads one, including through yield's formula.</summary>
@@ -35,7 +35,7 @@ public sealed class ReportUsesTests
              "column 'yield' of 'balance_sheet' v1, through 'yield'",
              "row 'nim' of 'balance_sheet' v1, through 'yield'",
              "source 'gl_balance' of 'balance_sheet' v1",
-             "the variable target of 'balance_sheet' v1"],
+             "the variable scope of 'balance_sheet' v1"],
             uses);
     }
 
@@ -64,7 +64,7 @@ public sealed class ReportUsesTests
                 Column(2, "yield", ReportValueKinds.Calculated, "yield", 2)),
             new InMemoryTableGateway<ReportLineRecord>(Line(11, "nim", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureKey = "yield", ValueColumnId = 2 }),
             new InMemoryTableGateway<VariableSourceRecord>(Source(71, "balance", "gl_balance", 1)),
-            new InMemoryTableGateway<ReportVariableTargetRecord>(Target("balance", "assets")),
+            new InMemoryTableGateway<ReportVariableScopeRecord>(Scope("balance", "assets")),
             new InMemoryTableGateway<VariableRecord>(Variable(51, "balance")),
             new InMemoryTableGateway<CalculatedMeasureRecord>(Calculated(61, "yield", "[m.balance] / 2")),
             new InMemoryTableGateway<CalculationModelVersionRecord>(ModelVersion(), ModelVersion(DraftModelVersionId, PublicationStatuses.Draft)));

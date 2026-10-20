@@ -46,7 +46,7 @@ public sealed class MappedBindingsResolvableRuleTests
 
         var violation = Assert.Single(violations);
         Assert.Equal("mapped_bindings_resolvable", violation.Rule);
-        Assert.Equal("Binding 'Branch' of dataset 'loans' maps through mapping set 'core_branch', which has no published version.", violation.Message);
+        Assert.Equal("Binding 'branch' of dataset 'loans' maps through mapping set 'core_branch', which has no published version.", violation.Message);
     }
 
     /// <summary>A published mapping version of the set passes, and a direct binding without a mapping set is not checked.</summary>
@@ -54,15 +54,15 @@ public sealed class MappedBindingsResolvableRuleTests
     [Fact]
     public async Task PublishedMappingVersion_Passes()
     {
-        var direct = Binding(32, DatasetVersionId, "Product", 200, BindingKinds.Direct);
+        var direct = Binding(32, DatasetVersionId, ProductRoleId, 200, BindingKinds.Direct);
 
         Assert.Empty(await EvaluateAsync([MappedBinding(), direct], [MappingVersion(72, PublicationStatuses.Published)]));
     }
 
-    /// <summary>The mapped binding of loans v1.</summary>
+    /// <summary>The mapped binding of the branch role in loans v1.</summary>
     private static DimensionBindingRecord MappedBinding()
     {
-        return Binding(31, DatasetVersionId, "Branch", 100, BindingKinds.Mapped) with { MappingSetId = MappingSetId };
+        return Binding(31, DatasetVersionId, BranchRoleId, 100, BindingKinds.Mapped) with { MappingSetId = MappingSetId };
     }
 
     /// <summary>A version of the mapping set.</summary>
@@ -74,7 +74,7 @@ public sealed class MappedBindingsResolvableRuleTests
     /// <summary>Evaluates the rule with the given bindings of the pinned version and mapping versions of the set.</summary>
     private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(DimensionBindingRecord[] bindings, MappingVersionRecord[] mappingVersions)
     {
-        var reader = new ReleaseManifestReader(_manifest, _datasets, new InMemoryTableGateway<DimensionBindingRecord>(bindings));
+        var reader = Reader(_manifest, _datasets, bindings);
         var rule = new MappedBindingsResolvableRule(reader, new InMemoryTableGateway<MappingVersionRecord>(mappingVersions), _mappingSets);
         return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
     }

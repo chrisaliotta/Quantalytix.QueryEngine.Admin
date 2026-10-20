@@ -24,8 +24,11 @@ public sealed record VariableSourceRecord
     /// <summary>A <c>classification_kind</c> value.</summary>
     public required string ClassificationKind { get; init; }
 
-    /// <summary>The dataset field the classification reads.</summary>
-    public required string ClassificationFieldKey { get; init; }
+    /// <summary>The dataset field a <c>direct</c> or <c>mapped</c> classification reads.</summary>
+    public string? ClassificationFieldKey { get; init; }
+
+    /// <summary>The role whose dataset binding a <c>bridge</c> classification starts from.</summary>
+    public long? ClassificationRoleId { get; init; }
 
     /// <summary>The mapping set of a <c>mapped</c> classification, into the report's dimension.</summary>
     public long? MappingSetId { get; init; }

@@ -21,6 +21,12 @@ internal static class DimensionRows
         };
     }
 
+    /// <summary>A role of a dimension, whose key is also its display name.</summary>
+    public static DimensionRoleRecord Role(long roleId, string roleKey, long dimensionId)
+    {
+        return new DimensionRoleRecord { RoleId = roleId, DimensionId = dimensionId, RoleKey = roleKey, DisplayName = roleKey };
+    }
+
     /// <summary>A version of a dimension with a status and an optional range data type.</summary>
     public static DimensionVersionRecord Version(long versionId, long dimensionId, int versionNumber, string status, string? rangeDataType = null)
     {

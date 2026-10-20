@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
@@ -12,7 +13,8 @@ public sealed class FieldUsage(
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<TimeBindingRecord> timeBindings,
     ITableGateway<MeasureRecord> measures,
-    ITableGateway<MeasureComponentRecord> components)
+    ITableGateway<MeasureComponentRecord> components,
+    BindingNames names)
 {
     /// <summary>Describes every row that references a field.</summary>
     /// <param name="fieldId">The field.</param>
@@ -28,11 +30,12 @@ public sealed class FieldUsage(
         var measureComponents = await components.ListAsync(new { FieldId = fieldId }, cancellationToken);
         var componentMeasures = await measures.ListAsync(new { MeasureId = measureComponents.Select(row => row.MeasureId).Distinct().ToArray() }, cancellationToken);
         var measureKeys = componentMeasures.ToDictionary(measure => measure.MeasureId, measure => measure.MeasureKey);
+        var named = await names.OfAsync([.. readingBindings, .. endingBindings], cancellationToken);
         return
         [
             .. usingGrains.Select(grain => $"grain '{grain.GrainKey}'"),
-            .. readingBindings.Select(binding => $"binding '{binding.DisplayName}'"),
-            .. endingBindings.Select(binding => $"the interval end of time binding '{binding.DisplayName}'"),
+            .. readingBindings.Select(binding => $"binding '{named[binding.BindingId]}'"),
+            .. endingBindings.Select(binding => $"the interval end of time binding '{named[binding.BindingId]}'"),
             .. measureComponents.Select(component => $"the {component.ComponentRole} component of measure '{measureKeys[component.MeasureId]}'")
         ];
     }

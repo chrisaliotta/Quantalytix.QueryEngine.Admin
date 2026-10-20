@@ -50,6 +50,7 @@ export function VariableSourceSheet({ report, version, source, readOnly, onClose
         source && {
           kind: source.classificationKind,
           fieldKey: source.classificationFieldKey,
+          roleId: source.classificationRoleId,
           mappingSetId: source.mappingSetId,
           bridgeId: source.bridgeId,
         }

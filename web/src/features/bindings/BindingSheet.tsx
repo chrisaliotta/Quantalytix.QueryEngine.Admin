@@ -6,12 +6,12 @@ import { unwrap } from '@/api/problemDetails';
 import { invalidateTenantQueries } from '@/api/queryClient';
 import { FieldSeparator } from '@/components/ui/field';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { EntityField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { EntityField, SwitchField, VocabularyField } from '@/shared/form';
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { bindingFormValues, toBindingInput, type BindingFormValues } from './bindingForm';
-import { GroupingFields } from './GroupingFields';
+import { MemberBehaviorFields } from './MemberBehaviorFields';
 import { useBindings } from './queries';
 import { TimeBindingFields } from './TimeBindingFields';
 import type { BindingDetail } from './types';
@@ -26,22 +26,25 @@ export interface BindingSheetProps {
 }
 
 /**
- * Sheet that creates or edits a binding, showing the references of the chosen kind: a mapping set for mapped bindings, a
- * source binding and bridge for bridge bindings, and the time section for time bindings. Range and time bindings offer only
- * dimensions of their kind. A mapping set or bridge is named by identity, so requests read the version their assumption set
- * pins. Mounted only while open.
+ * Sheet that creates or edits a binding. A breakout binding binds a role, labeled like "Servicing branch · Branch", and a time
+ * binding names its time dimension. It shows the references of the chosen kind: a mapping set for mapped bindings, a source
+ * binding and bridge for bridge bindings, and the time section for time bindings; mapping sets and bridges are those of the
+ * role's template. Range bindings offer only roles of range dimensions. A mapping set or bridge is named by identity, so
+ * requests read the version their assumption set pins. Mounted only while open.
  */
 export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingSheetProps) {
   const tenantId = useTenantId();
   const form = useForm<BindingFormValues>({ defaultValues: bindingFormValues(detail) });
-  const [kind, dimensionId, sourceBindingId] = useWatch({
+  const [kind, roleId, timeDimensionId, sourceBindingId] = useWatch({
     control: form.control,
-    name: ['bindingKind', 'dimensionId', 'sourceBindingId'],
+    name: ['bindingKind', 'roleId', 'dimensionId', 'sourceBindingId'],
   });
+  const roles = useLookup('dimension-roles');
   const dimensions = useLookup('dimensions');
   const bindings = useBindings(versionId);
+  const templateId = kind === 'time' ? timeDimensionId : (roles.data?.find(role => role.id === roleId)?.parentId ?? null);
   const sourceDimensionId = bindings.data?.find(item => item.binding.bindingId === sourceBindingId)?.binding.dimensionId ?? null;
-  useStaleReferenceClearing(form, { kind, dimensionId, sourceBindingId }, dimensions.data);
+  useStaleReferenceClearing(form, { kind, templateId, sourceBindingId }, roles.data, dimensions.data);
   const save = useMutation({
     mutationFn: async (values: BindingFormValues) => {
       const body = toBindingInput(values);
@@ -71,16 +74,25 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
           onClose();
         }
       }}
-      title={detail?.binding.displayName ?? 'New binding'}
-      description="A semantic route from a field of this version to a canonical dimension."
+      title={sheetTitle(detail)}
+      description="Binds a field of this version to a role of a canonical dimension; requests name the binding by the role's key."
       form={form}
       onSubmit={save.mutateAsync}
       readOnly={!isDraft}
       width="40rem"
     >
-      <TextField name="displayName" label="Display name" description="The role the dimension plays here, such as Origination branch." />
       <VocabularyField name="bindingKind" label="Kind" vocabulary="binding_kind" />
-      <EntityField name="dimensionId" label="Dimension" lookupKind="dimensions" filter={dimensionKindFilter(kind)} />
+      {kind === 'time' ? (
+        <EntityField name="dimensionId" label="Dimension" lookupKind="dimensions" filter={kindFilter('time')} />
+      ) : (
+        <EntityField
+          name="roleId"
+          label="Role"
+          lookupKind="dimension-roles"
+          filter={kindFilter(kind)}
+          description="The role the field plays, such as the servicing branch; a version binds each role once."
+        />
+      )}
       <EntityField
         name="sourceFieldId"
         label="Source field"
@@ -94,7 +106,7 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
           name="mappingSetId"
           label="Mapping set"
           lookupKind="mapping-sets"
-          parentId={dimensionId}
+          parentId={templateId}
           description="The source vocabulary whose entries map the field's values onto members; requests read the version their assumption set pins."
         />
       )}
@@ -113,19 +125,19 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
             label="Bridge"
             lookupKind="bridges"
             parentId={sourceDimensionId}
-            filter={item => item.parentId === dimensionId}
-            description="A bridge from the source binding's dimension into this binding's, which remaps the source binding's members; requests read the version their assumption set pins."
+            filter={item => item.parentId === templateId}
+            description="A bridge from the source binding's dimension into the role's, which remaps the source binding's members; requests read the version their assumption set pins."
           />
         </>
       )}
-      <GroupingFields dimensionId={dimensionId} />
+      <MemberBehaviorFields dimensionId={templateId} />
       {kind === 'time' && <TimeBindingFields versionId={versionId} />}
       <FieldSeparator>Flags</FieldSeparator>
       <SwitchField name="isRequired" label="Required" description="A dataset fixture: it cannot be deleted or disabled." />
       <SwitchField
         name="isGroupable"
         label="Groupable"
-        description="The semantic route may group aggregate queries; its source field must be groupable too."
+        description="Aggregate queries may group by the binding; its source field must be groupable too."
       />
       <SwitchField name="isFilterable" label="Filterable" description="The dimension may take part in dimension-aware filters." />
       <SwitchField name="isEnabled" label="Enabled" description="Disabled bindings are not offered to queries." />
@@ -136,42 +148,56 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
 /** The sheet's choices that other references depend on. */
 interface ReferenceChoices {
   kind: string | null;
-  dimensionId: number | null;
+  /** The binding's dimension: the role's template, or a time binding's own. */
+  templateId: number | null;
   sourceBindingId: number | null;
 }
 
 /**
- * Clears the references that belong to a dimension once the user picks another one: the mapping set, the bridge and the
- * level and member keys then name another dimension's rows, so the old choices could only fail validation. A new source
- * binding clears the bridge the same way, because the bridge leads from the source binding's dimension. A kind that binds
- * only dimensions of its own kind clears a dimension of another kind. It runs after render, never inside a form
- * notification, so watchers keep seeing the cleared values.
+ * Clears the references that belong to a dimension once the binding's dimension changes, through another role or time
+ * dimension: the mapping set, the bridge and the unknown member then name another dimension's rows, so the old choices could
+ * only fail validation. A new source binding clears the bridge the same way, because the bridge leads from the source
+ * binding's dimension. A new kind clears a role or dimension it cannot bind: a time binding binds no role, and range and time
+ * bindings bind only dimensions of their own kind. It runs after render, never inside a form notification, so watchers keep
+ * seeing the cleared values.
  */
-function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>, choices: ReferenceChoices, dimensions: LookupItem[] | undefined) {
-  const { kind, dimensionId, sourceBindingId } = choices;
+function useStaleReferenceClearing(
+  form: UseFormReturn<BindingFormValues>,
+  choices: ReferenceChoices,
+  roles: LookupItem[] | undefined,
+  dimensions: LookupItem[] | undefined
+) {
+  const { kind, templateId, sourceBindingId } = choices;
   const previous = useRef(choices);
   useEffect(() => {
     const before = previous.current;
-    previous.current = { kind, dimensionId, sourceBindingId };
-    const fitsKind = dimensionKindFilter(kind);
-    const dimension = dimensions?.find(item => item.id === dimensionId);
-    if (kind !== before.kind && fitsKind && dimension && !fitsKind(dimension)) {
-      form.setValue('dimensionId', null);
+    previous.current = { kind, templateId, sourceBindingId };
+    if (kind !== before.kind) {
+      const fitsKind = kindFilter(kind);
+      const role = roles?.find(item => item.id === form.getValues('roleId'));
+      const dimension = dimensions?.find(item => item.id === form.getValues('dimensionId'));
+      if (kind === 'time' || (fitsKind && role && !fitsKind(role))) {
+        form.setValue('roleId', null);
+      }
+      if (kind !== 'time' || (fitsKind && dimension && !fitsKind(dimension))) {
+        form.setValue('dimensionId', null);
+      }
     }
-    if (dimensionId !== before.dimensionId) {
+    if (templateId !== before.templateId) {
       form.setValue('mappingSetId', null);
-      form.setValue('groupingLevelKey', null);
-      form.setValue('groupingAncestorMemberKey', null);
       form.setValue('unknownMemberKey', null);
     }
-    if (dimensionId !== before.dimensionId || sourceBindingId !== before.sourceBindingId) {
+    if (templateId !== before.templateId || sourceBindingId !== before.sourceBindingId) {
       form.setValue('bridgeId', null);
     }
-  }, [form, dimensions, kind, dimensionId, sourceBindingId]);
+  }, [form, roles, dimensions, kind, templateId, sourceBindingId]);
 }
 
-/** Range and time bindings bind only dimensions of their own kind; other kinds offer every dimension. */
-function dimensionKindFilter(kind: string | null) {
+/**
+ * Range and time bindings bind only dimensions of their own kind, which a role item carries as its template's kind; other
+ * kinds offer every role.
+ */
+function kindFilter(kind: string | null) {
   if (kind === 'range' || kind === 'time') {
     return (item: LookupItem) => item.classifier === kind;
   }
@@ -181,7 +207,18 @@ function dimensionKindFilter(kind: string | null) {
 /** What the source field means for a binding kind. */
 function sourceFieldDescription(kind: string | null) {
   if (kind === 'bridge') {
-    return 'Optional; gives the bridge binding a request-facing field key.';
+    return "Optional; a bridge binding reads its source binding's members, not a field.";
   }
-  return 'The request-facing field whose values the binding classifies.';
+  if (kind === 'time') {
+    return 'The date or timestamp field; requests name the time binding by its key.';
+  }
+  return "The field whose values the binding classifies into the role's members.";
+}
+
+/** The sheet's title: the bound role, or the time binding. */
+function sheetTitle(detail: BindingDetail | undefined) {
+  if (!detail) {
+    return 'New binding';
+  }
+  return detail.role?.displayName ?? 'Time binding';
 }

@@ -28,9 +28,9 @@ public sealed class DefaultTimeBindingInVersionRuleTests
 
     /// <summary>The bindings of the version and of version 200.</summary>
     private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
-        DatasetRows.Binding(TimeBindingId, VersionId, "As of", BindingKinds.Time, 2),
-        DatasetRows.Binding(MappedBindingId, VersionId, "Branch", BindingKinds.Mapped, 3),
-        DatasetRows.Binding(OtherVersionTimeBindingId, 200, "As of", BindingKinds.Time, 12));
+        DatasetRows.Binding(TimeBindingId, VersionId, null, BindingKinds.Time, 2),
+        DatasetRows.Binding(MappedBindingId, VersionId, 81, BindingKinds.Mapped, 3),
+        DatasetRows.Binding(OtherVersionTimeBindingId, 200, null, BindingKinds.Time, 12));
 
     /// <summary>The time extensions of both time bindings.</summary>
     private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(

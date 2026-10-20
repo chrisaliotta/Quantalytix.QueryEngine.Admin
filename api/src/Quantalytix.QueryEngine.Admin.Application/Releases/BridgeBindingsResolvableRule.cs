@@ -39,7 +39,7 @@ public sealed class BridgeBindingsResolvableRule(
                 .Select(pinned => new RuleViolation
                 {
                     Rule = "bridge_bindings_resolvable",
-                    Message = $"Binding '{pinned.Binding.DisplayName}' of dataset '{pinned.DatasetKey}' maps through bridge '{bridgeKeys[pinned.Binding.BridgeId!.Value]}', which has no published version."
+                    Message = $"Binding '{pinned.Name}' of dataset '{pinned.DatasetKey}' maps through bridge '{bridgeKeys[pinned.Binding.BridgeId!.Value]}', which has no published version."
                 })
         ];
     }

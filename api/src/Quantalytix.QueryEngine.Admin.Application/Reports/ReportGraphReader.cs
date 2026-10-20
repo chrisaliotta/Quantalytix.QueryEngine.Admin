@@ -17,12 +17,11 @@ public sealed class ReportGraphReader(
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
-    ITableGateway<ReportVariableTargetRecord> targets,
+    ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<SourceProfileRecord> profiles,
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<VariableSourceRecord> sources,
     ITableGateway<CalculationDimensionRecord> dimensions,
-    ITableGateway<CalculationRouteRecord> routes,
     ITableGateway<CalculationModelVersionRecord> modelVersions,
     ModelMetricsReader models,
     ITableGateway<VariableRecord> variables,
@@ -33,7 +32,7 @@ public sealed class ReportGraphReader(
     ITableGateway<TimeBindingRecord> timeBindings,
     ITableGateway<MeasureRecord> measures,
     ITableGateway<BridgeRecord> bridges,
-    ITableGateway<BridgeVersionRecord> bridgeVersions)
+    ITableGateway<DimensionRoleRecord> roles)
 {
     /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
     private const int SingletonId = 1;
@@ -89,11 +88,8 @@ public sealed class ReportGraphReader(
         var versionBindings = await bindings.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken);
         var timeIds = (await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
             .Select(extension => extension.BindingId).ToHashSet();
-        long[] namedBridges =
-        [
-            .. graphs.SelectMany(report => report.Sources.Select(source => source.BridgeId).Concat(report.Routes.Select(route => route.BridgeId)))
-                .OfType<long>().Distinct()
-        ];
+        long[] namedBridges = [.. graphs.SelectMany(report => report.Sources.Select(source => source.BridgeId)).OfType<long>().Distinct()];
+        long[] bridgedRoles = [.. graphs.SelectMany(report => report.Sources.Select(source => source.ClassificationRoleId)).OfType<long>().Distinct()];
         var versionFields = (await fields.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken)).ToLookup(field => field.DatasetVersionId);
         var versionMeasures = (await measures.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken)).ToLookup(measure => measure.DatasetVersionId);
         var bindingsByVersion = versionBindings.ToLookup(binding => binding.DatasetVersionId);
@@ -111,8 +107,7 @@ public sealed class ReportGraphReader(
             }),
             DatasetKeys = datasetKeys,
             Bridges = (await bridges.ListAsync(new { BridgeId = namedBridges }, cancellationToken)).ToDictionary(bridge => bridge.BridgeId),
-            BridgeCardinalities = (await bridgeVersions.ListAsync(new { BridgeId = namedBridges, Status = PublicationStatuses.Published }, cancellationToken))
-                .ToDictionary(bridge => bridge.BridgeId, bridge => bridge.Cardinality)
+            RoleKeys = (await roles.ListAsync(new { RoleId = bridgedRoles }, cancellationToken)).ToDictionary(role => role.RoleId, role => role.RoleKey)
         };
     }
 
@@ -134,12 +129,11 @@ public sealed class ReportGraphReader(
             Columns = await columns.ListAsync(owner, cancellationToken),
             Lines = await lines.ListAsync(owner, cancellationToken),
             MemberOptions = await memberOptions.ListAsync(owner, cancellationToken),
-            Targets = await targets.ListAsync(owner, cancellationToken),
+            Scopes = await scopes.ListAsync(owner, cancellationToken),
             Profiles = versionProfiles,
             Picks = await picks.ListAsync(new { SourceProfileId = versionProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
             Sources = [.. (await sources.ListAsync(owner, cancellationToken)).Where(source => source.IsEnabled)],
             Dimensions = [.. (await dimensions.ListAsync(owner, cancellationToken)).Where(dimension => dimension.IsEnabled)],
-            Routes = await routes.ListAsync(owner, cancellationToken),
             Model = model,
             Variables = model is null ? [] : await variables.ListAsync(metrics, cancellationToken),
             CalculatedMeasures = model is null ? [] : await calculatedMeasures.ListAsync(metrics, cancellationToken)

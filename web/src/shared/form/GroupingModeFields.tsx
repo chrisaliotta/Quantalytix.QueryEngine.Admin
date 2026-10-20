@@ -6,14 +6,14 @@ import { NumberField } from './NumberField';
 import { VocabularyField } from './VocabularyField';
 
 export interface GroupingModeFieldsProps {
-  /** The dimension whose members are grouped; null until one is chosen. */
+  /** The dimension whose members are grouped, the role's template; null until a role is chosen. */
   dimensionId: number | null;
 }
 
 /**
- * The grouping mode of a binding or calculation dimension, with the level, ancestor member or depth it groups at, as the
- * form's `groupingMode`, `groupingLevelKey`, `groupingAncestorMemberKey` and `groupingDepth`. Levels and members are named by
- * key, offered from the dimension's published version, which the active assumption set pins and requests resolve the keys in.
+ * The grouping mode of a calculation dimension, with the level, ancestor member or depth it groups at, as the form's
+ * `groupingMode`, `groupingLevelKey`, `groupingAncestorMemberKey` and `groupingDepth`. Levels and members are named by key,
+ * offered from the dimension's published version, which the active assumption set pins and requests resolve the keys in.
  */
 export function GroupingModeFields({ dimensionId }: GroupingModeFieldsProps) {
   const mode = useWatch({ name: 'groupingMode' });

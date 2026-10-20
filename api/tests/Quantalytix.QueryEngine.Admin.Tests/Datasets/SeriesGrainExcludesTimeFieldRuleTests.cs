@@ -26,8 +26,8 @@ public sealed class SeriesGrainExcludesTimeFieldRuleTests
 
     /// <summary>A time binding on asOfDate and a mapped binding on branchCode.</summary>
     private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
-        DatasetRows.Binding(21, VersionId, "As of", BindingKinds.Time, 2),
-        DatasetRows.Binding(22, VersionId, "Branch", BindingKinds.Mapped, 3));
+        DatasetRows.Binding(21, VersionId, null, BindingKinds.Time, 2),
+        DatasetRows.Binding(22, VersionId, 81, BindingKinds.Mapped, 3));
 
     /// <summary>The time extension of the As of binding only.</summary>
     private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(DatasetRows.TimeBinding(21));

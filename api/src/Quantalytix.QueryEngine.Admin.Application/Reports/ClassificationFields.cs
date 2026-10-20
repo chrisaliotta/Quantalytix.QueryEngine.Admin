@@ -3,40 +3,26 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>Which bindings of a dataset version a classification can start from.</summary>
+/// <summary>Which bindings of a dataset version a bridge classification can start from.</summary>
 public static class ClassificationFields
 {
     /// <summary>The binding kinds that classify a field's values into members, which a bridge can then remap.</summary>
     private static readonly string[] MemberKinds = [BindingKinds.Direct, BindingKinds.Mapped, BindingKinds.Range];
 
-    /// <summary>Whether a binding classifies its field's values into members, grouped by member, as a bridge classification needs.</summary>
+    /// <summary>Whether a binding feeds a bridge: it is enabled and classifies its field's values into members of its role's template.</summary>
     /// <param name="binding">A dimension binding.</param>
     /// <returns>True when a bridge can start from the binding's members.</returns>
-    public static bool GroupsMembers(DimensionBindingRecord binding)
+    public static bool FeedsBridges(DimensionBindingRecord binding)
     {
-        return MemberKinds.Contains(binding.BindingKind) && binding.GroupingMode == GroupingModes.Member;
+        return binding.IsEnabled && MemberKinds.Contains(binding.BindingKind);
     }
 
-    /// <summary>
-    /// Whether a <c>binding</c> route can reuse a field's binding: an enabled binding that groups members of the calculation
-    /// dimension's dimension, which the route regroups as the calculation dimension says.
-    /// </summary>
+    /// <summary>Whether a bridge classification can start from a role: the dataset version has a binding of it that feeds bridges.</summary>
     /// <param name="dataset">The dataset version a release pins.</param>
-    /// <param name="fieldKey">The route's field.</param>
-    /// <param name="dimensionId">The calculation dimension's dimension.</param>
-    /// <returns>True when the route can reuse the field's binding.</returns>
-    public static bool RoutesThrough(PinnedDatasetVersion dataset, string fieldKey, long dimensionId)
+    /// <param name="roleId">The classification's role, a role of the bridge's source dimension.</param>
+    /// <returns>True when the role's binding feeds the bridge.</returns>
+    public static bool BridgesFrom(PinnedDatasetVersion dataset, long roleId)
     {
-        return dataset.BindingOf(fieldKey) is { IsEnabled: true } binding && GroupsMembers(binding) && binding.DimensionId == dimensionId;
-    }
-
-    /// <summary>Whether a bridge classification can read a field: its binding groups members of the bridge's source dimension.</summary>
-    /// <param name="dataset">The dataset version a release pins.</param>
-    /// <param name="fieldKey">The classification's field.</param>
-    /// <param name="bridge">The classification's bridge.</param>
-    /// <returns>True when the field's binding feeds the bridge.</returns>
-    public static bool BridgesFrom(PinnedDatasetVersion dataset, string fieldKey, BridgeRecord bridge)
-    {
-        return dataset.BindingOf(fieldKey) is { } binding && GroupsMembers(binding) && binding.DimensionId == bridge.SourceDimensionId;
+        return dataset.Bindings.Any(binding => binding.RoleId == roleId && FeedsBridges(binding));
     }
 }

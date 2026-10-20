@@ -47,7 +47,7 @@ public sealed class PinnedDatasetVersionPublishedRuleTests
     /// <summary>Evaluates the rule for a release with the given manifest rows.</summary>
     private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params ReleaseDatasetRecord[] manifest)
     {
-        var reader = new ReleaseManifestReader(new InMemoryTableGateway<ReleaseDatasetRecord>(manifest), _datasets, new InMemoryTableGateway<DimensionBindingRecord>());
+        var reader = Reader(new InMemoryTableGateway<ReleaseDatasetRecord>(manifest), _datasets);
         var rule = new PinnedDatasetVersionPublishedRule(reader, _datasetVersions);
         return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
     }

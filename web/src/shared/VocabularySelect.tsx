@@ -10,7 +10,7 @@ export interface VocabularySelectProps {
   onChange: (value: string | null) => void;
   /** Shows a clear button that sets the value to null. */
   allowEmpty?: boolean;
-  /** Values of the vocabulary the picker does not offer, such as `all_mapped` for a variable target. */
+  /** Values of the vocabulary the picker does not offer, such as `all_mapped` for a variable scope. */
   exclude?: string[];
   disabled?: boolean;
   placeholder?: string;

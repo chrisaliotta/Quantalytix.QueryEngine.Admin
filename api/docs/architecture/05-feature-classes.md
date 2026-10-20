@@ -135,12 +135,13 @@ classDiagram
 
 ## Dimensions
 
-The drawing shows the dimension slice: identities, versions, levels, the member tree, range bands, the closure builder, and the readers other slices use to resolve keys. It matters because a dimension's published version is the one the active assumption set pins: bindings, mapping entries, bridge mappings and reports name its levels and members by key, and resolve those keys in it.
+The drawing shows the dimension slice: identities, roles, versions, levels, the member tree, range bands, the closure builder, and the readers other slices use to resolve keys. It matters because a dimension's published version is the one the active assumption set pins: bindings, mapping entries, bridge mappings and reports name its levels and members by key, and resolve those keys in it. A role is a named use of a dimension, its template, such as `servicingBranch` of `branch`: bindings, calculation dimensions and bridge sources name roles, and requests name a binding by its role's key.
 
 ```mermaid
 classDiagram
     direction TB
     class DimensionsController
+    class DimensionRolesController
     class DimensionVersionsController
     class DimensionLevelsController
     class DimensionMembersController
@@ -149,6 +150,11 @@ classDiagram
         +CreateAsync(input, cancellationToken)
         +UpdateAsync(dimensionId, input, cancellationToken)
         +DeleteAsync(dimensionId, cancellationToken) Task~string~
+    }
+    class DimensionRoleService {
+        +CreateAsync(dimensionId, input, cancellationToken)
+        +UpdateAsync(roleId, input, cancellationToken)
+        +DeleteAsync(roleId, cancellationToken) Task~string~
     }
     class DimensionVersionService {
         +CreateAsync(dimensionId, input, cancellationToken)
@@ -163,6 +169,7 @@ classDiagram
     }
     class DimensionDeleteChecks {
         +DimensionAsync(dimension, versions, cancellationToken) Task~string~
+        +RoleAsync(role, cancellationToken) Task~string~
         +LevelAsync(level, cancellationToken) Task~string~
         +MemberAsync(member, cancellationToken) Task~string~
     }
@@ -194,14 +201,18 @@ classDiagram
         <<interface>>
     }
     DimensionsController --> DimensionService
+    DimensionRolesController --> DimensionRoleService
     DimensionVersionsController --> DimensionVersionService
     DimensionLevelsController --> DimensionLevelService
     DimensionMembersController --> DimensionMemberService
     RangeBandsController --> RangeBandService
     DimensionService --> DimensionVersionService
+    DimensionService --> DimensionRoleService : first role
     DimensionService --> DimensionVersionRemover
     DimensionService --> DimensionDeleteChecks
     DimensionService --> SemanticRevision
+    DimensionRoleService --> DimensionDeleteChecks
+    DimensionRoleService --> SemanticRevision
     DimensionVersionService --> DimensionVersionCloner
     DimensionVersionService --> DimensionVersionRemover
     DimensionLevelService --> DimensionDeleteChecks
@@ -223,23 +234,26 @@ classDiagram
     BandMemberInVersionRule --> RangeBandSetReader
 ```
 
-- **Routes:** `api/tenants/{tenantId}/dimensions` (`DimensionsController`); under `api/tenants/{tenantId}`, `dimensions/{dimensionId:long}/versions` and `dimension-versions/{dimensionVersionId:long}` (`DimensionVersionsController`); `api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/levels` (`DimensionLevelsController`), `.../members` (`DimensionMembersController`, including `order`) and `.../range-bands` (`RangeBandsController`). Content writes take a draft or the published version (`[RequireEditable]`); deleting a version takes a draft (`[RequireDraft]`).
+- **Routes:** `api/tenants/{tenantId}/dimensions` (`DimensionsController`); `api/tenants/{tenantId}/dimensions/{dimensionId:long}/roles` (`DimensionRolesController`, including `{roleId:long}`); under `api/tenants/{tenantId}`, `dimensions/{dimensionId:long}/versions` and `dimension-versions/{dimensionVersionId:long}` (`DimensionVersionsController`); `api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/levels` (`DimensionLevelsController`), `.../members` (`DimensionMembersController`, including `order`) and `.../range-bands` (`RangeBandsController`). Content writes take a draft or the published version (`[RequireEditable]`); deleting a version takes a draft (`[RequireDraft]`).
 - **Publication rules** (`dimension_version`): `range_data_type_matches_kind` (`RangeDataTypeMatchesKindRule`), `level_key_unique` (`LevelKeyUniqueRule`), `member_key_unique` (`MemberKeyUniqueRule`), `member_parent_in_version` (`MemberParentInVersionRule`), `member_level_in_version` (`MemberLevelInVersionRule`), `hierarchy_acyclic` (`HierarchyAcyclicRule`), `band_boundary_family` (`BandBoundaryFamilyRule`), `band_bounds_ordered` (`BandBoundsOrderedRule`), `bands_non_overlapping` (`BandsNonOverlappingRule`), `band_member_in_version` (`BandMemberInVersionRule`), `dimension_consumers_resolve` (`DimensionConsumersResolveRule`).
 - **Retirement rules:** none. **Lifecycle handlers:** `ClosureBuilder` (`OnValidatingAsync`); `PredecessorRetirer` and `ActiveSetPinner` serve every living kind.
 - **Registration:** `AddDimensionsFeature` in [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs).
 
 `DimensionVersionService` stores the new draft first and then lets `DimensionVersionCloner` copy the source's levels, members with their parents and levels, and range bands; closure rows are not copied, because validation rebuilds them. Mapping sets and bridges name members by key, so they follow the draft once it is published. `DimensionMemberService` rebuilds the closure after every member write, so a live edit of the published version keeps the closure the engine reads current. `DimensionVersionRemover` deletes children first: range bands, closure rows, members, levels, then the versions; nothing else references a draft, so a draft version's delete has no blockers.
 
-`DimensionConsumers` lists the keys live objects name in a dimension: the grouping level, grouping ancestor and unknown member keys of the bindings of published dataset versions, the member keys of the entries of published mapping versions, the source or target member keys of the mappings of published bridge versions, and the member options, overlay row parents and variable targets of published report versions over the dimension and the grouping level and ancestor keys of their calculation dimensions over it. `dimension_consumers_resolve` requires a version being published to hold every one of them, because it becomes the version they resolve in, and `DimensionDeleteChecks` refuses to delete a level or member of the published version that one of them names; drafts resolve nothing, so they never block. `PublishedDimensionReader` gives the binding, mapping, bridge and report rules the keys of a dimension's published version.
+Roles are not versioned. `DimensionService` creates a new dimension's first role with it, from `NewDimensionInput.DefaultRole`, which every kind but `time` requires and `time` forbids, because a time binding names its dimension. A role's key is unique in the tenant and fixed; its display name and description are editable, and a change advances the semantic revision, because the engine's catalog shows both. `DimensionDeleteChecks.RoleAsync` refuses to delete a role a binding, calculation dimension or variable source names, and deleting a dimension deletes its roles once nothing names them.
+
+`DimensionConsumers` lists the keys live objects name in a dimension: the unknown member keys of the bindings of published dataset versions, the member keys of the entries of published mapping versions, the source or target member keys of the mappings of published bridge versions, and the member options, overlay row parents and variable scopes of published report versions over the dimension and the grouping level and ancestor keys of their calculation dimensions on its roles. `dimension_consumers_resolve` requires a version being published to hold every one of them, because it becomes the version they resolve in, and `DimensionDeleteChecks` refuses to delete a level or member of the published version that one of them names; drafts resolve nothing, so they never block. `PublishedDimensionReader` gives the binding, mapping, bridge and report rules the keys of a dimension's published version.
 
 | Class | Records |
 | --- | --- |
-| `DimensionService` | `DimensionRecord`, `DimensionVersionRecord` |
+| `DimensionService` | `DimensionRecord`, `DimensionVersionRecord`, `DimensionRoleRecord` |
+| `DimensionRoleService` | `DimensionRoleRecord` |
 | `DimensionVersionService` | `DimensionVersionRecord` |
 | `DimensionVersionCloner` | `DimensionLevelRecord`, `DimensionMemberRecord`, `RangeBandRecord` |
 | `DimensionVersionRemover` | `DimensionVersionRecord`, `DimensionLevelRecord`, `DimensionMemberRecord`, `DimensionClosureRecord`, `RangeBandRecord` |
-| `DimensionDeleteChecks` | `DimensionVersionRecord`, `DimensionMemberRecord`, `RangeBandRecord`, `MappingSetRecord`, `BridgeRecord`, `DimensionBindingRecord` |
-| `DimensionConsumers` | `DatasetRecord`, `DatasetVersionRecord`, `DimensionBindingRecord`, `MappingSetRecord`, `MappingVersionRecord`, `DimensionMappingRecord`, `BridgeRecord`, `BridgeVersionRecord`, `BridgeMappingRecord`, `ReportRecord`, `ReportVersionRecord`, `ReportMemberOptionRecord`, `ReportLineRecord`, `ReportVariableTargetRecord`, `CalculationDimensionRecord` |
+| `DimensionDeleteChecks` | `DimensionVersionRecord`, `DimensionMemberRecord`, `RangeBandRecord`, `DimensionRoleRecord`, `MappingSetRecord`, `BridgeRecord`, `DimensionBindingRecord`, `DatasetRecord`, `DatasetVersionRecord`, `ReportRecord`, `CalculationDimensionRecord`, `VariableSourceRecord` |
+| `DimensionConsumers` | `DatasetRecord`, `DatasetVersionRecord`, `DimensionBindingRecord`, `DimensionRoleRecord`, `MappingSetRecord`, `MappingVersionRecord`, `DimensionMappingRecord`, `BridgeRecord`, `BridgeVersionRecord`, `BridgeMappingRecord`, `ReportRecord`, `ReportVersionRecord`, `ReportMemberOptionRecord`, `ReportLineRecord`, `ReportVariableScopeRecord`, `CalculationDimensionRecord` |
 | `PublishedDimensionReader` | `DimensionVersionRecord`, `DimensionLevelRecord`, `DimensionMemberRecord` |
 | `DimensionLevelService` | `DimensionLevelRecord` |
 | `DimensionMemberService` | `DimensionMemberRecord` |
@@ -247,7 +261,7 @@ classDiagram
 | `RangeBandSetReader` | `DimensionVersionRecord`, `DimensionRecord`, `RangeBandRecord`, `DimensionMemberRecord` |
 | `ClosureBuilder` | `DimensionMemberRecord`, `DimensionClosureRecord` |
 
-**Sources:** [Dimensions controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Dimensions), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [DimensionVersionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionService.cs), [DimensionVersionCloner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionCloner.cs), [DimensionVersionRemover.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionRemover.cs), [DimensionDeleteChecks.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionDeleteChecks.cs), [DimensionConsumers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumers.cs), [DimensionConsumersResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumersResolveRule.cs), [PublishedDimensionReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PublishedDimensionReader.cs), [DimensionLevelService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionLevelService.cs), [DimensionMemberService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionMemberService.cs), [RangeBandService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/RangeBandService.cs), [RangeBandSetReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/RangeBandSetReader.cs), [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [dimension rules](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [DimensionConsumersTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/DimensionConsumersTests.cs).
+**Sources:** [Dimensions controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Dimensions), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [DimensionRoleService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionRoleService.cs), [NewDimensionInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/NewDimensionInputValidator.cs), [DimensionVersionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionService.cs), [DimensionVersionCloner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionCloner.cs), [DimensionVersionRemover.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionVersionRemover.cs), [DimensionDeleteChecks.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionDeleteChecks.cs), [DimensionConsumers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumers.cs), [DimensionConsumersResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumersResolveRule.cs), [PublishedDimensionReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PublishedDimensionReader.cs), [DimensionLevelService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionLevelService.cs), [DimensionMemberService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionMemberService.cs), [RangeBandService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/RangeBandService.cs), [RangeBandSetReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/RangeBandSetReader.cs), [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [dimension rules](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [DimensionConsumersTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/DimensionConsumersTests.cs), [DimensionRoleTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/DimensionRoleTests.cs).
 
 ## Mappings
 
@@ -392,7 +406,7 @@ A bridge is created without versions, because its mappings belong to versions. A
 
 ## Bindings
 
-The drawing shows the binding slice, which routes a dataset version's fields to canonical dimensions, with the time extension of time bindings. It is small in classes but carries eight of the dataset version's publication rules. A binding names its mapping set or bridge by identity and its grouping level, grouping ancestor and unknown member by key, so it resolves in whichever versions an assumption set pins.
+The drawing shows the binding slice, which binds a dataset version's fields to roles of canonical dimensions, with the time extension of time bindings, which name their time dimension instead. It is small in classes but carries eight of the dataset version's publication rules. A binding names its role, mapping set or bridge by identity and its unknown member by key, so it resolves in whichever versions an assumption set pins. A version binds each role at most once, and one field may feed several roles. Bindings have no name of their own: `BindingNames` names them the way requests do, a role binding by its role's key and a time binding by its field's key, for every message, delete blocker and lookup that lists them.
 
 ```mermaid
 classDiagram
@@ -412,7 +426,11 @@ classDiagram
     class BindingDetail {
         <<record>>
         +DimensionBindingRecord Binding
+        +DimensionRoleRecord Role
         +TimeBindingRecord TimeBinding
+    }
+    class BindingNames {
+        +OfAsync(bindings, cancellationToken) Task~IReadOnlyDictionary~long, string~~
     }
     class ITableGateway~TRecord~ {
         <<interface>>
@@ -421,23 +439,25 @@ classDiagram
         <<interface>>
     }
     BindingsController --> BindingService
-    BindingService --> ITableGateway : five records
+    BindingService --> ITableGateway : six records
+    BindingService --> BindingNames : delete blockers
     BindingService --> IIdGenerator
     BindingService ..> BindingDetail : returns
 ```
 
 - **Routes:** `api/tenants/{tenantId}/dataset-versions/{versionId:long}/bindings` (`BindingsController`).
-- **Publication rules** (`dataset_version`, after the Datasets rules): `binding_fields_in_version` (`BindingFieldsInVersionRule`), `binding_source_field_groupable` (`BindingSourceFieldGroupableRule`), `one_binding_per_field` (`OneBindingPerFieldRule`), `mapped_binding_mapping_set_dimension` (`MappedBindingMappingSetDimensionRule`), `range_binding_dimension_kind` (`RangeBindingDimensionKindRule`), `time_binding_dimension_kind` (`TimeBindingDimensionKindRule`), `bridge_binding_route` (`BridgeBindingRouteRule`), `grouping_references_in_version` (`GroupingReferencesInVersionRule`), which resolves the binding's keys in the published version of its dimension through `PublishedDimensionReader`.
+- **Publication rules** (`dataset_version`, after the Datasets rules): `binding_fields_in_version` (`BindingFieldsInVersionRule`), `binding_source_field_groupable` (`BindingSourceFieldGroupableRule`), `bound_roles_distinct` (`BoundRolesDistinctRule`), which allows one binding per role and no field keyed like a bound role but the one its binding reads, `mapped_binding_mapping_set_dimension` (`MappedBindingMappingSetDimensionRule`), `range_binding_dimension_kind` (`RangeBindingDimensionKindRule`), `time_binding_dimension_kind` (`TimeBindingDimensionKindRule`), `bridge_binding_route` (`BridgeBindingRouteRule`), `unknown_members_in_version` (`UnknownMembersInVersionRule`), which resolves the binding's unknown member in the published version of its dimension through `PublishedDimensionReader`.
 - **Retirement rules and lifecycle handlers:** none.
 - **Registration:** `AddBindingsAndMeasuresFeature` in [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs).
 
-`BindingService` writes the binding row before its time extension and deletes the extension first; a binding whose kind stops being `time` loses its extension. A delete is blocked while the binding is required, is the source binding of a bridge binding, is the required time binding of a measure's time policy, or is the version's default time binding. The bindings' rules are plain `IPublicationRule` classes over gateways, so the drawing leaves them out.
+`BindingInputValidator` requires an existing role for every kind but `time`, and the time dimension for `time`. `BindingService` copies the role's template into the binding's `dimension_id`, which never changes because a role's template is fixed, so every rule that compares dimensions reads it from the binding. It writes the binding row before its time extension and deletes the extension first; a binding whose kind stops being `time` loses its extension. A delete is blocked while the binding is required, is the source binding of a bridge binding, is the required time binding of a measure's time policy, or is the version's default time binding. The bindings' rules are plain `IPublicationRule` classes over gateways, so the drawing leaves them out.
 
 | Class | Records |
 | --- | --- |
-| `BindingService` | `DimensionBindingRecord`, `TimeBindingRecord`, `DatasetVersionRecord`, `MeasureTimePolicyRecord`, `MeasureRecord` |
+| `BindingService` | `DimensionBindingRecord`, `TimeBindingRecord`, `DimensionRoleRecord`, `DatasetVersionRecord`, `MeasureTimePolicyRecord`, `MeasureRecord` |
+| `BindingNames` | `DimensionRoleRecord`, `FieldRecord` |
 
-**Sources:** [BindingsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Bindings/BindingsController.cs), [BindingService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/BindingService.cs), [BindingDetail.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/Models/BindingDetail.cs), [binding rules](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings), [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs).
+**Sources:** [BindingsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Bindings/BindingsController.cs), [BindingService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/BindingService.cs), [BindingNames.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/BindingNames.cs), [BindingInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/BindingInputValidator.cs), [BindingDetail.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/Models/BindingDetail.cs), [binding rules](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings), [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs).
 
 ## Measures
 
@@ -580,13 +600,12 @@ classDiagram
     MappedBindingsResolvableRule --> ReleaseManifestReader
     BridgeBindingsResolvableRule --> ReleaseManifestReader
     IPublicationRule <|.. ReportSourcesResolveRule
-    IPublicationRule <|.. CalculationRoutesResolveRule
     ReportSourcesResolveRule --> ReportGraphReader : semantic_release scope
-    CalculationRoutesResolveRule --> ReportGraphReader : semantic_release scope
+    ReleaseManifestReader --> BindingNames : binding names
 ```
 
 - **Routes:** `api/tenants/{tenantId}/releases` (`ReleasesController`, including `{releaseId:long}/datasets` and `{releaseId:long}/activate`), `api/tenants/{tenantId}/overview` (`OverviewController`).
-- **Publication rules** (`semantic_release`): `manifest_not_empty` (`ManifestNotEmptyRule`), `pinned_version_belongs_to_dataset` (`PinnedVersionBelongsToDatasetRule`), `pinned_version_published` (`PinnedDatasetVersionPublishedRule`), `bound_dimensions_resolvable` (`BoundDimensionsResolvableRule`), `mapped_bindings_resolvable` (`MappedBindingsResolvableRule`), `bridge_bindings_resolvable` (`BridgeBindingsResolvableRule`), then the report rules the Calculation models and Reports slice registers for this kind: `report_sources_resolve` (`ReportSourcesResolveRule`) and `calculation_routes_resolve` (`CalculationRoutesResolveRule`).
+- **Publication rules** (`semantic_release`): `manifest_not_empty` (`ManifestNotEmptyRule`), `pinned_version_belongs_to_dataset` (`PinnedVersionBelongsToDatasetRule`), `pinned_version_published` (`PinnedDatasetVersionPublishedRule`), `bound_dimensions_resolvable` (`BoundDimensionsResolvableRule`), `mapped_bindings_resolvable` (`MappedBindingsResolvableRule`), `bridge_bindings_resolvable` (`BridgeBindingsResolvableRule`), then the report rule the Calculation models and Reports slice registers for this kind: `report_sources_resolve` (`ReportSourcesResolveRule`).
 - **Retirement rules:** `release_not_active` (`ReleaseNotActiveRule`). **Lifecycle handlers:** none.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
@@ -738,7 +757,7 @@ A connection string is external input, so it is verified whenever one is supplie
 
 ## Calculation models and reports
 
-The drawing shows the calculation-model slice and the report slice. A model version holds the reusable metrics: variables, with their display format and unit, and calculated measures. A report names its report dimension by identity, and a report version names its model by identity and holds everything that ties those metrics to data and rows: variable targets, sources that classify dataset rows into the report dimension, source profiles, calculation dimensions with their grouping and the routes that classify each dataset into them, columns, overlay rows and member options. It matters because a report reads the model and dimension versions its assumption set pins and the dataset versions of the active release, so its keys are checked from every side: when the report is published, when its model's or its dimension's next version is published, and when a release is published.
+The drawing shows the calculation-model slice and the report slice. A model version holds the reusable metrics: variables, with their display format and unit, and calculated measures. A report names its report dimension by identity, and a report version names its model by identity and holds everything that ties those metrics to data and rows: variable scopes, sources that classify dataset rows into the report dimension, source profiles, calculation dimensions, each a role grouped as it says, columns, overlay rows and member options. It matters because a report reads the model and dimension versions its assumption set pins and the dataset versions of the active release, so its keys are checked from every side: when the report is published, when its model's or its dimension's next version is published, and when a release is published.
 
 ```mermaid
 classDiagram
@@ -752,8 +771,7 @@ classDiagram
     class VariableSourcesController
     class SourceProfilesController
     class CalculationDimensionsController
-    class CalculationRoutesController
-    class ReportVariableTargetsController
+    class ReportVariableScopesController
     class ReportColumnsController
     class ReportLinesController
     class ReportMemberOptionsController
@@ -802,7 +820,7 @@ classDiagram
     }
     class ReportContentRemover
     class ReportVersionNames
-    class ReportVariableTargetService {
+    class ReportVariableScopeService {
         +ReplaceAsync(versionId, input, cancellationToken)
     }
     class ReportColumnService {
@@ -833,7 +851,6 @@ classDiagram
     VariableSourcesController --> IVersionContent
     SourceProfilesController --> IVersionContent
     CalculationDimensionsController --> IVersionContent
-    CalculationRoutesController --> IVersionContent
     IVersionContent <|.. VersionRows
     IVersionContent <|.. SourceProfileService
     VersionRows <|-- ModelVersionRows
@@ -842,10 +859,8 @@ classDiagram
     ModelVersionRows <|-- CalculatedMeasureService
     ReportVersionRows <|-- VariableSourceService
     ReportVersionRows <|-- CalculationDimensionService
-    ReportVersionRows <|-- CalculationRouteService
     VersionItemReferenceValidator --> IVersionContent : BelongsAsync
     VariableSourceInputValidator --> ClassificationInputValidator : target is the report dimension
-    CalculationRouteInputValidator --> ClassificationInputValidator : target is the calculation dimension's
     CalculationModelService --> CalculationModelVersionService
     CalculationModelService --> ReportUses
     CalculationModelVersionService --> ModelVersionCloner
@@ -855,10 +870,9 @@ classDiagram
     ReportUses --> ReportVersionNames
     VariableSourceService --> ReportContentRemover
     SourceProfileService --> ReportContentRemover
-    CalculationDimensionService --> ReportContentRemover
     ReportsController --> ReportService
     ReportVersionsController --> ReportVersionService
-    ReportVariableTargetsController --> ReportVariableTargetService
+    ReportVariableScopesController --> ReportVariableScopeService
     ReportColumnsController --> ReportColumnService
     ReportLinesController --> ReportLineService
     ReportMemberOptionsController --> ReportMemberOptionService
@@ -879,7 +893,6 @@ classDiagram
     IPublicationRule <|.. ReportMetricsResolveRule
     IPublicationRule <|.. ProfilesCompleteRule
     IPublicationRule <|.. ReportSourcesResolveRule
-    IPublicationRule <|.. CalculationRoutesResolveRule
     ModelVersionPublishedRule --> ModelMetricsReader
     ReportItemsResolveRule --> ReportGraphReader
     ReportItemsResolveRule --> PublishedDimensionReader
@@ -891,19 +904,18 @@ classDiagram
     ReportMetricsResolveRule --> ReportGraphReader
     ProfilesCompleteRule --> ReportGraphReader
     ReportSourcesResolveRule --> ReportGraphReader
-    CalculationRoutesResolveRule --> ReportGraphReader
 ```
 
-- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`); under `api/tenants/{tenantId}`, `calculation-models/{modelId:long}/versions` and `model-versions/{versionId:long}` (`CalculationModelVersionsController`); under `api/tenants/{tenantId}/model-versions/{versionId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`); `api/tenants/{tenantId}/reports` (`ReportsController`); under `api/tenants/{tenantId}`, `reports/{reportId:long}/versions` and `report-versions/{versionId:long}` (`ReportVersionsController`); under `api/tenants/{tenantId}/report-versions/{versionId:long}`, `variable-sources` (`VariableSourcesController`), `profiles` (`SourceProfilesController`), `calculation-dimensions` (`CalculationDimensionsController`) and `routes` (`CalculationRoutesController`), each with `{itemId:long}` for an edit or delete, and `variable-targets` (`ReportVariableTargetsController`), `columns` (`ReportColumnsController`), `lines` (`ReportLinesController`) and `member-options` (`ReportMemberOptionsController`), each replaced whole by a `PUT`. Content writes take a draft or the published version.
-- **Publication rules** (`calculation_model_version`): its own `formula_references_resolve` (`FormulaReferencesResolveRule`) and `formulas_acyclic` (`FormulasAcyclicRule`), then `report_metrics_resolve` (`ReportMetricsResolveRule`) and `profiles_complete` (`ProfilesCompleteRule`) for every published report of the model, against the version itself. (`report_version`): `model_version_published` (`ModelVersionPublishedRule`), `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve`, `profiles_complete`, `report_sources_resolve` (`ReportSourcesResolveRule`) and `calculation_routes_resolve` (`CalculationRoutesResolveRule`); the last two run for `semantic_release` too.
+- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`); under `api/tenants/{tenantId}`, `calculation-models/{modelId:long}/versions` and `model-versions/{versionId:long}` (`CalculationModelVersionsController`); under `api/tenants/{tenantId}/model-versions/{versionId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`); `api/tenants/{tenantId}/reports` (`ReportsController`); under `api/tenants/{tenantId}`, `reports/{reportId:long}/versions` and `report-versions/{versionId:long}` (`ReportVersionsController`); under `api/tenants/{tenantId}/report-versions/{versionId:long}`, `variable-sources` (`VariableSourcesController`), `profiles` (`SourceProfilesController`), `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, and `variable-scopes` (`ReportVariableScopesController`), `columns` (`ReportColumnsController`), `lines` (`ReportLinesController`) and `member-options` (`ReportMemberOptionsController`), each replaced whole by a `PUT`. Content writes take a draft or the published version.
+- **Publication rules** (`calculation_model_version`): its own `formula_references_resolve` (`FormulaReferencesResolveRule`) and `formulas_acyclic` (`FormulasAcyclicRule`), then `report_metrics_resolve` (`ReportMetricsResolveRule`) and `profiles_complete` (`ProfilesCompleteRule`) for every published report of the model, against the version itself. (`report_version`): `model_version_published` (`ModelVersionPublishedRule`), `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve`, `profiles_complete` and `report_sources_resolve` (`ReportSourcesResolveRule`), the last of which runs for `semantic_release` too.
 - **Retirement rules:** none. **Lifecycle handlers:** `PredecessorRetirer` and `ActiveSetPinner`, as for every living kind.
 - **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each content service as its `IVersionContent<TItem, TInput>` with the closed `VersionItemReferenceValidator<TItem, TInput>` that checks its `{itemId}` routes, and each report rule once per kind it serves.
 
-Models and reports are created without versions. A report names its report dimension when it is created and a report version its model; neither changes, because every classification and row of the report depends on them. A model version holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key, so a model version clone copies them as they are with new IDs. Report content names metrics by key too: targets, sources and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the model's published version through `ModelMetricsReader`, so one model serves several reports, each with its own data. Report content rows keep their IDs across edits, because profile picks name sources and routes name calculation dimensions by ID; a report version clone copies every content row through one `IdRemap`. Variable targets, columns, overlay rows and member options are replaced whole: columns as an ordered list and overlay rows as a tree in pre-order; a row that keeps its key keeps its ID.
+Models and reports are created without versions. A report names its report dimension when it is created and a report version its model; neither changes, because every classification and row of the report depends on them. A model version holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key, so a model version clone copies them as they are with new IDs. Report content names metrics by key too: scopes, sources and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the model's published version through `ModelMetricsReader`, so one model serves several reports, each with its own data. Report content rows keep their IDs across edits, because profile picks name sources by ID; a report version clone copies every content row through one `IdRemap`. Variable scopes, columns, overlay rows and member options are replaced whole: columns as an ordered list and overlay rows as a tree in pre-order; a row that keeps its key keeps its ID. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources classify.
 
-Sources and routes classify through one `ClassificationInput`, which `ClassificationInputValidator` checks against the dimension it targets, the report's dimension for a source and the calculation dimension's for a route: a `direct` classification names a field whose values are its member keys, a `mapped` one a mapping set into it, and a `bridge` one a bridge into it from the dimension the field's binding groups. A route of a scalar calculation dimension is a `field` route that reads raw values. A canonical route can instead be a `binding` route, which names no mapping set or bridge because it reuses its field's dataset binding, grouped as the calculation dimension says; `calculation_routes_resolve` checks that the field's binding in the release's dataset version is an enabled one that groups members of the calculation dimension's dimension. A dataset whose version has exactly one such binding needs no route at all: the engine routes it through that binding, so a report names a route only to choose among several bindings in different roles, for a dataset with none, or for a different classification. Calculation dimensions share the grouping columns of dataset bindings, which `GroupingInputValidator` checks for both. The pickers read the `classified-fields` lookup, the fields of a dataset version whose binding groups members, and the `bridges` lookup narrowed to the dimension such a field's binding groups.
+A source classifies through a `ClassificationInput`, which `ClassificationInputValidator` checks against the report's dimension: a `direct` classification names a field whose values are its member keys, a `mapped` one a field and a mapping set into it, and a `bridge` one a role and a bridge into it whose source dimension is the role's template; a bridge names no field, because it reads the role's binding. `report_sources_resolve` checks that the release's dataset version binds the role into members with an enabled binding. A calculation dimension is a role plus a grouping of its template's members, which `GroupingInputValidator` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. The pickers read the `dimension-roles` lookup, every role labeled with its template, the `bound-roles` lookup, the roles a dataset version binds into members, and the `bridges` lookup narrowed to such a role's template.
 
-Every report rule checks report graphs, which `ReportGraphReader` builds for the kind being validated: a report version with its model's published version and the active release; a calculation model version through every published report version of its model, against the version itself, because publishing it makes it the version those reports read; a semantic release with every published report version against its own dataset versions. The model rules of a report are its consumer rules on the model version. A report has none of its own, because nothing names a report version: requests name the report by key and read the version their assumption set pins. Deletes go through `ReportUses`: a model is blocked while any report version reads it, and a variable or calculated measure of a published model version while a published report names its key, directly or through a formula; a draft's metrics are used by no report. A profile is blocked while it is its version's default. Mapping sets and bridges are blocked while a report source or route classifies through them, and dimensions while a report or calculation dimension names them; `ReportVersionNames` names the report versions in each 409.
+Every report rule checks report graphs, which `ReportGraphReader` builds for the kind being validated: a report version with its model's published version and the active release; a calculation model version through every published report version of its model, against the version itself, because publishing it makes it the version those reports read; a semantic release with every published report version against its own dataset versions. The model rules of a report are its consumer rules on the model version. A report has none of its own, because nothing names a report version: requests name the report by key and read the version their assumption set pins. Deletes go through `ReportUses`: a model is blocked while any report version reads it, and a variable or calculated measure of a published model version while a published report names its key, directly or through a formula; a draft's metrics are used by no report. A profile is blocked while it is its version's default. Mapping sets and bridges are blocked while a binding or report source classifies through them, roles while a binding, calculation dimension or bridge source names them, and dimensions while a report names them or one of their roles is blocked; `ReportVersionNames` names the report versions in each 409.
 
 | Class | Records |
 | --- | --- |
@@ -911,15 +923,16 @@ Every report rule checks report graphs, which `ReportGraphReader` builds for the
 | `CalculationModelVersionService` | `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
 | `ModelVersionCloner`, `ModelKeys` | `VariableRecord`, `CalculatedMeasureRecord` |
 | `VariableService`, `CalculatedMeasureService` | Their own record each |
-| `ReportUses` | `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `VariableSourceRecord`, `ReportVariableTargetRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `CalculationModelVersionRecord` |
+| `ReportUses` | `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `VariableSourceRecord`, `ReportVariableScopeRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `CalculationModelVersionRecord` |
 | `ReportService` | `ReportRecord`, `ReportVersionRecord` |
 | `ReportVersionService` | `ReportVersionRecord` |
 | `ReportVersionNames` | `ReportRecord`, `ReportVersionRecord` |
-| `ReportVersionCloner`, `ReportContentRemover` | `ReportVariableTargetRecord`, `VariableSourceRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `CalculationDimensionRecord`, `CalculationRouteRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord` |
-| `VariableSourceService`, `CalculationDimensionService`, `CalculationRouteService`, `ReportVariableTargetService`, `ReportColumnService`, `ReportMemberOptionService` | Their own record each |
+| `ReportVersionCloner`, `ReportContentRemover` | `ReportVariableScopeRecord`, `VariableSourceRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `CalculationDimensionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord` |
+| `VariableSourceService`, `CalculationDimensionService`, `ReportVariableScopeService`, `ReportColumnService`, `ReportMemberOptionService` | Their own record each |
 | `SourceProfileService` | `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportVersionRecord` |
 | `ReportLineService` | `ReportLineRecord`, `ReportColumnRecord` |
 | `ModelMetricsReader` | `ReportVersionRecord`, `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
-| `ReportGraphReader` | `DatabaseInfoRecord`, `ReleaseDatasetRecord`, `ReportRecord`, `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableTargetRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `VariableSourceRecord`, `CalculationDimensionRecord`, `CalculationRouteRecord`, `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `FieldRecord`, `DimensionBindingRecord`, `TimeBindingRecord`, `MeasureRecord`, `BridgeRecord`, `BridgeVersionRecord` |
+| `ReportGraphReader` | `DatabaseInfoRecord`, `ReleaseDatasetRecord`, `ReportRecord`, `ReportVersionRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableScopeRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `VariableSourceRecord`, `CalculationDimensionRecord`, `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `FieldRecord`, `DimensionBindingRecord`, `TimeBindingRecord`, `MeasureRecord`, `BridgeRecord`, `DimensionRoleRecord` |
+| `CalculationGroupingResolveRule` | `DimensionRoleRecord`, through `PublishedDimensionReader` each template's published version |
 
 **Sources:** [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Reports), [IVersionContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionContent.cs), [VersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionRows.cs), [VersionItemReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionItemReferenceValidator.cs), [ModelVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelVersionRows.cs), [ReportVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportVersionRows.cs), [ClassificationInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ClassificationInputValidator.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs), [model services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels), [ModelMetricsReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ModelMetricsReader.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [report services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/Reports), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), [ReportModelRulesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports/ReportModelRulesTests.cs), [ClassificationInputValidatorTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports/ClassificationInputValidatorTests.cs), [ReportUsesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ReportUsesTests.cs).

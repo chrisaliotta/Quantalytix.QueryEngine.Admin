@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -11,7 +12,7 @@ public sealed class MappingSetService(
     ITableGateway<MappingVersionRecord> versions,
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<VariableSourceRecord> sources,
-    ITableGateway<CalculationRouteRecord> routes,
+    BindingNames bindingNames,
     ReportVersionNames reportVersions,
     MappingVersionService versionService,
     SemanticRevision semanticRevision,
@@ -71,8 +72,8 @@ public sealed class MappingSetService(
     }
 
     /// <summary>
-    /// Deletes a mapping set whose versions are all drafts and that no binding, report source or report route classifies through:
-    /// its drafts with their entries first, then the set.
+    /// Deletes a mapping set whose versions are all drafts and that no binding or report source classifies through: its drafts
+    /// with their entries first, then the set.
     /// </summary>
     /// <param name="mappingSetId">The mapping set.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
@@ -86,12 +87,11 @@ public sealed class MappingSetService(
             "it has non-draft versions",
             setVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
-        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{binding.DisplayName}'"));
+        var bound = await bindingNames.OfAsync(boundBy, cancellationToken);
+        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{bound[binding.BindingId]}'"));
         var classifying = await sources.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
-        var routing = await routes.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
-        var names = await reportVersions.OfIdsAsync(classifying.Select(source => source.ReportVersionId).Concat(routing.Select(route => route.ReportVersionId)), cancellationToken);
+        var names = await reportVersions.OfIdsAsync(classifying.Select(source => source.ReportVersionId), cancellationToken);
         blockers.AddNamed("used by report sources", classifying.Select(source => $"'{source.SourceKey}' of {names[source.ReportVersionId]}"));
-        blockers.AddNamed("used by report routes", routing.Select(route => $"'{route.FieldKey}' of {names[route.ReportVersionId]}"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

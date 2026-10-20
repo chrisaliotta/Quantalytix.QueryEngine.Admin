@@ -1,8 +1,10 @@
 # Query Engine Admin API
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
-datasets, fields, grains, dimensions, members, mappings, bridges, bindings, measures, calculation models, reports, their
-versions, releases, assumption sets and the tenant directory. Drafts never reach queries. Dataset versions reach them only
+datasets, fields, grains, dimensions and their roles, members, mappings, bridges, bindings, measures, calculation models,
+reports, their versions, releases, assumption sets and the tenant directory. A role is a named use of a dimension, such
+as `servicingBranch` of `branch`: a binding binds a field to a role, and requests name the binding by the role's key.
+Drafts never reach queries. Dataset versions reach them only
 through an activated release. Dimension, mapping, bridge, calculation model and report versions are living: the
 published one is the default every request reads through the active assumption set, edits to it are live, and publishing
 the next version retires it. A request can name a captured historical assumption set to backtest against the versions of
@@ -112,10 +114,10 @@ Commit both files with the API change that produced them.
 `tools/acceptance/qe-acceptance.sh` proves that metadata authored here reaches the engine. In tenant `development`, or
 the tenant `TENANT` names, it:
 
-1. authors dataset `${PREFIX}loans` and publishes its v1;
+1. authors dataset `${PREFIX}loans`, whose branch code binds the seed `branch` role, and publishes its v1;
 2. authors calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and report
-   `${PREFIX}margin` over it on the seed `MarginStatement` dimension, whose version holds the GL monthly sources, a
-   profile, a branch calculation dimension whose routes reuse each GL dataset's own `branch` binding, the columns, a
+   `${PREFIX}margin` over it on the seed `MarginStatement` dimension, whose version holds the GL monthly sources, which
+   bridge from the seed `account` role, a profile, a branch calculation dimension on the `branch` role, the columns, a
    member option and a formula row, and publishes both;
 3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
    against whichever release is active, so the release pins no report;
@@ -132,8 +134,8 @@ Before you run it:
   the end.
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
 - Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
-  `bank.income_monthly` datasets with their `branch` bindings, its `MarginStatement` and `Branch` dimensions, its
-  `gl_account_to_margin` bridge, and its 2024 data.
+  `bank.income_monthly` datasets with their bindings of the `account` and `branch` roles, its `MarginStatement` and
+  `Branch` dimensions, its `gl_account_to_margin` bridge, and its 2024 data.
 - Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report, and
   `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay taken.
 - Don't run the engine's golden cases at the same time: while the script runs, its release is the tenant's active

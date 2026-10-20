@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// <summary>
 /// Names the report rows that use a model. Report versions of any status name the model itself. Published report versions name its
 /// metrics by key, resolved in the model's published version: columns return variables and calculated measures, formula rows
-/// evaluate calculated measures, and sources and targets name variables, which calculated measures read through their formulas.
+/// evaluate calculated measures, and sources and scopes name variables, which calculated measures read through their formulas.
 /// Deleting such a metric from the published version would leave them unresolved; a draft's metrics are used by no report.
 /// </summary>
 public sealed class ReportUses(
@@ -16,7 +16,7 @@ public sealed class ReportUses(
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<VariableSourceRecord> sources,
-    ITableGateway<ReportVariableTargetRecord> targets,
+    ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ITableGateway<CalculationModelVersionRecord> modelVersions)
@@ -32,7 +32,7 @@ public sealed class ReportUses(
     }
 
     /// <summary>
-    /// The rows of live reports that read a variable: columns that return it, sources that supply it, targets on it, and the
+    /// The rows of live reports that read a variable: columns that return it, sources that supply it, scopes on it, and the
     /// columns and formula rows whose calculated measures read it.
     /// </summary>
     /// <param name="variable">A variable of a model version.</param>
@@ -50,14 +50,14 @@ public sealed class ReportUses(
         var computing = await columns.ListAsync(new { ReportVersionId = readerIds, ValueKind = ReportValueKinds.Calculated, MetricKey = reading }, cancellationToken);
         var evaluating = await lines.ListAsync(new { ReportVersionId = readerIds, CalculatedMeasureKey = reading }, cancellationToken);
         var supplying = await sources.ListAsync(new { ReportVersionId = readerIds, VariableKey = key }, cancellationToken);
-        var targeting = await targets.ListAsync(new { ReportVersionId = readerIds, VariableKey = key }, cancellationToken);
+        var scoping = await scopes.ListAsync(new { ReportVersionId = readerIds, VariableKey = key }, cancellationToken);
         return
         [
             .. returning.Select(column => $"column '{column.ColumnKey}' of {readers[column.ReportVersionId]}"),
             .. computing.Select(column => $"column '{column.ColumnKey}' of {readers[column.ReportVersionId]}, through '{column.MetricKey}'"),
             .. evaluating.Select(line => $"row '{line.LineKey}' of {readers[line.ReportVersionId]}, through '{line.CalculatedMeasureKey}'"),
             .. supplying.Select(source => $"source '{source.SourceKey}' of {readers[source.ReportVersionId]}"),
-            .. targeting.Select(target => $"the variable target of {readers[target.ReportVersionId]}")
+            .. scoping.Select(scope => $"the variable scope of {readers[scope.ReportVersionId]}")
         ];
     }
 

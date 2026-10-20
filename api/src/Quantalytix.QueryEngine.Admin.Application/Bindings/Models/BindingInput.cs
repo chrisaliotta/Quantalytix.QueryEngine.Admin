@@ -1,25 +1,24 @@
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
-
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
 /// <summary>
 /// The attributes of a dimension binding of a draft dataset version, plus the time extension of a <c>time</c> binding.
-/// Bindings have no key, so the same input creates a binding and replaces one.
+/// Bindings have no key, so the same input creates a binding and replaces one. A direct, mapped, range or bridge binding
+/// binds its field to a role, whose dimension it classifies into; a time binding names its time dimension.
 /// </summary>
-public sealed record BindingInput : IGroupingInput
+public sealed record BindingInput
 {
-    /// <summary>Human-readable role name, such as <c>Origination branch</c>.</summary>
-    public required string DisplayName { get; init; }
+    /// <summary>The role a direct, mapped, range or bridge binding binds its field to; null for a <c>time</c> binding.</summary>
+    public long? RoleId { get; init; }
 
-    /// <summary>The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.</summary>
-    public required long? DimensionId { get; init; }
+    /// <summary>The time dimension of a <c>time</c> binding; null for every other kind, which classifies into its role's dimension.</summary>
+    public long? DimensionId { get; init; }
 
     /// <summary>A <c>binding_kind</c> value: <c>direct</c>, <c>mapped</c>, <c>range</c>, <c>bridge</c> or <c>time</c>.</summary>
     public required string BindingKind { get; init; }
 
     /// <summary>
-    /// The request-facing field the binding reads. Required for <c>direct</c>, <c>mapped</c>, <c>range</c> and <c>time</c>
-    /// bindings; optional for <c>bridge</c> bindings, where it gives the binding a request-facing field key.
+    /// The field the binding reads. Required for <c>direct</c>, <c>mapped</c>, <c>range</c> and <c>time</c> bindings; optional
+    /// for <c>bridge</c> bindings, which remap the members of their source binding.
     /// </summary>
     public long? SourceFieldId { get; init; }
 
@@ -32,19 +31,7 @@ public sealed record BindingInput : IGroupingInput
     /// <summary>The bridge a <c>bridge</c> binding remaps through; null for every other kind. Queries use the version their assumption set pins.</summary>
     public long? BridgeId { get; init; }
 
-    /// <summary>A <c>grouping_mode</c> value: <c>member</c>, <c>level</c>, <c>ancestor</c> or <c>depth</c>.</summary>
-    public required string GroupingMode { get; init; }
-
-    /// <summary>The key of the level to group at; required for <c>level</c> grouping and null otherwise.</summary>
-    public string? GroupingLevelKey { get; init; }
-
-    /// <summary>The key of the ancestor member to group under; required for <c>ancestor</c> grouping and null otherwise.</summary>
-    public string? GroupingAncestorMemberKey { get; init; }
-
-    /// <summary>The closure depth to group at, 0 or more; required for <c>depth</c> grouping and null otherwise.</summary>
-    public int? GroupingDepth { get; init; }
-
-    /// <summary>A <c>ragged_behavior</c> value: what grouping does with a member that has no ancestor at the requested level.</summary>
+    /// <summary>A <c>ragged_behavior</c> value: what a grouping does with a member that has no ancestor at the requested level.</summary>
     public required string RaggedBehavior { get; init; }
 
     /// <summary>A <c>default_period_alignment</c> value.</summary>
@@ -59,7 +46,7 @@ public sealed record BindingInput : IGroupingInput
     /// <summary>Whether the binding is a dataset fixture that must not be removed or disabled.</summary>
     public required bool IsRequired { get; init; }
 
-    /// <summary>Whether the semantic route may take part in aggregate grouping.</summary>
+    /// <summary>Whether the binding may take part in aggregate grouping.</summary>
     public required bool IsGroupable { get; init; }
 
     /// <summary>Whether the dimension may take part in dimension-aware filters.</summary>

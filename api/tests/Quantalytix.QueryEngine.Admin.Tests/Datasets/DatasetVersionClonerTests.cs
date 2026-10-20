@@ -27,14 +27,14 @@ public sealed class DatasetVersionClonerTests
     /// <summary>The bridge the bridge binding remaps through.</summary>
     private const long BridgeId = 7005;
 
-    /// <summary>The level the mapped binding groups at.</summary>
-    private const string GroupingLevelKey = "region";
+    /// <summary>The role the mapped binding binds.</summary>
+    private const long BranchRoleId = 7003;
+
+    /// <summary>The role the bridge binding binds.</summary>
+    private const long RegionRoleId = 7004;
 
     /// <summary>The member the mapped binding routes unmapped rows to.</summary>
     private const string UnknownMemberKey = "UNKNOWN";
-
-    /// <summary>The ancestor member the bridge binding groups under.</summary>
-    private const string GroupingAncestorMemberKey = "NE";
 
     /// <summary>The dataset version table, holding the source version.</summary>
     private readonly InMemoryTableGateway<DatasetVersionRecord> _versions = new(DatasetRows.Version(SourceVersionId, defaultTimeBindingId: 21) with
@@ -66,24 +66,16 @@ public sealed class DatasetVersionClonerTests
 
     /// <summary>A time binding, a mapped binding with outside references, and a bridge binding over the mapped one.</summary>
     private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
-        DatasetRows.Binding(21, SourceVersionId, "As of", BindingKinds.Time, 2),
-        DatasetRows.Binding(22, SourceVersionId, "Branch", BindingKinds.Mapped, 1) with
+        DatasetRows.Binding(21, SourceVersionId, null, BindingKinds.Time, 2),
+        DatasetRows.Binding(22, SourceVersionId, BranchRoleId, BindingKinds.Mapped, 1) with
         {
             MappingSetId = MappingSetId,
-            GroupingMode = GroupingModes.Level,
-            GroupingLevelKey = GroupingLevelKey,
             UnmappedBehavior = UnmappedBehaviors.Unknown,
             UnknownMemberKey = UnknownMemberKey
         },
-        DatasetRows.Binding(23, SourceVersionId, "Region", BindingKinds.Bridge, null) with
-        {
-            SourceBindingId = 22,
-            BridgeId = BridgeId,
-            GroupingMode = GroupingModes.Ancestor,
-            GroupingAncestorMemberKey = GroupingAncestorMemberKey
-        });
+        DatasetRows.Binding(23, SourceVersionId, RegionRoleId, BindingKinds.Bridge, null) with { SourceBindingId = 22, BridgeId = BridgeId });
 
-    /// <summary>The time extension of the As of binding, whose intervals end at periodEnd.</summary>
+    /// <summary>The time extension of the time binding, whose intervals end at periodEnd.</summary>
     private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(DatasetRows.TimeBinding(21, intervalEndFieldId: 4));
 
     /// <summary>An aggregate, a weighted average and a formula over both.</summary>
@@ -103,7 +95,7 @@ public sealed class DatasetVersionClonerTests
         new MeasureDependencyRecord { MeasureId = 33, DependencyMeasureId = 31 },
         new MeasureDependencyRecord { MeasureId = 33, DependencyMeasureId = 32 });
 
-    /// <summary>The aggregate's time policy, on the As of binding and the temporalSeries grain.</summary>
+    /// <summary>The aggregate's time policy, on the time binding and the temporalSeries grain.</summary>
     private readonly InMemoryTableGateway<MeasureTimePolicyRecord> _timePolicies = new(DatasetRows.TimePolicy(31, requiredTimeBindingId: 21, selectionGrainId: 12));
 
     /// <summary>The clone is a new draft with the given number and no publication time; the source version and its rows are untouched.</summary>
@@ -139,23 +131,23 @@ public sealed class DatasetVersionClonerTests
         var clone = await CloneAsync();
         var fieldKeys = _fields.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.FieldId, row => row.FieldKey);
         var grainKeys = _grains.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.GrainId, row => row.GrainKey);
-        var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.DisplayName);
-        var bindingNames = bindings.Values.ToDictionary(row => row.BindingId, row => row.DisplayName);
+        var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.BindingKind);
+        var bindingKinds = bindings.Values.ToDictionary(row => row.BindingId, row => row.BindingKind);
         var measureKeys = _measures.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.MeasureId, row => row.MeasureKey);
 
-        Assert.All(fieldKeys.Keys.Concat(grainKeys.Keys).Concat(bindingNames.Keys).Concat(measureKeys.Keys), id => Assert.True(id >= FirstNewId));
-        Assert.Equal("As of", bindingNames[clone.DefaultTimeBindingId!.Value]);
+        Assert.All(fieldKeys.Keys.Concat(grainKeys.Keys).Concat(bindingKinds.Keys).Concat(measureKeys.Keys), id => Assert.True(id >= FirstNewId));
+        Assert.Equal(BindingKinds.Time, bindingKinds[clone.DefaultTimeBindingId!.Value]);
         Assert.Equal(
             [("rowIdentity", 1, "loanId"), ("rowIdentity", 2, "asOfDate"), ("temporalSeries", 1, "loanId")],
             _grainFields.All
                 .Where(row => grainKeys.ContainsKey(row.GrainId))
                 .Select(row => (grainKeys[row.GrainId], row.Ordinal, fieldKeys[row.FieldId]))
                 .Order());
-        Assert.Equal("asOfDate", fieldKeys[bindings["As of"].SourceFieldId!.Value]);
-        Assert.Equal("loanId", fieldKeys[bindings["Branch"].SourceFieldId!.Value]);
-        Assert.Equal("Branch", bindingNames[bindings["Region"].SourceBindingId!.Value]);
-        var timeBinding = Assert.Single(_timeBindings.All, row => bindingNames.ContainsKey(row.BindingId));
-        Assert.Equal("As of", bindingNames[timeBinding.BindingId]);
+        Assert.Equal("asOfDate", fieldKeys[bindings[BindingKinds.Time].SourceFieldId!.Value]);
+        Assert.Equal("loanId", fieldKeys[bindings[BindingKinds.Mapped].SourceFieldId!.Value]);
+        Assert.Equal(BindingKinds.Mapped, bindingKinds[bindings[BindingKinds.Bridge].SourceBindingId!.Value]);
+        var timeBinding = Assert.Single(_timeBindings.All, row => bindingKinds.ContainsKey(row.BindingId));
+        Assert.Equal(BindingKinds.Time, bindingKinds[timeBinding.BindingId]);
         Assert.Equal("periodEnd", fieldKeys[timeBinding.IntervalEndFieldId!.Value]);
         Assert.Equal(
             [("averageRate", ComponentRoles.Value, "interestRate"), ("averageRate", ComponentRoles.Weight, "endingBalance"), ("endingBalance", ComponentRoles.Value, "endingBalance")],
@@ -171,24 +163,25 @@ public sealed class DatasetVersionClonerTests
                 .Order());
         var policy = Assert.Single(_timePolicies.All, row => measureKeys.ContainsKey(row.MeasureId));
         Assert.Equal("endingBalance", measureKeys[policy.MeasureId]);
-        Assert.Equal("As of", bindingNames[policy.RequiredTimeBindingId!.Value]);
+        Assert.Equal(BindingKinds.Time, bindingKinds[policy.RequiredTimeBindingId!.Value]);
         Assert.Equal("temporalSeries", grainKeys[policy.SelectionGrainId!.Value]);
     }
 
-    /// <summary>References to the dimension, the mapping set and the bridge keep their IDs, and level and member keys stay as they are.</summary>
+    /// <summary>References to the roles, the dimension, the mapping set and the bridge keep their IDs, and member keys stay as they are.</summary>
     /// <returns>A task that completes when the clone is checked.</returns>
     [Fact]
     public async Task Clone_KeepsReferencesToOtherAggregates()
     {
         var clone = await CloneAsync();
-        var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.DisplayName);
+        var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.BindingKind);
 
         Assert.All(bindings.Values, binding => Assert.Equal(7000, binding.DimensionId));
-        Assert.Equal(MappingSetId, bindings["Branch"].MappingSetId);
-        Assert.Equal(GroupingLevelKey, bindings["Branch"].GroupingLevelKey);
-        Assert.Equal(UnknownMemberKey, bindings["Branch"].UnknownMemberKey);
-        Assert.Equal(BridgeId, bindings["Region"].BridgeId);
-        Assert.Equal(GroupingAncestorMemberKey, bindings["Region"].GroupingAncestorMemberKey);
+        Assert.Null(bindings[BindingKinds.Time].RoleId);
+        Assert.Equal(BranchRoleId, bindings[BindingKinds.Mapped].RoleId);
+        Assert.Equal(MappingSetId, bindings[BindingKinds.Mapped].MappingSetId);
+        Assert.Equal(UnknownMemberKey, bindings[BindingKinds.Mapped].UnknownMemberKey);
+        Assert.Equal(RegionRoleId, bindings[BindingKinds.Bridge].RoleId);
+        Assert.Equal(BridgeId, bindings[BindingKinds.Bridge].BridgeId);
     }
 
     /// <summary>Clones the source version into version 4 of dataset 10 with IDs counting up from <see cref="FirstNewId"/>.</summary>

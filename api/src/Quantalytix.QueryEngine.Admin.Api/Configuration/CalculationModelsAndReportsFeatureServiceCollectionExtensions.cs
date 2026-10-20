@@ -42,13 +42,12 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportColumnService>();
         services.AddScoped<ReportLineService>();
         services.AddScoped<ReportMemberOptionService>();
-        services.AddScoped<ReportVariableTargetService>();
+        services.AddScoped<ReportVariableScopeService>();
         services.AddScoped<ModelMetricsReader>();
         services.AddScoped<ReportGraphReader>();
         services.AddVersionContent<VariableSourceService, VariableSourceRecord, VariableSourceInput>();
         services.AddVersionContent<SourceProfileService, SourceProfile, SourceProfileInput>();
         services.AddVersionContent<CalculationDimensionService, CalculationDimensionRecord, CalculationDimensionInput>();
-        services.AddVersionContent<CalculationRouteService, CalculationRouteRecord, CalculationRouteInput>();
 
         services.AddScoped<IPublicationRule, ModelVersionPublishedRule>();
         services.AddScoped<IPublicationRule, ReportItemsResolveRule>();
@@ -62,10 +61,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
             services.AddRuleFor<ProfilesCompleteRule>(kind);
         }
         foreach (var kind in new[] { VersionKinds.ReportVersion, VersionKinds.SemanticRelease })
-        {
             services.AddRuleFor<ReportSourcesResolveRule>(kind);
-            services.AddRuleFor<CalculationRoutesResolveRule>(kind);
-        }
         return services;
     }
 

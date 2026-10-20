@@ -1,7 +1,9 @@
-import { useForm, useWatch } from 'react-hook-form';
+import { useEffect, useRef } from 'react';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { EntityField, GroupingModeFields, SwitchField, TextField, toGroupingReferences, VocabularyField, type GroupingValues } from '@/shared/form';
+import { EntityField, GroupingModeFields, SwitchField, TextField, toGroupingReferences, type GroupingValues } from '@/shared/form';
+import { useLookup } from '@/shared/useLookup';
 import { useSaveVersionContent } from '@/shared/versionContent';
 import type { CalculationDimension } from './types';
 
@@ -9,9 +11,7 @@ import type { CalculationDimension } from './types';
 interface CalculationDimensionValues extends GroupingValues {
   dimensionKey: string;
   displayName: string;
-  valueKind: string | null;
-  dimensionId: number | null;
-  valueDataType: string | null;
+  roleId: number | null;
   isGroupable: boolean;
   isFilterable: boolean;
   isEnabled: boolean;
@@ -26,18 +26,17 @@ export interface CalculationDimensionSheetProps {
 }
 
 /**
- * Creates, edits or shows a calculation dimension: a canonical dimension's members, grouped by member, level, ancestor or
- * depth, or a scalar field value. Every dataset the report reads produces it through its route.
+ * Creates, edits or shows a calculation dimension: a role, whose binding each source's dataset classifies rows by, with its
+ * template's members grouped by member, level, ancestor or depth. Levels and members come from the template's published version.
  */
 export function CalculationDimensionSheet({ versionId, dimension, readOnly, onClose }: CalculationDimensionSheetProps) {
   const save = useSaveVersionContent('calculation-dimensions', versionId, dimension?.calculationDimensionId ?? null);
+  const roles = useLookup('dimension-roles');
   const form = useForm<CalculationDimensionValues>({
     defaultValues: {
       dimensionKey: dimension?.dimensionKey ?? '',
       displayName: dimension?.displayName ?? '',
-      valueKind: dimension?.valueKind ?? 'canonical',
-      dimensionId: dimension?.dimensionId ?? null,
-      valueDataType: dimension?.valueDataType ?? null,
+      roleId: dimension?.roleId ?? null,
       groupingMode: dimension?.groupingMode ?? 'member',
       groupingLevelKey: dimension?.groupingLevelKey ?? null,
       groupingAncestorMemberKey: dimension?.groupingAncestorMemberKey ?? null,
@@ -47,20 +46,17 @@ export function CalculationDimensionSheet({ versionId, dimension, readOnly, onCl
       isEnabled: dimension?.isEnabled ?? true,
     },
   });
-  const [valueKind, dimensionId] = useWatch({ control: form.control, name: ['valueKind', 'dimensionId'] });
-  const isCanonical = valueKind === 'canonical';
+  const roleId = useWatch({ control: form.control, name: 'roleId' });
+  const templateId = roles.data?.find(role => role.id === roleId)?.parentId ?? null;
+  useGroupingKeysClearing(form, templateId);
 
   function submit(values: CalculationDimensionValues) {
-    const grouping = isCanonical
-      ? { groupingMode: values.groupingMode, ...toGroupingReferences(values) }
-      : { groupingMode: null, groupingLevelKey: null, groupingAncestorMemberKey: null, groupingDepth: null };
     return save({
       dimensionKey: values.dimensionKey,
       displayName: values.displayName,
-      valueKind: values.valueKind ?? '',
-      dimensionId: isCanonical ? values.dimensionId : null,
-      valueDataType: isCanonical ? null : values.valueDataType,
-      ...grouping,
+      roleId: values.roleId ?? 0,
+      groupingMode: values.groupingMode ?? '',
+      ...toGroupingReferences(values),
       isGroupable: values.isGroupable,
       isFilterable: values.isFilterable,
       isEnabled: values.isEnabled,
@@ -78,17 +74,32 @@ export function CalculationDimensionSheet({ versionId, dimension, readOnly, onCl
     >
       <TextField name="dimensionKey" label="Key" description="The key report requests and defaults use; it cannot be a column key." />
       <TextField name="displayName" label="Name" />
-      <VocabularyField name="valueKind" label="Value kind" vocabulary="calculation_value_kind" />
-      {isCanonical && (
-        <>
-          <EntityField name="dimensionId" label="Dimension" lookupKind="dimensions" />
-          <GroupingModeFields dimensionId={dimensionId} />
-        </>
-      )}
-      {!isCanonical && <VocabularyField name="valueDataType" label="Data type" vocabulary="data_type" />}
+      <EntityField
+        name="roleId"
+        label="Role"
+        lookupKind="dimension-roles"
+        description="Each source reaches the dimension through its dataset's binding of the role; a column breaks out by it only when every source it reads does."
+      />
+      <GroupingModeFields dimensionId={templateId} />
       <SwitchField name="isGroupable" label="Groupable" description="Whether reports may break out by it." />
       <SwitchField name="isFilterable" label="Filterable" description="Whether report filters may compare it." />
       <SwitchField name="isEnabled" label="Enabled" />
     </EntityFormSheet>
   );
+}
+
+/**
+ * Clears the level and ancestor keys once the role changes to one of another template, because they name the old template's
+ * members. It runs after render, never inside a form notification, so watchers keep seeing the cleared values.
+ */
+function useGroupingKeysClearing(form: UseFormReturn<CalculationDimensionValues>, templateId: number | null) {
+  const previous = useRef(templateId);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = templateId;
+    if (before !== null && templateId !== before) {
+      form.setValue('groupingLevelKey', null);
+      form.setValue('groupingAncestorMemberKey', null);
+    }
+  }, [form, templateId]);
 }

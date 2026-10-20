@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -14,15 +15,19 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// <summary>
 /// Confirms what keeps the keys that live objects name in a dimension: the published version of the dimension is what they
 /// resolve their keys in, so <c>dimension_consumers_resolve</c> reports each key a new version would drop, and a member of the
-/// published version that a live object names cannot be deleted. Live objects are the bindings of published dataset versions,
-/// the entries of published mapping versions, the mappings of published bridge versions, and the member options, overlay row
-/// parents, variable targets and calculation dimension groupings of published report versions; drafts resolve nothing, so they
-/// never block. A dimension a report or a calculation dimension names cannot be deleted at all.
+/// published version that a live object names cannot be deleted. Live objects are the unknown members of bindings of published
+/// dataset versions, the entries of published mapping versions, the mappings of published bridge versions, and the member
+/// options, overlay row parents, variable scopes and the groupings of calculation dimensions on the dimension's roles of
+/// published report versions; drafts resolve nothing, so they never block. A dimension a report names, or whose role a
+/// calculation dimension reads, cannot be deleted at all.
 /// </summary>
 public sealed class DimensionConsumersTests
 {
     /// <summary>The branch dimension.</summary>
     private const long BranchId = 500;
+
+    /// <summary>The branch dimension's branch role.</summary>
+    private const long BranchRoleId = 91;
 
     /// <summary>The published version of the branch dimension.</summary>
     private const long PublishedVersionId = 501;
@@ -53,7 +58,7 @@ public sealed class DimensionConsumersTests
 
     /// <summary>
     /// A draft that drops BR02, which a published bridge maps, and BR04, which an overlay row sits under and a calculation dimension
-    /// groups under, is reported for each; the keys the binding, the mapping entry, the member option and the target name are kept,
+    /// groups under, is reported for each; the keys the binding, the mapping entry, the member option and the scope name are kept,
     /// the overlay row under another overlay row names no member, and BR09, which only a draft mapping version names, does not count.
     /// </summary>
     /// <returns>A task that completes when the rule is checked.</returns>
@@ -72,7 +77,7 @@ public sealed class DimensionConsumersTests
             violations.Select(violation => violation.Message));
     }
 
-    /// <summary>A member of the published version that a live mapping entry and a report's target name cannot be deleted; the same key in the draft can.</summary>
+    /// <summary>A member of the published version that a live mapping entry and a report's scope name cannot be deleted; the same key in the draft can.</summary>
     /// <returns>A task that completes when the delete checks are checked.</returns>
     [Fact]
     public async Task MemberALiveObjectNames_IsBlockedOnlyInThePublishedVersion()
@@ -84,12 +89,12 @@ public sealed class DimensionConsumersTests
         var draft = await checks.MemberAsync(_members.All.Single(member => member.MemberId == 22), cancellationToken);
 
         Assert.Equal(
-            "Member 'BR01' cannot be deleted: named by Source key '06' of mapping set 'zz_map_codes_60', Target of variable 'balance' of report 'balance_sheet'.",
+            "Member 'BR01' cannot be deleted: named by Scope of variable 'balance' of report 'balance_sheet', Source key '06' of mapping set 'zz_map_codes_60'.",
             published);
         Assert.Null(draft);
     }
 
-    /// <summary>The branch dimension is the balance sheet's report dimension and the dimension of its calculation dimension, so it cannot be deleted.</summary>
+    /// <summary>The branch dimension is the balance sheet's report dimension and its role is read by a calculation dimension, so it cannot be deleted.</summary>
     /// <returns>A task that completes when the delete check is checked.</returns>
     [Fact]
     public async Task DimensionAReportOrCalculationDimensionNames_CannotBeDeleted()
@@ -97,7 +102,7 @@ public sealed class DimensionConsumersTests
         var detail = await Checks().DimensionAsync(ReleaseRows.Dimension(BranchId, "branch"), [], TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            "Dimension 'branch' cannot be deleted: the report dimension of reports 'balance_sheet'; referenced by calculation dimensions 'branch' of 'balance_sheet' v1.",
+            "Dimension 'branch' cannot be deleted: the report dimension of reports 'balance_sheet'; read by calculation dimensions 'branch' of 'balance_sheet' v1.",
             detail);
     }
 
@@ -108,13 +113,23 @@ public sealed class DimensionConsumersTests
             _versions,
             _members,
             new InMemoryTableGateway<RangeBandRecord>(),
+            Roles(),
             new InMemoryTableGateway<MappingSetRecord>(),
             new InMemoryTableGateway<BridgeRecord>(),
             new InMemoryTableGateway<DimensionBindingRecord>(),
+            new InMemoryTableGateway<DatasetRecord>(),
+            new InMemoryTableGateway<DatasetVersionRecord>(),
             new InMemoryTableGateway<ReportRecord>(ReportRows.Report()),
             CalculationDimensions(),
+            new InMemoryTableGateway<VariableSourceRecord>(),
             new ReportVersionNames(new InMemoryTableGateway<ReportRecord>(ReportRows.Report()), ReportVersions()),
             Consumers());
+    }
+
+    /// <summary>The branch dimension's branch role.</summary>
+    private static InMemoryTableGateway<DimensionRoleRecord> Roles()
+    {
+        return new InMemoryTableGateway<DimensionRoleRecord>(DimensionRows.Role(BranchRoleId, "branch", BranchId));
     }
 
     /// <summary>The published v1 of the balance sheet, whose report dimension is the branch dimension.</summary>
@@ -123,10 +138,10 @@ public sealed class DimensionConsumersTests
         return new InMemoryTableGateway<ReportVersionRecord>(ReportRows.ReportVersion(ReportRows.ReportVersionId, PublicationStatuses.Published));
     }
 
-    /// <summary>The balance sheet's calculation dimension, which groups branches under BR04.</summary>
+    /// <summary>The balance sheet's calculation dimension on the branch role, which groups branches under BR04.</summary>
     private static InMemoryTableGateway<CalculationDimensionRecord> CalculationDimensions()
     {
-        return new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchId) with
+        return new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchRoleId) with
         {
             GroupingMode = GroupingModes.Ancestor,
             GroupingAncestorMemberKey = "BR04"
@@ -134,23 +149,23 @@ public sealed class DimensionConsumersTests
     }
 
     /// <summary>
-    /// The live objects: a binding of a published dataset version that groups at region and routes unmapped rows to UNKNOWN, a
+    /// The live objects: a binding of the branch role in a published dataset version that routes unmapped rows to UNKNOWN, a
     /// published mapping version mapping 06 to BR01 next to a draft mapping 99 to BR09, a published bridge from BR02, and the
-    /// published balance sheet over the branch dimension, which makes BR03 a header, targets a variable at BR01, places the notes
+    /// published balance sheet over the branch dimension, which makes BR03 a header, scopes a variable to BR01, places the notes
     /// row under BR04 and the detail row under notes, and groups its calculation dimension under BR04.
     /// </summary>
     private static DimensionConsumers Consumers()
     {
+        var roles = Roles();
         return new DimensionConsumers(
             new InMemoryTableGateway<DatasetRecord>(ReleaseRows.Dataset(1, "loans")),
             new InMemoryTableGateway<DatasetVersionRecord>(ReleaseRows.DatasetVersion(11, 1, 1, PublicationStatuses.Published)),
-            new InMemoryTableGateway<DimensionBindingRecord>(ReleaseRows.Binding(31, 11, "Branch", BranchId, BindingKinds.Direct) with
+            new InMemoryTableGateway<DimensionBindingRecord>(ReleaseRows.Binding(31, 11, BranchRoleId, BranchId, BindingKinds.Direct) with
             {
-                GroupingMode = GroupingModes.Level,
-                GroupingLevelKey = "region",
                 UnmappedBehavior = UnmappedBehaviors.Unknown,
                 UnknownMemberKey = "UNKNOWN"
             }),
+            roles,
             new InMemoryTableGateway<MappingSetRecord>(MappingRows.MappingSet(60, BranchId)),
             new InMemoryTableGateway<MappingVersionRecord>(
                 MappingRows.MappingVersion(61, 60, 1, PublicationStatuses.Published),
@@ -165,7 +180,8 @@ public sealed class DimensionConsumersTests
             new InMemoryTableGateway<ReportLineRecord>(
                 ReportRows.Line(1, "notes", ReportLineKinds.Section, "BR04", 1),
                 ReportRows.Line(2, "detail", ReportLineKinds.Section, "notes", 1)),
-            new InMemoryTableGateway<ReportVariableTargetRecord>(ReportRows.Target("balance", "BR01")),
-            CalculationDimensions());
+            new InMemoryTableGateway<ReportVariableScopeRecord>(ReportRows.Scope("balance", "BR01")),
+            CalculationDimensions(),
+            new BindingNames(roles, new InMemoryTableGateway<FieldRecord>()));
     }
 }

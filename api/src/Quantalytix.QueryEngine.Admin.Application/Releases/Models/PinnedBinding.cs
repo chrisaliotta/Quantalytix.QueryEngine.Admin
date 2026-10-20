@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
-/// <summary>A dimension binding of a dataset version that a release pins, with the key of the pinning dataset for rule messages.</summary>
+/// <summary>A dimension binding of a dataset version that a release pins, with the key of the pinning dataset and the binding's name for rule messages.</summary>
 public sealed record PinnedBinding
 {
     /// <summary>The <c>dataset_key</c> of the manifest row that pins the binding's dataset version.</summary>
@@ -10,4 +10,7 @@ public sealed record PinnedBinding
 
     /// <summary>The binding.</summary>
     public required DimensionBindingRecord Binding { get; init; }
+
+    /// <summary>The binding's name: its role's key, or a time binding's field key.</summary>
+    public required string Name { get; init; }
 }

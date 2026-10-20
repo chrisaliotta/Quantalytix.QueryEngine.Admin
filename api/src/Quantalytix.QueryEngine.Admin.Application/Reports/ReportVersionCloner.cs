@@ -4,18 +4,17 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Copies a report version's content into a new draft: its variable targets, sources, profiles with their picks, calculation
-/// dimensions and routes, columns, overlay rows and member options. Every row gets a new ID and every reference between the copies
-/// follows it; references that leave the version name model metrics, members, datasets, mapping sets, bridges and canonical
-/// dimensions, which copy as they are.
+/// Copies a report version's content into a new draft: its variable scopes, sources, profiles with their picks, calculation
+/// dimensions, columns, overlay rows and member options. Every row gets a new ID and every reference between the copies follows
+/// it; references that leave the version name model metrics, members, datasets, mapping sets, bridges and roles, which copy as
+/// they are.
 /// </summary>
 public sealed class ReportVersionCloner(
-    ITableGateway<ReportVariableTargetRecord> targets,
+    ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<VariableSourceRecord> sources,
     ITableGateway<SourceProfileRecord> profiles,
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<CalculationDimensionRecord> dimensions,
-    ITableGateway<CalculationRouteRecord> routes,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
@@ -31,8 +30,8 @@ public sealed class ReportVersionCloner(
         var owner = new { ReportVersionId = sourceVersionId };
         var remap = new IdRemap(ids);
         var sourceProfiles = await profiles.ListAsync(owner, cancellationToken);
-        await targets.InsertManyAsync(
-            [.. (await targets.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targetVersionId })],
+        await scopes.InsertManyAsync(
+            [.. (await scopes.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targetVersionId })],
             cancellationToken);
         await sources.InsertManyAsync(
             [.. (await sources.ListAsync(owner, cancellationToken)).Select(row => row with { VariableSourceId = remap.Map(row.VariableSourceId), ReportVersionId = targetVersionId })],
@@ -50,17 +49,6 @@ public sealed class ReportVersionCloner(
             [
                 .. (await dimensions.ListAsync(owner, cancellationToken))
                     .Select(row => row with { CalculationDimensionId = remap.Map(row.CalculationDimensionId), ReportVersionId = targetVersionId })
-            ],
-            cancellationToken);
-        await routes.InsertManyAsync(
-            [
-                .. (await routes.ListAsync(owner, cancellationToken)).Select(row => row with
-                {
-                    CalculationBindingId = remap.Map(row.CalculationBindingId),
-                    ReportVersionId = targetVersionId,
-                    CalculationDimensionId = remap.Map(row.CalculationDimensionId),
-                    VariableSourceId = remap.MapOptional(row.VariableSourceId)
-                })
             ],
             cancellationToken);
         await columns.InsertManyAsync(

@@ -40,7 +40,7 @@ public sealed class BoundDimensionsResolvableRule(
                 .Select(pinned => new RuleViolation
                 {
                     Rule = "bound_dimensions_resolvable",
-                    Message = $"Binding '{pinned.Binding.DisplayName}' of dataset '{pinned.DatasetKey}' binds dimension '{dimensionKeys[pinned.Binding.DimensionId]}', which has no published version."
+                    Message = $"Binding '{pinned.Name}' of dataset '{pinned.DatasetKey}' binds dimension '{dimensionKeys[pinned.Binding.DimensionId]}', which has no published version."
                 })
         ];
     }

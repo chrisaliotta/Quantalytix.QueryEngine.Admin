@@ -41,12 +41,13 @@ export type LookupKind =
   | 'datasets'
   | 'dataset-versions' // dataset
   | 'fields' // dataset version; classifier = data type
-  | 'classified-fields' // dataset version; item parentId = the dimension its binding groups members of
+  | 'bound-roles' // dataset version; item parentId = the role's template; classifier = binding kind
   | 'grains'
   | 'bindings'
   | 'time-bindings'
   | 'measures'
   | 'dimensions'
+  | 'dimension-roles' // optional dimension; item parentId = the template; classifier = its kind
   | 'dimension-versions' // dimension
   | 'levels' // dimension version
   | 'members' // dimension version; item parentId = parent member
@@ -62,7 +63,7 @@ export type LookupKind =
   | 'variable-sources' // report version; classifier = variable key
   | 'source-profiles' // report version
   | 'calculated-measures' // model version; classifier = display format
-  | 'calculation-dimensions' // report version; classifier = value kind
+  | 'calculation-dimensions' // report version; classifier = grouping mode
   | 'reports' // classifier = report type
   | 'report-versions' // report
   | 'report-columns'; // report version; classifier = value kind

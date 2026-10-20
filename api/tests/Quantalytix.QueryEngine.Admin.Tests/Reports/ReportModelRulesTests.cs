@@ -12,7 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// <summary>
 /// Confirms the rules that check a report against a version of its calculation model. A report version reads its model's published
 /// version, so <c>model_version_published</c> requires one and <c>report_metrics_resolve</c> requires every column, formula row,
-/// target, source and profile pick to name a metric of it. Publishing a model version makes it the version every published report
+/// scope, source and profile pick to name a metric of it. Publishing a model version makes it the version every published report
 /// of the model reads, so the metric rule runs against it for each of those reports: a version that drops a metric a report reads
 /// is reported before it is published.
 /// </summary>
@@ -31,7 +31,7 @@ public sealed class ReportModelRulesTests
     }
 
     /// <summary>
-    /// A column of a calculated measure the model lacks, a formula row of another, and a target, source and pick of a variable it
+    /// A column of a calculated measure the model lacks, a formula row of another, and a scope, source and pick of a variable it
     /// lacks are each reported.
     /// </summary>
     /// <returns>A task that completes when the rule is checked.</returns>
@@ -41,7 +41,7 @@ public sealed class ReportModelRulesTests
         var cancellationToken = TestContext.Current.CancellationToken;
         await _fixture.Columns.InsertAsync(Column(2, "margin", ReportValueKinds.Calculated, "margin", 2), cancellationToken);
         await _fixture.Lines.InsertAsync(Line(12, "spread", ReportLineKinds.Formula, null, 2) with { CalculatedMeasureKey = "spread", ValueColumnId = 2 }, cancellationToken);
-        await _fixture.Targets.InsertAsync(Target("income", "assets"), cancellationToken);
+        await _fixture.Scopes.InsertAsync(Scope("income", "assets"), cancellationToken);
         await _fixture.Sources.InsertAsync(Source(72, "income", "gl_income", GlDatasetId), cancellationToken);
         await _fixture.Picks.InsertAsync(Pick(75, "income", 72), cancellationToken);
 
@@ -50,14 +50,14 @@ public sealed class ReportModelRulesTests
         Assert.Equal(
             ["Report 'balance_sheet' column 'margin' returns 'margin', which is no calculated metric of the model version.",
              "Report 'balance_sheet' row 'spread' evaluates 'spread', which is no calculated measure of the model version.",
-             "Report 'balance_sheet' targets 'income', which is no variable of the model version.",
+             "Report 'balance_sheet' scopes 'income', which is no variable of the model version.",
              "Report 'balance_sheet' source 'gl_income' supplies 'income', which is no variable of the model version.",
              "Report 'balance_sheet' profile 'base' picks a source for 'income', which is no variable of the model version."],
             violations.Select(violation => violation.Message));
     }
 
     /// <summary>
-    /// The draft model version 42 lacks the balance variable the report's column, target, source and pick name, so validating it
+    /// The draft model version 42 lacks the balance variable the report's column, scope, source and pick name, so validating it
     /// reports each through the report; the report itself still passes against the published version.
     /// </summary>
     /// <returns>A task that completes when the rule is checked.</returns>
@@ -68,7 +68,7 @@ public sealed class ReportModelRulesTests
 
         Assert.Equal(
             ["Report 'balance_sheet' column 'amount' returns 'balance', which is no variable metric of the model version.",
-             "Report 'balance_sheet' targets 'balance', which is no variable of the model version.",
+             "Report 'balance_sheet' scopes 'balance', which is no variable of the model version.",
              "Report 'balance_sheet' source 'gl_balance' supplies 'balance', which is no variable of the model version.",
              "Report 'balance_sheet' profile 'base' picks a source for 'balance', which is no variable of the model version."],
             metrics.Select(violation => violation.Message));

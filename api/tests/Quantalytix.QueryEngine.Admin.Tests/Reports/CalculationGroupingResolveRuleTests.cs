@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms <c>calculation_grouping_resolve</c>: a calculation dimension that groups at a level or under an ancestor names a level or
-/// member of the published version of its dimension, which the engine resolves the keys in; a key that version lacks, or a dimension
-/// with no published version, is reported, because the routes would group nothing.
+/// member of the published version of its role's template, which the engine resolves the keys in; a key that version lacks, or a
+/// template with no published version, is reported, because the calculation dimension would group nothing.
 /// </summary>
 public sealed class CalculationGroupingResolveRuleTests
 {
@@ -35,36 +35,37 @@ public sealed class CalculationGroupingResolveRuleTests
     public async Task GroupingKeysOfThePublishedVersion_Pass()
     {
         await _fixture.Dimensions.InsertAsync(
-            CalculationDimension(81, "region", 600) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "region" }, TestContext.Current.CancellationToken);
+            CalculationDimension(81, "region", RegionRoleId) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "region" }, TestContext.Current.CancellationToken);
 
         Assert.Empty(await EvaluateAsync(Rule(), ReportVersionId));
     }
 
-    /// <summary>A level and an ancestor the published version lacks are each reported, as is a dimension with no published version.</summary>
+    /// <summary>A level and an ancestor the published version lacks are each reported, as is a template with no published version.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task KeysTheVersionLacks_AreReported()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
+        await _fixture.Roles.InsertAsync(DimensionRows.Role(87, "product", 610), cancellationToken);
         await _fixture.Dimensions.InsertAsync(
-            CalculationDimension(81, "region", 600) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "district" }, cancellationToken);
+            CalculationDimension(81, "region", RegionRoleId) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "district" }, cancellationToken);
         await _fixture.Dimensions.InsertAsync(
-            CalculationDimension(82, "east", 600) with { GroupingMode = GroupingModes.Ancestor, GroupingAncestorMemberKey = "east" }, cancellationToken);
+            CalculationDimension(82, "east", RegionRoleId) with { GroupingMode = GroupingModes.Ancestor, GroupingAncestorMemberKey = "east" }, cancellationToken);
         await _fixture.Dimensions.InsertAsync(
-            CalculationDimension(83, "product", 610) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "line" }, cancellationToken);
+            CalculationDimension(83, "product", 87) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "line" }, cancellationToken);
 
         var violations = await EvaluateAsync(Rule(), ReportVersionId);
 
         Assert.Equal(
-            ["Report 'balance_sheet' calculation dimension 'east' groups under ancestor member 'east', which is not a member of v1, the published version of its dimension.",
-             "Report 'balance_sheet' calculation dimension 'product' names levels or members of its dimension, which has no published version.",
-             "Report 'balance_sheet' calculation dimension 'region' groups at level 'district', which is not a level of v1, the published version of its dimension."],
+            ["Report 'balance_sheet' calculation dimension 'east' groups under ancestor member 'east', which is not a member of v1, the published version of its role's dimension.",
+             "Report 'balance_sheet' calculation dimension 'product' names levels or members of its role's dimension, which has no published version.",
+             "Report 'balance_sheet' calculation dimension 'region' groups at level 'district', which is not a level of v1, the published version of its role's dimension."],
             violations.Select(violation => violation.Message));
     }
 
-    /// <summary>The rule over the fixture's report and the region dimension's tables.</summary>
+    /// <summary>The rule over the fixture's report and roles and the region dimension's tables.</summary>
     private CalculationGroupingResolveRule Rule()
     {
-        return new CalculationGroupingResolveRule(_fixture.Reader(), new PublishedDimensionReader(_versions, _levels, _members));
+        return new CalculationGroupingResolveRule(_fixture.Reader(), _fixture.Roles, new PublishedDimensionReader(_versions, _levels, _members));
     }
 }

@@ -22,6 +22,7 @@ public sealed class VariableSourceInputValidator : AbstractValidator<VariableSou
     /// <param name="reports">Reads its report, which names the report's dimension.</param>
     /// <param name="mappingSets">Reads a mapped classification's mapping set.</param>
     /// <param name="bridges">Reads a bridge classification's bridge.</param>
+    /// <param name="roles">Reads a bridge classification's role.</param>
     public VariableSourceInputValidator(
         VersionKeys keys,
         ITableGateway<VariableSourceRecord> sources,
@@ -29,7 +30,8 @@ public sealed class VariableSourceInputValidator : AbstractValidator<VariableSou
         ITableGateway<ReportVersionRecord> reportVersions,
         ITableGateway<ReportRecord> reports,
         ITableGateway<MappingSetRecord> mappingSets,
-        ITableGateway<BridgeRecord> bridges)
+        ITableGateway<BridgeRecord> bridges,
+        ITableGateway<DimensionRoleRecord> roles)
     {
         RuleFor(input => input.VariableKey).MustBeKey(128);
         RuleFor(input => input.SourceKey)
@@ -41,11 +43,11 @@ public sealed class VariableSourceInputValidator : AbstractValidator<VariableSou
         RuleFor(input => input.DatasetId)
             .MustAsync(async (datasetId, cancellationToken) => (await datasets.ListAsync(new { DatasetId = datasetId }, cancellationToken)).Count == 1)
             .WithMessage(input => $"Dataset {input.DatasetId} does not exist.");
-        RuleFor(input => input.Classification).SetValidator(new ClassificationInputValidator(ClassificationKinds.Definition, async cancellationToken =>
+        RuleFor(input => input.Classification).SetValidator(new ClassificationInputValidator(async cancellationToken =>
         {
             var version = await reportVersions.GetAsync(new { ReportVersionId = keys.VersionId }, cancellationToken);
             return (await reports.GetAsync(new { version.ReportId }, cancellationToken)).ReportDimensionId;
-        }, mappingSets, bridges));
+        }, mappingSets, bridges, roles));
         RuleFor(input => input.TimeFieldKey).NotEmpty().MustFitVarchar(128);
         RuleFor(input => input.MeasureKey).NotEmpty().MustFitVarchar(128);
         RuleFor(input => input.SourceFilterJson).MustBeFilterOver("field", "the dataset's fields");

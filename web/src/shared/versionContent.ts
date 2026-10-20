@@ -11,8 +11,8 @@ type Schemas = components['schemas'];
 
 /**
  * The content the API serves row by row under a version, by the route segment of its kind: the version resource it belongs
- * to, its row and its create and edit body. A model version holds the metrics; a report version the sources, profiles,
- * calculation dimensions and routes its report reads them through.
+ * to, its row and its create and edit body. A model version holds the metrics; a report version the sources, profiles and
+ * calculation dimensions its report reads them through.
  */
 export interface VersionContentTypes {
   variables: { scope: 'model-versions'; item: Schemas['VariableRecord']; input: Schemas['VariableInput'] };
@@ -28,7 +28,6 @@ export interface VersionContentTypes {
     item: Schemas['CalculationDimensionRecord'];
     input: Schemas['CalculationDimensionInput'];
   };
-  routes: { scope: 'report-versions'; item: Schemas['CalculationRouteRecord']; input: Schemas['CalculationRouteInput'] };
 }
 
 /** A kind of version content. */
@@ -58,7 +57,6 @@ const SCOPES: { [K in ContentKind]: VersionContentTypes[K]['scope'] } = {
   'variable-sources': 'report-versions',
   profiles: 'report-versions',
   'calculation-dimensions': 'report-versions',
-  routes: 'report-versions',
 };
 
 /** The pickers that list each version resource's content; a content write can change any of them, through cascades. */
@@ -97,7 +95,7 @@ export function useVersionContent<K extends ContentKind>(kind: K, versionId: num
 
 /**
  * Refreshes every content kind of the version and its pickers after a write, because deletes cascade: removing a source
- * also removes its profile picks and its override routes.
+ * also removes its profile picks.
  */
 function invalidateContent(tenantId: string, kind: ContentKind, versionId: number) {
   const scope = SCOPES[kind];

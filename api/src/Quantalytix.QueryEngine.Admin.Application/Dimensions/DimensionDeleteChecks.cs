@@ -5,25 +5,30 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// Finds what blocks deleting a dimension, a level or a member: rows of other features that still reference it, and, in a
-/// published version, the live objects that name its key. Each check runs before anything is deleted. A draft dimension
+/// Finds what blocks deleting a dimension, a role, a level or a member: rows of other features that still reference it, and, in
+/// a published version, the live objects that name its key. Each check runs before anything is deleted. A draft dimension
 /// version has no such blockers, because other objects name keys of the published version only.
 /// </summary>
 public sealed class DimensionDeleteChecks(
     ITableGateway<DimensionVersionRecord> versions,
     ITableGateway<DimensionMemberRecord> members,
     ITableGateway<RangeBandRecord> bands,
+    ITableGateway<DimensionRoleRecord> roles,
     ITableGateway<MappingSetRecord> mappingSets,
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<DimensionBindingRecord> bindings,
+    ITableGateway<DatasetRecord> datasets,
+    ITableGateway<DatasetVersionRecord> datasetVersions,
     ITableGateway<ReportRecord> reports,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
+    ITableGateway<VariableSourceRecord> sources,
     ReportVersionNames reportVersions,
     DimensionConsumers consumers)
 {
     /// <summary>
     /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set, bridge (either
-    /// end), report or calculation dimension references it.
+    /// end) or report references it, or a calculation dimension or variable source names one of its roles. The roles themselves
+    /// go with the dimension.
     /// </summary>
     /// <param name="dimension">The dimension.</param>
     /// <param name="dimensionVersions">Every version of the dimension.</param>
@@ -40,7 +45,7 @@ public sealed class DimensionDeleteChecks(
             "it has non-draft versions",
             dimensionVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { dimension.DimensionId }, cancellationToken);
-        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{binding.DisplayName}'"));
+        blockers.AddNamed("bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
         var sets = await mappingSets.ListAsync(new { dimension.DimensionId }, cancellationToken);
         blockers.AddNamed("referenced by mapping sets", sets.Select(set => $"'{set.MappingSetKey}'"));
         var bridgesFrom = await bridges.ListAsync(new { SourceDimensionId = dimension.DimensionId }, cancellationToken);
@@ -48,11 +53,43 @@ public sealed class DimensionDeleteChecks(
         blockers.AddNamed("referenced by bridges", bridgesFrom.Concat(bridgesTo).Select(bridge => $"'{bridge.BridgeKey}'"));
         var reportsOn = await reports.ListAsync(new { ReportDimensionId = dimension.DimensionId }, cancellationToken);
         blockers.AddNamed("the report dimension of reports", reportsOn.Select(report => $"'{report.ReportKey}'"));
-        var grouping = await calculationDimensions.ListAsync(new { dimension.DimensionId }, cancellationToken);
-        var names = await reportVersions.OfIdsAsync(grouping.Select(calculationDimension => calculationDimension.ReportVersionId), cancellationToken);
-        blockers.AddNamed("referenced by calculation dimensions", grouping.Select(calculationDimension =>
-            $"'{calculationDimension.DimensionKey}' of {names[calculationDimension.ReportVersionId]}"));
+        var roleIds = (await roles.ListAsync(new { dimension.DimensionId }, cancellationToken)).Select(role => role.RoleId).ToArray();
+        await AddReportUsesAsync(blockers, roleIds, cancellationToken);
         return blockers.Detail();
+    }
+
+    /// <summary>What blocks deleting a role: a binding, calculation dimension or variable source names it.</summary>
+    /// <param name="role">The role.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The 409 detail naming the blockers, or null when the role can be deleted.</returns>
+    public async Task<string?> RoleAsync(DimensionRoleRecord role, CancellationToken cancellationToken)
+    {
+        var blockers = new DeleteBlockers($"Role '{role.RoleKey}'");
+        var boundBy = await bindings.ListAsync(new { role.RoleId }, cancellationToken);
+        blockers.AddNamed("bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
+        await AddReportUsesAsync(blockers, [role.RoleId], cancellationToken);
+        return blockers.Detail();
+    }
+
+    /// <summary>Adds the calculation dimensions that read the roles and the variable sources that bridge from them, in report versions of any status.</summary>
+    private async Task AddReportUsesAsync(DeleteBlockers blockers, long[] roleIds, CancellationToken cancellationToken)
+    {
+        var reading = await calculationDimensions.ListAsync(new { RoleId = roleIds }, cancellationToken);
+        var bridging = await sources.ListAsync(new { ClassificationRoleId = roleIds }, cancellationToken);
+        var names = await reportVersions.OfIdsAsync(
+            reading.Select(dimension => dimension.ReportVersionId).Concat(bridging.Select(source => source.ReportVersionId)), cancellationToken);
+        blockers.AddNamed("read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportVersionId]}"));
+        blockers.AddNamed("bridged from by variable sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportVersionId]}"));
+    }
+
+    /// <summary>Names the dataset versions that hold bindings, like <c>'loans.details' v2</c>.</summary>
+    private async Task<IEnumerable<string>> DatasetVersionNamesAsync(IReadOnlyList<DimensionBindingRecord> bound, CancellationToken cancellationToken)
+    {
+        var holding = (await datasetVersions.ListAsync(new { DatasetVersionId = bound.Select(binding => binding.DatasetVersionId).Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(version => version.DatasetVersionId);
+        var keys = (await datasets.ListAsync(new { DatasetId = holding.Values.Select(version => version.DatasetId).Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
+        return bound.Select(binding => holding[binding.DatasetVersionId]).Select(version => $"'{keys[version.DatasetId]}' v{version.VersionNumber}");
     }
 
     /// <summary>What blocks deleting a level: members that use it, and in a published version the live objects that name its key.</summary>
