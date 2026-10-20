@@ -9982,7 +9982,7 @@ export interface components {
              * @description The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.
              */
             roleId: number;
-            /** @description A `grouping_mode` value: how runs group the role's members. */
+            /** @description A `grouping_mode` value: how runs group the role's members unless a report request names another grouping. */
             groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
             groupingLevelKey?: null | string;
@@ -10002,7 +10002,8 @@ export interface components {
         };
         /**
          * @description A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by.
-         *     It reads a dimension role, grouped as it says; a source reaches it when its dataset binds the role.
+         *     It reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its
+         *     dataset binds the role.
          */
         CalculationDimensionRecord: {
             /**
@@ -10024,7 +10025,7 @@ export interface components {
              * @description The role every source reads; queries use the version of its dimension their assumption set pins.
              */
             roleId: number;
-            /** @description A `grouping_mode` value: how the role's members group. */
+            /** @description A `grouping_mode` value: how the role's members group by default. */
             groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
             groupingLevelKey?: null | string;

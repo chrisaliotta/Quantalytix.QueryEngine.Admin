@@ -2,7 +2,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
 /// A <c>qe_calculation_dimension</c> row: a dimension shared by a report version's datasets, which runs break out and filter by.
-/// It reads a dimension role, grouped as it says; a source reaches it when its dataset binds the role.
+/// It reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its
+/// dataset binds the role.
 /// </summary>
 public sealed record CalculationDimensionRecord
 {
@@ -21,7 +22,7 @@ public sealed record CalculationDimensionRecord
     /// <summary>The role every source reads; queries use the version of its dimension their assumption set pins.</summary>
     public required long RoleId { get; init; }
 
-    /// <summary>A <c>grouping_mode</c> value: how the role's members group.</summary>
+    /// <summary>A <c>grouping_mode</c> value: how the role's members group by default.</summary>
     public required string GroupingMode { get; init; }
 
     /// <summary>The key of the level to group at when the grouping mode is <c>level</c>.</summary>

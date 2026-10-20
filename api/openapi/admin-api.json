@@ -12486,7 +12486,7 @@
           },
           "groupingMode": {
             "type": "string",
-            "description": "A `grouping_mode` value: how runs group the role's members."
+            "description": "A `grouping_mode` value: how runs group the role's members unless a report request names another grouping."
           },
           "groupingLevelKey": {
             "type": [
@@ -12564,7 +12564,7 @@
           },
           "groupingMode": {
             "type": "string",
-            "description": "A `grouping_mode` value: how the role's members group."
+            "description": "A `grouping_mode` value: how the role's members group by default."
           },
           "groupingLevelKey": {
             "type": [
@@ -12601,7 +12601,7 @@
             "description": "Administrative availability flag."
           }
         },
-        "description": "A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by.\nIt reads a dimension role, grouped as it says; a source reaches it when its dataset binds the role."
+        "description": "A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by.\nIt reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its\ndataset binds the role."
       },
       "CalculationModelInput": {
         "required": [
