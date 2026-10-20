@@ -21,14 +21,15 @@ interface MemberSheetRequest {
 export interface MembersTabProps {
   dimension: Dimension;
   versionId: number;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
 /**
- * The version's member tree. Drafts reparent and reorder members by drag and drop, saved in one call; search narrows
- * the tree to matches and their ancestors (dragging pauses while searching). Members open in a sheet.
+ * The version's member tree. A draft or the published version reparents and reorders members by drag and drop, saved in
+ * one call; search narrows the tree to matches and their ancestors (dragging pauses while searching). Members open in a
+ * sheet.
  */
-export function MembersTab({ dimension, versionId, isDraft }: MembersTabProps) {
+export function MembersTab({ dimension, versionId, isEditable }: MembersTabProps) {
   const members = useMembers(versionId);
   const levels = useLevels(versionId);
   const reorder = useReorderMembers(versionId);
@@ -43,7 +44,7 @@ export function MembersTab({ dimension, versionId, isDraft }: MembersTabProps) {
   const levelKeys = new Map((levels.data ?? []).map(level => [level.levelId, level.levelKey]));
   const tree = pendingTree ?? applyCollapsed(buildMemberTree(rows), collapsedIds);
   const visible = filterMemberTree(tree, search);
-  const canDrag = isDraft && search.trim() === '' && !reorder.isPending;
+  const canDrag = isEditable && search.trim() === '' && !reorder.isPending;
 
   function handleItemsChange(nextItems: TreeItems<DimensionMember>, details: NestableItemsChange<DimensionMember>) {
     if (details.source === 'collapse') {
@@ -69,7 +70,7 @@ export function MembersTab({ dimension, versionId, isDraft }: MembersTabProps) {
           <Input className="pl-8" placeholder="Search members..." value={search} onChange={event => setSearch(event.target.value)} />
         </div>
         <span className="text-sm text-muted-foreground">{rows.length} members</span>
-        {isDraft && (
+        {isEditable && (
           <Button size="sm" className="ml-auto" onClick={() => setSheet({ member: null, parentId: null })}>
             <Plus />
             New member
@@ -96,7 +97,7 @@ export function MembersTab({ dimension, versionId, isDraft }: MembersTabProps) {
             <MemberTreeRow
               {...row}
               levelKeys={levelKeys}
-              isDraft={isDraft}
+              isEditable={isEditable}
               canDrag={canDrag}
               onOpen={member => setSheet({ member, parentId: null })}
               onAddChild={member => setSheet({ member: null, parentId: member.memberId })}
@@ -112,7 +113,7 @@ export function MembersTab({ dimension, versionId, isDraft }: MembersTabProps) {
           members={rows}
           member={sheet.member}
           parentId={sheet.parentId}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onClose={() => setSheet(null)}
         />
       )}

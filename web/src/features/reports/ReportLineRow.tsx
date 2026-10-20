@@ -7,14 +7,14 @@ import type { ReportLineInput } from './types';
 
 /** The Nestable render props of the row, plus what the row does. */
 export interface ReportLineRowProps extends NestableRenderItemProps<ReportLineInput> {
-  isDraft: boolean;
+  isEditable: boolean;
   canDrag: boolean;
   onOpen: () => void;
   onAddChild: () => void;
   onDelete: () => void;
 }
 
-/** One line of the Nestable tree: collapse toggle, drag handle (drafts only), key, name, what it shows, and its actions. */
+/** One line of the Nestable tree: collapse toggle, drag handle (editable versions only), key, name, what it shows, and its actions. */
 export function ReportLineRow({
   item,
   depth,
@@ -27,7 +27,7 @@ export function ReportLineRow({
   setActivatorNodeRef,
   attributes,
   activatorListeners,
-  isDraft,
+  isEditable,
   canDrag,
   onOpen,
   onAddChild,
@@ -75,9 +75,9 @@ export function ReportLineRow({
       </button>
       <div className="flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
         <Button type="button" variant="ghost" size="icon-xs" aria-label={`Open ${line.lineKey}`} onClick={onOpen}>
-          {isDraft ? <Pencil /> : <Eye />}
+          {isEditable ? <Pencil /> : <Eye />}
         </Button>
-        {isDraft && (
+        {isEditable && (
           <>
             <Button type="button" variant="ghost" size="icon-xs" aria-label={`Add a line under ${line.lineKey}`} onClick={onAddChild}>
               <Plus />

@@ -31,14 +31,14 @@ public sealed class MappingVersionService(
     }
 
     /// <summary>
-    /// Creates a draft with the set's next version number, pinned to the given dimension version: empty, or with the entries
-    /// of <see cref="NewMappingVersionInput.CloneFromVersionId"/> remapped by member key.
+    /// Creates a draft with the set's next version number: empty, or with copies of the entries of
+    /// <see cref="NewMappingVersionInput.CloneFromVersionId"/>.
     /// </summary>
     /// <param name="mappingSetId">The mapping set.</param>
-    /// <param name="input">The pinned dimension version and the optional clone source.</param>
+    /// <param name="input">The optional clone source.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The new draft and the source keys a clone dropped.</returns>
-    public async Task<CreatedMappingVersion> CreateAsync(long mappingSetId, NewMappingVersionInput input, CancellationToken cancellationToken)
+    /// <returns>The new draft.</returns>
+    public async Task<MappingVersionRecord> CreateAsync(long mappingSetId, NewMappingVersionInput input, CancellationToken cancellationToken)
     {
         var existing = await versions.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
         var version = new MappingVersionRecord
@@ -46,13 +46,11 @@ public sealed class MappingVersionService(
             MappingVersionId = ids.NextId(),
             MappingSetId = mappingSetId,
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
-            DimensionVersionId = input.DimensionVersionId,
             Status = PublicationStatuses.Draft
         };
         await versions.InsertAsync(version, cancellationToken);
-        IReadOnlyList<string> dropped = [];
-        if (input.CloneFromVersionId is { } sourceVersionId) dropped = await cloner.CloneAsync(sourceVersionId, version, cancellationToken);
-        return new CreatedMappingVersion { Version = version, DroppedSourceKeys = dropped };
+        if (input.CloneFromVersionId is { } sourceVersionId) await cloner.CloneAsync(sourceVersionId, version, cancellationToken);
+        return version;
     }
 
     /// <summary>Deletes draft mapping versions: their entries first, then the versions.</summary>

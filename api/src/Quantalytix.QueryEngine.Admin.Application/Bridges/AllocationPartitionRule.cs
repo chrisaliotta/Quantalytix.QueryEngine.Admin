@@ -25,13 +25,13 @@ public sealed class AllocationPartitionRule(BridgeMappingSetReader reader) : IPu
         var set = await reader.ReadAsync(versionId, cancellationToken);
         if (set.Version.AllocationMode != AllocationModes.Partition) return [];
         var sumsOtherThanOne = set.Mappings
-            .GroupBy(mapping => mapping.SourceMemberId)
-            .Select(group => (SourceMemberId: group.Key, Sum: group.Sum(mapping => mapping.AllocationWeight)))
+            .GroupBy(mapping => mapping.SourceMemberKey)
+            .Select(group => (SourceMemberKey: group.Key, Sum: group.Sum(mapping => mapping.AllocationWeight)))
             .Where(source => source.Sum != 1m)
             .Select(source => new RuleViolation
             {
                 Rule = Code,
-                Message = $"Source member {set.DescribeSource(source.SourceMemberId)} has allocation weights summing to {DecimalText.Of(source.Sum)}; "
+                Message = $"Source member '{source.SourceMemberKey}' has allocation weights summing to {DecimalText.Of(source.Sum)}; "
                     + "partition requires exactly 1."
             });
         return [.. NegativeWeights.Find(set, Code), .. sumsOtherThanOne];

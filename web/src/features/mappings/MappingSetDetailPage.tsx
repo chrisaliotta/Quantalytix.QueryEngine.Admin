@@ -6,19 +6,19 @@ import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
-import { DroppedOnCloneAlert } from '@/shared/DroppedOnCloneAlert';
 import { PageHeader } from '@/shared/PageHeader';
 import { StatusBadge } from '@/shared/StatusBadge';
-import type { LookupItem } from '@/shared/types';
+import type { LookupItem, VersionStatus } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
 import { selectedVersion } from '@/shared/versionSelection';
+import { isEditable } from '@/shared/versionTransitions';
 import { useDeleteMappingSet, useDeleteMappingVersion, useMappingSet } from './api';
 import { MappingEntries } from './MappingEntries';
 import { MappingSetIdentitySheet } from './MappingSetIdentitySheet';
 import { NewMappingVersionDialog } from './NewMappingVersionDialog';
-import type { CreatedMappingVersion, MappingSet } from './types';
+import type { MappingSet, MappingVersion } from './types';
 
 /** What the new-version dialog was opened for: an empty draft, or a clone of a version. */
 interface NewVersionRequest {
@@ -51,25 +51,21 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [newVersion, setNewVersion] = useState<NewVersionRequest | null>(null);
-  const [dropped, setDropped] = useState<CreatedMappingVersion | null>(null);
 
   const versionItems = versions.data ?? [];
   const dimensionVersionItems = dimensionVersions.data ?? [];
   const selected = selectedVersion(versionItems, searchParams.get('version'));
   const versionId = selected?.id ?? null;
-  const pinned = dimensionVersionItems.find(version => version.id === selected?.parentId);
+  const published = dimensionVersionItems.find(version => version.status === 'published');
   const dimensionKey = dimensions.data?.find(dimension => dimension.id === mappingSet.dimensionId)?.key ?? '';
 
   function selectVersion(id: number) {
     setSearchParams({ version: String(id) }, { replace: true });
   }
 
-  function showCreated(created: CreatedMappingVersion) {
-    toast.success(`Created draft v${created.version.versionNumber}.`);
-    selectVersion(created.version.mappingVersionId);
-    if (created.droppedSourceKeys.length > 0) {
-      setDropped(created);
-    }
+  function showCreated(created: MappingVersion) {
+    toast.success(`Created draft v${created.versionNumber}.`);
+    selectVersion(created.mappingVersionId);
   }
 
   return (
@@ -94,7 +90,7 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
 
       <VersionHeader
         kind="mapping_version"
-        versions={versionItems.map(version => ({ ...version, label: pinnedLabel(version, dimensionVersionItems) }))}
+        versions={versionItems}
         selectedVersionId={versionId}
         onSelectVersion={selectVersion}
         onCreateVersion={() => setNewVersion({ source: null })}
@@ -106,29 +102,21 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
         }
       />
       <ApiErrorAlert error={versions.error ?? deleteVersion.error} />
-      {dropped && (
-        <DroppedOnCloneAlert
-          title={`v${dropped.version.versionNumber} left out ${dropped.droppedSourceKeys.length} of the cloned entries`}
-          description="No member of the pinned dimension version has the member key of these source keys:"
-          items={dropped.droppedSourceKeys}
-          onDismiss={() => setDropped(null)}
-        />
-      )}
       {versions.isSuccess && versionItems.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No versions yet. A version pins a dimension version and holds the entries that map source keys onto its
-          members.
+          No versions yet. A version holds the entries that map source keys onto members of {dimensionKey}; the
+          published version is the one requests read.
         </p>
       )}
 
       {selected && (
         <div className="space-y-3">
-          {pinned && <PinnedVersion dimensionId={mappingSet.dimensionId} dimensionKey={dimensionKey} pinned={pinned} />}
+          <MembersSource dimensionId={mappingSet.dimensionId} dimensionKey={dimensionKey} published={published} />
           <MappingEntries
             key={selected.id}
             versionId={selected.id}
-            dimensionVersionId={selected.parentId ?? null}
-            isDraft={selected.status === 'draft'}
+            dimensionId={mappingSet.dimensionId}
+            isEditable={isEditable('mapping_version', selected.status as VersionStatus)}
           />
         </div>
       )}
@@ -138,7 +126,6 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
         <NewMappingVersionDialog
           mappingSet={mappingSet}
           source={newVersion.source}
-          dimensionVersionId={dimensionVersionItems.findLast(version => version.status === 'published')?.id ?? null}
           onClose={() => setNewVersion(null)}
           onCreated={showCreated}
         />
@@ -158,34 +145,32 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
   );
 }
 
-/** A version's picker label: the dimension version it pins, such as `pins v2 [2026-01-01 .. open)`. */
-function pinnedLabel(version: LookupItem, dimensionVersions: LookupItem[]) {
-  const pinned = dimensionVersions.find(dimensionVersion => dimensionVersion.id === version.parentId);
-  if (!pinned) {
-    return version.label;
-  }
-  return `pins ${pinned.label}`;
-}
-
-interface PinnedVersionProps {
+interface MembersSourceProps {
   dimensionId: number;
   dimensionKey: string;
-  /** The dimension version the selected mapping version pins. */
-  pinned: LookupItem;
+  /** The dimension's published version, whose members the entries' keys resolve in; undefined while it has none. */
+  published: LookupItem | undefined;
 }
 
-/** The dimension version the selected mapping version pins, with its status and a link to it. */
-function PinnedVersion({ dimensionId, dimensionKey, pinned }: PinnedVersionProps) {
+/** The dimension version the entries' member keys resolve in, its published one, with a link to it. */
+function MembersSource({ dimensionId, dimensionKey, published }: MembersSourceProps) {
   const tenantId = useTenantId();
+  if (!published) {
+    return (
+      <p data-slot="members-source" className="text-sm text-muted-foreground">
+        {dimensionKey} has no published version yet, so the member keys resolve in none.
+      </p>
+    );
+  }
   return (
-    <div data-slot="pinned-dimension-version" className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-muted-foreground">Maps onto</span>
+    <div data-slot="members-source" className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted-foreground">Member keys resolve in</span>
       <span className="font-medium">
-        {dimensionKey} {pinned.label}
+        {dimensionKey} {published.label}
       </span>
-      {pinned.status && <StatusBadge status={pinned.status} />}
+      <StatusBadge status="published" />
       <Button asChild variant="link" size="sm">
-        <Link to={`/t/${tenantId}/dimensions/${dimensionId}?version=${pinned.id}`}>
+        <Link to={`/t/${tenantId}/dimensions/${dimensionId}?version=${published.id}`}>
           Open dimension
           <ExternalLink />
         </Link>

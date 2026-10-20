@@ -4,9 +4,9 @@
 
 ## Lifecycle states
 
-The drawings show the transitions `VersionTransitions` allows for the eight versioned kinds: `dataset_version`, `dimension_version`, `mapping_version`, `bridge_version`, `semantic_release`, `assumption_set`, `calculation_model_version` and `report_version`. Every status change goes through `PUT /api/tenants/{tenantId}/versions/{kind}/{id}/status`, which `VersionStatusController` hands to `VersionWorkflow`; any other pair of statuses is refused with 409 "Transition not allowed", so a version cannot skip validation, and `retired` is final.
+The drawings show the transitions `VersionTransitions` allows for the seven versioned kinds. Every status change goes through `PUT /api/tenants/{tenantId}/versions/{kind}/{id}/status`, which `VersionStatusController` hands to `VersionWorkflow`; any other pair of statuses is refused with 409 "Transition not allowed", so a version cannot skip validation, and `retired` is final.
 
-Dataset, dimension, mapping, bridge, calculation model and report versions, and semantic releases:
+The kinds come in two families. The strict kinds, `dataset_version` and `semantic_release`, are versioned for reproducibility: a published version never changes, several can be published at once for releases to pin, and one is retired by hand.
 
 ```mermaid
 stateDiagram-v2
@@ -17,30 +17,33 @@ stateDiagram-v2
     published --> retired : retire
 ```
 
-Assumption sets, which have no validated state:
+The living kinds, `dimension_version`, `mapping_version`, `bridge_version`, `calculation_model_version` and `report_version`, hold the default content queries read. An identity has at most one published version, which stays editable; publishing the next version retires it, so a living version is never retired by hand.
 
 ```mermaid
 stateDiagram-v2
     [*] --> draft : create
-    draft --> published : publish
-    published --> retired : retire
+    draft --> validated : validate
+    validated --> draft : back to draft
+    validated --> published : publish
+    published --> retired : the next version of the identity is published
 ```
 
 | Kinds | Transition | Before the status is written | After the status is written |
 | --- | --- | --- | --- |
-| All but `assumption_set` | draft to validated | `OnValidatingAsync` of each lifecycle handler of the kind, then every publication rule of the kind; any violation rejects the change with 422 | Nothing more |
-| All but `assumption_set` | validated to draft | Nothing | Nothing more |
-| All but `assumption_set` | validated to published | Nothing | `published_at` from `TimeProvider`, `OnPublishedAsync` of each handler of the kind, and `SemanticRevision.AdvanceAsync` for the revision kinds |
-| `assumption_set` | draft to published | `OnValidatingAsync` of its handlers (none are registered), then its publication rules | `published_at`, `OnPublishedAsync` of its handlers, and `SemanticRevision.AdvanceAsync` |
-| All | published to retired | Every retirement rule of the kind; any violation rejects with 422 | `SemanticRevision.AdvanceAsync` for the revision kinds; `published_at` is kept |
+| All | draft to validated | `OnValidatingAsync` of each lifecycle handler of the kind, then every publication rule of the kind; any violation rejects the change with 422 | Nothing more |
+| All | validated to draft | Nothing | Nothing more |
+| All | validated to published | Nothing | `published_at` from `TimeProvider`, `OnPublishedAsync` of each handler of the kind, and `SemanticRevision.AdvanceAsync` for the living kinds |
+| Strict | published to retired | Every retirement rule of the kind; any violation rejects with 422 | `published_at` is kept |
 
-`VersionTransitions.RunsPublicationRules` is true for draft to validated, and for draft to published of an assumption set; `RunsRetirementRules` is true for published to retired of every kind. The revision kinds are `dimension_version`, `mapping_version`, `bridge_version` and `assumption_set`.
+`VersionTransitions.RunsPublicationRules` is true for draft to validated; `RunsRetirementRules` is true for published to retired of a strict kind. `VersionKinds.Living` lists the living kinds.
 
-**Sources:** [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [PublicationStatuses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/PublicationStatuses.cs), [AssumptionSetStatuses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/AssumptionSetStatuses.cs), [VersionKinds.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VersionKinds.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/VersionWorkflowTests.cs).
+Which versions accept content writes follows the families. `[RequireDraft]` guards the strict kinds' writes and every version delete, so only a draft changes or goes away; `[RequireEditable]` guards the living kinds' writes, which a draft or the published version accepts, and answers 409 "Version is not editable" for a validated or retired one. A retired living version is frozen, because a historical assumption set may still pin it.
+
+**Sources:** [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [PublicationStatuses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/PublicationStatuses.cs), [VersionKinds.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VersionKinds.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [RequireDraftFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireDraftFilter.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [VersionWorkflowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/VersionWorkflowTests.cs).
 
 ## Leaving draft
 
-The drawing shows draft to validated, the transition that derives data and runs the publication rules. It matters because leaving draft is the only time a version's content is checked: publishing does not run the rules again, and only drafts accept content writes.
+The drawing shows draft to validated, the transition that derives data and runs the publication rules. It matters because leaving draft is when a version's content is checked before it reaches queries: publishing does not run the rules again.
 
 ```mermaid
 sequenceDiagram
@@ -65,7 +68,7 @@ sequenceDiagram
         Wf-->>Ctl: NotAllowed with the current state
         Ctl-->>Client: 409 Transition not allowed
     else Allowed
-        Wf->>Tr: RunsPublicationRules(kind, draft, validated)
+        Wf->>Tr: RunsPublicationRules(draft, validated)
         loop Each handler whose Kind matches, in registration order
             Wf->>Handlers: OnValidatingAsync(id)
         end
@@ -84,13 +87,13 @@ sequenceDiagram
     end
 ```
 
-Every rule of the kind runs, so the 422 lists all violations at once rather than the first. Handlers run before the rules and write even when a rule then rejects the change: `ClosureBuilder` rebuilds the closure of a dimension version every time it is validated. For an assumption set, leaving draft is draft to published: the same handler and rule steps run, then the publishing steps below.
+Every rule of the kind runs, so the 422 lists all violations at once rather than the first. Handlers run before the rules and write even when a rule then rejects the change: `ClosureBuilder` rebuilds the closure of a dimension version every time it is validated. A living kind's rules check the version against what it will replace as well as on its own: a dimension version must keep every key live objects name (`dimension_consumers_resolve`), and a calculation model version must serve every published report of its model (the report rules run through those reports, see [Feature classes](05-feature-classes.md#calculation-models-and-reports)).
 
 **Sources:** [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionStoreRegistry.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStoreRegistry.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [IVersionLifecycleHandler.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionLifecycleHandler.cs), [IPublicationRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IPublicationRule.cs), [RuleViolationResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/RuleViolationResults.cs), [VersionReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionReferenceValidator.cs), [StatusChangeInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/StatusChangeInputValidator.cs).
 
 ## Publishing
 
-The drawing shows validated to published. No rules run; the workflow stamps the publication time, lets the kind's handlers cascade, and advances the semantic revision when the engine resolves the kind's published rows without a release activation.
+The drawing shows validated to published. No rules run; the workflow stamps the publication time, lets the kind's handlers cascade, and advances the semantic revision for a living kind, whose published version queries read without a release activation.
 
 ```mermaid
 sequenceDiagram
@@ -99,9 +102,9 @@ sequenceDiagram
     participant Wf as VersionWorkflow
     participant Store as IVersionStore
     participant Clock as TimeProvider
-    participant Handlers as IVersionLifecycleHandler
+    participant Retirer as PredecessorRetirer
+    participant Pinner as ActiveSetPinner
     participant Rev as SemanticRevision
-    participant Info as DatabaseInfoRecord gateway
     Ctl->>Wf: TransitionAsync(kind, id, published)
     Wf->>Store: GetAsync(id)
     Store-->>Wf: VersionState, status validated
@@ -109,25 +112,60 @@ sequenceDiagram
     Wf->>Clock: GetUtcNow()
     Clock-->>Wf: publishedAt
     Wf->>Store: SetStatusAsync(id, published, publishedAt)
-    Note over Store: GetAsync of the row, then UpdateAsync with the new Status and PublishedAt
-    loop Each handler whose Kind matches, in registration order
-        Wf->>Handlers: OnPublishedAsync(id)
-    end
-    opt dimension_version, mapping_version, bridge_version or assumption_set
+    opt A living kind
+        Wf->>Retirer: OnPublishedAsync(id)
+        Retirer->>Store: PublishedSiblingIdsAsync(id)
+        Retirer->>Store: SetStatusAsync(sibling, retired, the sibling's publishedAt)
+        Note over Wf: The kind's feature handlers run next, such as ClosureBuilder, which does nothing on publish
+        Wf->>Pinner: OnPublishedAsync(id)
+        Pinner->>Store: IdentityIdAsync(id)
+        Note over Pinner: Upserts the active set's pin of the identity, replacing the predecessor's
         Wf->>Rev: AdvanceAsync()
-        Rev->>Info: GetAsync(SingletonId 1)
-        Rev->>Info: UpdateAsync with SemanticRevision plus one and UpdatedAt
     end
     Wf-->>Ctl: Applied with status published and publishedAt
 ```
 
-The status is written before the handlers run. `PredecessorValidityCloser` then reads the new version, lists the dimension's published versions and closes every open-ended one that starts earlier, skipping the new version itself; `CurrentBridgeVersionUpdater` moves its bridge's pointer. Publishing a dataset, calculation model or report version, or a semantic release, changes nothing the engine reads until a release is activated, so it leaves the revision alone; `CurrentModelVersionUpdater` and `CurrentReportVersionUpdater` move authoring-only pointers.
+The status is written before the handlers run, so `PredecessorRetirer` finds the identity's other published version and retires it with its original publication time, and `ActiveSetPinner` repoints the active assumption set; historical sets keep pinning the version they captured, now retired. Publishing a dataset version or a semantic release changes nothing the engine reads until a release is activated, so it retires nothing and leaves the revision alone.
 
-**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [DatabaseInfoRecord.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Models/DatabaseInfoRecord.cs), [PredecessorValidityCloser.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PredecessorValidityCloser.cs), [VersionWorkflowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/VersionWorkflowTests.cs).
+**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [LivingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/LivingVersionStore.cs), [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [VersionWorkflowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/VersionWorkflowTests.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
+
+## Editing and checking a published version
+
+The drawing shows a write to the published version of a living kind. It matters because the edit is live: the next query reads it, so no rules gate it, and the Validate check is how an author confirms the version still passes them.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web SPA
+    participant Fields as ValidationFilter
+    participant Filter as RequireEditableFilter
+    participant Ctl as Feature controller
+    participant Rev as SemanticRevision
+    participant Status as VersionStatusController
+    participant Wf as VersionWorkflow
+    Client->>Fields: PUT or POST or DELETE content of the published version
+    Fields->>Filter: the input passes its field rules, otherwise 400
+    Filter->>Filter: GetAsync of the version's state; 409 unless draft or published
+    Filter->>Ctl: the action
+    Ctl-->>Filter: result
+    opt The version is published and the result is 2xx without an exception
+        Filter->>Rev: AdvanceAsync()
+    end
+    Filter-->>Client: result
+    Client->>Status: POST versions/{kind}/{id}/validation
+    Status->>Wf: CheckAsync(kind, id)
+    Note over Wf: Every publication rule of the kind; nothing is written
+    Wf-->>Status: violations
+    Status-->>Client: 200 VersionCheck with violations, empty when the version passes
+```
+
+A failed write, a 400 from the field rules or a 409 from a delete blocker, changed nothing, so it keeps the revision. Edits to a draft never advance it, because nothing reads drafts.
+
+**Sources:** [RequireEditableAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableAttribute.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionCheck.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionCheck.cs), [RequireEditableFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/RequireEditableFilterTests.cs).
 
 ## Retiring
 
-The drawing shows published to retired. Retirement rules guard metadata that runtime queries still read; today the only one is `ReleaseNotActiveRule` (`release_not_active`) for `semantic_release`, which refuses to retire the release `qe_database_info.active_release_id` points at.
+The drawing shows published to retired of a strict kind. Retirement rules guard metadata that runtime queries still read; today the only one is `ReleaseNotActiveRule` (`release_not_active`) for `semantic_release`, which refuses to retire the release `qe_database_info.active_release_id` points at.
 
 ```mermaid
 sequenceDiagram
@@ -137,10 +175,10 @@ sequenceDiagram
     participant Store as IVersionStore
     participant Rules as IRetirementRule
     participant Info as DatabaseInfoRecord gateway
-    participant Rev as SemanticRevision
     Ctl->>Wf: TransitionAsync(kind, id, retired)
     Wf->>Store: GetAsync(id)
     Store-->>Wf: VersionState, status published
+    Note over Wf: IsAllowed is false for a living kind, answered 409
     loop Each retirement rule whose Kind matches
         Wf->>Rules: EvaluateAsync(id)
         Note over Rules,Info: ReleaseNotActiveRule reads the active release ID
@@ -151,9 +189,6 @@ sequenceDiagram
         Wf-->>Ctl: Rejected, answered 422, status unchanged
     else No violation
         Wf->>Store: SetStatusAsync(id, retired, publishedAt kept)
-        opt dimension_version, mapping_version, bridge_version or assumption_set
-            Wf->>Rev: AdvanceAsync()
-        end
         Wf-->>Ctl: Applied with status retired
     end
 ```
@@ -168,7 +203,9 @@ The engine keys its metadata cache by `qe_database_info.semantic_revision`, so t
 
 | Trigger | Code | What changed |
 | --- | --- | --- |
-| Publishing or retiring a revision kind | `VersionWorkflow`, whose `RevisionKinds` are `dimension_version`, `mapping_version`, `bridge_version` and `assumption_set` | Published content the engine resolves by request time or pin, without a release activation |
+| Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living` | The published version, which the active assumption set now pins, and its retired predecessor |
+| Editing the published version of a living kind | `RequireEditableFilter`, after a successful write | Content queries read now |
+| Capturing or deleting an assumption set | `AssumptionSetService.CaptureAsync` and `DeleteAsync` | The set keys requests can name |
 | Activating a release | `ReleaseActivator.ActivateAsync`, after it writes `active_release_id` | The release every query runs on |
 | Editing a dataset | `DatasetService.UpdateAsync`, always | `qe_dataset.display_name` and `is_enabled` |
 | Editing a dimension | `DimensionService.UpdateAsync`, when `display_name` or `is_enabled` changed | `qe_dimension` identity |
@@ -176,9 +213,9 @@ The engine keys its metadata cache by `qe_database_info.semantic_revision`, so t
 | Editing a bridge | `BridgeService.UpdateAsync`, when the row changed | `qe_bridge.display_name` and `is_enabled` |
 | Editing a report | `ReportService.UpdateAsync`, when the row changed | `qe_report.display_name`, `report_type`, `is_enabled` and `payload_json`, which the engine caches with each report definition |
 
-Publishing or retiring a `dataset_version`, `calculation_model_version`, `report_version` or `semantic_release` never advances it: these reach queries only through the release that pins them, and activating a release advances it in `ReleaseActivator`. Editing a calculation model does not advance it either, because the engine reads only the model's key, which never changes.
+Publishing or retiring a `dataset_version` or `semantic_release` never advances it: these reach queries only through the release that pins them, and activating a release advances it in `ReleaseActivator`. Relabelling an assumption set does not advance it either, because the engine reads only its key and pins.
 
-**Sources:** [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [MappingSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingSetService.cs), [BridgeService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeService.cs), [ReportService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportService.cs).
+**Sources:** [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [MappingSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingSetService.cs), [BridgeService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeService.cs), [ReportService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportService.cs).
 
 ## Lifecycle handlers
 
@@ -186,10 +223,8 @@ The table lists the `IVersionLifecycleHandler` implementations registered today.
 
 | Handler | Kind | `OnValidatingAsync` | `OnPublishedAsync` | Registered in |
 | --- | --- | --- | --- | --- |
-| `ClosureBuilder` | `dimension_version` | Lists the version's members, deletes its `qe_dimension_closure` rows, and inserts one row per ancestor and descendant pair, depth 0 included; members in or below a parent cycle get none, and `hierarchy_acyclic` reports the cycle | Nothing | `AddDimensionsFeature`, first |
-| `PredecessorValidityCloser` | `dimension_version` | Nothing | Sets `valid_to` of every open-ended published version of the dimension that starts earlier to the new version's `valid_from`, the only change ever made to a published version | `AddDimensionsFeature`, second |
-| `CurrentBridgeVersionUpdater` | `bridge_version` | Nothing | Points `qe_bridge.current_bridge_version_id` at the new version; the pointer is authoring-only, because bindings pin bridge versions themselves | `AddMappingsAndBridgesFeature` |
-| `CurrentModelVersionUpdater` | `calculation_model_version` | Nothing | Points `qe_calculation_model.current_model_version_id` at the new version; authoring-only, because report versions pin model versions themselves | `AddCalculationModelsAndReportsFeature`, first |
-| `CurrentReportVersionUpdater` | `report_version` | Nothing | Points `qe_report.current_report_version_id` at the new version; authoring-only, because releases pin report versions themselves | `AddCalculationModelsAndReportsFeature`, second |
+| `PredecessorRetirer` | Each living kind | Nothing | Retires the identity's other published version, keeping its `published_at` | `AddAdminApplication`, one per kind |
+| `ClosureBuilder` | `dimension_version` | Lists the version's members, deletes its `qe_dimension_closure` rows, and inserts one row per ancestor and descendant pair, depth 0 included; members in or below a parent cycle get none, and `hierarchy_acyclic` reports the cycle. `DimensionMemberService` calls the same rebuild after every member write, so a live edit keeps the published closure current | Nothing | `AddDimensionsFeature` |
+| `ActiveSetPinner` | Each living kind | Nothing | Pins the version in the active assumption set, replacing its identity's pin | `AddReleasesAndSystemFeature`, one per kind |
 
-**Sources:** [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [PredecessorValidityCloser.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PredecessorValidityCloser.cs), [DimensionValidity.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionValidity.cs), [CurrentBridgeVersionUpdater.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/CurrentBridgeVersionUpdater.cs), [CurrentModelVersionUpdater.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/CurrentModelVersionUpdater.cs), [CurrentReportVersionUpdater.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/CurrentReportVersionUpdater.cs), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs).
+**Sources:** [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [DimensionMemberService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionMemberService.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [AdminApplicationServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Configuration/AdminApplicationServiceCollectionExtensions.cs), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs).

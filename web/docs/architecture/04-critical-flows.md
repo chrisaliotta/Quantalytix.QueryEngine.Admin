@@ -284,13 +284,14 @@ sequenceDiagram
 ```
 
 - Selecting another version hides the alert; selecting the version again shows it until the next transition, because the mutation keeps its last variables and error.
+- A published living version offers "Validate" instead: `useVersionCheck` posts to `.../versions/{kind}/{id}/validation`, which runs the same rules without changing the version and answers 200 with the violations. `VersionHeader` lists them with `RuleViolationList` in a destructive alert, or shows a toast when there are none, and keeps the answer with the version it was for.
 - The transition buttons are disabled while a change is pending. A 409 shows in the same alert, without a violation list.
 
 **Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [ApiErrorAlert.tsx](../../src/shared/ApiErrorAlert.tsx), [problemDetails.ts](../../src/api/problemDetails.ts), [problemDetails.test.ts](../../src/api/problemDetails.test.ts), [queryClient.ts](../../src/api/queryClient.ts), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx).
 
 ## 8. Cloning a version
 
-"Clone selected" in `VersionHeader` hands the selected version to the page, and each page clones in its own way. The drawing shows the dataset page, which clones at once, and the mapping set page, which asks for a dimension version first and reports the entries the clone dropped.
+"Clone selected" in `VersionHeader` hands the selected version to the page, and each page clones in its own way. The drawing shows the dataset page, which clones at once, and the mapping set page, which confirms in a dialog first.
 
 ```mermaid
 sequenceDiagram
@@ -312,28 +313,24 @@ sequenceDiagram
     else mapping set page
         Header->>MappingPage: onCloneVersion(selected.id)
         MappingPage->>Dialog: open with the source version
-        Note over Dialog: The dimension version picker starts at the latest published version of the set's dimension
         User->>Dialog: Create draft
-        Dialog->>Api: useCreateMappingVersion, POST .../mapping-sets/{mappingSetId}/versions with dimensionVersionId and cloneFromVersionId
-        Api-->>Dialog: CreatedMappingVersion with the version and droppedSourceKeys
+        Dialog->>Api: useCreateMappingVersion, POST .../mapping-sets/{mappingSetId}/versions with cloneFromVersionId
+        Api-->>Dialog: the new MappingVersion
         Dialog->>Cache: invalidate the mapping-versions lookups
-        Dialog->>MappingPage: onCreated(created), then the dialog closes
+        Dialog->>MappingPage: onCreated(version), then the dialog closes
         MappingPage->>MappingPage: toast, setSearchParams version to the new mappingVersionId, replace
-        opt droppedSourceKeys is not empty
-            MappingPage->>User: DroppedOnCloneAlert lists the dropped source keys until dismissed
-        end
     end
 ```
 
-- A mapping clone moves each entry to the member with the same key in the chosen dimension version; the API answers with the source keys that had no such member.
-- Dimensions clone through `NewVersionSheet`, which copies levels, members, range bands and pinned mapping versions and refreshes the `dimension-versions` and `mapping-versions` lookups. Bridges clone through `NewBridgeVersionDialog` and show `DroppedOnCloneAlert` for the mappings a clone dropped. Calculation models clone through `NewModelVersionDialog`, which copies every content row; reports clone through `NewReportVersionDialog` onto a chosen model version and show `DroppedOnCloneAlert` for the columns and formula lines whose metrics that version lacks. The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromReleaseId`, then opens the new release. Assumption sets offer no clone.
+- A clone copies the source's rows as they are. Entries, bridge mappings, binding groupings, report columns and lines name members, metrics and measures by key, so nothing is dropped; the publication rules check that the keys resolve in the published versions requests read them in.
+- Dimensions clone through `NewVersionSheet`, which copies levels, members and range bands. Bridges clone through `NewBridgeVersionDialog`, which copies the mappings. Calculation models clone through `NewModelVersionDialog`, which copies every content row; reports clone through `NewReportVersionDialog`, which starts from the source's model and default profile and copies the columns and lines. The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromReleaseId`, then opens the new release. Assumption sets are not versioned; "Capture" snapshots the active set and the active release under a new key.
 - What the API does for a clone is drawn in [the API's key actions](../../../api/docs/architecture/06-key-actions.md).
 
-**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [NewMappingVersionDialog.tsx](../../src/features/mappings/NewMappingVersionDialog.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [DroppedOnCloneAlert.tsx](../../src/shared/DroppedOnCloneAlert.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [NewVersionSheet.tsx](../../src/features/dimensions/NewVersionSheet.tsx), [dimensions/api.ts](../../src/features/dimensions/api.ts), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [NewBridgeVersionDialog.tsx](../../src/features/bridges/NewBridgeVersionDialog.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [NewReleaseSheet.tsx](../../src/features/releases/NewReleaseSheet.tsx).
+**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [NewMappingVersionDialog.tsx](../../src/features/mappings/NewMappingVersionDialog.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [NewVersionSheet.tsx](../../src/features/dimensions/NewVersionSheet.tsx), [dimensions/api.ts](../../src/features/dimensions/api.ts), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [NewBridgeVersionDialog.tsx](../../src/features/bridges/NewBridgeVersionDialog.tsx), [NewReportVersionDialog.tsx](../../src/features/reports/NewReportVersionDialog.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [NewReleaseSheet.tsx](../../src/features/releases/NewReleaseSheet.tsx), [CaptureSheet.tsx](../../src/features/assumption-sets/CaptureSheet.tsx).
 
 ## 9. Bulk paste of mapping entries
 
-Bulk paste replaces every entry of a draft mapping version with pasted lines. The drawing shows how the lines are read as they are typed, sent as one replace, and how the API's item errors come back on the lines they concern.
+Bulk paste replaces every entry of an editable mapping version, a draft or the published one, with pasted lines. The drawing shows how the lines are read as they are typed, sent as one replace, and how the API's item errors come back on the lines they concern.
 
 ```mermaid
 sequenceDiagram
@@ -346,13 +343,13 @@ sequenceDiagram
     participant Submit as FormDialog and useProblemSubmit
     participant Replace as useReplaceEntries
     participant Api as Admin API
-    User->>Entries: Bulk paste, on a draft version
-    Entries->>Paste: the entries and the pinned version's members
+    User->>Entries: Bulk paste, on an editable version
+    Entries->>Paste: the version and its entries
     Paste->>Bulk: initialText from writeEntryLines, read is readEntryLines
     loop while the user edits the lines
-        Bulk->>Lines: readEntryLines(text, members), through readPastedLines
-        Lines-->>Bulk: rows, lineNumbers and unresolved lines
-        Bulk->>User: the unresolved lines with reasons, and Replace with N entries
+        Bulk->>Lines: readEntryLines(text), through readPastedLines
+        Lines-->>Bulk: rows, lineNumbers and unreadable lines
+        Bulk->>User: the unreadable lines with reasons, and Replace with N entries
     end
     User->>Submit: Replace
     Submit->>Bulk: submit(values), after clearErrors and handleSubmit
@@ -374,7 +371,7 @@ sequenceDiagram
     end
 ```
 
-- `readPastedLines` skips blank lines, splits each line at its commas and trims the values, so leading zeros survive. `readEntryLines` expects `source_key,member_key` and resolves the member key among the members of the pinned dimension version; a line it cannot read is listed with its reason and left out of the replace.
+- `readPastedLines` skips blank lines, splits each line at its commas and trims the values, so leading zeros survive. `readEntryLines` expects `source_key,member_key` and keeps both keys as typed; a line without two values is listed with its reason and left out of the replace. A member key the dimension's published version lacks is reported by the publication rules, and on the published version by "Validate".
 - The text starts with the current entries, so the lines the user leaves alone are kept.
 - Bridge mappings use the same `BulkPasteDialog` through `BridgeMappingsPasteDialog` and `readMappingLines`.
 
@@ -418,26 +415,26 @@ sequenceDiagram
 
 **Sources:** [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [ActivateReleaseButton.tsx](../../src/features/releases/ActivateReleaseButton.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [useReleases.ts](../../src/features/releases/useReleases.ts), [queryClient.ts](../../src/api/queryClient.ts).
 
-## 11. Read-only rendering of non-drafts
+## 11. Editable and read-only versions
 
-Only drafts can change, so every versioned page renders a validated, published or retired version read-only while keeping its lifecycle actions. The drawing shows how the selected version's status reaches the tables, sheets and forms; arrows mean "decides" or "renders".
+A version takes content writes while it is a draft, and a living kind's published version keeps taking them, because requests read it. Every other version renders read-only while keeping its lifecycle actions. The drawing shows how the selected version's kind and status reach the tables, sheets and forms; arrows mean "decides" or "renders".
 
 ```mermaid
 flowchart TB
-    Selected["selected version: selectedVersion on detail pages, the record on the release and assumption set editors"]
-    IsDraft{"status is draft"}
+    Selected["selected version: selectedVersion on detail pages, the record on the release editor"]
+    IsEditable{"isEditable(kind, status): a draft, or a living kind's published version"}
     Editable["editable: toolbars, row actions, Save buttons, drag handles"]
-    ReadOnly["read-only: isDraft false"]
-    Hidden["toolbars, row-action cells, Edit settings and Capture buttons, drag handles: not rendered"]
+    ReadOnly["read-only: isEditable false"]
+    Hidden["toolbars, row-action cells, Edit buttons, drag handles: not rendered"]
     Sheets["selecting a row still opens its sheet, with readOnly"]
     SheetReadOnly["EntityFormSheet readOnly: FormReadOnlyContext true, fieldset disabled, Close and no submit button"]
     Inline["SettingsTab, dimension SettingsTab, RangeBandsTab: FormReadOnlyContext, no Save button"]
     Fields["useFormField: isDisabled, so the Monaco and CodeMirror editors turn read-only too"]
     Pinned["PinnedVersionsTable readOnly: no add picker, no remove column, no Save or Discard, version pickers disabled"]
-    Header["VersionHeader: transitions for the status, Clone selected, New version"]
-    Selected --> IsDraft
-    IsDraft -->|"yes"| Editable
-    IsDraft -->|"no"| ReadOnly
+    Header["VersionHeader: transitions for the status, Validate on a published living version, Clone selected, New version"]
+    Selected --> IsEditable
+    IsEditable -->|"yes"| Editable
+    IsEditable -->|"no"| ReadOnly
     ReadOnly --> Hidden
     ReadOnly --> Sheets
     Sheets --> SheetReadOnly
@@ -448,8 +445,9 @@ flowchart TB
     Selected -->|"regardless of status"| Header
 ```
 
-- On dataset, dimension, mapping set, bridge, calculation model and report pages `isDraft` is `selected?.status === 'draft'` for the version that `selectedVersion` picks; the release and assumption set editors compare the loaded record's `status`.
-- `PinnedVersionsTable` shows a release's manifest and report pins and an assumption set's pins. The report column and line editors hide their drag handles, add, remove, Save and Discard controls, and their sheets open read-only. The assumption set editor also hides "Edit settings" and "Capture effective versions" unless the set is a draft, and `MembersTab` turns off dragging.
-- `VersionHeader` does not read `isDraft`: it offers what `getVersionTransitions` allows for the status, "Clone selected" and "New version" when the page passes them, and "Delete draft" only on drafts.
+- Dimension, mapping set, bridge, calculation model and report pages pass `isEditable(kind, selected.status)` down for the version that `selectedVersion` picks. Dataset versions are strict, so the dataset page passes `isDraft`; the release editor compares the loaded record's `status` with `draft`.
+- `PinnedVersionsTable` shows a release's manifest. The report column and line editors hide their drag handles, add, remove, Save and Discard controls, and their sheets open read-only; `MembersTab` turns off dragging.
+- Assumption sets are not versioned and their pins are never edited by hand: `AssumptionPinsTable` lists them read-only, the active set follows every publish and reads the active release, and a historical set keeps the versions and the release it captured, which its page links to with the release's status. Either set can be relabelled, and a historical one deleted.
+- `VersionHeader` does not read `isEditable`: it offers what `getVersionTransitions` allows for the kind and status, "Validate" on a published living version, "Clone selected" and "New version" when the page passes them, and "Delete draft" only on drafts.
 
-**Sources:** [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DatasetVersionTabs.tsx](../../src/features/datasets/DatasetVersionTabs.tsx), [FieldsTab.tsx](../../src/features/datasets/FieldsTab.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [SettingsTab.tsx](../../src/features/datasets/SettingsTab.tsx), [EntityFormSheet.tsx](../../src/shared/EntityFormSheet.tsx), [FormReadOnlyContext.ts](../../src/shared/form/FormReadOnlyContext.ts), [useFormField.ts](../../src/shared/form/useFormField.ts), [ExpressionField.tsx](../../src/shared/form/ExpressionField.tsx), [JsonField.tsx](../../src/shared/form/JsonField.tsx), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [MembersTab.tsx](../../src/features/dimensions/MembersTab.tsx), [RangeBandsTab.tsx](../../src/features/dimensions/RangeBandsTab.tsx), [dimensions/SettingsTab.tsx](../../src/features/dimensions/SettingsTab.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [BridgeVersionPanel.tsx](../../src/features/bridges/BridgeVersionPanel.tsx), [BridgeMappings.tsx](../../src/features/bridges/BridgeMappings.tsx), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx).
+**Sources:** [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DatasetVersionTabs.tsx](../../src/features/datasets/DatasetVersionTabs.tsx), [FieldsTab.tsx](../../src/features/datasets/FieldsTab.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [SettingsTab.tsx](../../src/features/datasets/SettingsTab.tsx), [EntityFormSheet.tsx](../../src/shared/EntityFormSheet.tsx), [FormReadOnlyContext.ts](../../src/shared/form/FormReadOnlyContext.ts), [useFormField.ts](../../src/shared/form/useFormField.ts), [ExpressionField.tsx](../../src/shared/form/ExpressionField.tsx), [JsonField.tsx](../../src/shared/form/JsonField.tsx), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [AssumptionPinsTable.tsx](../../src/features/assumption-sets/AssumptionPinsTable.tsx), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [MembersTab.tsx](../../src/features/dimensions/MembersTab.tsx), [RangeBandsTab.tsx](../../src/features/dimensions/RangeBandsTab.tsx), [dimensions/SettingsTab.tsx](../../src/features/dimensions/SettingsTab.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [BridgeVersionPanel.tsx](../../src/features/bridges/BridgeVersionPanel.tsx), [BridgeMappings.tsx](../../src/features/bridges/BridgeMappings.tsx), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx).

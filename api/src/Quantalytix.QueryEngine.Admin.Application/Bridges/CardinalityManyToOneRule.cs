@@ -26,12 +26,12 @@ public sealed class CardinalityManyToOneRule(BridgeMappingSetReader reader) : IP
         return
         [
             .. set.Mappings
-                .GroupBy(mapping => mapping.SourceMemberId)
+                .GroupBy(mapping => mapping.SourceMemberKey)
                 .Where(group => group.Count() > 1)
                 .Select(group => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Source member {set.DescribeSource(group.Key)} maps to {group.Count()} targets ({set.DescribeTargets(group)}); "
+                    Message = $"Source member '{group.Key}' maps to {group.Count()} targets ({BridgeMappingSet.DescribeTargets(group)}); "
                         + "cardinality many_to_one allows one."
                 })
         ];

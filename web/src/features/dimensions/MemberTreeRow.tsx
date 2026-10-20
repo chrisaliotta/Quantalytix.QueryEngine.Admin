@@ -9,7 +9,7 @@ import type { DimensionMember } from './types';
 export interface MemberTreeRowProps extends NestableRenderItemProps<DimensionMember> {
   /** Level keys by level id, for the level badge. */
   levelKeys: ReadonlyMap<number, string>;
-  isDraft: boolean;
+  isEditable: boolean;
   canDrag: boolean;
   onOpen: (member: DimensionMember) => void;
   onAddChild: (member: DimensionMember) => void;
@@ -17,7 +17,7 @@ export interface MemberTreeRowProps extends NestableRenderItemProps<DimensionMem
 }
 
 /**
- * One member of the Nestable tree: collapse toggle, drag handle (drafts only), key, label, level and flags, and its
+ * One member of the Nestable tree: collapse toggle, drag handle (editable versions only), key, label, level and flags, and its
  * actions. A member shown away from its stored parent (a foreign parent or a cycle) is flagged as detached.
  */
 export function MemberTreeRow({
@@ -34,7 +34,7 @@ export function MemberTreeRow({
   attributes,
   activatorListeners,
   levelKeys,
-  isDraft,
+  isEditable,
   canDrag,
   onOpen,
   onAddChild,
@@ -81,9 +81,9 @@ export function MemberTreeRow({
       </button>
       <div data-slot="member-tree-actions" className="flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
         <Button type="button" variant="ghost" size="icon-xs" aria-label={`Open ${member.memberKey}`} onClick={() => onOpen(member)}>
-          <OpenIcon isDraft={isDraft} />
+          <OpenIcon isEditable={isEditable} />
         </Button>
-        {isDraft && (
+        {isEditable && (
           <>
             <Button type="button" variant="ghost" size="icon-xs" aria-label={`Add a child to ${member.memberKey}`} onClick={() => onAddChild(member)}>
               <Plus />
@@ -115,8 +115,8 @@ function CollapseToggle({ collapsed, onCollapse }: { collapsed: boolean; onColla
   );
 }
 
-function OpenIcon({ isDraft }: { isDraft: boolean }) {
-  if (isDraft) {
+function OpenIcon({ isEditable }: { isEditable: boolean }) {
+  if (isEditable) {
     return <Pencil />;
   }
   return <Eye />;

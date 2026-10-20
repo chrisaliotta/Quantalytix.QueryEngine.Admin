@@ -35,9 +35,9 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
         return Ok(await members.ListAsync(dimensionVersionId, cancellationToken));
     }
 
-    /// <summary>Adds a member to a draft version.</summary>
+    /// <summary>Adds a member to a draft or published version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The new member.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created member.</returns>
@@ -45,9 +45,9 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Create(
@@ -61,7 +61,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
 
     /// <summary>Replaces a member's editable attributes, including its parent and level; its key stays.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="member">The draft version and its member.</param>
+    /// <param name="member">The draft or published version and its member.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored member.</returns>
@@ -69,9 +69,9 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="400">The member is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{memberId:long}")]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Update(
@@ -85,7 +85,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
 
     /// <summary>Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The members' new parents and sort orders.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The version's members after the change.</returns>
@@ -93,9 +93,9 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="400">A member is placed twice or under itself; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("order")]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<DimensionMemberRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<DimensionMemberRecord>>> Reorder(
@@ -107,18 +107,18 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
         return Ok(await members.ReorderAsync(dimensionVersionId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it.</summary>
+    /// <summary>Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="member">The draft version and its member.</param>
+    /// <param name="member">The draft or published version and its member.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft or something references the member.</returns>
+    /// <returns>No content; 409 when the version is neither a draft nor published or something references the member.</returns>
     /// <response code="204">The member is deleted.</response>
     /// <response code="400">The member is not in the version; the error is keyed <c>memberId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names what references the member.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names what references the member.</response>
     [HttpDelete("{memberId:long}")]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] MemberReference member, CancellationToken cancellationToken)

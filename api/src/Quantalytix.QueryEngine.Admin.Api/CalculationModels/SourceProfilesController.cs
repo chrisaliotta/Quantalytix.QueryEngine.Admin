@@ -31,9 +31,9 @@ public sealed class SourceProfilesController(IModelVersionContent<SourceProfile,
         return Ok(await profiles.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Adds a source profile with its picks to a draft model version.</summary>
+    /// <summary>Adds a source profile with its picks to a draft or published model version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft model version.</param>
+    /// <param name="versionId">The draft or published model version.</param>
     /// <param name="input">The new profile.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created profile.</returns>
@@ -41,9 +41,9 @@ public sealed class SourceProfilesController(IModelVersionContent<SourceProfile,
     /// <response code="400">The input breaks a field rule, such as a pick of another variable's source; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<SourceProfile>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<SourceProfile>> Create(string tenantId, long versionId, SourceProfileInput input, CancellationToken cancellationToken)
@@ -51,9 +51,9 @@ public sealed class SourceProfilesController(IModelVersionContent<SourceProfile,
         return Ok(await profiles.CreateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>Replaces a source profile of a draft model version and all its picks, keeping the profile's ID.</summary>
+    /// <summary>Replaces a source profile of a draft or published model version and all its picks, keeping the profile's ID.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="profile">The draft model version and its profile.</param>
+    /// <param name="profile">The draft or published model version and its profile.</param>
     /// <param name="input">The profile's new values.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored profile.</returns>
@@ -61,9 +61,9 @@ public sealed class SourceProfilesController(IModelVersionContent<SourceProfile,
     /// <response code="400">The profile is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<SourceProfile>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<SourceProfile>> Update(
@@ -75,18 +75,18 @@ public sealed class SourceProfilesController(IModelVersionContent<SourceProfile,
         return Ok(await profiles.UpdateAsync(profile.VersionId, profile.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a source profile of a draft model version with its picks, unless a report version runs under it by default.</summary>
+    /// <summary>Deletes a source profile of a draft or published model version with its picks, unless a live report version runs under it by default.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="profile">The draft model version and its profile.</param>
+    /// <param name="profile">The draft or published model version and its profile.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when nothing was deleted.</returns>
     /// <response code="204">The profile is deleted.</response>
     /// <response code="400">The profile is not in the version; the error is keyed <c>itemId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the report versions whose default profile it is.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names the report versions whose default profile it is.</response>
     [HttpDelete("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<SourceProfile> profile, CancellationToken cancellationToken)

@@ -4,58 +4,44 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
-using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Confirms that cloning a report version onto another model version follows metrics by key: columns and formula lines move
-/// to the new model's metrics with the same keys, a column whose metric the new model lacks is dropped with the formula line
-/// that places its value there, and that line's children move up to its parent. Authors clone a report to adopt a new model
-/// version, so the clone must keep every line it can and name what it dropped.
+/// Confirms that cloning a report version copies its columns and lines under new IDs, with their metric, measure and member
+/// keys as they are, and points each copied line at the copies of its parent and value column. Columns and lines name
+/// metrics and members by key, so the copy reads whichever model and dimension versions an assumption set pins; a copy that
+/// pointed back at the source's rows would let edits to the draft change the published version.
 /// </summary>
 public sealed class ReportVersionClonerTests
 {
-    /// <summary>The new model version, which has balance and yield but no margin.</summary>
-    private const long TargetModelVersionId = 42;
-
     /// <summary>
-    /// Version 61 shows amount, yield and margin columns; its assets section holds the margin formula line, under which the
-    /// loans member line sits.
+    /// Version 61 shows amount and yield columns; its assets section holds the yield formula line, under which the loans
+    /// member line sits.
     /// </summary>
+    /// <returns>A task that completes when the clone is checked.</returns>
     [Fact]
-    public async Task MetricsFollowTheirKeys_AndDroppedLinesHandTheirChildrenUp()
+    public async Task ColumnsAndLines_AreCopiedWithParentsAndValueColumnsRemapped()
     {
-        var versions = new InMemoryTableGateway<ReportVersionRecord>(ReportVersion(ReportVersionId));
         var columns = new InMemoryTableGateway<ReportColumnRecord>(
-            Column(1, "amount", ReportValueKinds.Variable, 51, 1),
-            Column(2, "yield", ReportValueKinds.Calculated, 91, 2),
-            Column(3, "margin", ReportValueKinds.Calculated, 92, 3));
+            Column(1, "amount", ReportValueKinds.Variable, "balance", 1),
+            Column(2, "yield", ReportValueKinds.Calculated, "yield", 2));
         var lines = new InMemoryTableGateway<ReportLineRecord>(
             Line(11, "assets", ReportLineKinds.Section, null, 1),
-            Line(12, "margin_line", ReportLineKinds.Formula, 11, 1) with { CalculatedMeasureId = 92, ValueColumnId = 3 },
+            Line(12, "yield_line", ReportLineKinds.Formula, 11, 1) with { CalculatedMeasureKey = "yield", ValueColumnId = 2 },
             Line(13, "loans", ReportLineKinds.Member, 12, 1) with { ReportMemberKey = "loans" });
-        var metrics = new ModelMetricsReader(
-            versions,
-            new InMemoryTableGateway<VariableRecord>(Variable(51, "balance"), Variable(52, "balance") with { ModelVersionId = TargetModelVersionId }),
-            new InMemoryTableGateway<CalculatedMeasureRecord>(
-                Calculated(91, "yield", "[m.balance] / 2"),
-                Calculated(92, "margin", "[m.balance] / 4"),
-                Calculated(93, "yield", "[m.balance] / 2") with { ModelVersionId = TargetModelVersionId }));
-        var target = ReportVersion(62, TargetModelVersionId);
 
-        var created = await new ReportVersionCloner(versions, columns, lines, metrics, new SequentialIdGenerator(1000))
-            .CloneAsync(ReportVersionId, target, TestContext.Current.CancellationToken);
+        await new ReportVersionCloner(columns, lines, new SequentialIdGenerator(1000))
+            .CloneAsync(ReportVersionId, ReportVersion(62), TestContext.Current.CancellationToken);
 
-        Assert.Equal(["margin"], created.DroppedColumns);
-        Assert.Equal(["margin_line"], created.DroppedLines);
-        Assert.Equal(
-            [("amount", (long?)52, (long?)null), ("yield", null, 93)],
-            columns.All.Where(column => column.ReportVersionId == 62).OrderBy(column => column.SortOrder)
-                .Select(column => (column.ColumnKey, column.VariableId, column.CalculatedMeasureId)));
-        var cloned = lines.All.Where(line => line.ReportVersionId == 62).ToDictionary(line => line.LineKey);
-        Assert.Equal(["assets", "loans"], cloned.Keys.Order());
-        Assert.Equal(cloned["assets"].ReportLineId, cloned["loans"].ParentReportLineId);
+        var clonedColumns = columns.All.Where(column => column.ReportVersionId == 62).ToDictionary(column => column.ColumnKey);
+        var clonedLines = lines.All.Where(line => line.ReportVersionId == 62).ToDictionary(line => line.LineKey);
+        Assert.Equal([("amount", "balance"), ("yield", "yield")], clonedColumns.Values.OrderBy(column => column.SortOrder).Select(column => (column.ColumnKey, column.MetricKey)));
+        Assert.DoesNotContain(clonedColumns.Values, column => column.ReportColumnId is 1 or 2);
+        Assert.Equal(clonedLines["assets"].ReportLineId, clonedLines["yield_line"].ParentReportLineId);
+        Assert.Equal(clonedLines["yield_line"].ReportLineId, clonedLines["loans"].ParentReportLineId);
+        Assert.Equal(clonedColumns["yield"].ReportColumnId, clonedLines["yield_line"].ValueColumnId);
+        Assert.Equal(("yield", "loans"), (clonedLines["yield_line"].CalculatedMeasureKey, clonedLines["loans"].ReportMemberKey));
     }
 }

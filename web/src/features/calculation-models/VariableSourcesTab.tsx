@@ -6,7 +6,7 @@ import type { VariableSource } from './types';
 import { VariableSourceSheet } from './VariableSourceSheet';
 
 /** The version's variable sources: where each variable can read its values. */
-export function VariableSourcesTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function VariableSourcesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   const variables = useLookup('variables', versionId);
   const datasets = useLookup('datasets');
   const variableKeys = new Map(variables.data?.map(item => [item.id, item.key]));
@@ -26,13 +26,13 @@ export function VariableSourcesTab({ versionId, isDraft }: { versionId: number; 
     <ModelContentTab
       kind="variable-sources"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="source"
       identify={source => ({ id: source.variableSourceId, key: source.sourceKey })}
       deleteDescription="The profile picks and override routes that name the source are deleted too."
       renderSheet={(source, onClose) => (
-        <VariableSourceSheet versionId={versionId} source={source} readOnly={!isDraft} onClose={onClose} />
+        <VariableSourceSheet versionId={versionId} source={source} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

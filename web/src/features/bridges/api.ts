@@ -125,7 +125,7 @@ export function useDeleteBridge() {
   });
 }
 
-/** Creates a draft version of a bridge, empty or cloned; the answer names the mappings a clone dropped. */
+/** Creates a draft version of a bridge, empty or a copy of another version's mappings. */
 export function useCreateBridgeVersion(bridgeId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -140,7 +140,7 @@ export function useCreateBridgeVersion(bridgeId: number) {
   });
 }
 
-/** Edits a draft version's endpoint versions, cardinality and allocation mode. */
+/** Edits a draft or published version's cardinality and allocation mode. */
 export function useUpdateBridgeVersion(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -155,7 +155,7 @@ export function useUpdateBridgeVersion(versionId: number) {
   });
 }
 
-/** Deletes a draft version with its mappings and clears the bridge's pointer to it; a 409 names its bindings. */
+/** Deletes a draft version with its mappings. */
 export function useDeleteBridgeVersion() {
   const tenantId = useTenantId();
   return useMutation({
@@ -169,7 +169,7 @@ export function useDeleteBridgeVersion() {
   });
 }
 
-/** Replaces every mapping of a draft version; the stored mappings replace the cached list. */
+/** Replaces every mapping of a draft or published version; the stored mappings replace the cached list. */
 export function useReplaceBridgeMappings(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -33,22 +32,22 @@ public sealed class ReportVersionsController(ReportVersionService versions) : Co
     }
 
     /// <summary>
-    /// Creates a draft with the report's next version number: empty, or cloned from <c>cloneFromVersionId</c>, whose columns
-    /// and lines move to the metrics with the same keys in the new model version.
+    /// Creates a draft with the report's next version number: empty, or with copies of the columns and lines of
+    /// <c>cloneFromVersionId</c>.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
     /// <param name="reportId">The report.</param>
-    /// <param name="input">The report dimension, model version, defaults and optional clone source.</param>
+    /// <param name="input">The report dimension, calculation model, defaults and optional clone source.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created draft and the columns and lines the clone dropped.</returns>
-    /// <response code="200">The created draft, with the cloned columns and lines whose metrics the new model version lacks.</response>
+    /// <returns>The created draft.</returns>
+    /// <response code="200">The created draft.</response>
     /// <response code="400">The input breaks a field rule, such as a clone source of another report; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("reports/{reportId:long}/versions")]
-    [ProducesResponseType<CreatedReportVersion>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ReportVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<CreatedReportVersion>> Create(
+    public async Task<ActionResult<ReportVersionRecord>> Create(
         string tenantId,
         long reportId,
         NewReportVersionInput input,
@@ -73,11 +72,11 @@ public sealed class ReportVersionsController(ReportVersionService versions) : Co
     }
 
     /// <summary>
-    /// Replaces a draft version's report dimension, default profile and defaults; its model version, lines and columns stay as
-    /// they are.
+    /// Replaces a draft or published version's default profile, payload and defaults; its report dimension, model, lines and
+    /// columns stay as they are.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft report version.</param>
+    /// <param name="versionId">The draft or published report version.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored version.</returns>
@@ -85,9 +84,9 @@ public sealed class ReportVersionsController(ReportVersionService versions) : Co
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("report-versions/{versionId:long}")]
-    [RequireDraft(VersionKinds.ReportVersion, "versionId")]
+    [RequireEditable(VersionKinds.ReportVersion, "versionId")]
     [ProducesResponseType<ReportVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<ReportVersionRecord>> Update(
@@ -99,25 +98,21 @@ public sealed class ReportVersionsController(ReportVersionService versions) : Co
         return Ok(await versions.UpdateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>
-    /// Deletes a draft version that no release pins, with its lines and columns, and clears the report's current-version
-    /// pointer when it named the version.
-    /// </summary>
+    /// <summary>Deletes a draft version with its lines and columns.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="versionId">The draft report version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft or a release pins it.</returns>
+    /// <returns>No content; 409 when the version is not a draft.</returns>
     /// <response code="204">The version, its lines and its columns are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the releases that pin it.</response>
+    /// <response code="409">Nothing was deleted: the version is not a draft.</response>
     [HttpDelete("report-versions/{versionId:long}")]
     [RequireDraft(VersionKinds.ReportVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string tenantId, long versionId, CancellationToken cancellationToken)
     {
-        var conflict = await versions.DeleteAsync(versionId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        await versions.DeleteAsync(versionId, cancellationToken);
         return NoContent();
     }
 }

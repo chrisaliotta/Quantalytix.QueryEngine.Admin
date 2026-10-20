@@ -32,9 +32,9 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
         return Ok(await calculatedMeasures.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Adds a calculated measure to a draft model version.</summary>
+    /// <summary>Adds a calculated measure to a draft or published model version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft model version.</param>
+    /// <param name="versionId">The draft or published model version.</param>
     /// <param name="input">The new calculated measure.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created calculated measure.</returns>
@@ -42,9 +42,9 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
     /// <response code="400">The input breaks a field rule, such as a formula that does not parse or reads a dataset field; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Create(string tenantId, long versionId, CalculatedMeasureInput input, CancellationToken cancellationToken)
@@ -52,9 +52,9 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
         return Ok(await calculatedMeasures.CreateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>Replaces a calculated measure of a draft model version, keeping its ID.</summary>
+    /// <summary>Replaces a calculated measure of a draft or published model version, keeping its ID.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="measure">The draft model version and its calculated measure.</param>
+    /// <param name="measure">The draft or published model version and its calculated measure.</param>
     /// <param name="input">The calculated measure's new values.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored calculated measure.</returns>
@@ -62,9 +62,9 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
     /// <response code="400">The calculated measure is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Update(
@@ -76,18 +76,18 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
         return Ok(await calculatedMeasures.UpdateAsync(measure.VersionId, measure.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a calculated measure of a draft model version, unless a report column returns it or a formula line evaluates it.</summary>
+    /// <summary>Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula line evaluates it.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="measure">The draft model version and its calculated measure.</param>
+    /// <param name="measure">The draft or published model version and its calculated measure.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when nothing was deleted.</returns>
     /// <response code="204">The calculated measure is deleted.</response>
     /// <response code="400">The calculated measure is not in the version; the error is keyed <c>itemId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the report columns and lines that use the measure.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns and lines that use the measure.</response>
     [HttpDelete("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure, CancellationToken cancellationToken)

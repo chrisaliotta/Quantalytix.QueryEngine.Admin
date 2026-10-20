@@ -1,5 +1,4 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
@@ -7,7 +6,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 public sealed class ReportLineService(
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportColumnRecord> columns,
-    ModelMetricsReader metrics,
     IIdGenerator ids)
 {
     /// <summary>Lists a version's lines.</summary>
@@ -21,17 +19,16 @@ public sealed class ReportLineService(
     }
 
     /// <summary>
-    /// Replaces a draft version's line tree with the given pre-order list. Each line's sort order is its position among its
-    /// siblings; a line that carries its ID keeps it, lines the list leaves out are deleted, and keys become the IDs the rows
-    /// store: parents by line key, formula measures by key in the report's model version, value columns by column key.
+    /// Replaces a version's line tree with the given pre-order list. Each line's sort order is its position among its siblings;
+    /// a line that carries its ID keeps it, lines the list leaves out are deleted, and parents and value columns become the IDs
+    /// the rows store, by line key and column key. Member and calculated measure keys are stored as keys.
     /// </summary>
-    /// <param name="versionId">The draft report version.</param>
+    /// <param name="versionId">The draft or published report version.</param>
     /// <param name="input">The complete, validated line tree.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>The stored lines by parent, then sort order.</returns>
     public async Task<IReadOnlyList<ReportLineRecord>> ReplaceAsync(long versionId, ReportLinesInput input, CancellationToken cancellationToken)
     {
-        var model = await metrics.ReadForReportAsync(versionId, cancellationToken);
         var columnIds = (await columns.ListAsync(new { ReportVersionId = versionId }, cancellationToken))
             .ToDictionary(column => column.ColumnKey, column => column.ReportColumnId, StringComparer.Ordinal);
         var lineIds = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -52,7 +49,7 @@ public sealed class ReportLineService(
                 LineKind = line.LineKind,
                 ParentReportLineId = line.ParentLineKey is { } parent ? lineIds[parent] : null,
                 ReportMemberKey = line.ReportMemberKey,
-                CalculatedMeasureId = line.CalculatedMeasureKey is { } measure ? model.IdOf(ReportValueKinds.Calculated, measure) : null,
+                CalculatedMeasureKey = line.CalculatedMeasureKey,
                 ValueColumnId = line.ValueColumnKey is { } column ? columnIds[column] : null,
                 SortOrder = siblings[siblingKey],
                 IsVisible = line.IsVisible,

@@ -2,10 +2,14 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
-/// <summary>Reads and edits the members of a dimension version: the nodes of its authoritative member tree.</summary>
+/// <summary>
+/// Reads and edits the members of a dimension version: the nodes of its authoritative member tree. Every write rebuilds the
+/// version's closure, so an edit to the published version reaches queries with its hierarchy intact.
+/// </summary>
 public sealed class DimensionMemberService(
     ITableGateway<DimensionMemberRecord> members,
     DimensionDeleteChecks deleteChecks,
+    ClosureBuilder closure,
     IIdGenerator ids)
 {
     /// <summary>Lists a version's members.</summary>
@@ -18,8 +22,8 @@ public sealed class DimensionMemberService(
         return [.. rows.OrderBy(row => row.SortOrder).ThenBy(row => row.MemberKey, StringComparer.OrdinalIgnoreCase)];
     }
 
-    /// <summary>Adds a member to a draft version.</summary>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <summary>Adds a member to a draft or published version.</summary>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The new member.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The stored member.</returns>
@@ -39,11 +43,12 @@ public sealed class DimensionMemberService(
             Properties = input.Properties
         };
         await members.InsertAsync(member, cancellationToken);
+        await closure.RebuildAsync(dimensionVersionId, cancellationToken);
         return member;
     }
 
     /// <summary>Replaces a member's editable attributes; its key stays.</summary>
-    /// <param name="reference">The draft version and its member.</param>
+    /// <param name="reference">The draft or published version and its member.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>The stored member.</returns>
@@ -61,6 +66,7 @@ public sealed class DimensionMemberService(
             Properties = input.Properties
         };
         await members.UpdateAsync(updated, cancellationToken);
+        await closure.RebuildAsync(reference.DimensionVersionId, cancellationToken);
         return updated;
     }
 
@@ -68,7 +74,7 @@ public sealed class DimensionMemberService(
     /// Stores a drag-and-drop reparent or reorder: one update per member whose parent or sort order changed. Every placement
     /// is resolved against the version's members before anything is written.
     /// </summary>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The new placements of the version's members.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>The version's members after the change, by sort order, then key.</returns>
@@ -80,11 +86,12 @@ public sealed class DimensionMemberService(
             .Where(member => member != stored[member.MemberId])
             .ToList();
         foreach (var member in changed) await members.UpdateAsync(member, cancellationToken);
+        await closure.RebuildAsync(dimensionVersionId, cancellationToken);
         return await ListAsync(dimensionVersionId, cancellationToken);
     }
 
     /// <summary>Deletes a member that has no children and that no mapping entry, range band or bridge mapping references.</summary>
-    /// <param name="reference">The draft version and its member.</param>
+    /// <param name="reference">The draft or published version and its member.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
     /// <returns>Null when the member was deleted; otherwise the detail naming what blocks the delete.</returns>
     public async Task<string?> DeleteAsync(MemberReference reference, CancellationToken cancellationToken)
@@ -93,6 +100,7 @@ public sealed class DimensionMemberService(
         var conflict = await deleteChecks.MemberAsync(member, cancellationToken);
         if (conflict is not null) return conflict;
         await members.DeleteAsync(new { reference.MemberId }, cancellationToken);
+        await closure.RebuildAsync(reference.DimensionVersionId, cancellationToken);
         return null;
     }
 }

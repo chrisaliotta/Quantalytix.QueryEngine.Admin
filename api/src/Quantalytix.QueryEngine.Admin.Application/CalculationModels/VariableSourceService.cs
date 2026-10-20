@@ -59,7 +59,6 @@ public sealed class VariableSourceService(ITableGateway<VariableSourceRecord> so
             TimeFieldKey = input.TimeFieldKey,
             MeasureKey = input.MeasureKey,
             SourceFilterJson = input.SourceFilterJson,
-            ClassificationAsOf = ClassificationTimes.ObservationTime,
             IsEnabled = input.IsEnabled
         };
     }

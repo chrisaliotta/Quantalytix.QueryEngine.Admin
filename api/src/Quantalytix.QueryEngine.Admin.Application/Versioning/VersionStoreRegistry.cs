@@ -15,4 +15,12 @@ public sealed class VersionStoreRegistry(IEnumerable<IVersionStore> stores)
     {
         return _stores[kind];
     }
+
+    /// <summary>Returns the store of a living kind.</summary>
+    /// <param name="kind">A living <c>version_kind</c> value.</param>
+    /// <returns>The kind's store.</returns>
+    public ILivingVersionStore GetLiving(string kind)
+    {
+        return (ILivingVersionStore)_stores[kind];
+    }
 }

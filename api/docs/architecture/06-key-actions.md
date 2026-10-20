@@ -138,22 +138,23 @@ The generated column holds what the engine would compute for the field: `get_jso
 
 ## Bulk-replacing mapping entries
 
-The drawing shows `PUT .../mapping-versions/{versionId}/entries`, which replaces a draft's complete entry list. The whole list is validated before the old rows are deleted.
+The drawing shows `PUT .../mapping-versions/{versionId}/entries`, which replaces a version's complete entry list. The whole list is validated before the old rows are deleted; on the published version the write is live, so it advances the semantic revision.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Web SPA
     participant Filter as ValidationFilter
-    participant Draft as RequireDraftFilter
+    participant Editable as RequireEditableFilter
     participant Ctl as MappingEntriesController
     participant Svc as MappingEntryService
     participant Ids as IIdGenerator
     participant Entries as DimensionMappingRecord gateway
+    participant Rev as SemanticRevision
     Client->>Filter: PUT mapping-versions/{versionId}/entries with the complete list
-    Filter->>Filter: MappingEntriesInputValidator, source keys fit and are unique, members exist
-    Filter->>Draft: valid
-    Draft->>Ctl: the mapping_version is a draft
+    Filter->>Filter: MappingEntriesInputValidator, source keys and member keys fit and source keys are unique
+    Filter->>Editable: valid
+    Editable->>Ctl: the mapping_version is a draft or published
     Ctl->>Svc: ReplaceAsync(versionId, input)
     loop Each entry
         Svc->>Ids: NextId()
@@ -161,12 +162,16 @@ sequenceDiagram
     Svc->>Entries: DeleteAsync(MappingVersionId)
     Svc->>Entries: InsertManyAsync(rows), one INSERT per 500 rows
     Svc-->>Ctl: entries by source key
-    Ctl-->>Client: 200 entries under new IDs
+    Ctl-->>Editable: 200 entries under new IDs
+    opt The version is published
+        Editable->>Rev: AdvanceAsync()
+    end
+    Editable-->>Client: 200 entries under new IDs
 ```
 
-`BridgeMappingService.ReplaceAsync` replaces a bridge version's mappings the same way, `DeleteAsync` by `BridgeVersionId` then `InsertManyAsync`, but allocates no IDs: a bridge mapping's key is its bridge version, source member and target member. Whether entries map to members of the pinned dimension version is checked later, by the `entry_member_in_version` and `entry_member_assignable` rules.
+`BridgeMappingService.ReplaceAsync` replaces a bridge version's mappings the same way, `DeleteAsync` by `BridgeVersionId` then `InsertManyAsync` under new mapping IDs. Whether the member keys name members of the published version of the set's dimension is checked by the `entry_member_in_version` and `entry_member_assignable` rules, when a draft is validated or when an author runs the Validate check of the published version.
 
-**Sources:** [MappingEntriesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Mappings/MappingEntriesController.cs), [MappingEntryService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingEntryService.cs), [MappingEntriesInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingEntriesInputValidator.cs), [BridgeMappingService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeMappingService.cs), [TableCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableCatalog.cs), [StarRocksTableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/StarRocksTableGateway.cs).
+**Sources:** [MappingEntriesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Mappings/MappingEntriesController.cs), [MappingEntryService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingEntryService.cs), [MappingEntriesInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingEntriesInputValidator.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [BridgeMappingService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeMappingService.cs), [StarRocksTableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/StarRocksTableGateway.cs).
 
 ## Saving a measure
 
@@ -216,7 +221,7 @@ Every formula is derived again on every save, because a formula may name a measu
 
 ## Validating and publishing a dimension version
 
-The drawing shows two requests to the status endpoint for one `dimension_version`: validated, then published. Validation rebuilds the closure before the rules run; publishing closes the open-ended predecessor and advances the semantic revision.
+The drawing shows two requests to the status endpoint for one `dimension_version`: validated, then published. Validation rebuilds the closure before the rules run, and the rules check that the version keeps every key live objects name; publishing retires the version it replaces, repoints the active assumption set and advances the semantic revision.
 
 ```mermaid
 sequenceDiagram
@@ -225,45 +230,41 @@ sequenceDiagram
     participant Wf as VersionWorkflow
     participant Store as DimensionVersionStore
     participant Closure as ClosureBuilder
-    participant Closer as PredecessorValidityCloser
-    participant Members as DimensionMemberRecord gateway
-    participant ClosureRows as DimensionClosureRecord gateway
     participant Rules as dimension_version rules
-    participant Versions as DimensionVersionRecord gateway
+    participant Consumers as DimensionConsumers
+    participant Retirer as PredecessorRetirer
+    participant Pinner as ActiveSetPinner
     participant Rev as SemanticRevision
     Note over Ctl,Rev: First request, status validated
     Ctl->>Wf: TransitionAsync(dimension_version, id, validated)
     Wf->>Store: GetAsync(id)
     Wf->>Closure: OnValidatingAsync(id)
-    Closure->>Members: ListAsync(DimensionVersionId)
-    Closure->>ClosureRows: DeleteAsync(DimensionVersionId)
-    Closure->>ClosureRows: InsertManyAsync(a row per ancestor and descendant pair, depth 0 included)
-    Wf->>Closer: OnValidatingAsync(id), nothing to do
-    loop The 12 dimension_version rules in registration order
+    Note over Closure: Deletes the version's closure rows and inserts a row per ancestor and descendant pair, depth 0 included
+    loop The 11 dimension_version rules in registration order
         Wf->>Rules: EvaluateAsync(id)
     end
+    Note over Rules,Consumers: dimension_consumers_resolve lists the keys live bindings, mapping entries, bridge mappings and reports name, and reports each one the version lacks
+    Rules->>Consumers: ListAsync(DimensionId)
     Wf->>Store: SetStatusAsync(id, validated)
     Note over Ctl,Rev: Second request, status published
     Ctl->>Wf: TransitionAsync(dimension_version, id, published)
     Wf->>Store: GetAsync(id)
     Wf->>Store: SetStatusAsync(id, published, publishedAt)
+    Wf->>Retirer: OnPublishedAsync(id)
+    Retirer->>Store: PublishedSiblingIdsAsync(id), then SetStatusAsync(predecessor, retired, its publishedAt)
     Wf->>Closure: OnPublishedAsync(id), nothing to do
-    Wf->>Closer: OnPublishedAsync(id)
-    Closer->>Versions: GetAsync(DimensionVersionId)
-    Closer->>Versions: ListAsync(DimensionId, Status published)
-    loop Each open-ended published predecessor that starts earlier
-        Closer->>Versions: UpdateAsync(predecessor with ValidTo set to the new ValidFrom)
-    end
+    Wf->>Pinner: OnPublishedAsync(id)
+    Note over Pinner: Upserts the active set's pin of the dimension to the new version
     Wf->>Rev: AdvanceAsync()
 ```
 
-`validity_overlap` lets an open-ended published predecessor that starts earlier pass, because publishing closes it; any other overlap with a published version rejects the change. The predecessor's new `valid_to` is the only change ever made to a published version, and the revision advance that follows makes the engine reload it.
+Bindings, mapping entries, bridge mappings and report lines name members by key, so none of them changes: from the revision advance on, the engine resolves their keys in the new version. Historical assumption sets keep pinning the retired predecessor, which never changes again.
 
-**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [DimensionVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DimensionVersionStore.cs), [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [PredecessorValidityCloser.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PredecessorValidityCloser.cs), [ValidityOverlapRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ValidityOverlapRule.cs), [DimensionValidity.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionValidity.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [ClosureBuilderTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/ClosureBuilderTests.cs), [PredecessorValidityCloserTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/PredecessorValidityCloserTests.cs).
+**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [DimensionVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DimensionVersionStore.cs), [ClosureBuilder.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/ClosureBuilder.cs), [DimensionConsumersResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumersResolveRule.cs), [DimensionConsumers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumers.cs), [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs), [ClosureBuilderTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/ClosureBuilderTests.cs), [DimensionConsumersTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Dimensions/DimensionConsumersTests.cs), [VersionWorkflowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/VersionWorkflowTests.cs).
 
 ## Publishing a bridge version
 
-The drawing shows a `bridge_version` validated and then published. Five of its seven rules read the version's mappings through `BridgeMappingSetReader`; publishing moves the bridge's current-version pointer and advances the semantic revision.
+The drawing shows a `bridge_version` validated and then published. All six of its rules read the version's mappings through `BridgeMappingSetReader`, which resolves their member keys in the published versions of the bridge's two dimensions; publishing retires the bridge's previous version, repoints the active assumption set and advances the semantic revision.
 
 ```mermaid
 sequenceDiagram
@@ -273,35 +274,31 @@ sequenceDiagram
     participant Store as BridgeVersionStore
     participant Rules as bridge_version rules
     participant Reader as BridgeMappingSetReader
-    participant Updater as CurrentBridgeVersionUpdater
-    participant Versions as BridgeVersionRecord gateway
-    participant Bridges as BridgeRecord gateway
+    participant Dimensions as PublishedDimensionReader
+    participant Retirer as PredecessorRetirer
+    participant Pinner as ActiveSetPinner
     participant Rev as SemanticRevision
     Note over Ctl,Rev: First request, status validated
     Ctl->>Wf: TransitionAsync(bridge_version, id, validated)
     Wf->>Store: GetAsync(id)
-    Wf->>Updater: OnValidatingAsync(id), nothing to do
-    loop The 7 bridge_version rules in registration order
+    loop The 6 bridge_version rules in registration order
         Wf->>Rules: EvaluateAsync(id)
-        opt The five rules over mappings
-            Rules->>Reader: ReadAsync(id)
-        end
+        Rules->>Reader: ReadAsync(id)
+        Reader->>Dimensions: ReadAsync(source dimension), ReadAsync(target dimension)
     end
     Wf->>Store: SetStatusAsync(id, validated)
     Note over Ctl,Rev: Second request, status published
     Ctl->>Wf: TransitionAsync(bridge_version, id, published)
     Wf->>Store: GetAsync(id)
     Wf->>Store: SetStatusAsync(id, published, publishedAt)
-    Wf->>Updater: OnPublishedAsync(id)
-    Updater->>Versions: GetAsync(BridgeVersionId)
-    Updater->>Bridges: GetAsync(BridgeId)
-    Updater->>Bridges: UpdateAsync(bridge with CurrentBridgeVersionId)
+    Wf->>Retirer: OnPublishedAsync(id)
+    Wf->>Pinner: OnPublishedAsync(id)
     Wf->>Rev: AdvanceAsync()
 ```
 
-`qe_bridge.current_bridge_version_id` is authoring-only: bindings pin bridge versions themselves, so the pointer changes nothing queries read. The revision advances because `bridge_version` is a revision kind.
+Bridge bindings name the bridge itself, so they need no change to follow the new version: the engine reads the version their assumption set pins.
 
-**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [BridgeVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/BridgeVersionStore.cs), [BridgeMappingSetReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeMappingSetReader.cs), [CurrentBridgeVersionUpdater.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/CurrentBridgeVersionUpdater.cs), [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs), [bridge rules](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges), [CurrentBridgeVersionUpdaterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Bridges/CurrentBridgeVersionUpdaterTests.cs).
+**Sources:** [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [BridgeVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/BridgeVersionStore.cs), [BridgeMappingSetReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeMappingSetReader.cs), [PublishedDimensionReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PublishedDimensionReader.cs), [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs), [bridge rules](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges), [BridgeMappingRuleTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Bridges/BridgeMappingRuleTests.cs).
 
 ## Activating a release
 
@@ -341,37 +338,36 @@ The release's status is checked before anything is written, so a refused activat
 
 ## Capturing an assumption set
 
-The drawing shows `POST .../assumption-sets/{assumptionSetId}/capture`, which pins, for each named dimension, the published version effective at the set's `effective_at`. The pins of the named dimensions are deleted before the captured ones are inserted; pins of other dimensions stay.
+The drawing shows `POST .../assumption-sets`, which captures a historical set: a copy of the active set's pins under a key of its own, with the active release. A request that names the key reads the versions the active set pinned at that moment over that release's dataset versions, so an author can backtest against them later.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Web SPA
     participant Filter as ValidationFilter
-    participant Draft as RequireDraftFilter
     participant Ctl as AssumptionSetsController
     participant Svc as AssumptionSetService
+    participant Pins as AssumptionPins
     participant Sets as AssumptionSetRecord gateway
-    participant Versions as DimensionVersionRecord gateway
-    participant Pins as AssumptionSetDimensionRecord gateway
-    Client->>Filter: POST assumption-sets/{assumptionSetId}/capture with dimensionIds
-    Filter->>Filter: AssumptionCaptureInputValidator, at least one dimension and all exist
-    Filter->>Draft: valid
-    Draft->>Ctl: the assumption_set is a draft
-    Ctl->>Svc: CaptureAsync(assumptionSetId, input)
-    Svc->>Sets: GetAsync(AssumptionSetId)
-    Svc->>Versions: ListAsync(DimensionId in dimensionIds)
-    Note over Svc: Keeps published versions whose valid_from is at or before effective_at and whose valid_to is after it or open
-    Svc->>Pins: DeleteAsync(AssumptionSetId, DimensionId in dimensionIds)
-    Svc->>Pins: InsertManyAsync(captured pins)
-    Svc->>Pins: ListAsync(AssumptionSetId)
-    Svc-->>Ctl: every pin of the set, by dimension
-    Ctl-->>Client: 200 pins
+    participant Info as DatabaseInfoRecord gateway
+    participant Rev as SemanticRevision
+    Client->>Filter: POST assumption-sets with key, display name and description
+    Filter->>Filter: AssumptionCaptureInputValidator, a well-formed key no set has
+    Filter->>Ctl: valid
+    Ctl->>Svc: CaptureAsync(input)
+    Svc->>Pins: ActiveAsync()
+    Svc->>Info: GetAsync(singleton)
+    Svc->>Sets: InsertAsync(historical set with release_id the active release and captured_at now)
+    Svc->>Pins: ListAsync(active set)
+    Note over Pins: The dimension, mapping, bridge, model and report pins
+    Svc->>Pins: InsertAsync(new set, the active pins)
+    Svc->>Rev: AdvanceAsync()
+    Ctl-->>Client: 201 the historical set
 ```
 
-A named dimension with no published version effective at that time ends up unpinned. The `pins_not_empty`, `pinned_version_belongs_to_dimension` and `pinned_version_published` rules check the pins when the set is published.
+Publishing repoints only the active set, so the captured set keeps its versions, which publishing retires and freezes. Activating another release leaves the captured set on its release, which the engine keeps reading after the release is retired. Deleting a historical set removes it with its pins and advances the revision too; the active set cannot be deleted.
 
-**Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [AssumptionCaptureTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionCaptureTests.cs).
+**Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
 
 ## Verifying and creating a system tenant
 
@@ -461,6 +457,6 @@ sequenceDiagram
     end
 ```
 
-`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 19 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, versions, levels and members, and `ReportUses` for model versions and the model content that reports use.
+`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 19 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, levels and members, and `ReportUses` for models and the model content live reports name. Deleting a draft version of a living kind has no blockers, because other objects name the identity or keys of its published version, never a draft.
 
 **Sources:** [DatasetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Datasets/DatasetsController.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/DeleteBlockedProblem.cs), [DatasetVersionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionService.cs), [DatasetVersionContentStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionContentStore.cs), [FieldUsage.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/FieldUsage.cs), [DimensionDeleteChecks.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionDeleteChecks.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs).

@@ -11,15 +11,15 @@ export interface AssumptionSetSettingsSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Sheet that edits a draft assumption set's display name, description and effective time. */
+/** Sheet that relabels an assumption set: its display name and description. */
 export function AssumptionSetSettingsSheet({ assumptionSetId, form, open, onOpenChange }: AssumptionSetSettingsSheetProps) {
   const update = useUpdateAssumptionSet(assumptionSetId);
   return (
     <EntityFormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Assumption set settings"
-      description="Changing the effective time does not change existing pins; capture again to refresh them."
+      title="Edit labels"
+      description="The key and the pins stay as they are."
       form={form}
       onSubmit={values => update.mutateAsync({ ...values, description: values.description || null })}
     >

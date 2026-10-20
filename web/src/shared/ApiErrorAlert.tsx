@@ -1,6 +1,7 @@
 import { CircleAlert } from 'lucide-react';
 import { ApiProblem } from '@/api/problemDetails';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RuleViolationList } from './RuleViolationList';
 
 /**
  * Destructive alert for a failed request: the ProblemDetails title and detail plus any validation
@@ -35,15 +36,7 @@ function ErrorDescription({ error }: { error: Error }) {
           )}
         </ul>
       )}
-      {error.violations && (
-        <ul data-slot="api-error-alert-violations" className="list-disc pl-4">
-          {error.violations.map(violation => (
-            <li key={`${violation.rule}:${violation.message}`}>
-              {violation.message} <code className="text-xs opacity-70">{violation.rule}</code>
-            </li>
-          ))}
-        </ul>
-      )}
+      {error.violations && <RuleViolationList violations={error.violations} />}
     </>
   );
 }

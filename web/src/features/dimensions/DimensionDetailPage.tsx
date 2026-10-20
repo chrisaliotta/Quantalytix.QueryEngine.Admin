@@ -8,15 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { PageHeader } from '@/shared/PageHeader';
-import type { LookupItem } from '@/shared/types';
+import type { LookupItem, VersionStatus } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
 import { selectedVersion } from '@/shared/versionSelection';
+import { isEditable as isEditableVersion } from '@/shared/versionTransitions';
 import { useDeleteDimension, useDeleteDimensionVersion, useDimension } from './api';
 import { DimensionIdentitySheet } from './DimensionIdentitySheet';
 import { LevelsTab } from './LevelsTab';
-import { MappingVersionsTab } from './MappingVersionsTab';
 import { MembersTab } from './MembersTab';
 import { NewVersionSheet } from './NewVersionSheet';
 import { RangeBandsTab } from './RangeBandsTab';
@@ -56,7 +56,7 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
   const versionList = versions.data ?? [];
   const selected = selectedVersion(versionList, searchParams.get('version'));
   const isRange = dimension.dimensionKind === 'range';
-  const isDraft = selected?.status === 'draft';
+  const isEditable = isEditableVersion('dimension_version', selected?.status as VersionStatus | undefined);
 
   function selectVersion(versionId: number) {
     setSearchParams({ version: String(versionId) }, { replace: true });
@@ -103,24 +103,20 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
             <TabsTrigger value="levels">Levels</TabsTrigger>
             {isRange && <TabsTrigger value="range-bands">Range bands</TabsTrigger>}
             <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="mapping-versions">Mapping versions</TabsTrigger>
           </TabsList>
           <TabsContent value="members">
-            <MembersTab key={selected.id} dimension={dimension} versionId={selected.id} isDraft={isDraft} />
+            <MembersTab key={selected.id} dimension={dimension} versionId={selected.id} isEditable={isEditable} />
           </TabsContent>
           <TabsContent value="levels">
-            <LevelsTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+            <LevelsTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
           </TabsContent>
           {isRange && (
             <TabsContent value="range-bands">
-              <RangeBandsTab key={selected.id} versionId={selected.id} rangeDataType={selected.classifier ?? null} isDraft={isDraft} />
+              <RangeBandsTab key={selected.id} versionId={selected.id} rangeDataType={selected.classifier ?? null} isEditable={isEditable} />
             </TabsContent>
           )}
           <TabsContent value="settings">
-            <SettingsTab key={selected.id} versionId={selected.id} isRange={isRange} isDraft={isDraft} />
-          </TabsContent>
-          <TabsContent value="mapping-versions">
-            <MappingVersionsTab dimensionId={dimension.dimensionId} versionId={selected.id} versionKey={selected.key} />
+            <SettingsTab key={selected.id} versionId={selected.id} isRange={isRange} isEditable={isEditable} />
           </TabsContent>
         </Tabs>
       )}
@@ -140,7 +136,7 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${dimension.dimensionKey}?`}
-        description="The dimension and its draft versions are deleted. Dimensions with published versions or references cannot be deleted."
+        description="The dimension and its draft versions are deleted. A dimension with validated, published or retired versions, or one that bindings, mapping sets or bridges reference, is kept."
         confirmLabel="Delete dimension"
         destructive
         onConfirm={() =>

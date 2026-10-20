@@ -18,11 +18,8 @@ public sealed record ReportColumnRecord
     /// <summary>A <c>report_value_kind</c> value.</summary>
     public required string ValueKind { get; init; }
 
-    /// <summary>The variable of a <c>variable</c> column.</summary>
-    public long? VariableId { get; init; }
-
-    /// <summary>The calculated measure of a <c>calculated</c> column.</summary>
-    public long? CalculatedMeasureId { get; init; }
+    /// <summary>The key of the model's variable or calculated measure the column shows, according to its value kind.</summary>
+    public required string MetricKey { get; init; }
 
     /// <summary>Order among the version's columns.</summary>
     public required int SortOrder { get; init; }

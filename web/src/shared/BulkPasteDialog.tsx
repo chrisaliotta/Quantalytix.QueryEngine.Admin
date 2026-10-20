@@ -26,7 +26,7 @@ export interface BulkPasteDialogProps<TRow> {
 }
 
 /**
- * Dialog that replaces a draft's list from pasted lines. It starts with the current list, reads the lines as they are
+ * Dialog that replaces an editable version's list from pasted lines. It starts with the current list, reads the lines as they are
  * edited, lists the lines it cannot read, and replaces the list with the rows of the others. A validation problem
  * names the pasted line it concerns.
  */
@@ -59,7 +59,7 @@ export function BulkPasteDialog<TRow>({
       open
       onOpenChange={open => !open && onClose()}
       title={title}
-      description={`One ${format} per line. The lines replace every ${noun[0]} of the draft, so the text starts with the current ${noun[1]}.`}
+      description={`One ${format} per line. The lines replace every ${noun[0]} of the version, so the text starts with the current ${noun[1]}.`}
       form={form}
       onSubmit={submit}
       submitLabel={`Replace with ${count(pasted.rows.length, noun)}`}

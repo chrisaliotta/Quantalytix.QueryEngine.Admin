@@ -12,9 +12,6 @@ public sealed record CalculationModelRecord
     /// <summary>Human-readable name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Authoring-only pointer to the most recently published model version.</summary>
-    public long? CurrentModelVersionId { get; init; }
-
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
 }

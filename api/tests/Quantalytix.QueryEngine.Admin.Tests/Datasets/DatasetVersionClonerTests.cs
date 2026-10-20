@@ -21,23 +21,20 @@ public sealed class DatasetVersionClonerTests
     /// <summary>The first ID the clone hands out; every seeded ID is smaller.</summary>
     private const long FirstNewId = 1_000_000;
 
-    /// <summary>The dimension version the Branch binding pins.</summary>
-    private const long PinnedDimensionVersionId = 7001;
-
-    /// <summary>The mapping set the Branch binding maps through.</summary>
+    /// <summary>The mapping set the mapped binding maps through.</summary>
     private const long MappingSetId = 7002;
 
-    /// <summary>The level the Branch binding groups by.</summary>
-    private const long GroupingLevelId = 7003;
+    /// <summary>The bridge the bridge binding remaps through.</summary>
+    private const long BridgeId = 7005;
 
-    /// <summary>The member unmapped Branch values go to.</summary>
-    private const long UnknownMemberId = 7004;
+    /// <summary>The level the mapped binding groups at.</summary>
+    private const string GroupingLevelKey = "region";
 
-    /// <summary>The bridge version the Region binding remaps through.</summary>
-    private const long BridgeVersionId = 7005;
+    /// <summary>The member the mapped binding routes unmapped rows to.</summary>
+    private const string UnknownMemberKey = "UNKNOWN";
 
-    /// <summary>The ancestor member the Region binding groups at.</summary>
-    private const long GroupingAncestorMemberId = 7006;
+    /// <summary>The ancestor member the bridge binding groups under.</summary>
+    private const string GroupingAncestorMemberKey = "NE";
 
     /// <summary>The dataset version table, holding the source version.</summary>
     private readonly InMemoryTableGateway<DatasetVersionRecord> _versions = new(DatasetRows.Version(SourceVersionId, defaultTimeBindingId: 21) with
@@ -72,19 +69,18 @@ public sealed class DatasetVersionClonerTests
         DatasetRows.Binding(21, SourceVersionId, "As of", BindingKinds.Time, 2),
         DatasetRows.Binding(22, SourceVersionId, "Branch", BindingKinds.Mapped, 1) with
         {
-            PinnedDimensionVersionId = PinnedDimensionVersionId,
             MappingSetId = MappingSetId,
             GroupingMode = GroupingModes.Level,
-            GroupingLevelId = GroupingLevelId,
+            GroupingLevelKey = GroupingLevelKey,
             UnmappedBehavior = UnmappedBehaviors.Unknown,
-            UnknownMemberId = UnknownMemberId
+            UnknownMemberKey = UnknownMemberKey
         },
         DatasetRows.Binding(23, SourceVersionId, "Region", BindingKinds.Bridge, null) with
         {
             SourceBindingId = 22,
-            BridgeVersionId = BridgeVersionId,
+            BridgeId = BridgeId,
             GroupingMode = GroupingModes.Ancestor,
-            GroupingAncestorMemberId = GroupingAncestorMemberId
+            GroupingAncestorMemberKey = GroupingAncestorMemberKey
         });
 
     /// <summary>The time extension of the As of binding, whose intervals end at periodEnd.</summary>
@@ -179,7 +175,7 @@ public sealed class DatasetVersionClonerTests
         Assert.Equal("temporalSeries", grainKeys[policy.SelectionGrainId!.Value]);
     }
 
-    /// <summary>References to the dimension, its pinned version, level and members, the mapping set and the bridge version keep their IDs.</summary>
+    /// <summary>References to the dimension, the mapping set and the bridge keep their IDs, and level and member keys stay as they are.</summary>
     /// <returns>A task that completes when the clone is checked.</returns>
     [Fact]
     public async Task Clone_KeepsReferencesToOtherAggregates()
@@ -188,12 +184,11 @@ public sealed class DatasetVersionClonerTests
         var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.DisplayName);
 
         Assert.All(bindings.Values, binding => Assert.Equal(7000, binding.DimensionId));
-        Assert.Equal(PinnedDimensionVersionId, bindings["Branch"].PinnedDimensionVersionId);
         Assert.Equal(MappingSetId, bindings["Branch"].MappingSetId);
-        Assert.Equal(GroupingLevelId, bindings["Branch"].GroupingLevelId);
-        Assert.Equal(UnknownMemberId, bindings["Branch"].UnknownMemberId);
-        Assert.Equal(BridgeVersionId, bindings["Region"].BridgeVersionId);
-        Assert.Equal(GroupingAncestorMemberId, bindings["Region"].GroupingAncestorMemberId);
+        Assert.Equal(GroupingLevelKey, bindings["Branch"].GroupingLevelKey);
+        Assert.Equal(UnknownMemberKey, bindings["Branch"].UnknownMemberKey);
+        Assert.Equal(BridgeId, bindings["Region"].BridgeId);
+        Assert.Equal(GroupingAncestorMemberKey, bindings["Region"].GroupingAncestorMemberKey);
     }
 
     /// <summary>Clones the source version into version 4 of dataset 10 with IDs counting up from <see cref="FirstNewId"/>.</summary>

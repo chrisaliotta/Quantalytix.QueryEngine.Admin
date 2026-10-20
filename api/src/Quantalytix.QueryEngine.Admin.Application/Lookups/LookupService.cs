@@ -165,7 +165,7 @@ public sealed class LookupService(
         }));
     }
 
-    /// <summary>The versions of one dimension by version number, labelled with their validity window.</summary>
+    /// <summary>The versions of one dimension by version number.</summary>
     private async Task<IReadOnlyList<LookupItem>> DimensionVersionsAsync(long dimensionId, CancellationToken cancellationToken)
     {
         var rows = await dimensionVersions.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
@@ -175,7 +175,7 @@ public sealed class LookupService(
             {
                 Id = row.DimensionVersionId,
                 Key = VersionKey(row.VersionNumber),
-                Label = $"{VersionKey(row.VersionNumber)} [{ValidityBound(row.ValidFrom)} .. {ValidityBound(row.ValidTo)})",
+                Label = VersionKey(row.VersionNumber),
                 Status = row.Status,
                 Classifier = row.RangeDataType
             })
@@ -233,7 +233,7 @@ public sealed class LookupService(
         }));
     }
 
-    /// <summary>The versions of one mapping set by version number, each pointing at the dimension version it maps onto.</summary>
+    /// <summary>The versions of one mapping set by version number.</summary>
     private async Task<IReadOnlyList<LookupItem>> MappingVersionsAsync(long mappingSetId, CancellationToken cancellationToken)
     {
         var rows = await mappingVersions.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
@@ -244,7 +244,6 @@ public sealed class LookupService(
                 Id = row.MappingVersionId,
                 Key = VersionKey(row.VersionNumber),
                 Label = VersionKey(row.VersionNumber),
-                ParentId = row.DimensionVersionId,
                 Status = row.Status
             })
         ];
@@ -287,17 +286,17 @@ public sealed class LookupService(
         }));
     }
 
-    /// <summary>Every assumption set.</summary>
+    /// <summary>Every assumption set: the active one, then historical sets by key.</summary>
     private async Task<IReadOnlyList<LookupItem>> AssumptionSetsAsync(CancellationToken cancellationToken)
     {
         var rows = await assumptionSets.ListAsync(null, cancellationToken);
-        return SortByKey(rows.Select(row => new LookupItem
-        {
-            Id = row.AssumptionSetId,
-            Key = row.AssumptionSetKey,
-            Label = row.DisplayName,
-            Status = row.Status
-        }));
+        return
+        [
+            .. rows
+                .OrderBy(row => row.Status != AssumptionSetStatuses.Active)
+                .ThenBy(row => row.AssumptionSetKey, StringComparer.OrdinalIgnoreCase)
+                .Select(row => new LookupItem { Id = row.AssumptionSetId, Key = row.AssumptionSetKey, Label = row.DisplayName, Status = row.Status })
+        ];
     }
 
     /// <summary>Orders items by key, ignoring case.</summary>
@@ -316,12 +315,5 @@ public sealed class LookupService(
     private static string BindingKey(long bindingId)
     {
         return bindingId.ToString(CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>A validity bound as a date, or <c>open</c> when the window is unbounded on that side.</summary>
-    private static string ValidityBound(DateTime? bound)
-    {
-        if (bound is null) return "open";
-        return bound.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 }

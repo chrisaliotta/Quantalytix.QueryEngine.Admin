@@ -17,48 +17,42 @@ describe('toBindingInput', () => {
     mappingSetId: 30,
     sourceBindingId: 21,
     bridgeId: 40,
-    bridgeVersionId: 41,
   };
 
   it('sends only the references of the chosen kind', () => {
     expect(toBindingInput({ ...values, bindingKind: 'mapped' })).toMatchObject({
       mappingSetId: 30,
       sourceBindingId: null,
-      bridgeVersionId: null,
+      bridgeId: null,
       timeBinding: null,
     });
     expect(toBindingInput({ ...values, bindingKind: 'bridge' })).toMatchObject({
       mappingSetId: null,
       sourceBindingId: 21,
-      bridgeVersionId: 41,
+      bridgeId: 40,
     });
-    expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ mappingSetId: null, bridgeVersionId: null });
-  });
-
-  // The bridge picker only narrows the bridge versions; the API names the bridge version alone.
-  it('never sends the bridge', () => {
-    expect(toBindingInput({ ...values, bindingKind: 'bridge' })).not.toHaveProperty('bridgeId');
+    expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ mappingSetId: null, bridgeId: null });
   });
 
   it('sends only the grouping reference of the chosen mode', () => {
-    const grouped = { ...values, groupingLevelId: 501, groupingAncestorMemberId: 601, groupingDepth: 2 };
+    const grouped = { ...values, groupingLevelKey: 'region', groupingAncestorMemberKey: 'NE', groupingDepth: 2 };
 
     expect(toBindingInput({ ...grouped, groupingMode: 'level' })).toMatchObject({
-      groupingLevelId: 501,
-      groupingAncestorMemberId: null,
+      groupingLevelKey: 'region',
+      groupingAncestorMemberKey: null,
       groupingDepth: null,
     });
-    expect(toBindingInput({ ...grouped, groupingMode: 'depth' })).toMatchObject({ groupingLevelId: null, groupingDepth: 2 });
+    expect(toBindingInput({ ...grouped, groupingMode: 'depth' })).toMatchObject({ groupingLevelKey: null, groupingDepth: 2 });
     expect(toBindingInput({ ...grouped, groupingMode: 'member' })).toMatchObject({
-      groupingLevelId: null,
-      groupingAncestorMemberId: null,
+      groupingLevelKey: null,
+      groupingAncestorMemberKey: null,
       groupingDepth: null,
     });
   });
 
   it('sends the unknown member only when unmapped rows route to it', () => {
-    expect(toBindingInput({ ...values, unmappedBehavior: 'unknown', unknownMemberId: 700 }).unknownMemberId).toBe(700);
-    expect(toBindingInput({ ...values, unmappedBehavior: 'exclude', unknownMemberId: 700 }).unknownMemberId).toBeNull();
+    expect(toBindingInput({ ...values, unmappedBehavior: 'unknown', unknownMemberKey: 'UNKNOWN' }).unknownMemberKey).toBe('UNKNOWN');
+    expect(toBindingInput({ ...values, unmappedBehavior: 'exclude', unknownMemberKey: 'UNKNOWN' }).unknownMemberKey).toBeNull();
   });
 
   it('sends the time section only for time bindings, with the source zone only for timestamps', () => {
@@ -82,7 +76,7 @@ describe('toBindingInput', () => {
 });
 
 describe('bindingFormValues', () => {
-  it('loads a stored time extension, parsing its periodicities and the bridge of its bridge version', () => {
+  it('loads a stored time extension, parsing its periodicities', () => {
     const detail: BindingDetail = {
       binding: {
         bindingId: 21,
@@ -109,12 +103,11 @@ describe('bindingFormValues', () => {
         defaultQueryTimeZone: 'UTC',
         cumulativeOrigin: 'output_range_start',
       },
-      bridgeId: null,
     };
 
     const loaded = bindingFormValues(detail);
 
     expect(loaded.timeBinding).toMatchObject({ timeValueType: 'timestamp', sourceTimeZone: 'Europe/London', allowedPeriodicities: ['day', 'month'] });
-    expect(loaded).toMatchObject({ isRequired: true, pinnedDimensionVersionId: null, bridgeId: null });
+    expect(loaded).toMatchObject({ isRequired: true, bridgeId: null });
   });
 });

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -17,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.Bridges;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgeVersionsController(BridgeVersionService versions) : ControllerBase
 {
-    /// <summary>Lists a bridge's versions with their endpoint versions, allocation semantics and status.</summary>
+    /// <summary>Lists a bridge's versions with their allocation semantics and status.</summary>
     /// <param name="tenantId">The tenant that owns the bridge.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -33,22 +32,21 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     }
 
     /// <summary>
-    /// Creates a draft with the bridge's next version number: empty, or cloned from <c>cloneFromVersionId</c>, whose mappings
-    /// move to the members with the same keys in the new endpoint versions.
+    /// Creates a draft with the bridge's next version number: empty, or with copies of the mappings of <c>cloneFromVersionId</c>.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the bridge.</param>
     /// <param name="bridgeId">The bridge.</param>
-    /// <param name="input">The endpoint versions, cardinality, allocation mode and optional clone source.</param>
+    /// <param name="input">The cardinality, allocation mode and optional clone source.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created draft and the mappings the clone dropped.</returns>
-    /// <response code="200">The created draft, with the cloned mappings whose member keys the new endpoint versions lack.</response>
+    /// <returns>The created draft.</returns>
+    /// <response code="200">The created draft.</response>
     /// <response code="400">The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("bridges/{bridgeId:long}/versions")]
-    [ProducesResponseType<CreatedBridgeVersion>(StatusCodes.Status200OK)]
+    [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<CreatedBridgeVersion>> Create(
+    public async Task<ActionResult<BridgeVersionRecord>> Create(
         string tenantId,
         long bridgeId,
         NewBridgeVersionInput input,
@@ -72,9 +70,9 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
         return Ok(await versions.GetAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Replaces a draft version's endpoint versions, cardinality and allocation mode; its mappings stay as they are.</summary>
+    /// <summary>Replaces a draft or published version's cardinality and allocation mode; its mappings stay as they are.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft bridge version.</param>
+    /// <param name="versionId">The draft or published bridge version.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored version.</returns>
@@ -82,9 +80,9 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("bridge-versions/{versionId:long}")]
-    [RequireDraft(VersionKinds.BridgeVersion, "versionId")]
+    [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
     [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeVersionRecord>> Update(
@@ -96,25 +94,21 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
         return Ok(await versions.UpdateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>
-    /// Deletes a draft version that no binding uses, with its mappings, and clears the bridge's current-version pointer when it
-    /// named the version.
-    /// </summary>
+    /// <summary>Deletes a draft version with its mappings.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="versionId">The draft bridge version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft or a binding uses it.</returns>
+    /// <returns>No content; 409 when the version is not a draft.</returns>
     /// <response code="204">The version and its mappings are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the bindings that use it.</response>
+    /// <response code="409">Nothing was deleted: the version is not a draft.</response>
     [HttpDelete("bridge-versions/{versionId:long}")]
     [RequireDraft(VersionKinds.BridgeVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string tenantId, long versionId, CancellationToken cancellationToken)
     {
-        var conflict = await versions.DeleteAsync(versionId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        await versions.DeleteAsync(versionId, cancellationToken);
         return NoContent();
     }
 }

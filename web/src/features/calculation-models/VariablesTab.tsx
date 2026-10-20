@@ -13,18 +13,18 @@ const columns: ColumnDef<Variable>[] = [
 ];
 
 /** The version's variables: the logical inputs a profile fills from one of their sources. */
-export function VariablesTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function VariablesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   return (
     <ModelContentTab
       kind="variables"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="variable"
       identify={variable => ({ id: variable.variableId, key: variable.variableKey })}
       deleteDescription="Its sources, their profile picks and their override routes are deleted too. A variable that a report column returns is kept."
       renderSheet={(variable, onClose) => (
-        <VariableSheet versionId={versionId} variable={variable} readOnly={!isDraft} onClose={onClose} />
+        <VariableSheet versionId={versionId} variable={variable} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

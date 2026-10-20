@@ -5,7 +5,7 @@ import { ModelContentTab } from './ModelContentTab';
 import type { CalculationRoute } from './types';
 
 /** The version's routes: the field that produces each calculation dimension in each dataset. */
-export function CalculationRoutesTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function CalculationRoutesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   const dimensions = useLookup('calculation-dimensions', versionId);
   const datasets = useLookup('datasets');
   const sources = useLookup('variable-sources', versionId);
@@ -33,13 +33,13 @@ export function CalculationRoutesTab({ versionId, isDraft }: { versionId: number
     <ModelContentTab
       kind="routes"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="route"
       identify={route => ({ id: route.calculationBindingId, key: route.fieldKey })}
       deleteDescription="Nothing else references a route."
       renderSheet={(route, onClose) => (
-        <CalculationRouteSheet versionId={versionId} route={route} readOnly={!isDraft} onClose={onClose} />
+        <CalculationRouteSheet versionId={versionId} route={route} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

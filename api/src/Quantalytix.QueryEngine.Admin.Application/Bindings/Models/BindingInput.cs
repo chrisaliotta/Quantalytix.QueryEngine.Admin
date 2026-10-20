@@ -12,9 +12,6 @@ public sealed record BindingInput
     /// <summary>The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.</summary>
     public required long? DimensionId { get; init; }
 
-    /// <summary>An explicit version of the dimension; null resolves the published version effective at query time.</summary>
-    public long? PinnedDimensionVersionId { get; init; }
-
     /// <summary>A <c>binding_kind</c> value: <c>direct</c>, <c>mapped</c>, <c>range</c>, <c>bridge</c> or <c>time</c>.</summary>
     public required string BindingKind { get; init; }
 
@@ -30,17 +27,17 @@ public sealed record BindingInput
     /// <summary>The binding of the same version that a <c>bridge</c> binding remaps; null for every other kind.</summary>
     public long? SourceBindingId { get; init; }
 
-    /// <summary>The bridge version a <c>bridge</c> binding remaps through; null for every other kind.</summary>
-    public long? BridgeVersionId { get; init; }
+    /// <summary>The bridge a <c>bridge</c> binding remaps through; null for every other kind. Queries use the version their assumption set pins.</summary>
+    public long? BridgeId { get; init; }
 
     /// <summary>A <c>grouping_mode</c> value: <c>member</c>, <c>level</c>, <c>ancestor</c> or <c>depth</c>.</summary>
     public required string GroupingMode { get; init; }
 
-    /// <summary>The level to group at; required for <c>level</c> grouping and null otherwise.</summary>
-    public long? GroupingLevelId { get; init; }
+    /// <summary>The key of the level to group at; required for <c>level</c> grouping and null otherwise.</summary>
+    public string? GroupingLevelKey { get; init; }
 
-    /// <summary>The ancestor member to group at; required for <c>ancestor</c> grouping and null otherwise.</summary>
-    public long? GroupingAncestorMemberId { get; init; }
+    /// <summary>The key of the ancestor member to group under; required for <c>ancestor</c> grouping and null otherwise.</summary>
+    public string? GroupingAncestorMemberKey { get; init; }
 
     /// <summary>The closure depth to group at, 0 or more; required for <c>depth</c> grouping and null otherwise.</summary>
     public int? GroupingDepth { get; init; }
@@ -54,8 +51,8 @@ public sealed record BindingInput
     /// <summary>An <c>unmapped_behavior</c> value: what happens to rows whose source value maps to no member.</summary>
     public required string UnmappedBehavior { get; init; }
 
-    /// <summary>The member unmapped rows route to; required when the unmapped behavior is <c>unknown</c> and null otherwise.</summary>
-    public long? UnknownMemberId { get; init; }
+    /// <summary>The key of the member unmapped rows route to; required when the unmapped behavior is <c>unknown</c> and null otherwise.</summary>
+    public string? UnknownMemberKey { get; init; }
 
     /// <summary>Whether the binding is a dataset fixture that must not be removed or disabled.</summary>
     public required bool IsRequired { get; init; }

@@ -21,15 +21,8 @@ internal static class DimensionRows
         };
     }
 
-    /// <summary>A version of a dimension with a status, a validity window and an optional range data type.</summary>
-    public static DimensionVersionRecord Version(
-        long versionId,
-        long dimensionId,
-        int versionNumber,
-        string status,
-        DateTime? validFrom,
-        DateTime? validTo,
-        string? rangeDataType = null)
+    /// <summary>A version of a dimension with a status and an optional range data type.</summary>
+    public static DimensionVersionRecord Version(long versionId, long dimensionId, int versionNumber, string status, string? rangeDataType = null)
     {
         return new DimensionVersionRecord
         {
@@ -37,9 +30,7 @@ internal static class DimensionRows
             DimensionId = dimensionId,
             VersionNumber = versionNumber,
             Status = status,
-            RangeDataType = rangeDataType,
-            ValidFrom = validFrom,
-            ValidTo = validTo
+            RangeDataType = rangeDataType
         };
     }
 

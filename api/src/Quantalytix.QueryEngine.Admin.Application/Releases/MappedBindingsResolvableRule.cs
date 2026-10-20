@@ -6,8 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
 /// <summary>
 /// <c>mapped_bindings_resolvable</c>: the mapping set of every mapped binding of a pinned dataset version has a published
-/// mapping version. The engine maps source keys through the published mapping version of the binding's mapping set and
-/// resolved dimension version, so a binding that pins a dimension version needs a published mapping version for that version.
+/// version, because the active assumption set pins it and the engine maps source keys through it.
 /// </summary>
 public sealed class MappedBindingsResolvableRule(
     ReleaseManifestReader reader,
@@ -15,13 +14,10 @@ public sealed class MappedBindingsResolvableRule(
     ITableGateway<MappingSetRecord> mappingSets)
     : IPublicationRule
 {
-    /// <summary>The rule code.</summary>
-    private const string Code = "mapped_bindings_resolvable";
-
     /// <summary>The rule applies to semantic releases.</summary>
     public string Kind { get; } = VersionKinds.SemanticRelease;
 
-    /// <summary>Reports every mapped binding that no published mapping version can serve.</summary>
+    /// <summary>Reports every mapped binding whose mapping set has no published version.</summary>
     /// <param name="versionId">The release being validated.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>One violation per unresolvable mapped binding.</returns>
@@ -31,32 +27,20 @@ public sealed class MappedBindingsResolvableRule(
             .Where(pinned => pinned.Binding.BindingKind == BindingKinds.Mapped)
             .ToList();
         long[] mappingSetIds = [.. mapped.Select(pinned => pinned.Binding.MappingSetId!.Value).Distinct()];
-        var published = (await mappingVersions.ListAsync(new { MappingSetId = mappingSetIds }, cancellationToken))
-            .Where(version => version.Status == PublicationStatuses.Published)
-            .ToList();
+        var published = (await mappingVersions.ListAsync(new { MappingSetId = mappingSetIds, Status = PublicationStatuses.Published }, cancellationToken))
+            .Select(version => version.MappingSetId)
+            .ToHashSet();
         var mappingSetKeys = (await mappingSets.ListAsync(new { MappingSetId = mappingSetIds }, cancellationToken))
             .ToDictionary(mappingSet => mappingSet.MappingSetId, mappingSet => mappingSet.MappingSetKey);
-
-        var violations = new List<RuleViolation>();
-        foreach (var pinned in mapped)
-        {
-            var binding = pinned.Binding;
-            var mappingSetId = binding.MappingSetId!.Value;
-            var subject = $"Binding '{binding.DisplayName}' of dataset '{pinned.DatasetKey}' maps through mapping set '{mappingSetKeys[mappingSetId]}'";
-            if (binding.PinnedDimensionVersionId is { } pinnedVersionId)
-            {
-                if (!published.Any(version => version.MappingSetId == mappingSetId && version.DimensionVersionId == pinnedVersionId))
+        return
+        [
+            .. mapped
+                .Where(pinned => !published.Contains(pinned.Binding.MappingSetId!.Value))
+                .Select(pinned => new RuleViolation
                 {
-                    var message = $"{subject}, which has no published mapping version for its pinned dimension version {pinnedVersionId}.";
-                    violations.Add(new RuleViolation { Rule = Code, Message = message });
-                }
-            }
-            else if (!published.Any(version => version.MappingSetId == mappingSetId))
-            {
-                violations.Add(new RuleViolation { Rule = Code, Message = $"{subject}, which has no published mapping version." });
-            }
-        }
-
-        return violations;
+                    Rule = "mapped_bindings_resolvable",
+                    Message = $"Binding '{pinned.Binding.DisplayName}' of dataset '{pinned.DatasetKey}' maps through mapping set '{mappingSetKeys[pinned.Binding.MappingSetId!.Value]}', which has no published version."
+                })
+        ];
     }
 }

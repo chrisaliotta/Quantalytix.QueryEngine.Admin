@@ -24,12 +24,12 @@ public sealed class AllocationNoneRule(BridgeMappingSetReader reader) : IPublica
         var set = await reader.ReadAsync(versionId, cancellationToken);
         if (set.Version.AllocationMode != AllocationModes.None) return [];
         var severalTargets = set.Mappings
-            .GroupBy(mapping => mapping.SourceMemberId)
+            .GroupBy(mapping => mapping.SourceMemberKey)
             .Where(group => group.Count() > 1)
             .Select(group => new RuleViolation
             {
                 Rule = Code,
-                Message = $"Source member {set.DescribeSource(group.Key)} maps to {group.Count()} targets ({set.DescribeTargets(group)}); "
+                Message = $"Source member '{group.Key}' maps to {group.Count()} targets ({BridgeMappingSet.DescribeTargets(group)}); "
                     + "allocation mode none allows one."
             });
         var weightsOtherThanOne = set.Mappings
@@ -37,7 +37,7 @@ public sealed class AllocationNoneRule(BridgeMappingSetReader reader) : IPublica
             .Select(mapping => new RuleViolation
             {
                 Rule = Code,
-                Message = $"Mapping {set.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; "
+                Message = $"Mapping {BridgeMappingSet.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; "
                     + "allocation mode none requires exactly 1."
             });
         return [.. severalTargets, .. weightsOtherThanOne];

@@ -1,6 +1,6 @@
 /**
- * The title of a content row's sheet: `New variable` for a new row, `Edit BALANCE` for a draft's row, and `Variable
- * BALANCE` for a row of a version that is not a draft.
+ * The title of a content row's sheet: `New variable` for a new row, `Edit BALANCE` for a row of an editable version, and
+ * `Variable BALANCE` for a row of a version that can no longer change.
  */
 export function contentSheetTitle(noun: string, key: string | null, readOnly: boolean) {
   if (key === null) {

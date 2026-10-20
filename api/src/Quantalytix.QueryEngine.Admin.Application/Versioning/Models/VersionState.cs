@@ -9,7 +9,7 @@ public sealed record VersionState
     /// <summary>The version's surrogate key.</summary>
     public required long Id { get; init; }
 
-    /// <summary>A <c>publication_status</c> value (an <c>assumption_set_status</c> value for assumption sets).</summary>
+    /// <summary>A <c>publication_status</c> value.</summary>
     public required string Status { get; init; }
 
     /// <summary>When the version was published (UTC); null until then.</summary>

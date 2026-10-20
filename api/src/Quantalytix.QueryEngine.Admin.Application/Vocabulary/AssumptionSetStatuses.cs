@@ -1,30 +1,23 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-/// <summary>
-/// The <c>assumption_set_status</c> vocabulary: the lifecycle state of an assumption set, which has no validated state.
-/// Its values are a subset of <see cref="PublicationStatuses"/>.
-/// </summary>
+/// <summary>The <c>assumption_set_status</c> vocabulary: whether a set holds the default versions or is a captured snapshot.</summary>
 public static class AssumptionSetStatuses
 {
-    /// <summary>Editable assumption set whose pinned versions may still change.</summary>
-    public const string Draft = PublicationStatuses.Draft;
+    /// <summary>The one set that pins every published version; every publish repoints it.</summary>
+    public const string Active = "active";
 
-    /// <summary>Immutable snapshot; later dimension changes never mutate it.</summary>
-    public const string Published = PublicationStatuses.Published;
-
-    /// <summary>Historical assumption set no longer offered for new reporting.</summary>
-    public const string Retired = PublicationStatuses.Retired;
+    /// <summary>A snapshot of the active set, captured under its own key; its pins never change.</summary>
+    public const string Historical = "historical";
 
     /// <summary>The vocabulary's definition, as the web client and validators read it.</summary>
     public static readonly Vocabulary Definition = new()
     {
         Name = "assumption_set_status",
-        Description = "Lifecycle state of an assumption set, which has no validated state.",
+        Description = "Whether an assumption set holds the default versions or is a captured snapshot.",
         Values =
         [
-            new() { Value = Draft, Description = "Editable assumption set whose pinned versions may still change." },
-            new() { Value = Published, Description = "Immutable snapshot; later dimension changes never mutate it." },
-            new() { Value = Retired, Description = "Historical assumption set no longer offered for new reporting." }
+            new() { Value = Active, Description = "The one set that pins every published version; every publish repoints it." },
+            new() { Value = Historical, Description = "A snapshot of the active set, captured under its own key; its pins never change." }
         ]
     };
 }

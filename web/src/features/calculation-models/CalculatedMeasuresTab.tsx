@@ -19,18 +19,18 @@ const columns: ColumnDef<CalculatedMeasure>[] = [
 ];
 
 /** The version's calculated measures: formulas over variables and other calculated measures. */
-export function CalculatedMeasuresTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function CalculatedMeasuresTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   return (
     <ModelContentTab
       kind="calculated-measures"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="calculated measure"
       identify={measure => ({ id: measure.calculatedMeasureId, key: measure.measureKey })}
       deleteDescription="A calculated measure that a report column returns, or that a formula line evaluates, is kept."
       renderSheet={(measure, onClose) => (
-        <CalculatedMeasureSheet versionId={versionId} measure={measure} readOnly={!isDraft} onClose={onClose} />
+        <CalculatedMeasureSheet versionId={versionId} measure={measure} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -15,26 +16,29 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 /// weight to be 0 or more; <c>allocation_none</c> allows one target per source with a weight of exactly 1;
 /// <c>cardinality_many_to_one</c> allows one target per source. The engine multiplies fact values by these weights, so a
 /// partition that does not sum to 1 loses or invents value, and a second target in a one-target mode counts a source twice.
+/// <c>mapping_members_in_endpoint_versions</c> resolves the mappings' member keys in the published versions of the bridge's
+/// dimensions, which the active assumption set pins.
 /// </summary>
 public sealed class BridgeMappingRuleTests
 {
     /// <summary>The bridge version being validated.</summary>
     private const long VersionId = 50;
 
-    /// <summary>The source dimension version.</summary>
+    /// <summary>The published version of the bridge's source dimension 1.</summary>
     private const long SourceVersionId = 10;
 
-    /// <summary>The target dimension version.</summary>
+    /// <summary>The published version of the bridge's target dimension 2.</summary>
     private const long TargetVersionId = 20;
 
-    /// <summary>The members: LOAN_A and LOAN_B in the source version; EAST, WEST and NORTH in the target version.</summary>
+    /// <summary>The members: LOAN_A and LOAN_B in the source version; EAST, WEST and NORTH in the target version; SOUTH only in a target draft.</summary>
     private static readonly DimensionMemberRecord[] Members =
     [
         Member(1, SourceVersionId, "LOAN_A"),
         Member(2, SourceVersionId, "LOAN_B"),
         Member(11, TargetVersionId, "EAST"),
         Member(12, TargetVersionId, "WEST"),
-        Member(13, TargetVersionId, "NORTH")
+        Member(13, TargetVersionId, "NORTH"),
+        Member(14, 21, "SOUTH")
     ];
 
     /// <summary>
@@ -47,10 +51,10 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationPartitionRule(Reader(Cardinalities.ManyToMany, AllocationModes.Partition,
-                Mapping(VersionId, 1, 11, 0.086m),
-                Mapping(VersionId, 1, 12, 0.35m),
-                Mapping(VersionId, 1, 13, 0.564m),
-                Mapping(VersionId, 2, 12, 1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 0.086m),
+                Mapping(VersionId, "LOAN_A", "WEST", 0.35m),
+                Mapping(VersionId, "LOAN_A", "NORTH", 0.564m),
+                Mapping(VersionId, "LOAN_B", "WEST", 1m))));
 
         Assert.Empty(violations);
     }
@@ -62,9 +66,9 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationPartitionRule(Reader(Cardinalities.ManyToMany, AllocationModes.Partition,
-                Mapping(VersionId, 1, 11, 0.3m),
-                Mapping(VersionId, 1, 12, 0.6m),
-                Mapping(VersionId, 2, 12, 1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 0.3m),
+                Mapping(VersionId, "LOAN_A", "WEST", 0.6m),
+                Mapping(VersionId, "LOAN_B", "WEST", 1m))));
 
         var violation = Assert.Single(violations);
         Assert.Equal(AllocationPartitionRule.Code, violation.Rule);
@@ -78,8 +82,8 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationPartitionRule(Reader(Cardinalities.ManyToMany, AllocationModes.Partition,
-                Mapping(VersionId, 1, 11, 1.5m),
-                Mapping(VersionId, 1, 12, -0.5m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1.5m),
+                Mapping(VersionId, "LOAN_A", "WEST", -0.5m))));
 
         Assert.Equal(["Mapping 'LOAN_A' -> 'WEST' has allocation weight -0.5; weights must be 0 or more."], violations.Select(violation => violation.Message));
     }
@@ -91,8 +95,8 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationPartitionRule(Reader(Cardinalities.ManyToMany, AllocationModes.Replicate,
-                Mapping(VersionId, 1, 11, 1m),
-                Mapping(VersionId, 1, 12, 1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_A", "WEST", 1m))));
 
         Assert.Empty(violations);
     }
@@ -104,8 +108,8 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationNoneRule(Reader(Cardinalities.ManyToOne, AllocationModes.None,
-                Mapping(VersionId, 1, 11, 1m),
-                Mapping(VersionId, 2, 11, 1m, factor: -1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_B", "EAST", 1m, factor: -1m))));
 
         Assert.Empty(violations);
     }
@@ -117,9 +121,9 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new AllocationNoneRule(Reader(Cardinalities.ManyToMany, AllocationModes.None,
-                Mapping(VersionId, 1, 11, 1m),
-                Mapping(VersionId, 1, 12, 1m),
-                Mapping(VersionId, 2, 12, 0.5m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_A", "WEST", 1m),
+                Mapping(VersionId, "LOAN_B", "WEST", 0.5m))));
 
         Assert.All(violations, violation => Assert.Equal(AllocationNoneRule.Code, violation.Rule));
         Assert.Equal(
@@ -137,9 +141,9 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new CardinalityManyToOneRule(Reader(Cardinalities.ManyToOne, AllocationModes.Replicate,
-                Mapping(VersionId, 1, 11, 1m),
-                Mapping(VersionId, 1, 12, 1m),
-                Mapping(VersionId, 2, 12, 1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_A", "WEST", 1m),
+                Mapping(VersionId, "LOAN_B", "WEST", 1m))));
 
         var violation = Assert.Single(violations);
         Assert.Equal(CardinalityManyToOneRule.Code, violation.Rule);
@@ -153,10 +157,25 @@ public sealed class BridgeMappingRuleTests
     {
         var violations = await EvaluateAsync(
             new CardinalityManyToOneRule(Reader(Cardinalities.ManyToMany, AllocationModes.Replicate,
-                Mapping(VersionId, 1, 11, 1m),
-                Mapping(VersionId, 1, 12, 1m))));
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_A", "WEST", 1m))));
 
         Assert.Empty(violations);
+    }
+
+    /// <summary>A target key that only a draft of the target dimension has is reported; the published keys pass.</summary>
+    /// <returns>A task that completes when the rule is checked.</returns>
+    [Fact]
+    public async Task TargetMissingFromThePublishedVersion_IsReported()
+    {
+        var violations = await EvaluateAsync(
+            new MappingMembersInEndpointVersionsRule(Reader(Cardinalities.ManyToOne, AllocationModes.None,
+                Mapping(VersionId, "LOAN_A", "EAST", 1m),
+                Mapping(VersionId, "LOAN_B", "SOUTH", 1m))));
+
+        var violation = Assert.Single(violations);
+        Assert.Equal(MappingMembersInEndpointVersionsRule.Code, violation.Rule);
+        Assert.Equal("Mapping 'LOAN_B' -> 'SOUTH' has a target member that the published target dimension version lacks.", violation.Message);
     }
 
     /// <summary>Runs a rule over the bridge version.</summary>
@@ -165,13 +184,23 @@ public sealed class BridgeMappingRuleTests
         return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>A mapping set reader over a draft bridge version with the given semantics and mappings, and the members.</summary>
+    /// <summary>
+    /// A mapping set reader over a draft version of bridge 1, from dimension 1 to dimension 2, with the given semantics and
+    /// mappings, and the members of the dimensions' versions.
+    /// </summary>
     private static BridgeMappingSetReader Reader(string cardinality, string allocationMode, params BridgeMappingRecord[] mappings)
     {
-        return new BridgeMappingSetReader(
-            new InMemoryTableGateway<BridgeVersionRecord>(
-                BridgeVersion(VersionId, 1, 1, SourceVersionId, TargetVersionId, cardinality, allocationMode, PublicationStatuses.Draft)),
-            new InMemoryTableGateway<BridgeMappingRecord>(mappings),
+        var dimensions = new PublishedDimensionReader(
+            new InMemoryTableGateway<DimensionVersionRecord>(
+                Version(SourceVersionId, 1, 1, PublicationStatuses.Published),
+                Version(TargetVersionId, 2, 1, PublicationStatuses.Published),
+                Version(21, 2, 2, PublicationStatuses.Draft)),
+            new InMemoryTableGateway<DimensionLevelRecord>(),
             new InMemoryTableGateway<DimensionMemberRecord>(Members));
+        return new BridgeMappingSetReader(
+            new InMemoryTableGateway<BridgeVersionRecord>(BridgeVersion(VersionId, 1, 1, cardinality, allocationMode, PublicationStatuses.Draft)),
+            new InMemoryTableGateway<BridgeRecord>(Bridge(1, 1, 2)),
+            new InMemoryTableGateway<BridgeMappingRecord>(mappings),
+            dimensions);
     }
 }

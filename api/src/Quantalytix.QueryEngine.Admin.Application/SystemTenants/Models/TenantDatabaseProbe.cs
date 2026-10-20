@@ -2,11 +2,17 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 
-/// <summary>What a candidate tenant connection string reached: the database's info row, or why it could not be read.</summary>
+/// <summary>
+/// What a candidate tenant connection string reached: the database's info row and its number of active assumption sets, or why
+/// they could not be read.
+/// </summary>
 public sealed record TenantDatabaseProbe
 {
     /// <summary>The database's <c>qe_database_info</c> row; null when the probe failed.</summary>
     public DatabaseInfoRecord? DatabaseInfo { get; init; }
+
+    /// <summary>The number of assumption sets with status <c>active</c>; the API needs exactly one.</summary>
+    public int ActiveAssumptionSets { get; init; }
 
     /// <summary>Why the connection could not be opened or the row read; null when the probe succeeded.</summary>
     public string? Failure { get; init; }

@@ -5,8 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
 /// <summary>
 /// <c>entry_member_assignable</c>: entries map only to assignable members, because folder-only members such as a country
-/// above its states must not receive source values directly. Members outside the version are
-/// <c>entry_member_in_version</c>'s concern.
+/// above its states must not receive source values directly. Assignability is read in the published version of the set's
+/// dimension; members outside it are <c>entry_member_in_version</c>'s concern.
 /// </summary>
 public sealed class EntryMemberAssignableRule(MappingEntrySetReader reader) : IPublicationRule
 {
@@ -16,21 +16,22 @@ public sealed class EntryMemberAssignableRule(MappingEntrySetReader reader) : IP
     /// <summary>The kind the rule checks: mapping versions.</summary>
     public string Kind { get; } = VersionKinds.MappingVersion;
 
-    /// <summary>Reports every entry that maps to a member of the version whose <c>is_assignable</c> is false.</summary>
+    /// <summary>Reports every entry that maps to a member of the published version whose <c>is_assignable</c> is false.</summary>
     /// <param name="versionId">The mapping version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>One violation per such entry.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var set = await reader.ReadAsync(versionId, cancellationToken);
+        if (set.Dimension is not { } dimension) return [];
         return
         [
             .. set.Entries
-                .Where(entry => set.Members.TryGetValue(entry.MemberId, out var member) && !member.IsAssignable)
+                .Where(entry => dimension.UnassignableMemberKeys.Contains(entry.MemberKey))
                 .Select(entry => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Source key '{entry.SourceKeyValue}' maps to member '{set.Members[entry.MemberId].MemberKey}', which is not assignable."
+                    Message = $"Source key '{entry.SourceKeyValue}' maps to member '{entry.MemberKey}', which is not assignable."
                 })
         ];
     }

@@ -31,9 +31,9 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
         return Ok(await mappings.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Replaces every mapping of a draft bridge version with the given list.</summary>
+    /// <summary>Replaces every mapping of a draft or published bridge version with the given list.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft bridge version.</param>
+    /// <param name="versionId">The draft or published bridge version.</param>
     /// <param name="input">The complete mapping list.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored mappings.</returns>
@@ -41,9 +41,9 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
     /// <response code="400">A pair repeats, a weight is negative, or a value does not fit DECIMAL(38, 12); errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
-    [RequireDraft(VersionKinds.BridgeVersion, "versionId")]
+    [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<BridgeMappingRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<BridgeMappingRecord>>> Replace(

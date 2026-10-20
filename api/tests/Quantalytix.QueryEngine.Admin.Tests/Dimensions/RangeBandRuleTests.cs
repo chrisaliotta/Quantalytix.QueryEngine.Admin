@@ -144,7 +144,7 @@ public sealed class RangeBandRuleTests
     private static RangeBandSetReader Reader(string kind, string? rangeDataType, params RangeBandRecord[] bands)
     {
         return new RangeBandSetReader(
-            new InMemoryTableGateway<DimensionVersionRecord>(Version(VersionId, DimensionId, 1, PublicationStatuses.Draft, Utc(2026, 1, 1), null, rangeDataType)),
+            new InMemoryTableGateway<DimensionVersionRecord>(Version(VersionId, DimensionId, 1, PublicationStatuses.Draft, rangeDataType)),
             new InMemoryTableGateway<DimensionRecord>(Dimension(DimensionId, kind)),
             new InMemoryTableGateway<RangeBandRecord>(bands),
             new InMemoryTableGateway<DimensionMemberRecord>(Members));

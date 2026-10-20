@@ -22,8 +22,8 @@ interface LevelSheetRequest {
   level: DimensionLevel | null;
 }
 
-/** The version's levels in a table; drafts add, edit and delete them in a sheet. */
-export function LevelsTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+/** The version's levels in a table; a draft or the published version adds, edits and deletes them in a sheet. */
+export function LevelsTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   const levels = useLevels(versionId);
   const deleteLevel = useDeleteLevel(versionId);
   const [sheet, setSheet] = useState<LevelSheetRequest | null>(null);
@@ -37,7 +37,7 @@ export function LevelsTab({ versionId, isDraft }: { versionId: number; isDraft: 
       id: 'actions',
       header: '',
       cell: ({ row }) =>
-        isDraft && (
+        isEditable && (
           <Button
             variant="ghost"
             size="icon-xs"
@@ -63,7 +63,7 @@ export function LevelsTab({ versionId, isDraft }: { versionId: number; isDraft: 
         emptyMessage="No levels yet."
         onRowClick={level => setSheet({ level })}
         toolbar={
-          isDraft && (
+          isEditable && (
             <Button size="sm" className="ml-auto" onClick={() => setSheet({ level: null })}>
               <Plus />
               New level
@@ -77,7 +77,7 @@ export function LevelsTab({ versionId, isDraft }: { versionId: number; isDraft: 
           versionId={versionId}
           level={sheet.level}
           nextOrdinal={nextOrdinal}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onClose={() => setSheet(null)}
         />
       )}

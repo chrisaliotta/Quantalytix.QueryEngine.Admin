@@ -6,12 +6,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>Reads, creates, clones, edits and deletes the versions of reports. Status changes go through the version workflow.</summary>
 public sealed class ReportVersionService(
-    ITableGateway<ReportRecord> reports,
     ITableGateway<ReportVersionRecord> versions,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
-    ITableGateway<ReleaseReportRecord> pins,
-    ITableGateway<SemanticReleaseRecord> releases,
     ReportVersionCloner cloner,
     IIdGenerator ids)
 {
@@ -35,14 +32,14 @@ public sealed class ReportVersionService(
     }
 
     /// <summary>
-    /// Creates a draft with the report's next version number: empty, or with the lines and columns of
-    /// <see cref="NewReportVersionInput.CloneFromVersionId"/>, each metric followed by key into the draft's model version.
+    /// Creates a draft with the report's next version number: empty, or with copies of the lines and columns of
+    /// <see cref="NewReportVersionInput.CloneFromVersionId"/>.
     /// </summary>
     /// <param name="reportId">The report.</param>
-    /// <param name="input">The report dimension, model version, defaults and optional clone source.</param>
+    /// <param name="input">The report dimension, model, defaults and optional clone source.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The new draft and the columns and lines a clone dropped.</returns>
-    public async Task<CreatedReportVersion> CreateAsync(long reportId, NewReportVersionInput input, CancellationToken cancellationToken)
+    /// <returns>The new draft.</returns>
+    public async Task<ReportVersionRecord> CreateAsync(long reportId, NewReportVersionInput input, CancellationToken cancellationToken)
     {
         var existing = await versions.ListAsync(new { ReportId = reportId }, cancellationToken);
         var version = new ReportVersionRecord
@@ -51,8 +48,8 @@ public sealed class ReportVersionService(
             ReportId = reportId,
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
             ReportDimensionId = input.ReportDimensionId,
-            ModelVersionId = input.ModelVersionId,
-            DefaultSourceProfileId = input.DefaultSourceProfileId,
+            ModelId = input.ModelId,
+            DefaultProfileKey = input.DefaultProfileKey,
             Status = PublicationStatuses.Draft,
             PayloadJson = input.PayloadJson,
             DefaultFilterJson = input.DefaultFilterJson,
@@ -60,13 +57,12 @@ public sealed class ReportVersionService(
             DefaultPivotJson = input.DefaultPivotJson
         };
         await versions.InsertAsync(version, cancellationToken);
-        if (input.CloneFromVersionId is not { } sourceVersionId)
-            return new CreatedReportVersion { Version = version, DroppedColumns = [], DroppedLines = [] };
-        return await cloner.CloneAsync(sourceVersionId, version, cancellationToken);
+        if (input.CloneFromVersionId is { } sourceVersionId) await cloner.CloneAsync(sourceVersionId, version, cancellationToken);
+        return version;
     }
 
-    /// <summary>Replaces a draft version's default profile, payload and defaults; its lines and columns stay.</summary>
-    /// <param name="versionId">The draft report version.</param>
+    /// <summary>Replaces a version's default profile, payload and defaults; its lines and columns stay.</summary>
+    /// <param name="versionId">The draft or published report version.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>The stored version.</returns>
@@ -74,7 +70,7 @@ public sealed class ReportVersionService(
     {
         var updated = await GetAsync(versionId, cancellationToken) with
         {
-            DefaultSourceProfileId = input.DefaultSourceProfileId,
+            DefaultProfileKey = input.DefaultProfileKey,
             PayloadJson = input.PayloadJson,
             DefaultFilterJson = input.DefaultFilterJson,
             DefaultSettingsJson = input.DefaultSettingsJson,
@@ -84,25 +80,13 @@ public sealed class ReportVersionService(
         return updated;
     }
 
-    /// <summary>
-    /// Deletes a draft version that no release pins, with its lines and columns, and clears the report's current-version
-    /// pointer when it named the version.
-    /// </summary>
+    /// <summary>Deletes a draft version with its lines and columns; nothing references a draft.</summary>
     /// <param name="versionId">The draft report version.</param>
-    /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>Null when the version was deleted; otherwise the detail naming the releases, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long versionId, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <returns>A task that completes when the version is gone.</returns>
+    public Task DeleteAsync(long versionId, CancellationToken cancellationToken)
     {
-        var version = await GetAsync(versionId, cancellationToken);
-        var blockers = new DeleteBlockers($"Report version v{version.VersionNumber}");
-        blockers.AddNamed("pinned by releases", await ReleaseNamesAsync([versionId], cancellationToken));
-        var conflict = blockers.Detail();
-        if (conflict is not null) return conflict;
-
-        var report = await reports.GetAsync(new { version.ReportId }, cancellationToken);
-        if (report.CurrentReportVersionId == versionId) await reports.UpdateAsync(report with { CurrentReportVersionId = null }, cancellationToken);
-        await RemoveAsync([versionId], cancellationToken);
-        return null;
+        return RemoveAsync([versionId], cancellationToken);
     }
 
     /// <summary>Hard-deletes draft versions: their lines and columns first, then the versions.</summary>
@@ -114,16 +98,5 @@ public sealed class ReportVersionService(
         await lines.DeleteAsync(new { ReportVersionId = versionIds }, cancellationToken);
         await columns.DeleteAsync(new { ReportVersionId = versionIds }, cancellationToken);
         await versions.DeleteAsync(new { ReportVersionId = versionIds }, cancellationToken);
-    }
-
-    /// <summary>The keys of the releases that pin any of the versions, quoted.</summary>
-    /// <param name="versionIds">Report versions.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One name per pinning release.</returns>
-    public async Task<IEnumerable<string>> ReleaseNamesAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
-    {
-        var pinning = await pins.ListAsync(new { ReportVersionId = versionIds }, cancellationToken);
-        var keys = await releases.ListAsync(new { ReleaseId = pinning.Select(pin => pin.ReleaseId).Distinct().ToArray() }, cancellationToken);
-        return keys.Select(release => $"'{release.ReleaseKey}'");
     }
 }

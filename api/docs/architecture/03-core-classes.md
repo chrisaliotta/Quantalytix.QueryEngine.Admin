@@ -197,31 +197,34 @@ classDiagram
     TableCatalog ..> TenantDirectoryRecord : control plane table
 ```
 
-A filter is an anonymous object whose property names are record property names: a value becomes `column = @Property`, a collection other than a string becomes `column IN @Property`, which Dapper expands, and an empty collection matches nothing, so `ListAsync` returns an empty list and `DeleteAsync` returns without reaching the database. `DeleteAsync` requires a filter, so no call empties a table. `GetAsync` takes every key property and expects exactly one row. `UpdateAsync` sets every non-key column of the row the record's key names. `InsertAsync` and `InsertManyAsync` are upserts into StarRocks primary-key tables, one multi-row `INSERT` per 500 rows. `TableSql<TRecord>` builds the column list from the record's properties in declaration order, converted to snake_case, and writes JSON columns through `PARSE_JSON`; `TableCatalog.For<TRecord>()` gives its table. The catalog maps 29 records, each mirroring one `qe_*` table: `TenantDirectoryRecord` in `query_control`, the other 28 in the tenant's database. `IdGenerator` returns random IDs in [1, 2^53), so every ID stays exact as a JSON number in browsers; metadata keys are plain BIGINT columns without auto-increment.
+A filter is an anonymous object whose property names are record property names: a value becomes `column = @Property`, a collection other than a string becomes `column IN @Property`, which Dapper expands, and an empty collection matches nothing, so `ListAsync` returns an empty list and `DeleteAsync` returns without reaching the database. `DeleteAsync` requires a filter, so no call empties a table. `GetAsync` takes every key property and expects exactly one row. `UpdateAsync` sets every non-key column of the row the record's key names. `InsertAsync` and `InsertManyAsync` are upserts into StarRocks primary-key tables, one multi-row `INSERT` per 500 rows. `TableSql<TRecord>` builds the column list from the record's properties in declaration order, converted to snake_case, and writes JSON columns through `PARSE_JSON`; `TableCatalog.For<TRecord>()` gives its table. The catalog maps 46 records, each mirroring one `qe_*` table: `TenantDirectoryRecord` in `query_control`, the other 45 in the tenant's database. `IdGenerator` returns random IDs in [1, 2^53), so every ID stays exact as a JSON number in browsers; metadata keys are plain BIGINT columns without auto-increment.
 
 **Sources:** [ITableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/ITableGateway.cs), [StarRocksTableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/StarRocksTableGateway.cs), [TableSql.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableSql.cs), [TableCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableCatalog.cs), [TableDefinition.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/Models/TableDefinition.cs), [TableDatabase.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/Enums/TableDatabase.cs), [TableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableFilter.cs), [DeclaredProperties.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/DeclaredProperties.cs), [SnakeCase.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/SnakeCase.cs), [IStarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/IStarRocksConnectionFactory.cs), [StarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/StarRocksConnectionFactory.cs), [StarRocksOptions.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/Models/StarRocksOptions.cs), [IIdGenerator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/IIdGenerator.cs), [IdGenerator.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Identifiers/IdGenerator.cs), [records](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Models), [StarRocksInfrastructureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Configuration/StarRocksInfrastructureServiceCollectionExtensions.cs).
 
 ## Versioning
 
-The drawing shows the classes that move a versioned object through its lifecycle and the extension points feature slices plug into. It matters because every status change, for all eight kinds, goes through `VersionWorkflow`, and every content write to a version goes through `RequireDraftFilter` first.
+The drawing shows the classes that move a versioned object through its lifecycle and the extension points feature slices plug into. It matters because every status change, for all seven kinds, goes through `VersionWorkflow`, and every content write to a version goes through `RequireDraftFilter` or `RequireEditableFilter` first.
 
 ```mermaid
 classDiagram
     direction TB
     class VersionStatusController {
         +ChangeStatus(tenantId, version, input, cancellationToken)
+        +Check(tenantId, version, cancellationToken)
     }
     class VersionWorkflow {
         +TransitionAsync(kind, id, targetStatus, cancellationToken) Task~TransitionResult~
+        +CheckAsync(kind, id, cancellationToken) Task~IReadOnlyList~RuleViolation~~
     }
     class VersionTransitions {
         <<static>>
         +IsAllowed(kind, from, to) bool
-        +RunsPublicationRules(kind, from, to) bool
+        +RunsPublicationRules(from, to) bool
         +RunsRetirementRules(from, to) bool
     }
     class VersionStoreRegistry {
         +Get(kind) IVersionStore
+        +GetLiving(kind) ILivingVersionStore
     }
     class IVersionStore {
         <<interface>>
@@ -229,11 +232,21 @@ classDiagram
         +GetAsync(id, cancellationToken) Task~VersionState~
         +SetStatusAsync(id, status, publishedAt, cancellationToken) Task
     }
+    class ILivingVersionStore {
+        <<interface>>
+        +IdentityIdAsync(id, cancellationToken) Task~long~
+        +PublishedSiblingIdsAsync(id, cancellationToken) Task~IReadOnlyList~long~~
+    }
     class VersionStore~TRecord~ {
         <<abstract>>
         Key(id) object
         ToState(record) VersionState
         WithStatus(record, status, publishedAt) TRecord
+    }
+    class LivingVersionStore~TRecord~ {
+        <<abstract>>
+        IdentityOf(record) long
+        PublishedOf(identityId) object
     }
     class IVersionRule {
         <<interface>>
@@ -250,6 +263,9 @@ classDiagram
         <<interface>>
         +string Kind
         +OnValidatingAsync(versionId, cancellationToken) Task
+        +OnPublishedAsync(versionId, cancellationToken) Task
+    }
+    class PredecessorRetirer {
         +OnPublishedAsync(versionId, cancellationToken) Task
     }
     class SemanticRevision {
@@ -288,10 +304,10 @@ classDiagram
         <<static>>
         +Next(existing) int
     }
-    class RequireDraftAttribute {
-        +CreateInstance(serviceProvider)
-    }
     class RequireDraftFilter {
+        +OnActionExecutionAsync(context, next)
+    }
+    class RequireEditableFilter {
         +OnActionExecutionAsync(context, next)
     }
     class ITableGateway~TRecord~ {
@@ -313,28 +329,33 @@ classDiagram
     TransitionResult --> VersionState
     TransitionResult --> RuleViolation
     VersionStoreRegistry --> IVersionStore : one per kind
+    IVersionStore <|-- ILivingVersionStore
     IVersionStore <|.. VersionStore
+    ILivingVersionStore <|.. LivingVersionStore
+    VersionStore <|-- LivingVersionStore
     VersionStore <|-- DatasetVersionStore
-    VersionStore <|-- DimensionVersionStore
-    VersionStore <|-- MappingVersionStore
-    VersionStore <|-- BridgeVersionStore
     VersionStore <|-- SemanticReleaseStore
-    VersionStore <|-- AssumptionSetStore
-    VersionStore <|-- CalculationModelVersionStore
-    VersionStore <|-- ReportVersionStore
+    LivingVersionStore <|-- DimensionVersionStore
+    LivingVersionStore <|-- MappingVersionStore
+    LivingVersionStore <|-- BridgeVersionStore
+    LivingVersionStore <|-- CalculationModelVersionStore
+    LivingVersionStore <|-- ReportVersionStore
     VersionStore --> ITableGateway : versioned record
     IVersionRule <|-- IPublicationRule
     IVersionRule <|-- IRetirementRule
     IVersionRule ..> RuleViolation : reports
+    IVersionLifecycleHandler <|.. PredecessorRetirer
+    PredecessorRetirer --> VersionStoreRegistry
     SemanticRevision --> ITableGateway : DatabaseInfoRecord
     IdRemap --> IIdGenerator
-    RequireDraftAttribute ..> RequireDraftFilter : creates per request
     RequireDraftFilter --> VersionStoreRegistry
+    RequireEditableFilter --> VersionStoreRegistry
+    RequireEditableFilter --> SemanticRevision
 ```
 
-`VersionWorkflow` takes `VersionStoreRegistry`, every registered `IPublicationRule`, `IRetirementRule` and `IVersionLifecycleHandler`, `SemanticRevision` and `TimeProvider`; it filters rules and handlers by the version's `Kind` and runs them in registration order. The eight stores, one per `version_kind`, derive from `VersionStore<TRecord>`, which reads a row with `GetAsync` and writes its status and publication time with `UpdateAsync`. `VersionStoreRegistry` indexes them by `Kind` for the workflow and for `RequireDraftFilter`, which `[RequireDraft(kind, routeKey)]` creates for each request and which answers 409 unless the version named by the route value is a draft. `SemanticRevision` adds one to `qe_database_info.semantic_revision` and stamps `updated_at`. `IdRemap` and `VersionNumbers` serve the version services and cloners rather than the workflow: an `IdRemap`, one per clone, gives each source ID one new ID so references inside a clone point at the copies, and `VersionNumbers.Next` returns the highest existing version number plus one.
+`VersionWorkflow` takes `VersionStoreRegistry`, every registered `IPublicationRule`, `IRetirementRule` and `IVersionLifecycleHandler`, `SemanticRevision` and `TimeProvider`; it filters rules and handlers by the version's `Kind` and runs them in registration order. `CheckAsync` runs the publication rules alone and writes nothing; `VersionStatusController.Check` serves it as the Validate check of a published living version. The seven stores, one per `version_kind`, derive from `VersionStore<TRecord>`, which reads a row with `GetAsync` and writes its status and publication time with `UpdateAsync`; the five living ones derive from `LivingVersionStore<TRecord>`, which also finds a version's identity and the identity's other published versions, so `PredecessorRetirer` and `ActiveSetPinner` serve every living kind through `VersionStoreRegistry.GetLiving`. `[RequireDraft(kind, routeKey)]` creates a `RequireDraftFilter` per request, which answers 409 unless the version named by the route value is a draft; `[RequireEditable(kind, routeKey)]` creates a `RequireEditableFilter`, which also lets the published version through and advances the revision after a successful write to it. `SemanticRevision` adds one to `qe_database_info.semantic_revision` and stamps `updated_at`. `IdRemap` and `VersionNumbers` serve the version services and cloners rather than the workflow: an `IdRemap`, one per clone, gives each source ID one new ID so references inside a clone point at the copies, and `VersionNumbers.Next` returns the highest existing version number plus one.
 
-**Sources:** [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [IVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionStore.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [VersionStoreRegistry.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStoreRegistry.cs), [DatasetVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DatasetVersionStore.cs), [DimensionVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DimensionVersionStore.cs), [MappingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/MappingVersionStore.cs), [BridgeVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/BridgeVersionStore.cs), [SemanticReleaseStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticReleaseStore.cs), [AssumptionSetStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/AssumptionSetStore.cs), [CalculationModelVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/CalculationModelVersionStore.cs), [ReportVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/ReportVersionStore.cs), [IVersionRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionRule.cs), [IPublicationRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IPublicationRule.cs), [IRetirementRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IRetirementRule.cs), [IVersionLifecycleHandler.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionLifecycleHandler.cs), [TransitionResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/TransitionResult.cs), [TransitionOutcome.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Enums/TransitionOutcome.cs), [VersionState.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionState.cs), [RuleViolation.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/RuleViolation.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [IdRemap.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IdRemap.cs), [VersionNumbers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionNumbers.cs), [RequireDraftAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireDraftAttribute.cs), [RequireDraftFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireDraftFilter.cs), [AdminApplicationServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Configuration/AdminApplicationServiceCollectionExtensions.cs).
+**Sources:** [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [IVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionStore.cs), [ILivingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/ILivingVersionStore.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [LivingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/LivingVersionStore.cs), [VersionStoreRegistry.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStoreRegistry.cs), [DatasetVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DatasetVersionStore.cs), [DimensionVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/DimensionVersionStore.cs), [MappingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/MappingVersionStore.cs), [BridgeVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/BridgeVersionStore.cs), [SemanticReleaseStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticReleaseStore.cs), [CalculationModelVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/CalculationModelVersionStore.cs), [ReportVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/ReportVersionStore.cs), [IVersionRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionRule.cs), [IPublicationRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IPublicationRule.cs), [IRetirementRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IRetirementRule.cs), [IVersionLifecycleHandler.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionLifecycleHandler.cs), [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [TransitionResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/TransitionResult.cs), [TransitionOutcome.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Enums/TransitionOutcome.cs), [VersionState.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionState.cs), [VersionCheck.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionCheck.cs), [RuleViolation.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/RuleViolation.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [IdRemap.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IdRemap.cs), [VersionNumbers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionNumbers.cs), [RequireDraftAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireDraftAttribute.cs), [RequireDraftFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireDraftFilter.cs), [RequireEditableAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableAttribute.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [AdminApplicationServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Configuration/AdminApplicationServiceCollectionExtensions.cs).
 
 ## Errors and validation
 
@@ -439,16 +460,15 @@ classDiagram
     IValidator <|.. AbstractValidator
     AbstractValidator ..> JsonPropertyPaths : property names
     AbstractValidator <|-- MeasureUpdateInputValidator
-    AbstractValidator <|-- AssumptionSetCreateInputValidator
+    AbstractValidator <|-- AssumptionCaptureInputValidator
     MeasureUpdateInputValidator ..> VarcharRuleExtensions
     MeasureUpdateInputValidator ..> VocabularyRuleExtensions
     MeasureUpdateInputValidator ..> DecimalRuleExtensions
     MeasureUpdateInputValidator ..> JsonRuleExtensions
     MeasureUpdateInputValidator ..> ExpressionRuleExtensions
     MeasureUpdateInputValidator ..> ExpressionInspector
-    AssumptionSetCreateInputValidator ..> KeyRuleExtensions
-    AssumptionSetCreateInputValidator ..> UtcRuleExtensions
-    AssumptionSetCreateInputValidator ..> VarcharRuleExtensions
+    AssumptionCaptureInputValidator ..> KeyRuleExtensions
+    AssumptionCaptureInputValidator ..> VarcharRuleExtensions
     ExpressionRuleExtensions ..> ExpressionInspector
     ExpressionRuleExtensions ..> FilterNodes
     ExpressionInspector ..> ExpressionParser : engine Domain
@@ -462,4 +482,4 @@ classDiagram
 
 `ValidationFilter` resolves the `IValidator<T>` of every bound argument, runs it, and answers 400 with every failure; `AddAdminControllers` sets `JsonPropertyPaths.Resolve` as FluentValidation's property and display name resolver, so failures are keyed `components[0].fieldId`, and `BindingErrorResults` keys binding errors the same way. `RuleViolationResults` builds the 422 for `VersionStatusController`. A service that refuses a delete fills a `DeleteBlockers` with the rows still referencing the target and returns its `Detail()`; the controller answers 409 with `DeleteBlockedProblem.Title`. The shared rule extensions keep text within the VARCHAR byte length (`MustFitVarchar`), keys to a letter followed by letters, digits or underscores (`MustBeKey`), times in UTC (`MustBeUtc`), JSON parseable (`MustBeJson`), decimals within 38 digits (`MustBeDecimalPrecision`, `MustBeDecimalScale`), values within a vocabulary (`MustBeIn`), expressions parseable by the engine's own parser with no request parameters (`MustBeValidExpression`), calculated-measure formulas that read only `[m.KEY]` references and the `@periodDays` and `@yearDays` context parameters (`MustBeCalculatedMeasureFormula`), and filters in the query contract's structured `filterNode` form whose operands are all of one type, such as fields (`MustBeFilterOver`, through `FilterNodes`). The two validators shown are examples; feature-specific extensions such as `MustBeSourceObject` and `MustRouteToTenant` sit beside their slices. `ExpressionInspector` and `VocabularyCatalog` are static; `LookupService` is the scoped service behind the web SPA's pickers: it reads 17 tenant tables and hands the calculation-model and report kinds to `CalculationLookups`, which reads 10 more.
 
-**Sources:** [ValidationFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/ValidationFilter.cs), [JsonPropertyPaths.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/JsonPropertyPaths.cs), [BindingErrorResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/BindingErrorResults.cs), [RuleViolationResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/RuleViolationResults.cs), [RuleViolationProblemDetails.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/Models/RuleViolationProblemDetails.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/DeleteBlockedProblem.cs), [AdminControllersServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/AdminControllersServiceCollectionExtensions.cs), [KeyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/KeyRuleExtensions.cs), [UtcRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/UtcRuleExtensions.cs), [JsonRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/JsonRuleExtensions.cs), [VarcharRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/VarcharRuleExtensions.cs), [DecimalRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DecimalRuleExtensions.cs), [VocabularyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VocabularyRuleExtensions.cs), [ExpressionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionRuleExtensions.cs), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs), [VocabularyCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VocabularyCatalog.cs), [LookupService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Lookups/LookupService.cs), [MeasureUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureUpdateInputValidator.cs), [AssumptionSetCreateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetCreateInputValidator.cs), [SourceObjectRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SourceObjects/SourceObjectRuleExtensions.cs), [TenantConnectionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionRuleExtensions.cs).
+**Sources:** [ValidationFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/ValidationFilter.cs), [JsonPropertyPaths.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/JsonPropertyPaths.cs), [BindingErrorResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/BindingErrorResults.cs), [RuleViolationResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/RuleViolationResults.cs), [RuleViolationProblemDetails.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/Models/RuleViolationProblemDetails.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/DeleteBlockedProblem.cs), [AdminControllersServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/AdminControllersServiceCollectionExtensions.cs), [KeyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/KeyRuleExtensions.cs), [UtcRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/UtcRuleExtensions.cs), [JsonRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/JsonRuleExtensions.cs), [VarcharRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/VarcharRuleExtensions.cs), [DecimalRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DecimalRuleExtensions.cs), [VocabularyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VocabularyRuleExtensions.cs), [ExpressionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionRuleExtensions.cs), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs), [VocabularyCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VocabularyCatalog.cs), [LookupService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Lookups/LookupService.cs), [MeasureUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureUpdateInputValidator.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [SourceObjectRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SourceObjects/SourceObjectRuleExtensions.cs), [TenantConnectionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionRuleExtensions.cs).

@@ -16,7 +16,7 @@ public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumn
     private static readonly string[] Reserved = ["line", "period"];
 
     /// <summary>Declares the rules.</summary>
-    /// <param name="metrics">Reads the report's model version metrics.</param>
+    /// <param name="metrics">Reads the metrics of the published version of the report's model.</param>
     /// <param name="columns">Reads the version's columns.</param>
     /// <param name="lines">Reads the version's formula lines.</param>
     /// <param name="route">Names the edited version.</param>
@@ -44,8 +44,8 @@ public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumn
         {
             var versionId = route.Id("versionId");
             var model = await metrics.ReadForReportAsync(versionId, cancellationToken);
-            foreach (var column in list.Where(column => model.IdOf(column.ValueKind, column.MetricKey) is null))
-                context.AddFailure($"Column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the report's model version.");
+            foreach (var column in list.Where(column => !model.Has(column.ValueKind, column.MetricKey)))
+                context.AddFailure($"Column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the published version of the report's model.");
 
             var stored = (await columns.ListAsync(new { ReportVersionId = versionId }, cancellationToken)).ToDictionary(column => column.ReportColumnId);
             foreach (var column in list.Where(column => column.ReportColumnId is { } id && !stored.ContainsKey(id)))

@@ -8,9 +8,8 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class MappingsAndBridgesFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Mappings and Bridges slice's services, its <c>mapping_version</c> and <c>bridge_version</c> publication
-    /// rules and the <c>bridge_version</c> lifecycle handler that moves the bridge's current-version pointer, all scoped. The
-    /// workflow runs the rules of a kind in this order.
+    /// Registers the Mappings and Bridges slice's services and its <c>mapping_version</c> and <c>bridge_version</c> publication
+    /// rules, all scoped. The workflow runs the rules of a kind in this order.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -22,9 +21,7 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddScoped<MappingVersionCloner>();
         services.AddScoped<MappingEntrySetReader>();
 
-        services.AddScoped<IPublicationRule, DimensionVersionBelongsToSetDimensionRule>();
         services.AddScoped<IPublicationRule, DimensionVersionPublishedRule>();
-        services.AddScoped<IPublicationRule, OneMappingVersionPerDimensionVersionRule>();
         services.AddScoped<IPublicationRule, SourceKeyUniqueRule>();
         services.AddScoped<IPublicationRule, EntryMemberInVersionRule>();
         services.AddScoped<IPublicationRule, EntryMemberAssignableRule>();
@@ -35,9 +32,6 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddScoped<BridgeVersionCloner>();
         services.AddScoped<BridgeMappingSetReader>();
 
-        services.AddScoped<IVersionLifecycleHandler, CurrentBridgeVersionUpdater>();
-
-        services.AddScoped<IPublicationRule, EndpointVersionsMatchBridgeRule>();
         services.AddScoped<IPublicationRule, EndpointVersionsPublishedRule>();
         services.AddScoped<IPublicationRule, MappingMembersInEndpointVersionsRule>();
         services.AddScoped<IPublicationRule, CardinalityManyToOneRule>();

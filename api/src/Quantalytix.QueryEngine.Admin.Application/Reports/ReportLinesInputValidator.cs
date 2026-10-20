@@ -14,7 +14,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 public sealed class ReportLinesInputValidator : AbstractValidator<ReportLinesInput>
 {
     /// <summary>Declares the rules.</summary>
-    /// <param name="metrics">Reads the report's model version metrics.</param>
+    /// <param name="metrics">Reads the metrics of the published version of the report's model.</param>
     /// <param name="columns">Reads the version's columns.</param>
     /// <param name="lines">Reads the version's lines.</param>
     /// <param name="route">Names the edited version.</param>
@@ -58,8 +58,8 @@ public sealed class ReportLinesInputValidator : AbstractValidator<ReportLinesInp
             var columnKeys = (await columns.ListAsync(new { ReportVersionId = versionId }, cancellationToken)).Select(column => column.ColumnKey).ToHashSet(StringComparer.Ordinal);
             foreach (var line in list.Where(line => line.LineKind == ReportLineKinds.Formula))
             {
-                if (line.CalculatedMeasureKey is { } measure && model.IdOf(ReportValueKinds.Calculated, measure) is null)
-                    context.AddFailure($"Formula line '{line.LineKey}' evaluates '{measure}', which is no calculated measure of the report's model version.");
+                if (line.CalculatedMeasureKey is { } measure && !model.Has(ReportValueKinds.Calculated, measure))
+                    context.AddFailure($"Formula line '{line.LineKey}' evaluates '{measure}', which is no calculated measure of the published version of the report's model.");
                 if (line.ValueColumnKey is { } column && !columnKeys.Contains(column))
                     context.AddFailure($"Formula line '{line.LineKey}' places its value in '{column}', which is no column of this report version.");
             }

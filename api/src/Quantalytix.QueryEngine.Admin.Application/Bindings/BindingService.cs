@@ -10,7 +10,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 public sealed class BindingService(
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<TimeBindingRecord> timeBindings,
-    ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<DatasetVersionRecord> versions,
     ITableGateway<MeasureTimePolicyRecord> timePolicies,
     ITableGateway<MeasureRecord> measures,
@@ -19,19 +18,18 @@ public sealed class BindingService(
     /// <summary>Lists the bindings of a dataset version.</summary>
     /// <param name="versionId">The dataset version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The bindings sorted by display name, each with its time extension and the bridge of its bridge version.</returns>
+    /// <returns>The bindings sorted by display name, each with its time extension.</returns>
     public async Task<IReadOnlyList<BindingDetail>> ListAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
         var extensions = (await timeBindings.ListAsync(new { BindingId = rows.Select(row => row.BindingId).ToArray() }, cancellationToken))
             .ToDictionary(extension => extension.BindingId);
-        var bridgeIds = await BridgeIdsAsync(rows, cancellationToken);
         return
         [
             .. rows
                 .OrderBy(row => row.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(row => row.BindingId)
-                .Select(row => Detail(row, extensions.GetValueOrDefault(row.BindingId), bridgeIds))
+                .Select(row => new BindingDetail { Binding = row, TimeBinding = extensions.GetValueOrDefault(row.BindingId) })
         ];
     }
 
@@ -103,23 +101,7 @@ public sealed class BindingService(
             await timeBindings.DeleteAsync(new { binding.BindingId }, cancellationToken);
         }
 
-        return Detail(binding, extension, await BridgeIdsAsync([binding], cancellationToken));
-    }
-
-    /// <summary>The bridges that own the bridge versions of bridge bindings, by bridge version.</summary>
-    private async Task<Dictionary<long, long>> BridgeIdsAsync(IReadOnlyList<DimensionBindingRecord> rows, CancellationToken cancellationToken)
-    {
-        long[] bridgeVersionIds = [.. rows.Where(row => row.BridgeVersionId is not null).Select(row => row.BridgeVersionId!.Value)];
-        var owners = await bridgeVersions.ListAsync(new { BridgeVersionId = bridgeVersionIds }, cancellationToken);
-        return owners.ToDictionary(owner => owner.BridgeVersionId, owner => owner.BridgeId);
-    }
-
-    /// <summary>A binding with its time extension and the bridge of its bridge version.</summary>
-    private static BindingDetail Detail(DimensionBindingRecord binding, TimeBindingRecord? extension, Dictionary<long, long> bridgeIds)
-    {
-        long? bridgeId = null;
-        if (binding.BridgeVersionId is { } bridgeVersionId && bridgeIds.TryGetValue(bridgeVersionId, out var owner)) bridgeId = owner;
-        return new BindingDetail { Binding = binding, TimeBinding = extension, BridgeId = bridgeId };
+        return new BindingDetail { Binding = binding, TimeBinding = extension };
     }
 
     /// <summary>A binding row holding the input's attributes.</summary>
@@ -131,20 +113,19 @@ public sealed class BindingService(
             DatasetVersionId = versionId,
             DisplayName = input.DisplayName,
             DimensionId = input.DimensionId!.Value,
-            PinnedDimensionVersionId = input.PinnedDimensionVersionId,
             BindingKind = input.BindingKind,
             SourceFieldId = input.SourceFieldId,
             MappingSetId = input.MappingSetId,
             SourceBindingId = input.SourceBindingId,
-            BridgeVersionId = input.BridgeVersionId,
+            BridgeId = input.BridgeId,
             GroupingMode = input.GroupingMode,
-            GroupingLevelId = input.GroupingLevelId,
-            GroupingAncestorMemberId = input.GroupingAncestorMemberId,
+            GroupingLevelKey = input.GroupingLevelKey,
+            GroupingAncestorMemberKey = input.GroupingAncestorMemberKey,
             GroupingDepth = input.GroupingDepth,
             RaggedBehavior = input.RaggedBehavior,
             DefaultPeriodAlignment = input.DefaultPeriodAlignment,
             UnmappedBehavior = input.UnmappedBehavior,
-            UnknownMemberId = input.UnknownMemberId,
+            UnknownMemberKey = input.UnknownMemberKey,
             IsRequired = input.IsRequired,
             IsGroupable = input.IsGroupable,
             IsFilterable = input.IsFilterable,

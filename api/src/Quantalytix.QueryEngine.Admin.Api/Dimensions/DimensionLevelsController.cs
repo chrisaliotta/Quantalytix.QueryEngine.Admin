@@ -35,9 +35,9 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
         return Ok(await levels.ListAsync(dimensionVersionId, cancellationToken));
     }
 
-    /// <summary>Adds a level to a draft version.</summary>
+    /// <summary>Adds a level to a draft or published version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The new level.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created level.</returns>
@@ -45,9 +45,9 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Create(
@@ -61,7 +61,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
 
     /// <summary>Replaces a level's display name, ordinal, periodicity and leaf flag; its key stays.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="level">The draft version and its level.</param>
+    /// <param name="level">The draft or published version and its level.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored level.</returns>
@@ -69,9 +69,9 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     /// <response code="400">The level is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{levelId:long}")]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Update(
@@ -83,18 +83,18 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
         return Ok(await levels.UpdateAsync(level, input, cancellationToken));
     }
 
-    /// <summary>Deletes a level of a draft version, unless members use it.</summary>
+    /// <summary>Deletes a level of a draft or published version, unless members use it or, in the published version, live bindings group at its key.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="level">The draft version and its level.</param>
+    /// <param name="level">The draft or published version and its level.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft or members use the level.</returns>
+    /// <returns>No content; 409 when the version is neither a draft nor published or something uses the level.</returns>
     /// <response code="204">The level is deleted.</response>
     /// <response code="400">The level is not in the version; the error is keyed <c>levelId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the members that use the level.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names what uses the level.</response>
     [HttpDelete("{levelId:long}")]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] LevelReference level, CancellationToken cancellationToken)

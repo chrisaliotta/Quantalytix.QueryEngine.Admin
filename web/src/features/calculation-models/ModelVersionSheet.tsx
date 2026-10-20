@@ -5,12 +5,12 @@ import { useUpdateModelVersion } from './api';
 import type { CalculationModelVersion, ModelVersionInput } from './types';
 
 export interface ModelVersionSheetProps {
-  /** The draft version to edit. */
+  /** The draft or published version to edit. */
   version: CalculationModelVersion;
   onClose: () => void;
 }
 
-/** Edits a draft model version's currency; its content stays as it is. */
+/** Edits a draft or published model version's currency; its content stays as it is. */
 export function ModelVersionSheet({ version, onClose }: ModelVersionSheetProps) {
   const update = useUpdateModelVersion(version.modelVersionId);
   const form = useForm<ModelVersionInput>({ defaultValues: { currencyCode: version.currencyCode } });

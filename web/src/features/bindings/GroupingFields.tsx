@@ -1,42 +1,34 @@
 import { useFormContext, useWatch } from 'react-hook-form';
 import { FieldSeparator } from '@/components/ui/field';
-import { EntityField, NumberField, VocabularyField } from '@/shared/form';
+import { KeyField, NumberField, VocabularyField } from '@/shared/form';
+import type { LookupItem } from '@/shared/types';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import type { BindingFormValues } from './bindingForm';
-import { useGroupingVersion, type GroupingVersion } from './queries';
 
 export interface GroupingFieldsProps {
   /** The binding's dimension; null until one is chosen. */
   dimensionId: number | null;
-  /** The binding's pinned dimension version; null resolves the version in effect now. */
-  pinnedVersionId: number | null;
 }
 
 /**
  * The binding sheet's grouping section: the grouping mode with its level, ancestor member or depth, the ragged and period
- * alignment behaviors, and the unmapped behavior with its unknown member. Levels and members come from the pinned
- * version, or from the version of the dimension in effect now when the binding pins none.
+ * alignment behaviors, and the unmapped behavior with its unknown member. Levels and members are named by key, offered
+ * from the dimension's published version, which the active assumption set pins and requests resolve the keys in.
  */
-export function GroupingFields({ dimensionId, pinnedVersionId }: GroupingFieldsProps) {
+export function GroupingFields({ dimensionId }: GroupingFieldsProps) {
   const { control } = useFormContext<BindingFormValues>();
   const [mode, unmapped] = useWatch({ control, name: ['groupingMode', 'unmappedBehavior'] });
-  const grouping = useGroupingVersion(dimensionId, pinnedVersionId);
-  const source = groupingSource(dimensionId, pinnedVersionId, grouping);
+  const levels = usePublishedVersionItems('dimension-versions', dimensionId, 'levels');
+  const members = usePublishedVersionItems('dimension-versions', dimensionId, 'members');
+  const source = groupingSource(dimensionId, members);
 
   return (
     <>
       <FieldSeparator>Grouping</FieldSeparator>
       <VocabularyField name="groupingMode" label="Grouping mode" vocabulary="grouping_mode" />
-      {mode === 'level' && (
-        <EntityField name="groupingLevelId" label="Level" lookupKind="levels" parentId={grouping.versionId} description={source} />
-      )}
+      {mode === 'level' && <KeyField name="groupingLevelKey" label="Level" items={levels} description={source} />}
       {mode === 'ancestor' && (
-        <EntityField
-          name="groupingAncestorMemberId"
-          label="Ancestor member"
-          lookupKind="members"
-          parentId={grouping.versionId}
-          description={source}
-        />
+        <KeyField name="groupingAncestorMemberKey" label="Ancestor member" items={members} description={source} />
       )}
       {mode === 'depth' && (
         <NumberField name="groupingDepth" label="Depth" description="The closure depth to group at; 0 groups by the member itself." />
@@ -55,25 +47,19 @@ export function GroupingFields({ dimensionId, pinnedVersionId }: GroupingFieldsP
         description="What happens to rows whose source value maps to no member."
       />
       {unmapped === 'unknown' && (
-        <EntityField name="unknownMemberId" label="Unknown member" lookupKind="members" parentId={grouping.versionId} description={source} />
+        <KeyField name="unknownMemberKey" label="Unknown member" items={members} description={source} />
       )}
     </>
   );
 }
 
 /** Says which dimension version the level and member pickers list, or why they list none. */
-function groupingSource(dimensionId: number | null, pinnedVersionId: number | null, grouping: GroupingVersion) {
+function groupingSource(dimensionId: number | null, members: LookupItem[] | null) {
   if (dimensionId === null) {
     return 'Choose a dimension first.';
   }
-  if (pinnedVersionId !== null) {
-    return 'From the pinned version.';
+  if (members !== null && members.length === 0) {
+    return 'The dimension has no published version with members yet; publish one to choose from it.';
   }
-  if (grouping.effective) {
-    return `From v${grouping.effective.versionNumber}, the version of the dimension in effect now.`;
-  }
-  if (grouping.isPending) {
-    return 'Finding the version in effect now...';
-  }
-  return 'The dimension has no published version in effect now; pin a version to choose from it.';
+  return "From the dimension's published version; requests resolve the key in the version their assumption set pins.";
 }

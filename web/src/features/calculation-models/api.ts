@@ -112,7 +112,7 @@ export function useUpdateCalculationModel(modelId: number) {
   });
 }
 
-/** Deletes a model whose versions are all drafts that no report reads; a 409 names what blocks it. */
+/** Deletes a model whose versions are all drafts and that no report version reads; a 409 names what blocks it. */
 export function useDeleteCalculationModel() {
   const tenantId = useTenantId();
   return useMutation({
@@ -146,7 +146,7 @@ export function useCreateModelVersion(modelId: number) {
   });
 }
 
-/** Edits a draft version's currency. */
+/** Edits a draft or published version's currency. */
 export function useUpdateModelVersion(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -161,7 +161,7 @@ export function useUpdateModelVersion(versionId: number) {
   });
 }
 
-/** Deletes a draft version that no report version reads, with its content; a 409 names the report versions. */
+/** Deletes a draft version with its content. */
 export function useDeleteModelVersion() {
   const tenantId = useTenantId();
   return useMutation({
@@ -196,7 +196,7 @@ function invalidateContent(tenantId: string, versionId: number) {
   return invalidate(contentKey(tenantId, versionId), ...CONTENT_LOOKUPS.map(kind => lookupQueryKey(tenantId, kind)));
 }
 
-/** Adds a row of one content kind to a draft model version. */
+/** Adds a row of one content kind to a draft or published model version. */
 export function useCreateModelContent<K extends ModelContentKind>(kind: K, versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -208,7 +208,7 @@ export function useCreateModelContent<K extends ModelContentKind>(kind: K, versi
   });
 }
 
-/** Replaces a row of one content kind of a draft model version, keeping its ID. */
+/** Replaces a row of one content kind of a draft or published model version, keeping its ID. */
 export function useUpdateModelContent<K extends ModelContentKind>(kind: K, versionId: number) {
   const tenantId = useTenantId();
   return useMutation({

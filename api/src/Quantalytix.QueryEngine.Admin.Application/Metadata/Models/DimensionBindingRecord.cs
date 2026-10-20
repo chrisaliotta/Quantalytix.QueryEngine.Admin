@@ -15,9 +15,6 @@ public sealed record DimensionBindingRecord
     /// <summary>The canonical dimension.</summary>
     public required long DimensionId { get; init; }
 
-    /// <summary>Optional explicit dimension version; null resolves the published version valid at query time.</summary>
-    public long? PinnedDimensionVersionId { get; init; }
-
     /// <summary>A <c>binding_kind</c> value.</summary>
     public required string BindingKind { get; init; }
 
@@ -30,17 +27,17 @@ public sealed record DimensionBindingRecord
     /// <summary>The existing source binding when the binding kind is <c>bridge</c>.</summary>
     public long? SourceBindingId { get; init; }
 
-    /// <summary>The bridge version when the binding kind is <c>bridge</c>.</summary>
-    public long? BridgeVersionId { get; init; }
+    /// <summary>The bridge when the binding kind is <c>bridge</c>; queries use the version their assumption set pins.</summary>
+    public long? BridgeId { get; init; }
 
     /// <summary>A <c>grouping_mode</c> value.</summary>
     public required string GroupingMode { get; init; }
 
-    /// <summary>The level to group at when the grouping mode is <c>level</c>.</summary>
-    public long? GroupingLevelId { get; init; }
+    /// <summary>The key of the level to group at when the grouping mode is <c>level</c>.</summary>
+    public string? GroupingLevelKey { get; init; }
 
-    /// <summary>The ancestor to group at when the grouping mode is <c>ancestor</c>.</summary>
-    public long? GroupingAncestorMemberId { get; init; }
+    /// <summary>The key of the ancestor member to group under when the grouping mode is <c>ancestor</c>.</summary>
+    public string? GroupingAncestorMemberKey { get; init; }
 
     /// <summary>The closure depth to group at when the grouping mode is <c>depth</c>.</summary>
     public int? GroupingDepth { get; init; }
@@ -54,8 +51,8 @@ public sealed record DimensionBindingRecord
     /// <summary>An <c>unmapped_behavior</c> value.</summary>
     public required string UnmappedBehavior { get; init; }
 
-    /// <summary>The member unmapped rows route to when the unmapped behavior is <c>unknown</c>.</summary>
-    public long? UnknownMemberId { get; init; }
+    /// <summary>The key of the member unmapped rows route to when the unmapped behavior is <c>unknown</c>.</summary>
+    public string? UnknownMemberKey { get; init; }
 
     /// <summary>Dataset fixture flag; a required binding must never be removed or disabled.</summary>
     public required bool IsRequired { get; init; }

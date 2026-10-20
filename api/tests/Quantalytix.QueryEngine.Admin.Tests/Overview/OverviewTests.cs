@@ -7,8 +7,8 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Overview;
 
 /// <summary>
-/// Confirms the overview's numbers: identity rows are counted whatever their status, drafts are the rows in
-/// <c>draft</c> status of each versioned kind, and active measures are only the measures of the dataset versions the
+/// Confirms the overview's numbers: identity rows and assumption sets are counted whatever their status, drafts are the rows
+/// in <c>draft</c> status of each versioned kind, and active measures are only the measures of the dataset versions the
 /// active release pins; without an active release there are none. The overview is where an administrator sees what
 /// queries currently use and what work is still in progress.
 /// </summary>
@@ -73,7 +73,6 @@ public sealed class OverviewTests
         MappingVersionId = 71,
         MappingSetId = 61,
         VersionNumber = 1,
-        DimensionVersionId = 101,
         Status = PublicationStatuses.Draft
     });
 
@@ -94,17 +93,15 @@ public sealed class OverviewTests
         BridgeVersionId = 82,
         BridgeId = 81,
         VersionNumber = 1,
-        SourceDimensionVersionId = 101,
-        TargetDimensionVersionId = 201,
         Cardinality = Cardinalities.ManyToOne,
         AllocationMode = AllocationModes.None,
         Status = PublicationStatuses.Published
     });
 
-    /// <summary>A draft and a published assumption set.</summary>
+    /// <summary>The active assumption set and a historical one.</summary>
     private readonly InMemoryTableGateway<AssumptionSetRecord> _assumptionSets = new(
-        AssumptionSet(301, AssumptionSetStatuses.Draft),
-        AssumptionSet(302, AssumptionSetStatuses.Published));
+        AssumptionSet(301, AssumptionSetStatuses.Active),
+        AssumptionSet(302, AssumptionSetStatuses.Historical));
 
     /// <summary>One calculation model.</summary>
     private readonly InMemoryTableGateway<CalculationModelRecord> _models = new(new CalculationModelRecord
@@ -130,7 +127,7 @@ public sealed class OverviewTests
         ReportId = 601,
         VersionNumber = 1,
         ReportDimensionId = 300,
-        ModelVersionId = 411,
+        ModelId = 401,
         Status = PublicationStatuses.Draft
     });
 
@@ -142,7 +139,7 @@ public sealed class OverviewTests
         var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
-        Assert.Equal(4, overview.MetadataSchemaVersion);
+        Assert.Equal(8, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
@@ -167,7 +164,6 @@ public sealed class OverviewTests
                 MappingVersions = 1,
                 BridgeVersions = 0,
                 Releases = 1,
-                AssumptionSets = 1,
                 ModelVersions = 1,
                 ReportVersions = 1
             },
@@ -215,7 +211,7 @@ public sealed class OverviewTests
         {
             SingletonId = 1,
             TenantKey = "sandbox",
-            MetadataSchemaVersion = 4,
+            MetadataSchemaVersion = 8,
             SemanticRevision = 12,
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created
@@ -325,7 +321,6 @@ public sealed class OverviewTests
             AssumptionSetId = assumptionSetId,
             AssumptionSetKey = $"SET_{assumptionSetId}",
             DisplayName = $"Set {assumptionSetId}",
-            EffectiveAt = Created,
             Status = status,
             CreatedAt = Created
         };

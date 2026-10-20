@@ -13,7 +13,4 @@ public sealed record ReleaseSummary
 
     /// <summary>The number of datasets the release's manifest pins.</summary>
     public required int DatasetCount { get; init; }
-
-    /// <summary>The number of reports the release pins.</summary>
-    public required int ReportCount { get; init; }
 }

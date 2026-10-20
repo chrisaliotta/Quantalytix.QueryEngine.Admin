@@ -1,10 +1,10 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>The editable attributes of a draft report version, as <c>PUT report-versions/{versionId}</c> takes them.</summary>
+/// <summary>The editable attributes of a report version, as <c>PUT report-versions/{versionId}</c> takes them.</summary>
 public record ReportVersionInput
 {
-    /// <summary>A profile of the version's model version that requests run under when they name none.</summary>
-    public long? DefaultSourceProfileId { get; init; }
+    /// <summary>The key of a profile of the model's published version that requests run under when they name none.</summary>
+    public string? DefaultProfileKey { get; init; }
 
     /// <summary>Optional presentation payload passed through to clients.</summary>
     public string? PayloadJson { get; init; }

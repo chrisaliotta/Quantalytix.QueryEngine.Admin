@@ -32,9 +32,9 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
         return Ok(await variables.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Adds a variable to a draft model version.</summary>
+    /// <summary>Adds a variable to a draft or published model version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft model version.</param>
+    /// <param name="versionId">The draft or published model version.</param>
     /// <param name="input">The new variable.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created variable.</returns>
@@ -42,9 +42,9 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
     /// <response code="400">The input breaks a field rule, such as a key another variable or calculated measure of the version has; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<VariableRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Create(string tenantId, long versionId, VariableInput input, CancellationToken cancellationToken)
@@ -52,9 +52,9 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
         return Ok(await variables.CreateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>Replaces a variable of a draft model version, keeping its ID.</summary>
+    /// <summary>Replaces a variable of a draft or published model version, keeping its ID.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="variable">The draft model version and its variable.</param>
+    /// <param name="variable">The draft or published model version and its variable.</param>
     /// <param name="input">The variable's new values.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored variable.</returns>
@@ -62,9 +62,9 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
     /// <response code="400">The variable is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<VariableRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Update(
@@ -76,18 +76,18 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
         return Ok(await variables.UpdateAsync(variable.VersionId, variable.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a variable of a draft model version with its sources and their profile picks and override routes, unless a report column returns it.</summary>
+    /// <summary>Deletes a variable of a draft or published model version with its sources and their profile picks and override routes, unless a live report column returns it.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="variable">The draft model version and its variable.</param>
+    /// <param name="variable">The draft or published model version and its variable.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when nothing was deleted.</returns>
     /// <response code="204">The variable is deleted.</response>
     /// <response code="400">The variable is not in the version; the error is keyed <c>itemId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the report columns that return the variable.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns that return the variable.</response>
     [HttpDelete("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<VariableRecord> variable, CancellationToken cancellationToken)

@@ -10,8 +10,8 @@ internal static class ReportRows
     /// <summary>The report version the rows belong to.</summary>
     public const long ReportVersionId = 61;
 
-    /// <summary>A version of report 60 that reads a model version.</summary>
-    public static ReportVersionRecord ReportVersion(long reportVersionId, long modelVersionId = ModelRows.ModelVersionId, string status = PublicationStatuses.Draft)
+    /// <summary>A version of report 60 that reads model 40.</summary>
+    public static ReportVersionRecord ReportVersion(long reportVersionId, string status = PublicationStatuses.Draft)
     {
         return new ReportVersionRecord
         {
@@ -19,15 +19,14 @@ internal static class ReportRows
             ReportId = 60,
             VersionNumber = (int)(reportVersionId % 10),
             ReportDimensionId = 500,
-            ModelVersionId = modelVersionId,
+            ModelId = ModelRows.ModelId,
             Status = status
         };
     }
 
-    /// <summary>A visible column that returns a variable or calculated measure, as the value kind says.</summary>
-    public static ReportColumnRecord Column(long columnId, string columnKey, string valueKind, long metricId, int sortOrder)
+    /// <summary>A visible column that returns a variable or calculated measure by key, as the value kind says.</summary>
+    public static ReportColumnRecord Column(long columnId, string columnKey, string valueKind, string metricKey, int sortOrder)
     {
-        var variable = valueKind == ReportValueKinds.Variable;
         return new ReportColumnRecord
         {
             ReportColumnId = columnId,
@@ -35,8 +34,7 @@ internal static class ReportRows
             ColumnKey = columnKey,
             DisplayName = columnKey,
             ValueKind = valueKind,
-            VariableId = variable ? metricId : null,
-            CalculatedMeasureId = variable ? null : metricId,
+            MetricKey = metricKey,
             SortOrder = sortOrder,
             IsVisible = true
         };

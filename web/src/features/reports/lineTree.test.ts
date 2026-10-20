@@ -1,7 +1,7 @@
 /**
  * Why these tests exist: the Lines tab edits a report version's line tree locally and saves it in one replace, which
  * the API accepts only as a list in pre-order with every parent named before its children. They pin down that the stored
- * lines nest by their parents with measures and columns named by key, that the saved list is in pre-order with each
+ * lines nest by their parents with their value columns named by key, that the saved list is in pre-order with each
  * line's parent taken from where it sits in the tree, and that deleting a line hands its children to its parent.
  */
 import { describe, expect, it } from 'vitest';
@@ -33,12 +33,12 @@ const lines = [
   line(2, 'loans', 1, 2),
   line(3, 'cash', 1, 1),
   line(4, 'mortgage', 2, 1),
-  { ...line(5, 'nim', null, 2), lineKind: 'formula', reportMemberKey: null, calculatedMeasureId: 91, valueColumnId: 7 },
+  { ...line(5, 'nim', null, 2), lineKind: 'formula', reportMemberKey: null, calculatedMeasureKey: 'NIM', valueColumnId: 7 },
 ];
-const tree = buildLineTree(lines, new Map([[91, 'NIM']]), new Map([[7, 'yield']]));
+const tree = buildLineTree(lines, new Map([[7, 'yield']]));
 
 describe('buildLineTree', () => {
-  it('nests lines by parent, siblings by sort order, and names measures and columns by key', () => {
+  it('nests lines by parent, siblings by sort order, and names value columns by key', () => {
     expect(shape(tree)).toEqual([
       ['assets', [['cash', []], ['loans', [['mortgage', []]]]]],
       ['nim', []],

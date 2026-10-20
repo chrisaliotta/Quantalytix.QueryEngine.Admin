@@ -11,7 +11,7 @@ import type { ModelContentItem, ModelContentKind } from './types';
 export interface ModelContentTabProps<K extends ModelContentKind> {
   kind: K;
   versionId: number;
-  isDraft: boolean;
+  isEditable: boolean;
   /** The table's columns; the tab adds the delete action. */
   columns: ColumnDef<ModelContentItem<K>>[];
   /** What a row is called, such as `variable`. */
@@ -20,7 +20,7 @@ export interface ModelContentTabProps<K extends ModelContentKind> {
   identify: (item: ModelContentItem<K>) => { id: number; key: string };
   /** What deleting a row also deletes, or what keeps it. */
   deleteDescription: string;
-  /** The sheet that creates a row (`item` null), edits a draft's row, or shows a row of a version that is not a draft. */
+  /** The sheet that creates a row (`item` null), edits a row of an editable version, or shows a row of any other version. */
   renderSheet: (item: ModelContentItem<K> | null, onClose: () => void) => ReactNode;
 }
 
@@ -29,11 +29,11 @@ interface SheetRequest<K extends ModelContentKind> {
   item: ModelContentItem<K> | null;
 }
 
-/** One kind of a model version's content in a table; drafts add, edit and delete rows in a sheet. */
+/** One kind of a model version's content in a table; a draft or the published version adds, edits and deletes rows in a sheet. */
 export function ModelContentTab<K extends ModelContentKind>({
   kind,
   versionId,
-  isDraft,
+  isEditable,
   columns,
   noun,
   identify,
@@ -52,7 +52,7 @@ export function ModelContentTab<K extends ModelContentKind>({
       id: 'actions',
       header: '',
       cell: ({ row }) =>
-        isDraft && (
+        isEditable && (
           <Button
             variant="ghost"
             size="icon-xs"
@@ -79,7 +79,7 @@ export function ModelContentTab<K extends ModelContentKind>({
         emptyMessage={`No ${noun}s yet.`}
         onRowClick={item => setSheet({ item })}
         toolbar={
-          isDraft && (
+          isEditable && (
             <Button size="sm" className="ml-auto" onClick={() => setSheet({ item: null })}>
               <Plus />
               New {noun}

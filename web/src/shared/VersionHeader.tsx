@@ -1,16 +1,19 @@
-import { Copy, Plus, Trash2 } from 'lucide-react';
+import { CircleAlert, Copy, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Combobox } from '@registry/components/Combobox';
 import { TruncatedText } from '@registry/components/TruncatedText';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
 import { lookupItemText } from './lookupItemText';
+import { RuleViolationList } from './RuleViolationList';
 import { StatusBadge } from './StatusBadge';
 import type { LookupItem, VersionKind, VersionStatus, VersionStatusResult } from './types';
+import { useVersionCheck } from './useVersionCheck';
 import { useVersionTransition } from './useVersionTransition';
-import { getVersionTransitions, type VersionTransition } from './versionTransitions';
+import { getVersionTransitions, isLivingKind, type VersionTransition } from './versionTransitions';
 
 export interface VersionHeaderProps {
   kind: VersionKind;
@@ -35,7 +38,9 @@ type Confirmation = Omit<ConfirmDialogProps, 'open' | 'onOpenChange'>;
 /**
  * Version picker for one versioned entity: status badge, the lifecycle actions valid for the
  * selected version, and create/clone actions. Rejected transitions (409, or 422 with rule
- * violations) are shown inline while the version they were for stays selected.
+ * violations) are shown inline while the version they were for stays selected. The published
+ * version of a living kind is edited live, so it offers the Validate check, which runs the
+ * publication rules without changing the version and lists what it breaks.
  */
 export function VersionHeader({
   kind,
@@ -49,10 +54,23 @@ export function VersionHeader({
   confirmDescriptions,
 }: VersionHeaderProps) {
   const transition = useVersionTransition(kind);
+  const check = useVersionCheck(kind);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const selected = versions.find(version => version.id === selectedVersionId);
   const status = selected?.status as VersionStatus | undefined;
   const transitionError = transition.variables?.id === selectedVersionId ? transition.error : null;
+  const checked = check.variables === selectedVersionId ? check : null;
+  const violations = checked?.data?.violations ?? [];
+
+  function requestCheck(version: LookupItem) {
+    check.mutate(version.id, {
+      onSuccess: result => {
+        if (result.violations.length === 0) {
+          toast.success(`${version.key} passes every publication rule.`);
+        }
+      },
+    });
+  }
 
   function requestTransition(version: LookupItem, action: VersionTransition) {
     const run = () =>
@@ -105,6 +123,12 @@ export function VersionHeader({
                 {action.label}
               </Button>
             ))}
+            {status === 'published' && isLivingKind(kind) && (
+              <Button variant="outline" size="sm" disabled={check.isPending} onClick={() => requestCheck(selected)}>
+                <ShieldCheck />
+                Validate
+              </Button>
+            )}
             {status === 'draft' && onDeleteVersion && (
               <Button
                 variant="outline"
@@ -134,6 +158,17 @@ export function VersionHeader({
         </div>
       </div>
       <ApiErrorAlert error={transitionError} />
+      <ApiErrorAlert error={checked?.error ?? null} />
+      {violations.length > 0 && (
+        <Alert variant="destructive" data-slot="version-check-violations">
+          <CircleAlert />
+          <AlertTitle>{selected?.key} breaks publication rules</AlertTitle>
+          <AlertDescription>
+            <p>Its edits are live, so requests already read it; fix these to keep it consistent.</p>
+            <RuleViolationList violations={violations} />
+          </AlertDescription>
+        </Alert>
+      )}
       {confirmation && (
         <ConfirmDialog open onOpenChange={() => setConfirmation(null)} {...confirmation} />
       )}

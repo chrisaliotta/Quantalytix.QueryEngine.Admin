@@ -24,8 +24,8 @@ public sealed record ReportLineRecord
     /// <summary>The report-item member of a <c>member</c> line.</summary>
     public string? ReportMemberKey { get; init; }
 
-    /// <summary>The calculated measure of a <c>formula</c> line.</summary>
-    public long? CalculatedMeasureId { get; init; }
+    /// <summary>The key of the model's calculated measure a <c>formula</c> line evaluates.</summary>
+    public string? CalculatedMeasureKey { get; init; }
 
     /// <summary>The column a <c>formula</c> line places its value in.</summary>
     public long? ValueColumnId { get; init; }

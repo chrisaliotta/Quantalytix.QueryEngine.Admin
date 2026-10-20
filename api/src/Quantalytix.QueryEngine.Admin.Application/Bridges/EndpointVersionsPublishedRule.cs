@@ -1,17 +1,13 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// <c>endpoint_versions_published</c>: both endpoint versions are published, because the engine loads the members of
-/// published dimension versions only, so a bridge between drafts would remap members queries never see.
+/// <c>endpoint_versions_published</c>: the bridge's source and target dimensions each have a published version, because the
+/// active assumption set pins them and the engine resolves the mappings' member keys in them.
 /// </summary>
-public sealed class EndpointVersionsPublishedRule(
-    ITableGateway<BridgeVersionRecord> versions,
-    ITableGateway<DimensionVersionRecord> dimensionVersions)
-    : IPublicationRule
+public sealed class EndpointVersionsPublishedRule(BridgeMappingSetReader reader) : IPublicationRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "endpoint_versions_published";
@@ -19,31 +15,21 @@ public sealed class EndpointVersionsPublishedRule(
     /// <summary>The kind the rule checks: bridge versions.</summary>
     public string Kind { get; } = VersionKinds.BridgeVersion;
 
-    /// <summary>Reports each endpoint version that is not published.</summary>
+    /// <summary>Reports each endpoint dimension that has no published version.</summary>
     /// <param name="versionId">The bridge version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>Up to two violations, source first.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
-        var version = await versions.GetAsync(new { BridgeVersionId = versionId }, cancellationToken);
-        var endpoints = (await dimensionVersions.ListAsync(
-                new { DimensionVersionId = new[] { version.SourceDimensionVersionId, version.TargetDimensionVersionId } },
-                cancellationToken))
-            .ToDictionary(endpoint => endpoint.DimensionVersionId);
-        (string End, DimensionVersionRecord Pinned)[] pinned =
-        [
-            ("source", endpoints[version.SourceDimensionVersionId]),
-            ("target", endpoints[version.TargetDimensionVersionId])
-        ];
+        var set = await reader.ReadAsync(versionId, cancellationToken);
         return
         [
-            .. pinned
-                .Where(endpoint => endpoint.Pinned.Status != PublicationStatuses.Published)
+            .. new[] { ("source", set.Source), ("target", set.Target) }
+                .Where(endpoint => endpoint.Item2 is null)
                 .Select(endpoint => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"The {endpoint.End} dimension version v{endpoint.Pinned.VersionNumber} is {endpoint.Pinned.Status}; "
-                        + "the engine resolves bridges only between published dimension versions."
+                    Message = $"The bridge's {endpoint.Item1} dimension has no published version for the mappings to resolve in; publish one first."
                 })
         ];
     }

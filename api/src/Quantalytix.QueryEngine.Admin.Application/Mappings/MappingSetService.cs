@@ -31,7 +31,7 @@ public sealed class MappingSetService(
         return mappingSets.GetAsync(new { MappingSetId = mappingSetId }, cancellationToken);
     }
 
-    /// <summary>Creates a mapping set without versions; each version pins a dimension version, so none exists yet.</summary>
+    /// <summary>Creates a mapping set without versions; its entries belong to versions, so none exists yet.</summary>
     /// <param name="input">The new mapping set, already validated.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The stored mapping set.</returns>

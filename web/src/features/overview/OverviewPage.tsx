@@ -54,14 +54,13 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
           <Stat label="Active measures" value={counts.activeMeasures} />
         </StatList>
       </OverviewCard>
-      <OverviewCard title="Drafts in progress" description="Versions that queries do not use yet.">
+      <OverviewCard title="Drafts in progress" description="Versions that requests do not read until they are published.">
         <StatList>
           <Stat label="Dataset versions" value={drafts.datasetVersions} to={`${base}/datasets`} />
           <Stat label="Dimension versions" value={drafts.dimensionVersions} to={`${base}/dimensions`} />
           <Stat label="Mapping versions" value={drafts.mappingVersions} to={`${base}/mappings`} />
           <Stat label="Bridge versions" value={drafts.bridgeVersions} to={`${base}/bridges`} />
           <Stat label="Releases" value={drafts.releases} to={`${base}/releases`} />
-          <Stat label="Assumption sets" value={drafts.assumptionSets} to={`${base}/assumption-sets`} />
           <Stat label="Model versions" value={drafts.modelVersions} to={`${base}/calculation-models`} />
           <Stat label="Report versions" value={drafts.reportVersions} to={`${base}/reports`} />
         </StatList>

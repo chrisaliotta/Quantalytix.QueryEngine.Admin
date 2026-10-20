@@ -29,7 +29,7 @@ public sealed class TenantDatabaseVerifierTests
             TestContext.Current.CancellationToken);
 
         Assert.Null(probe.DatabaseInfo);
-        Assert.StartsWith("The connection could not be opened or qe_database_info could not be read: ", probe.Failure);
+        Assert.StartsWith("The connection could not be opened or its metadata could not be read: ", probe.Failure);
         Assert.Contains("bogus", probe.Failure, StringComparison.OrdinalIgnoreCase);
     }
 }

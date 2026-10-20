@@ -26,18 +26,16 @@ export interface BindingSheetProps {
 
 /**
  * Sheet that creates or edits a binding, showing the references of the chosen kind: a mapping set for mapped bindings, a
- * source binding and bridge version for bridge bindings, and the time section for time bindings. Range and time bindings
- * offer only dimensions of their kind. Mounted only while open.
+ * source binding and bridge for bridge bindings, and the time section for time bindings. Range and time bindings offer only
+ * dimensions of their kind. A mapping set or bridge is named by identity, so requests read the version their assumption set
+ * pins. Mounted only while open.
  */
 export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingSheetProps) {
   const tenantId = useTenantId();
   const form = useForm<BindingFormValues>({ defaultValues: bindingFormValues(detail) });
-  const [kind, dimensionId, pinnedVersionId, bridgeId] = useWatch({
-    control: form.control,
-    name: ['bindingKind', 'dimensionId', 'pinnedDimensionVersionId', 'bridgeId'],
-  });
+  const [kind, dimensionId] = useWatch({ control: form.control, name: ['bindingKind', 'dimensionId'] });
   const dimensions = useLookup('dimensions');
-  useStaleReferenceClearing(form, { kind, dimensionId, pinnedVersionId, bridgeId }, dimensions.data);
+  useStaleReferenceClearing(form, { kind, dimensionId }, dimensions.data);
   const save = useMutation({
     mutationFn: async (values: BindingFormValues) => {
       const body = toBindingInput(values);
@@ -78,14 +76,6 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
       <VocabularyField name="bindingKind" label="Kind" vocabulary="binding_kind" />
       <EntityField name="dimensionId" label="Dimension" lookupKind="dimensions" filter={dimensionKindFilter(kind)} />
       <EntityField
-        name="pinnedDimensionVersionId"
-        label="Pinned version"
-        lookupKind="dimension-versions"
-        parentId={dimensionId}
-        allowEmpty
-        description="Empty resolves the published version in effect at query time."
-      />
-      <EntityField
         name="sourceFieldId"
         label="Source field"
         lookupKind="fields"
@@ -99,7 +89,7 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
           label="Mapping set"
           lookupKind="mapping-sets"
           parentId={dimensionId}
-          description="The source vocabulary whose mapping versions map the field's values onto members."
+          description="The source vocabulary whose entries map the field's values onto members; requests read the version their assumption set pins."
         />
       )}
       {kind === 'bridge' && (
@@ -112,11 +102,15 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
             filter={item => item.id !== detail?.binding.bindingId}
             description="The binding of this version whose members the bridge remaps."
           />
-          <EntityField name="bridgeId" label="Bridge" lookupKind="bridges" />
-          <EntityField name="bridgeVersionId" label="Bridge version" lookupKind="bridge-versions" parentId={bridgeId} />
+          <EntityField
+            name="bridgeId"
+            label="Bridge"
+            lookupKind="bridges"
+            description="The bridge that remaps the source binding's members; requests read the version their assumption set pins."
+          />
         </>
       )}
-      <GroupingFields dimensionId={dimensionId} pinnedVersionId={pinnedVersionId} />
+      <GroupingFields dimensionId={dimensionId} />
       {kind === 'time' && <TimeBindingFields versionId={versionId} />}
       <FieldSeparator>Flags</FieldSeparator>
       <SwitchField name="isRequired" label="Required" description="A dataset fixture: it cannot be deleted or disabled." />
@@ -135,40 +129,32 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
 interface ReferenceChoices {
   kind: string | null;
   dimensionId: number | null;
-  pinnedVersionId: number | null;
-  bridgeId: number | null;
 }
 
 /**
- * Clears the references that belong to a dimension, a pinned version or a bridge once the user picks another one: the
- * pickers then list another parent's rows, so the old choices could only fail validation. A kind that binds only
+ * Clears the references that belong to a dimension once the user picks another one: the mapping set and the level and
+ * member keys then name another dimension's rows, so the old choices could only fail validation. A kind that binds only
  * dimensions of its own kind clears a dimension of another kind the same way. It runs after render, never inside a form
  * notification, so watchers keep seeing the cleared values.
  */
 function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>, choices: ReferenceChoices, dimensions: LookupItem[] | undefined) {
-  const { kind, dimensionId, pinnedVersionId, bridgeId } = choices;
+  const { kind, dimensionId } = choices;
   const previous = useRef(choices);
   useEffect(() => {
     const before = previous.current;
-    previous.current = { kind, dimensionId, pinnedVersionId, bridgeId };
+    previous.current = { kind, dimensionId };
     const fitsKind = dimensionKindFilter(kind);
     const dimension = dimensions?.find(item => item.id === dimensionId);
     if (kind !== before.kind && fitsKind && dimension && !fitsKind(dimension)) {
       form.setValue('dimensionId', null);
     }
     if (dimensionId !== before.dimensionId) {
-      form.setValue('pinnedDimensionVersionId', null);
       form.setValue('mappingSetId', null);
+      form.setValue('groupingLevelKey', null);
+      form.setValue('groupingAncestorMemberKey', null);
+      form.setValue('unknownMemberKey', null);
     }
-    if (dimensionId !== before.dimensionId || pinnedVersionId !== before.pinnedVersionId) {
-      form.setValue('groupingLevelId', null);
-      form.setValue('groupingAncestorMemberId', null);
-      form.setValue('unknownMemberId', null);
-    }
-    if (bridgeId !== before.bridgeId) {
-      form.setValue('bridgeVersionId', null);
-    }
-  }, [form, dimensions, kind, dimensionId, pinnedVersionId, bridgeId]);
+  }, [form, dimensions, kind, dimensionId]);
 }
 
 /** Range and time bindings bind only dimensions of their own kind; other kinds offer every dimension. */

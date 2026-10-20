@@ -9,10 +9,10 @@ using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.Releases;
 
 /// <summary>
-/// Confirms <c>bound_dimensions_resolvable</c>: an unpinned binding whose dimension has no published version is reported,
-/// and so is a binding that pins an unpublished version even when another version is published; an unpinned time binding
-/// passes without any dimension version. The engine reads published dimension versions only, but derives calendar
-/// periods for time bindings from the bound field, so requiring versions there would block releases the engine can serve.
+/// Confirms <c>bound_dimensions_resolvable</c>: a binding whose dimension has no published version is reported, and a time
+/// binding passes without any dimension version. The active assumption set pins each dimension's published version and the
+/// engine resolves bindings in it, but it derives calendar periods for time bindings from the bound field, so requiring
+/// versions there would block releases the engine can serve.
 /// </summary>
 public sealed class BoundDimensionsResolvableRuleTests
 {
@@ -34,7 +34,7 @@ public sealed class BoundDimensionsResolvableRuleTests
         DimensionVersion(102, 100, 2, PublicationStatuses.Draft),
         DimensionVersion(201, 200, 1, PublicationStatuses.Draft));
 
-    /// <summary>An unpinned binding whose dimension has only a draft version is reported.</summary>
+    /// <summary>A binding whose dimension has only a draft version is reported.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task DimensionWithoutPublishedVersion_IsReported()
@@ -45,19 +45,7 @@ public sealed class BoundDimensionsResolvableRuleTests
         Assert.Equal("Binding 'Product' of dataset 'loans' binds dimension 'Product', which has no published version.", violation.Message);
     }
 
-    /// <summary>A binding that pins the draft v2 of Branch is reported although Branch v1 is published.</summary>
-    /// <returns>A task that completes when the rule is checked.</returns>
-    [Fact]
-    public async Task PinToUnpublishedVersion_IsReported()
-    {
-        var pinned = Binding(31, DatasetVersionId, "Branch", 100, BindingKinds.Direct) with { PinnedDimensionVersionId = 102 };
-
-        var violation = Assert.Single(await EvaluateAsync(pinned));
-
-        Assert.Equal("Binding 'Branch' of dataset 'loans' pins dimension version 102, which is not a published version of dimension 'Branch'.", violation.Message);
-    }
-
-    /// <summary>An unpinned binding of Branch resolves to its published v1, and an unpinned time binding needs no dimension version.</summary>
+    /// <summary>A binding of Branch resolves in its published v1, and a time binding needs no dimension version.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task PublishedVersionAndTimeBinding_Pass()

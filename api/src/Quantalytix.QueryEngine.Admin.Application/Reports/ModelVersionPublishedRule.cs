@@ -5,12 +5,10 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>model_version_published</c>: the model version a report version reads is published, because the engine loads only
-/// published model content, and a published report must not change under a draft model.
+/// <c>model_version_published</c>: the report's calculation model has a published version, because the active assumption set
+/// pins it and every run that names no set reads it.
 /// </summary>
-public sealed class ModelVersionPublishedRule(
-    ITableGateway<ReportVersionRecord> versions,
-    ITableGateway<CalculationModelVersionRecord> modelVersions)
+public sealed class ModelVersionPublishedRule(ITableGateway<ReportVersionRecord> versions, ITableGateway<CalculationModelRecord> models, ModelMetricsReader metrics)
     : IPublicationRule
 {
     /// <summary>The rule code violations carry.</summary>
@@ -19,15 +17,15 @@ public sealed class ModelVersionPublishedRule(
     /// <summary>The kind the rule checks: report versions.</summary>
     public string Kind { get; } = VersionKinds.ReportVersion;
 
-    /// <summary>Reports a model version that is not published.</summary>
+    /// <summary>Reports a model with no published version.</summary>
     /// <param name="versionId">The report version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation when the model version is not published.</returns>
+    /// <returns>One violation when the model has no published version.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var version = await versions.GetAsync(new { ReportVersionId = versionId }, cancellationToken);
-        var model = await modelVersions.GetAsync(new { version.ModelVersionId }, cancellationToken);
-        if (model.Status == PublicationStatuses.Published) return [];
-        return [new RuleViolation { Rule = Code, Message = $"The report reads model version v{model.VersionNumber}, which is {model.Status}; publish it first." }];
+        if (await metrics.PublishedVersionAsync(version.ModelId, cancellationToken) is not null) return [];
+        var model = await models.GetAsync(new { version.ModelId }, cancellationToken);
+        return [new RuleViolation { Rule = Code, Message = $"Calculation model '{model.ModelKey}' has no published version; publish one first." }];
     }
 }

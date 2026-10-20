@@ -11,21 +11,22 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms the line tree check: a list in pre-order passes; a line whose parent comes later, and a repeated key, fail; and a
-/// formula line must evaluate a calculated measure of the report's model version into one of the version's columns. The
-/// replace deletes the lines a list leaves out, and the engine walks the stored tree in pre-order, so a malformed list must
-/// fail before anything is written.
+/// formula line must evaluate a calculated measure of the published version of the report's model into one of the version's
+/// columns. The replace deletes the lines a list leaves out, and the engine walks the stored tree in pre-order, so a malformed
+/// list must fail before anything is written.
 /// </summary>
 public sealed class ReportLinesInputValidatorTests
 {
-    /// <summary>The validator under test, for report version 61 over model version 41, whose columns are amount and yield.</summary>
+    /// <summary>The validator under test, for report version 61 over model 40, whose published version is 41; the columns are amount and yield.</summary>
     private readonly ReportLinesInputValidator _validator = new(
         new ModelMetricsReader(
             new InMemoryTableGateway<ReportVersionRecord>(ReportVersion(ReportVersionId)),
+            new InMemoryTableGateway<CalculationModelVersionRecord>(ModelVersion()),
             new InMemoryTableGateway<VariableRecord>(Variable(51, "balance")),
             new InMemoryTableGateway<CalculatedMeasureRecord>(Calculated(91, "yield", "[m.balance] / 2"))),
         new InMemoryTableGateway<ReportColumnRecord>(
-            Column(1, "amount", ReportValueKinds.Variable, 51, 1),
-            Column(2, "yield", ReportValueKinds.Calculated, 91, 2)),
+            Column(1, "amount", ReportValueKinds.Variable, "balance", 1),
+            Column(2, "yield", ReportValueKinds.Calculated, "yield", 2)),
         new InMemoryTableGateway<ReportLineRecord>(),
         new FixedRequestRoute(new Dictionary<string, long> { ["versionId"] = ReportVersionId }));
 
@@ -59,7 +60,7 @@ public sealed class ReportLinesInputValidatorTests
         var result = await ValidateAsync(Formula("loan_yield", null, "balance", "margin"));
 
         Assert.Equal(
-            ["Formula line 'loan_yield' evaluates 'balance', which is no calculated measure of the report's model version.",
+            ["Formula line 'loan_yield' evaluates 'balance', which is no calculated measure of the published version of the report's model.",
              "Formula line 'loan_yield' places its value in 'margin', which is no column of this report version."],
             result.Errors.Select(error => error.ErrorMessage));
     }

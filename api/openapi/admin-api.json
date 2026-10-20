@@ -43,7 +43,7 @@
         "tags": [
           "VersionStatus"
         ],
-        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its\nretirement rules, and publishing stamps the publication time.",
+        "summary": "Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its\nretirement rules, and publishing stamps the publication time. Publishing a living kind's version also retires the version\npublished before it; a living version cannot be retired by hand.",
         "parameters": [
           {
             "name": "tenantId",
@@ -146,6 +146,86 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/versions/{kind}/{id}/validation": {
+      "post": {
+        "tags": [
+          "VersionStatus"
+        ],
+        "summary": "Checks a version against its kind's publication rules and changes nothing. Validate on a published living version runs this\ncheck, because its edits are live and only field rules guard them as they are made.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "A `version_kind` value, such as `dimension_version`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The version's surrogate key.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The check ran; `violations` lists what the rules found and is empty when the version passes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionCheck"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The kind is not a known value.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -762,7 +842,7 @@
         "tags": [
           "ReportColumns"
         ],
-        "summary": "Replaces a draft report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid.",
+        "summary": "Replaces a draft or published report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid.",
         "parameters": [
           {
             "name": "tenantId",
@@ -776,7 +856,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft report version.",
+            "description": "The draft or published report version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -821,7 +901,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -923,7 +1003,7 @@
         "tags": [
           "ReportLines"
         ],
-        "summary": "Replaces a draft report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID.",
+        "summary": "Replaces a draft or published report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -937,7 +1017,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft report version.",
+            "description": "The draft or published report version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -982,7 +1062,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1150,7 +1230,7 @@
         "tags": [
           "Reports"
         ],
-        "summary": "Reads one report, including its current version.",
+        "summary": "Reads one report.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1419,7 +1499,7 @@
         "tags": [
           "ReportVersions"
         ],
-        "summary": "Creates a draft with the report's next version number: empty, or cloned from `cloneFromVersionId`, whose columns\nand lines move to the metrics with the same keys in the new model version.",
+        "summary": "Creates a draft with the report's next version number: empty, or with copies of the columns and lines of\n`cloneFromVersionId`.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1478,11 +1558,11 @@
             }
           },
           "200": {
-            "description": "The created draft, with the cloned columns and lines whose metrics the new model version lacks.",
+            "description": "The created draft.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatedReportVersion"
+                  "$ref": "#/components/schemas/ReportVersionRecord"
                 }
               }
             }
@@ -1564,7 +1644,7 @@
         "tags": [
           "ReportVersions"
         ],
-        "summary": "Replaces a draft version's report dimension, default profile and defaults; its model version, lines and columns stay as\nthey are.",
+        "summary": "Replaces a draft or published version's default profile, payload and defaults; its report dimension, model, lines and\ncolumns stay as they are.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1578,7 +1658,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft report version.",
+            "description": "The draft or published report version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -1623,7 +1703,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1658,7 +1738,7 @@
         "tags": [
           "ReportVersions"
         ],
-        "summary": "Deletes a draft version that no release pins, with its lines and columns, and clears the report's current-version\npointer when it named the version.",
+        "summary": "Deletes a draft version with its lines and columns.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1702,7 +1782,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the releases that pin it.",
+            "description": "Nothing was deleted: the version is not a draft.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2118,167 +2198,6 @@
           },
           "400": {
             "description": "A dataset does not exist, or a dataset or dataset version appears more than once.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/releases/{releaseId}/reports": {
-      "get": {
-        "tags": [
-          "Releases"
-        ],
-        "summary": "Lists a release's report pins: the report version it pins for each report.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the release.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "releaseId",
-            "in": "path",
-            "description": "The release.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The report pins, ordered by report.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReleaseReportRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Releases"
-        ],
-        "summary": "Replaces a draft release's report pins; validating the release checks that each pinned report resolves in it.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the release.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "releaseId",
-            "in": "path",
-            "description": "The draft release.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReleaseReportsInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReleaseReportsInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The release is not a draft.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored report pins, ordered by report.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReleaseReportRecord"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A report appears more than once, or a pinned version is not a version of its report.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2825,7 +2744,7 @@
         "tags": [
           "MappingEntries"
         ],
-        "summary": "Replaces every entry of a draft mapping version with the given list.",
+        "summary": "Replaces every entry of a draft or published mapping version with the given list.",
         "parameters": [
           {
             "name": "tenantId",
@@ -2839,7 +2758,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft mapping version.",
+            "description": "The draft or published mapping version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -2884,7 +2803,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2922,7 +2841,7 @@
         "tags": [
           "MappingEntries"
         ],
-        "summary": "Adds an entry to a draft mapping version.",
+        "summary": "Adds an entry to a draft or published mapping version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -2936,7 +2855,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft mapping version.",
+            "description": "The draft or published mapping version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -2981,7 +2900,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3087,7 +3006,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3122,7 +3041,7 @@
         "tags": [
           "MappingEntries"
         ],
-        "summary": "Deletes an entry of a draft mapping version.",
+        "summary": "Deletes an entry of a draft or published mapping version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -3176,7 +3095,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3541,7 +3460,7 @@
         "tags": [
           "MappingVersions"
         ],
-        "summary": "Lists a mapping set's versions with their status and pinned dimension version.",
+        "summary": "Lists a mapping set's versions with their status.",
         "parameters": [
           {
             "name": "tenantId",
@@ -3603,7 +3522,7 @@
         "tags": [
           "MappingVersions"
         ],
-        "summary": "Creates a draft with the set's next version number, pinned to `dimensionVersionId`: empty, or cloned from\n`cloneFromVersionId`, whose entries move to the members with the same keys in the pinned dimension version.",
+        "summary": "Creates a draft with the set's next version number: empty, or with copies of the entries of `cloneFromVersionId`.",
         "parameters": [
           {
             "name": "tenantId",
@@ -3662,17 +3581,17 @@
             }
           },
           "200": {
-            "description": "The created draft, with the source keys of cloned entries whose member key the pinned version lacks.",
+            "description": "The created draft.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatedMappingVersion"
+                  "$ref": "#/components/schemas/MappingVersionRecord"
                 }
               }
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as an unknown dimension version; errors are keyed by camelCase JSON path.",
+            "description": "The clone source is not a version of the mapping set; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3959,7 +3878,7 @@
         "tags": [
           "DimensionLevels"
         ],
-        "summary": "Adds a level to a draft version.",
+        "summary": "Adds a level to a draft or published version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -3973,7 +3892,7 @@
           {
             "name": "dimensionVersionId",
             "in": "path",
-            "description": "The draft version.",
+            "description": "The draft or published version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -4018,7 +3937,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4124,7 +4043,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4159,7 +4078,7 @@
         "tags": [
           "DimensionLevels"
         ],
-        "summary": "Deletes a level of a draft version, unless members use it.",
+        "summary": "Deletes a level of a draft or published version, unless members use it or, in the published version, live bindings group at its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -4213,7 +4132,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the members that use the level.",
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names what uses the level.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4305,7 +4224,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Adds a member to a draft version.",
+        "summary": "Adds a member to a draft or published version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -4319,7 +4238,7 @@
           {
             "name": "dimensionVersionId",
             "in": "path",
-            "description": "The draft version.",
+            "description": "The draft or published version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -4364,7 +4283,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4470,7 +4389,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4505,7 +4424,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it.",
+        "summary": "Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -4559,7 +4478,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names what references the member.",
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names what references the member.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4603,7 +4522,7 @@
           {
             "name": "dimensionVersionId",
             "in": "path",
-            "description": "The draft version.",
+            "description": "The draft or published version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -4648,7 +4567,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5023,7 +4942,7 @@
         "tags": [
           "DimensionVersions"
         ],
-        "summary": "Lists a dimension's versions with their status and validity windows, from which the effective version follows.",
+        "summary": "Lists a dimension's versions with their status; the published one is the version the active assumption set pins.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5067,7 +4986,7 @@
             }
           },
           "200": {
-            "description": "The versions by version number, each with `validFrom` and `validTo`.",
+            "description": "The versions by version number.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5085,7 +5004,7 @@
         "tags": [
           "DimensionVersions"
         ],
-        "summary": "Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies\nthe levels, members, range bands and the dimension's mapping versions pinned to the source, and the source's range data\ntype unless one is supplied.",
+        "summary": "Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies\nthe levels, members and range bands, and the source's range data type unless one is supplied.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5230,7 +5149,7 @@
         "tags": [
           "DimensionVersions"
         ],
-        "summary": "Replaces a draft version's range data type and validity window.",
+        "summary": "Replaces a draft or published version's range data type.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5244,7 +5163,7 @@
           {
             "name": "dimensionVersionId",
             "in": "path",
-            "description": "The draft version.",
+            "description": "The draft or published version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -5289,7 +5208,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5309,7 +5228,7 @@
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path.",
+            "description": "The input breaks a field rule, such as an unknown range data type; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5324,7 +5243,7 @@
         "tags": [
           "DimensionVersions"
         ],
-        "summary": "Deletes a draft version with its levels, members, range bands, closure rows and the draft mapping versions pinned to it,\nunless a non-draft mapping version, a bridge version, a binding or an assumption set pins it.",
+        "summary": "Deletes a draft version with its levels, members, range bands and closure rows.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5368,7 +5287,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names what pins it.",
+            "description": "Nothing was deleted: the version is not a draft.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5460,7 +5379,7 @@
         "tags": [
           "RangeBands"
         ],
-        "summary": "Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound\nfamilies, order and overlaps are checked when the version is validated.",
+        "summary": "Replaces every band of a draft or published range version with the ordered list; each band's ordinal is its position, from 1. Bound\nfamilies, order and overlaps are checked when the version is validated.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5519,7 +5438,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5547,41 +5466,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
                 }
               }
             }
@@ -7345,7 +7229,7 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Adds a calculated measure to a draft model version.",
+        "summary": "Adds a calculated measure to a draft or published model version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7359,7 +7243,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -7404,7 +7288,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7441,7 +7325,7 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Replaces a calculated measure of a draft model version, keeping its ID.",
+        "summary": "Replaces a calculated measure of a draft or published model version, keeping its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7510,7 +7394,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7545,7 +7429,7 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Deletes a calculated measure of a draft model version, unless a report column returns it or a formula line evaluates it.",
+        "summary": "Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula line evaluates it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7599,7 +7483,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the report columns and lines that use the measure.",
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns and lines that use the measure.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7691,7 +7575,7 @@
         "tags": [
           "CalculationDimensions"
         ],
-        "summary": "Adds a calculation dimension to a draft model version.",
+        "summary": "Adds a calculation dimension to a draft or published model version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7705,7 +7589,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -7750,7 +7634,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7787,7 +7671,7 @@
         "tags": [
           "CalculationDimensions"
         ],
-        "summary": "Replaces a calculation dimension of a draft model version, keeping its ID.",
+        "summary": "Replaces a calculation dimension of a draft or published model version, keeping its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7856,7 +7740,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7891,7 +7775,7 @@
         "tags": [
           "CalculationDimensions"
         ],
-        "summary": "Deletes a calculation dimension of a draft model version with its routes.",
+        "summary": "Deletes a calculation dimension of a draft or published model version with its routes.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7945,7 +7829,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft.",
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8103,7 +7987,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Reads one calculation model, including its current version.",
+        "summary": "Reads one calculation model.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8517,7 +8401,7 @@
         "tags": [
           "CalculationModelVersions"
         ],
-        "summary": "Replaces a draft version's currency; its content stays as it is.",
+        "summary": "Replaces a draft or published version's currency; its content stays as it is.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8531,7 +8415,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -8576,7 +8460,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8611,7 +8495,7 @@
         "tags": [
           "CalculationModelVersions"
         ],
-        "summary": "Deletes a draft version that no report version reads, with its content, and clears the model's current-version pointer\nwhen it named the version.",
+        "summary": "Deletes a draft version with its content.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8655,7 +8539,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the report versions that read it.",
+            "description": "Nothing was deleted: the version is not a draft.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8737,7 +8621,7 @@
         "tags": [
           "CalculationRoutes"
         ],
-        "summary": "Adds a route to a draft model version; whether its field produces the dimension in the dataset version a release pins is a release rule.",
+        "summary": "Adds a route to a draft or published model version; whether its field produces the dimension in the dataset version a release pins is a release rule.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8751,7 +8635,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -8796,7 +8680,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8833,7 +8717,7 @@
         "tags": [
           "CalculationRoutes"
         ],
-        "summary": "Replaces a route of a draft model version, keeping its ID.",
+        "summary": "Replaces a route of a draft or published model version, keeping its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8902,7 +8786,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8937,7 +8821,7 @@
         "tags": [
           "CalculationRoutes"
         ],
-        "summary": "Deletes a route of a draft model version.",
+        "summary": "Deletes a route of a draft or published model version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -8991,7 +8875,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft.",
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9083,7 +8967,7 @@
         "tags": [
           "SourceProfiles"
         ],
-        "summary": "Adds a source profile with its picks to a draft model version.",
+        "summary": "Adds a source profile with its picks to a draft or published model version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9097,7 +8981,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9142,7 +9026,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9179,7 +9063,7 @@
         "tags": [
           "SourceProfiles"
         ],
-        "summary": "Replaces a source profile of a draft model version and all its picks, keeping the profile's ID.",
+        "summary": "Replaces a source profile of a draft or published model version and all its picks, keeping the profile's ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9248,7 +9132,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9283,7 +9167,7 @@
         "tags": [
           "SourceProfiles"
         ],
-        "summary": "Deletes a source profile of a draft model version with its picks, unless a report version runs under it by default.",
+        "summary": "Deletes a source profile of a draft or published model version with its picks, unless a live report version runs under it by default.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9337,7 +9221,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the report versions whose default profile it is.",
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report versions whose default profile it is.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9429,7 +9313,7 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Adds a variable to a draft model version.",
+        "summary": "Adds a variable to a draft or published model version.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9443,7 +9327,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9488,7 +9372,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9525,7 +9409,7 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Replaces a variable of a draft model version, keeping its ID.",
+        "summary": "Replaces a variable of a draft or published model version, keeping its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9594,7 +9478,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9629,7 +9513,7 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Deletes a variable of a draft model version with its sources and their profile picks and override routes, unless a report column returns it.",
+        "summary": "Deletes a variable of a draft or published model version with its sources and their profile picks and override routes, unless a live report column returns it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9683,7 +9567,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the report columns that return the variable.",
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns that return the variable.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9775,7 +9659,7 @@
         "tags": [
           "VariableSources"
         ],
-        "summary": "Adds a variable source to a draft model version; whether its keys resolve in the dataset version a release pins is a release rule.",
+        "summary": "Adds a variable source to a draft or published model version; whether its keys resolve in the dataset version a release pins is a release rule.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9789,7 +9673,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft model version.",
+            "description": "The draft or published model version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9834,7 +9718,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9871,7 +9755,7 @@
         "tags": [
           "VariableSources"
         ],
-        "summary": "Replaces a variable source of a draft model version, keeping its ID.",
+        "summary": "Replaces a variable source of a draft or published model version, keeping its ID.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9940,7 +9824,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9975,7 +9859,7 @@
         "tags": [
           "VariableSources"
         ],
-        "summary": "Deletes a variable source of a draft model version with the profile picks and override routes that name it.",
+        "summary": "Deletes a variable source of a draft or published model version with the profile picks and override routes that name it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10029,7 +9913,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft.",
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10121,7 +10005,7 @@
         "tags": [
           "BridgeMappings"
         ],
-        "summary": "Replaces every mapping of a draft bridge version with the given list.",
+        "summary": "Replaces every mapping of a draft or published bridge version with the given list.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10135,7 +10019,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft bridge version.",
+            "description": "The draft or published bridge version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10180,7 +10064,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10348,7 +10232,7 @@
         "tags": [
           "Bridges"
         ],
-        "summary": "Reads one bridge, including its authoring-only current version.",
+        "summary": "Reads one bridge.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10555,7 +10439,7 @@
         "tags": [
           "BridgeVersions"
         ],
-        "summary": "Lists a bridge's versions with their endpoint versions, allocation semantics and status.",
+        "summary": "Lists a bridge's versions with their allocation semantics and status.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10617,7 +10501,7 @@
         "tags": [
           "BridgeVersions"
         ],
-        "summary": "Creates a draft with the bridge's next version number: empty, or cloned from `cloneFromVersionId`, whose mappings\nmove to the members with the same keys in the new endpoint versions.",
+        "summary": "Creates a draft with the bridge's next version number: empty, or with copies of the mappings of `cloneFromVersionId`.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10676,11 +10560,11 @@
             }
           },
           "200": {
-            "description": "The created draft, with the cloned mappings whose member keys the new endpoint versions lack.",
+            "description": "The created draft.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatedBridgeVersion"
+                  "$ref": "#/components/schemas/BridgeVersionRecord"
                 }
               }
             }
@@ -10762,7 +10646,7 @@
         "tags": [
           "BridgeVersions"
         ],
-        "summary": "Replaces a draft version's endpoint versions, cardinality and allocation mode; its mappings stay as they are.",
+        "summary": "Replaces a draft or published version's cardinality and allocation mode; its mappings stay as they are.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10776,7 +10660,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The draft bridge version.",
+            "description": "The draft or published bridge version.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10821,7 +10705,7 @@
             }
           },
           "409": {
-            "description": "The version is not a draft.",
+            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10856,7 +10740,7 @@
         "tags": [
           "BridgeVersions"
         ],
-        "summary": "Deletes a draft version that no binding uses, with its mappings, and clears the bridge's current-version pointer when it\nnamed the version.",
+        "summary": "Deletes a draft version with its mappings.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10900,7 +10784,7 @@
             }
           },
           "409": {
-            "description": "Nothing was deleted: the version is not a draft, or the detail names the bindings that use it.",
+            "description": "Nothing was deleted: the version is not a draft.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11266,7 +11150,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Lists the tenant's assumption sets, ordered by key.",
+        "summary": "Lists the tenant's assumption sets: the active one, then historical sets, most recently captured first.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11300,7 +11184,7 @@
             }
           },
           "200": {
-            "description": "The assumption sets, ordered by key.",
+            "description": "The assumption sets.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11318,7 +11202,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Creates a draft assumption set without pins.",
+        "summary": "Captures a historical set: a copy of the active set's current pins under a new key, reading the active release.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11334,12 +11218,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssumptionSetCreateInput"
+                "$ref": "#/components/schemas/AssumptionCaptureInput"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/AssumptionSetCreateInput"
+                "$ref": "#/components/schemas/AssumptionCaptureInput"
               }
             }
           },
@@ -11367,7 +11251,7 @@
             }
           },
           "201": {
-            "description": "The assumption set was created; the body is the new draft.",
+            "description": "The set was captured; the body is the new historical set.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11377,7 +11261,7 @@
             }
           },
           "400": {
-            "description": "The key is malformed or taken, the display name is missing, or the effective time is not UTC.",
+            "description": "The key is malformed or taken, or the display name is missing.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11394,7 +11278,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Reads one assumption set.",
+        "summary": "Reads one assumption set with its pins, each labelled with its identity's key and its version's number and status.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11438,11 +11322,11 @@
             }
           },
           "200": {
-            "description": "The assumption set.",
+            "description": "The set and its pins.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AssumptionSetRecord"
+                  "$ref": "#/components/schemas/AssumptionSetDetail"
                 }
               }
             }
@@ -11453,7 +11337,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Changes a draft assumption set's display name, description and effective time.",
+        "summary": "Changes a set's display name and description; its key and pins never change.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11467,7 +11351,7 @@
           {
             "name": "assumptionSetId",
             "in": "path",
-            "description": "The draft assumption set.",
+            "description": "The assumption set.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -11511,18 +11395,8 @@
               }
             }
           },
-          "409": {
-            "description": "The assumption set is not a draft.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "200": {
-            "description": "The updated assumption set.",
+            "description": "The updated set.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11532,7 +11406,7 @@
             }
           },
           "400": {
-            "description": "The display name is missing or too long, or the effective time is not UTC.",
+            "description": "The display name is missing, or a label is too long.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11547,7 +11421,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Deletes a draft assumption set and its pins.",
+        "summary": "Deletes a historical set with its pins; requests can no longer name its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11561,7 +11435,7 @@
           {
             "name": "assumptionSetId",
             "in": "path",
-            "description": "The draft assumption set.",
+            "description": "The historical set.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -11582,16 +11456,6 @@
           },
           "403": {
             "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The assumption set is not a draft.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11601,264 +11465,14 @@
             }
           },
           "204": {
-            "description": "The assumption set and its pins are deleted."
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/dimensions": {
-      "get": {
-        "tags": [
-          "AssumptionSets"
-        ],
-        "summary": "Lists an assumption set's pins: the dimension version it captures for each dimension.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the assumption set.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assumptionSetId",
-            "in": "path",
-            "description": "The assumption set.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The pins, ordered by dimension.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AssumptionSets"
-        ],
-        "summary": "Replaces a draft assumption set's pins.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the assumption set.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assumptionSetId",
-            "in": "path",
-            "description": "The draft assumption set.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssumptionPinsInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssumptionPinsInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
+            "description": "The set and its pins are deleted."
           },
           "409": {
-            "description": "The assumption set is not a draft.",
+            "description": "Nothing was deleted: the set is the active set, which holds the default versions.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored pins, ordered by dimension.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A dimension does not exist or appears more than once.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/capture": {
-      "post": {
-        "tags": [
-          "AssumptionSets"
-        ],
-        "summary": "Pins, for each given dimension, its published version effective at the set's `effective_at`\n(`valid_from &lt;= effective_at &lt; valid_to`, a null `valid_to` being open-ended), replacing the pins of\nthose dimensions. A dimension without such a version is left unpinned.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the assumption set.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assumptionSetId",
-            "in": "path",
-            "description": "The draft assumption set.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssumptionCaptureInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssumptionCaptureInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The assumption set is not a draft.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "All of the set's pins after the capture, ordered by dimension.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AssumptionSetDimensionRecord"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "No dimension is named, or a dimension does not exist.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -11889,68 +11503,14 @@
       },
       "AssumptionCaptureInput": {
         "required": [
-          "dimensionIds"
-        ],
-        "type": "object",
-        "properties": {
-          "dimensionIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "description": "The dimensions to capture."
-          }
-        },
-        "description": "A request to pin, for each dimension, the published version effective at the assumption set's `effective_at`."
-      },
-      "AssumptionPinInput": {
-        "required": [
-          "dimensionId",
-          "dimensionVersionId"
-        ],
-        "type": "object",
-        "properties": {
-          "dimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension.",
-            "format": "int64"
-          },
-          "dimensionVersionId": {
-            "type": "integer",
-            "description": "The version of the dimension that the set pins.",
-            "format": "int64"
-          }
-        },
-        "description": "One pin of an assumption set: the exact dimension version it captures for a dimension."
-      },
-      "AssumptionPinsInput": {
-        "required": [
-          "dimensions"
-        ],
-        "type": "object",
-        "properties": {
-          "dimensions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssumptionPinInput"
-            },
-            "description": "One pin per dimension."
-          }
-        },
-        "description": "An assumption set's complete list of pins, which replaces the current one."
-      },
-      "AssumptionSetCreateInput": {
-        "required": [
           "assumptionSetKey",
-          "displayName",
-          "effectiveAt"
+          "displayName"
         ],
         "type": "object",
         "properties": {
           "assumptionSetKey": {
             "type": "string",
-            "description": "The stable logical name, unique and fixed once created, such as `FY2026_Q3_CLOSE`."
+            "description": "The key requests will name the set by; unique and fixed once captured."
           },
           "displayName": {
             "type": "string",
@@ -11961,48 +11521,78 @@
               "null",
               "string"
             ],
-            "description": "The optional business purpose or provenance."
-          },
-          "effectiveAt": {
-            "type": "string",
-            "description": "The semantic time (UTC) at which capturing resolves the effective dimension versions.",
-            "format": "date-time"
+            "description": "An optional note, such as the close the snapshot records."
           }
         },
-        "description": "A request to create a draft assumption set."
+        "description": "A historical set to capture from the active set's current pins, as `POST assumption-sets` takes it."
       },
-      "AssumptionSetDimensionRecord": {
+      "AssumptionPin": {
         "required": [
-          "assumptionSetId",
-          "dimensionId",
-          "dimensionVersionId"
+          "kind",
+          "identityId",
+          "identityKey",
+          "versionId",
+          "versionNumber",
+          "status"
         ],
         "type": "object",
         "properties": {
-          "assumptionSetId": {
+          "kind": {
+            "type": "string",
+            "description": "A living `version_kind` value."
+          },
+          "identityId": {
             "type": "integer",
-            "description": "The owning assumption set; first part of the primary key.",
+            "description": "The identity, such as a dimension.",
             "format": "int64"
           },
-          "dimensionId": {
+          "identityKey": {
+            "type": "string",
+            "description": "The identity's key, such as its `dimension_key`."
+          },
+          "versionId": {
             "type": "integer",
-            "description": "The canonical dimension; second part of the primary key.",
+            "description": "The pinned version.",
             "format": "int64"
           },
-          "dimensionVersionId": {
+          "versionNumber": {
             "type": "integer",
-            "description": "The exact dimension version captured; authoritative, never re-derived.",
-            "format": "int64"
+            "description": "The pinned version's number.",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "The pinned version's `publication_status`: published, or retired in a historical set."
           }
         },
-        "description": "A `qe_assumption_set_dimension` row: pins the exact immutable version of one dimension in an assumption set."
+        "description": "One pin of an assumption set as the client shows it: the identity's key and the pinned version's number and status."
+      },
+      "AssumptionSetDetail": {
+        "required": [
+          "set",
+          "pins"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "description": "The set.",
+            "$ref": "#/components/schemas/AssumptionSetRecord"
+          },
+          "pins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssumptionPin"
+            },
+            "description": "Its pins, by kind and then identity key."
+          }
+        },
+        "description": "An assumption set with its pins."
       },
       "AssumptionSetRecord": {
         "required": [
           "assumptionSetId",
           "assumptionSetKey",
           "displayName",
-          "effectiveAt",
           "status",
           "createdAt"
         ],
@@ -12015,7 +11605,7 @@
           },
           "assumptionSetKey": {
             "type": "string",
-            "description": "Stable logical name such as `FY2026_Q3_CLOSE`."
+            "description": "Stable key a query or report request names, such as `FY2026_Q3_CLOSE`; the active set's is `active`."
           },
           "displayName": {
             "type": "string",
@@ -12026,44 +11616,39 @@
               "null",
               "string"
             ],
-            "description": "Optional business purpose or provenance."
-          },
-          "effectiveAt": {
-            "type": "string",
-            "description": "Semantic timestamp (UTC) used to resolve which versions to capture.",
-            "format": "date-time"
+            "description": "Optional note, such as what a snapshot captured."
           },
           "status": {
             "type": "string",
             "description": "An `assumption_set_status` value."
           },
-          "contentHash": {
+          "releaseId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The `qe_semantic_release.release_id` a historical set reads dataset versions from: the release that was active when it\nwas captured. Null for the active set, which reads the active release.",
+            "format": "int64"
+          },
+          "capturedAt": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional deterministic hash of the pinned-version manifest."
+            "description": "When a historical set was captured (UTC); null for the active set.",
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",
             "description": "Creation time (UTC).",
             "format": "date-time"
-          },
-          "publishedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Finalization time (UTC).",
-            "format": "date-time"
           }
         },
-        "description": "A `qe_assumption_set` row: an optional, manually created snapshot that pins exact dimension versions for reproducible reporting."
+        "description": "A `qe_assumption_set` row: a named set of version pins. The one active set pins every published version and every\npublish repoints it; a historical set is a snapshot of the active set and the active release captured under its own key."
       },
       "AssumptionSetUpdateInput": {
         "required": [
-          "displayName",
-          "effectiveAt"
+          "displayName"
         ],
         "type": "object",
         "properties": {
@@ -12076,15 +11661,10 @@
               "null",
               "string"
             ],
-            "description": "The optional business purpose or provenance."
-          },
-          "effectiveAt": {
-            "type": "string",
-            "description": "The semantic time (UTC) at which capturing resolves the effective dimension versions.",
-            "format": "date-time"
+            "description": "An optional note, such as the close the snapshot records."
           }
         },
-        "description": "The editable settings of a draft assumption set; its key is fixed at creation."
+        "description": "The editable labels of an assumption set; its key and pins never change."
       },
       "BindingDetail": {
         "required": [
@@ -12106,14 +11686,6 @@
                 "$ref": "#/components/schemas/TimeBindingRecord"
               }
             ]
-          },
-          "bridgeId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The bridge that owns the binding's bridge version, so an editor can offer that bridge's versions; null when the\nbinding has no bridge version.",
-            "format": "int64"
           }
         },
         "description": "A dimension binding with its time extension, joined from `qe_dimension_binding` and `qe_time_binding`."
@@ -12146,14 +11718,6 @@
             "description": "The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.",
             "format": "int64"
           },
-          "pinnedDimensionVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "An explicit version of the dimension; null resolves the published version effective at query time.",
-            "format": "int64"
-          },
           "bindingKind": {
             "type": "string",
             "description": "A `binding_kind` value: `direct`, `mapped`, `range`, `bridge` or `time`."
@@ -12182,33 +11746,31 @@
             "description": "The binding of the same version that a `bridge` binding remaps; null for every other kind.",
             "format": "int64"
           },
-          "bridgeVersionId": {
+          "bridgeId": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "The bridge version a `bridge` binding remaps through; null for every other kind.",
+            "description": "The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins.",
             "format": "int64"
           },
           "groupingMode": {
             "type": "string",
             "description": "A `grouping_mode` value: `member`, `level`, `ancestor` or `depth`."
           },
-          "groupingLevelId": {
+          "groupingLevelKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The level to group at; required for `level` grouping and null otherwise.",
-            "format": "int64"
+            "description": "The key of the level to group at; required for `level` grouping and null otherwise."
           },
-          "groupingAncestorMemberId": {
+          "groupingAncestorMemberKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The ancestor member to group at; required for `ancestor` grouping and null otherwise.",
-            "format": "int64"
+            "description": "The key of the ancestor member to group under; required for `ancestor` grouping and null otherwise."
           },
           "groupingDepth": {
             "type": [
@@ -12230,13 +11792,12 @@
             "type": "string",
             "description": "An `unmapped_behavior` value: what happens to rows whose source value maps to no member."
           },
-          "unknownMemberId": {
+          "unknownMemberKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise.",
-            "format": "int64"
+            "description": "The key of the member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise."
           },
           "isRequired": {
             "type": "boolean",
@@ -12288,22 +11849,20 @@
       },
       "BridgeMappingInput": {
         "required": [
-          "sourceMemberId",
-          "targetMemberId",
+          "sourceMemberKey",
+          "targetMemberKey",
           "factor",
           "allocationWeight"
         ],
         "type": "object",
         "properties": {
-          "sourceMemberId": {
-            "type": "integer",
-            "description": "A member of the bridge version's source dimension version.",
-            "format": "int64"
+          "sourceMemberKey": {
+            "type": "string",
+            "description": "The key of a member of the bridge's source dimension."
           },
-          "targetMemberId": {
-            "type": "integer",
-            "description": "A member of the bridge version's target dimension version.",
-            "format": "int64"
+          "targetMemberKey": {
+            "type": "string",
+            "description": "The key of a member of the bridge's target dimension."
           },
           "factor": {
             "type": "number",
@@ -12320,28 +11879,32 @@
       },
       "BridgeMappingRecord": {
         "required": [
+          "bridgeMappingId",
           "bridgeVersionId",
-          "sourceMemberId",
-          "targetMemberId",
+          "sourceMemberKey",
+          "targetMemberKey",
           "factor",
           "allocationWeight"
         ],
         "type": "object",
         "properties": {
+          "bridgeMappingId": {
+            "type": "integer",
+            "description": "Surrogate primary key; the version and both member keys are unique together.",
+            "format": "int64"
+          },
           "bridgeVersionId": {
             "type": "integer",
-            "description": "The owning bridge version; first part of the primary key.",
+            "description": "The owning bridge version.",
             "format": "int64"
           },
-          "sourceMemberId": {
-            "type": "integer",
-            "description": "The source member; second part of the primary key.",
-            "format": "int64"
+          "sourceMemberKey": {
+            "type": "string",
+            "description": "The key of the source member."
           },
-          "targetMemberId": {
-            "type": "integer",
-            "description": "The target member; third part of the primary key.",
-            "format": "int64"
+          "targetMemberKey": {
+            "type": "string",
+            "description": "The key of the target member."
           },
           "factor": {
             "type": "number",
@@ -12354,7 +11917,7 @@
             "format": "double"
           }
         },
-        "description": "A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version."
+        "description": "A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version, by member key. The keys\nresolve in the versions of the bridge's dimensions an assumption set pins."
       },
       "BridgeMappingsInput": {
         "required": [
@@ -12406,14 +11969,6 @@
             "description": "The canonical target dimension.",
             "format": "int64"
           },
-          "currentBridgeVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Authoring-only pointer to the current bridge version.",
-            "format": "int64"
-          },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
@@ -12423,23 +11978,11 @@
       },
       "BridgeVersionInput": {
         "required": [
-          "sourceDimensionVersionId",
-          "targetDimensionVersionId",
           "cardinality",
           "allocationMode"
         ],
         "type": "object",
         "properties": {
-          "sourceDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned version of the bridge's source dimension.",
-            "format": "int64"
-          },
-          "targetDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned version of the bridge's target dimension.",
-            "format": "int64"
-          },
           "cardinality": {
             "type": "string",
             "description": "A `cardinality` value: `many_to_one` or `many_to_many`."
@@ -12449,15 +11992,13 @@
             "description": "An `allocation_mode` value: `none`, `partition` or `replicate`."
           }
         },
-        "description": "The editable attributes of a draft bridge version, as `PUT bridge-versions/{versionId}` takes them."
+        "description": "The editable attributes of a bridge version, as `PUT bridge-versions/{versionId}` takes them."
       },
       "BridgeVersionRecord": {
         "required": [
           "bridgeVersionId",
           "bridgeId",
           "versionNumber",
-          "sourceDimensionVersionId",
-          "targetDimensionVersionId",
           "cardinality",
           "allocationMode",
           "status"
@@ -12478,16 +12019,6 @@
             "type": "integer",
             "description": "Version number within the bridge.",
             "format": "int32"
-          },
-          "sourceDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned source dimension version.",
-            "format": "int64"
-          },
-          "targetDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned target dimension version.",
-            "format": "int64"
           },
           "cardinality": {
             "type": "string",
@@ -12510,7 +12041,7 @@
             "format": "date-time"
           }
         },
-        "description": "A `qe_bridge_version` row: pins the source and target dimension versions and the allocation semantics of a bridge."
+        "description": "A `qe_bridge_version` row: the cardinality, allocation semantics and assignments of a bridge, of which at most one version is published."
       },
       "CalculatedMeasureInput": {
         "required": [
@@ -12808,14 +12339,6 @@
             "type": "string",
             "description": "Human-readable name."
           },
-          "currentModelVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Authoring-only pointer to the most recently published model version.",
-            "format": "int64"
-          },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
@@ -12964,77 +12487,6 @@
           }
         },
         "description": "A `qe_calculation_dimension_binding` row: the field that produces a calculation dimension in one dataset, or for one source."
-      },
-      "CreatedBridgeVersion": {
-        "required": [
-          "version",
-          "droppedMappings"
-        ],
-        "type": "object",
-        "properties": {
-          "version": {
-            "description": "The new draft.",
-            "$ref": "#/components/schemas/BridgeVersionRecord"
-          },
-          "droppedMappings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DroppedBridgeMapping"
-            },
-            "description": "The cloned mappings whose source or target member key no member of the new endpoint version has, by source key, then\ntarget key; empty for an empty draft."
-          }
-        },
-        "description": "A new draft bridge version, with the mappings a clone could not carry over."
-      },
-      "CreatedMappingVersion": {
-        "required": [
-          "version",
-          "droppedSourceKeys"
-        ],
-        "type": "object",
-        "properties": {
-          "version": {
-            "description": "The new draft.",
-            "$ref": "#/components/schemas/MappingVersionRecord"
-          },
-          "droppedSourceKeys": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The source keys of the cloned entries whose member key no member of the new draft's dimension version has, in\nordinal order; empty for an empty draft."
-          }
-        },
-        "description": "A new draft mapping version, with the source keys a clone could not carry over."
-      },
-      "CreatedReportVersion": {
-        "required": [
-          "version",
-          "droppedColumns",
-          "droppedLines"
-        ],
-        "type": "object",
-        "properties": {
-          "version": {
-            "description": "The new draft.",
-            "$ref": "#/components/schemas/ReportVersionRecord"
-          },
-          "droppedColumns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The keys of the cloned columns whose metric key the draft's model version lacks."
-          },
-          "droppedLines": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The keys of the cloned formula lines whose calculated measure or value column the draft lacks."
-          }
-        },
-        "description": "A new draft report version, with the columns and lines a clone could not carry into its model version."
       },
       "DatabaseInfoRecord": {
         "required": [
@@ -13330,52 +12782,6 @@
         },
         "description": "The editable settings of a draft dataset version."
       },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
-      },
       "DimensionBindingRecord": {
         "required": [
           "bindingId",
@@ -13413,14 +12819,6 @@
             "description": "The canonical dimension.",
             "format": "int64"
           },
-          "pinnedDimensionVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Optional explicit dimension version; null resolves the published version valid at query time.",
-            "format": "int64"
-          },
           "bindingKind": {
             "type": "string",
             "description": "A `binding_kind` value."
@@ -13449,33 +12847,31 @@
             "description": "The existing source binding when the binding kind is `bridge`.",
             "format": "int64"
           },
-          "bridgeVersionId": {
+          "bridgeId": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "The bridge version when the binding kind is `bridge`.",
+            "description": "The bridge when the binding kind is `bridge`; queries use the version their assumption set pins.",
             "format": "int64"
           },
           "groupingMode": {
             "type": "string",
             "description": "A `grouping_mode` value."
           },
-          "groupingLevelId": {
+          "groupingLevelKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The level to group at when the grouping mode is `level`.",
-            "format": "int64"
+            "description": "The key of the level to group at when the grouping mode is `level`."
           },
-          "groupingAncestorMemberId": {
+          "groupingAncestorMemberKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The ancestor to group at when the grouping mode is `ancestor`.",
-            "format": "int64"
+            "description": "The key of the ancestor member to group under when the grouping mode is `ancestor`."
           },
           "groupingDepth": {
             "type": [
@@ -13497,13 +12893,12 @@
             "type": "string",
             "description": "An `unmapped_behavior` value."
           },
-          "unknownMemberId": {
+          "unknownMemberKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The member unmapped rows route to when the unmapped behavior is `unknown`.",
-            "format": "int64"
+            "description": "The key of the member unmapped rows route to when the unmapped behavior is `unknown`."
           },
           "isRequired": {
             "type": "boolean",
@@ -13600,7 +12995,7 @@
           "mappingEntryId",
           "mappingVersionId",
           "sourceKeyValue",
-          "memberId"
+          "memberKey"
         ],
         "type": "object",
         "properties": {
@@ -13618,13 +13013,12 @@
             "type": "string",
             "description": "Actual scalar source value, unique within the mapping version."
           },
-          "memberId": {
-            "type": "integer",
-            "description": "The canonical target member, from the mapping version's dimension version.",
-            "format": "int64"
+          "memberKey": {
+            "type": "string",
+            "description": "The key of the canonical target member, which resolves in the version of the set's dimension an assumption set pins."
           }
         },
-        "description": "A `qe_dimension_mapping` row: maps one actual source value to exactly one canonical member within one mapping version."
+        "description": "A `qe_dimension_mapping` row: maps one actual source value to one canonical member key within one mapping version."
       },
       "DimensionMemberRecord": {
         "required": [
@@ -13750,25 +13144,9 @@
               "string"
             ],
             "description": "A `range_data_type` value for a range dimension; null for every other kind."
-          },
-          "validFrom": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Inclusive validity start (UTC); a version needs one before it is published.",
-            "format": "date-time"
-          },
-          "validTo": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.",
-            "format": "date-time"
           }
         },
-        "description": "The editable attributes of a draft dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them."
+        "description": "The editable attributes of a dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them."
       },
       "DimensionVersionRecord": {
         "required": [
@@ -13805,22 +13183,6 @@
             ],
             "description": "A `range_data_type` value for range dimensions; null otherwise."
           },
-          "validFrom": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Inclusive semantic-validity start (UTC); required once published.",
-            "format": "date-time"
-          },
-          "validTo": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Exclusive semantic-validity end (UTC); null means open-ended.",
-            "format": "date-time"
-          },
           "publishedAt": {
             "type": [
               "null",
@@ -13830,25 +13192,7 @@
             "format": "date-time"
           }
         },
-        "description": "A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension."
-      },
-      "DroppedBridgeMapping": {
-        "required": [
-          "sourceMemberKey",
-          "targetMemberKey"
-        ],
-        "type": "object",
-        "properties": {
-          "sourceMemberKey": {
-            "type": "string",
-            "description": "The key of the mapping's source member."
-          },
-          "targetMemberKey": {
-            "type": "string",
-            "description": "The key of the mapping's target member."
-          }
-        },
-        "description": "A mapping a bridge version clone could not carry over, named by the member keys of the version it was cloned from."
+        "description": "A `qe_dimension_version` row: a version of one canonical dimension, of which at most one is published."
       },
       "FieldInput": {
         "required": [
@@ -14364,7 +13708,7 @@
       "MappingEntryInput": {
         "required": [
           "sourceKeyValue",
-          "memberId"
+          "memberKey"
         ],
         "type": "object",
         "properties": {
@@ -14372,10 +13716,9 @@
             "type": "string",
             "description": "The actual scalar source value, stored exactly as given: `003000` and `3000` are different values. Not empty,\nat most 512 bytes of UTF-8 text."
           },
-          "memberId": {
-            "type": "integer",
-            "description": "The member of the mapping version's dimension version that the value maps to.",
-            "format": "int64"
+          "memberKey": {
+            "type": "string",
+            "description": "The key of the member the value maps to, which queries resolve in the dimension version their assumption set pins."
           }
         },
         "description": "One mapping entry: an actual source value and the canonical member it maps to."
@@ -14438,7 +13781,6 @@
           "mappingVersionId",
           "mappingSetId",
           "versionNumber",
-          "dimensionVersionId",
           "status"
         ],
         "type": "object",
@@ -14458,11 +13800,6 @@
             "description": "Monotonic version within the mapping set.",
             "format": "int32"
           },
-          "dimensionVersionId": {
-            "type": "integer",
-            "description": "The canonical target dimension version; unique together with the mapping set.",
-            "format": "int64"
-          },
           "status": {
             "type": "string",
             "description": "A `publication_status` value."
@@ -14476,7 +13813,7 @@
             "format": "date-time"
           }
         },
-        "description": "A `qe_mapping_version` row: immutable mapping content associated with one canonical dimension version."
+        "description": "A `qe_mapping_version` row: source-key mapping content of a mapping set, of which at most one version is published."
       },
       "MaterializedColumnInput": {
         "type": "object",
@@ -15368,8 +14705,6 @@
       },
       "NewBridgeVersionInput": {
         "required": [
-          "sourceDimensionVersionId",
-          "targetDimensionVersionId",
           "cardinality",
           "allocationMode"
         ],
@@ -15380,17 +14715,7 @@
               "null",
               "integer"
             ],
-            "description": "A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new\nendpoint versions; null for an empty draft.",
-            "format": "int64"
-          },
-          "sourceDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned version of the bridge's source dimension.",
-            "format": "int64"
-          },
-          "targetDimensionVersionId": {
-            "type": "integer",
-            "description": "The pinned version of the bridge's target dimension.",
+            "description": "A version of the same bridge whose mappings the draft copies; null for an empty draft.",
             "format": "int64"
           },
           "cardinality": {
@@ -15402,7 +14727,7 @@
             "description": "An `allocation_mode` value: `none`, `partition` or `replicate`."
           }
         },
-        "description": "A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its endpoint versions and allocation\nsemantics, and optionally a version whose mappings it copies."
+        "description": "A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its allocation semantics, and\noptionally a version whose mappings it copies."
       },
       "NewCalculationModelInput": {
         "required": [
@@ -15452,14 +14777,6 @@
             ],
             "description": "A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind."
           },
-          "validFrom": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Inclusive validity start (UTC) of version 1, if already known.",
-            "format": "date-time"
-          },
           "displayName": {
             "type": "string",
             "description": "Human-readable name, at most 256 bytes of UTF-8 text."
@@ -15473,7 +14790,7 @@
             "description": "Whether the dimension may be deleted. A `system` dimension keeps its stored value, so an update ignores this one."
           }
         },
-        "description": "A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the\nrange data type and validity start of its draft version 1."
+        "description": "A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the\nrange data type of its draft version 1."
       },
       "NewDimensionVersionInput": {
         "type": "object",
@@ -15492,22 +14809,6 @@
               "string"
             ],
             "description": "A `range_data_type` value for a range dimension; null for every other kind."
-          },
-          "validFrom": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Inclusive validity start (UTC); a version needs one before it is published.",
-            "format": "date-time"
-          },
-          "validTo": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.",
-            "format": "date-time"
           }
         },
         "description": "A new draft version of a dimension, as `POST dimensions/{dimensionId}/versions` takes it: empty, or a clone of an\nexisting version. A clone copies the source's range data type unless the input supplies one."
@@ -15578,26 +14879,18 @@
         "description": "A new mapping set, as `POST mapping-sets` takes it: its fixed key and target dimension, plus its identity attributes."
       },
       "NewMappingVersionInput": {
-        "required": [
-          "dimensionVersionId"
-        ],
         "type": "object",
         "properties": {
-          "dimensionVersionId": {
-            "type": "integer",
-            "description": "The dimension version of the set's dimension that the entries' members come from.",
-            "format": "int64"
-          },
           "cloneFromVersionId": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in\n`dimensionVersionId`; null for an empty draft.",
+            "description": "A version of the same mapping set whose entries the draft copies; null for an empty draft.",
             "format": "int64"
           }
         },
-        "description": "A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: the dimension version\nit maps onto, and optionally a version whose entries it copies."
+        "description": "A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: optionally a version\nwhose entries it copies."
       },
       "NewMemberInput": {
         "required": [
@@ -15717,7 +15010,7 @@
       "NewReportVersionInput": {
         "required": [
           "reportDimensionId",
-          "modelVersionId"
+          "modelId"
         ],
         "type": "object",
         "properties": {
@@ -15726,9 +15019,9 @@
             "description": "The canonical dimension whose members the member lines name.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "modelId": {
             "type": "integer",
-            "description": "The calculation model version the report reads.",
+            "description": "The calculation model; a run reads the model version its assumption set pins.",
             "format": "int64"
           },
           "cloneFromVersionId": {
@@ -15736,16 +15029,15 @@
               "null",
               "integer"
             ],
-            "description": "A version of the same report whose lines and columns the draft copies, each metric followed by key into the draft's\nmodel version; null for an empty draft.",
+            "description": "A version of the same report whose lines and columns the draft copies; null for an empty draft.",
             "format": "int64"
           },
-          "defaultSourceProfileId": {
+          "defaultProfileKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A profile of the version's model version that requests run under when they name none.",
-            "format": "int64"
+            "description": "The key of a profile of the model's published version that requests run under when they name none."
           },
           "payloadJson": {
             "type": [
@@ -15776,7 +15068,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys."
           }
         },
-        "description": "A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and model version\nit reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies."
+        "description": "A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and calculation\nmodel it reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies."
       },
       "OverviewCounts": {
         "required": [
@@ -15819,7 +15111,7 @@
           },
           "assumptionSets": {
             "type": "integer",
-            "description": "The number of assumption sets, whatever their status.",
+            "description": "The number of assumption sets: the active one and every historical set.",
             "format": "int32"
           },
           "calculationModels": {
@@ -15847,7 +15139,6 @@
           "mappingVersions",
           "bridgeVersions",
           "releases",
-          "assumptionSets",
           "modelVersions",
           "reportVersions"
         ],
@@ -15876,11 +15167,6 @@
           "releases": {
             "type": "integer",
             "description": "Draft semantic releases.",
-            "format": "int32"
-          },
-          "assumptionSets": {
-            "type": "integer",
-            "description": "Draft assumption sets.",
             "format": "int32"
           },
           "modelVersions": {
@@ -16187,74 +15473,11 @@
         },
         "description": "A release's complete manifest, which replaces the current one."
       },
-      "ReleaseReportInput": {
-        "required": [
-          "reportId",
-          "reportVersionId"
-        ],
-        "type": "object",
-        "properties": {
-          "reportId": {
-            "type": "integer",
-            "description": "The report.",
-            "format": "int64"
-          },
-          "reportVersionId": {
-            "type": "integer",
-            "description": "The version of the report that the release pins.",
-            "format": "int64"
-          }
-        },
-        "description": "One report pin: the report version a release pins for a report."
-      },
-      "ReleaseReportRecord": {
-        "required": [
-          "releaseId",
-          "reportId",
-          "reportVersionId"
-        ],
-        "type": "object",
-        "properties": {
-          "releaseId": {
-            "type": "integer",
-            "description": "The release; first part of the primary key.",
-            "format": "int64"
-          },
-          "reportId": {
-            "type": "integer",
-            "description": "The report; second part of the primary key.",
-            "format": "int64"
-          },
-          "reportVersionId": {
-            "type": "integer",
-            "description": "The pinned version of the report.",
-            "format": "int64"
-          }
-        },
-        "description": "A `qe_release_report` row: the report version a release pins for one report."
-      },
-      "ReleaseReportsInput": {
-        "required": [
-          "reports"
-        ],
-        "type": "object",
-        "properties": {
-          "reports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ReleaseReportInput"
-            },
-            "description": "One pin per report the release serves."
-          }
-        },
-        "description": "A release's complete report pins, which replace the current ones."
-      },
       "ReleaseSummary": {
         "required": [
           "release",
           "isActive",
-          "datasetCount",
-          "reportCount"
+          "datasetCount"
         ],
         "type": "object",
         "properties": {
@@ -16269,11 +15492,6 @@
           "datasetCount": {
             "type": "integer",
             "description": "The number of datasets the release's manifest pins.",
-            "format": "int32"
-          },
-          "reportCount": {
-            "type": "integer",
-            "description": "The number of reports the release pins.",
             "format": "int32"
           }
         },
@@ -16341,6 +15559,7 @@
           "columnKey",
           "displayName",
           "valueKind",
+          "metricKey",
           "sortOrder",
           "isVisible"
         ],
@@ -16368,21 +15587,9 @@
             "type": "string",
             "description": "A `report_value_kind` value."
           },
-          "variableId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The variable of a `variable` column.",
-            "format": "int64"
-          },
-          "calculatedMeasureId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The calculated measure of a `calculated` column.",
-            "format": "int64"
+          "metricKey": {
+            "type": "string",
+            "description": "The key of the model's variable or calculated measure the column shows, according to its value kind."
           },
           "sortOrder": {
             "type": "integer",
@@ -16583,13 +15790,12 @@
             ],
             "description": "The report-item member of a `member` line."
           },
-          "calculatedMeasureId": {
+          "calculatedMeasureKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The calculated measure of a `formula` line.",
-            "format": "int64"
+            "description": "The key of the model's calculated measure a `formula` line evaluates."
           },
           "valueColumnId": {
             "type": [
@@ -16675,14 +15881,6 @@
             "type": "string",
             "description": "Free-form classification such as `margin_analysis`."
           },
-          "currentReportVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Authoring-only pointer to the most recently published report version.",
-            "format": "int64"
-          },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
@@ -16700,13 +15898,12 @@
       "ReportVersionInput": {
         "type": "object",
         "properties": {
-          "defaultSourceProfileId": {
+          "defaultProfileKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A profile of the version's model version that requests run under when they name none.",
-            "format": "int64"
+            "description": "The key of a profile of the model's published version that requests run under when they name none."
           },
           "payloadJson": {
             "type": [
@@ -16737,7 +15934,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys."
           }
         },
-        "description": "The editable attributes of a draft report version, as `PUT report-versions/{versionId}` takes them."
+        "description": "The editable attributes of a report version, as `PUT report-versions/{versionId}` takes them."
       },
       "ReportVersionRecord": {
         "required": [
@@ -16745,6 +15942,7 @@
           "reportId",
           "versionNumber",
           "reportDimensionId",
+          "modelId",
           "status"
         ],
         "type": "object",
@@ -16769,21 +15967,17 @@
             "description": "The canonical dimension whose members the member lines name.",
             "format": "int64"
           },
-          "modelVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The calculation model version the report reads.",
+          "modelId": {
+            "type": "integer",
+            "description": "The calculation model; a run reads the model version its assumption set pins.",
             "format": "int64"
           },
-          "defaultSourceProfileId": {
+          "defaultProfileKey": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The profile a request runs under when it names none.",
-            "format": "int64"
+            "description": "The key of the profile a request runs under when it names none; required at publication."
           },
           "status": {
             "type": "string",
@@ -16826,7 +16020,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout."
           }
         },
-        "description": "A `qe_report_version` row: one immutable version of a report: its dimension, model version, defaults, lines and columns."
+        "description": "A `qe_report_version` row: one version of a report: its dimension, model, defaults, lines and columns."
       },
       "RuleViolation": {
         "required": [
@@ -17173,7 +16367,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "description": "The target status: a `publication_status` value (an `assumption_set_status` value for assumption sets)."
+            "description": "The target status: a `publication_status` value."
           }
         },
         "description": "A request to move a version to another lifecycle status."
@@ -17707,7 +16901,6 @@
           "reportFieldKey",
           "timeFieldKey",
           "measureKey",
-          "classificationAsOf",
           "isEnabled"
         ],
         "type": "object",
@@ -17755,16 +16948,28 @@
             ],
             "description": "Optional structured filter over the dataset's fields."
           },
-          "classificationAsOf": {
-            "type": "string",
-            "description": "A `classification_as_of` value."
-          },
           "isEnabled": {
             "type": "boolean",
             "description": "Whether profiles may pick the source."
           }
         },
         "description": "A `qe_variable_source` row: one dataset measure that can supply a variable, named by key in the dataset version a release pins."
+      },
+      "VersionCheck": {
+        "required": [
+          "violations"
+        ],
+        "type": "object",
+        "properties": {
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleViolation"
+            },
+            "description": "The rule violations; empty when the version passes."
+          }
+        },
+        "description": "What checking a version against its publication rules found; the check changes nothing."
       },
       "VersionState": {
         "required": [
@@ -17785,7 +16990,7 @@
           },
           "status": {
             "type": "string",
-            "description": "A `publication_status` value (an `assumption_set_status` value for assumption sets)."
+            "description": "A `publication_status` value."
           },
           "publishedAt": {
             "type": [
@@ -17923,9 +17128,6 @@
     },
     {
       "name": "RangeBands"
-    },
-    {
-      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"

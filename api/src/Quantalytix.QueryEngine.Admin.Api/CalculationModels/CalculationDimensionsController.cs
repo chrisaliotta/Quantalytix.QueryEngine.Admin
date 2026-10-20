@@ -32,9 +32,9 @@ public sealed class CalculationDimensionsController(IModelVersionContent<Calcula
         return Ok(await dimensions.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Adds a calculation dimension to a draft model version.</summary>
+    /// <summary>Adds a calculation dimension to a draft or published model version.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft model version.</param>
+    /// <param name="versionId">The draft or published model version.</param>
     /// <param name="input">The new calculation dimension.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created calculation dimension.</returns>
@@ -42,9 +42,9 @@ public sealed class CalculationDimensionsController(IModelVersionContent<Calcula
     /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<CalculationDimensionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculationDimensionRecord>> Create(string tenantId, long versionId, CalculationDimensionInput input, CancellationToken cancellationToken)
@@ -52,9 +52,9 @@ public sealed class CalculationDimensionsController(IModelVersionContent<Calcula
         return Ok(await dimensions.CreateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>Replaces a calculation dimension of a draft model version, keeping its ID.</summary>
+    /// <summary>Replaces a calculation dimension of a draft or published model version, keeping its ID.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="dimension">The draft model version and its calculation dimension.</param>
+    /// <param name="dimension">The draft or published model version and its calculation dimension.</param>
     /// <param name="input">The calculation dimension's new values.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored calculation dimension.</returns>
@@ -62,9 +62,9 @@ public sealed class CalculationDimensionsController(IModelVersionContent<Calcula
     /// <response code="400">The calculation dimension is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<CalculationDimensionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculationDimensionRecord>> Update(
@@ -76,18 +76,18 @@ public sealed class CalculationDimensionsController(IModelVersionContent<Calcula
         return Ok(await dimensions.UpdateAsync(dimension.VersionId, dimension.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a calculation dimension of a draft model version with its routes.</summary>
+    /// <summary>Deletes a calculation dimension of a draft or published model version with its routes.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="dimension">The draft model version and its calculation dimension.</param>
+    /// <param name="dimension">The draft or published model version and its calculation dimension.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when nothing was deleted.</returns>
     /// <response code="204">The calculation dimension is deleted.</response>
     /// <response code="400">The calculation dimension is not in the version; the error is keyed <c>itemId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft.</response>
+    /// <response code="409">Nothing was deleted: the version is neither a draft nor published.</response>
     [HttpDelete("{itemId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<CalculationDimensionRecord> dimension, CancellationToken cancellationToken)

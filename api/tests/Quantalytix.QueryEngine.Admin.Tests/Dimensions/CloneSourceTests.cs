@@ -27,8 +27,8 @@ public sealed class CloneSourceTests
     /// <summary>The validator under test, for a request to <c>dimensions/100/versions</c>.</summary>
     private readonly NewDimensionVersionInputValidator _validator = new(
         new InMemoryTableGateway<DimensionVersionRecord>(
-            DimensionRows.Version(OwnVersionId, RouteDimensionId, 1, PublicationStatuses.Published, null, null),
-            DimensionRows.Version(ForeignVersionId, 200, 1, PublicationStatuses.Published, null, null)),
+            DimensionRows.Version(OwnVersionId, RouteDimensionId, 1, PublicationStatuses.Published),
+            DimensionRows.Version(ForeignVersionId, 200, 1, PublicationStatuses.Published)),
         new FixedRequestRoute(new Dictionary<string, long> { ["dimensionId"] = RouteDimensionId }));
 
     /// <summary>A version of another dimension is refused under <c>cloneFromVersionId</c>.</summary>

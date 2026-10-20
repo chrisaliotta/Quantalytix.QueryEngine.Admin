@@ -7,9 +7,8 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class DimensionsFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Dimensions slice's services, its <c>dimension_version</c> lifecycle handlers (the closure builder, then
-    /// the predecessor closer) and its <c>dimension_version</c> publication rules, all scoped. The workflow runs handlers and
-    /// rules in this order.
+    /// Registers the Dimensions slice's services, its <c>dimension_version</c> lifecycle handler (the closure builder, which member
+    /// writes also call) and its <c>dimension_version</c> publication rules, all scoped. The workflow runs rules in this order.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -23,13 +22,13 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddScoped<DimensionVersionCloner>();
         services.AddScoped<DimensionVersionRemover>();
         services.AddScoped<DimensionDeleteChecks>();
+        services.AddScoped<DimensionConsumers>();
+        services.AddScoped<PublishedDimensionReader>();
         services.AddScoped<RangeBandSetReader>();
 
-        services.AddScoped<IVersionLifecycleHandler, ClosureBuilder>();
-        services.AddScoped<IVersionLifecycleHandler, PredecessorValidityCloser>();
+        services.AddScoped<ClosureBuilder>();
+        services.AddScoped<IVersionLifecycleHandler>(provider => provider.GetRequiredService<ClosureBuilder>());
 
-        services.AddScoped<IPublicationRule, ValidFromRequiredRule>();
-        services.AddScoped<IPublicationRule, ValidityOverlapRule>();
         services.AddScoped<IPublicationRule, RangeDataTypeMatchesKindRule>();
         services.AddScoped<IPublicationRule, LevelKeyUniqueRule>();
         services.AddScoped<IPublicationRule, MemberKeyUniqueRule>();
@@ -40,6 +39,7 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddScoped<IPublicationRule, BandBoundsOrderedRule>();
         services.AddScoped<IPublicationRule, BandsNonOverlappingRule>();
         services.AddScoped<IPublicationRule, BandMemberInVersionRule>();
+        services.AddScoped<IPublicationRule, DimensionConsumersResolveRule>();
         return services;
     }
 }

@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.Mappings;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingVersionsController(MappingVersionService versions) : ControllerBase
 {
-    /// <summary>Lists a mapping set's versions with their status and pinned dimension version.</summary>
+    /// <summary>Lists a mapping set's versions with their status.</summary>
     /// <param name="tenantId">The tenant that owns the mapping set.</param>
     /// <param name="mappingSetId">The mapping set.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -35,22 +35,21 @@ public sealed class MappingVersionsController(MappingVersionService versions) : 
     }
 
     /// <summary>
-    /// Creates a draft with the set's next version number, pinned to <c>dimensionVersionId</c>: empty, or cloned from
-    /// <c>cloneFromVersionId</c>, whose entries move to the members with the same keys in the pinned dimension version.
+    /// Creates a draft with the set's next version number: empty, or with copies of the entries of <c>cloneFromVersionId</c>.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the mapping set.</param>
     /// <param name="mappingSetId">The mapping set.</param>
-    /// <param name="input">The pinned dimension version and the optional clone source.</param>
+    /// <param name="input">The optional clone source.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created draft and the source keys the clone dropped.</returns>
-    /// <response code="200">The created draft, with the source keys of cloned entries whose member key the pinned version lacks.</response>
-    /// <response code="400">The input breaks a field rule, such as an unknown dimension version; errors are keyed by camelCase JSON path.</response>
+    /// <returns>The created draft.</returns>
+    /// <response code="200">The created draft.</response>
+    /// <response code="400">The clone source is not a version of the mapping set; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("mapping-sets/{mappingSetId:long}/versions")]
-    [ProducesResponseType<CreatedMappingVersion>(StatusCodes.Status200OK)]
+    [ProducesResponseType<MappingVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<CreatedMappingVersion>> Create(
+    public async Task<ActionResult<MappingVersionRecord>> Create(
         string tenantId,
         long mappingSetId,
         NewMappingVersionInput input,

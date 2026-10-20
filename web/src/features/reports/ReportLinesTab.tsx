@@ -15,27 +15,22 @@ import type { ReportLineInput, ReportVersion } from './types';
 
 export interface ReportLinesTabProps {
   version: ReportVersion;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
-/** The version's line tree, once its lines, its columns and the model version's calculated measures have loaded. */
-export function ReportLinesTab({ version, isDraft }: ReportLinesTabProps) {
+/** The version's line tree, once its lines and its columns have loaded. */
+export function ReportLinesTab({ version, isEditable }: ReportLinesTabProps) {
   const lines = useReportLines(version.reportVersionId);
   const columns = useLookup('report-columns', version.reportVersionId);
-  const measures = useLookup('calculated-measures', version.modelVersionId ?? null);
 
-  if (lines.isPending || columns.isPending || measures.isPending) {
+  if (lines.isPending || columns.isPending) {
     return <Loading size="sm" />;
   }
-  if (lines.error ?? columns.error ?? measures.error) {
-    return <ApiErrorAlert error={lines.error ?? columns.error ?? measures.error} />;
+  if (lines.error ?? columns.error) {
+    return <ApiErrorAlert error={lines.error ?? columns.error} />;
   }
-  const saved = buildLineTree(
-    lines.data,
-    new Map(measures.data.map(item => [item.id, item.key])),
-    new Map(columns.data.map(item => [item.id, item.key]))
-  );
-  return <LineEditor key={lines.dataUpdatedAt} version={version} isDraft={isDraft} saved={saved} />;
+  const saved = buildLineTree(lines.data, new Map(columns.data.map(item => [item.id, item.key])));
+  return <LineEditor key={lines.dataUpdatedAt} version={version} isEditable={isEditable} saved={saved} />;
 }
 
 /** What the line sheet was opened for: an existing line, or a new one under a parent (null for a root line). */
@@ -50,10 +45,11 @@ interface LineEditorProps extends ReportLinesTabProps {
 }
 
 /**
- * The version's lines as a tree. Drafts reparent and reorder lines by drag and drop and add, edit and delete them
+ * The version's lines as a tree. A draft or the published version reparents and reorders lines by drag and drop and adds,
+ * edits and deletes them
  * locally; "Save" replaces the whole tree, sent in pre-order. Deleting a line hands its children to its parent.
  */
-function LineEditor({ version, isDraft, saved }: LineEditorProps) {
+function LineEditor({ version, isEditable, saved }: LineEditorProps) {
   const replace = useReplaceReportLines(version.reportVersionId);
   const [tree, setTree] = useState(saved);
   const [sheet, setSheet] = useState<LineSheetRequest | null>(null);
@@ -75,7 +71,7 @@ function LineEditor({ version, isDraft, saved }: LineEditorProps) {
 
   return (
     <div data-slot="report-lines-tab" className="space-y-3">
-      {isDraft && (
+      {isEditable && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setSheet({ item: null, parentId: null })}>
             <Plus />
@@ -105,15 +101,15 @@ function LineEditor({ version, isDraft, saved }: LineEditorProps) {
             onItemsChange={handleItemsChange}
             collapsible
             handle
-            enablePointer={isDraft && !replace.isPending}
-            enableTouch={isDraft && !replace.isPending}
-            enableKeyboard={isDraft && !replace.isPending}
+            enablePointer={isEditable && !replace.isPending}
+            enableTouch={isEditable && !replace.isPending}
+            enableKeyboard={isEditable && !replace.isPending}
             indentationWidth={24}
             renderItem={row => (
               <ReportLineRow
                 {...row}
-                isDraft={isDraft}
-                canDrag={isDraft && !replace.isPending}
+                isEditable={isEditable}
+                canDrag={isEditable && !replace.isPending}
                 onOpen={() => setSheet({ item: row.item, parentId: null })}
                 onAddChild={() => setSheet({ item: null, parentId: row.item.id })}
                 onDelete={() => setTree(current => withoutLine(current, row.item.id))}
@@ -126,7 +122,7 @@ function LineEditor({ version, isDraft, saved }: LineEditorProps) {
         <ReportLineSheet
           version={version}
           line={sheet.item?.data ?? null}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onSave={line => saveLine(sheet, line)}
           onClose={() => setSheet(null)}
         />

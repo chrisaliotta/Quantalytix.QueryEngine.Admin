@@ -16,7 +16,7 @@ internal static class NegativeWeights
             .Select(mapping => new RuleViolation
             {
                 Rule = rule,
-                Message = $"Mapping {set.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; weights must be 0 or more."
+                Message = $"Mapping {BridgeMappingSet.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; weights must be 0 or more."
             });
     }
 }

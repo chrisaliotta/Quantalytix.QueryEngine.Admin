@@ -44,12 +44,25 @@ public static class TableCatalog
             "qe_assumption_set_dimension",
             [nameof(AssumptionSetDimensionRecord.AssumptionSetId), nameof(AssumptionSetDimensionRecord.DimensionId)],
             []),
+        [typeof(AssumptionSetMappingRecord)] = Tenant(
+            "qe_assumption_set_mapping",
+            [nameof(AssumptionSetMappingRecord.AssumptionSetId), nameof(AssumptionSetMappingRecord.MappingSetId)],
+            []),
+        [typeof(AssumptionSetBridgeRecord)] = Tenant(
+            "qe_assumption_set_bridge",
+            [nameof(AssumptionSetBridgeRecord.AssumptionSetId), nameof(AssumptionSetBridgeRecord.BridgeId)],
+            []),
+        [typeof(AssumptionSetModelRecord)] = Tenant(
+            "qe_assumption_set_model",
+            [nameof(AssumptionSetModelRecord.AssumptionSetId), nameof(AssumptionSetModelRecord.ModelId)],
+            []),
+        [typeof(AssumptionSetReportRecord)] = Tenant(
+            "qe_assumption_set_report",
+            [nameof(AssumptionSetReportRecord.AssumptionSetId), nameof(AssumptionSetReportRecord.ReportId)],
+            []),
         [typeof(BridgeRecord)] = Tenant("qe_bridge", [nameof(BridgeRecord.BridgeId)], []),
         [typeof(BridgeVersionRecord)] = Tenant("qe_bridge_version", [nameof(BridgeVersionRecord.BridgeVersionId)], []),
-        [typeof(BridgeMappingRecord)] = Tenant(
-            "qe_bridge_mapping",
-            [nameof(BridgeMappingRecord.BridgeVersionId), nameof(BridgeMappingRecord.SourceMemberId), nameof(BridgeMappingRecord.TargetMemberId)],
-            []),
+        [typeof(BridgeMappingRecord)] = Tenant("qe_bridge_mapping", [nameof(BridgeMappingRecord.BridgeMappingId)], []),
         [typeof(DimensionBindingRecord)] = Tenant("qe_dimension_binding", [nameof(DimensionBindingRecord.BindingId)], []),
         [typeof(TimeBindingRecord)] = Tenant(
             "qe_time_binding", [nameof(TimeBindingRecord.BindingId)], [nameof(TimeBindingRecord.AllowedPeriodicitiesJson)]),
@@ -90,9 +103,7 @@ public static class TableCatalog
             [nameof(ReportLineRecord.ReportLineId)],
             [nameof(ReportLineRecord.PayloadJson), nameof(ReportLineRecord.FilterJson), nameof(ReportLineRecord.SettingsJson)]),
         [typeof(ReportColumnRecord)] = Tenant(
-            "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)]),
-        [typeof(ReleaseReportRecord)] = Tenant(
-            "qe_release_report", [nameof(ReleaseReportRecord.ReleaseId), nameof(ReleaseReportRecord.ReportId)], [])
+            "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>

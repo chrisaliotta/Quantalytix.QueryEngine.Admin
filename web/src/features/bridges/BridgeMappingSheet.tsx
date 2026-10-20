@@ -1,14 +1,15 @@
 import { useForm } from 'react-hook-form';
 import { problemOnItem } from '@/shared/bulkLists';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { EntityField, NumberField } from '@/shared/form';
+import { KeyField, NumberField } from '@/shared/form';
+import type { LookupItem } from '@/shared/types';
 import { useReplaceBridgeMappings } from './api';
 import { withoutMapping, type BridgeMappingRow } from './mappingList';
 import type { BridgeMapping, BridgeVersion } from './types';
 
 interface BridgeMappingValues {
-  sourceMemberId: number | null;
-  targetMemberId: number | null;
+  sourceMemberKey: string | null;
+  targetMemberKey: string | null;
   factor: number | null;
   allocationWeight: number | null;
 }
@@ -26,6 +27,10 @@ export interface BridgeMappingSheetProps {
   mappings: BridgeMapping[];
   /** The mapping to edit or view; null to add one. */
   mapping: BridgeMappingRow | null;
+  /** The members of the published version of the source dimension, which the source picker offers; null while loading. */
+  sourceMembers: LookupItem[] | null;
+  /** The members of the published version of the target dimension, which the target picker offers; null while loading. */
+  targetMembers: LookupItem[] | null;
   readOnly: boolean;
   onClose: () => void;
 }
@@ -34,12 +39,20 @@ export interface BridgeMappingSheetProps {
  * Adds, edits or shows one mapping of a bridge version. The API replaces a version's mappings as a whole, so saving
  * sends the version's list with this mapping in place, and the problems of this mapping's values land on its fields.
  */
-export function BridgeMappingSheet({ version, mappings, mapping, readOnly, onClose }: BridgeMappingSheetProps) {
+export function BridgeMappingSheet({
+  version,
+  mappings,
+  mapping,
+  sourceMembers,
+  targetMembers,
+  readOnly,
+  onClose,
+}: BridgeMappingSheetProps) {
   const replace = useReplaceBridgeMappings(version.bridgeVersionId);
   const form = useForm<BridgeMappingValues>({
     defaultValues: {
-      sourceMemberId: mapping?.sourceMemberId ?? null,
-      targetMemberId: mapping?.targetMemberId ?? null,
+      sourceMemberKey: mapping?.sourceMemberKey ?? null,
+      targetMemberKey: mapping?.targetMemberKey ?? null,
       factor: mapping?.factor ?? 1,
       allocationWeight: mapping?.allocationWeight ?? 1,
     },
@@ -48,8 +61,8 @@ export function BridgeMappingSheet({ version, mappings, mapping, readOnly, onClo
   async function submit(values: BridgeMappingValues) {
     const others = withoutMapping(mappings, mapping);
     const edited = {
-      sourceMemberId: values.sourceMemberId ?? 0,
-      targetMemberId: values.targetMemberId ?? 0,
+      sourceMemberKey: values.sourceMemberKey ?? '',
+      targetMemberKey: values.targetMemberKey ?? '',
       factor: values.factor ?? 0,
       allocationWeight: values.allocationWeight ?? 0,
     };
@@ -70,19 +83,17 @@ export function BridgeMappingSheet({ version, mappings, mapping, readOnly, onClo
       onSubmit={submit}
       readOnly={readOnly}
     >
-      <EntityField
-        name="sourceMemberId"
+      <KeyField
+        name="sourceMemberKey"
         label="Source member"
-        lookupKind="members"
-        parentId={version.sourceDimensionVersionId}
-        description="A member of the source version."
+        items={sourceMembers}
+        description="A member of the source dimension; requests resolve its key in the published version."
       />
-      <EntityField
-        name="targetMemberId"
+      <KeyField
+        name="targetMemberKey"
         label="Target member"
-        lookupKind="members"
-        parentId={version.targetDimensionVersionId}
-        description="A member of the target version."
+        items={targetMembers}
+        description="A member of the target dimension; requests resolve its key in the published version."
       />
       <NumberField
         name="factor"
@@ -102,7 +113,7 @@ function sheetTitle(mapping: BridgeMappingRow | null, readOnly: boolean) {
   if (!mapping) {
     return 'New mapping';
   }
-  const pair = `${mapping.sourceKey} → ${mapping.targetKey}`;
+  const pair = `${mapping.sourceMemberKey} → ${mapping.targetMemberKey}`;
   if (readOnly) {
     return `Mapping ${pair}`;
   }

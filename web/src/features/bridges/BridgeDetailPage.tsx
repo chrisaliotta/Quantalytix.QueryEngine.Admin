@@ -6,20 +6,20 @@ import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
-import { DroppedOnCloneAlert } from '@/shared/DroppedOnCloneAlert';
 import { EnabledBadge } from '@/shared/EnabledBadge';
 import { PageHeader } from '@/shared/PageHeader';
-import type { LookupItem } from '@/shared/types';
+import type { VersionStatus } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
 import { selectedVersion } from '@/shared/versionSelection';
+import { isEditable } from '@/shared/versionTransitions';
 import { useBridge, useBridgeVersion, useDeleteBridge, useDeleteBridgeVersion } from './api';
 import { BridgeIdentitySheet } from './BridgeIdentitySheet';
 import { BridgeVersionPanel } from './BridgeVersionPanel';
 import { bridgeVersionValues } from './bridgeVersionForm';
 import { NewBridgeVersionDialog, type NewBridgeVersionValues } from './NewBridgeVersionDialog';
-import type { Bridge, CreatedBridgeVersion } from './types';
+import type { Bridge, BridgeVersion } from './types';
 
 /** One bridge: identity, version picker with lifecycle actions, and the selected version's settings and mappings. */
 export function BridgeDetailPage() {
@@ -41,14 +41,11 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const versions = useLookup('bridge-versions', bridge.bridgeId);
   const dimensions = useLookup('dimensions');
-  const sourceVersions = useLookup('dimension-versions', bridge.sourceDimensionId);
-  const targetVersions = useLookup('dimension-versions', bridge.targetDimensionId);
   const deleteBridge = useDeleteBridge();
   const deleteVersion = useDeleteBridgeVersion();
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [newVersion, setNewVersion] = useState<NewBridgeVersionValues | null>(null);
-  const [dropped, setDropped] = useState<CreatedBridgeVersion | null>(null);
 
   const versionItems = versions.data ?? [];
   const selected = selectedVersion(versionItems, searchParams.get('version'));
@@ -63,13 +60,7 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
   }
 
   function openNew() {
-    setNewVersion({
-      sourceDimensionVersionId: latestPublishedId(sourceVersions.data ?? []),
-      targetDimensionVersionId: latestPublishedId(targetVersions.data ?? []),
-      cardinality: 'many_to_one',
-      allocationMode: 'none',
-      cloneFromVersionId: null,
-    });
+    setNewVersion({ cardinality: 'many_to_one', allocationMode: 'none', cloneFromVersionId: null });
   }
 
   function openClone(sourceId: number) {
@@ -78,12 +69,9 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
     }
   }
 
-  function showCreated(created: CreatedBridgeVersion) {
-    toast.success(`Created draft v${created.version.versionNumber}.`);
-    selectVersion(created.version.bridgeVersionId);
-    if (created.droppedMappings.length > 0) {
-      setDropped(created);
-    }
+  function showCreated(created: BridgeVersion) {
+    toast.success(`Created draft v${created.versionNumber}.`);
+    selectVersion(created.bridgeVersionId);
   }
 
   return (
@@ -109,7 +97,7 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
 
       <VersionHeader
         kind="bridge_version"
-        versions={versionItems.map(item => ({ ...item, label: versionLabel(item, bridge.currentBridgeVersionId) }))}
+        versions={versionItems.map(item => ({ ...item, label: item.classifier ?? item.label }))}
         selectedVersionId={versionId}
         onSelectVersion={selectVersion}
         onCreateVersion={openNew}
@@ -119,17 +107,10 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
         }
       />
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
-      {dropped && (
-        <DroppedOnCloneAlert
-          title={`v${dropped.version.versionNumber} left out ${dropped.droppedMappings.length} of the cloned mappings`}
-          description="The new endpoint versions have no member with the source or target key of these mappings:"
-          items={dropped.droppedMappings.map(mapping => `${mapping.sourceMemberKey} → ${mapping.targetMemberKey}`)}
-          onDismiss={() => setDropped(null)}
-        />
-      )}
       {versions.isSuccess && versionItems.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No versions yet. A version pins a version of each dimension, the allocation semantics and the mappings.
+          No versions yet. A version holds the allocation semantics and the mappings; the published version is the one
+          requests read.
         </p>
       )}
 
@@ -138,7 +119,7 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
           key={version.data.bridgeVersionId}
           bridge={bridge}
           version={version.data}
-          isDraft={selected.status === 'draft'}
+          isEditable={isEditable('bridge_version', selected.status as VersionStatus)}
         />
       )}
 
@@ -162,18 +143,4 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
       />
     </div>
   );
-}
-
-/** A version's picker label: its allocation mode, and whether it is the bridge's current version. */
-function versionLabel(version: LookupItem, currentVersionId: number | null | undefined) {
-  const allocationMode = version.classifier ?? version.label;
-  if (version.id === currentVersionId) {
-    return `${allocationMode} · current`;
-  }
-  return allocationMode;
-}
-
-/** The latest published version of a dimension, which a new bridge version pins by default. */
-function latestPublishedId(versions: LookupItem[]) {
-  return versions.findLast(version => version.status === 'published')?.id ?? null;
 }

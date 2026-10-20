@@ -114,7 +114,7 @@ flowchart LR
 
 - `lazy: { Component }` imports the page module when its route first matches. The `routes.tsx` files and the crumb components they import load with the app; the page modules do not.
 - `RouteHandle` in `src/shared/routeHandle.ts` types `handle.crumb` as a string or a function of the match that returns a node. `AppBreadcrumbs` renders the last crumb as the current page and the others as links to their match's pathname.
-- Dataset, dimension, mapping set, bridge, calculation model and report pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. Release and assumption set editors are versions themselves, so their version picker navigates to `releases/:releaseId` or `assumption-sets/:assumptionSetId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui).
+- Dataset, dimension, mapping set, bridge, calculation model and report pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. The release editor is a version itself, so its version picker navigates to `releases/:releaseId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui). An assumption set is not versioned: `assumption-sets/:assumptionSetId` shows one set, the active one or a historical capture with the release it reads, without a version picker.
 
 **Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [routeHandle.ts](../../src/shared/routeHandle.ts), [AppBreadcrumbs.tsx](../../src/app/AppBreadcrumbs.tsx), [DatasetCrumb.tsx](../../src/features/datasets/DatasetCrumb.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [versionSelection.ts](../../src/shared/versionSelection.ts).
 
@@ -227,7 +227,7 @@ flowchart LR
 | --- | --- | --- |
 | `overview` | `useOverview.ts` (`['overview', tenantId]`) | Read-only |
 | `datasets` | `queries.ts`; writes in the components | `invalidateTenantQueries` |
-| `bindings` | `queries.ts` (`useBindings`, `useDimensionVersions`, `useGroupingVersion`); writes in the components | `invalidateTenantQueries` |
+| `bindings` | `queries.ts` (`useBindings`); writes in the components | `invalidateTenantQueries` |
 | `measures` | `queries.ts` (`useMeasures`); writes in the components | `invalidateTenantQueries` |
 | `dimensions` | `api.ts` | `refresh` of its query keys and lookup kinds; `setQueryData` after a member reorder and a range-band replace |
 | `mappings` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk entry replace |
@@ -235,7 +235,7 @@ flowchart LR
 | `calculation-models` | `api.ts`; the six content kinds share `useModelContent` and its writes, typed by `ModelContentTypes` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade |
 | `reports` | `api.ts` | Its keys and lookups; `setQueryData` after a column or line replace |
 | `releases` | `useReleases.ts` | `invalidateReleases` (`['releases', tenantId]` and the `releases` lookup) or the release keys; activation calls `invalidateTenantQueries` |
-| `assumption-sets` | `useAssumptionSets.ts` | `invalidateAssumptionSets` (`['assumption-sets', tenantId]` and its lookup) or the set keys |
+| `assumption-sets` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; a publish repoints the active set and refreshes it through `invalidateTenantQueries` |
 | `system` | `useSystemTenants.ts` | `invalidateTenantDirectory`: `['system-tenants']` and `['tenants']` |
 
 **Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [DatasetListPage.tsx](../../src/features/datasets/DatasetListPage.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [datasets/queries.ts](../../src/features/datasets/queries.ts), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [MappingSetListPage.tsx](../../src/features/mappings/MappingSetListPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [bindings/queries.ts](../../src/features/bindings/queries.ts), [measures/queries.ts](../../src/features/measures/queries.ts), [dimensions/api.ts](../../src/features/dimensions/api.ts), [bridges/api.ts](../../src/features/bridges/api.ts), [useReleases.ts](../../src/features/releases/useReleases.ts), [useAssumptionSets.ts](../../src/features/assumption-sets/useAssumptionSets.ts), [useSystemTenants.ts](../../src/features/system/useSystemTenants.ts), [useOverview.ts](../../src/features/overview/useOverview.ts), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [useLookup.ts](../../src/shared/useLookup.ts), [queryClient.ts](../../src/api/queryClient.ts).
@@ -307,7 +307,7 @@ flowchart LR
 ```
 
 - The materialize dialogs and `AddFromColumnsDialog` belong to `FieldsTab`, which opens them from its toolbar and row menu on a draft. The Fields, Grains, Bindings and Measures tabs each also render a `ConfirmDialog` for deletes and an `ApiErrorAlert` for a failed delete.
-- `DatasetDetailPage` keeps the open tab in its own state and passes it to `DatasetVersionTabs`, so the tab survives a switch of version. `DatasetVersionTabs` passes `isDraft` to every tab; each tab is read-only unless the selected version is a draft (see [read-only rendering](04-critical-flows.md#11-read-only-rendering-of-non-drafts)).
+- `DatasetDetailPage` keeps the open tab in its own state and passes it to `DatasetVersionTabs`, so the tab survives a switch of version. `DatasetVersionTabs` passes `isDraft` to every tab; each tab is read-only unless the selected version is a draft, because dataset versions are strict (see [editable and read-only versions](04-critical-flows.md#11-editable-and-read-only-versions)).
 
 | Component | Reads and writes |
 | --- | --- |
@@ -319,7 +319,7 @@ flowchart LR
 | `AddFromColumnsDialog` | `useSourceColumns`; `POST .../fields/from-columns` with `ColumnsField` |
 | `MaterializeDialog`, `MaterializedColumnDialog` | `POST .../fields/{fieldId}/materialize`, with a pending message while StarRocks applies the schema change; `PUT .../fields/{fieldId}/materialized-column` with `SourceColumnField` |
 | `GrainsTab`, `GrainSheet` | `useGrains` and the `fields` lookup; delete, `POST` or `PUT` a grain with `GrainFieldsField` (registry `Sortable`) |
-| `BindingsTab`, `BindingSheet` | `useBindings`; delete, `POST` or `PUT` a binding. `GroupingFields` lists levels and members of the version `useGroupingVersion` resolves; `TimeBindingFields` shows for time bindings |
+| `BindingsTab`, `BindingSheet` | `useBindings`; delete, `POST` or `PUT` a binding. `GroupingFields` offers level and member keys from the grouping dimension's published version through `usePublishedVersionItems`; `TimeBindingFields` shows for time bindings |
 | `MeasuresTab`, `MeasureSheet` | `useMeasures`; delete, `POST` or `PUT` a measure with `ComponentsField` (one field per component role) and `TimePolicyFields` |
 | `SettingsTab` | `PUT .../dataset-versions/{versionId}` from its own form, with `SourceObjectField`, `EntityField` (`time-bindings`), `JsonField` and the other shared fields |
 

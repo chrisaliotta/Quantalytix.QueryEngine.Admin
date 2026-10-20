@@ -5,8 +5,9 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// Rebuilds <c>qe_dimension_closure</c> from the member tree when a dimension version is validated. The closure is derived
-/// from the parent links and never edited on its own; the engine reads it to group members by level, depth or ancestor.
+/// Rebuilds <c>qe_dimension_closure</c> from the member tree after every member write, because a published version's edits are
+/// live, and when a dimension version is validated, which covers a clone's copied members. The closure is derived from the
+/// parent links and never edited on its own; the engine reads it to group members by level, depth or ancestor.
 /// </summary>
 public sealed class ClosureBuilder(
     ITableGateway<DimensionMemberRecord> members,
@@ -15,15 +16,24 @@ public sealed class ClosureBuilder(
     /// <summary>The kind whose lifecycle the builder joins: dimension versions.</summary>
     public string Kind { get; } = VersionKinds.DimensionVersion;
 
+    /// <summary>Rebuilds the version's closure before the publication rules run.</summary>
+    /// <param name="versionId">The dimension version being validated.</param>
+    /// <param name="cancellationToken">Cancels the reads and writes.</param>
+    /// <returns>A task that completes when the closure is rewritten.</returns>
+    public Task OnValidatingAsync(long versionId, CancellationToken cancellationToken)
+    {
+        return RebuildAsync(versionId, cancellationToken);
+    }
+
     /// <summary>
     /// Replaces the version's closure rows with one row per ancestor-descendant pair, including a depth-0 row per member.
     /// Only chains that end at a root count: a member in, or below, a parent cycle gets no rows, and the
     /// <c>hierarchy_acyclic</c> rule reports the cycle.
     /// </summary>
-    /// <param name="versionId">The dimension version being validated.</param>
+    /// <param name="versionId">The dimension version whose members changed.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>A task that completes when the closure is rewritten.</returns>
-    public async Task OnValidatingAsync(long versionId, CancellationToken cancellationToken)
+    public async Task RebuildAsync(long versionId, CancellationToken cancellationToken)
     {
         var tree = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
         await closure.DeleteAsync(new { DimensionVersionId = versionId }, cancellationToken);

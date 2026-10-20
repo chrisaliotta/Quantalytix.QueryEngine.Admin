@@ -18,28 +18,27 @@ internal static class MappingRows
         };
     }
 
-    /// <summary>A version of a mapping set pinned to a dimension version.</summary>
-    public static MappingVersionRecord MappingVersion(long mappingVersionId, long mappingSetId, int versionNumber, long dimensionVersionId, string status)
+    /// <summary>A version of a mapping set.</summary>
+    public static MappingVersionRecord MappingVersion(long mappingVersionId, long mappingSetId, int versionNumber, string status)
     {
         return new MappingVersionRecord
         {
             MappingVersionId = mappingVersionId,
             MappingSetId = mappingSetId,
             VersionNumber = versionNumber,
-            DimensionVersionId = dimensionVersionId,
             Status = status
         };
     }
 
-    /// <summary>A mapping entry from a source value to a member.</summary>
-    public static DimensionMappingRecord Entry(long mappingEntryId, long mappingVersionId, string sourceKeyValue, long memberId)
+    /// <summary>A mapping entry from a source value to a member key.</summary>
+    public static DimensionMappingRecord Entry(long mappingEntryId, long mappingVersionId, string sourceKeyValue, string memberKey)
     {
         return new DimensionMappingRecord
         {
             MappingEntryId = mappingEntryId,
             MappingVersionId = mappingVersionId,
             SourceKeyValue = sourceKeyValue,
-            MemberId = memberId
+            MemberKey = memberKey
         };
     }
 }

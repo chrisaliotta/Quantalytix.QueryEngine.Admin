@@ -4,9 +4,10 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// <c>mapping_members_in_endpoint_versions</c>: every mapping's source member belongs to the source dimension version and
-/// its target member to the target dimension version. Member IDs are global, so a foreign key alone cannot keep a mapping
-/// inside the versions the bridge pins.
+/// <c>mapping_members_in_endpoint_versions</c>: every mapping's source member key names a member of the published version of
+/// the bridge's source dimension, and its target member key one of the target dimension's, because the active assumption set
+/// pins those versions and the engine resolves the keys in them. An endpoint with no published version is
+/// <c>endpoint_versions_published</c>'s concern.
 /// </summary>
 public sealed class MappingMembersInEndpointVersionsRule(BridgeMappingSetReader reader) : IPublicationRule
 {
@@ -16,25 +17,25 @@ public sealed class MappingMembersInEndpointVersionsRule(BridgeMappingSetReader 
     /// <summary>The kind the rule checks: bridge versions.</summary>
     public string Kind { get; } = VersionKinds.BridgeVersion;
 
-    /// <summary>Reports every mapping member outside its endpoint version.</summary>
+    /// <summary>Reports every mapping member key that its endpoint's published version lacks.</summary>
     /// <param name="versionId">The bridge version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per misplaced source or target member.</returns>
+    /// <returns>One violation per missing source or target member.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var set = await reader.ReadAsync(versionId, cancellationToken);
         var violations = new List<RuleViolation>();
         foreach (var mapping in set.Mappings)
         {
-            if (!set.SourceMemberKeys.ContainsKey(mapping.SourceMemberId))
+            if (set.Source is { } source && !source.MemberKeys.Contains(mapping.SourceMemberKey))
             {
-                var message = $"Mapping {set.Describe(mapping)} has a source member that is not a member of the source dimension version.";
+                var message = $"Mapping {BridgeMappingSet.Describe(mapping)} has a source member that the published source dimension version lacks.";
                 violations.Add(new RuleViolation { Rule = Code, Message = message });
             }
 
-            if (!set.TargetMemberKeys.ContainsKey(mapping.TargetMemberId))
+            if (set.Target is { } target && !target.MemberKeys.Contains(mapping.TargetMemberKey))
             {
-                var message = $"Mapping {set.Describe(mapping)} has a target member that is not a member of the target dimension version.";
+                var message = $"Mapping {BridgeMappingSet.Describe(mapping)} has a target member that the published target dimension version lacks.";
                 violations.Add(new RuleViolation { Rule = Code, Message = message });
             }
         }

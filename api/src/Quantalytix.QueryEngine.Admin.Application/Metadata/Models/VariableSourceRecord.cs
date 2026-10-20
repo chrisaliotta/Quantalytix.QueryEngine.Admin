@@ -30,9 +30,6 @@ public sealed record VariableSourceRecord
     /// <summary>Optional structured filter over the dataset's fields.</summary>
     public string? SourceFilterJson { get; init; }
 
-    /// <summary>A <c>classification_as_of</c> value.</summary>
-    public required string ClassificationAsOf { get; init; }
-
     /// <summary>Whether profiles may pick the source.</summary>
     public required bool IsEnabled { get; init; }
 }

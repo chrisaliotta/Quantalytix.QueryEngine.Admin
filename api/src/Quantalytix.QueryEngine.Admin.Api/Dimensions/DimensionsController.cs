@@ -31,7 +31,7 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
 
     /// <summary>Creates a user-defined dimension and its draft version 1.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
-    /// <param name="input">The new dimension's key, kind and identity, plus version 1's range data type and validity start.</param>
+    /// <param name="input">The new dimension's key, kind and identity, plus version 1's range data type.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created dimension.</returns>
     /// <response code="200">The created dimension; its draft version 1 is listed under its versions.</response>

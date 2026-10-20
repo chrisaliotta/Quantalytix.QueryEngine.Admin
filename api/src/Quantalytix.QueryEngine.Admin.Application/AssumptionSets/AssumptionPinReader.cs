@@ -1,27 +1,73 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 
-/// <summary>
-/// Reads an assumption set's pins with the keys of their dimensions for its publication rules. The pins validator
-/// guarantees that every pinned dimension exists, and dimensions an assumption set references cannot be deleted.
-/// </summary>
-public sealed class AssumptionPinReader(ITableGateway<AssumptionSetDimensionRecord> pins, ITableGateway<DimensionRecord> dimensions)
+/// <summary>Reads a set's pins with each identity's key and each pinned version's number and status, as the client shows them.</summary>
+public sealed class AssumptionPinReader(
+    AssumptionPins pins,
+    ITableGateway<DimensionRecord> dimensions,
+    ITableGateway<DimensionVersionRecord> dimensionVersions,
+    ITableGateway<MappingSetRecord> mappingSets,
+    ITableGateway<MappingVersionRecord> mappingVersions,
+    ITableGateway<BridgeRecord> bridges,
+    ITableGateway<BridgeVersionRecord> bridgeVersions,
+    ITableGateway<CalculationModelRecord> models,
+    ITableGateway<CalculationModelVersionRecord> modelVersions,
+    ITableGateway<ReportRecord> reports,
+    ITableGateway<ReportVersionRecord> reportVersions)
 {
-    /// <summary>Lists an assumption set's pins with the keys of their dimensions, ordered by dimension key.</summary>
+    /// <summary>Lists a set's pins: dimensions, mapping sets, bridges, models, then reports, each by identity key.</summary>
     /// <param name="assumptionSetId">The assumption set.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The pinned dimensions.</returns>
-    public async Task<IReadOnlyList<PinnedDimension>> ListAsync(long assumptionSetId, CancellationToken cancellationToken)
+    /// <returns>The labelled pins.</returns>
+    public async Task<IReadOnlyList<AssumptionPin>> ListAsync(long assumptionSetId, CancellationToken cancellationToken)
     {
-        var rows = await pins.ListAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        var dimensionRows = await dimensions.ListAsync(new { DimensionId = rows.Select(row => row.DimensionId).ToArray() }, cancellationToken);
-        var keys = dimensionRows.ToDictionary(dimension => dimension.DimensionId, dimension => dimension.DimensionKey);
+        var all = (await pins.ListAsync(assumptionSetId, cancellationToken)).ToLookup(pin => pin.Kind);
         return
         [
-            .. rows
-                .Select(row => new PinnedDimension { DimensionKey = keys[row.DimensionId], Pin = row })
-                .OrderBy(pinned => pinned.DimensionKey, StringComparer.Ordinal)
+            .. await LabelAsync(all[VersionKinds.DimensionVersion],
+                async ids => (await dimensions.ListAsync(new { DimensionId = ids }, cancellationToken)).ToDictionary(row => row.DimensionId, row => row.DimensionKey),
+                async ids => (await dimensionVersions.ListAsync(new { DimensionVersionId = ids }, cancellationToken))
+                    .ToDictionary(row => row.DimensionVersionId, row => (row.VersionNumber, row.Status))),
+            .. await LabelAsync(all[VersionKinds.MappingVersion],
+                async ids => (await mappingSets.ListAsync(new { MappingSetId = ids }, cancellationToken)).ToDictionary(row => row.MappingSetId, row => row.MappingSetKey),
+                async ids => (await mappingVersions.ListAsync(new { MappingVersionId = ids }, cancellationToken))
+                    .ToDictionary(row => row.MappingVersionId, row => (row.VersionNumber, row.Status))),
+            .. await LabelAsync(all[VersionKinds.BridgeVersion],
+                async ids => (await bridges.ListAsync(new { BridgeId = ids }, cancellationToken)).ToDictionary(row => row.BridgeId, row => row.BridgeKey),
+                async ids => (await bridgeVersions.ListAsync(new { BridgeVersionId = ids }, cancellationToken))
+                    .ToDictionary(row => row.BridgeVersionId, row => (row.VersionNumber, row.Status))),
+            .. await LabelAsync(all[VersionKinds.CalculationModelVersion],
+                async ids => (await models.ListAsync(new { ModelId = ids }, cancellationToken)).ToDictionary(row => row.ModelId, row => row.ModelKey),
+                async ids => (await modelVersions.ListAsync(new { ModelVersionId = ids }, cancellationToken))
+                    .ToDictionary(row => row.ModelVersionId, row => (row.VersionNumber, row.Status))),
+            .. await LabelAsync(all[VersionKinds.ReportVersion],
+                async ids => (await reports.ListAsync(new { ReportId = ids }, cancellationToken)).ToDictionary(row => row.ReportId, row => row.ReportKey),
+                async ids => (await reportVersions.ListAsync(new { ReportVersionId = ids }, cancellationToken))
+                    .ToDictionary(row => row.ReportVersionId, row => (row.VersionNumber, row.Status)))
         ];
+    }
+
+    /// <summary>Labels the pins of one kind with their identity keys and version numbers, ordered by key.</summary>
+    private static async Task<IEnumerable<AssumptionPin>> LabelAsync(
+        IEnumerable<PinnedVersion> pins,
+        Func<long[], Task<Dictionary<long, string>>> keysOf,
+        Func<long[], Task<Dictionary<long, (int Number, string Status)>>> versionsOf)
+    {
+        PinnedVersion[] kindPins = [.. pins];
+        var keys = await keysOf([.. kindPins.Select(pin => pin.IdentityId)]);
+        var versions = await versionsOf([.. kindPins.Select(pin => pin.VersionId)]);
+        return kindPins
+            .Select(pin => new AssumptionPin
+            {
+                Kind = pin.Kind,
+                IdentityId = pin.IdentityId,
+                IdentityKey = keys[pin.IdentityId],
+                VersionId = pin.VersionId,
+                VersionNumber = versions[pin.VersionId].Number,
+                Status = versions[pin.VersionId].Status
+            })
+            .OrderBy(pin => pin.IdentityKey, StringComparer.Ordinal);
     }
 }

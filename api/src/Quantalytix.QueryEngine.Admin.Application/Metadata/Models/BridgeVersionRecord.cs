@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_bridge_version</c> row: pins the source and target dimension versions and the allocation semantics of a bridge.</summary>
+/// <summary>A <c>qe_bridge_version</c> row: the cardinality, allocation semantics and assignments of a bridge, of which at most one version is published.</summary>
 public sealed record BridgeVersionRecord
 {
     /// <summary>Primary key.</summary>
@@ -11,12 +11,6 @@ public sealed record BridgeVersionRecord
 
     /// <summary>Version number within the bridge.</summary>
     public required int VersionNumber { get; init; }
-
-    /// <summary>The pinned source dimension version.</summary>
-    public required long SourceDimensionVersionId { get; init; }
-
-    /// <summary>The pinned target dimension version.</summary>
-    public required long TargetDimensionVersionId { get; init; }
 
     /// <summary>A <c>cardinality</c> value.</summary>
     public required string Cardinality { get; init; }

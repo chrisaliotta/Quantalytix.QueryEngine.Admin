@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_mapping_version</c> row: immutable mapping content associated with one canonical dimension version.</summary>
+/// <summary>A <c>qe_mapping_version</c> row: source-key mapping content of a mapping set, of which at most one version is published.</summary>
 public sealed record MappingVersionRecord
 {
     /// <summary>Primary key.</summary>
@@ -11,9 +11,6 @@ public sealed record MappingVersionRecord
 
     /// <summary>Monotonic version within the mapping set.</summary>
     public required int VersionNumber { get; init; }
-
-    /// <summary>The canonical target dimension version; unique together with the mapping set.</summary>
-    public required long DimensionVersionId { get; init; }
 
     /// <summary>A <c>publication_status</c> value.</summary>
     public required string Status { get; init; }

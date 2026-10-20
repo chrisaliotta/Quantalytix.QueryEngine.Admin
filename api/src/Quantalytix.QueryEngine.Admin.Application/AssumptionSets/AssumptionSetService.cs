@@ -1,145 +1,102 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 
 /// <summary>
-/// Creates, edits and deletes assumption sets and their pinned dimension versions (<c>qe_assumption_set</c>,
-/// <c>qe_assumption_set_dimension</c>), and captures the versions effective at a set's <c>effective_at</c>.
+/// Lists and shows assumption sets, captures historical sets from the active set and the active release, relabels sets and
+/// deletes historical ones. The active set is never created or deleted here: the tenant database holds it, and every publish
+/// repoints it. Capturing or deleting a set changes which keys requests can name, so both advance the semantic revision.
 /// </summary>
 public sealed class AssumptionSetService(
     ITableGateway<AssumptionSetRecord> sets,
-    ITableGateway<AssumptionSetDimensionRecord> pins,
-    ITableGateway<DimensionVersionRecord> dimensionVersions,
+    AssumptionPins pins,
+    AssumptionPinReader pinReader,
+    ITableGateway<DatabaseInfoRecord> databaseInfo,
+    SemanticRevision semanticRevision,
     IIdGenerator ids,
     TimeProvider time)
 {
-    /// <summary>Lists every assumption set, ordered by key.</summary>
+    /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
+    private const int SingletonId = 1;
+
+    /// <summary>Lists every assumption set: the active one, then historical sets, most recently captured first.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The assumption sets.</returns>
     public async Task<IReadOnlyList<AssumptionSetRecord>> ListAsync(CancellationToken cancellationToken)
     {
         var rows = await sets.ListAsync(null, cancellationToken);
-        return [.. rows.OrderBy(row => row.AssumptionSetKey, StringComparer.OrdinalIgnoreCase)];
+        return [.. rows.OrderBy(row => row.Status != AssumptionSetStatuses.Active).ThenByDescending(row => row.CapturedAt)];
     }
 
-    /// <summary>Reads one assumption set.</summary>
+    /// <summary>Reads one assumption set with its pins.</summary>
     /// <param name="assumptionSetId">The assumption set.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The assumption set row.</returns>
-    public Task<AssumptionSetRecord> GetAsync(long assumptionSetId, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The set and its labelled pins.</returns>
+    public async Task<AssumptionSetDetail> GetAsync(long assumptionSetId, CancellationToken cancellationToken)
     {
-        return sets.GetAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
+        return new AssumptionSetDetail
+        {
+            Set = await sets.GetAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken),
+            Pins = await pinReader.ListAsync(assumptionSetId, cancellationToken)
+        };
     }
 
-    /// <summary>Creates a draft assumption set without pins.</summary>
-    /// <param name="input">The validated key and settings.</param>
-    /// <param name="cancellationToken">Cancels the write.</param>
-    /// <returns>The new assumption set row.</returns>
-    public async Task<AssumptionSetRecord> CreateAsync(AssumptionSetCreateInput input, CancellationToken cancellationToken)
+    /// <summary>
+    /// Captures a historical set: a copy of the active set's pins under a new key, stamped with the capture time, that reads the
+    /// active release's dataset versions from then on, so a backtest runs the pins over the datasets they were validated with.
+    /// </summary>
+    /// <param name="input">The validated key and labels.</param>
+    /// <param name="cancellationToken">Cancels the reads and writes.</param>
+    /// <returns>The new historical set.</returns>
+    public async Task<AssumptionSetRecord> CaptureAsync(AssumptionCaptureInput input, CancellationToken cancellationToken)
     {
+        var active = await pins.ActiveAsync(cancellationToken);
+        var info = await databaseInfo.GetAsync(new { SingletonId }, cancellationToken);
+        var now = time.GetUtcNow().UtcDateTime;
         var set = new AssumptionSetRecord
         {
             AssumptionSetId = ids.NextId(),
             AssumptionSetKey = input.AssumptionSetKey,
             DisplayName = input.DisplayName,
             Description = input.Description,
-            EffectiveAt = input.EffectiveAt,
-            Status = AssumptionSetStatuses.Draft,
-            CreatedAt = time.GetUtcNow().UtcDateTime
+            Status = AssumptionSetStatuses.Historical,
+            ReleaseId = info.ActiveReleaseId,
+            CapturedAt = now,
+            CreatedAt = now
         };
         await sets.InsertAsync(set, cancellationToken);
+        await pins.InsertAsync(set.AssumptionSetId, await pins.ListAsync(active.AssumptionSetId, cancellationToken), cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
         return set;
     }
 
-    /// <summary>Changes a draft assumption set's display name, description and effective time.</summary>
-    /// <param name="assumptionSetId">The draft assumption set.</param>
-    /// <param name="input">The validated settings.</param>
+    /// <summary>Changes a set's display name and description; its key and pins stay.</summary>
+    /// <param name="assumptionSetId">The assumption set.</param>
+    /// <param name="input">The validated labels.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
-    /// <returns>The updated assumption set row.</returns>
+    /// <returns>The updated set.</returns>
     public async Task<AssumptionSetRecord> UpdateAsync(long assumptionSetId, AssumptionSetUpdateInput input, CancellationToken cancellationToken)
     {
         var current = await sets.GetAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        var updated = current with { DisplayName = input.DisplayName, Description = input.Description, EffectiveAt = input.EffectiveAt };
+        var updated = current with { DisplayName = input.DisplayName, Description = input.Description };
         await sets.UpdateAsync(updated, cancellationToken);
         return updated;
     }
 
-    /// <summary>Deletes a draft assumption set: its pins first, then the set.</summary>
-    /// <param name="assumptionSetId">The draft assumption set.</param>
-    /// <param name="cancellationToken">Cancels the deletes.</param>
-    /// <returns>A task that completes when the set is gone.</returns>
-    public async Task DeleteAsync(long assumptionSetId, CancellationToken cancellationToken)
-    {
-        await pins.DeleteAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        await sets.DeleteAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-    }
-
-    /// <summary>Lists an assumption set's pins, ordered by dimension.</summary>
+    /// <summary>Deletes a historical set with its pins; the active set holds the default versions and cannot be deleted.</summary>
     /// <param name="assumptionSetId">The assumption set.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The pins.</returns>
-    public async Task<IReadOnlyList<AssumptionSetDimensionRecord>> ListPinsAsync(long assumptionSetId, CancellationToken cancellationToken)
-    {
-        var rows = await pins.ListAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        return [.. rows.OrderBy(row => row.DimensionId)];
-    }
-
-    /// <summary>Replaces a draft assumption set's pins with the given ones.</summary>
-    /// <param name="assumptionSetId">The draft assumption set.</param>
-    /// <param name="input">The validated pins.</param>
-    /// <param name="cancellationToken">Cancels the writes.</param>
-    /// <returns>The stored pins, ordered by dimension.</returns>
-    public async Task<IReadOnlyList<AssumptionSetDimensionRecord>> ReplacePinsAsync(long assumptionSetId, AssumptionPinsInput input, CancellationToken cancellationToken)
-    {
-        AssumptionSetDimensionRecord[] rows =
-        [
-            .. input.Dimensions
-                .OrderBy(pin => pin.DimensionId)
-                .Select(pin => new AssumptionSetDimensionRecord
-                {
-                    AssumptionSetId = assumptionSetId,
-                    DimensionId = pin.DimensionId,
-                    DimensionVersionId = pin.DimensionVersionId
-                })
-        ];
-        await pins.DeleteAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        await pins.InsertManyAsync(rows, cancellationToken);
-        return rows;
-    }
-
-    /// <summary>
-    /// Replaces the pins of the given dimensions with the published version of each that is effective at the set's
-    /// <c>effective_at</c>: <c>valid_from &lt;= effective_at &lt; valid_to</c>, where a null <c>valid_to</c> is open-ended. A
-    /// dimension with no such version is left unpinned. Pins of other dimensions are kept.
-    /// </summary>
-    /// <param name="assumptionSetId">The draft assumption set.</param>
-    /// <param name="input">The validated dimensions to capture.</param>
-    /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>All of the set's pins after the capture, ordered by dimension.</returns>
-    public async Task<IReadOnlyList<AssumptionSetDimensionRecord>> CaptureAsync(long assumptionSetId, AssumptionCaptureInput input, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancels the read and the deletes.</param>
+    /// <returns>Null when the set was deleted; otherwise the detail naming why not, and nothing was deleted.</returns>
+    public async Task<string?> DeleteAsync(long assumptionSetId, CancellationToken cancellationToken)
     {
         var set = await sets.GetAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
-        var versions = await dimensionVersions.ListAsync(new { DimensionId = input.DimensionIds }, cancellationToken);
-        AssumptionSetDimensionRecord[] captured =
-        [
-            .. versions
-                .Where(version => version.Status == PublicationStatuses.Published && IsEffectiveAt(version, set.EffectiveAt))
-                .Select(version => new AssumptionSetDimensionRecord
-                {
-                    AssumptionSetId = assumptionSetId,
-                    DimensionId = version.DimensionId,
-                    DimensionVersionId = version.DimensionVersionId
-                })
-        ];
-        await pins.DeleteAsync(new { AssumptionSetId = assumptionSetId, DimensionId = input.DimensionIds }, cancellationToken);
-        await pins.InsertManyAsync(captured, cancellationToken);
-        return await ListPinsAsync(assumptionSetId, cancellationToken);
-    }
-
-    /// <summary>Whether a version's half-open validity window <c>[valid_from, valid_to)</c> contains an instant; a null <c>valid_to</c> never ends.</summary>
-    private static bool IsEffectiveAt(DimensionVersionRecord version, DateTime instant)
-    {
-        return version.ValidFrom <= instant && (version.ValidTo is null || instant < version.ValidTo);
+        if (set.Status == AssumptionSetStatuses.Active)
+            return $"Assumption set '{set.AssumptionSetKey}' is the active set, which holds the default versions; it cannot be deleted.";
+        await pins.DeleteAsync(assumptionSetId, cancellationToken);
+        await sets.DeleteAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
+        return null;
     }
 }

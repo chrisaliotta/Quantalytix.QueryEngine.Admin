@@ -8,7 +8,7 @@ import { EntityTable } from './EntityTable';
 import type { LookupItem } from './types';
 import { useLookup } from './useLookup';
 
-/** The version of one dataset, dimension or report that a release or an assumption set pins. */
+/** The dataset version a release pins. */
 export interface PinnedVersion {
   identityId: number;
   versionId: number;
@@ -22,14 +22,14 @@ interface PinRow {
 
 export interface PinnedVersionsTableProps {
   /** Lookup kind of the pinned identities. */
-  identityLookup: 'datasets' | 'dimensions' | 'reports';
+  identityLookup: 'datasets';
   /** Lookup kind of their versions, which are listed per identity. */
-  versionLookup: 'dataset-versions' | 'dimension-versions' | 'report-versions';
+  versionLookup: 'dataset-versions';
   /** What an identity is called, e.g. `Dataset`, for the column header and the add picker. */
   identityLabel: string;
   /** The saved pins; remount the table (`key`) when they are refetched so editing starts from them. */
   pins: PinnedVersion[];
-  /** Shows the pins without editing controls, e.g. once the release is no longer a draft. */
+  /** Shows the pins without editing controls, once the release is no longer a draft. */
   readOnly: boolean;
   /** Saves the complete list of pins. */
   onSave: (pins: PinnedVersion[]) => void;
@@ -38,8 +38,8 @@ export interface PinnedVersionsTableProps {
 }
 
 /**
- * Editable list of pinned versions, one row per dataset, dimension or report, each with a picker of its
- * published versions. Rows are added and removed locally; "Save" sends the whole list.
+ * Editable list of pinned versions, one row per dataset, each with a picker of its published versions. Rows are added and
+ * removed locally; "Save" sends the whole list.
  */
 export function PinnedVersionsTable({
   identityLookup,

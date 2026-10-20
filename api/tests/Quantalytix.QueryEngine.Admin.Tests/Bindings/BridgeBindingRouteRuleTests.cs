@@ -25,9 +25,6 @@ public sealed class BridgeBindingRouteRuleTests
     /// <summary>The region dimension the bridge leads to.</summary>
     private const long RegionDimension = 8000;
 
-    /// <summary>The bridge versions: 41 of bridge 40, and 51 of bridge 50.</summary>
-    private readonly InMemoryTableGateway<BridgeVersionRecord> _bridgeVersions = new(BridgeVersion(41, 40), BridgeVersion(51, 50));
-
     /// <summary>Bridge 40 leads from branch to region; bridge 50 from another dimension to region.</summary>
     private readonly InMemoryTableGateway<BridgeRecord> _bridges = new(Bridge(40, "branchToRegion", BranchDimension), Bridge(50, "productToRegion", 9000));
 
@@ -36,7 +33,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task RouteFromTheSourceDimensionToTheBindingDimension_Passes()
     {
-        Assert.Empty(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeVersionId: 41)));
+        Assert.Empty(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeId: 40)));
     }
 
     /// <summary>A source binding that is not a binding of the version is reported.</summary>
@@ -46,7 +43,7 @@ public sealed class BridgeBindingRouteRuleTests
     {
         var otherVersionSource = Source() with { DatasetVersionId = 200 };
 
-        var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceBindingId: 21, bridgeVersionId: 41)));
+        var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceBindingId: 21, bridgeId: 40)));
 
         Assert.Equal(BridgeBindingRouteRule.Code, violation.Rule);
         Assert.Equal("Bridge binding 'Region' remaps binding 21, which is not a binding of this version.", violation.Message);
@@ -57,7 +54,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeFromAnotherDimension_IsReported()
     {
-        var violation = Assert.Single(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeVersionId: 51)));
+        var violation = Assert.Single(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeId: 50)));
 
         Assert.Equal("Bridge binding 'Region' uses bridge 'productToRegion', which starts at another dimension than its source binding 'Branch'.", violation.Message);
     }
@@ -67,7 +64,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeToAnotherDimension_IsReported()
     {
-        var binding = BridgeBinding(sourceBindingId: 21, bridgeVersionId: 41) with { DimensionId = 9999 };
+        var binding = BridgeBinding(sourceBindingId: 21, bridgeId: 40) with { DimensionId = 9999 };
 
         var violation = Assert.Single(await EvaluateAsync(Source(), binding));
 
@@ -79,8 +76,8 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeBindingsRemappingEachOther_AreReported()
     {
-        var first = BridgeBinding(sourceBindingId: 23, bridgeVersionId: 41);
-        var second = BridgeBinding(sourceBindingId: 22, bridgeVersionId: 41) with { BindingId = 23, DisplayName = "Region again" };
+        var first = BridgeBinding(sourceBindingId: 23, bridgeId: 40);
+        var second = BridgeBinding(sourceBindingId: 22, bridgeId: 40) with { BindingId = 23, DisplayName = "Region again" };
 
         var cycles = (await EvaluateAsync(first, second)).Where(violation => violation.Message.EndsWith("leads back to itself through its source bindings.", StringComparison.Ordinal));
 
@@ -90,7 +87,7 @@ public sealed class BridgeBindingRouteRuleTests
     /// <summary>Evaluates the rule on the given bindings.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
     {
-        var rule = new BridgeBindingRouteRule(new InMemoryTableGateway<DimensionBindingRecord>(bindings), _bridgeVersions, _bridges);
+        var rule = new BridgeBindingRouteRule(new InMemoryTableGateway<DimensionBindingRecord>(bindings), _bridges);
         return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
     }
 
@@ -101,13 +98,13 @@ public sealed class BridgeBindingRouteRuleTests
     }
 
     /// <summary>The bridge binding 22, named Region, of the region dimension.</summary>
-    private static DimensionBindingRecord BridgeBinding(long sourceBindingId, long bridgeVersionId)
+    private static DimensionBindingRecord BridgeBinding(long sourceBindingId, long bridgeId)
     {
         return DatasetRows.Binding(22, VersionId, "Region", BindingKinds.Bridge, null) with
         {
             DimensionId = RegionDimension,
             SourceBindingId = sourceBindingId,
-            BridgeVersionId = bridgeVersionId
+            BridgeId = bridgeId
         };
     }
 
@@ -122,22 +119,6 @@ public sealed class BridgeBindingRouteRuleTests
             SourceDimensionId = sourceDimensionId,
             TargetDimensionId = RegionDimension,
             IsEnabled = true
-        };
-    }
-
-    /// <summary>A published version of a bridge.</summary>
-    private static BridgeVersionRecord BridgeVersion(long bridgeVersionId, long bridgeId)
-    {
-        return new BridgeVersionRecord
-        {
-            BridgeVersionId = bridgeVersionId,
-            BridgeId = bridgeId,
-            VersionNumber = 1,
-            SourceDimensionVersionId = 701,
-            TargetDimensionVersionId = 801,
-            Cardinality = Cardinalities.ManyToOne,
-            AllocationMode = AllocationModes.None,
-            Status = PublicationStatuses.Published
         };
     }
 }

@@ -24,7 +24,7 @@ public sealed class BindingServiceTests
     /// <summary>The version's bindings: the As of time binding, and a bridge binding that remaps it.</summary>
     private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
         DatasetRows.Binding(TimeBindingId, VersionId, "As of", BindingKinds.Time, 2),
-        DatasetRows.Binding(22, VersionId, "Fiscal period", BindingKinds.Bridge, null) with { SourceBindingId = TimeBindingId, BridgeVersionId = 41 });
+        DatasetRows.Binding(22, VersionId, "Fiscal period", BindingKinds.Bridge, null) with { SourceBindingId = TimeBindingId, BridgeId = 40 });
 
     /// <summary>The time extension of the As of binding.</summary>
     private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(DatasetRows.TimeBinding(TimeBindingId));
@@ -89,7 +89,6 @@ public sealed class BindingServiceTests
         return new BindingService(
             _bindings,
             _timeBindings,
-            new InMemoryTableGateway<BridgeVersionRecord>(),
             _versions,
             _timePolicies,
             _measures,

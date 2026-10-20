@@ -6,7 +6,7 @@ import { ModelContentTab } from './ModelContentTab';
 import type { CalculationDimension } from './types';
 
 /** The version's calculation dimensions: what reports can break out or filter by. */
-export function CalculationDimensionsTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function CalculationDimensionsTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   const dimensions = useLookup('dimensions');
   const dimensionKeys = new Map(dimensions.data?.map(item => [item.id, item.key]));
 
@@ -29,13 +29,13 @@ export function CalculationDimensionsTab({ versionId, isDraft }: { versionId: nu
     <ModelContentTab
       kind="calculation-dimensions"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="dimension"
       identify={dimension => ({ id: dimension.calculationDimensionId, key: dimension.dimensionKey })}
       deleteDescription="Its routes are deleted too. Report defaults name dimensions by key, so validating a report version reports a default that no longer resolves."
       renderSheet={(dimension, onClose) => (
-        <CalculationDimensionSheet versionId={versionId} dimension={dimension} readOnly={!isDraft} onClose={onClose} />
+        <CalculationDimensionSheet versionId={versionId} dimension={dimension} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

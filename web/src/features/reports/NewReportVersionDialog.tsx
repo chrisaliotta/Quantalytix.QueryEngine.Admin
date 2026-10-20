@@ -1,16 +1,16 @@
 import { useForm, useWatch } from 'react-hook-form';
-import { EntityField, JsonField } from '@/shared/form';
+import { EntityField, JsonField, KeyField } from '@/shared/form';
 import { FormDialog } from '@/shared/FormDialog';
 import { emptyToNull } from '@/shared/text';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import { useCreateReportVersion } from './api';
-import type { CreatedReportVersion, Report } from './types';
+import type { Report, ReportVersion } from './types';
 
-/** Values of the new-version dialog; the model only narrows the model versions offered, and is not sent. JSON is text, empty for none. */
+/** Values of the new-version dialog; JSON is text, empty for none. */
 export interface NewReportVersionValues {
   reportDimensionId: number | null;
   modelId: number | null;
-  modelVersionId: number | null;
-  defaultSourceProfileId: number | null;
+  defaultProfileKey: string | null;
   defaultSettingsJson: string;
   /** Carried from a clone source; the version's settings sheet edits them. */
   payloadJson: string;
@@ -24,30 +24,32 @@ export interface NewReportVersionDialogProps {
   /** The values the fields start with: a clone source's, or defaults for an empty draft. */
   defaults: NewReportVersionValues;
   onClose: () => void;
-  onCreated: (created: CreatedReportVersion) => void;
+  onCreated: (version: ReportVersion) => void;
 }
 
 /**
- * Creates a draft report version over a report dimension and a model version. A clone copies the source's columns and
- * lines onto the metrics with the same keys in the chosen model version; what has no metric there is left out.
+ * Creates a draft report version over a report dimension and a calculation model. Requests read the model version their
+ * assumption set pins, by default its published one, whose profiles the default profile picker offers. A clone copies the
+ * source's columns and lines.
  */
 export function NewReportVersionDialog({ report, defaults, onClose, onCreated }: NewReportVersionDialogProps) {
   const create = useCreateReportVersion(report.reportId);
   const form = useForm<NewReportVersionValues>({ defaultValues: defaults });
   const modelId = useWatch({ control: form.control, name: 'modelId' });
-  const modelVersionId = useWatch({ control: form.control, name: 'modelVersionId' });
+  const profiles = usePublishedVersionItems('model-versions', modelId, 'source-profiles');
 
-  async function submit({ modelId: _model, ...values }: NewReportVersionValues) {
-    const created = await create.mutateAsync({
-      ...values,
-      reportDimensionId: values.reportDimensionId ?? 0,
-      modelVersionId: values.modelVersionId ?? 0,
-      payloadJson: emptyToNull(values.payloadJson),
-      defaultFilterJson: emptyToNull(values.defaultFilterJson),
-      defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
-      defaultPivotJson: emptyToNull(values.defaultPivotJson),
-    });
-    onCreated(created);
+  async function submit(values: NewReportVersionValues) {
+    onCreated(
+      await create.mutateAsync({
+        ...values,
+        reportDimensionId: values.reportDimensionId ?? 0,
+        modelId: values.modelId ?? 0,
+        payloadJson: emptyToNull(values.payloadJson),
+        defaultFilterJson: emptyToNull(values.defaultFilterJson),
+        defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
+        defaultPivotJson: emptyToNull(values.defaultPivotJson),
+      })
+    );
   }
 
   return (
@@ -55,7 +57,7 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
       open
       onOpenChange={open => !open && onClose()}
       title="New version"
-      description="A draft that reads one calculation model version. Publishing it needs that model version published."
+      description="A draft that reads a calculation model. Publishing it needs the model to have a published version."
       form={form}
       onSubmit={submit}
       submitLabel="Create draft"
@@ -67,14 +69,12 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
         description="The hierarchy of report items that member lines and variable targets name."
       />
       <EntityField name="modelId" label="Calculation model" lookupKind="calculation-models" />
-      <EntityField name="modelVersionId" label="Model version" lookupKind="model-versions" parentId={modelId} />
-      <EntityField
-        name="defaultSourceProfileId"
+      <KeyField
+        name="defaultProfileKey"
         label="Default profile"
-        lookupKind="source-profiles"
-        parentId={modelVersionId}
+        items={profiles}
         allowEmpty
-        description="The profile a request runs under when it names none; publishing needs one that is enabled."
+        description="The profile a request runs under when it names none; publishing needs one the model enables."
       />
       <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
       <EntityField

@@ -94,7 +94,7 @@ internal static class ReleaseRows
         };
     }
 
-    /// <summary>A version of a dimension, valid from 2026.</summary>
+    /// <summary>A version of a dimension.</summary>
     /// <param name="dimensionVersionId">The version's ID.</param>
     /// <param name="dimensionId">The owning dimension.</param>
     /// <param name="versionNumber">The version number.</param>
@@ -107,8 +107,7 @@ internal static class ReleaseRows
             DimensionVersionId = dimensionVersionId,
             DimensionId = dimensionId,
             VersionNumber = versionNumber,
-            Status = status,
-            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            Status = status
         };
     }
 }

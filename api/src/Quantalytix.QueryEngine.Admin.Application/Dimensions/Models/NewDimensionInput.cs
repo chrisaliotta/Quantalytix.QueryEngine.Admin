@@ -2,7 +2,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// A new user-defined dimension, as <c>POST dimensions</c> takes it: its fixed key and kind, its identity attributes, and the
-/// range data type and validity start of its draft version 1.
+/// range data type of its draft version 1.
 /// </summary>
 public sealed record NewDimensionInput : DimensionInput
 {
@@ -14,7 +14,4 @@ public sealed record NewDimensionInput : DimensionInput
 
     /// <summary>A <c>range_data_type</c> value for version 1; required for a <c>range</c> dimension and null for every other kind.</summary>
     public string? RangeDataType { get; init; }
-
-    /// <summary>Inclusive validity start (UTC) of version 1, if already known.</summary>
-    public DateTime? ValidFrom { get; init; }
 }

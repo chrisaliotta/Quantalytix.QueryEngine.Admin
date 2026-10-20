@@ -65,13 +65,13 @@ public sealed class BindingInputValidatorTests
     [Fact]
     public void BridgeReferences_AreRequiredForBridgeAndForbiddenOtherwise()
     {
-        var missing = _validator.TestValidate(Binding(BindingKinds.Bridge) with { SourceBindingId = null, BridgeVersionId = null });
-        var foreign = _validator.TestValidate(Binding(BindingKinds.Mapped) with { SourceBindingId = 21, BridgeVersionId = 40 });
+        var missing = _validator.TestValidate(Binding(BindingKinds.Bridge) with { SourceBindingId = null, BridgeId = null });
+        var foreign = _validator.TestValidate(Binding(BindingKinds.Mapped) with { SourceBindingId = 21, BridgeId = 40 });
 
         missing.ShouldHaveValidationErrorFor(binding => binding.SourceBindingId);
-        missing.ShouldHaveValidationErrorFor(binding => binding.BridgeVersionId);
+        missing.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
         foreign.ShouldHaveValidationErrorFor(binding => binding.SourceBindingId);
-        foreign.ShouldHaveValidationErrorFor(binding => binding.BridgeVersionId);
+        foreign.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
     }
 
     /// <summary>A time binding needs its time extension, and no other kind may send one.</summary>
@@ -84,29 +84,29 @@ public sealed class BindingInputValidatorTests
 
     /// <summary>Each grouping mode needs exactly its own reference: a level, an ancestor member, or a depth of 0 or more.</summary>
     /// <param name="mode">The grouping mode sent.</param>
-    /// <param name="levelId">The grouping level sent.</param>
-    /// <param name="ancestorId">The grouping ancestor member sent.</param>
+    /// <param name="levelKey">The grouping level key sent.</param>
+    /// <param name="ancestorKey">The grouping ancestor member key sent.</param>
     /// <param name="depth">The grouping depth sent.</param>
     /// <param name="failing">The property expected to fail, or null when the binding is valid.</param>
     [Theory]
     [InlineData(GroupingModes.Member, null, null, null, null)]
-    [InlineData(GroupingModes.Level, 501L, null, null, null)]
-    [InlineData(GroupingModes.Ancestor, null, 601L, null, null)]
+    [InlineData(GroupingModes.Level, "branch", null, null, null)]
+    [InlineData(GroupingModes.Ancestor, null, "BR01", null, null)]
     [InlineData(GroupingModes.Depth, null, null, 0, null)]
-    [InlineData(GroupingModes.Level, null, null, null, nameof(BindingInput.GroupingLevelId))]
-    [InlineData(GroupingModes.Ancestor, null, null, null, nameof(BindingInput.GroupingAncestorMemberId))]
+    [InlineData(GroupingModes.Level, null, null, null, nameof(BindingInput.GroupingLevelKey))]
+    [InlineData(GroupingModes.Ancestor, null, null, null, nameof(BindingInput.GroupingAncestorMemberKey))]
     [InlineData(GroupingModes.Depth, null, null, null, nameof(BindingInput.GroupingDepth))]
     [InlineData(GroupingModes.Depth, null, null, -1, nameof(BindingInput.GroupingDepth))]
-    [InlineData(GroupingModes.Member, 501L, null, null, nameof(BindingInput.GroupingLevelId))]
-    [InlineData(GroupingModes.Level, 501L, 601L, null, nameof(BindingInput.GroupingAncestorMemberId))]
-    [InlineData(GroupingModes.Ancestor, null, 601L, 2, nameof(BindingInput.GroupingDepth))]
-    public void GroupingMode_RequiresExactlyItsReference(string mode, long? levelId, long? ancestorId, int? depth, string? failing)
+    [InlineData(GroupingModes.Member, "branch", null, null, nameof(BindingInput.GroupingLevelKey))]
+    [InlineData(GroupingModes.Level, "branch", "BR01", null, nameof(BindingInput.GroupingAncestorMemberKey))]
+    [InlineData(GroupingModes.Ancestor, null, "BR01", 2, nameof(BindingInput.GroupingDepth))]
+    public void GroupingMode_RequiresExactlyItsReference(string mode, string? levelKey, string? ancestorKey, int? depth, string? failing)
     {
         var input = Binding(BindingKinds.Direct) with
         {
             GroupingMode = mode,
-            GroupingLevelId = levelId,
-            GroupingAncestorMemberId = ancestorId,
+            GroupingLevelKey = levelKey,
+            GroupingAncestorMemberKey = ancestorKey,
             GroupingDepth = depth
         };
 
@@ -120,12 +120,12 @@ public sealed class BindingInputValidatorTests
     [Fact]
     public void UnknownMember_IsRequiredExactlyForTheUnknownBehavior()
     {
-        var missing = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Unknown, UnknownMemberId = null };
-        var unused = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Exclude, UnknownMemberId = 700 };
+        var missing = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Unknown, UnknownMemberKey = null };
+        var unused = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Exclude, UnknownMemberKey = "UNKNOWN" };
 
-        _validator.TestValidate(missing).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberId);
-        _validator.TestValidate(unused).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberId);
-        _validator.TestValidate(missing with { UnknownMemberId = 700 }).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(missing).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
+        _validator.TestValidate(unused).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
+        _validator.TestValidate(missing with { UnknownMemberKey = "UNKNOWN" }).ShouldNotHaveAnyValidationErrors();
     }
 
     /// <summary>A required binding is a dataset fixture that must not be disabled (schema section 11).</summary>
@@ -243,7 +243,7 @@ public sealed class BindingInputValidatorTests
         return kind switch
         {
             BindingKinds.Mapped => binding with { MappingSetId = 30 },
-            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceBindingId = 21, BridgeVersionId = 40 },
+            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceBindingId = 21, BridgeId = 40 },
             BindingKinds.Time => binding with { TimeBinding = TimeBinding() },
             _ => binding
         };

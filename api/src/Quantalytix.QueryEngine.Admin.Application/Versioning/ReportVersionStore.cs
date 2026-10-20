@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>The lifecycle state of report versions, held in <c>qe_report_version</c>.</summary>
 public sealed class ReportVersionStore(ITableGateway<ReportVersionRecord> gateway)
-    : VersionStore<ReportVersionRecord>(gateway, VersionKinds.ReportVersion)
+    : LivingVersionStore<ReportVersionRecord>(gateway, VersionKinds.ReportVersion)
 {
     /// <summary>The gateway key of a report version.</summary>
     /// <param name="id">The report version ID.</param>
@@ -21,6 +21,22 @@ public sealed class ReportVersionStore(ITableGateway<ReportVersionRecord> gatewa
     protected override VersionState ToState(ReportVersionRecord record)
     {
         return new VersionState { Kind = Kind, Id = record.ReportVersionId, Status = record.Status, PublishedAt = record.PublishedAt };
+    }
+
+    /// <summary>The report a version row belongs to.</summary>
+    /// <param name="record">The version row.</param>
+    /// <returns>The report ID.</returns>
+    protected override long IdentityOf(ReportVersionRecord record)
+    {
+        return record.ReportId;
+    }
+
+    /// <summary>The gateway filter for a report's published versions.</summary>
+    /// <param name="identityId">The report ID.</param>
+    /// <returns>The filter object.</returns>
+    protected override object PublishedOf(long identityId)
+    {
+        return new { ReportId = identityId, Status = PublicationStatuses.Published };
     }
 
     /// <summary>A copy of a report version row with a new status and publication time.</summary>

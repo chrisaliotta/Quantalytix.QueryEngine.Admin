@@ -59,7 +59,7 @@ public sealed class SourceProfileService(
         return await StoreAsync(itemId, versionId, input, cancellationToken);
     }
 
-    /// <summary>Deletes a profile with its picks, unless a report version runs under it by default.</summary>
+    /// <summary>Deletes a profile with its picks, unless a live report version runs under it by default.</summary>
     /// <param name="itemId">The profile.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the profile was deleted; otherwise the detail naming the report versions.</returns>
@@ -67,7 +67,7 @@ public sealed class SourceProfileService(
     {
         var profile = await profiles.GetAsync(new { SourceProfileId = itemId }, cancellationToken);
         var blockers = new DeleteBlockers($"Source profile '{profile.ProfileKey}'");
-        blockers.AddNamed("the default profile of report versions", await reports.ProfileDefaultsAsync([itemId], cancellationToken));
+        blockers.AddNamed("the default profile of report versions", await reports.ProfileDefaultsAsync(profile, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
         await remover.RemoveProfilesAsync([itemId], cancellationToken);

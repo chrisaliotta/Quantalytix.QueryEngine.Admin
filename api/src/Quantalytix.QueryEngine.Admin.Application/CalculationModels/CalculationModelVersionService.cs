@@ -6,11 +6,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>Reads, creates, clones, edits and deletes the versions of calculation models. Status changes go through the version workflow.</summary>
 public sealed class CalculationModelVersionService(
-    ITableGateway<CalculationModelRecord> models,
     ITableGateway<CalculationModelVersionRecord> versions,
     ModelVersionCloner cloner,
     ModelContentRemover remover,
-    ReportUses reports,
     IIdGenerator ids)
 {
     /// <summary>The calendar every model version follows.</summary>
@@ -73,25 +71,13 @@ public sealed class CalculationModelVersionService(
         return updated;
     }
 
-    /// <summary>
-    /// Deletes a draft version that no report reads, with its content, and clears the model's current-version pointer when it
-    /// named the version.
-    /// </summary>
+    /// <summary>Deletes a draft version with its content; reports read published versions only.</summary>
     /// <param name="versionId">The draft model version.</param>
-    /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>Null when the version was deleted; otherwise the detail naming the report versions, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long versionId, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <returns>A task that completes when the version is gone.</returns>
+    public Task DeleteAsync(long versionId, CancellationToken cancellationToken)
     {
-        var version = await GetAsync(versionId, cancellationToken);
-        var blockers = new DeleteBlockers($"Model version v{version.VersionNumber}");
-        blockers.AddNamed("read by report versions", await ReportReadersAsync([versionId], cancellationToken));
-        var conflict = blockers.Detail();
-        if (conflict is not null) return conflict;
-
-        var model = await models.GetAsync(new { version.ModelId }, cancellationToken);
-        if (model.CurrentModelVersionId == versionId) await models.UpdateAsync(model with { CurrentModelVersionId = null }, cancellationToken);
-        await RemoveAsync([versionId], cancellationToken);
-        return null;
+        return RemoveAsync([versionId], cancellationToken);
     }
 
     /// <summary>Hard-deletes draft versions: their content first, then the versions.</summary>
@@ -102,14 +88,5 @@ public sealed class CalculationModelVersionService(
     {
         await remover.RemoveContentAsync(versionIds, cancellationToken);
         await versions.DeleteAsync(new { ModelVersionId = versionIds }, cancellationToken);
-    }
-
-    /// <summary>The report versions that read any of the model versions.</summary>
-    /// <param name="versionIds">Model versions.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One name per report version.</returns>
-    public Task<IEnumerable<string>> ReportReadersAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
-    {
-        return reports.ModelVersionReadersAsync(versionIds, cancellationToken);
     }
 }

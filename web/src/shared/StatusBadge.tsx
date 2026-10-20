@@ -6,9 +6,11 @@ const STATUS_CLASSES: Record<string, string> = {
   validated: 'border-transparent bg-primary/15 text-primary',
   published: 'border-transparent bg-positive/15 text-positive',
   retired: 'text-muted-foreground line-through',
+  active: 'border-transparent bg-positive/15 text-positive',
+  historical: 'border-transparent bg-muted text-muted-foreground',
 };
 
-/** Colored badge for a version status: draft, validated, published or retired. */
+/** Colored badge for a version status (draft, validated, published or retired) or an assumption set status (active or historical). */
 export function StatusBadge({ status }: { status: string }) {
   return (
     <Badge

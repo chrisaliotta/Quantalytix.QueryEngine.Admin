@@ -9,10 +9,12 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EnabledBadge } from '@/shared/EnabledBadge';
 import { PageHeader } from '@/shared/PageHeader';
+import type { VersionStatus } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { VersionHeader } from '@/shared/VersionHeader';
 import { selectedVersion } from '@/shared/versionSelection';
+import { isEditable as isEditableVersion } from '@/shared/versionTransitions';
 import { useCalculationModel, useDeleteCalculationModel, useDeleteModelVersion, useModelVersion } from './api';
 import { CalculatedMeasuresTab } from './CalculatedMeasuresTab';
 import { CalculationDimensionsTab } from './CalculationDimensionsTab';
@@ -54,7 +56,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
   const versionItems = versions.data ?? [];
   const selected = selectedVersion(versionItems, searchParams.get('version'));
   const version = useModelVersion(selected?.id ?? null);
-  const isDraft = selected?.status === 'draft';
+  const isEditable = isEditableVersion('calculation_model_version', selected?.status as VersionStatus | undefined);
 
   function selectVersion(id: number) {
     setSearchParams({ version: String(id) }, { replace: true });
@@ -88,10 +90,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
 
       <VersionHeader
         kind="calculation_model_version"
-        versions={versionItems.map(item => ({
-          ...item,
-          label: item.id === model.currentModelVersionId ? `${item.label} · current` : item.label,
-        }))}
+        versions={versionItems}
         selectedVersionId={selected?.id ?? null}
         onSelectVersion={selectVersion}
         onCreateVersion={() => setNewVersion({ currencyCode: version.data?.currencyCode ?? 'USD', cloneFromVersionId: null })}
@@ -113,7 +112,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
             <Setting label="Currency" value={version.data.currencyCode} />
             <Setting label="Calendar" value={version.data.calendarKey} />
             <Setting label="Formula language" value={version.data.formulaLanguageVersion} />
-            {isDraft && (
+            {isEditable && (
               <Button variant="outline" size="sm" className="ml-auto" onClick={() => setEditingVersion(true)}>
                 <Pencil />
                 Edit settings
@@ -130,22 +129,22 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
               <TabsTrigger value="routes">Routes</TabsTrigger>
             </TabsList>
             <TabsContent value="variables">
-              <VariablesTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <VariablesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
             <TabsContent value="sources">
-              <VariableSourcesTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <VariableSourcesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
             <TabsContent value="profiles">
-              <SourceProfilesTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <SourceProfilesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
             <TabsContent value="calculated-measures">
-              <CalculatedMeasuresTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <CalculatedMeasuresTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
             <TabsContent value="dimensions">
-              <CalculationDimensionsTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <CalculationDimensionsTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
             <TabsContent value="routes">
-              <CalculationRoutesTab key={selected.id} versionId={selected.id} isDraft={isDraft} />
+              <CalculationRoutesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
           </Tabs>
         </>

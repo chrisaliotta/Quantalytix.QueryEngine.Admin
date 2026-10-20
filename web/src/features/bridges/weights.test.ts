@@ -8,27 +8,27 @@ import { describe, expect, it } from 'vitest';
 import type { BridgeMapping } from './types';
 import { decimalText, sourceWeightSums } from './weights';
 
-function mapping(sourceMemberId: number, targetMemberId: number, allocationWeight: number): BridgeMapping {
-  return { bridgeVersionId: 50, sourceMemberId, targetMemberId, factor: 1, allocationWeight };
+function mapping(sourceMemberKey: string, targetMemberKey: string, allocationWeight: number): BridgeMapping {
+  return { bridgeMappingId: 0, bridgeVersionId: 50, sourceMemberKey, targetMemberKey, factor: 1, allocationWeight };
 }
 
 describe('sourceWeightSums', () => {
   it('sums each source member in decimal, so weights adding up to 1 are exactly 1', () => {
     const sums = sourceWeightSums([
-      mapping(1, 11, 0.086),
-      mapping(1, 12, 0.35),
-      mapping(1, 13, 0.564),
-      mapping(2, 12, 1),
+      mapping('LOAN_A', 'EAST', 0.086),
+      mapping('LOAN_A', 'WEST', 0.35),
+      mapping('LOAN_A', 'NORTH', 0.564),
+      mapping('LOAN_B', 'WEST', 1),
     ]);
 
-    expect(sums.get(1)).toEqual({ text: '1', isOne: true });
-    expect(sums.get(2)).toEqual({ text: '1', isOne: true });
+    expect(sums.get('LOAN_A')).toEqual({ text: '1', isOne: true });
+    expect(sums.get('LOAN_B')).toEqual({ text: '1', isOne: true });
   });
 
   it('shows a sum other than 1 as it is', () => {
-    const sums = sourceWeightSums([mapping(1, 11, 0.3), mapping(1, 12, 0.6)]);
+    const sums = sourceWeightSums([mapping('LOAN_A', 'EAST', 0.3), mapping('LOAN_A', 'WEST', 0.6)]);
 
-    expect(sums.get(1)).toEqual({ text: '0.9', isOne: false });
+    expect(sums.get('LOAN_A')).toEqual({ text: '0.9', isOne: false });
   });
 });
 

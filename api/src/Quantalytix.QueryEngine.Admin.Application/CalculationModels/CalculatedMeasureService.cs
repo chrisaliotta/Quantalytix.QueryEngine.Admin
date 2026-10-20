@@ -9,7 +9,7 @@ public sealed class CalculatedMeasureService(
     IIdGenerator ids)
     : ModelVersionRows<CalculatedMeasureRecord, CalculatedMeasureInput>(table, ids)
 {
-    /// <summary>Deletes a calculated measure, unless a report column returns it or a formula line evaluates it.</summary>
+    /// <summary>Deletes a calculated measure, unless a live report column returns it or a live formula line evaluates it.</summary>
     /// <param name="itemId">The calculated measure.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
     /// <returns>Null when the measure was deleted; otherwise the detail naming the report columns and lines.</returns>
@@ -17,7 +17,7 @@ public sealed class CalculatedMeasureService(
     {
         var measure = await Rows.GetAsync(new { CalculatedMeasureId = itemId }, cancellationToken);
         var blockers = new DeleteBlockers($"Calculated measure '{measure.MeasureKey}'");
-        blockers.AddNamed("used by reports", await reports.MeasureUsesAsync([itemId], cancellationToken));
+        blockers.AddNamed("used by reports", await reports.MeasureUsesAsync(measure, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
         await Rows.DeleteAsync(new { CalculatedMeasureId = itemId }, cancellationToken);

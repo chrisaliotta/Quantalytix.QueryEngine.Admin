@@ -19,12 +19,12 @@ public sealed class ReportColumnsInputValidatorTests
 {
     /// <summary>The stored columns of report version 61: amount returns the balance variable, yield the yield measure.</summary>
     private readonly InMemoryTableGateway<ReportColumnRecord> _columns = new(
-        Column(1, "amount", ReportValueKinds.Variable, 51, 1),
-        Column(2, "yield", ReportValueKinds.Calculated, 91, 2));
+        Column(1, "amount", ReportValueKinds.Variable, "balance", 1),
+        Column(2, "yield", ReportValueKinds.Calculated, "yield", 2));
 
     /// <summary>The formula line that places the yield measure in the yield column.</summary>
     private readonly InMemoryTableGateway<ReportLineRecord> _lines = new(
-        Line(11, "loan_yield", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureId = 91, ValueColumnId = 2 });
+        Line(11, "loan_yield", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureKey = "yield", ValueColumnId = 2 });
 
     /// <summary>A reserved key fails on its column, and a repeated key fails the list once.</summary>
     /// <returns>A task that completes when the validation is checked.</returns>
@@ -52,7 +52,7 @@ public sealed class ReportColumnsInputValidatorTests
             Input(2, "yield", ReportValueKinds.Calculated, "yield"));
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("Column 'amount' returns 'balance', which is no calculated metric of the report's model version.", error.ErrorMessage);
+        Assert.Equal("Column 'amount' returns 'balance', which is no calculated metric of the published version of the report's model.", error.ErrorMessage);
     }
 
     /// <summary>Leaving out the yield column fails while the formula line still places its value there.</summary>
@@ -72,12 +72,13 @@ public sealed class ReportColumnsInputValidatorTests
         return new ReportColumnInput { ReportColumnId = columnId, ColumnKey = columnKey, DisplayName = columnKey, ValueKind = valueKind, MetricKey = metricKey, IsVisible = true };
     }
 
-    /// <summary>Validates a column list for report version 61 over model version 41.</summary>
+    /// <summary>Validates a column list for report version 61 over model 40, whose published version is 41.</summary>
     private Task<TestValidationResult<ReportColumnsInput>> ValidateAsync(params ReportColumnInput[] columns)
     {
         var validator = new ReportColumnsInputValidator(
             new ModelMetricsReader(
                 new InMemoryTableGateway<ReportVersionRecord>(ReportVersion(ReportVersionId)),
+                new InMemoryTableGateway<CalculationModelVersionRecord>(ModelVersion()),
                 new InMemoryTableGateway<VariableRecord>(Variable(51, "balance")),
                 new InMemoryTableGateway<CalculatedMeasureRecord>(Calculated(91, "yield", "[m.balance] / 2"))),
             _columns,

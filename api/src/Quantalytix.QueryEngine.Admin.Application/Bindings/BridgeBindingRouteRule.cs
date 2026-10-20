@@ -9,10 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 /// same version, its bridge leads from the source binding's dimension to the bridge binding's own dimension, and following
 /// source bindings never leads back to the bridge binding, which the engine would follow forever.
 /// </summary>
-public sealed class BridgeBindingRouteRule(
-    ITableGateway<DimensionBindingRecord> bindings,
-    ITableGateway<BridgeVersionRecord> bridgeVersions,
-    ITableGateway<BridgeRecord> bridges) : IPublicationRule
+public sealed class BridgeBindingRouteRule(ITableGateway<DimensionBindingRecord> bindings, ITableGateway<BridgeRecord> bridges) : IPublicationRule
 {
     /// <summary>The rule's violation code.</summary>
     public const string Code = "bridge_binding_route";
@@ -23,7 +20,7 @@ public sealed class BridgeBindingRouteRule(
     /// <summary>Reports each break in a bridge binding's route.</summary>
     /// <param name="versionId">The dataset version leaving draft.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per foreign source binding, missing bridge version, mismatched bridge end and route cycle.</returns>
+    /// <returns>One violation per foreign source binding, missing bridge, mismatched bridge end and route cycle.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var versionBindings = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken)).ToDictionary(binding => binding.BindingId);
@@ -31,11 +28,7 @@ public sealed class BridgeBindingRouteRule(
             .Where(binding => binding.BindingKind == BindingKinds.Bridge)
             .OrderBy(binding => binding.DisplayName, StringComparer.Ordinal)
             .ToList();
-        var versionsById = (await bridgeVersions.ListAsync(
-                new { BridgeVersionId = bridged.Select(binding => binding.BridgeVersionId!.Value).Distinct().ToArray() },
-                cancellationToken))
-            .ToDictionary(version => version.BridgeVersionId);
-        var bridgesById = (await bridges.ListAsync(new { BridgeId = versionsById.Values.Select(version => version.BridgeId).Distinct().ToArray() }, cancellationToken))
+        var bridgesById = (await bridges.ListAsync(new { BridgeId = bridged.Select(binding => binding.BridgeId!.Value).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(bridge => bridge.BridgeId);
 
         var violations = new List<RuleViolation>();
@@ -48,13 +41,12 @@ public sealed class BridgeBindingRouteRule(
                 violations.Add(Violation($"Bridge binding '{name}' remaps binding {binding.SourceBindingId}, which is not a binding of this version."));
             }
 
-            if (!versionsById.TryGetValue(binding.BridgeVersionId!.Value, out var bridgeVersion))
+            if (!bridgesById.TryGetValue(binding.BridgeId!.Value, out var bridge))
             {
-                violations.Add(Violation($"Bridge binding '{name}' uses bridge version {binding.BridgeVersionId}, which does not exist."));
+                violations.Add(Violation($"Bridge binding '{name}' uses bridge {binding.BridgeId}, which does not exist."));
             }
             else
             {
-                var bridge = bridgesById[bridgeVersion.BridgeId];
                 if (source is not null && bridge.SourceDimensionId != source.DimensionId)
                 {
                     violations.Add(Violation($"Bridge binding '{name}' uses bridge '{bridge.BridgeKey}', which starts at another dimension than its source binding '{source.DisplayName}'."));

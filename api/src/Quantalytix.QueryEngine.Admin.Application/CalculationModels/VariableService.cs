@@ -10,7 +10,7 @@ public sealed class VariableService(
     IIdGenerator ids)
     : ModelVersionRows<VariableRecord, VariableInput>(table, ids)
 {
-    /// <summary>Deletes a variable with its sources and their picks and override routes, unless a report column returns it.</summary>
+    /// <summary>Deletes a variable with its sources and their picks and override routes, unless a live report column returns it.</summary>
     /// <param name="itemId">The variable.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the variable was deleted; otherwise the detail naming the report columns.</returns>
@@ -18,7 +18,7 @@ public sealed class VariableService(
     {
         var variable = await Rows.GetAsync(new { VariableId = itemId }, cancellationToken);
         var blockers = new DeleteBlockers($"Variable '{variable.VariableKey}'");
-        blockers.AddNamed("returned by report columns", await reports.VariableColumnsAsync([itemId], cancellationToken));
+        blockers.AddNamed("returned by report columns", await reports.VariableColumnsAsync(variable, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
         await remover.RemoveVariablesAsync([itemId], cancellationToken);

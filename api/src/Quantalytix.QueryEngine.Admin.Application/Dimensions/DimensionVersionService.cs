@@ -9,10 +9,9 @@ public sealed class DimensionVersionService(
     ITableGateway<DimensionVersionRecord> versions,
     DimensionVersionCloner cloner,
     DimensionVersionRemover remover,
-    DimensionDeleteChecks deleteChecks,
     IIdGenerator ids)
 {
-    /// <summary>Lists a dimension's versions with their validity windows.</summary>
+    /// <summary>Lists a dimension's versions.</summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The versions by version number.</returns>
@@ -52,41 +51,32 @@ public sealed class DimensionVersionService(
             DimensionId = dimensionId,
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
             Status = PublicationStatuses.Draft,
-            RangeDataType = rangeDataType,
-            ValidFrom = input.ValidFrom,
-            ValidTo = input.ValidTo
+            RangeDataType = rangeDataType
         };
         await versions.InsertAsync(version, cancellationToken);
         if (input.CloneFromVersionId is { } cloneFromVersionId) await cloner.CloneAsync(cloneFromVersionId, version, cancellationToken);
         return version;
     }
 
-    /// <summary>Replaces a draft version's range data type and validity window.</summary>
-    /// <param name="dimensionVersionId">The draft version.</param>
+    /// <summary>Replaces a version's range data type.</summary>
+    /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>The stored version.</returns>
     public async Task<DimensionVersionRecord> UpdateAsync(long dimensionVersionId, DimensionVersionInput input, CancellationToken cancellationToken)
     {
         var current = await GetAsync(dimensionVersionId, cancellationToken);
-        var updated = current with { RangeDataType = input.RangeDataType, ValidFrom = input.ValidFrom, ValidTo = input.ValidTo };
+        var updated = current with { RangeDataType = input.RangeDataType };
         await versions.UpdateAsync(updated, cancellationToken);
         return updated;
     }
 
-    /// <summary>
-    /// Deletes a draft version with its content, unless another feature's rows pin it; draft mapping versions pinned to it go
-    /// with it.
-    /// </summary>
+    /// <summary>Deletes a draft version with its content; nothing else references a draft.</summary>
     /// <param name="dimensionVersionId">The draft version.</param>
-    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the version was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long dimensionVersionId, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <returns>A task that completes when the version is gone.</returns>
+    public Task DeleteAsync(long dimensionVersionId, CancellationToken cancellationToken)
     {
-        var version = await GetAsync(dimensionVersionId, cancellationToken);
-        var conflict = await deleteChecks.VersionAsync(version, cancellationToken);
-        if (conflict is not null) return conflict;
-        await remover.RemoveAsync([dimensionVersionId], cancellationToken);
-        return null;
+        return remover.RemoveAsync([dimensionVersionId], cancellationToken);
     }
 }

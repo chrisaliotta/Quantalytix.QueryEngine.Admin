@@ -102,7 +102,7 @@ export function useDeleteMappingSet() {
   });
 }
 
-/** Creates a draft version of a mapping set, empty or cloned; the answer names the source keys a clone dropped. */
+/** Creates a draft version of a mapping set, empty or a copy of another version's entries. */
 export function useCreateMappingVersion(mappingSetId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -131,7 +131,7 @@ export function useDeleteMappingVersion() {
   });
 }
 
-/** Adds an entry to a draft version. */
+/** Adds an entry to a draft or published version. */
 export function useCreateEntry(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -146,7 +146,7 @@ export function useCreateEntry(versionId: number) {
   });
 }
 
-/** Edits an entry of a draft version. */
+/** Edits an entry of a draft or published version. */
 export function useUpdateEntry(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -161,7 +161,7 @@ export function useUpdateEntry(versionId: number) {
   });
 }
 
-/** Deletes an entry of a draft version. */
+/** Deletes an entry of a draft or published version. */
 export function useDeleteEntry(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -175,7 +175,7 @@ export function useDeleteEntry(versionId: number) {
   });
 }
 
-/** Replaces every entry of a draft version; the stored entries replace the cached list. */
+/** Replaces every entry of a draft or published version; the stored entries replace the cached list. */
 export function useReplaceEntries(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({

@@ -15,9 +15,6 @@ public sealed record ReportRecord
     /// <summary>Free-form classification such as <c>margin_analysis</c>.</summary>
     public required string ReportType { get; init; }
 
-    /// <summary>Authoring-only pointer to the most recently published report version.</summary>
-    public long? CurrentReportVersionId { get; init; }
-
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
 

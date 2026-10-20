@@ -1,61 +1,66 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { startOfMinute } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { EntityListPage } from '@/shared/EntityListPage';
 import { StatusBadge } from '@/shared/StatusBadge';
+import { useLookup } from '@/shared/useLookup';
 import { useSheetForm } from '@/shared/useSheetForm';
 import { useTenantId } from '@/shared/useTenantId';
 import { formatDateTime } from '@/shared/utcTime';
-import { NewAssumptionSetSheet } from './NewAssumptionSetSheet';
-import type { AssumptionSet, AssumptionSetCreateInput } from './types';
+import { CaptureSheet } from './CaptureSheet';
+import type { AssumptionCaptureInput, AssumptionSet } from './types';
 import { useAssumptionSets } from './useAssumptionSets';
 
-const COLUMNS: ColumnDef<AssumptionSet>[] = [
+/** A set as the list shows it, with the key of the release it reads. */
+interface AssumptionSetRow extends AssumptionSet {
+  releaseKey: string;
+}
+
+const COLUMNS: ColumnDef<AssumptionSetRow>[] = [
   { accessorKey: 'assumptionSetKey', header: 'Key' },
   { accessorKey: 'displayName', header: 'Name' },
-  { accessorKey: 'effectiveAt', header: 'Effective at', cell: ({ row }) => formatDateTime(row.original.effectiveAt) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
-  { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => formatDateTime(row.original.createdAt) },
-  { accessorKey: 'publishedAt', header: 'Published', cell: ({ row }) => formatDateTime(row.original.publishedAt) },
+  { accessorKey: 'releaseKey', header: 'Release' },
+  { accessorKey: 'capturedAt', header: 'Captured', cell: ({ row }) => formatDateTime(row.original.capturedAt) },
 ];
 
-/** The tenant's assumption sets, ordered by key, with a sheet that creates one effective now by default. */
+/**
+ * The tenant's assumption sets: the active one, which holds the default versions every publish repoints and reads the active
+ * release, then the historical sets captured from it with the release active at the time, which requests name to backtest.
+ * "Capture" snapshots the active set.
+ */
 export function AssumptionSetsPage() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const sets = useAssumptionSets();
-  const newSet = useSheetForm<AssumptionSetCreateInput>({ assumptionSetKey: '', displayName: '', description: '', effectiveAt: '' });
-
-  function openNewSet() {
-    newSet.open({
-      assumptionSetKey: '',
-      displayName: '',
-      description: '',
-      effectiveAt: startOfMinute(new Date()).toISOString(),
-    });
-  }
+  const releases = useLookup('releases');
+  const capture = useSheetForm<AssumptionCaptureInput>({ assumptionSetKey: '', displayName: '', description: '' });
+  const releaseKeys = new Map((releases.data ?? []).map(release => [release.id, release.key]));
+  const rows = sets.data?.map(set => ({
+    ...set,
+    releaseKey: set.releaseId == null ? 'Active release' : (releaseKeys.get(set.releaseId) ?? ''),
+  }));
 
   return (
     <>
       <EntityListPage
         title="Assumption sets"
-        description="Snapshots that pin exact dimension versions, so reports can be reproduced as of one moment."
+        description="Requests read the versions the active set pins by default, or the versions and release a historical set captured."
         actions={
-          <Button onClick={openNewSet}>
-            <Plus />
-            New assumption set
+          <Button onClick={() => capture.open({ assumptionSetKey: '', displayName: '', description: '' })}>
+            <Camera />
+            Capture active set
           </Button>
         }
         columns={COLUMNS}
-        data={sets.data}
+        data={rows}
         isLoading={sets.isPending}
-        error={sets.error}
+        error={sets.error ?? releases.error}
         searchPlaceholder="Search assumption sets..."
         onRowClick={set => navigate(`/t/${tenantId}/assumption-sets/${set.assumptionSetId}`)}
       />
-      <NewAssumptionSetSheet {...newSet.sheetProps} />
+      <CaptureSheet {...capture.sheetProps} />
     </>
   );
 }

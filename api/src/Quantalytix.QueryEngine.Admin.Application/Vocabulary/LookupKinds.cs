@@ -54,7 +54,7 @@ public static class LookupKinds
     /// <summary>Semantic releases.</summary>
     public const string Releases = "releases";
 
-    /// <summary>Assumption sets.</summary>
+    /// <summary>Assumption sets, the active one first.</summary>
     public const string AssumptionSets = "assumption-sets";
 
     /// <summary>Calculation models.</summary>
@@ -110,7 +110,7 @@ public static class LookupKinds
             new() { Value = Bridges, Description = "Bridges." },
             new() { Value = BridgeVersions, Description = "Versions of a bridge; the parent is the bridge." },
             new() { Value = Releases, Description = "Semantic releases." },
-            new() { Value = AssumptionSets, Description = "Assumption sets." },
+            new() { Value = AssumptionSets, Description = "Assumption sets, the active one first." },
             new() { Value = CalculationModels, Description = "Calculation models." },
             new() { Value = ModelVersions, Description = "Versions of a calculation model; the parent is the model." },
             new() { Value = Variables, Description = "Variables of a model version; the parent is the model version." },

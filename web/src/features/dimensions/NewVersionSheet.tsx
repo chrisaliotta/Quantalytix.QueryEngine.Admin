@@ -1,14 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { DateTimeField, VocabularyField } from '@/shared/form';
+import { VocabularyField } from '@/shared/form';
 import type { LookupItem } from '@/shared/types';
 import { useCreateDimensionVersion } from './api';
 import type { DimensionVersion } from './types';
 
 interface NewVersionValues {
   rangeDataType: string | null;
-  validFrom: string | null;
-  validTo: string | null;
 }
 
 export interface NewVersionSheetProps {
@@ -23,14 +21,12 @@ export interface NewVersionSheetProps {
 }
 
 /**
- * Creates a draft version with its validity window: empty, or a clone of `source` (its levels, members, bands and
- * mapping versions). A clone keeps the source's range data type unless another one is chosen.
+ * Creates a draft version: empty, or a clone of `source` (its levels, members and bands). A clone keeps the source's range
+ * data type unless another one is chosen. Publishing the draft later makes it the version every request reads.
  */
 export function NewVersionSheet({ dimensionId, isRange, source, rangeDataType, onClose, onCreated }: NewVersionSheetProps) {
   const create = useCreateDimensionVersion(dimensionId);
-  const form = useForm<NewVersionValues>({
-    defaultValues: { rangeDataType: source ? null : rangeDataType, validFrom: null, validTo: null },
-  });
+  const form = useForm<NewVersionValues>({ defaultValues: { rangeDataType: source ? null : rangeDataType } });
 
   async function submit(values: NewVersionValues) {
     onCreated(await create.mutateAsync({ ...values, cloneFromVersionId: source?.id ?? null }));
@@ -41,7 +37,7 @@ export function NewVersionSheet({ dimensionId, isRange, source, rangeDataType, o
       open
       onOpenChange={open => !open && onClose()}
       title={source ? `Clone ${source.key}` : 'New version'}
-      description={describeDraft(source)}
+      description={source ? 'The draft copies the levels, members and range bands of the source.' : 'The draft starts empty.'}
       form={form}
       onSubmit={submit}
       submitLabel="Create draft"
@@ -55,19 +51,6 @@ export function NewVersionSheet({ dimensionId, isRange, source, rangeDataType, o
           description={source ? "Leave empty to keep the source's." : undefined}
         />
       )}
-      <DateTimeField
-        name="validFrom"
-        label="Valid from"
-        description="Inclusive start; publishing closes the open-ended published version that starts earlier."
-      />
-      <DateTimeField name="validTo" label="Valid to" description="Exclusive end; leave empty for open-ended." />
     </EntityFormSheet>
   );
-}
-
-function describeDraft(source: LookupItem | null) {
-  if (source) {
-    return 'The draft copies the levels, members, range bands and pinned mapping versions of the source.';
-  }
-  return 'The draft starts empty.';
 }

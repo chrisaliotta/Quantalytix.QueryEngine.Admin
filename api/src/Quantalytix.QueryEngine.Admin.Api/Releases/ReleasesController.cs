@@ -123,45 +123,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
         return Ok(await releases.ReplaceDatasetsAsync(releaseId, input, cancellationToken));
     }
 
-    /// <summary>Lists a release's report pins: the report version it pins for each report.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The release.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The report pins.</returns>
-    /// <response code="200">The report pins, ordered by report.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet("{releaseId:long}/reports")]
-    [ProducesResponseType<IReadOnlyList<ReleaseReportRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ReleaseReportRecord>>> ListReports(string tenantId, long releaseId, CancellationToken cancellationToken)
-    {
-        return Ok(await releases.ListReportsAsync(releaseId, cancellationToken));
-    }
-
-    /// <summary>Replaces a draft release's report pins; validating the release checks that each pinned report resolves in it.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The draft release.</param>
-    /// <param name="input">The complete report pins, one per report.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The stored report pins.</returns>
-    /// <response code="200">The stored report pins, ordered by report.</response>
-    /// <response code="400">A report appears more than once, or a pinned version is not a version of its report.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The release is not a draft.</response>
-    [HttpPut("{releaseId:long}/reports")]
-    [RequireDraft(VersionKinds.SemanticRelease, "releaseId")]
-    [ProducesResponseType<IReadOnlyList<ReleaseReportRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<IReadOnlyList<ReleaseReportRecord>>> ReplaceReports(
-        string tenantId,
-        long releaseId,
-        ReleaseReportsInput input,
-        CancellationToken cancellationToken)
-    {
-        return Ok(await releases.ReplaceReportsAsync(releaseId, input, cancellationToken));
-    }
-
     /// <summary>
     /// Makes a published release the one runtime queries use: sets <c>qe_database_info.active_release_id</c> and
     /// <c>updated_at</c>, and advances the semantic revision.

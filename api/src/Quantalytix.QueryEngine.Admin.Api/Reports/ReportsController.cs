@@ -46,7 +46,7 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         return Ok(await reports.CreateAsync(input, cancellationToken));
     }
 
-    /// <summary>Reads one report, including its current version.</summary>
+    /// <summary>Reads one report.</summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

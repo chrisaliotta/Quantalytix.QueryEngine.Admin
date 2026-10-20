@@ -19,10 +19,8 @@ import {
   useDeleteRelease,
   useRelease,
   useReleaseDatasets,
-  useReleaseReports,
   useReleases,
   useSaveReleaseDatasets,
-  useSaveReleaseReports,
 } from './useReleases';
 
 /** The Retire confirmation of the active release, which the API refuses to retire because queries run on it. */
@@ -30,9 +28,10 @@ const ACTIVE_RELEASE_RETIREMENT =
   'This is the active release, so queries use it and it cannot be retired. Activate another release first, then retire this one.';
 
 /**
- * One release: its lifecycle (validate, publish, retire, delete draft), activation, the manifest of
- * pinned dataset versions and the pinned report versions, which only a draft can change. "Clone
- * selected" creates a new draft that copies the selected release's manifest and report pins.
+ * One release: its lifecycle (validate, publish, retire, delete draft), activation, and the manifest of pinned dataset
+ * versions, which only a draft can change. "Clone selected" creates a new draft that copies the selected release's
+ * manifest. Reports are not pinned: they run against the active release, and validating a release checks every published
+ * report against its dataset versions.
  */
 export function ReleaseEditorPage() {
   const releaseId = Number(useParams().releaseId);
@@ -56,7 +55,7 @@ export function ReleaseEditorPage() {
     <div data-slot="release-editor" className="space-y-6">
       <PageHeader
         title={release.data?.releaseKey ?? 'Release'}
-        description="Validate and publish the release, then activate it so queries use its dataset and report versions."
+        description="Validate and publish the release, then activate it so queries and reports use its dataset versions."
         actions={
           release.data && (
             <ReleaseActivation
@@ -79,7 +78,6 @@ export function ReleaseEditorPage() {
       />
       <ApiErrorAlert error={release.error ?? activate.error ?? deleteRelease.error} />
       {release.data && <ManifestCard release={release.data} />}
-      {release.data && <ReportsCard release={release.data} />}
       <NewReleaseSheet {...newRelease.sheetProps} />
     </div>
   );
@@ -122,55 +120,6 @@ function ManifestCard({ release }: { release: SemanticRelease }) {
         <ManifestTable releaseId={release.releaseId} isDraft={isDraft} />
       </CardContent>
     </Card>
-  );
-}
-
-function ReportsCard({ release }: { release: SemanticRelease }) {
-  const isDraft = release.status === 'draft';
-  return (
-    <Card data-slot="release-reports">
-      <CardHeader>
-        <CardTitle>Reports</CardTitle>
-        <CardDescription>
-          {isDraft &&
-            'Pin one published version per report, then save. Validating checks that every source of each report resolves in the datasets the manifest pins.'}
-          {!isDraft && 'The report pins are fixed once a release leaves draft.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ReportPinsTable releaseId={release.releaseId} isDraft={isDraft} />
-      </CardContent>
-    </Card>
-  );
-}
-
-function ReportPinsTable({ releaseId, isDraft }: { releaseId: number; isDraft: boolean }) {
-  const pins = useReleaseReports(releaseId);
-  const save = useSaveReleaseReports(releaseId);
-
-  if (pins.isPending) {
-    return <Loading size="sm" />;
-  }
-  if (pins.isError) {
-    return <ApiErrorAlert error={pins.error} />;
-  }
-  return (
-    <PinnedVersionsTable
-      key={`${releaseId}:${pins.dataUpdatedAt}`}
-      identityLookup="reports"
-      versionLookup="report-versions"
-      identityLabel="Report"
-      pins={pins.data.map(row => ({ identityId: row.reportId, versionId: row.reportVersionId }))}
-      readOnly={!isDraft}
-      onSave={rows =>
-        save.mutate(
-          rows.map(pin => ({ reportId: pin.identityId, reportVersionId: pin.versionId })),
-          { onSuccess: () => toast.success('Report pins saved.') }
-        )
-      }
-      isSaving={save.isPending}
-      saveError={save.error}
-    />
   );
 }
 

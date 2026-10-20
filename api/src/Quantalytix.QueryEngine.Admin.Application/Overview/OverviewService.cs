@@ -33,7 +33,6 @@ public sealed class OverviewService(
     {
         var info = await databaseInfo.GetAsync(new { SingletonId }, cancellationToken);
         var releaseRows = await releases.ListAsync(null, cancellationToken);
-        var assumptionSetRows = await assumptionSets.ListAsync(null, cancellationToken);
         var drafts = new { Status = PublicationStatuses.Draft };
         return new TenantOverview
         {
@@ -48,7 +47,7 @@ public sealed class OverviewService(
                 MappingSets = (await mappingSets.ListAsync(null, cancellationToken)).Count,
                 Bridges = (await bridges.ListAsync(null, cancellationToken)).Count,
                 Releases = releaseRows.Count,
-                AssumptionSets = assumptionSetRows.Count,
+                AssumptionSets = (await assumptionSets.ListAsync(null, cancellationToken)).Count,
                 CalculationModels = (await models.ListAsync(null, cancellationToken)).Count,
                 Reports = (await reports.ListAsync(null, cancellationToken)).Count,
                 ActiveMeasures = await CountActiveMeasuresAsync(info.ActiveReleaseId, cancellationToken)
@@ -60,7 +59,6 @@ public sealed class OverviewService(
                 MappingVersions = (await mappingVersions.ListAsync(drafts, cancellationToken)).Count,
                 BridgeVersions = (await bridgeVersions.ListAsync(drafts, cancellationToken)).Count,
                 Releases = releaseRows.Count(release => release.Status == PublicationStatuses.Draft),
-                AssumptionSets = assumptionSetRows.Count(set => set.Status == AssumptionSetStatuses.Draft),
                 ModelVersions = (await modelVersions.ListAsync(drafts, cancellationToken)).Count,
                 ReportVersions = (await reportVersions.ListAsync(drafts, cancellationToken)).Count
             }

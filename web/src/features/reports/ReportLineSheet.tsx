@@ -2,7 +2,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { JsonField, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
-import { useLatestVersionItems } from '@/shared/useLatestVersionItems';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
 import type { ReportLineInput, ReportVersion } from './types';
 
@@ -31,12 +31,12 @@ export interface ReportLineSheetProps {
 
 /**
  * Adds, edits or shows a line of the tree being edited: a section, a member line showing one report item, or a formula
- * line placing a calculated measure in one column. Member keys come from the report dimension's latest version; a
- * release checks them in the version its sources resolve.
+ * line placing a calculated measure in one column. Member keys come from the report dimension's published version and
+ * calculated measures from the model's, the versions the active assumption set pins.
  */
 export function ReportLineSheet({ version, line, readOnly, onSave, onClose }: ReportLineSheetProps) {
-  const members = useLatestVersionItems('dimension-versions', version.reportDimensionId, 'members');
-  const measures = useLookup('calculated-measures', version.modelVersionId ?? null);
+  const members = usePublishedVersionItems('dimension-versions', version.reportDimensionId, 'members');
+  const measures = usePublishedVersionItems('model-versions', version.modelId, 'calculated-measures');
   const columns = useLookup('report-columns', version.reportVersionId);
   const form = useForm<ReportLineValues>({
     defaultValues: {
@@ -85,7 +85,7 @@ export function ReportLineSheet({ version, line, readOnly, onSave, onClose }: Re
       {lineKind === 'member' && <KeyField name="reportMemberKey" label="Report item" items={members} />}
       {lineKind === 'formula' && (
         <>
-          <KeyField name="calculatedMeasureKey" label="Calculated measure" items={measures.data ?? null} />
+          <KeyField name="calculatedMeasureKey" label="Calculated measure" items={measures} />
           <KeyField
             name="valueColumnKey"
             label="Column"

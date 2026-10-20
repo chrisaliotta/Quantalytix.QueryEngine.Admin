@@ -29,15 +29,15 @@ export interface RangeBandsTabProps {
   versionId: number;
   /** The version's `range_data_type`, which picks the bound inputs; null when the version has none yet. */
   rangeDataType: string | null;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
 /**
- * The ordered band editor of a range dimension version. Drafts drag bands into order, edit their member, typed bounds
- * and inclusivity, and save the whole list at once; ordinals follow the order. Overlaps and bound families are checked
- * when the version is validated.
+ * The ordered band editor of a range dimension version. A draft or the published version drags bands into order, edits
+ * their member, typed bounds and inclusivity, and saves the whole list at once; ordinals follow the order. Overlaps and
+ * bound families are checked when the version is validated.
  */
-export function RangeBandsTab({ versionId, rangeDataType, isDraft }: RangeBandsTabProps) {
+export function RangeBandsTab({ versionId, rangeDataType, isEditable }: RangeBandsTabProps) {
   const bands = useRangeBands(versionId);
 
   if (bands.isPending) {
@@ -49,17 +49,17 @@ export function RangeBandsTab({ versionId, rangeDataType, isDraft }: RangeBandsT
   if (rangeDataType === null) {
     return <p className="text-sm text-muted-foreground">Set the version's range data type in Settings before editing bands.</p>;
   }
-  return <RangeBandEditor versionId={versionId} bands={bands.data} rangeDataType={rangeDataType} isDraft={isDraft} />;
+  return <RangeBandEditor versionId={versionId} bands={bands.data} rangeDataType={rangeDataType} isEditable={isEditable} />;
 }
 
 interface RangeBandEditorProps {
   versionId: number;
   bands: RangeBand[];
   rangeDataType: string;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
-function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBandEditorProps) {
+function RangeBandEditor({ versionId, bands, rangeDataType, isEditable }: RangeBandEditorProps) {
   const members = useLookup('members', versionId);
   const replace = useReplaceRangeBands(versionId);
   const values = useMemo(() => ({ bands: bands.map(toBandInput) }), [bands]);
@@ -71,7 +71,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
 
   return (
     <FormProvider {...form}>
-      <FormReadOnlyContext value={!isDraft}>
+      <FormReadOnlyContext value={!isEditable}>
         <form data-slot="range-bands-tab" className="space-y-3" onSubmit={submit}>
           <p className="text-sm text-muted-foreground">
             Bands are evaluated in order, and each must start after the previous one ends. An empty bound is unbounded.
@@ -84,7 +84,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
           >
             <div className="space-y-2">
               {fields.map((field, index) => (
-                <SortableItem key={field.id} id={field.id} index={index} handle disabled={!isDraft}>
+                <SortableItem key={field.id} id={field.id} index={index} handle disabled={!isEditable}>
                   {({ setNodeRef, setActivatorNodeRef, attributes, activatorListeners, style, isDragging }) => (
                     <div
                       ref={setNodeRef}
@@ -93,7 +93,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
                       className={cn('rounded-md border bg-background p-3', isDragging && 'opacity-60')}
                     >
                       <div className="mb-3 flex items-center gap-2">
-                        {isDraft && (
+                        {isEditable && (
                           <button
                             type="button"
                             ref={setActivatorNodeRef}
@@ -106,7 +106,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
                           </button>
                         )}
                         <span className="text-sm font-medium">Band {index + 1}</span>
-                        {isDraft && (
+                        {isEditable && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -135,7 +135,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isDraft }: RangeBand
             </div>
           </SortableRoot>
           <ApiErrorAlert error={problem} />
-          {isDraft && (
+          {isEditable && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"

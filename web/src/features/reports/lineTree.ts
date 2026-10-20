@@ -9,13 +9,9 @@ function byPosition(left: ReportLine, right: ReportLine) {
 
 /**
  * Nests a version's stored lines by their parent links, siblings in display order, each as the replace body's line: its
- * calculated measure and value column named by key, its ID kept so a line that keeps its key keeps its ID.
+ * value column named by key, its ID kept so a line that keeps its key keeps its ID.
  */
-export function buildLineTree(
-  lines: ReportLine[],
-  measureKeys: ReadonlyMap<number, string>,
-  columnKeys: ReadonlyMap<number, string>
-): TreeItems<ReportLineInput> {
+export function buildLineTree(lines: ReportLine[], columnKeys: ReadonlyMap<number, string>): TreeItems<ReportLineInput> {
   function toItem(line: ReportLine): TreeItem<ReportLineInput> {
     return {
       id: line.reportLineId,
@@ -25,7 +21,7 @@ export function buildLineTree(
         displayName: line.displayName,
         lineKind: line.lineKind,
         reportMemberKey: line.reportMemberKey ?? null,
-        calculatedMeasureKey: line.calculatedMeasureId == null ? null : (measureKeys.get(line.calculatedMeasureId) ?? null),
+        calculatedMeasureKey: line.calculatedMeasureKey ?? null,
         valueColumnKey: line.valueColumnId == null ? null : (columnKeys.get(line.valueColumnId) ?? null),
         isVisible: line.isVisible,
         payloadJson: line.payloadJson ?? null,

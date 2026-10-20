@@ -6,15 +6,14 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EntityTable } from '@/shared/EntityTable';
 import type { LookupItem } from '@/shared/types';
-import { useLookup } from '@/shared/useLookup';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import { useDeleteEntry, useMappingEntries } from './api';
 import { EntriesPasteDialog } from './EntriesPasteDialog';
 import { EntrySheet } from './EntrySheet';
 import type { MappingEntry } from './types';
 
-/** An entry with its member's key and label, which the table shows and searches. */
+/** An entry with its member's label, which the table shows and searches. */
 interface EntryRow extends MappingEntry {
-  memberKey: string;
   memberLabel: string;
 }
 
@@ -35,23 +34,24 @@ interface EntrySheetRequest {
 
 export interface MappingEntriesProps {
   versionId: number;
-  /** The dimension version the mapping version pins; the entries map to its members. */
-  dimensionVersionId: number | null;
-  isDraft: boolean;
+  /** The set's dimension; the entries' member keys resolve in its published version. */
+  dimensionId: number;
+  isEditable: boolean;
 }
 
 /**
- * A mapping version's entries in a table. On a draft they are added, edited and deleted one by one, or replaced by a
- * bulk paste.
+ * A mapping version's entries in a table, each with the label of its member in the published version of the set's
+ * dimension. On a draft or the published version they are added, edited and deleted one by one, or replaced by a bulk
+ * paste; edits to the published version reach the next request.
  */
-export function MappingEntries({ versionId, dimensionVersionId, isDraft }: MappingEntriesProps) {
+export function MappingEntries({ versionId, dimensionId, isEditable }: MappingEntriesProps) {
   const entries = useMappingEntries(versionId);
-  const members = useLookup('members', dimensionVersionId);
+  const members = usePublishedVersionItems('dimension-versions', dimensionId, 'members');
   const deleteEntry = useDeleteEntry(versionId);
   const [sheet, setSheet] = useState<EntrySheetRequest | null>(null);
   const [pasting, setPasting] = useState(false);
   const [deleting, setDeleting] = useState<MappingEntry | null>(null);
-  const rows = entries.data && members.data ? toRows(entries.data, members.data) : undefined;
+  const rows = entries.data && members ? toRows(entries.data, members) : undefined;
 
   const columns: ColumnDef<EntryRow>[] = [
     ...baseColumns,
@@ -59,7 +59,7 @@ export function MappingEntries({ versionId, dimensionVersionId, isDraft }: Mappi
       id: 'actions',
       header: '',
       cell: ({ row }) =>
-        isDraft && (
+        isEditable && (
           <Button
             variant="ghost"
             size="icon-xs"
@@ -80,13 +80,13 @@ export function MappingEntries({ versionId, dimensionVersionId, isDraft }: Mappi
       <EntityTable
         columns={columns}
         data={rows}
-        isLoading={entries.isPending || members.isPending}
-        error={entries.error ?? members.error}
+        isLoading={entries.isPending || members === null}
+        error={entries.error}
         searchPlaceholder="Search entries..."
         emptyMessage="No entries yet."
         onRowClick={entry => setSheet({ entry })}
         toolbar={
-          isDraft && (
+          isEditable && (
             <div className="ml-auto flex gap-2">
               <Button variant="outline" disabled={rows === undefined} onClick={() => setPasting(true)}>
                 <ClipboardPaste />
@@ -104,25 +104,20 @@ export function MappingEntries({ versionId, dimensionVersionId, isDraft }: Mappi
       {sheet && (
         <EntrySheet
           versionId={versionId}
-          dimensionVersionId={dimensionVersionId}
+          members={members}
           entry={sheet.entry}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onClose={() => setSheet(null)}
         />
       )}
       {pasting && (
-        <EntriesPasteDialog
-          versionId={versionId}
-          entries={entries.data ?? []}
-          members={members.data ?? []}
-          onClose={() => setPasting(false)}
-        />
+        <EntriesPasteDialog versionId={versionId} entries={entries.data ?? []} onClose={() => setPasting(false)} />
       )}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={open => !open && setDeleting(null)}
         title={`Delete the entry ${deleting?.sourceKeyValue ?? ''}?`}
-        description="The source value no longer maps to a member in this draft."
+        description="The source value no longer maps to a member in this version."
         confirmLabel="Delete entry"
         destructive
         onConfirm={() => deleting && deleteEntry.mutate(deleting.mappingEntryId)}
@@ -131,14 +126,8 @@ export function MappingEntries({ versionId, dimensionVersionId, isDraft }: Mappi
   );
 }
 
-/** The entries with their members' keys and labels; a member outside the pinned version shows its ID. */
+/** The entries with their members' labels; a key the published version lacks is marked. */
 function toRows(entries: MappingEntry[], members: LookupItem[]): EntryRow[] {
-  const byId = new Map(members.map(member => [member.id, member]));
-  return entries.map(entry => {
-    const member = byId.get(entry.memberId);
-    if (!member) {
-      return { ...entry, memberKey: String(entry.memberId), memberLabel: 'Not a member of the pinned version' };
-    }
-    return { ...entry, memberKey: member.key, memberLabel: member.label };
-  });
+  const labels = new Map(members.map(member => [member.key, member.label]));
+  return entries.map(entry => ({ ...entry, memberLabel: labels.get(entry.memberKey) ?? 'Not a member of the published version' }));
 }

@@ -14,7 +14,7 @@ import { EntityTable } from '@/shared/EntityTable';
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { BindingSheet } from './BindingSheet';
-import { useBindings, useGroupingVersion } from './queries';
+import { useBindings } from './queries';
 import type { BindingDetail, DimensionBinding } from './types';
 
 /** A binding as the table shows it: searchable text columns beside the binding itself. */
@@ -27,8 +27,8 @@ interface BindingRow {
 }
 
 /**
- * Bindings tab of the dataset-version editor: the version's dimension bindings with their kind, dimension, source, pinned
- * version, grouping and flags. On a draft it creates, edits and deletes them; otherwise the sheet is read-only.
+ * Bindings tab of the dataset-version editor: the version's dimension bindings with their kind, dimension, source, grouping
+ * and flags. On a draft it creates, edits and deletes them; otherwise the sheet is read-only.
  */
 export function BindingsTab(props: { tenantId: string; datasetVersionId: number; isDraft: boolean }) {
   const { tenantId, datasetVersionId: versionId, isDraft } = props;
@@ -56,7 +56,6 @@ export function BindingsTab(props: { tenantId: string; datasetVersionId: number;
     { accessorKey: 'bindingKind', header: 'Kind' },
     { accessorKey: 'dimension', header: 'Dimension' },
     { accessorKey: 'source', header: 'Source' },
-    { id: 'pinned', header: 'Pinned version', cell: ({ row }) => <PinnedVersion binding={row.original.detail.binding} /> },
     { id: 'grouping', header: 'Grouping', cell: ({ row }) => <Grouping binding={row.original.detail.binding} /> },
     { id: 'flags', header: 'Flags', cell: ({ row }) => <BindingFlags binding={row.original.detail.binding} /> },
     {
@@ -160,37 +159,18 @@ function nameOf(names: Map<number, string>, id: number | null | undefined) {
   return names.get(id) ?? String(id);
 }
 
-/** The pinned dimension version's key, or a muted "effective" when the binding resolves the version in effect. */
-function PinnedVersion({ binding }: { binding: DimensionBinding }) {
-  const pinnedId = binding.pinnedDimensionVersionId ?? null;
-  const versions = useLookup('dimension-versions', pinnedId === null ? null : binding.dimensionId);
-  if (pinnedId === null) {
-    return <span className="text-muted-foreground">effective</span>;
-  }
-  return <>{versions.data?.find(item => item.id === pinnedId)?.key ?? pinnedId}</>;
-}
-
-/** The grouping mode with the level, ancestor member or depth it groups at. */
+/** The grouping mode with the level key, ancestor member key or depth it groups at. */
 function Grouping({ binding }: { binding: DimensionBinding }) {
-  const usesVersion = binding.groupingMode === 'level' || binding.groupingMode === 'ancestor';
-  const grouping = useGroupingVersion(usesVersion ? binding.dimensionId : null, binding.pinnedDimensionVersionId ?? null);
-  const levels = useLookup('levels', binding.groupingMode === 'level' ? grouping.versionId : null);
-  const members = useLookup('members', binding.groupingMode === 'ancestor' ? grouping.versionId : null);
   switch (binding.groupingMode) {
     case 'level':
-      return <>level {keyOf(levels.data, binding.groupingLevelId)}</>;
+      return <>level {binding.groupingLevelKey}</>;
     case 'ancestor':
-      return <>under {keyOf(members.data, binding.groupingAncestorMemberId)}</>;
+      return <>under {binding.groupingAncestorMemberKey}</>;
     case 'depth':
       return <>depth {binding.groupingDepth}</>;
     default:
       return <>{binding.groupingMode}</>;
   }
-}
-
-/** The key of a level or member, or its ID until the lookup has it. */
-function keyOf(items: LookupItem[] | undefined, id: number | null | undefined) {
-  return items?.find(item => item.id === id)?.key ?? id;
 }
 
 /** The binding's flags as badges, plus a muted badge when it is disabled. */

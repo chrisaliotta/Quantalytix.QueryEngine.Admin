@@ -46,7 +46,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
         return Ok(await bridges.CreateAsync(input, cancellationToken));
     }
 
-    /// <summary>Reads one bridge, including its authoring-only current version.</summary>
+    /// <summary>Reads one bridge.</summary>
     /// <param name="tenantId">The tenant that owns the bridge.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

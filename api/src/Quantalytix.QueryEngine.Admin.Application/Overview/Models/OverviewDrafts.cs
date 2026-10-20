@@ -18,9 +18,6 @@ public sealed record OverviewDrafts
     /// <summary>Draft semantic releases.</summary>
     public required int Releases { get; init; }
 
-    /// <summary>Draft assumption sets.</summary>
-    public required int AssumptionSets { get; init; }
-
     /// <summary>Draft calculation model versions.</summary>
     public required int ModelVersions { get; init; }
 

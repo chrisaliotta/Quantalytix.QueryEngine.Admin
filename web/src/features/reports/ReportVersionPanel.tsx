@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useModelVersion } from '@/features/calculation-models/api';
-import { StatusBadge } from '@/shared/StatusBadge';
+import { usePublishedVersion } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { ReportColumnsTab } from './ReportColumnsTab';
@@ -14,43 +13,40 @@ import type { ReportVersion } from './types';
 
 export interface ReportVersionPanelProps {
   version: ReportVersion;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
-/** The selected report version: what it reads and its defaults, editable on a draft, above its lines and columns. */
-export function ReportVersionPanel({ version, isDraft }: ReportVersionPanelProps) {
+/**
+ * The selected report version: the report dimension and calculation model it reads, its defaults, editable on a draft or
+ * the published version, above its lines and columns. Requests read the model version their assumption set pins, by
+ * default its published one, which the panel links to.
+ */
+export function ReportVersionPanel({ version, isEditable }: ReportVersionPanelProps) {
   const tenantId = useTenantId();
   const [editing, setEditing] = useState(false);
   const dimensions = useLookup('dimensions');
-  const modelVersion = useModelVersion(version.modelVersionId ?? null);
   const models = useLookup('calculation-models');
-  const profiles = useLookup('source-profiles', version.modelVersionId ?? null);
+  const publishedModel = usePublishedVersion('model-versions', version.modelId);
   const dimensionKey = dimensions.data?.find(item => item.id === version.reportDimensionId)?.key ?? '';
-  const modelKey = models.data?.find(item => item.id === modelVersion.data?.modelId)?.key ?? '';
-  const profileKey = profiles.data?.find(item => item.id === version.defaultSourceProfileId)?.key ?? 'None';
+  const modelKey = models.data?.find(item => item.id === version.modelId)?.key ?? '';
 
   return (
     <div data-slot="report-version-panel" className="space-y-4">
       <div className="flex flex-wrap items-start gap-x-8 gap-y-3 rounded-md border p-3 text-sm">
         <Setting label="Report dimension" value={dimensionKey} />
         <div className="space-y-1">
-          <div className="text-muted-foreground">Model version</div>
-          {modelVersion.data && (
-            <div className="flex items-center gap-2">
-              <Link
-                className="font-medium hover:underline"
-                to={`/t/${tenantId}/calculation-models/${modelVersion.data.modelId}?version=${modelVersion.data.modelVersionId}`}
-              >
-                {modelKey} v{modelVersion.data.versionNumber}
-              </Link>
-              <StatusBadge status={modelVersion.data.status} />
-            </div>
-          )}
+          <div className="text-muted-foreground">Calculation model</div>
+          <Link
+            className="font-medium hover:underline"
+            to={`/t/${tenantId}/calculation-models/${version.modelId}${publishedModel ? `?version=${publishedModel.id}` : ''}`}
+          >
+            {modelKey} {publishedModel ? `(published ${publishedModel.key})` : '(no published version)'}
+          </Link>
         </div>
-        <Setting label="Default profile" value={profileKey} />
+        <Setting label="Default profile" value={version.defaultProfileKey ?? 'None'} />
         <Setting label="Default settings" value={version.defaultSettingsJson ?? 'None'} code />
         <Setting label="Default pivot" value={version.defaultPivotJson ?? 'None'} code />
-        {isDraft && (
+        {isEditable && (
           <Button variant="outline" size="sm" className="ml-auto" onClick={() => setEditing(true)}>
             <Pencil />
             Edit settings
@@ -63,10 +59,10 @@ export function ReportVersionPanel({ version, isDraft }: ReportVersionPanelProps
           <TabsTrigger value="columns">Columns</TabsTrigger>
         </TabsList>
         <TabsContent value="lines">
-          <ReportLinesTab version={version} isDraft={isDraft} />
+          <ReportLinesTab version={version} isEditable={isEditable} />
         </TabsContent>
         <TabsContent value="columns">
-          <ReportColumnsTab version={version} isDraft={isDraft} />
+          <ReportColumnsTab version={version} isEditable={isEditable} />
         </TabsContent>
       </Tabs>
       {editing && <ReportVersionSheet version={version} onClose={() => setEditing(false)} />}

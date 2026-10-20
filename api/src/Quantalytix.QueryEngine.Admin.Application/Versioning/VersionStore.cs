@@ -11,13 +11,16 @@ public abstract class VersionStore<TRecord>(ITableGateway<TRecord> gateway, stri
     /// <summary>The <c>version_kind</c> value this store serves.</summary>
     public string Kind { get; } = kind;
 
+    /// <summary>The gateway of the versioned table.</summary>
+    protected ITableGateway<TRecord> Gateway { get; } = gateway;
+
     /// <summary>Reads a version's state.</summary>
     /// <param name="id">The version's surrogate key.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The version's state.</returns>
     public async Task<VersionState> GetAsync(long id, CancellationToken cancellationToken)
     {
-        var record = await gateway.GetAsync(Key(id), cancellationToken);
+        var record = await Gateway.GetAsync(Key(id), cancellationToken);
         return ToState(record);
     }
 
@@ -29,8 +32,8 @@ public abstract class VersionStore<TRecord>(ITableGateway<TRecord> gateway, stri
     /// <returns>A task that completes when the status is written.</returns>
     public async Task SetStatusAsync(long id, string status, DateTime? publishedAt, CancellationToken cancellationToken)
     {
-        var record = await gateway.GetAsync(Key(id), cancellationToken);
-        await gateway.UpdateAsync(WithStatus(record, status, publishedAt), cancellationToken);
+        var record = await Gateway.GetAsync(Key(id), cancellationToken);
+        await Gateway.UpdateAsync(WithStatus(record, status, publishedAt), cancellationToken);
     }
 
     /// <summary>The gateway key of a version, such as <c>new { DatasetVersionId = id }</c>.</summary>

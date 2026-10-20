@@ -8,15 +8,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 public sealed class NewBridgeVersionInputValidator : AbstractValidator<NewBridgeVersionInput>
 {
     /// <summary>Declares the rules.</summary>
-    /// <param name="dimensionVersions">Reads the endpoint versions.</param>
     /// <param name="bridgeVersions">Reads the clone source.</param>
     /// <param name="route">Names the bridge the new version belongs to.</param>
-    public NewBridgeVersionInputValidator(
-        ITableGateway<DimensionVersionRecord> dimensionVersions,
-        ITableGateway<BridgeVersionRecord> bridgeVersions,
-        IRequestRoute route)
+    public NewBridgeVersionInputValidator(ITableGateway<BridgeVersionRecord> bridgeVersions, IRequestRoute route)
     {
-        Include(new BridgeVersionInputValidator(dimensionVersions));
+        Include(new BridgeVersionInputValidator());
         RuleFor(input => input.CloneFromVersionId)
             .MustAsync(async (versionId, cancellationToken) =>
                 (await bridgeVersions.ListAsync(new { BridgeVersionId = versionId, BridgeId = route.Id("bridgeId") }, cancellationToken)).Count == 1)

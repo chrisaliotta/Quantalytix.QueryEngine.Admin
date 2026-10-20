@@ -6,7 +6,6 @@ import { SortableItem, SortableRoot } from '@registry/components/Sortable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
-import { useLookup } from '@/shared/useLookup';
 import { useReplaceReportColumns, useReportColumns } from './api';
 import { toColumnInput } from './columnList';
 import { ReportColumnSheet } from './ReportColumnSheet';
@@ -14,30 +13,20 @@ import type { ReportColumnInput, ReportVersion } from './types';
 
 export interface ReportColumnsTabProps {
   version: ReportVersion;
-  isDraft: boolean;
+  isEditable: boolean;
 }
 
-/** The version's columns, once they and the model version's metrics have loaded. */
-export function ReportColumnsTab({ version, isDraft }: ReportColumnsTabProps) {
+/** The version's columns, once they have loaded. */
+export function ReportColumnsTab({ version, isEditable }: ReportColumnsTabProps) {
   const columns = useReportColumns(version.reportVersionId);
-  const variables = useLookup('variables', version.modelVersionId ?? null);
-  const measures = useLookup('calculated-measures', version.modelVersionId ?? null);
 
-  if (columns.isPending || variables.isPending || measures.isPending) {
+  if (columns.isPending) {
     return <Loading size="sm" />;
   }
-  if (columns.error ?? variables.error ?? measures.error) {
-    return <ApiErrorAlert error={columns.error ?? variables.error ?? measures.error} />;
+  if (columns.error) {
+    return <ApiErrorAlert error={columns.error} />;
   }
-  const metricKeys = new Map([...variables.data, ...measures.data].map(item => [item.id, item.key]));
-  return (
-    <ColumnEditor
-      key={columns.dataUpdatedAt}
-      version={version}
-      isDraft={isDraft}
-      saved={columns.data.map(column => toColumnInput(column, metricKeys))}
-    />
-  );
+  return <ColumnEditor key={columns.dataUpdatedAt} version={version} isEditable={isEditable} saved={columns.data.map(toColumnInput)} />;
 }
 
 /** A column being edited, under an ID that stays the same while its key changes. */
@@ -57,10 +46,11 @@ interface ColumnEditorProps extends ReportColumnsTabProps {
 }
 
 /**
- * The version's columns in display order. Drafts reorder them by drag and drop and add, edit and remove them locally;
+ * The version's columns in display order. A draft or the published version reorders them by drag and drop and adds,
+ * edits and removes them locally;
  * "Save" replaces the whole list, and a column that keeps its ID keeps the formula lines that place values in it.
  */
-function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
+function ColumnEditor({ version, isEditable, saved }: ColumnEditorProps) {
   const replace = useReplaceReportColumns(version.reportVersionId);
   const [rows, setRows] = useState<ColumnRow[]>(() => saved.map(column => ({ id: crypto.randomUUID(), column })));
   const [sheet, setSheet] = useState<ColumnSheetRequest | null>(null);
@@ -78,7 +68,7 @@ function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
 
   return (
     <div data-slot="report-columns-tab" className="space-y-3">
-      {isDraft && (
+      {isEditable && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setSheet({ row: null })}>
             <Plus />
@@ -108,7 +98,7 @@ function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
       <SortableRoot items={rows.map(row => row.id)} onItemsChange={reorder} activationConstraint={{ distance: 4 }}>
         <ol data-slot="report-columns" className="space-y-1">
           {rows.map((row, index) => (
-            <SortableItem key={row.id} id={row.id} index={index} handle disabled={!isDraft}>
+            <SortableItem key={row.id} id={row.id} index={index} handle disabled={!isEditable}>
               {({ setNodeRef, setActivatorNodeRef, attributes, activatorListeners, style, isDragging }) => (
                 <li
                   ref={setNodeRef}
@@ -117,7 +107,7 @@ function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
                   data-dragging={isDragging}
                   className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm data-[dragging=true]:opacity-70"
                 >
-                  {isDraft && (
+                  {isEditable && (
                     <button
                       type="button"
                       ref={setActivatorNodeRef}
@@ -141,7 +131,7 @@ function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
                     {row.column.displayFormat && <span className="text-xs text-muted-foreground">{row.column.displayFormat}</span>}
                     {!row.column.isVisible && <Badge variant="secondary">Hidden</Badge>}
                   </button>
-                  {isDraft && (
+                  {isEditable && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -160,9 +150,9 @@ function ColumnEditor({ version, isDraft, saved }: ColumnEditorProps) {
       </SortableRoot>
       {sheet && (
         <ReportColumnSheet
-          modelVersionId={version.modelVersionId ?? null}
+          modelId={version.modelId}
           column={sheet.row?.column ?? null}
-          readOnly={!isDraft}
+          readOnly={!isEditable}
           onSave={column => saveRow(sheet.row, column)}
           onClose={() => setSheet(null)}
         />

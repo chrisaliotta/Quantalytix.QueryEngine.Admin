@@ -2,8 +2,11 @@
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
 datasets, fields, grains, dimensions, members, mappings, bridges, bindings, measures, calculation models, reports, their
-versions, releases and the tenant directory. Drafts never reach queries: the engine loads published metadata through the
-`vw_qe_*` views, and dataset and report versions reach it only through an activated release.
+versions, releases, assumption sets and the tenant directory. Drafts never reach queries. Dataset versions reach them only
+through an activated release. Dimension, mapping, bridge, calculation model and report versions are living: the
+published one is the default every request reads through the active assumption set, edits to it are live, and publishing
+the next version retires it. A request can name a captured historical assumption set to backtest against the versions of
+its time, over the dataset versions of the release that was active when it was captured.
 
 | Project | Holds |
 |---|---|
@@ -23,7 +26,9 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_16.sql`.
+- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_17.sql`.
+- A tenant database at metadata schema version 8 with its active assumption set, as the seed kit's build script creates
+  it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 
 ## Configuration
@@ -110,10 +115,13 @@ the tenant `TENANT` names, it:
 1. authors dataset `${PREFIX}loans` and publishes its v1;
 2. authors calculation model `${PREFIX}margin` over the seed GL monthly datasets and report `${PREFIX}margin` over it,
    and publishes both;
-3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version and the report version;
+3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
+   against whichever release is active, so the release pins no report;
 4. validates, publishes and activates the release;
-5. runs `GetCatalog`, `Execute`, `GetReportCatalog` and `ExecuteReport` on the engine;
-6. re-activates the release that was active before.
+5. renames the published report's yield column, a live edit;
+6. runs `GetCatalog`, `Execute`, `GetReportCatalog` and `ExecuteReport` on the engine, and expects the report catalog
+   to show the renamed column;
+7. re-activates the release that was active before.
 
 Before you run it:
 
@@ -123,8 +131,8 @@ Before you run it:
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
 - Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
   `bank.income_monthly` datasets, its `ReportItem` and `Branch` dimensions, and its 2024 data.
-- Use a new `PREFIX` for every run. Published objects are immutable, so each run leaves `${PREFIX}loans`, the
-  `${PREFIX}margin` model and report, and `${PREFIX}acceptance` behind until you reload the seed kit.
+- Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report, and
+  `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay taken.
 - Don't run the engine's golden cases at the same time: while the script runs, its release is the tenant's active
   release.
 

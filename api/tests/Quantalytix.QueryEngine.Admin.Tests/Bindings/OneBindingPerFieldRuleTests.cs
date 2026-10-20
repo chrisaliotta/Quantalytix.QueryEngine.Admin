@@ -59,8 +59,8 @@ public sealed class OneBindingPerFieldRuleTests
         Assert.Empty(await EvaluateAsync(
             DatasetRows.Binding(21, VersionId, "Branch", BindingKinds.Direct, 1),
             DatasetRows.Binding(22, VersionId, "Product", BindingKinds.Direct, 2),
-            DatasetRows.Binding(23, VersionId, "Region", BindingKinds.Bridge, null) with { SourceBindingId = 21, BridgeVersionId = 41 },
-            DatasetRows.Binding(24, VersionId, "Product family", BindingKinds.Bridge, null) with { SourceBindingId = 22, BridgeVersionId = 51 }));
+            DatasetRows.Binding(23, VersionId, "Region", BindingKinds.Bridge, null) with { SourceBindingId = 21, BridgeId = 41 },
+            DatasetRows.Binding(24, VersionId, "Product family", BindingKinds.Bridge, null) with { SourceBindingId = 22, BridgeId = 51 }));
     }
 
     /// <summary>Evaluates the rule on a version holding the given bindings.</summary>

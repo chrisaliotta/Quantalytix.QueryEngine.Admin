@@ -20,16 +20,16 @@ export function decimalText(value: number): string {
 }
 
 /**
- * Each source member's allocation weight sum, added in units of the column's scale so that 0.086 + 0.35 + 0.564 is
+ * Each source member's allocation weight sum, by member key, added in units of the column's scale so that 0.086 + 0.35 + 0.564 is
  * exactly 1, where floating point gives 0.9999999999999999.
  */
-export function sourceWeightSums(mappings: BridgeMapping[]): Map<number, WeightSum> {
-  const sums = new Map<number, bigint>();
+export function sourceWeightSums(mappings: BridgeMapping[]): Map<string, WeightSum> {
+  const sums = new Map<string, bigint>();
   for (const mapping of mappings) {
-    sums.set(mapping.sourceMemberId, (sums.get(mapping.sourceMemberId) ?? 0n) + toUnits(mapping.allocationWeight));
+    sums.set(mapping.sourceMemberKey, (sums.get(mapping.sourceMemberKey) ?? 0n) + toUnits(mapping.allocationWeight));
   }
   return new Map(
-    [...sums].map(([sourceMemberId, units]) => [sourceMemberId, { text: unitsText(units), isOne: units === ONE }])
+    [...sums].map(([sourceMemberKey, units]) => [sourceMemberKey, { text: unitsText(units), isOne: units === ONE }])
   );
 }
 

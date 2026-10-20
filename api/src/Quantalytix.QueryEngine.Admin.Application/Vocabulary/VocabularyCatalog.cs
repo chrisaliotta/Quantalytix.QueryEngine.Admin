@@ -52,7 +52,6 @@ public static class VocabularyCatalog
         RouteKinds.Definition,
         ReportLineKinds.Definition,
         ReportValueKinds.Definition,
-        ClassificationTimes.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

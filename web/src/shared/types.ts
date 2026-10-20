@@ -21,7 +21,6 @@ export type VersionKind =
   | 'mapping_version'
   | 'bridge_version'
   | 'semantic_release'
-  | 'assumption_set'
   | 'calculation_model_version'
   | 'report_version';
 

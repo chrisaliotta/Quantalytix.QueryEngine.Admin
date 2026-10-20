@@ -1,6 +1,6 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { DateTimeField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { SwitchField, TextField, VocabularyField } from '@/shared/form';
 import { useCreateDimension } from './api';
 import type { Dimension } from './types';
 
@@ -9,7 +9,6 @@ interface NewDimensionValues {
   displayName: string;
   dimensionKind: string | null;
   rangeDataType: string | null;
-  validFrom: string | null;
   isEnabled: boolean;
   isRemovable: boolean;
 }
@@ -19,7 +18,6 @@ const EMPTY: NewDimensionValues = {
   displayName: '',
   dimensionKind: null,
   rangeDataType: null,
-  validFrom: null,
   isEnabled: true,
   isRemovable: true,
 };
@@ -31,7 +29,7 @@ export interface NewDimensionSheetProps {
 
 /**
  * Creates a user-defined dimension with its draft version 1. A range data type is asked for only when the kind is
- * `range`; the optional valid-from starts version 1's validity.
+ * `range`.
  */
 export function NewDimensionSheet({ onClose, onCreated }: NewDimensionSheetProps) {
   const create = useCreateDimension();
@@ -68,11 +66,6 @@ export function NewDimensionSheet({ onClose, onCreated }: NewDimensionSheetProps
           description="The type of the values the bands compare."
         />
       )}
-      <DateTimeField
-        name="validFrom"
-        label="Valid from"
-        description="Optional start of version 1's validity; it is required before publishing."
-      />
       <SwitchField name="isEnabled" label="Enabled" description="Whether queries may use the dimension." />
       <SwitchField name="isRemovable" label="Removable" description="Whether the dimension may be deleted later." />
     </EntityFormSheet>

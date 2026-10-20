@@ -6,8 +6,26 @@ namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 /// <summary>Builds the calculation model rows the model, report and release tests seed, all in model version 41 unless changed with <c>with</c>.</summary>
 internal static class ModelRows
 {
+    /// <summary>The calculation model the rows belong to.</summary>
+    public const long ModelId = 40;
+
     /// <summary>The model version the rows belong to.</summary>
     public const long ModelVersionId = 41;
+
+    /// <summary>A version of model 40, published unless told otherwise.</summary>
+    public static CalculationModelVersionRecord ModelVersion(long modelVersionId = ModelVersionId, string status = PublicationStatuses.Published)
+    {
+        return new CalculationModelVersionRecord
+        {
+            ModelVersionId = modelVersionId,
+            ModelId = ModelId,
+            VersionNumber = (int)(modelVersionId % 10),
+            Status = status,
+            CalendarKey = "gregorian",
+            CurrencyCode = "USD",
+            FormulaLanguageVersion = "1.0"
+        };
+    }
 
     /// <summary>A variable that sums the descendants of its target member, reading missing values as zero.</summary>
     public static VariableRecord Variable(long variableId, string variableKey, string? targetMemberKey = null)
@@ -38,7 +56,6 @@ internal static class ModelRows
             ReportFieldKey = "gl_account",
             TimeFieldKey = "as_of_date",
             MeasureKey = "balance",
-            ClassificationAsOf = ClassificationTimes.ObservationTime,
             IsEnabled = true
         };
     }

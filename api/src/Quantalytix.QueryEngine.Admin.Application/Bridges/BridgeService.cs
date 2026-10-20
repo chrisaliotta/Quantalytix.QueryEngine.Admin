@@ -8,6 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 public sealed class BridgeService(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
+    ITableGateway<DimensionBindingRecord> bindings,
     BridgeVersionService versionService,
     SemanticRevision semanticRevision,
     IIdGenerator ids)
@@ -30,7 +31,7 @@ public sealed class BridgeService(
         return bridges.GetAsync(new { BridgeId = bridgeId }, cancellationToken);
     }
 
-    /// <summary>Creates a bridge without versions; each version pins its two endpoint dimension versions, so none exists yet.</summary>
+    /// <summary>Creates a bridge without versions; its mappings belong to versions, so none exists yet.</summary>
     /// <param name="input">The new bridge, already validated.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The stored bridge.</returns>
@@ -82,7 +83,8 @@ public sealed class BridgeService(
         blockers.AddNamed(
             "it has non-draft versions",
             bridgeVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        blockers.AddNamed("used by bindings", await versionService.BindingNamesAsync(versionIds, cancellationToken));
+        var boundBy = await bindings.ListAsync(new { BridgeId = bridgeId }, cancellationToken);
+        blockers.AddNamed("used by bindings", boundBy.Select(binding => $"'{binding.DisplayName}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

@@ -119,7 +119,7 @@ export function useUpdateReport(reportId: number) {
   });
 }
 
-/** Deletes a report whose versions are all drafts that no release pins; a 409 names what blocks it. */
+/** Deletes a report whose versions are all drafts; a 409 names what blocks it. */
 export function useDeleteReport() {
   const tenantId = useTenantId();
   return useMutation({
@@ -132,7 +132,7 @@ export function useDeleteReport() {
   });
 }
 
-/** Creates a draft report version, empty or cloned; the answer names the columns and lines a clone dropped. */
+/** Creates a draft report version, empty or a copy of another version's columns and lines. */
 export function useCreateReportVersion(reportId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -147,7 +147,7 @@ export function useCreateReportVersion(reportId: number) {
   });
 }
 
-/** Edits a draft version's default profile and defaults. */
+/** Edits a draft or published version's default profile and defaults. */
 export function useUpdateReportVersion(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -162,7 +162,7 @@ export function useUpdateReportVersion(versionId: number) {
   });
 }
 
-/** Deletes a draft version with its lines and columns; a 409 names the releases that pin it. */
+/** Deletes a draft version with its lines and columns. */
 export function useDeleteReportVersion() {
   const tenantId = useTenantId();
   return useMutation({
@@ -176,7 +176,7 @@ export function useDeleteReportVersion() {
   });
 }
 
-/** Replaces the columns of a draft version; the stored columns replace the cached list. */
+/** Replaces the columns of a draft or published version; the stored columns replace the cached list. */
 export function useReplaceReportColumns(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -194,7 +194,7 @@ export function useReplaceReportColumns(versionId: number) {
   });
 }
 
-/** Replaces the line tree of a draft version; the stored lines replace the cached list. */
+/** Replaces the line tree of a draft or published version; the stored lines replace the cached list. */
 export function useReplaceReportLines(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({

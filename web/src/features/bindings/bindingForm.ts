@@ -14,25 +14,26 @@ export interface TimeBindingFormValues {
   cumulativeFixedStart: string | null;
 }
 
-/** Values of the binding sheet. `bridgeId` only narrows the bridge version picker; it is never sent. */
+/**
+ * Values of the binding sheet. The grouping level, grouping ancestor and unknown member are keys, which requests resolve in
+ * the version of the dimension their assumption set pins.
+ */
 export interface BindingFormValues {
   displayName: string;
   bindingKind: string | null;
   dimensionId: number | null;
-  pinnedDimensionVersionId: number | null;
   sourceFieldId: number | null;
   mappingSetId: number | null;
   sourceBindingId: number | null;
   bridgeId: number | null;
-  bridgeVersionId: number | null;
   groupingMode: string | null;
-  groupingLevelId: number | null;
-  groupingAncestorMemberId: number | null;
+  groupingLevelKey: string | null;
+  groupingAncestorMemberKey: string | null;
   groupingDepth: number | null;
   raggedBehavior: string | null;
   defaultPeriodAlignment: string | null;
   unmappedBehavior: string | null;
-  unknownMemberId: number | null;
+  unknownMemberKey: string | null;
   isRequired: boolean;
   isGroupable: boolean;
   isFilterable: boolean;
@@ -50,20 +51,18 @@ export function bindingFormValues(detail?: BindingDetail): BindingFormValues {
     displayName: binding?.displayName ?? '',
     bindingKind: binding?.bindingKind ?? 'direct',
     dimensionId: binding?.dimensionId ?? null,
-    pinnedDimensionVersionId: binding?.pinnedDimensionVersionId ?? null,
     sourceFieldId: binding?.sourceFieldId ?? null,
     mappingSetId: binding?.mappingSetId ?? null,
     sourceBindingId: binding?.sourceBindingId ?? null,
-    bridgeId: detail?.bridgeId ?? null,
-    bridgeVersionId: binding?.bridgeVersionId ?? null,
+    bridgeId: binding?.bridgeId ?? null,
     groupingMode: binding?.groupingMode ?? 'member',
-    groupingLevelId: binding?.groupingLevelId ?? null,
-    groupingAncestorMemberId: binding?.groupingAncestorMemberId ?? null,
+    groupingLevelKey: binding?.groupingLevelKey ?? null,
+    groupingAncestorMemberKey: binding?.groupingAncestorMemberKey ?? null,
     groupingDepth: binding?.groupingDepth ?? null,
     raggedBehavior: binding?.raggedBehavior ?? 'null',
     defaultPeriodAlignment: binding?.defaultPeriodAlignment ?? 'observation',
     unmappedBehavior: binding?.unmappedBehavior ?? 'null',
-    unknownMemberId: binding?.unknownMemberId ?? null,
+    unknownMemberKey: binding?.unknownMemberKey ?? null,
     isRequired: binding?.isRequired ?? false,
     isGroupable: binding?.isGroupable ?? true,
     isFilterable: binding?.isFilterable ?? true,
@@ -105,20 +104,19 @@ export function toBindingInput(values: BindingFormValues): BindingInput {
   return {
     displayName: values.displayName,
     dimensionId: values.dimensionId,
-    pinnedDimensionVersionId: values.pinnedDimensionVersionId,
     bindingKind: kind ?? '',
     sourceFieldId: values.sourceFieldId,
     mappingSetId: kind === 'mapped' ? values.mappingSetId : null,
     sourceBindingId: kind === 'bridge' ? values.sourceBindingId : null,
-    bridgeVersionId: kind === 'bridge' ? values.bridgeVersionId : null,
+    bridgeId: kind === 'bridge' ? values.bridgeId : null,
     groupingMode: values.groupingMode ?? '',
-    groupingLevelId: values.groupingMode === 'level' ? values.groupingLevelId : null,
-    groupingAncestorMemberId: values.groupingMode === 'ancestor' ? values.groupingAncestorMemberId : null,
+    groupingLevelKey: values.groupingMode === 'level' ? values.groupingLevelKey : null,
+    groupingAncestorMemberKey: values.groupingMode === 'ancestor' ? values.groupingAncestorMemberKey : null,
     groupingDepth: values.groupingMode === 'depth' ? values.groupingDepth : null,
     raggedBehavior: values.raggedBehavior ?? '',
     defaultPeriodAlignment: values.defaultPeriodAlignment ?? '',
     unmappedBehavior: values.unmappedBehavior ?? '',
-    unknownMemberId: values.unmappedBehavior === 'unknown' ? values.unknownMemberId : null,
+    unknownMemberKey: values.unmappedBehavior === 'unknown' ? values.unknownMemberKey : null,
     isRequired: values.isRequired,
     isGroupable: values.isGroupable,
     isFilterable: values.isFilterable,

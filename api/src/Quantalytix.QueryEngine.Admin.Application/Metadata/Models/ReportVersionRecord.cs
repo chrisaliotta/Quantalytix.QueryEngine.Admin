@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_report_version</c> row: one immutable version of a report: its dimension, model version, defaults, lines and columns.</summary>
+/// <summary>A <c>qe_report_version</c> row: one version of a report: its dimension, model, defaults, lines and columns.</summary>
 public sealed record ReportVersionRecord
 {
     /// <summary>Primary key.</summary>
@@ -15,11 +15,11 @@ public sealed record ReportVersionRecord
     /// <summary>The canonical dimension whose members the member lines name.</summary>
     public required long ReportDimensionId { get; init; }
 
-    /// <summary>The calculation model version the report reads.</summary>
-    public long? ModelVersionId { get; init; }
+    /// <summary>The calculation model; a run reads the model version its assumption set pins.</summary>
+    public required long ModelId { get; init; }
 
-    /// <summary>The profile a request runs under when it names none.</summary>
-    public long? DefaultSourceProfileId { get; init; }
+    /// <summary>The key of the profile a request runs under when it names none; required at publication.</summary>
+    public string? DefaultProfileKey { get; init; }
 
     /// <summary>A <c>publication_status</c> value.</summary>
     public required string Status { get; init; }

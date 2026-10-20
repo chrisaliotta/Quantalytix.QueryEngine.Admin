@@ -49,7 +49,7 @@ public sealed class DimensionService(
             IsEnabled = input.IsEnabled
         };
         await dimensions.InsertAsync(dimension, cancellationToken);
-        var firstVersion = new NewDimensionVersionInput { RangeDataType = input.RangeDataType, ValidFrom = input.ValidFrom };
+        var firstVersion = new NewDimensionVersionInput { RangeDataType = input.RangeDataType };
         await dimensionVersions.CreateAsync(dimension.DimensionId, firstVersion, cancellationToken);
         return dimension;
     }

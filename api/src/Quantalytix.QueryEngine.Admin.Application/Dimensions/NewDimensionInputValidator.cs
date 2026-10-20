@@ -30,6 +30,5 @@ public sealed class NewDimensionInputValidator : AbstractValidator<NewDimensionI
             .WithMessage("'{PropertyName}' must be null unless the dimension kind is range.")
             .When(input => input.DimensionKind != DimensionKinds.Range);
         RuleFor(input => input.RangeDataType).MustBeIn(RangeDataTypes.Definition);
-        RuleFor(input => input.ValidFrom).MustBeUtc();
     }
 }

@@ -2,7 +2,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { JsonField, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
-import { useLookup } from '@/shared/useLookup';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import type { ReportColumnInput } from './types';
 
 /** Values of the column sheet; a choice not made yet is null, and optional text is empty for none. */
@@ -17,8 +17,8 @@ interface ReportColumnValues {
 }
 
 export interface ReportColumnSheetProps {
-  /** The model version whose metrics the column can return. */
-  modelVersionId: number | null;
+  /** The calculation model whose published version's metrics the column can return. */
+  modelId: number;
   /** The column to edit or view; null to add one. */
   column: ReportColumnInput | null;
   readOnly: boolean;
@@ -28,9 +28,9 @@ export interface ReportColumnSheetProps {
 }
 
 /** Adds, edits or shows a column of the list being edited: the variable or calculated measure it returns, and how. */
-export function ReportColumnSheet({ modelVersionId, column, readOnly, onSave, onClose }: ReportColumnSheetProps) {
-  const variables = useLookup('variables', modelVersionId);
-  const measures = useLookup('calculated-measures', modelVersionId);
+export function ReportColumnSheet({ modelId, column, readOnly, onSave, onClose }: ReportColumnSheetProps) {
+  const variables = usePublishedVersionItems('model-versions', modelId, 'variables');
+  const measures = usePublishedVersionItems('model-versions', modelId, 'calculated-measures');
   const form = useForm<ReportColumnValues>({
     defaultValues: {
       columnKey: column?.columnKey ?? '',
@@ -74,7 +74,7 @@ export function ReportColumnSheet({ modelVersionId, column, readOnly, onSave, on
       <KeyField
         name="metricKey"
         label={isVariable ? 'Variable' : 'Calculated measure'}
-        items={(isVariable ? variables.data : measures.data) ?? null}
+        items={isVariable ? variables : measures}
       />
       <TextField name="displayFormat" label="Display format" description="Optional: how clients format the values, such as currency." />
       <SwitchField name="isVisible" label="Visible" description="Whether a request that names no columns returns this one." />

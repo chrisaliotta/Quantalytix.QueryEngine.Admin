@@ -66,7 +66,7 @@ public sealed class ReportService(
         return updated;
     }
 
-    /// <summary>Deletes a report whose versions are all drafts that no release pins, with those drafts and their lines and columns.</summary>
+    /// <summary>Deletes a report whose versions are all drafts, with those drafts and their lines and columns.</summary>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the report was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
@@ -79,7 +79,6 @@ public sealed class ReportService(
         blockers.AddNamed(
             "it has non-draft versions",
             reportVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        blockers.AddNamed("pinned by releases", await versionService.ReleaseNamesAsync(versionIds, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

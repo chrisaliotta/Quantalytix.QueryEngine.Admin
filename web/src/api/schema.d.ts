@@ -59,7 +59,8 @@ export interface paths {
         get?: never;
         /**
          * Changes a version's status. Leaving draft runs the kind's publication rules, retiring a published version runs its
-         *     retirement rules, and publishing stamps the publication time.
+         *     retirement rules, and publishing stamps the publication time. Publishing a living kind's version also retires the version
+         *     published before it; a living version cannot be retired by hand.
          */
         put: {
             parameters: {
@@ -139,6 +140,79 @@ export interface paths {
             };
         };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/versions/{kind}/{id}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checks a version against its kind's publication rules and changes nothing. Validate on a published living version runs this
+         *     check, because its edits are live and only field rules guard them as they are made.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the version. */
+                    tenantId: string;
+                    /** @description A `version_kind` value, such as `dimension_version`. */
+                    kind: string;
+                    /** @description The version's surrogate key. */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The check ran; `violations` lists what the rules found and is empty when the version passes. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VersionCheck"];
+                    };
+                };
+                /** @description The kind is not a known value. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -753,7 +827,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid. */
+        /** Replaces a draft or published report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid. */
         put: {
             parameters: {
                 query?: never;
@@ -761,7 +835,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft report version. */
+                    /** @description The draft or published report version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -809,7 +883,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -878,7 +952,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID. */
+        /** Replaces a draft or published report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -886,7 +960,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft report version. */
+                    /** @description The draft or published report version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -934,7 +1008,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1071,7 +1145,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reads one report, including its current version. */
+        /** Reads one report. */
         get: {
             parameters: {
                 query?: never;
@@ -1283,8 +1357,8 @@ export interface paths {
         };
         put?: never;
         /**
-         * Creates a draft with the report's next version number: empty, or cloned from `cloneFromVersionId`, whose columns
-         *     and lines move to the metrics with the same keys in the new model version.
+         * Creates a draft with the report's next version number: empty, or with copies of the columns and lines of
+         *     `cloneFromVersionId`.
          */
         post: {
             parameters: {
@@ -1305,13 +1379,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description The created draft, with the cloned columns and lines whose metrics the new model version lacks. */
+                /** @description The created draft. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CreatedReportVersion"];
+                        "application/json": components["schemas"]["ReportVersionRecord"];
                     };
                 };
                 /** @description The input breaks a field rule, such as a clone source of another report; errors are keyed by camelCase JSON path. */
@@ -1401,8 +1475,8 @@ export interface paths {
             };
         };
         /**
-         * Replaces a draft version's report dimension, default profile and defaults; its model version, lines and columns stay as
-         *     they are.
+         * Replaces a draft or published version's default profile, payload and defaults; its report dimension, model, lines and
+         *     columns stay as they are.
          */
         put: {
             parameters: {
@@ -1411,7 +1485,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft report version. */
+                    /** @description The draft or published report version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -1459,7 +1533,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1471,10 +1545,7 @@ export interface paths {
             };
         };
         post?: never;
-        /**
-         * Deletes a draft version that no release pins, with its lines and columns, and clears the report's current-version
-         *     pointer when it named the version.
-         */
+        /** Deletes a draft version with its lines and columns. */
         delete: {
             parameters: {
                 query?: never;
@@ -1514,7 +1585,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the releases that pin it. */
+                /** @description Nothing was deleted: the version is not a draft. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1832,131 +1903,6 @@ export interface paths {
                     };
                 };
                 /** @description A dataset does not exist, or a dataset or dataset version appears more than once. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The release is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/reports": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists a release's report pins: the report version it pins for each report. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the release. */
-                    tenantId: string;
-                    /** @description The release. */
-                    releaseId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The report pins, ordered by report. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReleaseReportRecord"][];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        /** Replaces a draft release's report pins; validating the release checks that each pinned report resolves in it. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the release. */
-                    tenantId: string;
-                    /** @description The draft release. */
-                    releaseId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ReleaseReportsInput"];
-                    "application/*+json": components["schemas"]["ReleaseReportsInput"];
-                };
-            };
-            responses: {
-                /** @description The stored report pins, ordered by report. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReleaseReportRecord"][];
-                    };
-                };
-                /** @description A report appears more than once, or a pinned version is not a version of its report. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2453,7 +2399,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces every entry of a draft mapping version with the given list. */
+        /** Replaces every entry of a draft or published mapping version with the given list. */
         put: {
             parameters: {
                 query?: never;
@@ -2461,7 +2407,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft mapping version. */
+                    /** @description The draft or published mapping version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -2509,7 +2455,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -2520,7 +2466,7 @@ export interface paths {
                 };
             };
         };
-        /** Adds an entry to a draft mapping version. */
+        /** Adds an entry to a draft or published mapping version. */
         post: {
             parameters: {
                 query?: never;
@@ -2528,7 +2474,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft mapping version. */
+                    /** @description The draft or published mapping version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -2576,7 +2522,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -2659,7 +2605,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -2671,7 +2617,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes an entry of a draft mapping version. */
+        /** Deletes an entry of a draft or published mapping version. */
         delete: {
             parameters: {
                 query?: never;
@@ -2722,7 +2668,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3026,7 +2972,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists a mapping set's versions with their status and pinned dimension version. */
+        /** Lists a mapping set's versions with their status. */
         get: {
             parameters: {
                 query?: never;
@@ -3071,10 +3017,7 @@ export interface paths {
             };
         };
         put?: never;
-        /**
-         * Creates a draft with the set's next version number, pinned to `dimensionVersionId`: empty, or cloned from
-         *     `cloneFromVersionId`, whose entries move to the members with the same keys in the pinned dimension version.
-         */
+        /** Creates a draft with the set's next version number: empty, or with copies of the entries of `cloneFromVersionId`. */
         post: {
             parameters: {
                 query?: never;
@@ -3094,16 +3037,16 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description The created draft, with the source keys of cloned entries whose member key the pinned version lacks. */
+                /** @description The created draft. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CreatedMappingVersion"];
+                        "application/json": components["schemas"]["MappingVersionRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as an unknown dimension version; errors are keyed by camelCase JSON path. */
+                /** @description The clone source is not a version of the mapping set; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3370,7 +3313,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a level to a draft version. */
+        /** Adds a level to a draft or published version. */
         post: {
             parameters: {
                 query?: never;
@@ -3378,7 +3321,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
+                    /** @description The draft or published version. */
                     dimensionVersionId: number;
                 };
                 cookie?: never;
@@ -3426,7 +3369,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3509,7 +3452,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3521,7 +3464,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a level of a draft version, unless members use it. */
+        /** Deletes a level of a draft or published version, unless members use it or, in the published version, live bindings group at its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -3572,7 +3515,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the members that use the level. */
+                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names what uses the level. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3640,7 +3583,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a member to a draft version. */
+        /** Adds a member to a draft or published version. */
         post: {
             parameters: {
                 query?: never;
@@ -3648,7 +3591,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
+                    /** @description The draft or published version. */
                     dimensionVersionId: number;
                 };
                 cookie?: never;
@@ -3696,7 +3639,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3779,7 +3722,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3791,7 +3734,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a member of a draft version, unless it has children or a mapping entry, range band or bridge mapping references it. */
+        /** Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -3842,7 +3785,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names what references the member. */
+                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names what references the member. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3874,7 +3817,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
+                    /** @description The draft or published version. */
                     dimensionVersionId: number;
                 };
                 cookie?: never;
@@ -3922,7 +3865,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4231,7 +4174,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists a dimension's versions with their status and validity windows, from which the effective version follows. */
+        /** Lists a dimension's versions with their status; the published one is the version the active assumption set pins. */
         get: {
             parameters: {
                 query?: never;
@@ -4246,7 +4189,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The versions by version number, each with `validFrom` and `validTo`. */
+                /** @description The versions by version number. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -4278,8 +4221,7 @@ export interface paths {
         put?: never;
         /**
          * Creates a draft with the dimension's next version number, empty or cloned from `cloneFromVersionId`. A clone copies
-         *     the levels, members, range bands and the dimension's mapping versions pinned to the source, and the source's range data
-         *     type unless one is supplied.
+         *     the levels, members and range bands, and the source's range data type unless one is supplied.
          */
         post: {
             parameters: {
@@ -4395,7 +4337,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft version's range data type and validity window. */
+        /** Replaces a draft or published version's range data type. */
         put: {
             parameters: {
                 query?: never;
@@ -4403,7 +4345,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft version. */
+                    /** @description The draft or published version. */
                     dimensionVersionId: number;
                 };
                 cookie?: never;
@@ -4424,7 +4366,7 @@ export interface paths {
                         "application/json": components["schemas"]["DimensionVersionRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as `validTo` not after `validFrom`; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, such as an unknown range data type; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4451,7 +4393,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4463,10 +4405,7 @@ export interface paths {
             };
         };
         post?: never;
-        /**
-         * Deletes a draft version with its levels, members, range bands, closure rows and the draft mapping versions pinned to it,
-         *     unless a non-draft mapping version, a bridge version, a binding or an assumption set pins it.
-         */
+        /** Deletes a draft version with its levels, members, range bands and closure rows. */
         delete: {
             parameters: {
                 query?: never;
@@ -4506,7 +4445,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names what pins it. */
+                /** @description Nothing was deleted: the version is not a draft. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4583,7 +4522,7 @@ export interface paths {
             };
         };
         /**
-         * Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound
+         * Replaces every band of a draft or published range version with the ordered list; each band's ordinal is its position, from 1. Bound
          *     families, order and overlaps are checked when the version is validated.
          */
         put: {
@@ -4641,7 +4580,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6078,7 +6017,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a calculated measure to a draft model version. */
+        /** Adds a calculated measure to a draft or published model version. */
         post: {
             parameters: {
                 query?: never;
@@ -6086,7 +6025,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -6134,7 +6073,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6159,7 +6098,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a calculated measure of a draft model version, keeping its ID. */
+        /** Replaces a calculated measure of a draft or published model version, keeping its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -6217,7 +6156,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6229,7 +6168,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a calculated measure of a draft model version, unless a report column returns it or a formula line evaluates it. */
+        /** Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula line evaluates it. */
         delete: {
             parameters: {
                 query?: never;
@@ -6280,7 +6219,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the report columns and lines that use the measure. */
+                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns and lines that use the measure. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6348,7 +6287,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a calculation dimension to a draft model version. */
+        /** Adds a calculation dimension to a draft or published model version. */
         post: {
             parameters: {
                 query?: never;
@@ -6356,7 +6295,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -6404,7 +6343,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6429,7 +6368,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a calculation dimension of a draft model version, keeping its ID. */
+        /** Replaces a calculation dimension of a draft or published model version, keeping its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -6487,7 +6426,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6499,7 +6438,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a calculation dimension of a draft model version with its routes. */
+        /** Deletes a calculation dimension of a draft or published model version with its routes. */
         delete: {
             parameters: {
                 query?: never;
@@ -6550,7 +6489,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft. */
+                /** @description Nothing was deleted: the version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6685,7 +6624,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reads one calculation model, including its current version. */
+        /** Reads one calculation model. */
         get: {
             parameters: {
                 query?: never;
@@ -7014,7 +6953,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft version's currency; its content stays as it is. */
+        /** Replaces a draft or published version's currency; its content stays as it is. */
         put: {
             parameters: {
                 query?: never;
@@ -7022,7 +6961,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -7070,7 +7009,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7082,10 +7021,7 @@ export interface paths {
             };
         };
         post?: never;
-        /**
-         * Deletes a draft version that no report version reads, with its content, and clears the model's current-version pointer
-         *     when it named the version.
-         */
+        /** Deletes a draft version with its content. */
         delete: {
             parameters: {
                 query?: never;
@@ -7125,7 +7061,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the report versions that read it. */
+                /** @description Nothing was deleted: the version is not a draft. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7193,7 +7129,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a route to a draft model version; whether its field produces the dimension in the dataset version a release pins is a release rule. */
+        /** Adds a route to a draft or published model version; whether its field produces the dimension in the dataset version a release pins is a release rule. */
         post: {
             parameters: {
                 query?: never;
@@ -7201,7 +7137,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -7249,7 +7185,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7274,7 +7210,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a route of a draft model version, keeping its ID. */
+        /** Replaces a route of a draft or published model version, keeping its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -7332,7 +7268,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7344,7 +7280,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a route of a draft model version. */
+        /** Deletes a route of a draft or published model version. */
         delete: {
             parameters: {
                 query?: never;
@@ -7395,7 +7331,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft. */
+                /** @description Nothing was deleted: the version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7463,7 +7399,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a source profile with its picks to a draft model version. */
+        /** Adds a source profile with its picks to a draft or published model version. */
         post: {
             parameters: {
                 query?: never;
@@ -7471,7 +7407,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -7519,7 +7455,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7544,7 +7480,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a source profile of a draft model version and all its picks, keeping the profile's ID. */
+        /** Replaces a source profile of a draft or published model version and all its picks, keeping the profile's ID. */
         put: {
             parameters: {
                 query?: never;
@@ -7602,7 +7538,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7614,7 +7550,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a source profile of a draft model version with its picks, unless a report version runs under it by default. */
+        /** Deletes a source profile of a draft or published model version with its picks, unless a live report version runs under it by default. */
         delete: {
             parameters: {
                 query?: never;
@@ -7665,7 +7601,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the report versions whose default profile it is. */
+                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names the report versions whose default profile it is. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7733,7 +7669,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a variable to a draft model version. */
+        /** Adds a variable to a draft or published model version. */
         post: {
             parameters: {
                 query?: never;
@@ -7741,7 +7677,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -7789,7 +7725,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7814,7 +7750,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a variable of a draft model version, keeping its ID. */
+        /** Replaces a variable of a draft or published model version, keeping its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -7872,7 +7808,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7884,7 +7820,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a variable of a draft model version with its sources and their profile picks and override routes, unless a report column returns it. */
+        /** Deletes a variable of a draft or published model version with its sources and their profile picks and override routes, unless a live report column returns it. */
         delete: {
             parameters: {
                 query?: never;
@@ -7935,7 +7871,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the report columns that return the variable. */
+                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns that return the variable. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8003,7 +7939,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a variable source to a draft model version; whether its keys resolve in the dataset version a release pins is a release rule. */
+        /** Adds a variable source to a draft or published model version; whether its keys resolve in the dataset version a release pins is a release rule. */
         post: {
             parameters: {
                 query?: never;
@@ -8011,7 +7947,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft model version. */
+                    /** @description The draft or published model version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -8059,7 +7995,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8084,7 +8020,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a variable source of a draft model version, keeping its ID. */
+        /** Replaces a variable source of a draft or published model version, keeping its ID. */
         put: {
             parameters: {
                 query?: never;
@@ -8142,7 +8078,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8154,7 +8090,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a variable source of a draft model version with the profile picks and override routes that name it. */
+        /** Deletes a variable source of a draft or published model version with the profile picks and override routes that name it. */
         delete: {
             parameters: {
                 query?: never;
@@ -8205,7 +8141,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft. */
+                /** @description Nothing was deleted: the version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8272,7 +8208,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces every mapping of a draft bridge version with the given list. */
+        /** Replaces every mapping of a draft or published bridge version with the given list. */
         put: {
             parameters: {
                 query?: never;
@@ -8280,7 +8216,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft bridge version. */
+                    /** @description The draft or published bridge version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -8328,7 +8264,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8465,7 +8401,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reads one bridge, including its authoring-only current version. */
+        /** Reads one bridge. */
         get: {
             parameters: {
                 query?: never;
@@ -8631,7 +8567,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists a bridge's versions with their endpoint versions, allocation semantics and status. */
+        /** Lists a bridge's versions with their allocation semantics and status. */
         get: {
             parameters: {
                 query?: never;
@@ -8676,10 +8612,7 @@ export interface paths {
             };
         };
         put?: never;
-        /**
-         * Creates a draft with the bridge's next version number: empty, or cloned from `cloneFromVersionId`, whose mappings
-         *     move to the members with the same keys in the new endpoint versions.
-         */
+        /** Creates a draft with the bridge's next version number: empty, or with copies of the mappings of `cloneFromVersionId`. */
         post: {
             parameters: {
                 query?: never;
@@ -8699,13 +8632,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description The created draft, with the cloned mappings whose member keys the new endpoint versions lack. */
+                /** @description The created draft. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CreatedBridgeVersion"];
+                        "application/json": components["schemas"]["BridgeVersionRecord"];
                     };
                 };
                 /** @description The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path. */
@@ -8794,7 +8727,7 @@ export interface paths {
                 };
             };
         };
-        /** Replaces a draft version's endpoint versions, cardinality and allocation mode; its mappings stay as they are. */
+        /** Replaces a draft or published version's cardinality and allocation mode; its mappings stay as they are. */
         put: {
             parameters: {
                 query?: never;
@@ -8802,7 +8735,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the version. */
                     tenantId: string;
-                    /** @description The draft bridge version. */
+                    /** @description The draft or published bridge version. */
                     versionId: number;
                 };
                 cookie?: never;
@@ -8850,7 +8783,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is not a draft. */
+                /** @description The version is neither a draft nor published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8862,10 +8795,7 @@ export interface paths {
             };
         };
         post?: never;
-        /**
-         * Deletes a draft version that no binding uses, with its mappings, and clears the bridge's current-version pointer when it
-         *     named the version.
-         */
+        /** Deletes a draft version with its mappings. */
         delete: {
             parameters: {
                 query?: never;
@@ -8905,7 +8835,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is not a draft, or the detail names the bindings that use it. */
+                /** @description Nothing was deleted: the version is not a draft. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -9204,7 +9134,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists the tenant's assumption sets, ordered by key. */
+        /** Lists the tenant's assumption sets: the active one, then historical sets, most recently captured first. */
         get: {
             parameters: {
                 query?: never;
@@ -9217,7 +9147,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The assumption sets, ordered by key. */
+                /** @description The assumption sets. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -9247,7 +9177,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Creates a draft assumption set without pins. */
+        /** Captures a historical set: a copy of the active set's current pins under a new key, reading the active release. */
         post: {
             parameters: {
                 query?: never;
@@ -9260,12 +9190,12 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["AssumptionSetCreateInput"];
-                    "application/*+json": components["schemas"]["AssumptionSetCreateInput"];
+                    "application/json": components["schemas"]["AssumptionCaptureInput"];
+                    "application/*+json": components["schemas"]["AssumptionCaptureInput"];
                 };
             };
             responses: {
-                /** @description The assumption set was created; the body is the new draft. */
+                /** @description The set was captured; the body is the new historical set. */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -9274,7 +9204,7 @@ export interface paths {
                         "application/json": components["schemas"]["AssumptionSetRecord"];
                     };
                 };
-                /** @description The key is malformed or taken, the display name is missing, or the effective time is not UTC. */
+                /** @description The key is malformed or taken, or the display name is missing. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -9316,7 +9246,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reads one assumption set. */
+        /** Reads one assumption set with its pins, each labelled with its identity's key and its version's number and status. */
         get: {
             parameters: {
                 query?: never;
@@ -9331,13 +9261,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The assumption set. */
+                /** @description The set and its pins. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AssumptionSetRecord"];
+                        "application/json": components["schemas"]["AssumptionSetDetail"];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -9360,7 +9290,7 @@ export interface paths {
                 };
             };
         };
-        /** Changes a draft assumption set's display name, description and effective time. */
+        /** Changes a set's display name and description; its key and pins never change. */
         put: {
             parameters: {
                 query?: never;
@@ -9368,7 +9298,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the assumption set. */
                     tenantId: string;
-                    /** @description The draft assumption set. */
+                    /** @description The assumption set. */
                     assumptionSetId: number;
                 };
                 cookie?: never;
@@ -9380,7 +9310,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description The updated assumption set. */
+                /** @description The updated set. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -9389,7 +9319,7 @@ export interface paths {
                         "application/json": components["schemas"]["AssumptionSetRecord"];
                     };
                 };
-                /** @description The display name is missing or too long, or the effective time is not UTC. */
+                /** @description The display name is missing, or a label is too long. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -9416,19 +9346,10 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The assumption set is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
             };
         };
         post?: never;
-        /** Deletes a draft assumption set and its pins. */
+        /** Deletes a historical set with its pins; requests can no longer name its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -9436,14 +9357,14 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the assumption set. */
                     tenantId: string;
-                    /** @description The draft assumption set. */
+                    /** @description The historical set. */
                     assumptionSetId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description The assumption set and its pins are deleted. */
+                /** @description The set and its pins are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -9468,7 +9389,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The assumption set is not a draft. */
+                /** @description Nothing was deleted: the set is the active set, which holds the default versions. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -9479,217 +9400,6 @@ export interface paths {
                 };
             };
         };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/dimensions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists an assumption set's pins: the dimension version it captures for each dimension. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the assumption set. */
-                    tenantId: string;
-                    /** @description The assumption set. */
-                    assumptionSetId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The pins, ordered by dimension. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AssumptionSetDimensionRecord"][];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        /** Replaces a draft assumption set's pins. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the assumption set. */
-                    tenantId: string;
-                    /** @description The draft assumption set. */
-                    assumptionSetId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AssumptionPinsInput"];
-                    "application/*+json": components["schemas"]["AssumptionPinsInput"];
-                };
-            };
-            responses: {
-                /** @description The stored pins, ordered by dimension. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AssumptionSetDimensionRecord"][];
-                    };
-                };
-                /** @description A dimension does not exist or appears more than once. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The assumption set is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets/{assumptionSetId}/capture": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Pins, for each given dimension, its published version effective at the set's `effective_at`
-         *     (`valid_from &lt;= effective_at &lt; valid_to`, a null `valid_to` being open-ended), replacing the pins of
-         *     those dimensions. A dimension without such a version is left unpinned.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the assumption set. */
-                    tenantId: string;
-                    /** @description The draft assumption set. */
-                    assumptionSetId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AssumptionCaptureInput"];
-                    "application/*+json": components["schemas"]["AssumptionCaptureInput"];
-                };
-            };
-            responses: {
-                /** @description All of the set's pins after the capture, ordered by dimension. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AssumptionSetDimensionRecord"][];
-                    };
-                };
-                /** @description No dimension is named, or a dimension does not exist. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The assumption set is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -9706,117 +9416,93 @@ export interface components {
             /** @description Whether query routing is enabled for the tenant. */
             isEnabled: boolean;
         };
-        /** @description A request to pin, for each dimension, the published version effective at the assumption set's `effective_at`. */
+        /** @description A historical set to capture from the active set's current pins, as `POST assumption-sets` takes it. */
         AssumptionCaptureInput: {
-            /** @description The dimensions to capture. */
-            dimensionIds: number[];
-        };
-        /** @description One pin of an assumption set: the exact dimension version it captures for a dimension. */
-        AssumptionPinInput: {
-            /**
-             * Format: int64
-             * @description The canonical dimension.
-             */
-            dimensionId: number;
-            /**
-             * Format: int64
-             * @description The version of the dimension that the set pins.
-             */
-            dimensionVersionId: number;
-        };
-        /** @description An assumption set's complete list of pins, which replaces the current one. */
-        AssumptionPinsInput: {
-            /** @description One pin per dimension. */
-            dimensions: components["schemas"]["AssumptionPinInput"][];
-        };
-        /** @description A request to create a draft assumption set. */
-        AssumptionSetCreateInput: {
-            /** @description The stable logical name, unique and fixed once created, such as `FY2026_Q3_CLOSE`. */
+            /** @description The key requests will name the set by; unique and fixed once captured. */
             assumptionSetKey: string;
             /** @description The human-readable label. */
             displayName: string;
-            /** @description The optional business purpose or provenance. */
+            /** @description An optional note, such as the close the snapshot records. */
             description?: null | string;
-            /**
-             * Format: date-time
-             * @description The semantic time (UTC) at which capturing resolves the effective dimension versions.
-             */
-            effectiveAt: string;
         };
-        /** @description A `qe_assumption_set_dimension` row: pins the exact immutable version of one dimension in an assumption set. */
-        AssumptionSetDimensionRecord: {
+        /** @description One pin of an assumption set as the client shows it: the identity's key and the pinned version's number and status. */
+        AssumptionPin: {
+            /** @description A living `version_kind` value. */
+            kind: string;
             /**
              * Format: int64
-             * @description The owning assumption set; first part of the primary key.
+             * @description The identity, such as a dimension.
              */
-            assumptionSetId: number;
+            identityId: number;
+            /** @description The identity's key, such as its `dimension_key`. */
+            identityKey: string;
             /**
              * Format: int64
-             * @description The canonical dimension; second part of the primary key.
+             * @description The pinned version.
              */
-            dimensionId: number;
+            versionId: number;
             /**
-             * Format: int64
-             * @description The exact dimension version captured; authoritative, never re-derived.
+             * Format: int32
+             * @description The pinned version's number.
              */
-            dimensionVersionId: number;
+            versionNumber: number;
+            /** @description The pinned version's `publication_status`: published, or retired in a historical set. */
+            status: string;
         };
-        /** @description A `qe_assumption_set` row: an optional, manually created snapshot that pins exact dimension versions for reproducible reporting. */
+        /** @description An assumption set with its pins. */
+        AssumptionSetDetail: {
+            /** @description The set. */
+            set: components["schemas"]["AssumptionSetRecord"];
+            /** @description Its pins, by kind and then identity key. */
+            pins: components["schemas"]["AssumptionPin"][];
+        };
+        /**
+         * @description A `qe_assumption_set` row: a named set of version pins. The one active set pins every published version and every
+         *     publish repoints it; a historical set is a snapshot of the active set and the active release captured under its own key.
+         */
         AssumptionSetRecord: {
             /**
              * Format: int64
              * @description Primary key.
              */
             assumptionSetId: number;
-            /** @description Stable logical name such as `FY2026_Q3_CLOSE`. */
+            /** @description Stable key a query or report request names, such as `FY2026_Q3_CLOSE`; the active set's is `active`. */
             assumptionSetKey: string;
             /** @description Human-readable label. */
             displayName: string;
-            /** @description Optional business purpose or provenance. */
+            /** @description Optional note, such as what a snapshot captured. */
             description?: null | string;
-            /**
-             * Format: date-time
-             * @description Semantic timestamp (UTC) used to resolve which versions to capture.
-             */
-            effectiveAt: string;
             /** @description An `assumption_set_status` value. */
             status: string;
-            /** @description Optional deterministic hash of the pinned-version manifest. */
-            contentHash?: null | string;
+            /**
+             * Format: int64
+             * @description The `qe_semantic_release.release_id` a historical set reads dataset versions from: the release that was active when it
+             *     was captured. Null for the active set, which reads the active release.
+             */
+            releaseId?: null | number;
+            /**
+             * Format: date-time
+             * @description When a historical set was captured (UTC); null for the active set.
+             */
+            capturedAt?: null | string;
             /**
              * Format: date-time
              * @description Creation time (UTC).
              */
             createdAt: string;
-            /**
-             * Format: date-time
-             * @description Finalization time (UTC).
-             */
-            publishedAt?: null | string;
         };
-        /** @description The editable settings of a draft assumption set; its key is fixed at creation. */
+        /** @description The editable labels of an assumption set; its key and pins never change. */
         AssumptionSetUpdateInput: {
             /** @description The human-readable label. */
             displayName: string;
-            /** @description The optional business purpose or provenance. */
+            /** @description An optional note, such as the close the snapshot records. */
             description?: null | string;
-            /**
-             * Format: date-time
-             * @description The semantic time (UTC) at which capturing resolves the effective dimension versions.
-             */
-            effectiveAt: string;
         };
         /** @description A dimension binding with its time extension, joined from `qe_dimension_binding` and `qe_time_binding`. */
         BindingDetail: {
             /** @description The binding. */
             binding: components["schemas"]["DimensionBindingRecord"];
             timeBinding?: null | components["schemas"]["TimeBindingRecord"];
-            /**
-             * Format: int64
-             * @description The bridge that owns the binding's bridge version, so an editor can offer that bridge's versions; null when the
-             *     binding has no bridge version.
-             */
-            bridgeId?: null | number;
         };
         /**
          * @description The attributes of a dimension binding of a draft dataset version, plus the time extension of a `time` binding.
@@ -9830,11 +9516,6 @@ export interface components {
              * @description The canonical dimension the binding classifies its field into; null only until a form chooses one, and rejected.
              */
             dimensionId: null | number;
-            /**
-             * Format: int64
-             * @description An explicit version of the dimension; null resolves the published version effective at query time.
-             */
-            pinnedDimensionVersionId?: null | number;
             /** @description A `binding_kind` value: `direct`, `mapped`, `range`, `bridge` or `time`. */
             bindingKind: string;
             /**
@@ -9855,21 +9536,15 @@ export interface components {
             sourceBindingId?: null | number;
             /**
              * Format: int64
-             * @description The bridge version a `bridge` binding remaps through; null for every other kind.
+             * @description The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins.
              */
-            bridgeVersionId?: null | number;
+            bridgeId?: null | number;
             /** @description A `grouping_mode` value: `member`, `level`, `ancestor` or `depth`. */
             groupingMode: string;
-            /**
-             * Format: int64
-             * @description The level to group at; required for `level` grouping and null otherwise.
-             */
-            groupingLevelId?: null | number;
-            /**
-             * Format: int64
-             * @description The ancestor member to group at; required for `ancestor` grouping and null otherwise.
-             */
-            groupingAncestorMemberId?: null | number;
+            /** @description The key of the level to group at; required for `level` grouping and null otherwise. */
+            groupingLevelKey?: null | string;
+            /** @description The key of the ancestor member to group under; required for `ancestor` grouping and null otherwise. */
+            groupingAncestorMemberKey?: null | string;
             /**
              * Format: int32
              * @description The closure depth to group at, 0 or more; required for `depth` grouping and null otherwise.
@@ -9881,11 +9556,8 @@ export interface components {
             defaultPeriodAlignment: string;
             /** @description An `unmapped_behavior` value: what happens to rows whose source value maps to no member. */
             unmappedBehavior: string;
-            /**
-             * Format: int64
-             * @description The member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise.
-             */
-            unknownMemberId?: null | number;
+            /** @description The key of the member unmapped rows route to; required when the unmapped behavior is `unknown` and null otherwise. */
+            unknownMemberKey?: null | string;
             /** @description Whether the binding is a dataset fixture that must not be removed or disabled. */
             isRequired: boolean;
             /** @description Whether the semantic route may take part in aggregate grouping. */
@@ -9905,16 +9577,10 @@ export interface components {
         };
         /** @description One assignment of a source member to a target member, with its value factor and allocation weight. */
         BridgeMappingInput: {
-            /**
-             * Format: int64
-             * @description A member of the bridge version's source dimension version.
-             */
-            sourceMemberId: number;
-            /**
-             * Format: int64
-             * @description A member of the bridge version's target dimension version.
-             */
-            targetMemberId: number;
+            /** @description The key of a member of the bridge's source dimension. */
+            sourceMemberKey: string;
+            /** @description The key of a member of the bridge's target dimension. */
+            targetMemberKey: string;
             /**
              * Format: double
              * @description Signed business-value coefficient, such as `-1` for sign normalization; fits `DECIMAL(38, 12)`.
@@ -9926,23 +9592,25 @@ export interface components {
              */
             allocationWeight: number;
         };
-        /** @description A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version. */
+        /**
+         * @description A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version, by member key. The keys
+         *     resolve in the versions of the bridge's dimensions an assumption set pins.
+         */
         BridgeMappingRecord: {
             /**
              * Format: int64
-             * @description The owning bridge version; first part of the primary key.
+             * @description Surrogate primary key; the version and both member keys are unique together.
+             */
+            bridgeMappingId: number;
+            /**
+             * Format: int64
+             * @description The owning bridge version.
              */
             bridgeVersionId: number;
-            /**
-             * Format: int64
-             * @description The source member; second part of the primary key.
-             */
-            sourceMemberId: number;
-            /**
-             * Format: int64
-             * @description The target member; third part of the primary key.
-             */
-            targetMemberId: number;
+            /** @description The key of the source member. */
+            sourceMemberKey: string;
+            /** @description The key of the target member. */
+            targetMemberKey: string;
             /**
              * Format: double
              * @description Signed business-value coefficient, such as `-1` for sign normalization.
@@ -9980,32 +9648,17 @@ export interface components {
              * @description The canonical target dimension.
              */
             targetDimensionId: number;
-            /**
-             * Format: int64
-             * @description Authoring-only pointer to the current bridge version.
-             */
-            currentBridgeVersionId?: null | number;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description The editable attributes of a draft bridge version, as `PUT bridge-versions/{versionId}` takes them. */
+        /** @description The editable attributes of a bridge version, as `PUT bridge-versions/{versionId}` takes them. */
         BridgeVersionInput: {
-            /**
-             * Format: int64
-             * @description The pinned version of the bridge's source dimension.
-             */
-            sourceDimensionVersionId: number;
-            /**
-             * Format: int64
-             * @description The pinned version of the bridge's target dimension.
-             */
-            targetDimensionVersionId: number;
             /** @description A `cardinality` value: `many_to_one` or `many_to_many`. */
             cardinality: string;
             /** @description An `allocation_mode` value: `none`, `partition` or `replicate`. */
             allocationMode: string;
         };
-        /** @description A `qe_bridge_version` row: pins the source and target dimension versions and the allocation semantics of a bridge. */
+        /** @description A `qe_bridge_version` row: the cardinality, allocation semantics and assignments of a bridge, of which at most one version is published. */
         BridgeVersionRecord: {
             /**
              * Format: int64
@@ -10022,16 +9675,6 @@ export interface components {
              * @description Version number within the bridge.
              */
             versionNumber: number;
-            /**
-             * Format: int64
-             * @description The pinned source dimension version.
-             */
-            sourceDimensionVersionId: number;
-            /**
-             * Format: int64
-             * @description The pinned target dimension version.
-             */
-            targetDimensionVersionId: number;
             /** @description A `cardinality` value. */
             cardinality: string;
             /** @description An `allocation_mode` value. */
@@ -10180,11 +9823,6 @@ export interface components {
             modelKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /**
-             * Format: int64
-             * @description Authoring-only pointer to the most recently published model version.
-             */
-            currentModelVersionId?: null | number;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
@@ -10272,35 +9910,6 @@ export interface components {
             routeKind: string;
             /** @description The dataset field that produces the dimension. */
             fieldKey: string;
-        };
-        /** @description A new draft bridge version, with the mappings a clone could not carry over. */
-        CreatedBridgeVersion: {
-            /** @description The new draft. */
-            version: components["schemas"]["BridgeVersionRecord"];
-            /**
-             * @description The cloned mappings whose source or target member key no member of the new endpoint version has, by source key, then
-             *     target key; empty for an empty draft.
-             */
-            droppedMappings: components["schemas"]["DroppedBridgeMapping"][];
-        };
-        /** @description A new draft mapping version, with the source keys a clone could not carry over. */
-        CreatedMappingVersion: {
-            /** @description The new draft. */
-            version: components["schemas"]["MappingVersionRecord"];
-            /**
-             * @description The source keys of the cloned entries whose member key no member of the new draft's dimension version has, in
-             *     ordinal order; empty for an empty draft.
-             */
-            droppedSourceKeys: string[];
-        };
-        /** @description A new draft report version, with the columns and lines a clone could not carry into its model version. */
-        CreatedReportVersion: {
-            /** @description The new draft. */
-            version: components["schemas"]["ReportVersionRecord"];
-            /** @description The keys of the cloned columns whose metric key the draft's model version lacks. */
-            droppedColumns: string[];
-            /** @description The keys of the cloned formula lines whose calculated measure or value column the draft lacks. */
-            droppedLines: string[];
         };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
@@ -10463,11 +10072,6 @@ export interface components {
              * @description The canonical dimension.
              */
             dimensionId: number;
-            /**
-             * Format: int64
-             * @description Optional explicit dimension version; null resolves the published version valid at query time.
-             */
-            pinnedDimensionVersionId?: null | number;
             /** @description A `binding_kind` value. */
             bindingKind: string;
             /**
@@ -10487,21 +10091,15 @@ export interface components {
             sourceBindingId?: null | number;
             /**
              * Format: int64
-             * @description The bridge version when the binding kind is `bridge`.
+             * @description The bridge when the binding kind is `bridge`; queries use the version their assumption set pins.
              */
-            bridgeVersionId?: null | number;
+            bridgeId?: null | number;
             /** @description A `grouping_mode` value. */
             groupingMode: string;
-            /**
-             * Format: int64
-             * @description The level to group at when the grouping mode is `level`.
-             */
-            groupingLevelId?: null | number;
-            /**
-             * Format: int64
-             * @description The ancestor to group at when the grouping mode is `ancestor`.
-             */
-            groupingAncestorMemberId?: null | number;
+            /** @description The key of the level to group at when the grouping mode is `level`. */
+            groupingLevelKey?: null | string;
+            /** @description The key of the ancestor member to group under when the grouping mode is `ancestor`. */
+            groupingAncestorMemberKey?: null | string;
             /**
              * Format: int32
              * @description The closure depth to group at when the grouping mode is `depth`.
@@ -10513,11 +10111,8 @@ export interface components {
             defaultPeriodAlignment: string;
             /** @description An `unmapped_behavior` value. */
             unmappedBehavior: string;
-            /**
-             * Format: int64
-             * @description The member unmapped rows route to when the unmapped behavior is `unknown`.
-             */
-            unknownMemberId?: null | number;
+            /** @description The key of the member unmapped rows route to when the unmapped behavior is `unknown`. */
+            unknownMemberKey?: null | string;
             /** @description Dataset fixture flag; a required binding must never be removed or disabled. */
             isRequired: boolean;
             /** @description Whether the semantic route may take part in aggregate grouping. */
@@ -10562,7 +10157,7 @@ export interface components {
             /** @description Whether this is the business-declared leaf level. */
             isLeafLevel: boolean;
         };
-        /** @description A `qe_dimension_mapping` row: maps one actual source value to exactly one canonical member within one mapping version. */
+        /** @description A `qe_dimension_mapping` row: maps one actual source value to one canonical member key within one mapping version. */
         DimensionMappingRecord: {
             /**
              * Format: int64
@@ -10576,11 +10171,8 @@ export interface components {
             mappingVersionId: number;
             /** @description Actual scalar source value, unique within the mapping version. */
             sourceKeyValue: string;
-            /**
-             * Format: int64
-             * @description The canonical target member, from the mapping version's dimension version.
-             */
-            memberId: number;
+            /** @description The key of the canonical target member, which resolves in the version of the set's dimension an assumption set pins. */
+            memberKey: string;
         };
         /** @description A `qe_dimension_member` row: a canonical dimension member or hierarchy node. */
         DimensionMemberRecord: {
@@ -10640,22 +10232,12 @@ export interface components {
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description The editable attributes of a draft dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them. */
+        /** @description The editable attributes of a dimension version, as `PUT dimension-versions/{dimensionVersionId}` takes them. */
         DimensionVersionInput: {
             /** @description A `range_data_type` value for a range dimension; null for every other kind. */
             rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC); a version needs one before it is published.
-             */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
-             */
-            validTo?: null | string;
         };
-        /** @description A `qe_dimension_version` row: an immutable, effective-dated version of one canonical dimension. */
+        /** @description A `qe_dimension_version` row: a version of one canonical dimension, of which at most one is published. */
         DimensionVersionRecord: {
             /**
              * Format: int64
@@ -10678,26 +10260,9 @@ export interface components {
             rangeDataType?: null | string;
             /**
              * Format: date-time
-             * @description Inclusive semantic-validity start (UTC); required once published.
-             */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive semantic-validity end (UTC); null means open-ended.
-             */
-            validTo?: null | string;
-            /**
-             * Format: date-time
              * @description Publication time (UTC).
              */
             publishedAt?: null | string;
-        };
-        /** @description A mapping a bridge version clone could not carry over, named by the member keys of the version it was cloned from. */
-        DroppedBridgeMapping: {
-            /** @description The key of the mapping's source member. */
-            sourceMemberKey: string;
-            /** @description The key of the mapping's target member. */
-            targetMemberKey: string;
         };
         /** @description A new field of a draft dataset version. */
         FieldInput: {
@@ -10917,11 +10482,8 @@ export interface components {
              *     at most 512 bytes of UTF-8 text.
              */
             sourceKeyValue: string;
-            /**
-             * Format: int64
-             * @description The member of the mapping version's dimension version that the value maps to.
-             */
-            memberId: number;
+            /** @description The key of the member the value maps to, which queries resolve in the dimension version their assumption set pins. */
+            memberKey: string;
         };
         /** @description The editable identity attributes of a mapping set, as `PUT mapping-sets/{mappingSetId}` takes them. */
         MappingSetInput: {
@@ -10949,7 +10511,7 @@ export interface components {
             /** @description Human-readable label. */
             displayName: string;
         };
-        /** @description A `qe_mapping_version` row: immutable mapping content associated with one canonical dimension version. */
+        /** @description A `qe_mapping_version` row: source-key mapping content of a mapping set, of which at most one version is published. */
         MappingVersionRecord: {
             /**
              * Format: int64
@@ -10966,11 +10528,6 @@ export interface components {
              * @description Monotonic version within the mapping set.
              */
             versionNumber: number;
-            /**
-             * Format: int64
-             * @description The canonical target dimension version; unique together with the mapping set.
-             */
-            dimensionVersionId: number;
             /** @description A `publication_status` value. */
             status: string;
             /**
@@ -11373,26 +10930,15 @@ export interface components {
             isEnabled: boolean;
         };
         /**
-         * @description A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its endpoint versions and allocation
-         *     semantics, and optionally a version whose mappings it copies.
+         * @description A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its allocation semantics, and
+         *     optionally a version whose mappings it copies.
          */
         NewBridgeVersionInput: {
             /**
              * Format: int64
-             * @description A version of the same bridge whose mappings the draft copies, each moved to the members with the same keys in the new
-             *     endpoint versions; null for an empty draft.
+             * @description A version of the same bridge whose mappings the draft copies; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
-            /**
-             * Format: int64
-             * @description The pinned version of the bridge's source dimension.
-             */
-            sourceDimensionVersionId: number;
-            /**
-             * Format: int64
-             * @description The pinned version of the bridge's target dimension.
-             */
-            targetDimensionVersionId: number;
             /** @description A `cardinality` value: `many_to_one` or `many_to_many`. */
             cardinality: string;
             /** @description An `allocation_mode` value: `none`, `partition` or `replicate`. */
@@ -11409,7 +10955,7 @@ export interface components {
         };
         /**
          * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, and the
-         *     range data type and validity start of its draft version 1.
+         *     range data type of its draft version 1.
          */
         NewDimensionInput: {
             /** @description Stable canonical key, unique across dimensions and fixed once created. */
@@ -11418,11 +10964,6 @@ export interface components {
             dimensionKind: string;
             /** @description A `range_data_type` value for version 1; required for a `range` dimension and null for every other kind. */
             rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC) of version 1, if already known.
-             */
-            validFrom?: null | string;
             /** @description Human-readable name, at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Administrative availability. */
@@ -11443,16 +10984,6 @@ export interface components {
             cloneFromVersionId?: null | number;
             /** @description A `range_data_type` value for a range dimension; null for every other kind. */
             rangeDataType?: null | string;
-            /**
-             * Format: date-time
-             * @description Inclusive validity start (UTC); a version needs one before it is published.
-             */
-            validFrom?: null | string;
-            /**
-             * Format: date-time
-             * @description Exclusive validity end (UTC), later than DateTime? DimensionVersionInput.ValidFrom; null means open-ended.
-             */
-            validTo?: null | string;
         };
         /** @description A new level of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/levels` takes it. */
         NewLevelInput: {
@@ -11485,19 +11016,13 @@ export interface components {
             displayName: string;
         };
         /**
-         * @description A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: the dimension version
-         *     it maps onto, and optionally a version whose entries it copies.
+         * @description A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: optionally a version
+         *     whose entries it copies.
          */
         NewMappingVersionInput: {
             /**
              * Format: int64
-             * @description The dimension version of the set's dimension that the entries' members come from.
-             */
-            dimensionVersionId: number;
-            /**
-             * Format: int64
-             * @description A version of the same mapping set whose entries the draft copies, each moved to the member with the same key in
-             *     `dimensionVersionId`; null for an empty draft.
+             * @description A version of the same mapping set whose entries the draft copies; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
         };
@@ -11559,8 +11084,8 @@ export interface components {
             payloadJson?: null | string;
         };
         /**
-         * @description A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and model version
-         *     it reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies.
+         * @description A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and calculation
+         *     model it reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies.
          */
         NewReportVersionInput: {
             /**
@@ -11570,20 +11095,16 @@ export interface components {
             reportDimensionId: number;
             /**
              * Format: int64
-             * @description The calculation model version the report reads.
+             * @description The calculation model; a run reads the model version its assumption set pins.
              */
-            modelVersionId: number;
+            modelId: number;
             /**
              * Format: int64
-             * @description A version of the same report whose lines and columns the draft copies, each metric followed by key into the draft's
-             *     model version; null for an empty draft.
+             * @description A version of the same report whose lines and columns the draft copies; null for an empty draft.
              */
             cloneFromVersionId?: null | number;
-            /**
-             * Format: int64
-             * @description A profile of the version's model version that requests run under when they name none.
-             */
-            defaultSourceProfileId?: null | number;
+            /** @description The key of a profile of the model's published version that requests run under when they name none. */
+            defaultProfileKey?: null | string;
             /** @description Optional presentation payload passed through to clients. */
             payloadJson?: null | string;
             /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
@@ -11622,7 +11143,7 @@ export interface components {
             releases: number;
             /**
              * Format: int32
-             * @description The number of assumption sets, whatever their status.
+             * @description The number of assumption sets: the active one and every historical set.
              */
             assumptionSets: number;
             /**
@@ -11668,11 +11189,6 @@ export interface components {
              * @description Draft semantic releases.
              */
             releases: number;
-            /**
-             * Format: int32
-             * @description Draft assumption sets.
-             */
-            assumptionSets: number;
             /**
              * Format: int32
              * @description Draft calculation model versions.
@@ -11840,42 +11356,6 @@ export interface components {
             /** @description One row per dataset the release pins. */
             datasets: components["schemas"]["ReleaseDatasetInput"][];
         };
-        /** @description One report pin: the report version a release pins for a report. */
-        ReleaseReportInput: {
-            /**
-             * Format: int64
-             * @description The report.
-             */
-            reportId: number;
-            /**
-             * Format: int64
-             * @description The version of the report that the release pins.
-             */
-            reportVersionId: number;
-        };
-        /** @description A `qe_release_report` row: the report version a release pins for one report. */
-        ReleaseReportRecord: {
-            /**
-             * Format: int64
-             * @description The release; first part of the primary key.
-             */
-            releaseId: number;
-            /**
-             * Format: int64
-             * @description The report; second part of the primary key.
-             */
-            reportId: number;
-            /**
-             * Format: int64
-             * @description The pinned version of the report.
-             */
-            reportVersionId: number;
-        };
-        /** @description A release's complete report pins, which replace the current ones. */
-        ReleaseReportsInput: {
-            /** @description One pin per report the release serves. */
-            reports: components["schemas"]["ReleaseReportInput"][];
-        };
         /** @description A semantic release as the release list shows it: the row, whether it is the active release, and how much it pins. */
         ReleaseSummary: {
             /** @description The release row. */
@@ -11887,11 +11367,6 @@ export interface components {
              * @description The number of datasets the release's manifest pins.
              */
             datasetCount: number;
-            /**
-             * Format: int32
-             * @description The number of reports the release pins.
-             */
-            reportCount: number;
         };
         /** @description One column of a report version's complete, ordered column list. */
         ReportColumnInput: {
@@ -11933,16 +11408,8 @@ export interface components {
             displayName: string;
             /** @description A `report_value_kind` value. */
             valueKind: string;
-            /**
-             * Format: int64
-             * @description The variable of a `variable` column.
-             */
-            variableId?: null | number;
-            /**
-             * Format: int64
-             * @description The calculated measure of a `calculated` column.
-             */
-            calculatedMeasureId?: null | number;
+            /** @description The key of the model's variable or calculated measure the column shows, according to its value kind. */
+            metricKey: string;
             /**
              * Format: int32
              * @description Order among the version's columns.
@@ -12024,11 +11491,8 @@ export interface components {
             parentReportLineId?: null | number;
             /** @description The report-item member of a `member` line. */
             reportMemberKey?: null | string;
-            /**
-             * Format: int64
-             * @description The calculated measure of a `formula` line.
-             */
-            calculatedMeasureId?: null | number;
+            /** @description The key of the model's calculated measure a `formula` line evaluates. */
+            calculatedMeasureKey?: null | string;
             /**
              * Format: int64
              * @description The column a `formula` line places its value in.
@@ -12069,23 +11533,15 @@ export interface components {
             displayName: string;
             /** @description Free-form classification such as `margin_analysis`. */
             reportType: string;
-            /**
-             * Format: int64
-             * @description Authoring-only pointer to the most recently published report version.
-             */
-            currentReportVersionId?: null | number;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
             /** @description Optional catalog payload passed through to clients. */
             payloadJson?: null | string;
         };
-        /** @description The editable attributes of a draft report version, as `PUT report-versions/{versionId}` takes them. */
+        /** @description The editable attributes of a report version, as `PUT report-versions/{versionId}` takes them. */
         ReportVersionInput: {
-            /**
-             * Format: int64
-             * @description A profile of the version's model version that requests run under when they name none.
-             */
-            defaultSourceProfileId?: null | number;
+            /** @description The key of a profile of the model's published version that requests run under when they name none. */
+            defaultProfileKey?: null | string;
             /** @description Optional presentation payload passed through to clients. */
             payloadJson?: null | string;
             /** @description Optional structured filter over calculation dimensions, ANDed with every request's. */
@@ -12095,7 +11551,7 @@ export interface components {
             /** @description Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys. */
             defaultPivotJson?: null | string;
         };
-        /** @description A `qe_report_version` row: one immutable version of a report: its dimension, model version, defaults, lines and columns. */
+        /** @description A `qe_report_version` row: one version of a report: its dimension, model, defaults, lines and columns. */
         ReportVersionRecord: {
             /**
              * Format: int64
@@ -12119,14 +11575,11 @@ export interface components {
             reportDimensionId: number;
             /**
              * Format: int64
-             * @description The calculation model version the report reads.
+             * @description The calculation model; a run reads the model version its assumption set pins.
              */
-            modelVersionId?: null | number;
-            /**
-             * Format: int64
-             * @description The profile a request runs under when it names none.
-             */
-            defaultSourceProfileId?: null | number;
+            modelId: number;
+            /** @description The key of the profile a request runs under when it names none; required at publication. */
+            defaultProfileKey?: null | string;
             /** @description A `publication_status` value. */
             status: string;
             /**
@@ -12294,7 +11747,7 @@ export interface components {
         };
         /** @description A request to move a version to another lifecycle status. */
         StatusChangeInput: {
-            /** @description The target status: a `publication_status` value (an `assumption_set_status` value for assumption sets). */
+            /** @description The target status: a `publication_status` value. */
             status: string;
         };
         /** @description The result of verifying a tenant connection string, which the tenant editor's "Test connection" button shows. */
@@ -12552,10 +12005,13 @@ export interface components {
             measureKey: string;
             /** @description Optional structured filter over the dataset's fields. */
             sourceFilterJson?: null | string;
-            /** @description A `classification_as_of` value. */
-            classificationAsOf: string;
             /** @description Whether profiles may pick the source. */
             isEnabled: boolean;
+        };
+        /** @description What checking a version against its publication rules found; the check changes nothing. */
+        VersionCheck: {
+            /** @description The rule violations; empty when the version passes. */
+            violations: components["schemas"]["RuleViolation"][];
         };
         /** @description The lifecycle state of one versioned object. */
         VersionState: {
@@ -12566,7 +12022,7 @@ export interface components {
              * @description The version's surrogate key.
              */
             id: number;
-            /** @description A `publication_status` value (an `assumption_set_status` value for assumption sets). */
+            /** @description A `publication_status` value. */
             status: string;
             /**
              * Format: date-time

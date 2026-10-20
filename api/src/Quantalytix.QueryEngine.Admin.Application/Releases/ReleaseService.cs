@@ -4,13 +4,11 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
 /// <summary>
-/// Creates, lists and deletes semantic releases and edits their manifests and report pins (<c>qe_semantic_release</c>,
-/// <c>qe_release_dataset</c>, <c>qe_release_report</c>).
+/// Creates, lists and deletes semantic releases and edits their manifests (<c>qe_semantic_release</c>, <c>qe_release_dataset</c>).
 /// </summary>
 public sealed class ReleaseService(
     ITableGateway<SemanticReleaseRecord> releases,
     ITableGateway<ReleaseDatasetRecord> manifest,
-    ITableGateway<ReleaseReportRecord> reportPins,
     ITableGateway<DatabaseInfoRecord> databaseInfo,
     IIdGenerator ids,
     TimeProvider time)
@@ -18,14 +16,13 @@ public sealed class ReleaseService(
     /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
     private const int SingletonId = 1;
 
-    /// <summary>Lists every release, newest first, with whether it is active and how many datasets and reports it pins.</summary>
+    /// <summary>Lists every release, newest first, with whether it is active and how many datasets it pins.</summary>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The release summaries.</returns>
     public async Task<IReadOnlyList<ReleaseSummary>> ListAsync(CancellationToken cancellationToken)
     {
         var rows = await releases.ListAsync(null, cancellationToken);
         var datasetCounts = (await manifest.ListAsync(null, cancellationToken)).CountBy(row => row.ReleaseId).ToDictionary();
-        var reportCounts = (await reportPins.ListAsync(null, cancellationToken)).CountBy(row => row.ReleaseId).ToDictionary();
         var info = await databaseInfo.GetAsync(new { SingletonId }, cancellationToken);
         return
         [
@@ -36,8 +33,7 @@ public sealed class ReleaseService(
                 {
                     Release = row,
                     IsActive = row.ReleaseId == info.ActiveReleaseId,
-                    DatasetCount = datasetCounts.GetValueOrDefault(row.ReleaseId),
-                    ReportCount = reportCounts.GetValueOrDefault(row.ReleaseId)
+                    DatasetCount = datasetCounts.GetValueOrDefault(row.ReleaseId)
                 })
         ];
     }
@@ -51,7 +47,7 @@ public sealed class ReleaseService(
         return releases.GetAsync(new { ReleaseId = releaseId }, cancellationToken);
     }
 
-    /// <summary>Creates a draft release and, when asked, copies another release's manifest rows and report pins into it.</summary>
+    /// <summary>Creates a draft release and, when asked, copies another release's manifest rows into it.</summary>
     /// <param name="input">The validated key and optional source release.</param>
     /// <param name="cancellationToken">Cancels the writes.</param>
     /// <returns>The new release row.</returns>
@@ -69,21 +65,18 @@ public sealed class ReleaseService(
         {
             var sourceRows = await manifest.ListAsync(new { ReleaseId = sourceReleaseId }, cancellationToken);
             await manifest.InsertManyAsync([.. sourceRows.Select(row => row with { ReleaseId = release.ReleaseId })], cancellationToken);
-            var sourcePins = await reportPins.ListAsync(new { ReleaseId = sourceReleaseId }, cancellationToken);
-            await reportPins.InsertManyAsync([.. sourcePins.Select(row => row with { ReleaseId = release.ReleaseId })], cancellationToken);
         }
 
         return release;
     }
 
-    /// <summary>Deletes a draft release: its manifest rows and report pins first, then the release.</summary>
+    /// <summary>Deletes a draft release: its manifest rows first, then the release.</summary>
     /// <param name="releaseId">The draft release.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the release is gone.</returns>
     public async Task DeleteAsync(long releaseId, CancellationToken cancellationToken)
     {
         await manifest.DeleteAsync(new { ReleaseId = releaseId }, cancellationToken);
-        await reportPins.DeleteAsync(new { ReleaseId = releaseId }, cancellationToken);
         await releases.DeleteAsync(new { ReleaseId = releaseId }, cancellationToken);
     }
 
@@ -112,34 +105,6 @@ public sealed class ReleaseService(
         ];
         await manifest.DeleteAsync(new { ReleaseId = releaseId }, cancellationToken);
         await manifest.InsertManyAsync(rows, cancellationToken);
-        return rows;
-    }
-
-    /// <summary>Lists a release's report pins, ordered by report.</summary>
-    /// <param name="releaseId">The release.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The report pins.</returns>
-    public async Task<IReadOnlyList<ReleaseReportRecord>> ListReportsAsync(long releaseId, CancellationToken cancellationToken)
-    {
-        var rows = await reportPins.ListAsync(new { ReleaseId = releaseId }, cancellationToken);
-        return [.. rows.OrderBy(row => row.ReportId)];
-    }
-
-    /// <summary>Replaces a draft release's report pins with the given rows.</summary>
-    /// <param name="releaseId">The draft release.</param>
-    /// <param name="input">The validated report pins.</param>
-    /// <param name="cancellationToken">Cancels the writes.</param>
-    /// <returns>The stored report pins, ordered by report.</returns>
-    public async Task<IReadOnlyList<ReleaseReportRecord>> ReplaceReportsAsync(long releaseId, ReleaseReportsInput input, CancellationToken cancellationToken)
-    {
-        ReleaseReportRecord[] rows =
-        [
-            .. input.Reports
-                .OrderBy(row => row.ReportId)
-                .Select(row => new ReleaseReportRecord { ReleaseId = releaseId, ReportId = row.ReportId, ReportVersionId = row.ReportVersionId })
-        ];
-        await reportPins.DeleteAsync(new { ReleaseId = releaseId }, cancellationToken);
-        await reportPins.InsertManyAsync(rows, cancellationToken);
         return rows;
     }
 }

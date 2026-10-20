@@ -9,6 +9,6 @@ public sealed record MappingEntryInput
     /// </summary>
     public required string SourceKeyValue { get; init; }
 
-    /// <summary>The member of the mapping version's dimension version that the value maps to.</summary>
-    public required long MemberId { get; init; }
+    /// <summary>The key of the member the value maps to, which queries resolve in the dimension version their assumption set pins.</summary>
+    public required string MemberKey { get; init; }
 }

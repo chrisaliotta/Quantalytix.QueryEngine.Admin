@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -74,9 +73,9 @@ public sealed class CalculationModelVersionsController(CalculationModelVersionSe
         return Ok(await versions.GetAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Replaces a draft version's currency; its content stays as it is.</summary>
+    /// <summary>Replaces a draft or published version's currency; its content stays as it is.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft model version.</param>
+    /// <param name="versionId">The draft or published model version.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored version.</returns>
@@ -84,9 +83,9 @@ public sealed class CalculationModelVersionsController(CalculationModelVersionSe
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("model-versions/{versionId:long}")]
-    [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
+    [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType<CalculationModelVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculationModelVersionRecord>> Update(
@@ -98,25 +97,21 @@ public sealed class CalculationModelVersionsController(CalculationModelVersionSe
         return Ok(await versions.UpdateAsync(versionId, input, cancellationToken));
     }
 
-    /// <summary>
-    /// Deletes a draft version that no report version reads, with its content, and clears the model's current-version pointer
-    /// when it named the version.
-    /// </summary>
+    /// <summary>Deletes a draft version with its content.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="versionId">The draft model version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft or a report version reads it.</returns>
+    /// <returns>No content; 409 when the version is not a draft.</returns>
     /// <response code="204">The version and its content are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names the report versions that read it.</response>
+    /// <response code="409">Nothing was deleted: the version is not a draft.</response>
     [HttpDelete("model-versions/{versionId:long}")]
     [RequireDraft(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string tenantId, long versionId, CancellationToken cancellationToken)
     {
-        var conflict = await versions.DeleteAsync(versionId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        await versions.DeleteAsync(versionId, cancellationToken);
         return NoContent();
     }
 }

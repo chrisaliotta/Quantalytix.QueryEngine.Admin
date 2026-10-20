@@ -31,9 +31,9 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
         return Ok(await columns.ListAsync(versionId, cancellationToken));
     }
 
-    /// <summary>Replaces a draft report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid.</summary>
+    /// <summary>Replaces a draft or published report version's columns with the given ordered list; a column that keeps its key keeps its ID, so lines that name it stay valid.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft report version.</param>
+    /// <param name="versionId">The draft or published report version.</param>
     /// <param name="input">The complete columns.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored columns.</returns>
@@ -41,9 +41,9 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
     /// <response code="400">A column key is reserved or repeated, a metric is not in the model version, or a line still names a removed column; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
-    [RequireDraft(VersionKinds.ReportVersion, "versionId")]
+    [RequireEditable(VersionKinds.ReportVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<ReportColumnRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ReportColumnRecord>>> Replace(

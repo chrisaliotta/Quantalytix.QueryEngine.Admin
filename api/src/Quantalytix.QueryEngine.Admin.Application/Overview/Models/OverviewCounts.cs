@@ -18,7 +18,7 @@ public sealed record OverviewCounts
     /// <summary>The number of semantic releases, whatever their status.</summary>
     public required int Releases { get; init; }
 
-    /// <summary>The number of assumption sets, whatever their status.</summary>
+    /// <summary>The number of assumption sets: the active one and every historical set.</summary>
     public required int AssumptionSets { get; init; }
 
     /// <summary>The number of calculation models.</summary>

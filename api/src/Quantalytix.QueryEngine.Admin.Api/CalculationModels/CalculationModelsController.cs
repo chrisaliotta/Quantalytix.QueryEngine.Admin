@@ -46,7 +46,7 @@ public sealed class CalculationModelsController(CalculationModelService models) 
         return Ok(await models.CreateAsync(input, cancellationToken));
     }
 
-    /// <summary>Reads one calculation model, including its current version.</summary>
+    /// <summary>Reads one calculation model.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

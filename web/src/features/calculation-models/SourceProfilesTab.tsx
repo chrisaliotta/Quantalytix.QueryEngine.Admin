@@ -17,18 +17,18 @@ const columns: ColumnDef<SourceProfile>[] = [
 ];
 
 /** The version's source profiles: which source each variable reads when a report runs under the profile. */
-export function SourceProfilesTab({ versionId, isDraft }: { versionId: number; isDraft: boolean }) {
+export function SourceProfilesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   return (
     <ModelContentTab
       kind="profiles"
       versionId={versionId}
-      isDraft={isDraft}
+      isEditable={isEditable}
       columns={columns}
       noun="profile"
       identify={profile => ({ id: profile.profile.sourceProfileId, key: profile.profile.profileKey })}
       deleteDescription="Its picks are deleted too. A profile that a report version runs under by default is kept."
       renderSheet={(profile, onClose) => (
-        <SourceProfileSheet versionId={versionId} profile={profile} readOnly={!isDraft} onClose={onClose} />
+        <SourceProfileSheet versionId={versionId} profile={profile} readOnly={!isEditable} onClose={onClose} />
       )}
     />
   );

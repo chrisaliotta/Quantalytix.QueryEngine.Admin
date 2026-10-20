@@ -21,7 +21,6 @@ public static class BindingsAndMeasuresFeatureServiceCollectionExtensions
         services.AddScoped<IPublicationRule, BindingFieldsInVersionRule>();
         services.AddScoped<IPublicationRule, BindingSourceFieldGroupableRule>();
         services.AddScoped<IPublicationRule, OneBindingPerFieldRule>();
-        services.AddScoped<IPublicationRule, BindingPinnedVersionRule>();
         services.AddScoped<IPublicationRule, MappedBindingMappingSetDimensionRule>();
         services.AddScoped<IPublicationRule, RangeBindingDimensionKindRule>();
         services.AddScoped<IPublicationRule, TimeBindingDimensionKindRule>();

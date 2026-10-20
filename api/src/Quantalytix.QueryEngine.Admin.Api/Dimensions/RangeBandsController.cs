@@ -37,11 +37,11 @@ public sealed class RangeBandsController(RangeBandService bands) : ControllerBas
     }
 
     /// <summary>
-    /// Replaces every band of a draft range version with the ordered list; each band's ordinal is its position, from 1. Bound
+    /// Replaces every band of a draft or published range version with the ordered list; each band's ordinal is its position, from 1. Bound
     /// families, order and overlaps are checked when the version is validated.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="version">A draft version of a range dimension.</param>
+    /// <param name="version">A draft or published version of a range dimension.</param>
     /// <param name="input">The complete band list, in order.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored bands.</returns>
@@ -49,9 +49,9 @@ public sealed class RangeBandsController(RangeBandService bands) : ControllerBas
     /// <response code="400">The dimension is not a range dimension, or a band breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">The version is not a draft.</response>
+    /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
-    [RequireDraft(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<RangeBandRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<RangeBandRecord>>> Replace(

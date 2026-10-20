@@ -1,13 +1,14 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { EntityField, JsonField } from '@/shared/form';
+import { JsonField, KeyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
+import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import { useUpdateReportVersion } from './api';
 import type { ReportVersion } from './types';
 
 /** Values of the version settings sheet; the defaults are JSON text, empty for none. */
 interface ReportVersionValues {
-  defaultSourceProfileId: number | null;
+  defaultProfileKey: string | null;
   payloadJson: string;
   defaultFilterJson: string;
   defaultSettingsJson: string;
@@ -15,20 +16,22 @@ interface ReportVersionValues {
 }
 
 export interface ReportVersionSheetProps {
-  /** The draft version to edit. */
+  /** The draft or published version to edit. */
   version: ReportVersion;
   onClose: () => void;
 }
 
 /**
- * Edits a draft version's default profile and defaults. Only `periodicity` and `timeZone` of the settings change how
- * the engine runs the report; the rest, and the payload, pass through to clients.
+ * Edits a version's default profile and defaults. The profile is named by key, offered from the model's published version.
+ * Only `periodicity` and `timeZone` of the settings change how the engine runs the report; the rest, and the payload, pass
+ * through to clients.
  */
 export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps) {
   const update = useUpdateReportVersion(version.reportVersionId);
+  const profiles = usePublishedVersionItems('model-versions', version.modelId, 'source-profiles');
   const form = useForm<ReportVersionValues>({
     defaultValues: {
-      defaultSourceProfileId: version.defaultSourceProfileId ?? null,
+      defaultProfileKey: version.defaultProfileKey ?? null,
       payloadJson: version.payloadJson ?? '',
       defaultFilterJson: version.defaultFilterJson ?? '',
       defaultSettingsJson: version.defaultSettingsJson ?? '',
@@ -38,7 +41,7 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
 
   function submit(values: ReportVersionValues) {
     return update.mutateAsync({
-      defaultSourceProfileId: values.defaultSourceProfileId,
+      defaultProfileKey: values.defaultProfileKey,
       payloadJson: emptyToNull(values.payloadJson),
       defaultFilterJson: emptyToNull(values.defaultFilterJson),
       defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
@@ -56,12 +59,12 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
       onSubmit={submit}
       width="40rem"
     >
-      <EntityField
-        name="defaultSourceProfileId"
+      <KeyField
+        name="defaultProfileKey"
         label="Default profile"
-        lookupKind="source-profiles"
-        parentId={version.modelVersionId ?? null}
+        items={profiles}
         allowEmpty
+        description="The profile a request runs under when it names none; publishing needs one the model enables."
       />
       <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
       <JsonField

@@ -6,9 +6,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
 /// <summary>
 /// Checks a binding against schema section 11: vocabulary values, the references each binding kind requires and forbids,
-/// the grouping reference each grouping mode needs, the unknown member of the <c>unknown</c> unmapped behavior, and that a
+/// the grouping key each grouping mode needs, the unknown member key of the <c>unknown</c> unmapped behavior, and that a
 /// required binding stays enabled. <see cref="TimeBindingInputValidator"/> checks the time extension. Whether the referenced
-/// rows belong to the version, the dimension and its versions is left to the publication rules, which see the route too.
+/// rows belong to the version and whether the keys resolve in the dimension's published version is left to the publication
+/// rules, which see the route too.
 /// </summary>
 public sealed class BindingInputValidator : AbstractValidator<BindingInput>
 {
@@ -40,11 +41,11 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
         When(input => input.BindingKind == BindingKinds.Bridge, () =>
         {
             RuleFor(input => input.SourceBindingId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
-            RuleFor(input => input.BridgeVersionId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
+            RuleFor(input => input.BridgeId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
         }).Otherwise(() =>
         {
             RuleFor(input => input.SourceBindingId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
-            RuleFor(input => input.BridgeVersionId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
+            RuleFor(input => input.BridgeId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
         });
         When(input => input.BindingKind == BindingKinds.Time, () =>
         {
@@ -57,17 +58,17 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
 
         When(input => input.GroupingMode == GroupingModes.Level, () =>
         {
-            RuleFor(input => input.GroupingLevelId).NotNull().WithMessage(ModeRequires(GroupingModes.Level));
+            RuleFor(input => input.GroupingLevelKey).NotEmpty().WithMessage(ModeRequires(GroupingModes.Level)).MustFitVarchar(128);
         }).Otherwise(() =>
         {
-            RuleFor(input => input.GroupingLevelId).Null().WithMessage(OnlyModeUses(GroupingModes.Level));
+            RuleFor(input => input.GroupingLevelKey).Null().WithMessage(OnlyModeUses(GroupingModes.Level));
         });
         When(input => input.GroupingMode == GroupingModes.Ancestor, () =>
         {
-            RuleFor(input => input.GroupingAncestorMemberId).NotNull().WithMessage(ModeRequires(GroupingModes.Ancestor));
+            RuleFor(input => input.GroupingAncestorMemberKey).NotEmpty().WithMessage(ModeRequires(GroupingModes.Ancestor)).MustFitVarchar(256);
         }).Otherwise(() =>
         {
-            RuleFor(input => input.GroupingAncestorMemberId).Null().WithMessage(OnlyModeUses(GroupingModes.Ancestor));
+            RuleFor(input => input.GroupingAncestorMemberKey).Null().WithMessage(OnlyModeUses(GroupingModes.Ancestor));
         });
         When(input => input.GroupingMode == GroupingModes.Depth, () =>
         {
@@ -83,12 +84,13 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
 
         When(input => input.UnmappedBehavior == UnmappedBehaviors.Unknown, () =>
         {
-            RuleFor(input => input.UnknownMemberId)
-                .NotNull()
-                .WithMessage("'{PropertyName}' is required when unmapped rows route to the unknown member.");
+            RuleFor(input => input.UnknownMemberKey)
+                .NotEmpty()
+                .WithMessage("'{PropertyName}' is required when unmapped rows route to the unknown member.")
+                .MustFitVarchar(256);
         }).Otherwise(() =>
         {
-            RuleFor(input => input.UnknownMemberId)
+            RuleFor(input => input.UnknownMemberKey)
                 .Null()
                 .WithMessage("Only the unknown unmapped behavior routes rows to a member, so '{PropertyName}' must be empty.");
         });

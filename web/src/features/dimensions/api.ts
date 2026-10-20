@@ -165,7 +165,7 @@ export function useDeleteDimension() {
   });
 }
 
-/** Creates a draft version of a dimension, empty or cloned (which also clones its mapping versions). */
+/** Creates a draft version of a dimension, empty or cloned. */
 export function useCreateDimensionVersion(dimensionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -176,11 +176,11 @@ export function useCreateDimensionVersion(dimensionId: number) {
           body,
         })
       ),
-    onSuccess: () => refresh(tenantId, [], ['dimension-versions', 'mapping-versions']),
+    onSuccess: () => refresh(tenantId, [], ['dimension-versions']),
   });
 }
 
-/** Edits a draft version's range data type and validity window. */
+/** Edits a draft or published version's range data type. */
 export function useUpdateDimensionVersion(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -195,7 +195,7 @@ export function useUpdateDimensionVersion(versionId: number) {
   });
 }
 
-/** Deletes a draft version with its content; a 409 names what pins it. */
+/** Deletes a draft version with its content. */
 export function useDeleteDimensionVersion() {
   const tenantId = useTenantId();
   return useMutation({
@@ -205,11 +205,11 @@ export function useDeleteDimensionVersion() {
           params: { path: { tenantId, dimensionVersionId: versionId } },
         })
       ),
-    onSuccess: () => refresh(tenantId, [], ['dimension-versions', 'mapping-versions']),
+    onSuccess: () => refresh(tenantId, [], ['dimension-versions']),
   });
 }
 
-/** Adds a level to a draft version. */
+/** Adds a level to a draft or published version. */
 export function useCreateLevel(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -224,7 +224,7 @@ export function useCreateLevel(versionId: number) {
   });
 }
 
-/** Edits a level of a draft version. */
+/** Edits a level of a draft or published version. */
 export function useUpdateLevel(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -239,7 +239,7 @@ export function useUpdateLevel(versionId: number) {
   });
 }
 
-/** Deletes a level of a draft version; a 409 names the members that use it. */
+/** Deletes a level of a draft or published version; a 409 names the members and live bindings that use it. */
 export function useDeleteLevel(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -253,7 +253,7 @@ export function useDeleteLevel(versionId: number) {
   });
 }
 
-/** Adds a member to a draft version. */
+/** Adds a member to a draft or published version. */
 export function useCreateMember(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -268,7 +268,7 @@ export function useCreateMember(versionId: number) {
   });
 }
 
-/** Edits a member of a draft version. */
+/** Edits a member of a draft or published version. */
 export function useUpdateMember(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -283,7 +283,7 @@ export function useUpdateMember(versionId: number) {
   });
 }
 
-/** Deletes a member of a draft version; a 409 names its children and references. */
+/** Deletes a member of a draft or published version; a 409 names its children, bands and the live objects that name its key. */
 export function useDeleteMember(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -315,7 +315,7 @@ export function useReorderMembers(versionId: number) {
   });
 }
 
-/** Replaces every band of a draft range version. */
+/** Replaces every band of a draft or published range version. */
 export function useReplaceRangeBands(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
