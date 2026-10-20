@@ -3,8 +3,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>The editable attributes of a report version, as <c>PUT report-versions/{versionId}</c> takes them.</summary>
 public record ReportVersionInput
 {
-    /// <summary>The key of a profile of the model's published version that requests run under when they name none.</summary>
+    /// <summary>The key of one of the version's profiles that requests run under when they name none; required at publication.</summary>
     public string? DefaultProfileKey { get; init; }
+
+    /// <summary>A <c>subtotal_position</c> value: whether a member row that shows values precedes or follows its descendants.</summary>
+    public required string SubtotalPosition { get; init; }
 
     /// <summary>Optional presentation payload passed through to clients.</summary>
     public string? PayloadJson { get; init; }

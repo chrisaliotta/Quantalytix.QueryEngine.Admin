@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_report_line</c> row: one line of a report version's line tree.</summary>
+/// <summary>A <c>qe_report_line</c> row: an overlay row of a report version, placed among the rows of the report dimension's members.</summary>
 public sealed record ReportLineRecord
 {
     /// <summary>Primary key.</summary>
@@ -9,7 +9,7 @@ public sealed record ReportLineRecord
     /// <summary>The owning report version.</summary>
     public required long ReportVersionId { get; init; }
 
-    /// <summary>Key, unique among the version's lines.</summary>
+    /// <summary>Key, unique among the version's overlay rows and distinct from every member key of the report dimension.</summary>
     public required string LineKey { get; init; }
 
     /// <summary>Human-readable name.</summary>
@@ -18,22 +18,19 @@ public sealed record ReportLineRecord
     /// <summary>A <c>report_line_kind</c> value.</summary>
     public required string LineKind { get; init; }
 
-    /// <summary>The enclosing line; null for a top-level line.</summary>
-    public long? ParentReportLineId { get; init; }
+    /// <summary>The row it sits under: a member key or another overlay row's key; null at the top level.</summary>
+    public string? ParentKey { get; init; }
 
-    /// <summary>The report-item member of a <c>member</c> line.</summary>
-    public string? ReportMemberKey { get; init; }
-
-    /// <summary>The key of the model's calculated measure a <c>formula</c> line evaluates.</summary>
+    /// <summary>The key of the model's calculated measure a <c>formula</c> row evaluates.</summary>
     public string? CalculatedMeasureKey { get; init; }
 
-    /// <summary>The column a <c>formula</c> line places its value in.</summary>
+    /// <summary>The column a <c>formula</c> row places its value in.</summary>
     public long? ValueColumnId { get; init; }
 
-    /// <summary>Order among the line's siblings.</summary>
+    /// <summary>Order among the row's siblings, members and overlay rows alike.</summary>
     public required int SortOrder { get; init; }
 
-    /// <summary>Display default passed through to clients.</summary>
+    /// <summary>Whether the row shows; a hidden row's children take its place.</summary>
     public required bool IsVisible { get; init; }
 
     /// <summary>Optional presentation payload passed through to clients.</summary>

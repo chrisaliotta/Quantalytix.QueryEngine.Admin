@@ -1,16 +1,16 @@
 import { useForm, useWatch } from 'react-hook-form';
-import { EntityField, JsonField, KeyField } from '@/shared/form';
+import { EntityField, JsonField, KeyField, VocabularyField } from '@/shared/form';
 import { FormDialog } from '@/shared/FormDialog';
 import { emptyToNull } from '@/shared/text';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
+import { useLookup } from '@/shared/useLookup';
 import { useCreateReportVersion } from './api';
 import type { Report, ReportVersion } from './types';
 
-/** Values of the new-version dialog; JSON is text, empty for none. */
+/** Values of the new-version dialog; a choice not made yet is null, and JSON is text, empty for none. */
 export interface NewReportVersionValues {
-  reportDimensionId: number | null;
   modelId: number | null;
   defaultProfileKey: string | null;
+  subtotalPosition: string | null;
   defaultSettingsJson: string;
   /** Carried from a clone source; the version's settings sheet edits them. */
   payloadJson: string;
@@ -28,22 +28,22 @@ export interface NewReportVersionDialogProps {
 }
 
 /**
- * Creates a draft report version over a report dimension and a calculation model. Requests read the model version their
- * assumption set pins, by default its published one, whose profiles the default profile picker offers. A clone copies the
- * source's columns and lines.
+ * Creates a draft report version over a calculation model. Requests read the model version their assumption set pins, by
+ * default its published one. A clone copies the source's data, rows and columns, so its profiles are the ones the default
+ * profile picker offers; an empty draft names its default profile once it has profiles.
  */
 export function NewReportVersionDialog({ report, defaults, onClose, onCreated }: NewReportVersionDialogProps) {
   const create = useCreateReportVersion(report.reportId);
   const form = useForm<NewReportVersionValues>({ defaultValues: defaults });
-  const modelId = useWatch({ control: form.control, name: 'modelId' });
-  const profiles = usePublishedVersionItems('model-versions', modelId, 'source-profiles');
+  const cloneFromVersionId = useWatch({ control: form.control, name: 'cloneFromVersionId' });
+  const profiles = useLookup('source-profiles', cloneFromVersionId);
 
   async function submit(values: NewReportVersionValues) {
     onCreated(
       await create.mutateAsync({
         ...values,
-        reportDimensionId: values.reportDimensionId ?? 0,
         modelId: values.modelId ?? 0,
+        subtotalPosition: values.subtotalPosition ?? '',
         payloadJson: emptyToNull(values.payloadJson),
         defaultFilterJson: emptyToNull(values.defaultFilterJson),
         defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
@@ -62,29 +62,29 @@ export function NewReportVersionDialog({ report, defaults, onClose, onCreated }:
       onSubmit={submit}
       submitLabel="Create draft"
     >
-      <EntityField
-        name="reportDimensionId"
-        label="Report dimension"
-        lookupKind="dimensions"
-        description="The hierarchy of report items that member lines and variable targets name."
-      />
       <EntityField name="modelId" label="Calculation model" lookupKind="calculation-models" />
-      <KeyField
-        name="defaultProfileKey"
-        label="Default profile"
-        items={profiles}
-        allowEmpty
-        description="The profile a request runs under when it names none; publishing needs one the model enables."
-      />
-      <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
       <EntityField
         name="cloneFromVersionId"
         label="Clone from"
         lookupKind="report-versions"
         parentId={report.reportId}
         allowEmpty
-        description="Optional: the version whose columns and lines the draft copies."
+        description="Optional: the version whose sources, profiles, dimensions, routes, targets, columns and rows the draft copies."
       />
+      <KeyField
+        name="defaultProfileKey"
+        label="Default profile"
+        items={cloneFromVersionId === null ? [] : (profiles.data ?? null)}
+        allowEmpty
+        description="A profile of the clone source a request runs under when it names none; publishing needs an enabled one."
+      />
+      <VocabularyField
+        name="subtotalPosition"
+        label="Subtotals"
+        vocabulary="subtotal_position"
+        description="Whether a member's values come before or after the rows under it."
+      />
+      <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
     </FormDialog>
   );
 }

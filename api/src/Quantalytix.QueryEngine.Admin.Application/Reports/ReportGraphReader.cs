@@ -6,9 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>
 /// Reads what the report rules check, by the kind being validated. A report version is checked against its model's published
 /// version and the active release. A calculation model version is checked through every published report version that reads
-/// its model, against the version itself and the active release, because publishing it makes it the version those reports
-/// read. A semantic release is checked with every published report version against its own datasets, because a report runs
-/// against whichever release is active.
+/// its model, against the version itself, because publishing it makes it the version those reports read. A semantic release is
+/// checked with every published report version against its own datasets, because a report runs against whichever release is active.
 /// </summary>
 public sealed class ReportGraphReader(
     ITableGateway<DatabaseInfoRecord> databaseInfo,
@@ -17,19 +16,23 @@ public sealed class ReportGraphReader(
     ITableGateway<ReportVersionRecord> reportVersions,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
+    ITableGateway<ReportMemberOptionRecord> memberOptions,
+    ITableGateway<ReportVariableTargetRecord> targets,
+    ITableGateway<SourceProfileRecord> profiles,
+    ITableGateway<SourceProfileVariableRecord> picks,
+    ITableGateway<VariableSourceRecord> sources,
+    ITableGateway<CalculationDimensionRecord> dimensions,
+    ITableGateway<CalculationRouteRecord> routes,
     ITableGateway<CalculationModelVersionRecord> modelVersions,
     ModelMetricsReader models,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
-    ITableGateway<SourceProfileRecord> profiles,
-    ITableGateway<VariableSourceRecord> sources,
-    ITableGateway<CalculationDimensionRecord> dimensions,
-    ITableGateway<CalculationRouteRecord> routes,
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<FieldRecord> fields,
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<TimeBindingRecord> timeBindings,
     ITableGateway<MeasureRecord> measures,
+    ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> bridgeVersions)
 {
     /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
@@ -58,20 +61,20 @@ public sealed class ReportGraphReader(
             scoped = await reportVersions.ListAsync(new { Status = PublicationStatuses.Published }, cancellationToken);
         }
 
-        var reportKeys = (await reports.ListAsync(new { ReportId = scoped.Select(version => version.ReportId).ToArray() }, cancellationToken))
-            .ToDictionary(report => report.ReportId, report => report.ReportKey);
+        var reportsById = (await reports.ListAsync(new { ReportId = scoped.Select(version => version.ReportId).ToArray() }, cancellationToken))
+            .ToDictionary(report => report.ReportId);
         var graphs = new List<ReportGraph>();
         foreach (var version in scoped)
         {
             var model = validatedModel ?? await models.PublishedVersionAsync(version.ModelId, cancellationToken);
-            graphs.Add(await GraphAsync(reportKeys[version.ReportId], version, model, cancellationToken));
+            graphs.Add(await GraphAsync(reportsById[version.ReportId], version, model, cancellationToken));
         }
 
         return [.. graphs.OrderBy(graph => graph.ReportKey, StringComparer.Ordinal)];
     }
 
     /// <summary>Reads the report versions a rule checks, with the dataset versions of the release they run against.</summary>
-    /// <param name="kind">The kind being validated: <c>report_version</c>, <c>calculation_model_version</c> or <c>semantic_release</c>.</param>
+    /// <param name="kind">The kind being validated: <c>report_version</c> or <c>semantic_release</c>.</param>
     /// <param name="versionId">The version being validated.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The reports, and the release's dataset versions: the validated release's, or the active release's.</returns>
@@ -86,10 +89,11 @@ public sealed class ReportGraphReader(
         var versionBindings = await bindings.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken);
         var timeIds = (await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
             .Select(extension => extension.BindingId).ToHashSet();
-        var bridgeCardinalities = (await bridgeVersions.ListAsync(
-                new { BridgeId = versionBindings.Where(binding => binding.BridgeId is not null).Select(binding => binding.BridgeId!.Value).Distinct().ToArray(), Status = PublicationStatuses.Published },
-                cancellationToken))
-            .ToDictionary(bridge => bridge.BridgeId, bridge => bridge.Cardinality);
+        long[] namedBridges =
+        [
+            .. graphs.SelectMany(report => report.Sources.Select(source => source.BridgeId).Concat(report.Routes.Select(route => route.BridgeId)))
+                .OfType<long>().Distinct()
+        ];
         var versionFields = (await fields.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken)).ToLookup(field => field.DatasetVersionId);
         var versionMeasures = (await measures.ListAsync(new { DatasetVersionId = datasetVersions.Values.ToArray() }, cancellationToken)).ToLookup(measure => measure.DatasetVersionId);
         var bindingsByVersion = versionBindings.ToLookup(binding => binding.DatasetVersionId);
@@ -106,44 +110,39 @@ public sealed class ReportGraphReader(
                 Measures = versionMeasures[pair.Value].ToDictionary(measure => measure.MeasureKey, StringComparer.Ordinal)
             }),
             DatasetKeys = datasetKeys,
-            BridgeCardinalities = bridgeCardinalities
+            Bridges = (await bridges.ListAsync(new { BridgeId = namedBridges }, cancellationToken)).ToDictionary(bridge => bridge.BridgeId),
+            BridgeCardinalities = (await bridgeVersions.ListAsync(new { BridgeId = namedBridges, Status = PublicationStatuses.Published }, cancellationToken))
+                .ToDictionary(bridge => bridge.BridgeId, bridge => bridge.Cardinality)
         };
     }
 
-    /// <summary>Reads a report version's columns and lines and the content of a model version.</summary>
-    /// <param name="reportKey">The report's key.</param>
+    /// <summary>Reads a report version's content and the metrics of a model version.</summary>
+    /// <param name="report">The report.</param>
     /// <param name="version">The report version.</param>
     /// <param name="model">The model version the report is checked against; null while the model has no published version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The graph; with no model content when there is no model version.</returns>
-    private async Task<ReportGraph> GraphAsync(string reportKey, ReportVersionRecord version, CalculationModelVersionRecord? model, CancellationToken cancellationToken)
+    /// <returns>The graph; with no metrics when there is no model version.</returns>
+    private async Task<ReportGraph> GraphAsync(ReportRecord report, ReportVersionRecord version, CalculationModelVersionRecord? model, CancellationToken cancellationToken)
     {
         var owner = new { version.ReportVersionId };
-        var versionColumns = await columns.ListAsync(owner, cancellationToken);
-        var versionLines = await lines.ListAsync(owner, cancellationToken);
-        if (model is null)
-        {
-            return new ReportGraph
-            {
-                ReportKey = reportKey, Version = version, Columns = versionColumns, Lines = versionLines, Model = null,
-                Variables = [], CalculatedMeasures = [], Profiles = [], Sources = [], Dimensions = [], Routes = []
-            };
-        }
-
-        var content = new { model.ModelVersionId };
+        var versionProfiles = await profiles.ListAsync(owner, cancellationToken);
+        var metrics = new { ModelVersionId = model?.ModelVersionId };
         return new ReportGraph
         {
-            ReportKey = reportKey,
+            Report = report,
             Version = version,
-            Columns = versionColumns,
-            Lines = versionLines,
+            Columns = await columns.ListAsync(owner, cancellationToken),
+            Lines = await lines.ListAsync(owner, cancellationToken),
+            MemberOptions = await memberOptions.ListAsync(owner, cancellationToken),
+            Targets = await targets.ListAsync(owner, cancellationToken),
+            Profiles = versionProfiles,
+            Picks = await picks.ListAsync(new { SourceProfileId = versionProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
+            Sources = [.. (await sources.ListAsync(owner, cancellationToken)).Where(source => source.IsEnabled)],
+            Dimensions = [.. (await dimensions.ListAsync(owner, cancellationToken)).Where(dimension => dimension.IsEnabled)],
+            Routes = await routes.ListAsync(owner, cancellationToken),
             Model = model,
-            Variables = await variables.ListAsync(content, cancellationToken),
-            CalculatedMeasures = await calculatedMeasures.ListAsync(content, cancellationToken),
-            Profiles = await profiles.ListAsync(content, cancellationToken),
-            Sources = [.. (await sources.ListAsync(content, cancellationToken)).Where(source => source.IsEnabled)],
-            Dimensions = [.. (await dimensions.ListAsync(content, cancellationToken)).Where(dimension => dimension.IsEnabled)],
-            Routes = await routes.ListAsync(content, cancellationToken)
+            Variables = model is null ? [] : await variables.ListAsync(metrics, cancellationToken),
+            CalculatedMeasures = model is null ? [] : await calculatedMeasures.ListAsync(metrics, cancellationToken)
         };
     }
 }

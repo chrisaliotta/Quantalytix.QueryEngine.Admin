@@ -6,29 +6,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePublishedVersion } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
+import { CalculationDimensionsTab } from './CalculationDimensionsTab';
+import { CalculationRoutesTab } from './CalculationRoutesTab';
 import { ReportColumnsTab } from './ReportColumnsTab';
-import { ReportLinesTab } from './ReportLinesTab';
+import { ReportRowsTab } from './ReportRowsTab';
+import { ReportVariableTargetsTab } from './ReportVariableTargetsTab';
 import { ReportVersionSheet } from './ReportVersionSheet';
-import type { ReportVersion } from './types';
+import { SourceProfilesTab } from './SourceProfilesTab';
+import type { Report, ReportVersion } from './types';
+import { VariableSourcesTab } from './VariableSourcesTab';
 
 export interface ReportVersionPanelProps {
+  report: Report;
   version: ReportVersion;
   isEditable: boolean;
 }
 
 /**
- * The selected report version: the report dimension and calculation model it reads, its defaults, editable on a draft or
- * the published version, above its lines and columns. Requests read the model version their assumption set pins, by
- * default its published one, which the panel links to.
+ * The selected report version: the calculation model it reads, its defaults, editable on a draft or the published version,
+ * above its sources, profiles, calculation dimensions, routes, targets, columns and rows. Requests read the model version
+ * their assumption set pins, by default its published one, which the panel links to.
  */
-export function ReportVersionPanel({ version, isEditable }: ReportVersionPanelProps) {
+export function ReportVersionPanel({ report, version, isEditable }: ReportVersionPanelProps) {
   const tenantId = useTenantId();
   const [editing, setEditing] = useState(false);
   const dimensions = useLookup('dimensions');
   const models = useLookup('calculation-models');
   const publishedModel = usePublishedVersion('model-versions', version.modelId);
-  const dimensionKey = dimensions.data?.find(item => item.id === version.reportDimensionId)?.key ?? '';
+  const dimensionKey = dimensions.data?.find(item => item.id === report.reportDimensionId)?.key ?? '';
   const modelKey = models.data?.find(item => item.id === version.modelId)?.key ?? '';
+  const versionId = version.reportVersionId;
 
   return (
     <div data-slot="report-version-panel" className="space-y-4">
@@ -44,6 +51,7 @@ export function ReportVersionPanel({ version, isEditable }: ReportVersionPanelPr
           </Link>
         </div>
         <Setting label="Default profile" value={version.defaultProfileKey ?? 'None'} />
+        <Setting label="Subtotals" value={version.subtotalPosition} />
         <Setting label="Default settings" value={version.defaultSettingsJson ?? 'None'} code />
         <Setting label="Default pivot" value={version.defaultPivotJson ?? 'None'} code />
         {isEditable && (
@@ -53,16 +61,36 @@ export function ReportVersionPanel({ version, isEditable }: ReportVersionPanelPr
           </Button>
         )}
       </div>
-      <Tabs defaultValue="lines">
+      <Tabs defaultValue="sources">
         <TabsList>
-          <TabsTrigger value="lines">Lines</TabsTrigger>
+          <TabsTrigger value="sources">Sources</TabsTrigger>
+          <TabsTrigger value="profiles">Profiles</TabsTrigger>
+          <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+          <TabsTrigger value="routes">Routes</TabsTrigger>
+          <TabsTrigger value="targets">Targets</TabsTrigger>
           <TabsTrigger value="columns">Columns</TabsTrigger>
+          <TabsTrigger value="rows">Rows</TabsTrigger>
         </TabsList>
-        <TabsContent value="lines">
-          <ReportLinesTab version={version} isEditable={isEditable} />
+        <TabsContent value="sources">
+          <VariableSourcesTab report={report} version={version} isEditable={isEditable} />
+        </TabsContent>
+        <TabsContent value="profiles">
+          <SourceProfilesTab version={version} isEditable={isEditable} />
+        </TabsContent>
+        <TabsContent value="dimensions">
+          <CalculationDimensionsTab versionId={versionId} isEditable={isEditable} />
+        </TabsContent>
+        <TabsContent value="routes">
+          <CalculationRoutesTab versionId={versionId} isEditable={isEditable} />
+        </TabsContent>
+        <TabsContent value="targets">
+          <ReportVariableTargetsTab report={report} version={version} isEditable={isEditable} />
         </TabsContent>
         <TabsContent value="columns">
           <ReportColumnsTab version={version} isEditable={isEditable} />
+        </TabsContent>
+        <TabsContent value="rows">
+          <ReportRowsTab report={report} version={version} isEditable={isEditable} />
         </TabsContent>
       </Tabs>
       {editing && <ReportVersionSheet version={version} onClose={() => setEditing(false)} />}

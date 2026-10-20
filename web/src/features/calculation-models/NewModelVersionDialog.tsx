@@ -12,7 +12,7 @@ export interface NewModelVersionDialogProps {
   onCreated: (version: CalculationModelVersion) => void;
 }
 
-/** Creates a draft model version: its currency, and optionally a version whose whole content it copies. */
+/** Creates a draft model version: its currency, and optionally a version whose metrics it copies. */
 export function NewModelVersionDialog({ model, defaults, onClose, onCreated }: NewModelVersionDialogProps) {
   const create = useCreateModelVersion(model.modelId);
   const form = useForm<NewModelVersionInput>({ defaultValues: defaults });
@@ -26,7 +26,7 @@ export function NewModelVersionDialog({ model, defaults, onClose, onCreated }: N
       open
       onOpenChange={open => !open && onClose()}
       title="New version"
-      description="A draft of the model. A clone copies the source's variables, sources, profiles, formulas, dimensions and routes."
+      description="A draft of the model. A clone copies the source's variables and calculated measures."
       form={form}
       onSubmit={submit}
       submitLabel="Create draft"
@@ -38,7 +38,7 @@ export function NewModelVersionDialog({ model, defaults, onClose, onCreated }: N
         lookupKind="model-versions"
         parentId={model.modelId}
         allowEmpty
-        description="Optional: the version whose content the draft copies."
+        description="Optional: the version whose metrics the draft copies."
       />
     </FormDialog>
   );

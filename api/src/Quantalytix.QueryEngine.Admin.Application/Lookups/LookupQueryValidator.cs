@@ -12,6 +12,7 @@ public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
         StringComparer.Ordinal,
         LookupKinds.DatasetVersions,
         LookupKinds.Fields,
+        LookupKinds.ClassifiedFields,
         LookupKinds.Grains,
         LookupKinds.Bindings,
         LookupKinds.TimeBindings,

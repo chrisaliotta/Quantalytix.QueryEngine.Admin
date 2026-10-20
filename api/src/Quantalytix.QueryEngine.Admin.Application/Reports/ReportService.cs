@@ -42,6 +42,7 @@ public sealed class ReportService(
             ReportKey = input.ReportKey,
             DisplayName = input.DisplayName,
             ReportType = input.ReportType,
+            ReportDimensionId = input.ReportDimensionId,
             IsEnabled = input.IsEnabled,
             PayloadJson = input.PayloadJson
         };
@@ -66,7 +67,7 @@ public sealed class ReportService(
         return updated;
     }
 
-    /// <summary>Deletes a report whose versions are all drafts, with those drafts and their lines and columns.</summary>
+    /// <summary>Deletes a report whose versions are all drafts, with those drafts and their content.</summary>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the report was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>

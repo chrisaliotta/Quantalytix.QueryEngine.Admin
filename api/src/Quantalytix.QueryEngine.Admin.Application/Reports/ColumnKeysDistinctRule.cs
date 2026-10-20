@@ -1,24 +1,23 @@
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>column_keys_distinct</c>: a report version has columns, and none is named like a calculation dimension of the model
-/// version, because a report table lists its breakout dimensions and its columns side by side under their keys. Report
-/// versions and calculation model versions both run the rule.
+/// <c>column_keys_distinct</c>: a report version has columns, and none is named like one of its calculation dimensions, because a
+/// report table lists its breakout dimensions and its columns side by side under their keys.
 /// </summary>
-/// <param name="kind">The kind the rule is registered for.</param>
-/// <param name="reader">Reads the reports with the model version they are checked against.</param>
-public sealed class ColumnKeysDistinctRule(string kind, ReportGraphReader reader) : IPublicationRule
+/// <param name="reader">Reads the report version.</param>
+public sealed class ColumnKeysDistinctRule(ReportGraphReader reader) : IPublicationRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "column_keys_distinct";
 
-    /// <summary>The kind the rule checks: report versions or calculation model versions.</summary>
-    public string Kind { get; } = kind;
+    /// <summary>The kind the rule checks: report versions.</summary>
+    public string Kind { get; } = VersionKinds.ReportVersion;
 
-    /// <summary>Reports each report without columns, and each column named like a calculation dimension.</summary>
-    /// <param name="versionId">The report or model version being validated.</param>
+    /// <summary>Reports a report version without columns, and each column named like a calculation dimension.</summary>
+    /// <param name="versionId">The report version being validated.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The violations found.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
@@ -30,7 +29,7 @@ public sealed class ColumnKeysDistinctRule(string kind, ReportGraphReader reader
             var dimensionKeys = report.Dimensions.Select(dimension => dimension.DimensionKey).ToHashSet(StringComparer.Ordinal);
             violations.AddRange(report.Columns
                 .Where(column => dimensionKeys.Contains(column.ColumnKey))
-                .Select(column => Violation($"Report '{report.ReportKey}' column '{column.ColumnKey}' is named like a calculation dimension of the model version.")));
+                .Select(column => Violation($"Report '{report.ReportKey}' column '{column.ColumnKey}' is named like a calculation dimension of the report version.")));
         }
         return violations;
     }

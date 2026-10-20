@@ -1,10 +1,12 @@
+using Quantalytix.QueryEngine.Admin.Application.Dimensions;
+
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
 /// <summary>
 /// The attributes of a dimension binding of a draft dataset version, plus the time extension of a <c>time</c> binding.
 /// Bindings have no key, so the same input creates a binding and replaces one.
 /// </summary>
-public sealed record BindingInput
+public sealed record BindingInput : IGroupingInput
 {
     /// <summary>Human-readable role name, such as <c>Origination branch</c>.</summary>
     public required string DisplayName { get; init; }

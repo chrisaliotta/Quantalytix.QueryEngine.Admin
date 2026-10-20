@@ -12,7 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// <summary>
 /// Confirms the column list check: the keys <c>line</c> and <c>period</c>, which name the report table's own columns, are
 /// rejected, as is a repeated key; a column must return a metric of the value kind it declares; and a column that a formula
-/// line places its value in cannot be removed. The replace deletes the columns a list leaves out, so a line would otherwise
+/// row places its value in cannot be removed. The replace deletes the columns a list leaves out, so a row would otherwise
 /// be left pointing at a deleted column.
 /// </summary>
 public sealed class ReportColumnsInputValidatorTests
@@ -22,7 +22,7 @@ public sealed class ReportColumnsInputValidatorTests
         Column(1, "amount", ReportValueKinds.Variable, "balance", 1),
         Column(2, "yield", ReportValueKinds.Calculated, "yield", 2));
 
-    /// <summary>The formula line that places the yield measure in the yield column.</summary>
+    /// <summary>The formula row that places the yield measure in the yield column.</summary>
     private readonly InMemoryTableGateway<ReportLineRecord> _lines = new(
         Line(11, "loan_yield", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureKey = "yield", ValueColumnId = 2 });
 
@@ -55,15 +55,15 @@ public sealed class ReportColumnsInputValidatorTests
         Assert.Equal("Column 'amount' returns 'balance', which is no calculated metric of the published version of the report's model.", error.ErrorMessage);
     }
 
-    /// <summary>Leaving out the yield column fails while the formula line still places its value there.</summary>
+    /// <summary>Leaving out the yield column fails while the formula row still places its value there.</summary>
     /// <returns>A task that completes when the validation is checked.</returns>
     [Fact]
-    public async Task RemovingAColumnALineUses_Fails()
+    public async Task RemovingAColumnARowUses_Fails()
     {
         var result = await ValidateAsync(Input(1, "amount", ReportValueKinds.Variable, "balance"));
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("Formula line 'loan_yield' places its value in column 'yield', so the column must stay.", error.ErrorMessage);
+        Assert.Equal("Formula row 'loan_yield' places its value in column 'yield', so the column must stay.", error.ErrorMessage);
     }
 
     /// <summary>A visible column input.</summary>

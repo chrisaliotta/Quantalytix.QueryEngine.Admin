@@ -96,8 +96,9 @@ Query keys decide what TanStack Query caches and what a write refreshes. Tenant-
 | `['dimensions', tenantId, ...]`, `['dimension-versions', ...]`, `['dimension-levels', ...]`, `['dimension-members', ...]`, `['range-bands', ...]` | `dimensions/api.ts` | `refresh` of the changed keys and lookup kinds; `setQueryData` after a member reorder or a band replace |
 | `['mapping-sets', tenantId, ...]`, `['mapping-entries', tenantId, versionId]` | `mappings/api.ts` | The changed keys and lookups; `setQueryData` after a bulk entry replace |
 | `['bridges', tenantId, ...]`, `['bridge-versions', ...]`, `['bridge-mappings', ...]` | `bridges/api.ts` | The changed keys and lookups; `setQueryData` after a bulk mapping replace |
-| `['calculation-models', tenantId, ...]`, `['model-versions', ...]`, `['model-content', tenantId, versionId, kind]` | `calculation-models/api.ts` | The changed keys and lookups; a content write refreshes `['model-content', tenantId, versionId]` and the content lookups |
-| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]` | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column or line replace |
+| `['calculation-models', tenantId, ...]`, `['model-versions', ...]` | `calculation-models/api.ts` | The changed keys and lookups |
+| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]`, `['report-member-options', ...]`, `['report-variable-targets', ...]`; `['dimension-members', ...]` of the report dimension's published version | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column, overlay row, member option or target replace |
+| `['version-content', tenantId, scope, versionId, kind]`, where the scope is `model-versions` or `report-versions` | `shared/versionContent.ts` | A content write refreshes `['version-content', tenantId, scope, versionId]` and the scope's content lookups |
 | `['releases', tenantId, ...]` | `useReleases.ts` | `invalidateReleases` or the release keys; `invalidateTenantQueries` after an activation |
 | `['assumption-sets', tenantId, ...]` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; `invalidateTenantQueries` after a publish |
 
@@ -150,9 +151,11 @@ flowchart LR
 | `mapping-versions` | Mapping set |
 | `bridge-versions` | Bridge |
 | `model-versions` | Calculation model |
-| `variables`, `variable-sources`, `source-profiles`, `calculated-measures`, `calculation-dimensions` | Model version (a source's own `parentId` is its variable) |
+| `variables`, `calculated-measures` | Model version |
 | `report-versions` | Report |
-| `report-columns` | Report version |
+| `variable-sources`, `source-profiles`, `calculation-dimensions`, `report-columns` | Report version (a source's `classifier` is its variable's key) |
+| `classified-fields` | Dataset version (each field's `parentId` is the dimension its binding groups members of) |
+| `bridges` | Optional source dimension (each bridge's `parentId` is its target dimension) |
 
 **Sources:** [useLookup.ts](../../src/shared/useLookup.ts), [useVocabularies.ts](../../src/shared/useVocabularies.ts), [EntitySelect.tsx](../../src/shared/EntitySelect.tsx), [VocabularySelect.tsx](../../src/shared/VocabularySelect.tsx), [EntityField.tsx](../../src/shared/form/EntityField.tsx), [VocabularyField.tsx](../../src/shared/form/VocabularyField.tsx), [MultiVocabularyField.tsx](../../src/shared/form/MultiVocabularyField.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [types.ts](../../src/shared/types.ts), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [GrainFieldsField.tsx](../../src/features/datasets/GrainFieldsField.tsx), [ComponentsField.tsx](../../src/features/measures/ComponentsField.tsx), [NewDatasetSheet.tsx](../../src/features/datasets/NewDatasetSheet.tsx), [GrainSheet.tsx](../../src/features/datasets/GrainSheet.tsx), [TenantsPage.tsx](../../src/features/system/TenantsPage.tsx).
 
@@ -416,7 +419,7 @@ flowchart TB
 | `MultiSelect` | `MultiVocabularyField`, `ColumnsField` |
 | `CodeEditor`, `JsonEditor` | The shared `CodeEditor` and `JsonEditor` wrappers |
 | `NumericInput`, `DatePicker`, `BehaviorSwitch` | `NumberField`, `DateField`, `SwitchField` |
-| `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `ReportLinesTab` and `ReportLineRow` |
+| `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `ReportRowsTab` and `ReportRowItem` |
 | `TruncatedText`, `IconTooltip` | `VersionHeader`, `FieldsTab`, `TenantsPage`; `VocabularySelect` |
 | `pages/ErrorPage` | `RequireSession`, `TenantRedirect`, `NotFoundPage`, `RouteErrorPage` |
 

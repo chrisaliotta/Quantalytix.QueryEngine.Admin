@@ -15,6 +15,9 @@ public static class LookupKinds
     /// <summary>Fields of a dataset version; the parent is the dataset version.</summary>
     public const string Fields = "fields";
 
+    /// <summary>Fields of a dataset version whose binding groups members of a canonical dimension; the parent is the dataset version.</summary>
+    public const string ClassifiedFields = "classified-fields";
+
     /// <summary>Grains of a dataset version; the parent is the dataset version.</summary>
     public const string Grains = "grains";
 
@@ -45,7 +48,7 @@ public static class LookupKinds
     /// <summary>Versions of a mapping set; the parent is the mapping set.</summary>
     public const string MappingVersions = "mapping-versions";
 
-    /// <summary>Bridges.</summary>
+    /// <summary>Bridges, each pointing at its target dimension; an optional parent narrows them to one source dimension.</summary>
     public const string Bridges = "bridges";
 
     /// <summary>Versions of a bridge; the parent is the bridge.</summary>
@@ -66,16 +69,16 @@ public static class LookupKinds
     /// <summary>Variables of a model version; the parent is the model version.</summary>
     public const string Variables = "variables";
 
-    /// <summary>Variable sources of a model version; the parent is the model version.</summary>
+    /// <summary>Variable sources of a report version, classified by their variable; the parent is the report version.</summary>
     public const string VariableSources = "variable-sources";
 
-    /// <summary>Source profiles of a model version; the parent is the model version.</summary>
+    /// <summary>Source profiles of a report version; the parent is the report version.</summary>
     public const string SourceProfiles = "source-profiles";
 
     /// <summary>Calculated measures of a model version; the parent is the model version.</summary>
     public const string CalculatedMeasures = "calculated-measures";
 
-    /// <summary>Calculation dimensions of a model version; the parent is the model version.</summary>
+    /// <summary>Calculation dimensions of a report version; the parent is the report version.</summary>
     public const string CalculationDimensions = "calculation-dimensions";
 
     /// <summary>Reports.</summary>
@@ -97,6 +100,7 @@ public static class LookupKinds
             new() { Value = Datasets, Description = "Datasets." },
             new() { Value = DatasetVersions, Description = "Versions of a dataset; the parent is the dataset." },
             new() { Value = Fields, Description = "Fields of a dataset version; the parent is the dataset version." },
+            new() { Value = ClassifiedFields, Description = "Fields of a dataset version whose binding groups members of a canonical dimension, each pointing at that dimension; the parent is the dataset version." },
             new() { Value = Grains, Description = "Grains of a dataset version; the parent is the dataset version." },
             new() { Value = Bindings, Description = "Dimension bindings of a dataset version; the parent is the dataset version." },
             new() { Value = TimeBindings, Description = "Dimension bindings with a time extension; the parent is the dataset version." },
@@ -107,17 +111,17 @@ public static class LookupKinds
             new() { Value = Members, Description = "Members of a dimension version; the parent is the dimension version." },
             new() { Value = MappingSets, Description = "Mapping sets; an optional parent narrows them to one dimension." },
             new() { Value = MappingVersions, Description = "Versions of a mapping set; the parent is the mapping set." },
-            new() { Value = Bridges, Description = "Bridges." },
+            new() { Value = Bridges, Description = "Bridges, each pointing at its target dimension; an optional parent narrows them to one source dimension." },
             new() { Value = BridgeVersions, Description = "Versions of a bridge; the parent is the bridge." },
             new() { Value = Releases, Description = "Semantic releases." },
             new() { Value = AssumptionSets, Description = "Assumption sets, the active one first." },
             new() { Value = CalculationModels, Description = "Calculation models." },
             new() { Value = ModelVersions, Description = "Versions of a calculation model; the parent is the model." },
             new() { Value = Variables, Description = "Variables of a model version; the parent is the model version." },
-            new() { Value = VariableSources, Description = "Variable sources of a model version; the parent is the model version." },
-            new() { Value = SourceProfiles, Description = "Source profiles of a model version; the parent is the model version." },
+            new() { Value = VariableSources, Description = "Variable sources of a report version, classified by their variable; the parent is the report version." },
+            new() { Value = SourceProfiles, Description = "Source profiles of a report version; the parent is the report version." },
             new() { Value = CalculatedMeasures, Description = "Calculated measures of a model version; the parent is the model version." },
-            new() { Value = CalculationDimensions, Description = "Calculation dimensions of a model version; the parent is the model version." },
+            new() { Value = CalculationDimensions, Description = "Calculation dimensions of a report version; the parent is the report version." },
             new() { Value = Reports, Description = "Reports." },
             new() { Value = ReportVersions, Description = "Versions of a report; the parent is the report." },
             new() { Value = ReportColumns, Description = "Columns of a report version; the parent is the report version." }

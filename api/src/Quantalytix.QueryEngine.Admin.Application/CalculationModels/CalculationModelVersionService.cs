@@ -7,8 +7,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// <summary>Reads, creates, clones, edits and deletes the versions of calculation models. Status changes go through the version workflow.</summary>
 public sealed class CalculationModelVersionService(
     ITableGateway<CalculationModelVersionRecord> versions,
+    ITableGateway<VariableRecord> variables,
+    ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ModelVersionCloner cloner,
-    ModelContentRemover remover,
     IIdGenerator ids)
 {
     /// <summary>The calendar every model version follows.</summary>
@@ -36,7 +37,7 @@ public sealed class CalculationModelVersionService(
         return versions.GetAsync(new { ModelVersionId = versionId }, cancellationToken);
     }
 
-    /// <summary>Creates a draft with the model's next version number: empty, or with a copy of another version's content.</summary>
+    /// <summary>Creates a draft with the model's next version number: empty, or with a copy of another version's metrics.</summary>
     /// <param name="modelId">The model.</param>
     /// <param name="input">The currency and the optional clone source.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
@@ -80,13 +81,15 @@ public sealed class CalculationModelVersionService(
         return RemoveAsync([versionId], cancellationToken);
     }
 
-    /// <summary>Hard-deletes draft versions: their content first, then the versions.</summary>
+    /// <summary>Hard-deletes draft versions: their variables and calculated measures first, then the versions.</summary>
     /// <param name="versionIds">The draft versions.</param>
     /// <param name="cancellationToken">Cancels the remaining deletes.</param>
     /// <returns>A task that completes when the versions are deleted.</returns>
     public async Task RemoveAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
     {
-        await remover.RemoveContentAsync(versionIds, cancellationToken);
-        await versions.DeleteAsync(new { ModelVersionId = versionIds }, cancellationToken);
+        var owners = new { ModelVersionId = versionIds };
+        await variables.DeleteAsync(owners, cancellationToken);
+        await calculatedMeasures.DeleteAsync(owners, cancellationToken);
+        await versions.DeleteAsync(owners, cancellationToken);
     }
 }

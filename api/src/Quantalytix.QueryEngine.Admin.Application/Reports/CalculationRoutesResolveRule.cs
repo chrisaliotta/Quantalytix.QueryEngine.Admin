@@ -4,11 +4,11 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>calculation_routes_resolve</c>: every route of a report's model over a dataset the release pins names an enabled field that
-/// produces its calculation dimension there: for a semantic route, a canonical binding into the dimension's canonical dimension
-/// that allows the grouping and filtering the calculation dimension does, and never a fan-out bridge for a filterable one; for a
-/// field route, a field that allows them. Report versions, calculation model versions and semantic releases all run the rule,
-/// each in the scope <see cref="ReportGraphReader"/> gives its kind.
+/// <c>calculation_routes_resolve</c>: every route of a report over a dataset the release pins reads an enabled field there. A field
+/// route's field allows the grouping and filtering its scalar calculation dimension does; a bridge route's field has a binding that
+/// groups members of the bridge's source dimension, and a filterable calculation dimension never routes through a bridge that can
+/// send a row to several members. Report versions and semantic releases both run the rule, each in the scope
+/// <see cref="ReportGraphReader"/> gives its kind.
 /// </summary>
 /// <param name="kind">The kind the rule is registered for.</param>
 /// <param name="reader">Reads the reports and the release's dataset versions.</param>
@@ -17,10 +17,7 @@ public sealed class CalculationRoutesResolveRule(string kind, ReportGraphReader 
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "calculation_routes_resolve";
 
-    /// <summary>The binding kinds that resolve canonical members.</summary>
-    private static readonly string[] Canonical = [BindingKinds.Direct, BindingKinds.Mapped, BindingKinds.Range, BindingKinds.Bridge];
-
-    /// <summary>The kind the rule checks: report versions, calculation model versions or semantic releases.</summary>
+    /// <summary>The kind the rule checks: report versions or semantic releases.</summary>
     public string Kind { get; } = kind;
 
     /// <summary>Reports every route that does not produce its dimension.</summary>
@@ -45,25 +42,13 @@ public sealed class CalculationRoutesResolveRule(string kind, ReportGraphReader 
                         continue;
                     }
 
-                    if (route.RouteKind == RouteKinds.Field)
-                    {
-                        if ((dimension.IsGroupable && !field.IsGroupable) || (dimension.IsFilterable && !field.IsFilterable))
-                            violations.Add(Violation($"{subject}, which does not allow the grouping and filtering the dimension does."));
-                        continue;
-                    }
-
-                    var binding = dataset.BindingOf(route.FieldKey);
-                    if (binding is null || !Canonical.Contains(binding.BindingKind) || binding.DimensionId != dimension.DimensionId)
-                    {
-                        violations.Add(Violation($"{subject}, which has no canonical binding into the dimension's canonical dimension."));
-                        continue;
-                    }
-
-                    if ((dimension.IsGroupable && !binding.IsGroupable) || (dimension.IsFilterable && !binding.IsFilterable))
-                        violations.Add(Violation($"{subject}, whose binding does not allow the grouping and filtering the dimension does."));
-                    if (dimension.IsFilterable && binding.BridgeId is { } bridge
-                        && scope.BridgeCardinalities.GetValueOrDefault(bridge) is { } cardinality && cardinality != Cardinalities.ManyToOne)
-                        violations.Add(Violation($"{subject}, whose bridge can send a row to several members, so it cannot be filtered on."));
+                    if (route.RouteKind == RouteKinds.Field && ((dimension.IsGroupable && !field.IsGroupable) || (dimension.IsFilterable && !field.IsFilterable)))
+                        violations.Add(Violation($"{subject}, which does not allow the grouping and filtering the dimension does."));
+                    if (route.BridgeId is not { } bridgeId) continue;
+                    if (!ClassificationFields.BridgesFrom(dataset, route.FieldKey, scope.Bridges[bridgeId]))
+                        violations.Add(Violation($"{subject}, whose binding groups no members of the source dimension of bridge '{scope.Bridges[bridgeId].BridgeKey}'."));
+                    if (dimension.IsFilterable && scope.BridgeCardinalities.GetValueOrDefault(bridgeId) is { } cardinality && cardinality != Cardinalities.ManyToOne)
+                        violations.Add(Violation($"{subject} through a bridge that can send a row to several members, so it cannot be filtered on."));
                 }
             }
         }

@@ -9,10 +9,10 @@ public sealed class CalculatedMeasureService(
     IIdGenerator ids)
     : ModelVersionRows<CalculatedMeasureRecord, CalculatedMeasureInput>(table, ids)
 {
-    /// <summary>Deletes a calculated measure, unless a live report column returns it or a live formula line evaluates it.</summary>
+    /// <summary>Deletes a calculated measure, unless a live report column returns it or a live formula row evaluates it.</summary>
     /// <param name="itemId">The calculated measure.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
-    /// <returns>Null when the measure was deleted; otherwise the detail naming the report columns and lines.</returns>
+    /// <returns>Null when the measure was deleted; otherwise the detail naming the report columns and rows.</returns>
     public override async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
     {
         var measure = await Rows.GetAsync(new { CalculatedMeasureId = itemId }, cancellationToken);

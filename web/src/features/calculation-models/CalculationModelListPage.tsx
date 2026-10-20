@@ -29,7 +29,7 @@ export function CalculationModelListPage() {
     <>
       <EntityListPage
         title="Calculation models"
-        description="Variables read from datasets, the formulas over them, and the dimensions reports break them out by."
+        description="Variables and the formulas over them, which several reports can share; each report brings its own data and dimensions."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus />

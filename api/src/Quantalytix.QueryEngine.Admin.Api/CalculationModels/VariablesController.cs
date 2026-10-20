@@ -5,17 +5,18 @@ using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 
-/// <summary>Lists and edits the variables of calculation model versions: the logical inputs a profile fills from one of their sources.</summary>
+/// <summary>Lists and edits the variables of calculation model versions: the logical inputs each report fills from one of its own sources.</summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/model-versions/{versionId:long}/variables")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class VariablesController(IModelVersionContent<VariableRecord, VariableInput> variables) : ControllerBase
+public sealed class VariablesController(IVersionContent<VariableRecord, VariableInput> variables) : ControllerBase
 {
     /// <summary>Lists a model version's variables.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
@@ -69,14 +70,14 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Update(
         string tenantId,
-        [FromRoute] ModelItemReference<VariableRecord> variable,
+        [FromRoute] VersionItemReference<VariableRecord> variable,
         VariableInput input,
         CancellationToken cancellationToken)
     {
         return Ok(await variables.UpdateAsync(variable.VersionId, variable.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a variable of a draft or published model version with its sources and their profile picks and override routes, unless a live report column returns it.</summary>
+    /// <summary>Deletes a variable of a draft or published model version, unless a live report reads it.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="variable">The draft or published model version and its variable.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -90,7 +91,7 @@ public sealed class VariablesController(IModelVersionContent<VariableRecord, Var
     [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<VariableRecord> variable, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, [FromRoute] VersionItemReference<VariableRecord> variable, CancellationToken cancellationToken)
     {
         var conflict = await variables.DeleteAsync(variable.ItemId, cancellationToken);
         if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);

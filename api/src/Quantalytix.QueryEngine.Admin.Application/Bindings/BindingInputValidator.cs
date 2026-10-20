@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -22,7 +23,7 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.DimensionId).NotNull();
         RuleFor(input => input.BindingKind).MustBeIn(BindingKinds.Definition);
-        RuleFor(input => input.GroupingMode).MustBeIn(GroupingModes.Definition);
+        Include(new GroupingInputValidator<BindingInput>(256));
         RuleFor(input => input.RaggedBehavior).MustBeIn(RaggedBehaviors.Definition);
         RuleFor(input => input.DefaultPeriodAlignment).MustBeIn(PeriodAlignments.Definition);
         RuleFor(input => input.UnmappedBehavior).MustBeIn(UnmappedBehaviors.Definition);
@@ -56,32 +57,6 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
             RuleFor(input => input.TimeBinding).Null().WithMessage("Only time bindings have a time extension, so '{PropertyName}' must be absent.");
         });
 
-        When(input => input.GroupingMode == GroupingModes.Level, () =>
-        {
-            RuleFor(input => input.GroupingLevelKey).NotEmpty().WithMessage(ModeRequires(GroupingModes.Level)).MustFitVarchar(128);
-        }).Otherwise(() =>
-        {
-            RuleFor(input => input.GroupingLevelKey).Null().WithMessage(OnlyModeUses(GroupingModes.Level));
-        });
-        When(input => input.GroupingMode == GroupingModes.Ancestor, () =>
-        {
-            RuleFor(input => input.GroupingAncestorMemberKey).NotEmpty().WithMessage(ModeRequires(GroupingModes.Ancestor)).MustFitVarchar(256);
-        }).Otherwise(() =>
-        {
-            RuleFor(input => input.GroupingAncestorMemberKey).Null().WithMessage(OnlyModeUses(GroupingModes.Ancestor));
-        });
-        When(input => input.GroupingMode == GroupingModes.Depth, () =>
-        {
-            RuleFor(input => input.GroupingDepth)
-                .Cascade(CascadeMode.Stop)
-                .NotNull()
-                .WithMessage(ModeRequires(GroupingModes.Depth))
-                .GreaterThanOrEqualTo(0);
-        }).Otherwise(() =>
-        {
-            RuleFor(input => input.GroupingDepth).Null().WithMessage(OnlyModeUses(GroupingModes.Depth));
-        });
-
         When(input => input.UnmappedBehavior == UnmappedBehaviors.Unknown, () =>
         {
             RuleFor(input => input.UnknownMemberKey)
@@ -111,17 +86,5 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
     private static string OnlyKindUses(string bindingKind)
     {
         return $"Only {bindingKind} bindings use '{{PropertyName}}', so it must be empty.";
-    }
-
-    /// <summary>The message of the grouping reference a grouping mode requires.</summary>
-    private static string ModeRequires(string groupingMode)
-    {
-        return $"'{{PropertyName}}' is required for {groupingMode} grouping.";
-    }
-
-    /// <summary>The message of a grouping reference that only one grouping mode uses.</summary>
-    private static string OnlyModeUses(string groupingMode)
-    {
-        return $"Only {groupingMode} grouping uses '{{PropertyName}}', so it must be empty.";
     }
 }

@@ -1,14 +1,15 @@
 import { useForm } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { JsonField, KeyField } from '@/shared/form';
+import { JsonField, KeyField, VocabularyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
+import { useLookup } from '@/shared/useLookup';
 import { useUpdateReportVersion } from './api';
 import type { ReportVersion } from './types';
 
-/** Values of the version settings sheet; the defaults are JSON text, empty for none. */
+/** Values of the version settings sheet; a choice not made yet is null, and the defaults are JSON text, empty for none. */
 interface ReportVersionValues {
   defaultProfileKey: string | null;
+  subtotalPosition: string | null;
   payloadJson: string;
   defaultFilterJson: string;
   defaultSettingsJson: string;
@@ -22,16 +23,17 @@ export interface ReportVersionSheetProps {
 }
 
 /**
- * Edits a version's default profile and defaults. The profile is named by key, offered from the model's published version.
- * Only `periodicity` and `timeZone` of the settings change how the engine runs the report; the rest, and the payload, pass
- * through to clients.
+ * Edits a version's default profile, subtotal position and defaults. The profile is named by key, offered from the version's
+ * own profiles. Only `periodicity` and `timeZone` of the settings change how the engine runs the report; the rest, and the
+ * payload, pass through to clients.
  */
 export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps) {
   const update = useUpdateReportVersion(version.reportVersionId);
-  const profiles = usePublishedVersionItems('model-versions', version.modelId, 'source-profiles');
+  const profiles = useLookup('source-profiles', version.reportVersionId);
   const form = useForm<ReportVersionValues>({
     defaultValues: {
       defaultProfileKey: version.defaultProfileKey ?? null,
+      subtotalPosition: version.subtotalPosition,
       payloadJson: version.payloadJson ?? '',
       defaultFilterJson: version.defaultFilterJson ?? '',
       defaultSettingsJson: version.defaultSettingsJson ?? '',
@@ -42,6 +44,7 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
   function submit(values: ReportVersionValues) {
     return update.mutateAsync({
       defaultProfileKey: values.defaultProfileKey,
+      subtotalPosition: values.subtotalPosition ?? '',
       payloadJson: emptyToNull(values.payloadJson),
       defaultFilterJson: emptyToNull(values.defaultFilterJson),
       defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
@@ -62,9 +65,15 @@ export function ReportVersionSheet({ version, onClose }: ReportVersionSheetProps
       <KeyField
         name="defaultProfileKey"
         label="Default profile"
-        items={profiles}
+        items={profiles.data ?? null}
         allowEmpty
-        description="The profile a request runs under when it names none; publishing needs one the model enables."
+        description="The profile a request runs under when it names none; publishing needs an enabled one."
+      />
+      <VocabularyField
+        name="subtotalPosition"
+        label="Subtotals"
+        vocabulary="subtotal_position"
+        description="Whether a member's values come before or after the rows under it; a member without values always comes first."
       />
       <JsonField name="defaultSettingsJson" label="Default settings" description='Such as {"periodicity":"month","timeZone":"UTC"}.' />
       <JsonField

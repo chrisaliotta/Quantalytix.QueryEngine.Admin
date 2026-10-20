@@ -2,26 +2,22 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The variables of calculation model versions: the logical inputs a profile fills from one of their sources.</summary>
-public sealed class VariableService(
-    ITableGateway<VariableRecord> table,
-    ModelContentRemover remover,
-    ReportUses reports,
-    IIdGenerator ids)
+/// <summary>The variables of calculation model versions: the logical inputs each report fills from one of its own sources.</summary>
+public sealed class VariableService(ITableGateway<VariableRecord> table, ReportUses reports, IIdGenerator ids)
     : ModelVersionRows<VariableRecord, VariableInput>(table, ids)
 {
-    /// <summary>Deletes a variable with its sources and their picks and override routes, unless a live report column returns it.</summary>
+    /// <summary>Deletes a variable, unless a live report reads it; reports name it by key, so nothing of theirs is deleted.</summary>
     /// <param name="itemId">The variable.</param>
-    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the variable was deleted; otherwise the detail naming the report columns.</returns>
+    /// <param name="cancellationToken">Cancels the reads and the delete.</param>
+    /// <returns>Null when the variable was deleted; otherwise the detail naming the report rows that read it.</returns>
     public override async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
     {
         var variable = await Rows.GetAsync(new { VariableId = itemId }, cancellationToken);
         var blockers = new DeleteBlockers($"Variable '{variable.VariableKey}'");
-        blockers.AddNamed("returned by report columns", await reports.VariableColumnsAsync(variable, cancellationToken));
+        blockers.AddNamed("used by reports", await reports.VariableUsesAsync(variable, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
-        await remover.RemoveVariablesAsync([itemId], cancellationToken);
+        await Rows.DeleteAsync(new { VariableId = itemId }, cancellationToken);
         return null;
     }
 
@@ -63,9 +59,9 @@ public sealed class VariableService(
             VariableKey = input.VariableKey,
             DisplayName = input.DisplayName,
             VariableRole = input.VariableRole,
-            TargetMemberKey = input.TargetMemberKey,
-            SelectionScope = input.SelectionScope,
-            MissingBehavior = input.MissingBehavior
+            MissingBehavior = input.MissingBehavior,
+            DisplayFormat = input.DisplayFormat,
+            UnitKey = input.UnitKey
         };
     }
 }

@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
@@ -15,11 +16,14 @@ public sealed class DimensionDeleteChecks(
     ITableGateway<MappingSetRecord> mappingSets,
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<DimensionBindingRecord> bindings,
+    ITableGateway<ReportRecord> reports,
+    ITableGateway<CalculationDimensionRecord> calculationDimensions,
+    ReportVersionNames reportVersions,
     DimensionConsumers consumers)
 {
     /// <summary>
-    /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set or bridge
-    /// (either end) references it.
+    /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set, bridge (either
+    /// end), report or calculation dimension references it.
     /// </summary>
     /// <param name="dimension">The dimension.</param>
     /// <param name="dimensionVersions">Every version of the dimension.</param>
@@ -42,6 +46,12 @@ public sealed class DimensionDeleteChecks(
         var bridgesFrom = await bridges.ListAsync(new { SourceDimensionId = dimension.DimensionId }, cancellationToken);
         var bridgesTo = await bridges.ListAsync(new { TargetDimensionId = dimension.DimensionId }, cancellationToken);
         blockers.AddNamed("referenced by bridges", bridgesFrom.Concat(bridgesTo).Select(bridge => $"'{bridge.BridgeKey}'"));
+        var reportsOn = await reports.ListAsync(new { ReportDimensionId = dimension.DimensionId }, cancellationToken);
+        blockers.AddNamed("the report dimension of reports", reportsOn.Select(report => $"'{report.ReportKey}'"));
+        var grouping = await calculationDimensions.ListAsync(new { dimension.DimensionId }, cancellationToken);
+        var names = await reportVersions.OfIdsAsync(grouping.Select(calculationDimension => calculationDimension.ReportVersionId), cancellationToken);
+        blockers.AddNamed("referenced by calculation dimensions", grouping.Select(calculationDimension =>
+            $"'{calculationDimension.DimensionKey}' of {names[calculationDimension.ReportVersionId]}"));
         return blockers.Detail();
     }
 

@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { ModelContentTab } from './ModelContentTab';
+import { VersionContentTab } from '@/shared/VersionContentTab';
 import type { Variable } from './types';
 import { VariableSheet } from './VariableSheet';
 
@@ -7,22 +7,22 @@ const columns: ColumnDef<Variable>[] = [
   { accessorKey: 'variableKey', header: 'Key' },
   { accessorKey: 'displayName', header: 'Name' },
   { accessorKey: 'variableRole', header: 'Role' },
-  { accessorKey: 'targetMemberKey', header: 'Target member', cell: ({ row }) => row.original.targetMemberKey ?? 'All mapped' },
-  { accessorKey: 'selectionScope', header: 'Scope' },
+  { accessorKey: 'displayFormat', header: 'Format' },
+  { accessorKey: 'unitKey', header: 'Unit' },
   { accessorKey: 'missingBehavior', header: 'Missing' },
 ];
 
-/** The version's variables: the logical inputs a profile fills from one of their sources. */
+/** The version's variables: the logical inputs each report's profiles fill from the report's own sources. */
 export function VariablesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   return (
-    <ModelContentTab
+    <VersionContentTab
       kind="variables"
       versionId={versionId}
       isEditable={isEditable}
       columns={columns}
       noun="variable"
       identify={variable => ({ id: variable.variableId, key: variable.variableKey })}
-      deleteDescription="Its sources, their profile picks and their override routes are deleted too. A variable that a report column returns is kept."
+      deleteDescription="A variable of the published version that a published report reads, through a column, source, target or formula, is kept."
       renderSheet={(variable, onClose) => (
         <VariableSheet versionId={versionId} variable={variable} readOnly={!isEditable} onClose={onClose} />
       )}

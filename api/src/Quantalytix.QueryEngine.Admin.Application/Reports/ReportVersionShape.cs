@@ -7,16 +7,18 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Checks the shape of a report version's executable JSON: a default filter over calculation dimensions only, settings whose
-/// <c>periodicity</c> and <c>timeZone</c> are well formed, and a pivot of row and column dimension lists. Whether the dimensions
-/// exist, and allow what the defaults ask of them, is the <c>report_defaults_resolve</c> rule's concern, because a draft model
-/// version can still change them. Internal, so the validators that include it are the only ones registered.
+/// Checks a report version's subtotal position and the shape of its executable JSON: a default filter over calculation dimensions
+/// only, settings whose <c>periodicity</c> and <c>timeZone</c> are well formed, and a pivot of row and column dimension lists.
+/// Whether the dimensions exist, and allow what the defaults ask of them, is the <c>report_defaults_resolve</c> rule's concern,
+/// because the version's calculation dimensions can still change. Internal, so the validators that include it are the only ones
+/// registered.
 /// </summary>
 internal sealed class ReportVersionShape : AbstractValidator<ReportVersionInput>
 {
     /// <summary>Declares the rules.</summary>
     public ReportVersionShape()
     {
+        RuleFor(input => input.SubtotalPosition).MustBeIn(SubtotalPositions.Definition);
         RuleFor(input => input.PayloadJson).MustBeJson();
         RuleFor(input => input.DefaultFilterJson).MustBeFilterOver("dimension", "calculation dimensions");
         RuleFor(input => input.DefaultSettingsJson).Custom((json, context) =>

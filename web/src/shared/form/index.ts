@@ -4,6 +4,8 @@ export { EntityField, type EntityFieldProps } from './EntityField';
 export { ExpressionField, type ExpressionFieldProps } from './ExpressionField';
 export { FormFieldLayout, type FormFieldLayoutProps } from './FormFieldLayout';
 export { FormReadOnlyContext } from './FormReadOnlyContext';
+export { GroupingModeFields, type GroupingModeFieldsProps } from './GroupingModeFields';
+export { groupingSource, toGroupingReferences, type GroupingValues } from './grouping';
 export { JsonField } from './JsonField';
 export { KeyField, type KeyFieldProps } from './KeyField';
 export { MultiVocabularyField, type MultiVocabularyFieldProps } from './MultiVocabularyField';

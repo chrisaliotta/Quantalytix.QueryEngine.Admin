@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
@@ -15,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class CalculatedMeasuresController(IModelVersionContent<CalculatedMeasureRecord, CalculatedMeasureInput> calculatedMeasures) : ControllerBase
+public sealed class CalculatedMeasuresController(IVersionContent<CalculatedMeasureRecord, CalculatedMeasureInput> calculatedMeasures) : ControllerBase
 {
     /// <summary>Lists a model version's calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
@@ -69,14 +70,14 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Update(
         string tenantId,
-        [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure,
+        [FromRoute] VersionItemReference<CalculatedMeasureRecord> measure,
         CalculatedMeasureInput input,
         CancellationToken cancellationToken)
     {
         return Ok(await calculatedMeasures.UpdateAsync(measure.VersionId, measure.ItemId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula line evaluates it.</summary>
+    /// <summary>Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula row evaluates it.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="measure">The draft or published model version and its calculated measure.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -90,7 +91,7 @@ public sealed class CalculatedMeasuresController(IModelVersionContent<Calculated
     [RequireEditable(VersionKinds.CalculationModelVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, [FromRoute] VersionItemReference<CalculatedMeasureRecord> measure, CancellationToken cancellationToken)
     {
         var conflict = await calculatedMeasures.DeleteAsync(measure.ItemId, cancellationToken);
         if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);

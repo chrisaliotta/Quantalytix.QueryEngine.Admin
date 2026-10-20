@@ -7,55 +7,61 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 
-/// <summary>Registration hook owned by the Calculation models and Reports slice (models, model versions and their content, reports and report versions).</summary>
+/// <summary>Registration hook owned by the Calculation models and Reports slice (models, model versions and their metrics, reports and report versions and their content).</summary>
 public static class CalculationModelsAndReportsFeatureServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the slice's services and its <c>calculation_model_version</c> and <c>report_version</c> publication rules, all
-    /// scoped. Each model content kind is registered under <see cref="IModelVersionContent{TItem, TInput}"/> with the validator of
-    /// its item routes. The report rules run for report versions and, against the version being published, for the published
-    /// reports of a calculation model version; the rules that check reports against a release run for semantic releases too,
-    /// after the release slice's own rules. The workflow runs the rules of a kind in this order.
+    /// scoped. Each version content kind is registered under <see cref="IVersionContent{TItem, TInput}"/> with the validator of its
+    /// item routes. The rules that check a report's metrics run for report versions and, against the version being published, for
+    /// the published reports of a calculation model version; the rules that check reports against a release run for semantic
+    /// releases too, after the release slice's own rules. The workflow runs the rules of a kind in this order.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddCalculationModelsAndReportsFeature(this IServiceCollection services)
     {
+        services.AddScoped<VersionKeys>();
+
         services.AddScoped<CalculationModelService>();
         services.AddScoped<CalculationModelVersionService>();
         services.AddScoped<ModelVersionCloner>();
-        services.AddScoped<ModelContentRemover>();
         services.AddScoped<ModelKeys>();
         services.AddScoped<ReportUses>();
-        services.AddModelContent<VariableService, VariableRecord, VariableInput>();
-        services.AddModelContent<VariableSourceService, VariableSourceRecord, VariableSourceInput>();
-        services.AddModelContent<SourceProfileService, SourceProfile, SourceProfileInput>();
-        services.AddModelContent<CalculatedMeasureService, CalculatedMeasureRecord, CalculatedMeasureInput>();
-        services.AddModelContent<CalculationDimensionService, CalculationDimensionRecord, CalculationDimensionInput>();
-        services.AddModelContent<CalculationRouteService, CalculationRouteRecord, CalculationRouteInput>();
+        services.AddVersionContent<VariableService, VariableRecord, VariableInput>();
+        services.AddVersionContent<CalculatedMeasureService, CalculatedMeasureRecord, CalculatedMeasureInput>();
 
         services.AddScoped<IPublicationRule, FormulaReferencesResolveRule>();
         services.AddScoped<IPublicationRule, FormulasAcyclicRule>();
-        services.AddScoped<IPublicationRule, ProfilesCompleteRule>();
 
         services.AddScoped<ReportService>();
         services.AddScoped<ReportVersionService>();
         services.AddScoped<ReportVersionCloner>();
+        services.AddScoped<ReportContentRemover>();
+        services.AddScoped<ReportVersionNames>();
         services.AddScoped<ReportColumnService>();
         services.AddScoped<ReportLineService>();
+        services.AddScoped<ReportMemberOptionService>();
+        services.AddScoped<ReportVariableTargetService>();
         services.AddScoped<ModelMetricsReader>();
         services.AddScoped<ReportGraphReader>();
+        services.AddVersionContent<VariableSourceService, VariableSourceRecord, VariableSourceInput>();
+        services.AddVersionContent<SourceProfileService, SourceProfile, SourceProfileInput>();
+        services.AddVersionContent<CalculationDimensionService, CalculationDimensionRecord, CalculationDimensionInput>();
+        services.AddVersionContent<CalculationRouteService, CalculationRouteRecord, CalculationRouteInput>();
 
         services.AddScoped<IPublicationRule, ModelVersionPublishedRule>();
+        services.AddScoped<IPublicationRule, ReportItemsResolveRule>();
+        services.AddScoped<IPublicationRule, CalculationGroupingResolveRule>();
+        services.AddScoped<IPublicationRule, DefaultProfileEnabledRule>();
+        services.AddScoped<IPublicationRule, ReportDefaultsResolveRule>();
+        services.AddScoped<IPublicationRule, ColumnKeysDistinctRule>();
         foreach (var kind in new[] { VersionKinds.ReportVersion, VersionKinds.CalculationModelVersion })
         {
-            services.AddRuleFor<DefaultProfileEnabledRule>(kind);
-            services.AddRuleFor<ReportDefaultsResolveRule>(kind);
-            services.AddRuleFor<ColumnKeysDistinctRule>(kind);
             services.AddRuleFor<ReportMetricsResolveRule>(kind);
-            services.AddRuleFor<ReportItemsResolveRule>(kind);
+            services.AddRuleFor<ProfilesCompleteRule>(kind);
         }
-        foreach (var kind in new[] { VersionKinds.ReportVersion, VersionKinds.CalculationModelVersion, VersionKinds.SemanticRelease })
+        foreach (var kind in new[] { VersionKinds.ReportVersion, VersionKinds.SemanticRelease })
         {
             services.AddRuleFor<ReportSourcesResolveRule>(kind);
             services.AddRuleFor<CalculationRoutesResolveRule>(kind);
@@ -70,11 +76,11 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<IPublicationRule>(provider => ActivatorUtilities.CreateInstance<TRule>(provider, kind));
     }
 
-    /// <summary>Registers one model content kind's service and the validator that checks its item routes.</summary>
-    private static void AddModelContent<TService, TItem, TInput>(this IServiceCollection services)
-        where TService : class, IModelVersionContent<TItem, TInput>
+    /// <summary>Registers one version content kind's service and the validator that checks its item routes.</summary>
+    private static void AddVersionContent<TService, TItem, TInput>(this IServiceCollection services)
+        where TService : class, IVersionContent<TItem, TInput>
     {
-        services.AddScoped<IModelVersionContent<TItem, TInput>, TService>();
-        services.AddScoped<IValidator<ModelItemReference<TItem>>, ModelItemReferenceValidator<TItem, TInput>>();
+        services.AddScoped<IVersionContent<TItem, TInput>, TService>();
+        services.AddScoped<IValidator<VersionItemReference<TItem>>, VersionItemReferenceValidator<TItem, TInput>>();
     }
 }

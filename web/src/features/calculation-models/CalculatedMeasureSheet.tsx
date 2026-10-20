@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form';
+import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { ExpressionField, NumberField, TextField, VocabularyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
 import { useLookup } from '@/shared/useLookup';
-import { useSaveModelContent } from './api';
-import { contentSheetTitle } from './contentSheet';
+import { useSaveVersionContent } from '@/shared/versionContent';
 import type { CalculatedMeasure } from './types';
 
 /** Values of the calculated measure sheet; a choice not made yet is null, and an optional text is empty for none. */
@@ -33,7 +33,7 @@ export interface CalculatedMeasureSheetProps {
  * the `@periodDays` and `@yearDays` of the period it is evaluated for.
  */
 export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }: CalculatedMeasureSheetProps) {
-  const save = useSaveModelContent('calculated-measures', versionId, measure?.calculatedMeasureId ?? null);
+  const save = useSaveVersionContent('calculated-measures', versionId, measure?.calculatedMeasureId ?? null);
   const variables = useLookup('variables', versionId);
   const measures = useLookup('calculated-measures', versionId);
   const metricKeys = [...(variables.data ?? []), ...(measures.data ?? [])].map(item => item.key);
@@ -79,7 +79,11 @@ export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }
       <NumberField name="outputScale" label="Scale" description="Digits after the point that clients show." />
       <VocabularyField name="roundingMode" label="Rounding" vocabulary="rounding_mode" allowEmpty />
       <TextField name="unitKey" label="Unit" description="Optional, such as USD." />
-      <TextField name="displayFormat" label="Display format" description="How clients format the value, such as percent or currency." />
+      <TextField
+        name="displayFormat"
+        label="Display format"
+        description="How clients format the value unless a report column names its own, such as percent."
+      />
     </EntityFormSheet>
   );
 }

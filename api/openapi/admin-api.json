@@ -775,6 +775,698 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/calculation-dimensions": {
+      "get": {
+        "tags": [
+          "CalculationDimensions"
+        ],
+        "summary": "Lists a report version's calculation dimensions.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The calculation dimensions by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalculationDimensionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CalculationDimensions"
+        ],
+        "summary": "Adds a calculation dimension to a draft or published report version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationDimensionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationDimensionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created calculation dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationDimensionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/calculation-dimensions/{itemId}": {
+      "put": {
+        "tags": [
+          "CalculationDimensions"
+        ],
+        "summary": "Replaces a calculation dimension of a draft or published report version, keeping its ID.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationDimensionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationDimensionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored calculation dimension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationDimensionRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The calculation dimension is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CalculationDimensions"
+        ],
+        "summary": "Deletes a calculation dimension of a draft or published report version with its routes.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The calculation dimension is deleted."
+          },
+          "400": {
+            "description": "The calculation dimension is not in the version; the error is keyed `itemId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/routes": {
+      "get": {
+        "tags": [
+          "CalculationRoutes"
+        ],
+        "summary": "Lists a report version's calculation routes.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The routes by field key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalculationRouteRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CalculationRoutes"
+        ],
+        "summary": "Adds a route to a draft or published report version; whether its field produces the dimension in the dataset version a release pins is a release rule.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationRouteInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationRouteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationRouteRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a second default route for the dimension and dataset; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/routes/{itemId}": {
+      "put": {
+        "tags": [
+          "CalculationRoutes"
+        ],
+        "summary": "Replaces a route of a draft or published report version, keeping its ID.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationRouteInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculationRouteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculationRouteRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The route is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CalculationRoutes"
+        ],
+        "summary": "Deletes a route of a draft or published report version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The route is deleted."
+          },
+          "400": {
+            "description": "The route is not in the version; the error is keyed `itemId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/report-versions/{versionId}/columns": {
       "get": {
         "tags": [
@@ -941,7 +1633,7 @@
         "tags": [
           "ReportLines"
         ],
-        "summary": "Lists a report version's lines in pre-order: each line before its children, siblings in display order.",
+        "summary": "Lists a report version's overlay rows.",
         "parameters": [
           {
             "name": "tenantId",
@@ -985,7 +1677,7 @@
             }
           },
           "200": {
-            "description": "The lines in pre-order.",
+            "description": "The overlay rows by sort order, then key.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1003,7 +1695,7 @@
         "tags": [
           "ReportLines"
         ],
-        "summary": "Replaces a draft or published report version's lines with the given tree in pre-order; a line that keeps its key keeps its ID.",
+        "summary": "Replaces a draft or published report version's overlay rows; a row that carries its ID keeps it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1072,7 +1764,7 @@
             }
           },
           "200": {
-            "description": "The lines in pre-order.",
+            "description": "The overlay rows by sort order, then key.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1085,7 +1777,168 @@
             }
           },
           "400": {
-            "description": "A line key repeats, a parent is not an earlier line, or a line's member, measure or column does not resolve; errors are keyed by camelCase JSON path.",
+            "description": "A row key repeats, an overlay parent is not an earlier row, or a formula row's measure or column does not resolve; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/member-options": {
+      "get": {
+        "tags": [
+          "ReportMemberOptions"
+        ],
+        "summary": "Lists a report version's member options.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The options by member key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportMemberOptionRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ReportMemberOptions"
+        ],
+        "summary": "Replaces a draft or published report version's member options; whether the report's dimension has each member is a publication rule.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportMemberOptionsInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportMemberOptionsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The options by member key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportMemberOptionRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A member has two options, or an option breaks a field rule; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1425,6 +2278,167 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/variable-targets": {
+      "get": {
+        "tags": [
+          "ReportVariableTargets"
+        ],
+        "summary": "Lists a report version's variable targets.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The targets by variable key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportVariableTargetRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ReportVariableTargets"
+        ],
+        "summary": "Replaces a draft or published report version's variable targets; whether the model has each variable and the report's dimension each member is a publication rule.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportVariableTargetsInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportVariableTargetsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The targets by variable key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportVariableTargetRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A variable is targeted twice, or a target breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -1793,6 +2807,698 @@
           },
           "204": {
             "description": "The version, its lines and its columns are deleted."
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/profiles": {
+      "get": {
+        "tags": [
+          "SourceProfiles"
+        ],
+        "summary": "Lists a report version's source profiles.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The profiles by key, ignoring case, each with its picks by variable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SourceProfile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SourceProfiles"
+        ],
+        "summary": "Adds a source profile with its picks to a draft or published report version.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceProfileInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a pick of another variable's source; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/profiles/{itemId}": {
+      "put": {
+        "tags": [
+          "SourceProfiles"
+        ],
+        "summary": "Replaces a source profile of a draft or published report version and all its picks, keeping the profile's ID.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceProfileInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The profile is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SourceProfiles"
+        ],
+        "summary": "Deletes a source profile of a draft or published report version with its picks, unless its report version runs under it by default.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is neither a draft nor published, or the profile is its report version's default.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The profile is deleted."
+          },
+          "400": {
+            "description": "The profile is not in the version; the error is keyed `itemId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/variable-sources": {
+      "get": {
+        "tags": [
+          "VariableSources"
+        ],
+        "summary": "Lists a report version's variable sources.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The sources by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VariableSourceRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "VariableSources"
+        ],
+        "summary": "Adds a variable source to a draft or published report version; whether its keys resolve in the dataset version a release pins is a release rule.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The draft or published report version.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableSourceInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableSourceInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The created source.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableSourceRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as a filter that is not a filter node; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/report-versions/{versionId}/variable-sources/{itemId}": {
+      "put": {
+        "tags": [
+          "VariableSources"
+        ],
+        "summary": "Replaces a variable source of a draft or published report version, keeping its ID.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableSourceInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableSourceInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored source.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableSourceRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The source is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "VariableSources"
+        ],
+        "summary": "Deletes a variable source of a draft or published report version with the profile picks and override routes that name it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the version.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "description": "The version that owns the row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "The row.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing was deleted: the version is neither a draft nor published.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The source is deleted."
+          },
+          "400": {
+            "description": "The source is not in the version; the error is keyed `itemId`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -7339,7 +9045,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The model version that owns the row.",
+            "description": "The version that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -7429,7 +9135,7 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula line evaluates it.",
+        "summary": "Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula row evaluates it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -7443,7 +9149,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The model version that owns the row.",
+            "description": "The version that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -7497,352 +9203,6 @@
           },
           "400": {
             "description": "The calculated measure is not in the version; the error is keyed `itemId`.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculation-dimensions": {
-      "get": {
-        "tags": [
-          "CalculationDimensions"
-        ],
-        "summary": "Lists a model version's calculation dimensions.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The calculation dimensions by key, ignoring case.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CalculationDimensionRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "CalculationDimensions"
-        ],
-        "summary": "Adds a calculation dimension to a draft or published model version.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft or published model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationDimensionInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationDimensionInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created calculation dimension.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationDimensionRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculation-dimensions/{itemId}": {
-      "put": {
-        "tags": [
-          "CalculationDimensions"
-        ],
-        "summary": "Replaces a calculation dimension of a draft or published model version, keeping its ID.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationDimensionInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationDimensionInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored calculation dimension.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationDimensionRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The calculation dimension is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CalculationDimensions"
-        ],
-        "summary": "Deletes a calculation dimension of a draft or published model version with its routes.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The calculation dimension is deleted."
-          },
-          "400": {
-            "description": "The calculation dimension is not in the version; the error is keyed `itemId`.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8554,698 +9914,6 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/routes": {
-      "get": {
-        "tags": [
-          "CalculationRoutes"
-        ],
-        "summary": "Lists a model version's calculation routes.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The routes by field key, ignoring case.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CalculationRouteRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "CalculationRoutes"
-        ],
-        "summary": "Adds a route to a draft or published model version; whether its field produces the dimension in the dataset version a release pins is a release rule.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft or published model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationRouteInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationRouteInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created route.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationRouteRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a second default route for the dimension and dataset; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/routes/{itemId}": {
-      "put": {
-        "tags": [
-          "CalculationRoutes"
-        ],
-        "summary": "Replaces a route of a draft or published model version, keeping its ID.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationRouteInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationRouteInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored route.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationRouteRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The route is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CalculationRoutes"
-        ],
-        "summary": "Deletes a route of a draft or published model version.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The route is deleted."
-          },
-          "400": {
-            "description": "The route is not in the version; the error is keyed `itemId`.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/profiles": {
-      "get": {
-        "tags": [
-          "SourceProfiles"
-        ],
-        "summary": "Lists a model version's source profiles.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The profiles by key, ignoring case, each with its picks by variable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SourceProfile"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "SourceProfiles"
-        ],
-        "summary": "Adds a source profile with its picks to a draft or published model version.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft or published model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SourceProfileInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SourceProfileInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created profile.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SourceProfile"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a pick of another variable's source; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/profiles/{itemId}": {
-      "put": {
-        "tags": [
-          "SourceProfiles"
-        ],
-        "summary": "Replaces a source profile of a draft or published model version and all its picks, keeping the profile's ID.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SourceProfileInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SourceProfileInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored profile.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SourceProfile"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The profile is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "SourceProfiles"
-        ],
-        "summary": "Deletes a source profile of a draft or published model version with its picks, unless a live report version runs under it by default.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report versions whose default profile it is.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The profile is deleted."
-          },
-          "400": {
-            "description": "The profile is not in the version; the error is keyed `itemId`.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tenants/{tenantId}/model-versions/{versionId}/variables": {
       "get": {
         "tags": [
@@ -9423,7 +10091,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The model version that owns the row.",
+            "description": "The version that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9513,7 +10181,7 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Deletes a variable of a draft or published model version with its sources and their profile picks and override routes, unless a live report column returns it.",
+        "summary": "Deletes a variable of a draft or published model version, unless a live report reads it.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9527,7 +10195,7 @@
           {
             "name": "versionId",
             "in": "path",
-            "description": "The model version that owns the row.",
+            "description": "The version that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9581,352 +10249,6 @@
           },
           "400": {
             "description": "The variable is not in the version; the error is keyed `itemId`.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variable-sources": {
-      "get": {
-        "tags": [
-          "VariableSources"
-        ],
-        "summary": "Lists a model version's variable sources.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The sources by key, ignoring case.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VariableSourceRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "VariableSources"
-        ],
-        "summary": "Adds a variable source to a draft or published model version; whether its keys resolve in the dataset version a release pins is a release rule.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft or published model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VariableSourceInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VariableSourceInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created source.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VariableSourceRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a filter that is not a filter node; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variable-sources/{itemId}": {
-      "put": {
-        "tags": [
-          "VariableSources"
-        ],
-        "summary": "Replaces a variable source of a draft or published model version, keeping its ID.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VariableSourceInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VariableSourceInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored source.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VariableSourceRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The source is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "VariableSources"
-        ],
-        "summary": "Deletes a variable source of a draft or published model version with the profile picks and override routes that name it.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The source is deleted."
-          },
-          "400": {
-            "description": "The source is not in the version; the error is keyed `itemId`.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -12219,9 +12541,38 @@
             ],
             "description": "The shared raw value type of a `scalar` calculation dimension, a `data_type` value; null for `canonical`."
           },
+          "groupingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `grouping_mode` value: how a `canonical` calculation dimension's routes group members; null for `scalar`."
+          },
+          "groupingLevelKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the level to group at when the grouping mode is `level`."
+          },
+          "groupingAncestorMemberKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the ancestor member to group under when the grouping mode is `ancestor`."
+          },
+          "groupingDepth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The closure depth to group at when the grouping mode is `depth`.",
+            "format": "int32"
+          },
           "isGroupable": {
             "type": "boolean",
-            "description": "Whether reports may break out by it."
+            "description": "Whether runs may break out by it."
           },
           "isFilterable": {
             "type": "boolean",
@@ -12232,12 +12583,12 @@
             "description": "Administrative availability flag."
           }
         },
-        "description": "A calculation dimension of a draft model version, as its create and edit endpoints take it."
+        "description": "A calculation dimension of an editable report version, as its create and edit endpoints take it."
       },
       "CalculationDimensionRecord": {
         "required": [
           "calculationDimensionId",
-          "modelVersionId",
+          "reportVersionId",
           "dimensionKey",
           "displayName",
           "valueKind",
@@ -12252,9 +12603,9 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "reportVersionId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning report version.",
             "format": "int64"
           },
           "dimensionKey": {
@@ -12274,7 +12625,7 @@
               "null",
               "integer"
             ],
-            "description": "The canonical dimension of a `canonical` calculation dimension; the release decides its version.",
+            "description": "The canonical dimension of a `canonical` calculation dimension; queries use the version their assumption set pins.",
             "format": "int64"
           },
           "valueDataType": {
@@ -12284,9 +12635,38 @@
             ],
             "description": "The shared raw value type of a `scalar` calculation dimension."
           },
+          "groupingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `grouping_mode` value of a `canonical` calculation dimension: how its routes group members."
+          },
+          "groupingLevelKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the level to group at when the grouping mode is `level`."
+          },
+          "groupingAncestorMemberKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the ancestor member to group under when the grouping mode is `ancestor`."
+          },
+          "groupingDepth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The closure depth to group at when the grouping mode is `depth`.",
+            "format": "int32"
+          },
           "isGroupable": {
             "type": "boolean",
-            "description": "Whether reports may break out by it."
+            "description": "Whether runs may break out by it."
           },
           "isFilterable": {
             "type": "boolean",
@@ -12297,7 +12677,7 @@
             "description": "Administrative availability flag."
           }
         },
-        "description": "A `qe_calculation_dimension` row: a dimension shared by a model version's datasets, which reports break out and filter by."
+        "description": "A `qe_calculation_dimension` row: a dimension shared by a report version's datasets, which runs break out and filter by."
       },
       "CalculationModelInput": {
         "required": [
@@ -12404,8 +12784,7 @@
         "required": [
           "calculationDimensionId",
           "datasetId",
-          "routeKind",
-          "fieldKey"
+          "classification"
         ],
         "type": "object",
         "properties": {
@@ -12427,21 +12806,17 @@
             "description": "A source of the version, over the same dataset, whose route this overrides; null for the dataset's default route.",
             "format": "int64"
           },
-          "routeKind": {
-            "type": "string",
-            "description": "A `route_kind` value: `semantic` for a canonical dimension, `field` for a scalar one."
-          },
-          "fieldKey": {
-            "type": "string",
-            "description": "The dataset field that produces the dimension."
+          "classification": {
+            "description": "How the route produces its dimension: `field` for a scalar calculation dimension, otherwise a classification into the canonical one.",
+            "$ref": "#/components/schemas/ClassificationInput"
           }
         },
-        "description": "A calculation dimension route of a draft model version, as its create and edit endpoints take it."
+        "description": "A calculation dimension route of an editable report version, as its create and edit endpoints take it."
       },
       "CalculationRouteRecord": {
         "required": [
           "calculationBindingId",
-          "modelVersionId",
+          "reportVersionId",
           "calculationDimensionId",
           "datasetId",
           "routeKind",
@@ -12454,9 +12829,9 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "reportVersionId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning report version.",
             "format": "int64"
           },
           "calculationDimensionId": {
@@ -12483,10 +12858,60 @@
           },
           "fieldKey": {
             "type": "string",
-            "description": "The dataset field that produces the dimension."
+            "description": "The dataset field the route reads."
+          },
+          "mappingSetId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The mapping set of a `mapped` route, into the calculation dimension's dimension.",
+            "format": "int64"
+          },
+          "bridgeId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge of a `bridge` route, into the calculation dimension's dimension.",
+            "format": "int64"
           }
         },
-        "description": "A `qe_calculation_dimension_binding` row: the field that produces a calculation dimension in one dataset, or for one source."
+        "description": "A `qe_calculation_dimension_binding` row: how one dataset, or one source, produces a calculation dimension: a raw field,\nor a classification into the calculation dimension's dimension."
+      },
+      "ClassificationInput": {
+        "required": [
+          "kind",
+          "fieldKey"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "A `classification_kind` value for a source; a `route_kind` value for a route."
+          },
+          "fieldKey": {
+            "type": "string",
+            "description": "The dataset field the classification reads; for `bridge`, a field whose binding groups by member into the bridge's source dimension."
+          },
+          "mappingSetId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The mapping set of a `mapped` classification, which must map into the target dimension.",
+            "format": "int64"
+          },
+          "bridgeId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge of a `bridge` classification, whose target must be the target dimension.",
+            "format": "int64"
+          }
+        },
+        "description": "How a source's or route's dataset rows reach the members of the canonical dimension it classifies into."
       },
       "DatabaseInfoRecord": {
         "required": [
@@ -14962,7 +15387,7 @@
               "null",
               "integer"
             ],
-            "description": "A version of the same model whose variables, sources, profiles, formulas and dimensions the draft copies; null for an empty draft.",
+            "description": "A version of the same model whose variables and calculated measures the draft copies; null for an empty draft.",
             "format": "int64"
           },
           "currencyCode": {
@@ -14975,6 +15400,7 @@
       "NewReportInput": {
         "required": [
           "reportKey",
+          "reportDimensionId",
           "displayName",
           "reportType",
           "isEnabled"
@@ -14984,6 +15410,11 @@
           "reportKey": {
             "type": "string",
             "description": "Stable key, unique across reports and fixed once created."
+          },
+          "reportDimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension whose members are the report's rows and into which every source classifies; fixed once created.",
+            "format": "int64"
           },
           "displayName": {
             "type": "string",
@@ -15005,20 +15436,15 @@
             "description": "Optional catalog payload passed through to clients."
           }
         },
-        "description": "A new report, as `POST reports` takes it: its fixed key plus its identity attributes."
+        "description": "A new report, as `POST reports` takes it: its fixed key and report dimension plus its identity attributes."
       },
       "NewReportVersionInput": {
         "required": [
-          "reportDimensionId",
-          "modelId"
+          "modelId",
+          "subtotalPosition"
         ],
         "type": "object",
         "properties": {
-          "reportDimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension whose members the member lines name.",
-            "format": "int64"
-          },
           "modelId": {
             "type": "integer",
             "description": "The calculation model; a run reads the model version its assumption set pins.",
@@ -15029,7 +15455,7 @@
               "null",
               "integer"
             ],
-            "description": "A version of the same report whose lines and columns the draft copies; null for an empty draft.",
+            "description": "A version of the same report whose content the draft copies; null for an empty draft.",
             "format": "int64"
           },
           "defaultProfileKey": {
@@ -15037,7 +15463,11 @@
               "null",
               "string"
             ],
-            "description": "The key of a profile of the model's published version that requests run under when they name none."
+            "description": "The key of one of the version's profiles that requests run under when they name none; required at publication."
+          },
+          "subtotalPosition": {
+            "type": "string",
+            "description": "A `subtotal_position` value: whether a member row that shows values precedes or follows its descendants."
           },
           "payloadJson": {
             "type": [
@@ -15068,7 +15498,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions` lists of calculation-dimension keys."
           }
         },
-        "description": "A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the report dimension and calculation\nmodel it reads, fixed once created, its editable attributes, and optionally a version whose lines and columns it copies."
+        "description": "A new draft version of a report, as `POST reports/{reportId}/versions` takes it: the calculation model it reads, fixed once\ncreated, its editable attributes, and optionally a version whose content it copies."
       },
       "OverviewCounts": {
         "required": [
@@ -15500,7 +15930,6 @@
       "ReportColumnInput": {
         "required": [
           "columnKey",
-          "displayName",
           "valueKind",
           "metricKey",
           "isVisible"
@@ -15512,7 +15941,7 @@
               "null",
               "integer"
             ],
-            "description": "The column's ID when it already exists, which keeps the formula lines that place values in it; null for a new column.",
+            "description": "The column's ID when it already exists, which keeps the formula rows that place values in it; null for a new column.",
             "format": "int64"
           },
           "columnKey": {
@@ -15520,8 +15949,11 @@
             "description": "Key, unique among the version's columns; `line` and `period` are reserved."
           },
           "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A label replacing the metric's own; null shows the metric's."
           },
           "valueKind": {
             "type": "string",
@@ -15536,7 +15968,7 @@
               "null",
               "string"
             ],
-            "description": "Presentation hint such as `number`, `percent` or `currency`."
+            "description": "A presentation hint such as `percent` replacing the metric's own; null shows the metric's."
           },
           "isVisible": {
             "type": "boolean",
@@ -15557,7 +15989,6 @@
           "reportColumnId",
           "reportVersionId",
           "columnKey",
-          "displayName",
           "valueKind",
           "metricKey",
           "sortOrder",
@@ -15580,8 +16011,11 @@
             "description": "Key, unique among the version's columns."
           },
           "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A label replacing the metric's own; null shows the metric's."
           },
           "valueKind": {
             "type": "string",
@@ -15601,7 +16035,7 @@
               "null",
               "string"
             ],
-            "description": "Presentation hint such as `number`, `percent` or `currency`."
+            "description": "A presentation hint such as `percent` replacing the metric's own; null shows the metric's."
           },
           "isVisible": {
             "type": "boolean",
@@ -15668,6 +16102,7 @@
           "lineKey",
           "displayName",
           "lineKind",
+          "sortOrder",
           "isVisible"
         ],
         "type": "object",
@@ -15677,12 +16112,12 @@
               "null",
               "integer"
             ],
-            "description": "The line's ID when it already exists; null for a new line.",
+            "description": "The row's ID when it already exists; null for a new row.",
             "format": "int64"
           },
           "lineKey": {
             "type": "string",
-            "description": "Key, unique among the version's lines."
+            "description": "Key, unique among the version's overlay rows and distinct from every member key of the report's dimension."
           },
           "displayName": {
             "type": "string",
@@ -15692,37 +16127,35 @@
             "type": "string",
             "description": "A `report_line_kind` value."
           },
-          "parentLineKey": {
+          "parentKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The key of the enclosing line, which comes earlier in the list; null for a top-level line."
-          },
-          "reportMemberKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The report-item member a `member` line shows."
+            "description": "The row it sits under: a member key of the report's dimension or the key of an overlay row earlier in the list; null at the top level."
           },
           "calculatedMeasureKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The calculated measure key of the report's model version that a `formula` line evaluates."
+            "description": "The calculated measure key of the report's model version that a `formula` row evaluates."
           },
           "valueColumnKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The key of the column a `formula` line places its value in."
+            "description": "The key of the column a `formula` row places its value in."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "Order among the row's siblings, compared with the members' sort orders; a member comes first on a tie.",
+            "format": "int32"
           },
           "isVisible": {
             "type": "boolean",
-            "description": "Display default passed through to clients."
+            "description": "Whether the row shows; a hidden row's children take its place."
           },
           "payloadJson": {
             "type": [
@@ -15739,7 +16172,7 @@
             "description": "Optional presentation settings passed through to clients."
           }
         },
-        "description": "One line of a report version's complete line tree."
+        "description": "One overlay row of a report version's complete overlay row list."
       },
       "ReportLineRecord": {
         "required": [
@@ -15765,7 +16198,7 @@
           },
           "lineKey": {
             "type": "string",
-            "description": "Key, unique among the version's lines."
+            "description": "Key, unique among the version's overlay rows and distinct from every member key of the report dimension."
           },
           "displayName": {
             "type": "string",
@@ -15775,44 +16208,36 @@
             "type": "string",
             "description": "A `report_line_kind` value."
           },
-          "parentReportLineId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The enclosing line; null for a top-level line.",
-            "format": "int64"
-          },
-          "reportMemberKey": {
+          "parentKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The report-item member of a `member` line."
+            "description": "The row it sits under: a member key or another overlay row's key; null at the top level."
           },
           "calculatedMeasureKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The key of the model's calculated measure a `formula` line evaluates."
+            "description": "The key of the model's calculated measure a `formula` row evaluates."
           },
           "valueColumnId": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "The column a `formula` line places its value in.",
+            "description": "The column a `formula` row places its value in.",
             "format": "int64"
           },
           "sortOrder": {
             "type": "integer",
-            "description": "Order among the line's siblings.",
+            "description": "Order among the row's siblings, members and overlay rows alike.",
             "format": "int32"
           },
           "isVisible": {
             "type": "boolean",
-            "description": "Display default passed through to clients."
+            "description": "Whether the row shows; a hidden row's children take its place."
           },
           "payloadJson": {
             "type": [
@@ -15836,7 +16261,7 @@
             "description": "Optional presentation settings passed through to clients."
           }
         },
-        "description": "A `qe_report_line` row: one line of a report version's line tree."
+        "description": "A `qe_report_line` row: an overlay row of a report version, placed among the rows of the report dimension's members."
       },
       "ReportLinesInput": {
         "required": [
@@ -15849,10 +16274,92 @@
             "items": {
               "$ref": "#/components/schemas/ReportLineInput"
             },
-            "description": "The lines in pre-order."
+            "description": "The overlay rows, each overlay parent before its children."
           }
         },
-        "description": "The complete line tree of a draft report version, as `PUT report-versions/{versionId}/lines` takes it: lines in\npre-order, each parent before its children, siblings in their presentation order."
+        "description": "The complete overlay rows of an editable report version, as `PUT report-versions/{versionId}/lines` takes them: each overlay\nparent before its children. The rows sit among the rows of the report dimension's members by parent key and sort order."
+      },
+      "ReportMemberOptionInput": {
+        "required": [
+          "memberKey",
+          "isVisible",
+          "showsValues"
+        ],
+        "type": "object",
+        "properties": {
+          "memberKey": {
+            "type": "string",
+            "description": "The member of the report's dimension."
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A label replacing the member's own; null keeps it."
+          },
+          "isVisible": {
+            "type": "boolean",
+            "description": "Whether the member's row shows; a hidden row's children take its place."
+          },
+          "showsValues": {
+            "type": "boolean",
+            "description": "Whether the row shows the member's values; a row without values is a header."
+          }
+        },
+        "description": "How one member of the report's dimension shows."
+      },
+      "ReportMemberOptionRecord": {
+        "required": [
+          "reportVersionId",
+          "memberKey",
+          "isVisible",
+          "showsValues"
+        ],
+        "type": "object",
+        "properties": {
+          "reportVersionId": {
+            "type": "integer",
+            "description": "The owning report version; first part of the primary key.",
+            "format": "int64"
+          },
+          "memberKey": {
+            "type": "string",
+            "description": "The member of the report dimension; second part of the primary key."
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A label replacing the member's own; null keeps it."
+          },
+          "isVisible": {
+            "type": "boolean",
+            "description": "Whether the member's row shows; a hidden row's children take its place."
+          },
+          "showsValues": {
+            "type": "boolean",
+            "description": "Whether the row shows the member's values; a row without values is a header."
+          }
+        },
+        "description": "A `qe_report_member_option` row: how one member of the report dimension shows in a report version."
+      },
+      "ReportMemberOptionsInput": {
+        "required": [
+          "options"
+        ],
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportMemberOptionInput"
+            },
+            "description": "One option per member that shows differently."
+          }
+        },
+        "description": "The complete member options of an editable report version, as `PUT report-versions/{versionId}/member-options` takes them;\na member without an option shows its own label and values."
       },
       "ReportRecord": {
         "required": [
@@ -15860,6 +16367,7 @@
           "reportKey",
           "displayName",
           "reportType",
+          "reportDimensionId",
           "isEnabled"
         ],
         "type": "object",
@@ -15881,6 +16389,11 @@
             "type": "string",
             "description": "Free-form classification such as `margin_analysis`."
           },
+          "reportDimensionId": {
+            "type": "integer",
+            "description": "The canonical dimension whose members are the report's rows and into which every source classifies; fixed at creation.",
+            "format": "int64"
+          },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
@@ -15895,7 +16408,78 @@
         },
         "description": "A `qe_report` row: the stable identity of a report."
       },
+      "ReportVariableTargetInput": {
+        "required": [
+          "variableKey",
+          "targetMemberKey",
+          "selectionScope"
+        ],
+        "type": "object",
+        "properties": {
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model variable."
+          },
+          "targetMemberKey": {
+            "type": "string",
+            "description": "The member of the report's dimension the variable reads."
+          },
+          "selectionScope": {
+            "type": "string",
+            "description": "A `selection_scope` value: `exact` or `descendants`."
+          }
+        },
+        "description": "The member of the report's dimension one variable reads at."
+      },
+      "ReportVariableTargetRecord": {
+        "required": [
+          "reportVersionId",
+          "variableKey",
+          "targetMemberKey",
+          "selectionScope"
+        ],
+        "type": "object",
+        "properties": {
+          "reportVersionId": {
+            "type": "integer",
+            "description": "The owning report version; first part of the primary key.",
+            "format": "int64"
+          },
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model's variable; second part of the primary key."
+          },
+          "targetMemberKey": {
+            "type": "string",
+            "description": "The member of the report dimension the variable reads."
+          },
+          "selectionScope": {
+            "type": "string",
+            "description": "A `selection_scope` value other than `all_mapped`, which a variable without a target reads."
+          }
+        },
+        "description": "A `qe_report_variable_target` row: the member of the report dimension a report version reads one variable at."
+      },
+      "ReportVariableTargetsInput": {
+        "required": [
+          "targets"
+        ],
+        "type": "object",
+        "properties": {
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportVariableTargetInput"
+            },
+            "description": "One target per targeted variable."
+          }
+        },
+        "description": "The complete variable targets of an editable report version, as `PUT report-versions/{versionId}/variable-targets` takes\nthem; a variable without a target reads every row its sources classify."
+      },
       "ReportVersionInput": {
+        "required": [
+          "subtotalPosition"
+        ],
         "type": "object",
         "properties": {
           "defaultProfileKey": {
@@ -15903,7 +16487,11 @@
               "null",
               "string"
             ],
-            "description": "The key of a profile of the model's published version that requests run under when they name none."
+            "description": "The key of one of the version's profiles that requests run under when they name none; required at publication."
+          },
+          "subtotalPosition": {
+            "type": "string",
+            "description": "A `subtotal_position` value: whether a member row that shows values precedes or follows its descendants."
           },
           "payloadJson": {
             "type": [
@@ -15941,8 +16529,8 @@
           "reportVersionId",
           "reportId",
           "versionNumber",
-          "reportDimensionId",
           "modelId",
+          "subtotalPosition",
           "status"
         ],
         "type": "object",
@@ -15962,11 +16550,6 @@
             "description": "Version number within the report.",
             "format": "int32"
           },
-          "reportDimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension whose members the member lines name.",
-            "format": "int64"
-          },
           "modelId": {
             "type": "integer",
             "description": "The calculation model; a run reads the model version its assumption set pins.",
@@ -15978,6 +16561,10 @@
               "string"
             ],
             "description": "The key of the profile a request runs under when it names none; required at publication."
+          },
+          "subtotalPosition": {
+            "type": "string",
+            "description": "A `subtotal_position` value: whether a member row that shows values precedes or follows its descendants."
           },
           "status": {
             "type": "string",
@@ -16020,7 +16607,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout."
           }
         },
-        "description": "A `qe_report_version` row: one version of a report: its dimension, model, defaults, lines and columns."
+        "description": "A `qe_report_version` row: one version of a report: its model, defaults and the content tied to its dimension and data."
       },
       "RuleViolation": {
         "required": [
@@ -16242,7 +16829,7 @@
             "items": {
               "$ref": "#/components/schemas/SourceProfileVariableRecord"
             },
-            "description": "The profile's picks, by variable ID."
+            "description": "The profile's picks, by variable key."
           }
         },
         "description": "A source profile with the source it picks for each variable."
@@ -16276,23 +16863,22 @@
             "description": "The source the profile picks for each variable; each variable appears once."
           }
         },
-        "description": "A source profile of a draft model version with its complete pick list, as its create and edit endpoints take it."
+        "description": "A source profile of an editable report version with its complete pick list, as its create and edit endpoints take it."
       },
       "SourceProfilePick": {
         "required": [
-          "variableId",
+          "variableKey",
           "variableSourceId"
         ],
         "type": "object",
         "properties": {
-          "variableId": {
-            "type": "integer",
-            "description": "The variable.",
-            "format": "int64"
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model variable."
           },
           "variableSourceId": {
             "type": "integer",
-            "description": "The picked source, one of the variable's.",
+            "description": "The picked source, one of the version's sources of the variable.",
             "format": "int64"
           }
         },
@@ -16301,7 +16887,7 @@
       "SourceProfileRecord": {
         "required": [
           "sourceProfileId",
-          "modelVersionId",
+          "reportVersionId",
           "profileKey",
           "displayName",
           "isEnabled"
@@ -16313,9 +16899,9 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "reportVersionId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning report version.",
             "format": "int64"
           },
           "profileKey": {
@@ -16331,12 +16917,12 @@
             "description": "Whether report requests may run under the profile."
           }
         },
-        "description": "A `qe_calculation_source_profile` row: a named choice of one source per variable of a model version."
+        "description": "A `qe_calculation_source_profile` row: a named choice of one source per variable a report version reads."
       },
       "SourceProfileVariableRecord": {
         "required": [
           "sourceProfileId",
-          "variableId",
+          "variableKey",
           "variableSourceId"
         ],
         "type": "object",
@@ -16346,10 +16932,9 @@
             "description": "The profile; first part of the primary key.",
             "format": "int64"
           },
-          "variableId": {
-            "type": "integer",
-            "description": "The variable; second part of the primary key.",
-            "format": "int64"
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model variable; second part of the primary key."
           },
           "variableSourceId": {
             "type": "integer",
@@ -16752,8 +17337,8 @@
           "variableKey",
           "displayName",
           "variableRole",
-          "selectionScope",
-          "missingBehavior"
+          "missingBehavior",
+          "displayFormat"
         ],
         "type": "object",
         "properties": {
@@ -16769,23 +17354,23 @@
             "type": "string",
             "description": "Free-form classification such as `average_balance`."
           },
-          "targetMemberKey": {
+          "missingBehavior": {
+            "type": "string",
+            "description": "A `variable_missing_behavior` value."
+          },
+          "displayFormat": {
+            "type": "string",
+            "description": "Presentation hint such as `number`, `percent` or `currency`, which report columns show by default."
+          },
+          "unitKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The report-item member a `descendants` or `exact` variable reads; null for `all_mapped`."
-          },
-          "selectionScope": {
-            "type": "string",
-            "description": "A `selection_scope` value."
-          },
-          "missingBehavior": {
-            "type": "string",
-            "description": "A `variable_missing_behavior` value."
+            "description": "Optional unit, such as a currency code."
           }
         },
-        "description": "A variable of a draft model version, as its create and edit endpoints take it."
+        "description": "A variable of an editable model version, as its create and edit endpoints take it."
       },
       "VariableRecord": {
         "required": [
@@ -16794,8 +17379,8 @@
           "variableKey",
           "displayName",
           "variableRole",
-          "selectionScope",
-          "missingBehavior"
+          "missingBehavior",
+          "displayFormat"
         ],
         "type": "object",
         "properties": {
@@ -16811,7 +17396,7 @@
           },
           "variableKey": {
             "type": "string",
-            "description": "Key, unique among the version's variables and calculated measures."
+            "description": "Key, unique among the version's variables and calculated measures; reports name the variable by it."
           },
           "displayName": {
             "type": "string",
@@ -16821,40 +17406,39 @@
             "type": "string",
             "description": "Free-form classification such as `average_balance`."
           },
-          "targetMemberKey": {
+          "missingBehavior": {
+            "type": "string",
+            "description": "A `variable_missing_behavior` value."
+          },
+          "displayFormat": {
+            "type": "string",
+            "description": "Presentation hint such as `currency`, which a report column shows unless it overrides it."
+          },
+          "unitKey": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The report-item member a `descendants` or `exact` variable reads."
-          },
-          "selectionScope": {
-            "type": "string",
-            "description": "A `selection_scope` value."
-          },
-          "missingBehavior": {
-            "type": "string",
-            "description": "A `variable_missing_behavior` value."
+            "description": "Optional unit, such as a currency code."
           }
         },
-        "description": "A `qe_variable` row: a logical input of a model version, which a source profile fills from one of its sources."
+        "description": "A `qe_variable` row: a logical input of a model version, which each report fills from one of its own sources."
       },
       "VariableSourceInput": {
         "required": [
-          "variableId",
+          "variableKey",
           "sourceKey",
           "datasetId",
-          "reportFieldKey",
+          "classification",
           "timeFieldKey",
           "measureKey",
           "isEnabled"
         ],
         "type": "object",
         "properties": {
-          "variableId": {
-            "type": "integer",
-            "description": "The variable of the version that the source supplies.",
-            "format": "int64"
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model variable the source supplies; the model's published version must have it at publication."
           },
           "sourceKey": {
             "type": "string",
@@ -16862,12 +17446,12 @@
           },
           "datasetId": {
             "type": "integer",
-            "description": "The dataset; the release that pins the report decides its version.",
+            "description": "The dataset; the release the report runs against decides its version.",
             "format": "int64"
           },
-          "reportFieldKey": {
-            "type": "string",
-            "description": "The dataset field whose binding classifies rows into the report dimension."
+          "classification": {
+            "description": "How the dataset's rows classify into the report's dimension.",
+            "$ref": "#/components/schemas/ClassificationInput"
           },
           "timeFieldKey": {
             "type": "string",
@@ -16889,16 +17473,17 @@
             "description": "Whether profiles may pick the source."
           }
         },
-        "description": "A variable source of a draft model version, as its create and edit endpoints take it."
+        "description": "A variable source of an editable report version, as its create and edit endpoints take it."
       },
       "VariableSourceRecord": {
         "required": [
           "variableSourceId",
-          "modelVersionId",
-          "variableId",
+          "reportVersionId",
+          "variableKey",
           "sourceKey",
           "datasetId",
-          "reportFieldKey",
+          "classificationKind",
+          "classificationFieldKey",
           "timeFieldKey",
           "measureKey",
           "isEnabled"
@@ -16910,15 +17495,14 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "reportVersionId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning report version.",
             "format": "int64"
           },
-          "variableId": {
-            "type": "integer",
-            "description": "The variable the source supplies.",
-            "format": "int64"
+          "variableKey": {
+            "type": "string",
+            "description": "The key of the model variable the source supplies."
           },
           "sourceKey": {
             "type": "string",
@@ -16929,9 +17513,29 @@
             "description": "The dataset; the release decides its version.",
             "format": "int64"
           },
-          "reportFieldKey": {
+          "classificationKind": {
             "type": "string",
-            "description": "The field whose binding classifies rows into the report dimension."
+            "description": "A `classification_kind` value."
+          },
+          "classificationFieldKey": {
+            "type": "string",
+            "description": "The dataset field the classification reads."
+          },
+          "mappingSetId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The mapping set of a `mapped` classification, into the report's dimension.",
+            "format": "int64"
+          },
+          "bridgeId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The bridge of a `bridge` classification, into the report's dimension.",
+            "format": "int64"
           },
           "timeFieldKey": {
             "type": "string",
@@ -16953,7 +17557,7 @@
             "description": "Whether profiles may pick the source."
           }
         },
-        "description": "A `qe_variable_source` row: one dataset measure that can supply a variable, named by key in the dataset version a release pins."
+        "description": "A `qe_variable_source` row: one dataset measure a report version can fill a model variable from, with how its rows\nclassify into the report's dimension; dataset content is named by key in the dataset version a release pins."
       },
       "VersionCheck": {
         "required": [
@@ -17082,16 +17686,34 @@
       "name": "Session"
     },
     {
+      "name": "CalculationDimensions"
+    },
+    {
+      "name": "CalculationRoutes"
+    },
+    {
       "name": "ReportColumns"
     },
     {
       "name": "ReportLines"
     },
     {
+      "name": "ReportMemberOptions"
+    },
+    {
       "name": "Reports"
     },
     {
+      "name": "ReportVariableTargets"
+    },
+    {
       "name": "ReportVersions"
+    },
+    {
+      "name": "SourceProfiles"
+    },
+    {
+      "name": "VariableSources"
     },
     {
       "name": "Releases"
@@ -17145,25 +17767,13 @@
       "name": "CalculatedMeasures"
     },
     {
-      "name": "CalculationDimensions"
-    },
-    {
       "name": "CalculationModels"
     },
     {
       "name": "CalculationModelVersions"
     },
     {
-      "name": "CalculationRoutes"
-    },
-    {
-      "name": "SourceProfiles"
-    },
-    {
       "name": "Variables"
-    },
-    {
-      "name": "VariableSources"
     },
     {
       "name": "BridgeMappings"

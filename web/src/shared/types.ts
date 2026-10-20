@@ -41,6 +41,7 @@ export type LookupKind =
   | 'datasets'
   | 'dataset-versions' // dataset
   | 'fields' // dataset version; classifier = data type
+  | 'classified-fields' // dataset version; item parentId = the dimension its binding groups members of
   | 'grains'
   | 'bindings'
   | 'time-bindings'
@@ -51,17 +52,17 @@ export type LookupKind =
   | 'members' // dimension version; item parentId = parent member
   | 'mapping-sets' // optional dimension
   | 'mapping-versions' // mapping set
-  | 'bridges'
+  | 'bridges' // optional source dimension; item parentId = target dimension
   | 'bridge-versions' // bridge
   | 'releases'
   | 'assumption-sets'
   | 'calculation-models'
   | 'model-versions' // calculation model
   | 'variables' // model version; classifier = role
-  | 'variable-sources' // model version; item parentId = variable, classifier = measure key
-  | 'source-profiles' // model version
+  | 'variable-sources' // report version; classifier = variable key
+  | 'source-profiles' // report version
   | 'calculated-measures' // model version; classifier = display format
-  | 'calculation-dimensions' // model version; classifier = value kind
+  | 'calculation-dimensions' // report version; classifier = value kind
   | 'reports' // classifier = report type
   | 'report-versions' // report
   | 'report-columns'; // report version; classifier = value kind

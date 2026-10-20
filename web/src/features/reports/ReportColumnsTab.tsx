@@ -48,7 +48,7 @@ interface ColumnEditorProps extends ReportColumnsTabProps {
 /**
  * The version's columns in display order. A draft or the published version reorders them by drag and drop and adds,
  * edits and removes them locally;
- * "Save" replaces the whole list, and a column that keeps its ID keeps the formula lines that place values in it.
+ * "Save" replaces the whole list, and a column that keeps its ID keeps the formula rows that place values in it.
  */
 function ColumnEditor({ version, isEditable, saved }: ColumnEditorProps) {
   const replace = useReplaceReportColumns(version.reportVersionId);

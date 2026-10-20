@@ -81,7 +81,7 @@ public static class TableCatalog
         [typeof(SourceProfileRecord)] = Tenant("qe_calculation_source_profile", [nameof(SourceProfileRecord.SourceProfileId)], []),
         [typeof(SourceProfileVariableRecord)] = Tenant(
             "qe_calculation_source_profile_variable",
-            [nameof(SourceProfileVariableRecord.SourceProfileId), nameof(SourceProfileVariableRecord.VariableId)],
+            [nameof(SourceProfileVariableRecord.SourceProfileId), nameof(SourceProfileVariableRecord.VariableKey)],
             []),
         [typeof(CalculatedMeasureRecord)] = Tenant("qe_calculated_measure", [nameof(CalculatedMeasureRecord.CalculatedMeasureId)], []),
         [typeof(CalculationDimensionRecord)] = Tenant(
@@ -103,7 +103,11 @@ public static class TableCatalog
             [nameof(ReportLineRecord.ReportLineId)],
             [nameof(ReportLineRecord.PayloadJson), nameof(ReportLineRecord.FilterJson), nameof(ReportLineRecord.SettingsJson)]),
         [typeof(ReportColumnRecord)] = Tenant(
-            "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)])
+            "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)]),
+        [typeof(ReportMemberOptionRecord)] = Tenant(
+            "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportVersionId), nameof(ReportMemberOptionRecord.MemberKey)], []),
+        [typeof(ReportVariableTargetRecord)] = Tenant(
+            "qe_report_variable_target", [nameof(ReportVariableTargetRecord.ReportVersionId), nameof(ReportVariableTargetRecord.VariableKey)], [])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>

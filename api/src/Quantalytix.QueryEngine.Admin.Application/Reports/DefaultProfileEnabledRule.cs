@@ -1,25 +1,25 @@
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>default_profile_enabled</c>: a report version names a default profile, and it is an enabled profile of the model version,
-/// because a request that names no profile runs under it. Report versions and calculation model versions both run the rule.
+/// <c>default_profile_enabled</c>: a report version names a default profile, and it is one of its enabled profiles, because a request
+/// that names no profile runs under it.
 /// </summary>
-/// <param name="kind">The kind the rule is registered for.</param>
-/// <param name="reader">Reads the reports with the model version they are checked against.</param>
-public sealed class DefaultProfileEnabledRule(string kind, ReportGraphReader reader) : IPublicationRule
+/// <param name="reader">Reads the report version.</param>
+public sealed class DefaultProfileEnabledRule(ReportGraphReader reader) : IPublicationRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "default_profile_enabled";
 
-    /// <summary>The kind the rule checks: report versions or calculation model versions.</summary>
-    public string Kind { get; } = kind;
+    /// <summary>The kind the rule checks: report versions.</summary>
+    public string Kind { get; } = VersionKinds.ReportVersion;
 
-    /// <summary>Reports each report that names no default profile, or one the model version does not have enabled.</summary>
-    /// <param name="versionId">The report or model version being validated.</param>
+    /// <summary>Reports a report version that names no default profile, or one it does not have enabled.</summary>
+    /// <param name="versionId">The report version being validated.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per report without an enabled default profile.</returns>
+    /// <returns>One violation when the version has no enabled default profile.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var violations = new List<RuleViolation>();
@@ -28,7 +28,7 @@ public sealed class DefaultProfileEnabledRule(string kind, ReportGraphReader rea
             if (report.Version.DefaultProfileKey is not { } profileKey)
                 violations.Add(Violation($"Report '{report.ReportKey}' names no default profile."));
             else if (report.Profiles.FirstOrDefault(profile => profile.ProfileKey == profileKey) is not { IsEnabled: true })
-                violations.Add(Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no enabled profile of the model version."));
+                violations.Add(Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no enabled profile of the report version."));
         }
         return violations;
     }

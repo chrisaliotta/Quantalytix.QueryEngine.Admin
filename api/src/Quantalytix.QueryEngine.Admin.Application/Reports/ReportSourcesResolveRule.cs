@@ -5,11 +5,11 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>report_sources_resolve</c>: every enabled source of a report's model reads a dataset the release pins, and every key it
-/// names resolves in that dataset version. Its report field is a member-grouped classification into the report's dimension;
-/// its time field has a time binding; its measure is enabled; and its filter compares enabled, filterable fields. The engine
-/// trusts these keys, so a key that does not resolve would fail the report at run time. Report versions, calculation model
-/// versions and semantic releases all run the rule, each in the scope <see cref="ReportGraphReader"/> gives its kind.
+/// <c>report_sources_resolve</c>: every enabled source of a report reads a dataset the release pins, and every key it names resolves
+/// in that dataset version. Its classification field is an enabled field, and for a bridge one whose binding groups members of the
+/// bridge's source dimension, which the bridge remaps; its time field has a time binding; its measure is enabled; and its filter
+/// compares enabled, filterable fields. The engine trusts these keys, so a key that does not resolve would fail the report at run
+/// time. Report versions and semantic releases both run the rule, each in the scope <see cref="ReportGraphReader"/> gives its kind.
 /// </summary>
 /// <param name="kind">The kind the rule is registered for.</param>
 /// <param name="reader">Reads the reports and the release's dataset versions.</param>
@@ -18,10 +18,7 @@ public sealed class ReportSourcesResolveRule(string kind, ReportGraphReader read
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_sources_resolve";
 
-    /// <summary>The binding kinds that classify rows into canonical members.</summary>
-    private static readonly string[] Classifying = [BindingKinds.Direct, BindingKinds.Mapped, BindingKinds.Bridge];
-
-    /// <summary>The kind the rule checks: report versions, calculation model versions or semantic releases.</summary>
+    /// <summary>The kind the rule checks: report versions or semantic releases.</summary>
     public string Kind { get; } = kind;
 
     /// <summary>Reports every source key that does not resolve in the release.</summary>
@@ -43,10 +40,10 @@ public sealed class ReportSourcesResolveRule(string kind, ReportGraphReader read
                     continue;
                 }
 
-                var binding = dataset.BindingOf(source.ReportFieldKey);
-                if (binding is null || !Classifying.Contains(binding.BindingKind) || binding.GroupingMode != GroupingModes.Member
-                    || binding.DimensionId != report.Version.ReportDimensionId)
-                    violations.Add(Violation($"{subject}: report field '{source.ReportFieldKey}' of '{dataset.DatasetKey}' is no member-grouped classification into the report dimension."));
+                if (dataset.Fields.GetValueOrDefault(source.ClassificationFieldKey) is not { IsEnabled: true })
+                    violations.Add(Violation($"{subject} classifies by '{source.ClassificationFieldKey}', which is no enabled field of '{dataset.DatasetKey}'."));
+                else if (source.BridgeId is { } bridgeId && !ClassificationFields.BridgesFrom(dataset, source.ClassificationFieldKey, scope.Bridges[bridgeId]))
+                    violations.Add(Violation($"{subject} classifies by '{source.ClassificationFieldKey}' of '{dataset.DatasetKey}', whose binding groups no members of the source dimension of bridge '{scope.Bridges[bridgeId].BridgeKey}'."));
                 if (dataset.Fields.GetValueOrDefault(source.TimeFieldKey) is not { } timeField
                     || !dataset.Bindings.Any(time => time.SourceFieldId == timeField.FieldId && dataset.TimeBindingIds.Contains(time.BindingId)))
                     violations.Add(Violation($"{subject}: time field '{source.TimeFieldKey}' of '{dataset.DatasetKey}' has no time binding."));

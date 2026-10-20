@@ -1,3 +1,4 @@
+import { toGroupingReferences } from '@/shared/form/grouping';
 import { emptyToNull } from '@/shared/text';
 import type { BindingDetail, BindingInput, TimeBinding, TimeBindingInput } from './types';
 
@@ -110,9 +111,7 @@ export function toBindingInput(values: BindingFormValues): BindingInput {
     sourceBindingId: kind === 'bridge' ? values.sourceBindingId : null,
     bridgeId: kind === 'bridge' ? values.bridgeId : null,
     groupingMode: values.groupingMode ?? '',
-    groupingLevelKey: values.groupingMode === 'level' ? values.groupingLevelKey : null,
-    groupingAncestorMemberKey: values.groupingMode === 'ancestor' ? values.groupingAncestorMemberKey : null,
-    groupingDepth: values.groupingMode === 'depth' ? values.groupingDepth : null,
+    ...toGroupingReferences(values),
     raggedBehavior: values.raggedBehavior ?? '',
     defaultPeriodAlignment: values.defaultPeriodAlignment ?? '',
     unmappedBehavior: values.unmappedBehavior ?? '',

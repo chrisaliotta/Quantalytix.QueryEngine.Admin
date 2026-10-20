@@ -5,32 +5,40 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { EnabledBadge } from '@/shared/EnabledBadge';
 import { EntityListPage } from '@/shared/EntityListPage';
+import { useLookup } from '@/shared/useLookup';
 import { useReports } from './api';
 import { NewReportSheet } from './NewReportSheet';
 import type { Report } from './types';
 
-const columns: ColumnDef<Report>[] = [
-  { accessorKey: 'reportKey', header: 'Key' },
-  { accessorKey: 'displayName', header: 'Name' },
-  { accessorKey: 'reportType', header: 'Type' },
-  {
-    accessorKey: 'isEnabled',
-    header: 'Enabled',
-    cell: ({ row }) => <EnabledBadge enabled={row.original.isEnabled} />,
-  },
-];
-
 /** Lists the tenant's reports and creates new ones. */
 export function ReportListPage() {
   const reports = useReports();
+  const dimensions = useLookup('dimensions');
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const dimensionKeys = new Map(dimensions.data?.map(item => [item.id, item.key]));
+
+  const columns: ColumnDef<Report>[] = [
+    { accessorKey: 'reportKey', header: 'Key' },
+    { accessorKey: 'displayName', header: 'Name' },
+    { accessorKey: 'reportType', header: 'Type' },
+    {
+      id: 'reportDimension',
+      header: 'Report dimension',
+      accessorFn: report => dimensionKeys.get(report.reportDimensionId) ?? report.reportDimensionId,
+    },
+    {
+      accessorKey: 'isEnabled',
+      header: 'Enabled',
+      cell: ({ row }) => <EnabledBadge enabled={row.original.isEnabled} />,
+    },
+  ];
 
   return (
     <>
       <EntityListPage
         title="Reports"
-        description="Line and column layouts over a calculation model; a release pins the version queries run."
+        description="The members of a report dimension as rows and a calculation model's metrics as columns, over each report's own data."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus />

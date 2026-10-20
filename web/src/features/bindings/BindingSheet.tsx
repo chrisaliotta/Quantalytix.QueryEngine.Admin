@@ -12,6 +12,7 @@ import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { bindingFormValues, toBindingInput, type BindingFormValues } from './bindingForm';
 import { GroupingFields } from './GroupingFields';
+import { useBindings } from './queries';
 import { TimeBindingFields } from './TimeBindingFields';
 import type { BindingDetail } from './types';
 
@@ -33,9 +34,14 @@ export interface BindingSheetProps {
 export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingSheetProps) {
   const tenantId = useTenantId();
   const form = useForm<BindingFormValues>({ defaultValues: bindingFormValues(detail) });
-  const [kind, dimensionId] = useWatch({ control: form.control, name: ['bindingKind', 'dimensionId'] });
+  const [kind, dimensionId, sourceBindingId] = useWatch({
+    control: form.control,
+    name: ['bindingKind', 'dimensionId', 'sourceBindingId'],
+  });
   const dimensions = useLookup('dimensions');
-  useStaleReferenceClearing(form, { kind, dimensionId }, dimensions.data);
+  const bindings = useBindings(versionId);
+  const sourceDimensionId = bindings.data?.find(item => item.binding.bindingId === sourceBindingId)?.binding.dimensionId ?? null;
+  useStaleReferenceClearing(form, { kind, dimensionId, sourceBindingId }, dimensions.data);
   const save = useMutation({
     mutationFn: async (values: BindingFormValues) => {
       const body = toBindingInput(values);
@@ -106,7 +112,9 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
             name="bridgeId"
             label="Bridge"
             lookupKind="bridges"
-            description="The bridge that remaps the source binding's members; requests read the version their assumption set pins."
+            parentId={sourceDimensionId}
+            filter={item => item.parentId === dimensionId}
+            description="A bridge from the source binding's dimension into this binding's, which remaps the source binding's members; requests read the version their assumption set pins."
           />
         </>
       )}
@@ -129,20 +137,22 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
 interface ReferenceChoices {
   kind: string | null;
   dimensionId: number | null;
+  sourceBindingId: number | null;
 }
 
 /**
- * Clears the references that belong to a dimension once the user picks another one: the mapping set and the level and
- * member keys then name another dimension's rows, so the old choices could only fail validation. A kind that binds only
- * dimensions of its own kind clears a dimension of another kind the same way. It runs after render, never inside a form
+ * Clears the references that belong to a dimension once the user picks another one: the mapping set, the bridge and the
+ * level and member keys then name another dimension's rows, so the old choices could only fail validation. A new source
+ * binding clears the bridge the same way, because the bridge leads from the source binding's dimension. A kind that binds
+ * only dimensions of its own kind clears a dimension of another kind. It runs after render, never inside a form
  * notification, so watchers keep seeing the cleared values.
  */
 function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>, choices: ReferenceChoices, dimensions: LookupItem[] | undefined) {
-  const { kind, dimensionId } = choices;
+  const { kind, dimensionId, sourceBindingId } = choices;
   const previous = useRef(choices);
   useEffect(() => {
     const before = previous.current;
-    previous.current = { kind, dimensionId };
+    previous.current = { kind, dimensionId, sourceBindingId };
     const fitsKind = dimensionKindFilter(kind);
     const dimension = dimensions?.find(item => item.id === dimensionId);
     if (kind !== before.kind && fitsKind && dimension && !fitsKind(dimension)) {
@@ -154,7 +164,10 @@ function useStaleReferenceClearing(form: UseFormReturn<BindingFormValues>, choic
       form.setValue('groupingAncestorMemberKey', null);
       form.setValue('unknownMemberKey', null);
     }
-  }, [form, dimensions, kind, dimensionId]);
+    if (dimensionId !== before.dimensionId || sourceBindingId !== before.sourceBindingId) {
+      form.setValue('bridgeId', null);
+    }
+  }, [form, dimensions, kind, dimensionId, sourceBindingId]);
 }
 
 /** Range and time bindings bind only dimensions of their own kind; other kinds offer every dimension. */

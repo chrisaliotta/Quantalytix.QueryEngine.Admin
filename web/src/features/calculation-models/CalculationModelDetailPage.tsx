@@ -17,17 +17,13 @@ import { selectedVersion } from '@/shared/versionSelection';
 import { isEditable as isEditableVersion } from '@/shared/versionTransitions';
 import { useCalculationModel, useDeleteCalculationModel, useDeleteModelVersion, useModelVersion } from './api';
 import { CalculatedMeasuresTab } from './CalculatedMeasuresTab';
-import { CalculationDimensionsTab } from './CalculationDimensionsTab';
 import { CalculationModelIdentitySheet } from './CalculationModelIdentitySheet';
-import { CalculationRoutesTab } from './CalculationRoutesTab';
 import { ModelVersionSheet } from './ModelVersionSheet';
 import { NewModelVersionDialog } from './NewModelVersionDialog';
-import { SourceProfilesTab } from './SourceProfilesTab';
 import type { CalculationModel, CalculationModelVersion, NewModelVersionInput } from './types';
-import { VariableSourcesTab } from './VariableSourcesTab';
 import { VariablesTab } from './VariablesTab';
 
-/** One calculation model: identity, version picker with lifecycle actions, and the selected version's content in tabs. */
+/** One calculation model: identity, version picker with lifecycle actions, and the selected version's metrics in tabs. */
 export function CalculationModelDetailPage() {
   const modelId = Number(useParams().modelId);
   const model = useCalculationModel(modelId);
@@ -102,7 +98,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
       {versions.isSuccess && versionItems.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No versions yet. A version holds the variables, their sources, profiles, formulas and calculation dimensions.
+          No versions yet. A version holds the variables and formulas; each report that reads the model brings its own data.
         </p>
       )}
 
@@ -122,29 +118,13 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
           <Tabs defaultValue="variables">
             <TabsList>
               <TabsTrigger value="variables">Variables</TabsTrigger>
-              <TabsTrigger value="sources">Sources</TabsTrigger>
-              <TabsTrigger value="profiles">Profiles</TabsTrigger>
               <TabsTrigger value="calculated-measures">Calculated measures</TabsTrigger>
-              <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
-              <TabsTrigger value="routes">Routes</TabsTrigger>
             </TabsList>
             <TabsContent value="variables">
               <VariablesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
-            <TabsContent value="sources">
-              <VariableSourcesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
-            <TabsContent value="profiles">
-              <SourceProfilesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
             <TabsContent value="calculated-measures">
               <CalculatedMeasuresTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
-            <TabsContent value="dimensions">
-              <CalculationDimensionsTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
-            <TabsContent value="routes">
-              <CalculationRoutesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
             </TabsContent>
           </Tabs>
         </>

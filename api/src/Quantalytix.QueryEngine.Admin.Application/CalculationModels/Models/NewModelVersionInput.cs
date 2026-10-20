@@ -6,6 +6,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// </summary>
 public sealed record NewModelVersionInput : ModelVersionInput
 {
-    /// <summary>A version of the same model whose variables, sources, profiles, formulas and dimensions the draft copies; null for an empty draft.</summary>
+    /// <summary>A version of the same model whose variables and calculated measures the draft copies; null for an empty draft.</summary>
     public long? CloneFromVersionId { get; init; }
 }

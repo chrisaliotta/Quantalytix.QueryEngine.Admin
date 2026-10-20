@@ -37,13 +37,13 @@ public sealed class CalculationLookups(
                 })],
             LookupKinds.Variables => Sorted((await variables.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.VariableId, Key = row.VariableKey, Label = row.DisplayName, Classifier = row.VariableRole })),
-            LookupKinds.VariableSources => Sorted((await sources.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
-                .Select(row => new LookupItem { Id = row.VariableSourceId, Key = row.SourceKey, Label = row.SourceKey, ParentId = row.VariableId, Classifier = row.MeasureKey })),
-            LookupKinds.SourceProfiles => Sorted((await profiles.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
+            LookupKinds.VariableSources => Sorted((await sources.ListAsync(new { ReportVersionId = parentId }, cancellationToken))
+                .Select(row => new LookupItem { Id = row.VariableSourceId, Key = row.SourceKey, Label = row.SourceKey, Classifier = row.VariableKey })),
+            LookupKinds.SourceProfiles => Sorted((await profiles.ListAsync(new { ReportVersionId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.SourceProfileId, Key = row.ProfileKey, Label = row.DisplayName })),
             LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculatedMeasureId, Key = row.MeasureKey, Label = row.DisplayName, Classifier = row.DisplayFormat })),
-            LookupKinds.CalculationDimensions => Sorted((await calculationDimensions.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
+            LookupKinds.CalculationDimensions => Sorted((await calculationDimensions.ListAsync(new { ReportVersionId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculationDimensionId, Key = row.DimensionKey, Label = row.DisplayName, Classifier = row.ValueKind })),
             LookupKinds.Reports => Sorted((await reports.ListAsync(null, cancellationToken))
                 .Select(row => new LookupItem { Id = row.ReportId, Key = row.ReportKey, Label = row.DisplayName, Classifier = row.ReportType })),
@@ -52,7 +52,7 @@ public sealed class CalculationLookups(
                 .Select(row => new LookupItem { Id = row.ReportVersionId, Key = VersionKey(row.VersionNumber), Label = VersionKey(row.VersionNumber), Status = row.Status })],
             LookupKinds.ReportColumns => [.. (await columns.ListAsync(new { ReportVersionId = parentId }, cancellationToken))
                 .OrderBy(row => row.SortOrder)
-                .Select(row => new LookupItem { Id = row.ReportColumnId, Key = row.ColumnKey, Label = row.DisplayName, Classifier = row.ValueKind })],
+                .Select(row => new LookupItem { Id = row.ReportColumnId, Key = row.ColumnKey, Label = row.DisplayName ?? row.MetricKey, Classifier = row.ValueKind })],
             _ => throw new UnreachableException($"Lookup kind '{kind}' passed validation but has no list.")
         };
     }

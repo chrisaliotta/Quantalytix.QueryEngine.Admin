@@ -6,8 +6,8 @@ public sealed record SourceProfileVariableRecord
     /// <summary>The profile; first part of the primary key.</summary>
     public required long SourceProfileId { get; init; }
 
-    /// <summary>The variable; second part of the primary key.</summary>
-    public required long VariableId { get; init; }
+    /// <summary>The key of the model variable; second part of the primary key.</summary>
+    public required string VariableKey { get; init; }
 
     /// <summary>The picked source, one of the variable's.</summary>
     public required long VariableSourceId { get; init; }

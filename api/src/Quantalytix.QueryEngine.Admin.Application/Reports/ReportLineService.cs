@@ -2,62 +2,53 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>Reads and replaces the line tree of report versions.</summary>
+/// <summary>Reads and replaces the overlay rows of report versions.</summary>
 public sealed class ReportLineService(
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportColumnRecord> columns,
     IIdGenerator ids)
 {
-    /// <summary>Lists a version's lines.</summary>
+    /// <summary>Lists a version's overlay rows.</summary>
     /// <param name="versionId">The report version.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The lines by parent, then sort order.</returns>
+    /// <returns>The rows by sort order, then key.</returns>
     public async Task<IReadOnlyList<ReportLineRecord>> ListAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await lines.ListAsync(new { ReportVersionId = versionId }, cancellationToken);
-        return [.. rows.OrderBy(line => line.ParentReportLineId ?? 0).ThenBy(line => line.SortOrder)];
+        return [.. rows.OrderBy(line => line.SortOrder).ThenBy(line => line.LineKey, StringComparer.Ordinal)];
     }
 
     /// <summary>
-    /// Replaces a version's line tree with the given pre-order list. Each line's sort order is its position among its siblings;
-    /// a line that carries its ID keeps it, lines the list leaves out are deleted, and parents and value columns become the IDs
-    /// the rows store, by line key and column key. Member and calculated measure keys are stored as keys.
+    /// Replaces a version's overlay rows with the given list. A row that carries its ID keeps it, rows the list leaves out are
+    /// deleted, and value columns become the IDs the rows store, by column key. Parent, member and calculated measure keys are
+    /// stored as keys.
     /// </summary>
     /// <param name="versionId">The draft or published report version.</param>
-    /// <param name="input">The complete, validated line tree.</param>
+    /// <param name="input">The complete, validated overlay rows.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The stored lines by parent, then sort order.</returns>
+    /// <returns>The stored rows by sort order, then key.</returns>
     public async Task<IReadOnlyList<ReportLineRecord>> ReplaceAsync(long versionId, ReportLinesInput input, CancellationToken cancellationToken)
     {
         var columnIds = (await columns.ListAsync(new { ReportVersionId = versionId }, cancellationToken))
             .ToDictionary(column => column.ColumnKey, column => column.ReportColumnId, StringComparer.Ordinal);
-        var lineIds = new Dictionary<string, long>(StringComparer.Ordinal);
-        var siblings = new Dictionary<string, int>(StringComparer.Ordinal);
-        var rows = new List<ReportLineRecord>(input.Lines.Count);
-        foreach (var line in input.Lines)
-        {
-            var id = line.ReportLineId ?? ids.NextId();
-            lineIds[line.LineKey] = id;
-            var siblingKey = line.ParentLineKey ?? string.Empty;
-            siblings[siblingKey] = siblings.GetValueOrDefault(siblingKey) + 1;
-            rows.Add(new ReportLineRecord
+        ReportLineRecord[] rows =
+        [
+            .. input.Lines.Select(line => new ReportLineRecord
             {
-                ReportLineId = id,
+                ReportLineId = line.ReportLineId ?? ids.NextId(),
                 ReportVersionId = versionId,
                 LineKey = line.LineKey,
                 DisplayName = line.DisplayName,
                 LineKind = line.LineKind,
-                ParentReportLineId = line.ParentLineKey is { } parent ? lineIds[parent] : null,
-                ReportMemberKey = line.ReportMemberKey,
+                ParentKey = line.ParentKey,
                 CalculatedMeasureKey = line.CalculatedMeasureKey,
                 ValueColumnId = line.ValueColumnKey is { } column ? columnIds[column] : null,
-                SortOrder = siblings[siblingKey],
+                SortOrder = line.SortOrder,
                 IsVisible = line.IsVisible,
                 PayloadJson = line.PayloadJson,
                 SettingsJson = line.SettingsJson
-            });
-        }
-
+            })
+        ];
         var removed = (await lines.ListAsync(new { ReportVersionId = versionId }, cancellationToken))
             .Select(line => line.ReportLineId).Except(rows.Select(row => row.ReportLineId)).ToArray();
         await lines.DeleteAsync(new { ReportLineId = removed }, cancellationToken);

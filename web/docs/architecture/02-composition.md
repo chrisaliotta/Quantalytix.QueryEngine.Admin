@@ -232,8 +232,8 @@ flowchart LR
 | `dimensions` | `api.ts` | `refresh` of its query keys and lookup kinds; `setQueryData` after a member reorder and a range-band replace |
 | `mappings` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk entry replace |
 | `bridges` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk mapping replace |
-| `calculation-models` | `api.ts`; the six content kinds share `useModelContent` and its writes, typed by `ModelContentTypes` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade |
-| `reports` | `api.ts` | Its keys and lookups; `setQueryData` after a column or line replace |
+| `calculation-models` | `api.ts`; variables and calculated measures through the shared `useVersionContent` and its writes, typed by `VersionContentTypes` | Its keys and lookups; a content write refreshes every content kind of the version and the metric lookups |
+| `reports` | `api.ts`; sources, profiles, calculation dimensions and routes through the shared `useVersionContent` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade; `setQueryData` after a column, overlay row, member option or target replace |
 | `releases` | `useReleases.ts` | `invalidateReleases` (`['releases', tenantId]` and the `releases` lookup) or the release keys; activation calls `invalidateTenantQueries` |
 | `assumption-sets` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; a publish repoints the active set and refreshes it through `invalidateTenantQueries` |
 | `system` | `useSystemTenants.ts` | `invalidateTenantDirectory`: `['system-tenants']` and `['tenants']` |
@@ -319,7 +319,7 @@ flowchart LR
 | `AddFromColumnsDialog` | `useSourceColumns`; `POST .../fields/from-columns` with `ColumnsField` |
 | `MaterializeDialog`, `MaterializedColumnDialog` | `POST .../fields/{fieldId}/materialize`, with a pending message while StarRocks applies the schema change; `PUT .../fields/{fieldId}/materialized-column` with `SourceColumnField` |
 | `GrainsTab`, `GrainSheet` | `useGrains` and the `fields` lookup; delete, `POST` or `PUT` a grain with `GrainFieldsField` (registry `Sortable`) |
-| `BindingsTab`, `BindingSheet` | `useBindings`; delete, `POST` or `PUT` a binding. `GroupingFields` offers level and member keys from the grouping dimension's published version through `usePublishedVersionItems`; `TimeBindingFields` shows for time bindings |
+| `BindingsTab`, `BindingSheet` | `useBindings`; delete, `POST` or `PUT` a binding. A bridge binding's bridge picker lists the bridges from its source binding's dimension into its own. `GroupingFields` holds the shared `GroupingModeFields`, which offers level and member keys from the grouping dimension's published version through `usePublishedVersionItems`, as a report's calculation dimensions do; `TimeBindingFields` shows for time bindings |
 | `MeasuresTab`, `MeasureSheet` | `useMeasures`; delete, `POST` or `PUT` a measure with `ComponentsField` (one field per component role) and `TimePolicyFields` |
 | `SettingsTab` | `PUT .../dataset-versions/{versionId}` from its own form, with `SourceObjectField`, `EntityField` (`time-bindings`), `JsonField` and the other shared fields |
 

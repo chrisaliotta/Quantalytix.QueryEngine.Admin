@@ -7,6 +7,8 @@ export interface VocabularyFieldProps extends FormFieldProps {
   vocabulary: string;
   /** Lets the user clear the value back to null. */
   allowEmpty?: boolean;
+  /** Values of the vocabulary the field does not offer. */
+  exclude?: string[];
 }
 
 /** Vocabulary picker (VocabularySelect); value is the selected value, or null. */
@@ -17,6 +19,7 @@ export function VocabularyField({
   disabled,
   vocabulary,
   allowEmpty,
+  exclude,
 }: VocabularyFieldProps) {
   const { field, id, error, isDisabled } = useFormField(name, disabled);
   return (
@@ -26,6 +29,7 @@ export function VocabularyField({
         value={field.value}
         onChange={field.onChange}
         allowEmpty={allowEmpty}
+        exclude={exclude}
         disabled={isDisabled}
       />
     </FormFieldLayout>

@@ -126,8 +126,8 @@ public sealed class OverviewTests
         ReportVersionId = 611,
         ReportId = 601,
         VersionNumber = 1,
-        ReportDimensionId = 300,
         ModelId = 401,
+        SubtotalPosition = SubtotalPositions.Above,
         Status = PublicationStatuses.Draft
     });
 
@@ -236,7 +236,10 @@ public sealed class OverviewTests
     /// <summary>A report.</summary>
     private static ReportRecord Report(long reportId)
     {
-        return new ReportRecord { ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", IsEnabled = true };
+        return new ReportRecord
+        {
+            ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", ReportDimensionId = 300, IsEnabled = true
+        };
     }
 
     /// <summary>A release.</summary>

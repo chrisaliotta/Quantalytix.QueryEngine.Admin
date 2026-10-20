@@ -23,7 +23,7 @@ import type { Report, ReportVersion } from './types';
 /** The settings an empty draft starts with. */
 const DEFAULT_SETTINGS = '{"periodicity":"month","timeZone":"UTC"}';
 
-/** One report: identity, version picker with lifecycle actions, and the selected version's settings, lines and columns. */
+/** One report: identity, version picker with lifecycle actions, and the selected version's settings and content. */
 export function ReportDetailPage() {
   const reportId = Number(useParams().reportId);
   const report = useReport(reportId);
@@ -58,9 +58,9 @@ function ReportDetail({ report }: { report: Report }) {
 
   function openNew() {
     setNewVersion({
-      reportDimensionId: version.data?.reportDimensionId ?? null,
       modelId: version.data?.modelId ?? null,
       defaultProfileKey: null,
+      subtotalPosition: 'above',
       defaultSettingsJson: DEFAULT_SETTINGS,
       payloadJson: '',
       defaultFilterJson: '',
@@ -73,9 +73,9 @@ function ReportDetail({ report }: { report: Report }) {
     const source = version.data;
     if (source?.reportVersionId === sourceId) {
       setNewVersion({
-        reportDimensionId: source.reportDimensionId,
         modelId: source.modelId,
         defaultProfileKey: source.defaultProfileKey ?? null,
+        subtotalPosition: source.subtotalPosition,
         defaultSettingsJson: source.defaultSettingsJson ?? '',
         payloadJson: source.payloadJson ?? '',
         defaultFilterJson: source.defaultFilterJson ?? '',
@@ -125,14 +125,15 @@ function ReportDetail({ report }: { report: Report }) {
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
       {versions.isSuccess && versionItems.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No versions yet. A version reads a calculation model and holds the report's lines and columns; the published
-          version is the one requests read.
+          No versions yet. A version reads a calculation model and holds the report's data, rows and columns; the
+          published version is the one requests read.
         </p>
       )}
 
       {selected && version.data && (
         <ReportVersionPanel
           key={version.data.reportVersionId}
+          report={report}
           version={version.data}
           isEditable={isEditable('report_version', selected.status as VersionStatus)}
         />

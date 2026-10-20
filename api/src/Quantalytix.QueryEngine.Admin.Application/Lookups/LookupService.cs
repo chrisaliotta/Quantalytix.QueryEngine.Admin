@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Lookups;
@@ -31,7 +32,7 @@ public sealed class LookupService(
 {
     /// <summary>Lists one picker. Items are sorted by key unless the kind has a natural order.</summary>
     /// <param name="kind">A <c>lookup_kind</c> value, already validated by <see cref="LookupQueryValidator"/>.</param>
-    /// <param name="parentId">The owning row's ID; present for child kinds, optional for <c>mapping-sets</c>.</param>
+    /// <param name="parentId">The owning row's ID; present for child kinds, optional for <c>mapping-sets</c> and <c>bridges</c>.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The picker's items.</returns>
     public Task<IReadOnlyList<LookupItem>> ListAsync(string kind, long? parentId, CancellationToken cancellationToken)
@@ -41,6 +42,7 @@ public sealed class LookupService(
             LookupKinds.Datasets => DatasetsAsync(cancellationToken),
             LookupKinds.DatasetVersions => DatasetVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Fields => FieldsAsync(parentId!.Value, cancellationToken),
+            LookupKinds.ClassifiedFields => ClassifiedFieldsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Grains => GrainsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Bindings => BindingsAsync(parentId!.Value, cancellationToken),
             LookupKinds.TimeBindings => TimeBindingsAsync(parentId!.Value, cancellationToken),
@@ -51,7 +53,7 @@ public sealed class LookupService(
             LookupKinds.Members => MembersAsync(parentId!.Value, cancellationToken),
             LookupKinds.MappingSets => MappingSetsAsync(parentId, cancellationToken),
             LookupKinds.MappingVersions => MappingVersionsAsync(parentId!.Value, cancellationToken),
-            LookupKinds.Bridges => BridgesAsync(cancellationToken),
+            LookupKinds.Bridges => BridgesAsync(parentId, cancellationToken),
             LookupKinds.BridgeVersions => BridgeVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Releases => ReleasesAsync(cancellationToken),
             LookupKinds.AssumptionSets => AssumptionSetsAsync(cancellationToken),
@@ -95,6 +97,25 @@ public sealed class LookupService(
             Key = row.FieldKey,
             Label = row.DisplayName,
             Classifier = row.DataType
+        }));
+    }
+
+    /// <summary>
+    /// The fields of one dataset version whose binding groups members of a canonical dimension, each pointing at that dimension:
+    /// the fields a bridge classification can start from.
+    /// </summary>
+    private async Task<IReadOnlyList<LookupItem>> ClassifiedFieldsAsync(long datasetVersionId, CancellationToken cancellationToken)
+    {
+        var versionFields = (await fields.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken)).ToDictionary(field => field.FieldId);
+        var grouping = (await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken))
+            .Where(binding => binding.SourceFieldId is not null && ClassificationFields.GroupsMembers(binding));
+        return SortByKey(grouping.Select(binding => (Field: versionFields[binding.SourceFieldId!.Value], binding.DimensionId)).Select(pair => new LookupItem
+        {
+            Id = pair.Field.FieldId,
+            Key = pair.Field.FieldKey,
+            Label = pair.Field.DisplayName,
+            ParentId = pair.DimensionId,
+            Classifier = pair.Field.DataType
         }));
     }
 
@@ -249,11 +270,13 @@ public sealed class LookupService(
         ];
     }
 
-    /// <summary>Every bridge.</summary>
-    private async Task<IReadOnlyList<LookupItem>> BridgesAsync(CancellationToken cancellationToken)
+    /// <summary>The bridges from one source dimension, or every bridge, each pointing at its target dimension.</summary>
+    private async Task<IReadOnlyList<LookupItem>> BridgesAsync(long? sourceDimensionId, CancellationToken cancellationToken)
     {
-        var rows = await bridges.ListAsync(null, cancellationToken);
-        return SortByKey(rows.Select(row => new LookupItem { Id = row.BridgeId, Key = row.BridgeKey, Label = row.DisplayName }));
+        object? filter = null;
+        if (sourceDimensionId is not null) filter = new { SourceDimensionId = sourceDimensionId.Value };
+        var rows = await bridges.ListAsync(filter, cancellationToken);
+        return SortByKey(rows.Select(row => new LookupItem { Id = row.BridgeId, Key = row.BridgeKey, Label = row.DisplayName, ParentId = row.TargetDimensionId }));
     }
 
     /// <summary>The versions of one bridge by version number, classified by allocation mode.</summary>

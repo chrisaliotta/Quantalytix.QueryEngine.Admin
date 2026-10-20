@@ -49,9 +49,11 @@ public static class VocabularyCatalog
         SelectionScopes.Definition,
         VariableMissingBehaviors.Definition,
         CalculationValueKinds.Definition,
+        ClassificationKinds.Definition,
         RouteKinds.Definition,
         ReportLineKinds.Definition,
         ReportValueKinds.Definition,
+        SubtotalPositions.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

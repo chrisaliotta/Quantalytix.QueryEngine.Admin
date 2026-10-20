@@ -16,7 +16,7 @@ public sealed class ReportColumnService(ITableGateway<ReportColumnRecord> column
 
     /// <summary>
     /// Replaces a version's columns with the given list, in its order. A column that carries its ID keeps it, so the formula
-    /// lines that place values in it keep pointing at it; columns the list leaves out are deleted.
+    /// rows that place values in it keep pointing at it; columns the list leaves out are deleted.
     /// </summary>
     /// <param name="versionId">The draft or published report version.</param>
     /// <param name="input">The complete, validated column list.</param>
