@@ -5,9 +5,10 @@
 #     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding through the seed mapping set
 #     loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors calculation
 #     model ${PREFIX}margin (2 variables and a yield formula) and report ${PREFIX}margin over it on the seed MarginStatement
-#     dimension (GL monthly sources bridged into the statement, a profile, a branch calculation dimension with its routes,
-#     3 columns, a member option and a formula row), and publishes both, which repoints the active assumption set at them,
-#     and captures assumption set ${PREFIX}backtest, which keeps the release active at that moment. Then it creates release ${PREFIX}acceptance as a copy of the active release plus the
+#     dimension (GL monthly sources bridged into the statement, a profile, a branch calculation dimension routed through each
+#     GL dataset's own branch binding, 3 columns, a member option and a formula row), and publishes both, which repoints the
+#     active assumption set at them, and captures assumption set ${PREFIX}backtest, which keeps the release active at that
+#     moment. Then it creates release ${PREFIX}acceptance as a copy of the active release plus the
 #     dataset version, validates, publishes and activates it, renames the published report's yield column live, checks
 #     GetCatalog, Execute, GetReportCatalog (which must show the renamed column) and ExecuteReport on the engine, checks that
 #     GetCatalog naming ${PREFIX}backtest still reads the release it captured, and re-activates the release that was active
@@ -128,9 +129,10 @@ author_dataset() {
 
 # Authors model ${PREFIX}margin, which holds the metrics, and report ${PREFIX}margin over it on the seed MarginStatement
 # dimension, whose version holds the data and the rows, and publishes both. The report's rows are the statement's members; its
-# sources bridge each GL account into them through the seed bridge gl_account_to_margin, and its branch routes map branch keys
-# through the seed mapping set finance.branch. Sources name keys only: the active release decides which dataset versions they
-# resolve in, and the active assumption set which dimension, bridge and mapping versions.
+# sources bridge each GL account into them through the seed bridge gl_account_to_margin, and its branch routes reuse each GL
+# dataset's own branch binding, which the dataset needs a route to choose among its several Branch bindings. Sources name keys
+# only: the active release decides which dataset versions they resolve in, and the active assumption set which dimension, bridge
+# and mapping versions.
 author_report() {
   REPORT_KEY=${PREFIX}margin
   call GET /lookups/datasets 200
@@ -144,9 +146,6 @@ author_report() {
   call GET /lookups/bridges 200
   local accounts
   accounts=$(py "[d['id'] for d in r if d['key'] == 'gl_account_to_margin'][0]")
-  call GET /lookups/mapping-sets 200
-  local branches
-  branches=$(py "[d['id'] for d in r if d['key'] == 'finance.branch'][0]")
 
   call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'isEnabled': True}")"
   MODEL=$(py "r['modelId']")
@@ -174,7 +173,7 @@ author_report() {
   call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'valueKind': 'canonical', 'dimensionId': $branch, 'valueDataType': None, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
   dimension=$(py "r['calculationDimensionId']")
   for dataset in "$balances" "$income"; do
-    call POST "$R/routes" 200 "$(json "{'calculationDimensionId': $dimension, 'datasetId': $dataset, 'variableSourceId': None, 'classification': {'kind': 'mapped', 'fieldKey': 'branchKey', 'mappingSetId': $branches, 'bridgeId': None}}")"
+    call POST "$R/routes" 200 "$(json "{'calculationDimensionId': $dimension, 'datasetId': $dataset, 'variableSourceId': None, 'classification': {'kind': 'binding', 'fieldKey': 'branch', 'mappingSetId': None, 'bridgeId': None}}")"
   done
   call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
   call PUT "$R/member-options" 200 "$(json "{'options': [{'memberKey': 'ASSETS', 'displayName': None, 'isVisible': True, 'showsValues': False}]}")"

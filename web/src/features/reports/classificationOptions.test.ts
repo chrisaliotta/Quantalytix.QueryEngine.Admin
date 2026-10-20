@@ -1,9 +1,10 @@
 /**
  * Why these tests exist: a source classifies into the report's dimension and a route into its calculation dimension's, and
- * the API refuses a classification that leads anywhere else when it is saved. The source and route sheets share one
- * classification section whose pickers must offer only what the API accepts: every field for a direct or mapped
- * classification but only member-grouped fields for a bridge, bridges from the chosen field's dimension, and mapping sets
- * and bridges into the target. They also pin down that the body carries only the reference its kind uses.
+ * the API refuses a classification that leads anywhere else. The source and route sheets share one classification section
+ * whose pickers must offer only what the API accepts: every field for a direct or mapped classification but only
+ * member-grouped fields for a bridge, and for a route that reuses a binding only fields whose binding groups members of the
+ * target; bridges from the chosen field's dimension; and mapping sets and bridges into the target. They also pin down that
+ * the body carries only the reference its kind uses.
  */
 import { describe, expect, it } from 'vitest';
 import type { LookupItem } from '@/shared/types';
@@ -13,13 +14,17 @@ function item(id: number, key: string, parentId: number | null = null): LookupIt
   return { id, key, label: key, parentId };
 }
 
-const fields = [item(1, 'account'), item(2, 'branchKey'), item(3, 'memo')];
-const classifiedFields = [item(1, 'account', 800)];
+const fields = [item(1, 'account'), item(2, 'branchKey'), item(3, 'memo'), item(4, 'branch')];
+const classifiedFields = [item(1, 'account', 800), item(4, 'branch', 600)];
 
 describe('classificationOptions', () => {
   it('offers every field to a direct or mapped classification, and only member-grouped fields to a bridge', () => {
     expect(classificationOptions({ kind: 'mapped', fieldKey: null }, 500, fields, classifiedFields).fields).toBe(fields);
     expect(classificationOptions({ kind: 'bridge', fieldKey: null }, 500, fields, classifiedFields).fields).toBe(classifiedFields);
+  });
+
+  it('offers a route that reuses a binding only the fields whose binding groups members of the target', () => {
+    expect(classificationOptions({ kind: 'binding', fieldKey: null }, 600, fields, classifiedFields).fields).toEqual([item(4, 'branch', 600)]);
   });
 
   it("offers the bridges of the chosen field's dimension, and none before a member-grouped field is chosen", () => {

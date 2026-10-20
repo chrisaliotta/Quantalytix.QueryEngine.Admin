@@ -21,9 +21,10 @@ export interface ClassificationOptions {
 
 /**
  * The options of a classification into a target dimension, which the API checks the same way when the classification is
- * saved: a `direct` or `mapped` classification reads any field of the dataset, a `mapped` one through a mapping set into
- * the target, and a `bridge` one reads a field whose binding groups members of a dimension, through a bridge from that
- * dimension into the target.
+ * saved or a release is validated: a `direct` or `mapped` classification reads any field of the dataset, a `mapped` one through
+ * a mapping set into the target; a `bridge` one reads a field whose binding groups members of a dimension, through a bridge from
+ * that dimension into the target; and a route's `binding` kind reads a field whose own binding groups members of the target,
+ * which the route reuses.
  * @param fields The fields of the dataset's latest version.
  * @param classifiedFields Its fields whose binding groups members, each pointing at the dimension it groups.
  */
@@ -33,17 +34,34 @@ export function classificationOptions(
   fields: LookupItem[] | null,
   classifiedFields: LookupItem[] | null
 ): ClassificationOptions {
+  const leadsIntoTarget = (item: LookupItem) => item.parentId === targetDimensionId;
   return {
-    fields: classification.kind === 'bridge' ? classifiedFields : fields,
+    fields: fieldsOf(classification.kind, fields, classifiedFields, leadsIntoTarget),
     bridgeSourceDimensionId: classifiedFields?.find(field => field.key === classification.fieldKey)?.parentId ?? null,
-    leadsIntoTarget: item => item.parentId === targetDimensionId,
+    leadsIntoTarget,
   };
 }
 
-/** The values of a stored classification, or of a new direct one when there is none. */
-export function classificationValues(stored: ClassificationInput | null): ClassificationValues {
+/** The fields a kind can read, or null while they load. */
+function fieldsOf(
+  kind: string | null,
+  fields: LookupItem[] | null,
+  classifiedFields: LookupItem[] | null,
+  leadsIntoTarget: (item: LookupItem) => boolean
+) {
+  if (kind === 'bridge') {
+    return classifiedFields;
+  }
+  if (kind === 'binding') {
+    return classifiedFields && classifiedFields.filter(leadsIntoTarget);
+  }
+  return fields;
+}
+
+/** The values of a stored classification, or of a new one of the default kind when there is none. */
+export function classificationValues(stored: ClassificationInput | null, defaultKind = 'direct'): ClassificationValues {
   return {
-    kind: stored?.kind ?? 'direct',
+    kind: stored?.kind ?? defaultKind,
     fieldKey: stored?.fieldKey ?? null,
     mappingSetId: stored?.mappingSetId ?? null,
     bridgeId: stored?.bridgeId ?? null,

@@ -7,9 +7,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// Checks a calculation dimension route: a calculation dimension of the route's version, an existing dataset, an override source of
-/// the version over that dataset, a classification into the calculation dimension's dimension (a <c>field</c> route for a scalar
-/// one), and at most one default route per dimension and dataset and one override per dimension and source. Whether the field
-/// produces the dimension in the dataset version a release pins is a release rule.
+/// the version over that dataset, a classification into the calculation dimension's dimension or a reuse of the field's dataset
+/// binding (a <c>field</c> route for a scalar one), and at most one default route per dimension and dataset and one override per
+/// dimension and source. Whether the field produces the dimension in the dataset version a release pins is a release rule.
 /// </summary>
 public sealed class CalculationRouteInputValidator : AbstractValidator<CalculationRouteInput>
 {

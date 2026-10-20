@@ -72,6 +72,27 @@ public sealed class ClassificationInputValidatorTests
         Assert.Equal("A field route reads raw values, so only a scalar calculation dimension takes one.", Assert.Single(canonicalField.Errors).ErrorMessage);
     }
 
+    /// <summary>
+    /// A binding route reuses its field's dataset binding, which a release rule checks, so it names neither a mapping set nor a bridge:
+    /// region takes one, one that names a mapping set fails, the scalar channel refuses it like any classified route, and a source,
+    /// which classifies into the report's own structure, cannot reuse a binding.
+    /// </summary>
+    /// <returns>A task that completes when the validation is checked.</returns>
+    [Fact]
+    public async Task BindingRoutes_ReuseTheirFieldsBindingAndNameNothingElse()
+    {
+        (await ValidateRouteAsync(81, new ClassificationInput { Kind = RouteKinds.Binding, FieldKey = "branch" })).ShouldNotHaveAnyValidationErrors();
+
+        var withSet = await ValidateRouteAsync(81, new ClassificationInput { Kind = RouteKinds.Binding, FieldKey = "branch", MappingSetId = 63 });
+        var scalar = await ValidateRouteAsync(82, new ClassificationInput { Kind = RouteKinds.Binding, FieldKey = "channel" });
+        var source = await ValidateSourceAsync(new ClassificationInput { Kind = RouteKinds.Binding, FieldKey = "account" });
+
+        Assert.Equal("Only mapped classifications use 'Mapping Set Id', so it must be empty.", Assert.Single(withSet.Errors).ErrorMessage);
+        Assert.Equal("A scalar calculation dimension reads raw values, so its routes are field routes.", Assert.Single(scalar.Errors).ErrorMessage);
+        Assert.Equal(
+            "'binding' is not a valid classification_kind. Allowed values: direct, mapped, bridge.", Assert.Single(source.Errors).ErrorMessage);
+    }
+
     /// <summary>Validates a GL source of the balance variable with the classification.</summary>
     private Task<TestValidationResult<VariableSourceInput>> ValidateSourceAsync(ClassificationInput classification)
     {

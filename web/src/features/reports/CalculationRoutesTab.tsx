@@ -4,7 +4,10 @@ import { VersionContentTab } from '@/shared/VersionContentTab';
 import { CalculationRouteSheet } from './CalculationRouteSheet';
 import type { CalculationRoute } from './types';
 
-/** The version's routes: how each dataset's rows classify into each calculation dimension. */
+/**
+ * The version's routes: how each dataset's rows classify into each calculation dimension. A dataset with exactly one binding that
+ * groups members of a canonical dimension needs no route here, because requests route it through that binding.
+ */
 export function CalculationRoutesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
   const dimensions = useLookup('calculation-dimensions', versionId);
   const datasets = useLookup('datasets');
@@ -30,17 +33,23 @@ export function CalculationRoutesTab({ versionId, isEditable }: { versionId: num
   ];
 
   return (
-    <VersionContentTab
-      kind="routes"
-      versionId={versionId}
-      isEditable={isEditable}
-      columns={columns}
-      noun="route"
-      identify={route => ({ id: route.calculationBindingId, key: route.fieldKey })}
-      deleteDescription="Nothing else references a route."
-      renderSheet={(route, onClose) => (
-        <CalculationRouteSheet versionId={versionId} route={route} readOnly={!isEditable} onClose={onClose} />
-      )}
-    />
+    <div data-slot="calculation-routes-tab" className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        A dataset whose version has exactly one binding that groups members of a canonical dimension routes through that binding
+        without a route here. Add one to choose among several bindings, for a dataset with none, or to classify differently.
+      </p>
+      <VersionContentTab
+        kind="routes"
+        versionId={versionId}
+        isEditable={isEditable}
+        columns={columns}
+        noun="route"
+        identify={route => ({ id: route.calculationBindingId, key: route.fieldKey })}
+        deleteDescription="Nothing else references a route. A dataset with one binding into the dimension keeps routing through it."
+        renderSheet={(route, onClose) => (
+          <CalculationRouteSheet versionId={versionId} route={route} readOnly={!isEditable} onClose={onClose} />
+        )}
+      />
+    </div>
   );
 }

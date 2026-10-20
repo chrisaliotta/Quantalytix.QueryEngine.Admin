@@ -26,8 +26,8 @@ export interface CalculationRouteSheetProps {
 
 /**
  * Creates, edits or shows a route: how one dataset's rows classify into a calculation dimension, for every source of the
- * dataset or, as an override, for one source. A canonical dimension's route classifies into its dimension, checked when it
- * is saved; a scalar dimension's route reads a field's own values.
+ * dataset or, as an override, for one source. A canonical dimension's route reuses one of the dataset's own bindings into its
+ * dimension, or classifies rows itself, checked when it is saved; a scalar dimension's route reads a field's own values.
  */
 export function CalculationRouteSheet({ versionId, route, readOnly, onClose }: CalculationRouteSheetProps) {
   const save = useSaveVersionContent('routes', versionId, route?.calculationBindingId ?? null);
@@ -38,7 +38,8 @@ export function CalculationRouteSheet({ versionId, route, readOnly, onClose }: C
       datasetId: route?.datasetId ?? null,
       variableSourceId: route?.variableSourceId ?? null,
       classification: classificationValues(
-        route && { kind: route.routeKind, fieldKey: route.fieldKey, mappingSetId: route.mappingSetId, bridgeId: route.bridgeId }
+        route && { kind: route.routeKind, fieldKey: route.fieldKey, mappingSetId: route.mappingSetId, bridgeId: route.bridgeId },
+        'binding'
       ),
     },
   });
@@ -85,7 +86,7 @@ export function CalculationRouteSheet({ versionId, route, readOnly, onClose }: C
           description="A scalar dimension reads the field's own values, so its routes are field routes."
         />
       ) : (
-        <ClassificationFields datasetId={datasetId} targetDimensionId={target?.dimensionId ?? null} />
+        <ClassificationFields datasetId={datasetId} targetDimensionId={target?.dimensionId ?? null} isRoute />
       )}
     </EntityFormSheet>
   );

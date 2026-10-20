@@ -8,9 +8,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// Checks a classification against the canonical dimension it classifies into, which never changes: the report's dimension for a
 /// source, the calculation dimension's dimension for a route. Each kind names exactly its own columns: a mapping set into the target
 /// for <c>mapped</c>, a bridge into the target for <c>bridge</c>, neither otherwise. A <c>field</c> route reads raw values, so it is
-/// the one kind a scalar calculation dimension, which has no target, takes. Whether the field and its binding exist in the dataset
-/// version a release pins is a release rule. Internal, so the validators that build it with their own target are the only ones
-/// registered.
+/// the one kind a scalar calculation dimension, which has no target, takes; a <c>binding</c> route names neither, because it reuses
+/// its field's dataset binding. Whether the field and its binding exist in the dataset version a release pins, and lead into the
+/// target, is a release rule. Internal, so the validators that build it with their own target are the only ones registered.
 /// </summary>
 internal sealed class ClassificationInputValidator : AbstractValidator<ClassificationInput>
 {

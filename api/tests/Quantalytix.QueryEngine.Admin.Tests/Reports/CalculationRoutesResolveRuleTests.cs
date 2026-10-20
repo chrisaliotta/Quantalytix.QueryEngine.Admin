@@ -10,9 +10,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms <c>calculation_routes_resolve</c>: a route must read an enabled field of the pinned dataset version, a field route one
-/// that allows the grouping the dimension does, and a bridge route one whose binding groups members of the bridge's source dimension,
-/// through a bridge that sends each row to one member when the dimension is filterable. A report breaks out or filters every source
-/// by its route, so a wrong field would misalign the sources.
+/// that allows the grouping the dimension does, a binding route one whose enabled binding groups members of the dimension, and a
+/// bridge route one whose binding groups members of the bridge's source dimension, through a bridge that sends each row to one member
+/// when the dimension is filterable. A report breaks out or filters every source by its route, so a wrong field would misalign the
+/// sources.
 /// </summary>
 public sealed class CalculationRoutesResolveRuleTests
 {
@@ -50,6 +51,26 @@ public sealed class CalculationRoutesResolveRuleTests
 
         Assert.Equal(
             "Report 'balance_sheet' dimension 'region' routes to 'memo' of 'gl', which does not allow the grouping and filtering the dimension does.",
+            violation.Message);
+    }
+
+    /// <summary>
+    /// A binding route reuses its field's binding, so GL's <c>region</c> binding, which groups regions, serves the region dimension,
+    /// while its <c>gl_account</c> binding, which groups accounts, is reported.
+    /// </summary>
+    /// <returns>A task that completes when the rule is checked.</returns>
+    [Fact]
+    public async Task BindingRoutes_NeedAnEnabledBindingIntoTheDimension()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await _fixture.Routes.UpdateAsync(Route(91, 81, GlDatasetId, "region", RouteKinds.Binding), cancellationToken);
+        Assert.Empty(await EvaluateAsync(Rule(), ReleaseId));
+
+        await _fixture.Routes.UpdateAsync(Route(91, 81, GlDatasetId, "gl_account", RouteKinds.Binding), cancellationToken);
+        var violation = Assert.Single(await EvaluateAsync(Rule(), ReleaseId));
+
+        Assert.Equal(
+            "Report 'balance_sheet' dimension 'region' routes to 'gl_account' of 'gl', whose binding is no enabled binding that groups members of the dimension.",
             violation.Message);
     }
 

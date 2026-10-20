@@ -115,8 +115,8 @@ the tenant `TENANT` names, it:
 1. authors dataset `${PREFIX}loans` and publishes its v1;
 2. authors calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and report
    `${PREFIX}margin` over it on the seed `MarginStatement` dimension, whose version holds the GL monthly sources, a
-   profile, a branch calculation dimension with its routes, the columns, a member option and a formula row, and
-   publishes both;
+   profile, a branch calculation dimension whose routes reuse each GL dataset's own `branch` binding, the columns, a
+   member option and a formula row, and publishes both;
 3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
    against whichever release is active, so the release pins no report;
 4. validates, publishes and activates the release;
@@ -132,8 +132,8 @@ Before you run it:
   the end.
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
 - Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
-  `bank.income_monthly` datasets, its `MarginStatement` and `Branch` dimensions, its `gl_account_to_margin` bridge and
-  `finance.branch` mapping set, and its 2024 data.
+  `bank.income_monthly` datasets with their `branch` bindings, its `MarginStatement` and `Branch` dimensions, its
+  `gl_account_to_margin` bridge, and its 2024 data.
 - Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report, and
   `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay taken.
 - Don't run the engine's golden cases at the same time: while the script runs, its release is the tenant's active
