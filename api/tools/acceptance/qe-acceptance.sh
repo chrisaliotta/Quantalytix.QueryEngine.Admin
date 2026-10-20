@@ -262,7 +262,7 @@ EOF
 python3 - "$REPORT_KEY" "$REPORT_RANGE_START" "$REPORT_RANGE_END" > "$W/report.json" <<'EOF'
 import json, sys
 report, start, end = sys.argv[1], sys.argv[2], sys.argv[3]
-print(json.dumps({"requestId": "acceptance-" + report, "reportKey": report, "dimensions": ["branch"], "includeTotals": True,
+print(json.dumps({"requestId": "acceptance-" + report, "reportKey": report, "dimensions": [{"id": "branch"}], "includeTotals": True,
     "time": {"periodicity": "month", "timeZone": "UTC", "range": {"start": start, "endExclusive": end}}}))
 EOF
 
