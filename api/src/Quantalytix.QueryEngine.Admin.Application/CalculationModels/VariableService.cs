@@ -2,23 +2,26 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The variables of calculation model versions: the logical inputs each report fills from one of its own sources.</summary>
-public sealed class VariableService(ITableGateway<VariableRecord> table, ReportUses reports, IIdGenerator ids)
-    : ModelVersionRows<VariableRecord, VariableInput>(table, ids)
+/// <summary>The variables of calculation models: the logical inputs each report fills from one of its own sources.</summary>
+public sealed class VariableService(ITableGateway<VariableRecord> table, IIdGenerator ids)
+    : ModelRows<VariableRecord, VariableInput>(table, ids)
 {
-    /// <summary>Deletes a variable, unless a live report reads it; reports name it by key, so nothing of theirs is deleted.</summary>
-    /// <param name="itemId">The variable.</param>
-    /// <param name="cancellationToken">Cancels the reads and the delete.</param>
-    /// <returns>Null when the variable was deleted; otherwise the detail naming the report rows that read it.</returns>
-    public override async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
+    /// <summary>The model with a variable added or replaced.</summary>
+    /// <param name="model">The model's metrics as they stand.</param>
+    /// <param name="item">The composed variable.</param>
+    /// <returns>The model's metrics as the write leaves them.</returns>
+    public override ModelGraph Put(ModelGraph model, VariableRecord item)
     {
-        var variable = await Rows.GetAsync(new { VariableId = itemId }, cancellationToken);
-        var blockers = new DeleteBlockers($"Variable '{variable.VariableKey}'");
-        blockers.AddNamed("used by reports", await reports.VariableUsesAsync(variable, cancellationToken));
-        var conflict = blockers.Detail();
-        if (conflict is not null) return conflict;
-        await Rows.DeleteAsync(new { VariableId = itemId }, cancellationToken);
-        return null;
+        return model with { Variables = [.. model.Variables.Where(variable => variable.VariableId != item.VariableId), item] };
+    }
+
+    /// <summary>The model without a variable.</summary>
+    /// <param name="model">The model's metrics as they stand.</param>
+    /// <param name="itemId">The variable.</param>
+    /// <returns>The model's metrics as the delete leaves them.</returns>
+    public override ModelGraph Without(ModelGraph model, long itemId)
+    {
+        return model with { Variables = [.. model.Variables.Where(variable => variable.VariableId != itemId)] };
     }
 
     /// <summary>The gateway key of a variable.</summary>
@@ -29,12 +32,12 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, ReportU
         return new { VariableId = itemId };
     }
 
-    /// <summary>The model version a variable belongs to.</summary>
+    /// <summary>The model a variable belongs to.</summary>
     /// <param name="row">The variable.</param>
-    /// <returns>Its model version ID.</returns>
+    /// <returns>Its model ID.</returns>
     protected override long OwnerOf(VariableRecord row)
     {
-        return row.ModelVersionId;
+        return row.ModelId;
     }
 
     /// <summary>The key a variable is listed by.</summary>
@@ -47,7 +50,7 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, ReportU
 
     /// <summary>The variable row an input describes.</summary>
     /// <param name="itemId">The variable ID.</param>
-    /// <param name="ownerId">The model version.</param>
+    /// <param name="ownerId">The model.</param>
     /// <param name="input">The validated input.</param>
     /// <returns>The row to store.</returns>
     protected override VariableRecord ToRecord(long itemId, long ownerId, VariableInput input)
@@ -55,7 +58,7 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, ReportU
         return new VariableRecord
         {
             VariableId = itemId,
-            ModelVersionId = ownerId,
+            ModelId = ownerId,
             VariableKey = input.VariableKey,
             DisplayName = input.DisplayName,
             VariableRole = input.VariableRole,

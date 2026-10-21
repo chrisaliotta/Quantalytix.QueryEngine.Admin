@@ -115,8 +115,8 @@ function ReportEditor({ view }: { view: EditorView }) {
       />
       <div className="flex flex-wrap items-start gap-x-8 gap-y-3 rounded-md border p-3 text-sm">
         <Setting label="Calculation model">
-          <Link className="font-medium hover:underline" to={`/t/${tenantId}/calculation-models/${report.modelId}?version=${view.modelVersionId}`}>
-            {model?.key} (published {model?.classifier})
+          <Link className="font-medium hover:underline" to={`/t/${tenantId}/calculation-models/${report.modelId}`}>
+            {model?.key} ({model?.classifier})
           </Link>
         </Setting>
         <Setting label="Default profile">{report.defaultProfileKey ?? 'None'}</Setting>

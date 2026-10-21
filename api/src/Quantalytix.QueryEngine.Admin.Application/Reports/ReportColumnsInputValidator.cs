@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// Checks a complete column list: unique, well-formed keys other than the reserved <c>line</c> and <c>period</c>, metric keys
-/// that name a variable or calculated measure of the published version of the report's model as the value kind says, column IDs
+/// that name a variable or calculated measure of the report's model as the value kind says, column IDs
 /// of this report, optional label and format overrides, and no removed column that a formula row still places its value in.
 /// </summary>
 public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumnsInput>
@@ -16,7 +16,7 @@ public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumn
     private static readonly string[] Reserved = ["line", "period"];
 
     /// <summary>Declares the rules.</summary>
-    /// <param name="metrics">Reads the metrics of the published version of the report's model.</param>
+    /// <param name="metrics">Reads the metrics of the report's model.</param>
     /// <param name="columns">Reads the report's columns.</param>
     /// <param name="lines">Reads the report's formula rows.</param>
     /// <param name="keys">Names the edited report.</param>
@@ -45,7 +45,7 @@ public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumn
             var owner = new { keys.ReportId };
             var model = await metrics.ReadForReportAsync(keys.ReportId, cancellationToken);
             foreach (var column in list.Where(column => !model.Has(column.ValueKind, column.MetricKey)))
-                context.AddFailure($"Column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the published version of the report's model.");
+                context.AddFailure($"Column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the report's model.");
 
             var stored = (await columns.ListAsync(owner, cancellationToken)).ToDictionary(column => column.ReportColumnId);
             foreach (var column in list.Where(column => column.ReportColumnId is { } id && !stored.ContainsKey(id)))

@@ -24,7 +24,7 @@ public sealed class ReportSourcesResolveRuleTests
     public async Task ResolvingSource_Passes()
     {
         Assert.Empty(await _fixture.EvaluateAsync(new ReportSourcesResolveRule()));
-        Assert.Empty(await _fixture.EvaluateConsumersAsync(new ReportSourcesResolveRule(), VersionKinds.SemanticRelease, ReleaseId));
+        Assert.Empty(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), ReleaseId));
     }
 
     /// <summary>A source of the loans dataset, which the release does not pin, is reported for the release and for the report itself.</summary>
@@ -34,7 +34,7 @@ public sealed class ReportSourcesResolveRuleTests
     {
         await _fixture.Sources.InsertAsync(Source(72, "loans", LoansDatasetId), TestContext.Current.CancellationToken);
 
-        var violation = Assert.Single(await _fixture.EvaluateConsumersAsync(new ReportSourcesResolveRule(), VersionKinds.SemanticRelease, ReleaseId));
+        var violation = Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), ReleaseId));
 
         Assert.Equal(ReportSourcesResolveRule.Code, violation.Rule);
         Assert.Equal("Report 'balance_sheet' source 'loans' reads dataset 'loans', which the release does not pin.", violation.Message);

@@ -1,6 +1,4 @@
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelRows;
 
@@ -14,21 +12,24 @@ namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 public sealed class FormulasAcyclicRuleTests
 {
     /// <summary>Two measures that read each other are reported; the measure that reads one of them and the variable formula are not.</summary>
-    /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task MeasuresOnACycle_AreReported()
+    public void MeasuresOnACycle_AreReported()
     {
-        var measures = new InMemoryTableGateway<CalculatedMeasureRecord>(
-            Calculated(91, "a", "[m.b] + 1"),
-            Calculated(92, "b", "[m.a] * 2"),
-            Calculated(93, "c", "[m.a] / 2"),
-            Calculated(94, "yield", "[m.income] / [m.balance]"));
-
-        var violations = await new FormulasAcyclicRule(measures).EvaluateAsync(ModelVersionId, TestContext.Current.CancellationToken);
+        var model = new ModelGraph
+        {
+            Variables = [Variable(51, "income"), Variable(52, "balance")],
+            CalculatedMeasures =
+            [
+                Calculated(91, "a", "[m.b] + 1"),
+                Calculated(92, "b", "[m.a] * 2"),
+                Calculated(93, "c", "[m.a] / 2"),
+                Calculated(94, "yield", "[m.income] / [m.balance]")
+            ]
+        };
 
         Assert.Equal(
             ["Calculated measure 'a' reads itself through the calculated measures its formula reads.",
              "Calculated measure 'b' reads itself through the calculated measures its formula reads."],
-            violations.Select(violation => violation.Message));
+            FormulasAcyclicRule.Evaluate(model).Select(violation => violation.Message));
     }
 }

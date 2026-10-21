@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -17,12 +18,12 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// The tables the report rules read, seeded with one enabled report that resolves. Release 900 is active and pins GL version 11,
 /// whose <c>gl_account</c> binds role <c>gl_account</c> of account dimension 800, whose <c>as_of_date</c> is a time binding and
 /// whose <c>region</c> binds role <c>region</c> of region dimension 600. Report <c>balance_sheet</c> over dimension 500 reads model
-/// 40, whose published version 41 has variable <c>balance</c> and calculated measure <c>yield</c>. The report returns
-/// <c>balance</c> in column <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's
-/// <c>balance</c> with the row keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and
-/// breaks out by calculation dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with
-/// <c>total</c> at the root and <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. Model version 42 is an
-/// empty draft, and the loans dataset exists but is not pinned. Tests change rows to break one thing.
+/// 40, which has variable <c>balance</c> and calculated measure <c>yield</c>. The report returns <c>balance</c> in column
+/// <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's <c>balance</c> with the row
+/// keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
+/// dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with <c>total</c> at the root and
+/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Tests
+/// change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
 {
@@ -40,9 +41,6 @@ internal sealed class ReportGraphFixture
 
     /// <summary>The GL source.</summary>
     public const long GlSourceId = 71;
-
-    /// <summary>The draft version of model 40, which tests fill and validate as the version being published.</summary>
-    public const long DraftModelVersionId = 42;
 
     /// <summary>The account dimension GL's <c>gl_account</c> binding classifies into.</summary>
     public const long AccountDimensionId = 800;
@@ -64,7 +62,7 @@ internal sealed class ReportGraphFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 11,
+        MetadataSchemaVersion = 12,
         SemanticRevision = 1,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -107,9 +105,6 @@ internal sealed class ReportGraphFixture
     public InMemoryTableGateway<DimensionRoleRecord> Roles { get; } = new(
         DimensionRows.Role(AccountRoleId, "gl_account", AccountDimensionId),
         DimensionRows.Role(RegionRoleId, "region", 600));
-
-    /// <summary>Model 40's published version 41 and draft version 42.</summary>
-    public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(ModelVersion(), ModelVersion(DraftModelVersionId, PublicationStatuses.Draft));
 
     /// <summary>The balance variable.</summary>
     public InMemoryTableGateway<VariableRecord> Variables { get; } = new(Variable(51, "balance"));
@@ -181,14 +176,14 @@ internal sealed class ReportGraphFixture
     {
         return new ReportGraphReader(
             Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings, Dimensions,
-            ModelVersions, Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
-    /// <summary>The model metrics reader over these tables.</summary>
-    /// <returns>A reader of the published version of the report's model.</returns>
-    public ModelMetricsReader Metrics()
+    /// <summary>The model gate over these tables.</summary>
+    /// <returns>The checks a write to model 40's metrics goes through.</returns>
+    public ModelChanges Changes()
     {
-        return new ModelMetricsReader(Reports, ModelVersions, Variables, CalculatedMeasures);
+        return new ModelChanges(Variables, CalculatedMeasures, Reports, Reader());
     }
 
     /// <summary>The reader of the versions the report owns.</summary>
@@ -236,13 +231,12 @@ internal sealed class ReportGraphFixture
         return [.. rule.Evaluate(report, await reader.ScopeAsync([report], null, cancellationToken))];
     }
 
-    /// <summary>Checks the enabled reports a model version or a release being validated serves against one rule.</summary>
+    /// <summary>Checks the enabled reports a release being validated serves against one rule.</summary>
     /// <param name="rule">The rule.</param>
-    /// <param name="kind">The kind being validated: <c>calculation_model_version</c> or <c>semantic_release</c>.</param>
-    /// <param name="versionId">The version being validated.</param>
+    /// <param name="releaseId">The release being validated.</param>
     /// <returns>The rule's violations.</returns>
-    public Task<IReadOnlyList<RuleViolation>> EvaluateConsumersAsync(IReportRule rule, string kind, long versionId)
+    public Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long releaseId)
     {
-        return new ReportConsumerRule(kind, rule, Reader()).EvaluateAsync(versionId, Xunit.TestContext.Current.CancellationToken);
+        return new ReportConsumerRule(rule, Reader()).EvaluateAsync(releaseId, Xunit.TestContext.Current.CancellationToken);
     }
 }

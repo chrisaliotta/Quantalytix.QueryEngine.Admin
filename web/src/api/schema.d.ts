@@ -555,7 +555,7 @@ export interface paths {
         put?: never;
         /**
          * Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name
-         *     the tenant and have metadata schema version 7.
+         *     the tenant and have the metadata schema version this API supports.
          */
         post: {
             parameters: {
@@ -1129,7 +1129,7 @@ export interface paths {
                         "application/json": components["schemas"]["ReportColumnRecord"][];
                     };
                 };
-                /** @description A column key is reserved or repeated, a metric is not in the model's published version, or a formula row still names a removed column; errors are keyed by camelCase JSON path. */
+                /** @description A column key is reserved or repeated, a metric is not in the report's model, or a formula row still names a removed column; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1369,7 +1369,7 @@ export interface paths {
         };
         put?: never;
         /**
-         * Creates a disabled report over a model with a published version, and its own report dimension, keyed and named like it,
+         * Creates a disabled report over a calculation model, and its own report dimension, keyed and named like it,
          *     whose one version copies the published members of `startFromDimensionId` or holds a single root row and is published
          *     at once.
          */
@@ -1399,7 +1399,7 @@ export interface paths {
                         "application/json": components["schemas"]["ReportRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as a taken key or a model without a published version; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, such as a taken key or an unknown model; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -7322,23 +7322,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists a model version's calculated measures. */
+        /** Lists a model's calculated measures. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The model version. */
-                    versionId: number;
+                    /** @description The calculation model. */
+                    modelId: number;
                 };
                 cookie?: never;
             };
@@ -7374,16 +7374,16 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a calculated measure to a draft or published model version. */
+        /** Adds a calculated measure to a calculation model, unless its formula reads a key the model lacks or reads itself. */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The draft or published model version. */
-                    versionId: number;
+                    /** @description The calculation model. */
+                    modelId: number;
                 };
                 cookie?: never;
             };
@@ -7430,13 +7430,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is neither a draft nor published. */
-                409: {
+                /** @description The formula reads a variable or calculated measure the model lacks, or reads itself; nothing was written. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -7447,7 +7447,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures/{itemId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -7455,16 +7455,16 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a calculated measure of a draft or published model version, keeping its ID. */
+        /** Replaces a calculated measure of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report. */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
+                    /** @description The model that owns the row. */
+                    modelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -7486,7 +7486,7 @@ export interface paths {
                         "application/json": components["schemas"]["CalculatedMeasureRecord"];
                     };
                 };
-                /** @description The calculated measure is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description The calculated measure is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -7513,28 +7513,28 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is neither a draft nor published. */
-                409: {
+                /** @description The change would break the model's formulas or an enabled report that reads the model, such as a formula that now reads a variable no profile picks a source for; nothing was written. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
         };
         post?: never;
-        /** Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula row evaluates it. */
+        /** Deletes a calculated measure of a calculation model, unless another formula of the model or an enabled report reads it. */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
+                    /** @description The model that owns the row. */
+                    modelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -7549,7 +7549,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description The calculated measure is not in the version; the error is keyed `itemId`. */
+                /** @description The calculated measure is not the model's; the error is keyed `itemId`. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -7576,13 +7576,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns and lines that use the measure. */
-                409: {
+                /** @description Another formula of the model, or a column or formula row of an enabled report that reads the model, reads the measure; nothing was deleted. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -7642,7 +7642,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Creates a calculation model; it has no versions until one is created. */
+        /** Creates a calculation model without variables or calculated measures. */
         post: {
             parameters: {
                 query?: never;
@@ -7755,7 +7755,7 @@ export interface paths {
                 };
             };
         };
-        /** Edits a calculation model's display name and availability; reports pin model versions, so neither reaches queries. */
+        /** Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once. */
         put: {
             parameters: {
                 query?: never;
@@ -7814,7 +7814,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a calculation model whose versions are all drafts that no report reads, together with their content. */
+        /** Deletes a calculation model that no report reads, together with its variables and calculated measures. */
         delete: {
             parameters: {
                 query?: never;
@@ -7829,7 +7829,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The model and its drafts are deleted. */
+                /** @description The model and its metrics are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -7854,7 +7854,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted; the detail names the non-draft versions and reports that block the delete. */
+                /** @description Nothing was deleted; the detail names the reports that read the model. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7870,14 +7870,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/versions": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists a calculation model's versions with their currency and status. */
+        /** Lists a model's variables. */
         get: {
             parameters: {
                 query?: never;
@@ -7885,302 +7885,8 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The model. */
+                    /** @description The calculation model. */
                     modelId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The versions by version number. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationModelVersionRecord"][];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Creates a draft with the model's next version number: empty, or cloned from `cloneFromVersionId` with all its
-         *     variables, sources, profiles, calculated measures, calculation dimensions and routes.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the model. */
-                    tenantId: string;
-                    /** @description The model. */
-                    modelId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["NewModelVersionInput"];
-                    "application/*+json": components["schemas"]["NewModelVersionInput"];
-                };
-            };
-            responses: {
-                /** @description The created draft. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
-                    };
-                };
-                /** @description The input breaks a field rule, such as a clone source of another model; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/model-versions/{versionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Reads one calculation model version. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The model version. */
-                    versionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The version. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        /** Replaces a draft or published version's currency; its content stays as it is. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The draft or published model version. */
-                    versionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ModelVersionInput"];
-                    "application/*+json": components["schemas"]["ModelVersionInput"];
-                };
-            };
-            responses: {
-                /** @description The stored version. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CalculationModelVersionRecord"];
-                    };
-                };
-                /** @description The input breaks a field rule; errors are keyed by camelCase JSON path. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The version is neither a draft nor published. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Deletes a draft version with its content. */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The draft model version. */
-                    versionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The version and its content are deleted. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description The request has no valid bearer token. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Nothing was deleted: the version is not a draft. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variables": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists a model version's variables. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The tenant that owns the version. */
-                    tenantId: string;
-                    /** @description The model version. */
-                    versionId: number;
                 };
                 cookie?: never;
             };
@@ -8216,16 +7922,16 @@ export interface paths {
             };
         };
         put?: never;
-        /** Adds a variable to a draft or published model version. */
+        /** Adds a variable to a calculation model. A new variable breaks no formula and no report, so nothing checks it beyond its fields. */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The draft or published model version. */
-                    versionId: number;
+                    /** @description The calculation model. */
+                    modelId: number;
                 };
                 cookie?: never;
             };
@@ -8245,7 +7951,7 @@ export interface paths {
                         "application/json": components["schemas"]["VariableRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as a key another variable or calculated measure of the version has; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, such as a key another variable or calculated measure of the model has; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -8272,15 +7978,6 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is neither a draft nor published. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
             };
         };
         delete?: never;
@@ -8289,7 +7986,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variables/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables/{itemId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -8297,16 +7994,16 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a variable of a draft or published model version, keeping its ID. */
+        /** Replaces a variable of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report. */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
+                    /** @description The model that owns the row. */
+                    modelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -8328,7 +8025,7 @@ export interface paths {
                         "application/json": components["schemas"]["VariableRecord"];
                     };
                 };
-                /** @description The variable is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
+                /** @description The variable is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -8355,28 +8052,28 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description The version is neither a draft nor published. */
-                409: {
+                /** @description The change would break the model's formulas, such as a renamed key a formula reads, or an enabled report that reads the model; nothing was written. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
         };
         post?: never;
-        /** Deletes a variable of a draft or published model version, unless a live report reads it. */
+        /** Deletes a variable of a calculation model, unless a formula of the model or an enabled report reads it. */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description The tenant that owns the version. */
+                    /** @description The tenant that owns the model. */
                     tenantId: string;
-                    /** @description The version that owns the row. */
-                    versionId: number;
+                    /** @description The model that owns the row. */
+                    modelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -8391,7 +8088,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description The variable is not in the version; the error is keyed `itemId`. */
+                /** @description The variable is not the model's; the error is keyed `itemId`. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -8418,13 +8115,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns that return the variable. */
-                409: {
+                /** @description A formula of the model or an enabled report that reads the model reads the variable; nothing was deleted. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -10030,9 +9727,9 @@ export interface components {
              */
             publishedAt?: null | string;
         };
-        /** @description A calculated measure of a draft model version, as its create and edit endpoints take it. */
+        /** @description A calculated measure of a calculation model, as its create and edit endpoints take it. */
         CalculatedMeasureInput: {
-            /** @description Key, unique among the version's variables and calculated measures. */
+            /** @description Key, unique among the model's variables and calculated measures. */
             measureKey: string;
             /** @description Human-readable name. */
             displayName: string;
@@ -10057,7 +9754,7 @@ export interface components {
             /** @description Presentation hint such as `number`, `percent` or `currency`. */
             displayFormat: string;
         };
-        /** @description A `qe_calculated_measure` row: a formula over a model version's variables and other calculated measures. */
+        /** @description A `qe_calculated_measure` row: a formula over a model's variables and other calculated measures. */
         CalculatedMeasureRecord: {
             /**
              * Format: int64
@@ -10066,10 +9763,10 @@ export interface components {
             calculatedMeasureId: number;
             /**
              * Format: int64
-             * @description The owning model version.
+             * @description The owning model.
              */
-            modelVersionId: number;
-            /** @description Key, unique among the version's variables and calculated measures. */
+            modelId: number;
+            /** @description Key, unique among the model's variables and calculated measures. */
             measureKey: string;
             /** @description Human-readable name. */
             displayName: string;
@@ -10166,14 +9863,16 @@ export interface components {
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description The editable identity attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
+        /** @description The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
         CalculationModelInput: {
             /** @description Human-readable name. */
             displayName: string;
+            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
+            currencyCode: string;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description A `qe_calculation_model` row: the stable identity of a calculation model, which reports read their figures from. */
+        /** @description A `qe_calculation_model` row: a calculation model, whose variables and calculated measures reports read. */
         CalculationModelRecord: {
             /**
              * Format: int64
@@ -10184,39 +9883,14 @@ export interface components {
             modelKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /** @description Administrative availability flag. */
-            isEnabled: boolean;
-        };
-        /** @description A `qe_calculation_model_version` row: one immutable version of a calculation model: its variables, sources, profiles, formulas and calculation dimensions. */
-        CalculationModelVersionRecord: {
-            /**
-             * Format: int64
-             * @description Primary key.
-             */
-            modelVersionId: number;
-            /**
-             * Format: int64
-             * @description The owning model.
-             */
-            modelId: number;
-            /**
-             * Format: int32
-             * @description Version number within the model.
-             */
-            versionNumber: number;
-            /** @description A `publication_status` value. */
-            status: string;
             /** @description The calendar its periods follow; `gregorian`. */
             calendarKey: string;
             /** @description The ISO 4217 currency of its monetary figures. */
             currencyCode: string;
             /** @description The expression grammar version its formulas use. */
             formulaLanguageVersion: string;
-            /**
-             * Format: date-time
-             * @description Publication time (UTC).
-             */
-            publishedAt?: null | string;
+            /** @description Administrative availability flag. */
+            isEnabled: boolean;
         };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
@@ -10680,13 +10354,8 @@ export interface components {
          *     variables they supply.
          */
         EditorView: {
-            /** @description The report, with its settings. */
+            /** @description The report, with its settings and the model whose variables and calculated measures it names. */
             report: components["schemas"]["ReportRecord"];
-            /**
-             * Format: int64
-             * @description The published version of the report's model, whose variables and calculated measures the report names.
-             */
-            modelVersionId: number;
             /**
              * Format: int64
              * @description The report dimension's one version, whose members are the member rows.
@@ -11338,11 +11007,6 @@ export interface components {
              */
             sortOrder: number;
         };
-        /** @description The editable attributes of a draft model version, as `PUT model-versions/{versionId}` takes them. */
-        ModelVersionInput: {
-            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
-            currencyCode: string;
-        };
         /** @description A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes. */
         NewBridgeInput: {
             /** @description Stable key, unique across bridges and fixed once created. */
@@ -11383,6 +11047,8 @@ export interface components {
             modelKey: string;
             /** @description Human-readable name. */
             displayName: string;
+            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
+            currencyCode: string;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
@@ -11504,19 +11170,6 @@ export interface components {
             properties?: null | string;
         };
         /**
-         * @description A new draft version of a calculation model, as `POST calculation-models/{modelId}/versions` takes it: its attributes,
-         *     and optionally a version of the same model whose content it copies.
-         */
-        NewModelVersionInput: {
-            /**
-             * Format: int64
-             * @description A version of the same model whose variables and calculated measures the draft copies; null for an empty draft.
-             */
-            cloneFromVersionId?: null | number;
-            /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
-            currencyCode: string;
-        };
-        /**
          * @description A new report, as `POST reports` takes it: its fixed key and model, its identity attributes, and optionally the dimension
          *     whose published rows its own report dimension starts as a copy of. A new report starts disabled.
          */
@@ -11525,7 +11178,7 @@ export interface components {
             reportKey: string;
             /**
              * Format: int64
-             * @description The calculation model whose published version the report reads; it must have one, and it never changes.
+             * @description The calculation model whose metrics the report reads; it never changes.
              */
             modelId: number;
             /**
@@ -11649,11 +11302,6 @@ export interface components {
              * @description Draft semantic releases.
              */
             releases: number;
-            /**
-             * Format: int32
-             * @description Draft calculation model versions.
-             */
-            modelVersions: number;
         };
         ProblemDetails: {
             type?: null | string;
@@ -11841,7 +11489,7 @@ export interface components {
             displayName?: null | string;
             /** @description A `report_value_kind` value. */
             valueKind: string;
-            /** @description The variable or calculated measure key of the published version of the report's model that the column returns. */
+            /** @description The variable or calculated measure key of the report's model that the column returns. */
             metricKey: string;
             /** @description A presentation hint such as `percent` replacing the metric's own; null shows the metric's. */
             displayFormat?: null | string;
@@ -11898,8 +11546,8 @@ export interface components {
         };
         /**
          * @description A `qe_report` row: a report, its settings and the calculation model whose metrics it shows. Reports are not versioned:
-         *     the engine reads an enabled report as it stands, with the published version of its model and of every dimension and bridge
-         *     it names.
+         *     the engine reads an enabled report as it stands, with its model as it stands and the published version of every dimension and
+         *     bridge it names.
          */
         ReportRecord: {
             /**
@@ -11920,7 +11568,7 @@ export interface components {
             reportDimensionId: number;
             /**
              * Format: int64
-             * @description The calculation model whose published version the report reads; fixed at creation.
+             * @description The calculation model whose metrics the report reads; fixed at creation.
              */
             modelId: number;
             /** @description The key of the profile a request runs under when it names none; required to enable the report. */
@@ -11957,7 +11605,7 @@ export interface components {
             isVisible: boolean;
             /** @description Whether a group row shows its total; false makes it a header. Every other kind shows its values. */
             showsValues: boolean;
-            /** @description The calculated measure of the model's published version that a formula row evaluates; null for the other kinds. */
+            /** @description The calculated measure of the report's model that a formula row evaluates; null for the other kinds. */
             calculatedMeasureKey?: null | string;
             /** @description The key of the report's column a formula row places its value in; null for the other kinds. */
             valueColumnKey?: null | string;
@@ -12252,7 +11900,7 @@ export interface components {
         };
         /** @description The dataset measure that supplies one model variable from a report source. */
         SourceVariableInput: {
-            /** @description The key of a variable of the published version of the report's model. */
+            /** @description The key of a variable of the report's model. */
             variableKey: string;
             /** @description The enabled dataset measure that supplies the variable. */
             measureKey: string;
@@ -12271,7 +11919,7 @@ export interface components {
         };
         /** @description The result of verifying a tenant connection string, which the tenant editor's "Test connection" button shows. */
         TenantConnectionCheck: {
-            /** @description Whether the connection opens a metadata schema version 7 database that belongs to the tenant. */
+            /** @description Whether the connection opens a database of the metadata schema version this API supports that belongs to the tenant. */
             isValid: boolean;
             /** @description What the connection reached, or why it is rejected. */
             message: string;
@@ -12427,9 +12075,9 @@ export interface components {
                 [key: string]: string[];
             };
         };
-        /** @description A variable of an editable model version, as its create and edit endpoints take it. */
+        /** @description A variable of a calculation model, as its create and edit endpoints take it. */
         VariableInput: {
-            /** @description Key, unique among the version's variables and calculated measures. */
+            /** @description Key, unique among the model's variables and calculated measures. */
             variableKey: string;
             /** @description Human-readable name. */
             displayName: string;
@@ -12442,7 +12090,7 @@ export interface components {
             /** @description Optional unit, such as a currency code. */
             unitKey?: null | string;
         };
-        /** @description A `qe_variable` row: a logical input of a model version, which each report fills from one of its own sources. */
+        /** @description A `qe_variable` row: a logical input of a model, which each report fills from one of its own sources. */
         VariableRecord: {
             /**
              * Format: int64
@@ -12451,10 +12099,10 @@ export interface components {
             variableId: number;
             /**
              * Format: int64
-             * @description The owning model version.
+             * @description The owning model.
              */
-            modelVersionId: number;
-            /** @description Key, unique among the version's variables and calculated measures; reports name the variable by it. */
+            modelId: number;
+            /** @description Key, unique among the model's variables and calculated measures; reports name the variable by it. */
             variableKey: string;
             /** @description Human-readable name. */
             displayName: string;

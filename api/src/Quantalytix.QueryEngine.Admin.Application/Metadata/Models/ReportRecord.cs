@@ -2,8 +2,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
 /// A <c>qe_report</c> row: a report, its settings and the calculation model whose metrics it shows. Reports are not versioned:
-/// the engine reads an enabled report as it stands, with the published version of its model and of every dimension and bridge
-/// it names.
+/// the engine reads an enabled report as it stands, with its model as it stands and the published version of every dimension and
+/// bridge it names.
 /// </summary>
 public sealed record ReportRecord
 {
@@ -22,7 +22,7 @@ public sealed record ReportRecord
     /// <summary>The report's own dimension, whose members are its rows and into which every source classifies; fixed at creation.</summary>
     public required long ReportDimensionId { get; init; }
 
-    /// <summary>The calculation model whose published version the report reads; fixed at creation.</summary>
+    /// <summary>The calculation model whose metrics the report reads; fixed at creation.</summary>
     public required long ModelId { get; init; }
 
     /// <summary>The key of the profile a request runs under when it names none; required to enable the report.</summary>

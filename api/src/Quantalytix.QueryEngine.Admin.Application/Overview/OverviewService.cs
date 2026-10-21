@@ -19,7 +19,6 @@ public sealed class OverviewService(
     ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<AssumptionSetRecord> assumptionSets,
     ITableGateway<CalculationModelRecord> models,
-    ITableGateway<CalculationModelVersionRecord> modelVersions,
     ITableGateway<ReportRecord> reports)
 {
     /// <summary>The key of the singleton <c>qe_database_info</c> row.</summary>
@@ -57,8 +56,7 @@ public sealed class OverviewService(
                 DimensionVersions = (await dimensionVersions.ListAsync(drafts, cancellationToken)).Count,
                 MappingVersions = (await mappingVersions.ListAsync(drafts, cancellationToken)).Count,
                 BridgeVersions = (await bridgeVersions.ListAsync(drafts, cancellationToken)).Count,
-                Releases = releaseRows.Count(release => release.Status == PublicationStatuses.Draft),
-                ModelVersions = (await modelVersions.ListAsync(drafts, cancellationToken)).Count
+                Releases = releaseRows.Count(release => release.Status == PublicationStatuses.Draft)
             }
         };
     }

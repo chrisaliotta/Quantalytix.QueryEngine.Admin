@@ -53,10 +53,6 @@ public static class TableCatalog
             "qe_assumption_set_bridge",
             [nameof(AssumptionSetBridgeRecord.AssumptionSetId), nameof(AssumptionSetBridgeRecord.BridgeId)],
             []),
-        [typeof(AssumptionSetModelRecord)] = Tenant(
-            "qe_assumption_set_model",
-            [nameof(AssumptionSetModelRecord.AssumptionSetId), nameof(AssumptionSetModelRecord.ModelId)],
-            []),
         [typeof(BridgeRecord)] = Tenant("qe_bridge", [nameof(BridgeRecord.BridgeId)], []),
         [typeof(BridgeVersionRecord)] = Tenant("qe_bridge_version", [nameof(BridgeVersionRecord.BridgeVersionId)], []),
         [typeof(BridgeMappingRecord)] = Tenant("qe_bridge_mapping", [nameof(BridgeMappingRecord.BridgeMappingId)], []),
@@ -70,8 +66,6 @@ public static class TableCatalog
             "qe_measure_dependency", [nameof(MeasureDependencyRecord.MeasureId), nameof(MeasureDependencyRecord.DependencyMeasureId)], []),
         [typeof(MeasureTimePolicyRecord)] = Tenant("qe_measure_time_policy", [nameof(MeasureTimePolicyRecord.MeasureId)], []),
         [typeof(CalculationModelRecord)] = Tenant("qe_calculation_model", [nameof(CalculationModelRecord.ModelId)], []),
-        [typeof(CalculationModelVersionRecord)] = Tenant(
-            "qe_calculation_model_version", [nameof(CalculationModelVersionRecord.ModelVersionId)], []),
         [typeof(VariableRecord)] = Tenant("qe_variable", [nameof(VariableRecord.VariableId)], []),
         [typeof(ReportSourceRecord)] = Tenant("qe_report_source", [nameof(ReportSourceRecord.ReportSourceId)], []),
         [typeof(ReportSourceVariableRecord)] = Tenant(

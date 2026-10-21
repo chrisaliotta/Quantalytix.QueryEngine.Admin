@@ -582,7 +582,7 @@ classDiagram
         +EvaluateAsync(versionId, cancellationToken)
     }
     class ReportGraphReader {
-        +ConsumersAsync(kind, versionId, cancellationToken) Task~IReadOnlyList~ReportGraph~~
+        +EnabledAsync(cancellationToken) Task~IReadOnlyList~ReportGraph~~
         +ScopeAsync(graphs, releaseId, cancellationToken) Task~ReportScope~
     }
     class OverviewService {
@@ -628,7 +628,7 @@ classDiagram
 - **Retirement rules:** `release_not_active` (`ReleaseNotActiveRule`). **Lifecycle handlers:** none.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
-A release is created as a draft, optionally with a copy of another release's manifest; it pins dataset versions only. The binding rules require the dimension, mapping set and bridge each binding of a pinned dataset version names to have a published version, which the active assumption set pins. Reports are not pinned: a report runs against whichever release is active, so the release checks every enabled report against its own dataset versions, through `ReportGraphReader` (see [Calculation models and reports](#calculation-models-and-reports)). Validating, publishing and retiring go through the version status endpoint with kind `semantic_release`; activation has its own endpoint, refuses a release that is not published, and advances the semantic revision. `OverviewService` only reads: the tenant's identity, schema version, revision and active release, counts, and drafts in progress; reports have no drafts, so it counts them alone.
+A release is created as a draft, optionally with a copy of another release's manifest; it pins dataset versions only. The binding rules require the dimension, mapping set and bridge each binding of a pinned dataset version names to have a published version, which the active assumption set pins. Reports are not pinned: a report runs against whichever release is active, so the release checks every enabled report against its own dataset versions, through `ReportGraphReader` (see [Calculation models and reports](#calculation-models-and-reports)). Validating, publishing and retiring go through the version status endpoint with kind `semantic_release`; activation has its own endpoint, refuses a release that is not published, and advances the semantic revision. `OverviewService` only reads: the tenant's identity, schema version, revision and active release, counts, and drafts in progress; calculation models and reports have no drafts, so it counts them alone.
 
 | Class | Records |
 | --- | --- |
@@ -636,13 +636,13 @@ A release is created as a draft, optionally with a copy of another release's man
 | `ReleaseActivator` | `SemanticReleaseRecord`, `DatabaseInfoRecord` |
 | `ReleaseManifestReader` | `ReleaseDatasetRecord`, `DatasetRecord`, `DimensionBindingRecord` |
 | `ReleaseNotActiveRule` | `DatabaseInfoRecord`, `SemanticReleaseRecord` |
-| `OverviewService` | `DatabaseInfoRecord`, `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `DatasetVersionRecord`, `MeasureRecord`, `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `AssumptionSetRecord`, `CalculationModelRecord`, `CalculationModelVersionRecord`, `ReportRecord` |
+| `OverviewService` | `DatabaseInfoRecord`, `SemanticReleaseRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `DatasetVersionRecord`, `MeasureRecord`, `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `AssumptionSetRecord`, `CalculationModelRecord`, `ReportRecord` |
 
 **Sources:** [ReleasesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Releases/ReleasesController.cs), [OverviewController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Overview/OverviewController.cs), [ReleaseService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [ReleaseActivationResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/Models/ReleaseActivationResult.cs), [ReleaseManifestReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseManifestReader.cs), [ReleaseNotActiveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseNotActiveRule.cs), [release rules](../../src/Quantalytix.QueryEngine.Admin.Application/Releases), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [OverviewService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Overview/OverviewService.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
 ## Assumption sets
 
-The drawing shows assumption sets, which pin one version of each identity of the four living kinds. It matters because they decide which versions a request reads: the one active set holds the default versions and every publish repoints it, while historical sets are captured copies that let a request backtest against the versions of their time.
+The drawing shows assumption sets, which pin one version of each identity of the three living kinds. It matters because they decide which versions a request reads: the one active set holds the default versions and every publish repoints it, while historical sets are captured copies that let a request backtest against the versions of their time.
 
 ```mermaid
 classDiagram
@@ -695,8 +695,8 @@ The tenant database holds the active set, with status `active` and key `active`,
 | Class | Records |
 | --- | --- |
 | `AssumptionSetService` | `AssumptionSetRecord`, `DatabaseInfoRecord`; through `ReportOwnership`, `DimensionRecord`, `BridgeRecord` |
-| `AssumptionPins` | `AssumptionSetRecord`, `AssumptionSetDimensionRecord`, `AssumptionSetMappingRecord`, `AssumptionSetBridgeRecord`, `AssumptionSetModelRecord` |
-| `AssumptionPinReader` | `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `CalculationModelRecord`, `CalculationModelVersionRecord` |
+| `AssumptionPins` | `AssumptionSetRecord`, `AssumptionSetDimensionRecord`, `AssumptionSetMappingRecord`, `AssumptionSetBridgeRecord` |
+| `AssumptionPinReader` | `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord` |
 
 **Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [AssumptionPinReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPinReader.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
 
@@ -768,7 +768,7 @@ classDiagram
 - **Publication rules, retirement rules and lifecycle handlers:** none; tenant directory rows are not versioned.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), which also maps `ITenantDatabaseVerifier` to `TenantDatabaseVerifier` and `IConnectionStringMasker` to `ConnectionStringMasker`.
 
-A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 11, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
+A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 12, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
 
 | Class | Records |
 | --- | --- |
@@ -779,13 +779,12 @@ A connection string is external input, so it is verified whenever one is supplie
 
 ## Calculation models and reports
 
-The drawing shows the calculation-model slice and the report slice. A model version holds the reusable metrics: variables, with their display format and unit, and calculated measures. A report is not versioned: it names its model and its report dimension by identity, both fixed at creation, and holds everything that ties the model's metrics to data and rows: sources and the variables they supply, source profiles, calculation dimensions, each a role with a default grouping, variable scopes, columns, overlay rows and member options, with its settings. It matters because an enabled report is live: the engine reads every write at once, so the report rules check each write before it is made, and they check the report again from every side it reads: when its model's next version or a release is validated.
+The drawing shows the calculation-model slice and the report slice. A calculation model holds the reusable metrics, variables, with their display format and unit, and calculated measures, with the currency, calendar and formula language they are read in. Neither models nor reports are versioned: a report names its model and its report dimension by identity, both fixed at creation, and holds everything that ties the model's metrics to data and rows: sources and the variables they supply, source profiles, calculation dimensions, each a role with a default grouping, variable scopes, columns, overlay rows and member options, with its settings. It matters because an enabled report and its model are live: the engine reads every write at once, so the report rules check each write to the report, and the model gate each write to the model's metrics, before it is made, and the report is checked again when a release is validated.
 
 ```mermaid
 classDiagram
     direction TB
     class CalculationModelsController
-    class CalculationModelVersionsController
     class VariablesController
     class CalculatedMeasuresController
     class ReportsController
@@ -802,6 +801,11 @@ classDiagram
         +UpdateAsync(item, cancellationToken)
         +DeleteAsync(itemId, cancellationToken) Task~string~
     }
+    class IModelContent~TItem, TInput~ {
+        <<interface>>
+        +Put(model, item) ModelGraph
+        +Without(model, itemId) ModelGraph
+    }
     class IReportContent~TItem, TInput~ {
         <<interface>>
         +Put(report, item) ReportGraph
@@ -810,23 +814,28 @@ classDiagram
     class OwnedRows~TRecord, TInput~ {
         <<abstract>>
     }
-    class ModelVersionRows~TRecord, TInput~ {
+    class ModelRows~TRecord, TInput~ {
         <<abstract>>
     }
     class OwnedItemReferenceValidator~TReference, TItem, TInput~
-    class CalculationModelService
-    class CalculationModelVersionService {
-        +CreateAsync(modelId, input, cancellationToken)
-        +DeleteAsync(versionId, cancellationToken)
-        +RemoveAsync(versionIds, cancellationToken)
+    class CalculationModelService {
+        +CreateAsync(input, cancellationToken)
+        +UpdateAsync(modelId, input, cancellationToken)
+        +DeleteAsync(modelId, cancellationToken) Task~string~
     }
-    class ModelVersionCloner {
-        +CloneAsync(sourceVersionId, targetVersionId, cancellationToken)
+    class ModelChanges {
+        +ApplyAsync(modelId, change, write, cancellationToken) Task~IReadOnlyList~RuleViolation~~
+    }
+    class FormulaReferencesResolveRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
+    }
+    class FormulasAcyclicRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
     }
     class ReportUses {
         +ModelReadersAsync(modelId, cancellationToken)
-        +VariableUsesAsync(variable, cancellationToken)
-        +MeasureUsesAsync(measure, cancellationToken)
     }
     class ModelKeys
     class FormulaGraph
@@ -851,11 +860,11 @@ classDiagram
         +Evaluate(report, scope) IEnumerable~RuleViolation~
     }
     class ReportConsumerRule {
-        +EvaluateAsync(versionId, cancellationToken)
+        +EvaluateAsync(releaseId, cancellationToken)
     }
     class ReportGraphReader {
         +ReadAsync(report, cancellationToken) Task~ReportGraph~
-        +ConsumersAsync(kind, versionId, cancellationToken) Task~IReadOnlyList~ReportGraph~~
+        +EnabledAsync(cancellationToken) Task~IReadOnlyList~ReportGraph~~
         +ScopeAsync(graphs, releaseId, cancellationToken) Task~ReportScope~
     }
     class ReleaseDatasets {
@@ -867,7 +876,6 @@ classDiagram
         +BridgesAsync(sources, cancellationToken)
     }
     class ModelMetricsReader {
-        +PublishedVersionAsync(modelId, cancellationToken)
         +ReadForReportAsync(reportId, cancellationToken) Task~ModelMetrics~
     }
     class ReportContentRemover {
@@ -885,28 +893,32 @@ classDiagram
         <<interface>>
     }
     CalculationModelsController --> CalculationModelService
-    CalculationModelVersionsController --> CalculationModelVersionService
-    VariablesController --> IOwnedContent
-    CalculatedMeasuresController --> IOwnedContent
+    VariablesController --> IModelContent
+    CalculatedMeasuresController --> IModelContent
+    VariablesController --> ModelChanges
+    CalculatedMeasuresController --> ModelChanges
     SourceProfilesController --> IReportContent
     CalculationDimensionsController --> IReportContent
     SourceProfilesController --> ReportChanges
     CalculationDimensionsController --> ReportChanges
+    IOwnedContent <|-- IModelContent
     IOwnedContent <|-- IReportContent
     IOwnedContent <|.. OwnedRows
-    OwnedRows <|-- ModelVersionRows
-    ModelVersionRows <|-- VariableService
-    ModelVersionRows <|-- CalculatedMeasureService
+    OwnedRows <|-- ModelRows
+    IModelContent <|.. ModelRows
+    ModelRows <|-- VariableService
+    ModelRows <|-- CalculatedMeasureService
     OwnedRows <|-- CalculationDimensionService
     IReportContent <|.. CalculationDimensionService
     IReportContent <|.. SourceProfileService
     OwnedItemReferenceValidator --> IOwnedContent : BelongsAsync
-    CalculationModelService --> CalculationModelVersionService
     CalculationModelService --> ReportUses
-    CalculationModelVersionService --> ModelVersionCloner
-    VariableService --> ReportUses
-    CalculatedMeasureService --> ReportUses
-    ReportUses --> FormulaGraph
+    ModelChanges ..> FormulaReferencesResolveRule
+    ModelChanges ..> FormulasAcyclicRule
+    ModelChanges --> ReportGraphReader : the enabled reports of the model
+    ModelChanges ..> ReportMetricsResolveRule
+    ModelChanges ..> ProfilesCompleteRule
+    ProfilesCompleteRule ..> FormulaGraph
     SourceProfileService --> ReportContentRemover
     ReportsController --> ReportService
     ReportsController --> ReportStatusService
@@ -923,13 +935,10 @@ classDiagram
     ReportRules --> IReportRule : every registered rule
     ReportRules --> ReportGraphReader : scope
     ReportGraphReader --> OwnedVersions
-    ReportGraphReader --> ModelMetricsReader
     ReportGraphReader --> ReleaseDatasets
     ReportGraphReader --> PublishedDimensionReader
-    IPublicationRule <|.. FormulaReferencesResolveRule
-    IPublicationRule <|.. FormulasAcyclicRule
     IPublicationRule <|.. ReportConsumerRule
-    ReportConsumerRule --> IReportRule : one rule, over every enabled report it serves
+    ReportConsumerRule --> IReportRule : one rule, over every enabled report
     ReportConsumerRule --> ReportGraphReader
     IReportRule <|.. ReportItemsResolveRule
     IReportRule <|.. CalculationGroupingResolveRule
@@ -942,37 +951,38 @@ classDiagram
     IReportRule <|.. ReportFactorsApplyRule
 ```
 
-- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`); under `api/tenants/{tenantId}`, `calculation-models/{modelId:long}/versions` and `model-versions/{versionId:long}` (`CalculationModelVersionsController`); under `api/tenants/{tenantId}/model-versions/{versionId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), whose writes take a draft or the published version. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, and `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
-- **Publication rules** (`calculation_model_version`): its own `formula_references_resolve` (`FormulaReferencesResolveRule`) and `formulas_acyclic` (`FormulasAcyclicRule`), then `report_metrics_resolve` and `profiles_complete` through `ReportConsumerRule`, over every enabled report of the model, against the version itself. (`semantic_release`): `report_sources_resolve` and `report_factors_apply` the same way, over every enabled report, against the release's dataset versions.
+- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`), with `{modelId:long}`; under `api/tenants/{tenantId}/calculation-models/{modelId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), each with `{itemId:long}` for an edit or delete. The metric writes and `PUT calculation-models/{modelId:long}` are `[AdvancesModelRevision]`. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, and `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
+- **Publication rules** (`semantic_release`): `report_sources_resolve` and `report_factors_apply` through `ReportConsumerRule`, over every enabled report, against the release's dataset versions.
+- **Model rules** (run by `ModelChanges` on every write to a model's metrics; see [The model gate](04-version-lifecycle.md#the-model-gate)): `formula_references_resolve` (`FormulaReferencesResolveRule`) and `formulas_acyclic` (`FormulasAcyclicRule`) on the model, then `report_metrics_resolve` and `profiles_complete` over every enabled report of the model.
 - **Report rules** (`IReportRule`, run by `ReportRules` on enabling a report, on every write to an enabled report and on `POST validation`): `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve` (`ReportMetricsResolveRule`), `profiles_complete` (`ProfilesCompleteRule`), `report_sources_resolve` (`ReportSourcesResolveRule`) and `report_factors_apply` (`ReportFactorsApplyRule`).
-- **Retirement rules:** none. **Lifecycle handlers:** `PredecessorRetirer` and `ActiveSetPinner` for model versions, as for every living kind.
-- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each model content service as its `IOwnedContent<TItem, TInput>` and each report content service as its `IReportContent<TItem, TInput>`, each with the closed `OwnedItemReferenceValidator` that checks its `{itemId}` routes, every report rule once, and each consumer rule as a `ReportConsumerRule` of the kind it serves.
+- **Retirement rules and lifecycle handlers:** none; neither models nor reports are a versioned kind.
+- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each model content service as its `IModelContent<TItem, TInput>` and each report content service as its `IReportContent<TItem, TInput>`, both also as `IOwnedContent<TItem, TInput>` and each with the closed `OwnedItemReferenceValidator` that checks its `{itemId}` routes, `ModelChanges`, every report rule once, and the two release rules as `ReportConsumerRule`s.
 
-Models are created without versions; reports are created disabled. `NewReportInputValidator` checks that the report key is free as a dimension key, that the model has a published version, and that the optional `startFromDimensionId`, whose published version the new dimension copies, is a categorical or hierarchical dimension whose published version has one root, because a report's rows are one tree. `ReportService.CreateAsync` creates the report dimension, publishes its v1 through `VersionWorkflow.PublishAsync` and stores the report with default settings, monthly periods in UTC. Deleting a report deletes everything it owns, through `ReportContentRemover`, then the report and its dimension, unpinned first; nothing outside the report names what it owns, so nothing blocks it.
+Models are created without metrics, in the currency the input names, on the `gregorian` calendar and formula language `1.0`; reports are created disabled. `NewReportInputValidator` checks that the report key is free as a dimension key, that the model exists, and that the optional `startFromDimensionId`, whose published version the new dimension copies, is a categorical or hierarchical dimension whose published version has one root, because a report's rows are one tree. `ReportService.CreateAsync` creates the report dimension, publishes its v1 through `VersionWorkflow.PublishAsync` and stores the report with default settings, monthly periods in UTC. Deleting a report deletes everything it owns, through `ReportContentRemover`, then the report and its dimension, unpinned first; nothing outside the report names what it owns, so nothing blocks it. Deleting a model is blocked while any report reads it, through `ReportUses.ModelReadersAsync`, and otherwise deletes its variables and calculated measures with it.
 
-A model version holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key, so a model version clone copies them as they are with new IDs. Report content names metrics by key too: source variables, scopes and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the model's published version through `ModelMetricsReader`, so one model serves several reports, each with its own data. `IOwnedContent<TItem, TInput>` serves both owners: `ContentKeys` reads the owner from the route, a model version's `versionId` or a report's `reportId`, and `Compose` builds the row a write would store, so `IReportContent.Put` and `Without` can show the report rules the report as the write would leave it before `InsertAsync`, `UpdateAsync` or `DeleteAsync` runs. Variable scopes and columns are replaced whole, columns as an ordered list. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources reach.
+A model holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key. Report content names metrics by key too: source variables, scopes and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the report's model through `ModelMetricsReader`, so one model serves several reports, each with its own data. `IOwnedContent<TItem, TInput>` serves both owners: `ContentKeys` reads the owner from the route, a model's `modelId` or a report's `reportId`, and `Compose` builds the row a write would store, so `IModelContent.Put` and `Without` can show the model gate the model, and `IReportContent.Put` and `Without` the report rules the report, as the write would leave it before `InsertAsync`, `UpdateAsync` or `DeleteAsync` runs. Variable scopes and columns are replaced whole, columns as an ordered list. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources reach.
 
 A calculation dimension is a role plus a default grouping of its template's members, which a report request can replace for its own run, and which `GroupingInputValidator<T>` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. `ReportSettingsInputValidator` checks the default settings, whose `periodicity`, `timeZone` and `layout` (the `report_layout` vocabulary: `statement`, whose lines keep their order, or `list`, whose table a request filters, orders and pages as a whole) affect execution, and the default filter, which compares calculation dimensions and may compare `parameter` operands that every request then supplies, though not `periodDays` or `yearDays`, which calculated measures read.
 
-Every report rule is a pure `Evaluate(ReportGraph, ReportScope)`. `ReportGraphReader` reads a `ReportGraph`, a report's content with its model's published version, its report dimension's members and its bridge sources' rules, and `ReportRules` adds the `ReportScope` it is checked in: the active release's versions of the sources' datasets, through `ReleaseDatasets`, and the published versions of the calculation dimensions' templates. `ReportChanges.ApplyAsync` checks a write to an enabled report on the graph the write would leave (see [The report gate](04-version-lifecycle.md#the-report-gate)). `ReportConsumerRule` checks the other side: a calculation model version through every enabled report of its model, against the version itself, because publishing it makes it the version those reports read, and a semantic release through every enabled report against its own dataset versions, so a release whose dataset version stops applying bridge factors to a measure a factored source reads is refused. Deletes go through `ReportUses`: a model is blocked while any report reads it, and a variable or calculated measure of a published model version while an enabled report names its key, directly or through a formula; a draft's metrics are used by no report. A profile is blocked while it is its report's default. Roles are blocked while a binding, calculation dimension or report source names them.
+Every report rule is a pure `Evaluate(ReportGraph, ReportScope)`. `ReportGraphReader` reads a `ReportGraph`, a report's content with its model's metrics, its report dimension's members and its bridge sources' rules, and `ReportRules` adds the `ReportScope` it is checked in: the active release's versions of the sources' datasets, through `ReleaseDatasets`, and the published versions of the calculation dimensions' templates. `ReportChanges.ApplyAsync` checks a write to an enabled report on the graph the write would leave (see [The report gate](04-version-lifecycle.md#the-report-gate)), and `ModelChanges.ApplyAsync` a write to a model's metrics on the model the write would leave and on each enabled report over it, given those metrics (see [The model gate](04-version-lifecycle.md#the-model-gate)). `ReportConsumerRule` checks the other side: a semantic release through every enabled report, which `ReportGraphReader.EnabledAsync` reads, against its own dataset versions, so a release whose dataset version stops applying bridge factors to a measure a factored source reads is refused. A variable or calculated measure that a formula of its model or an enabled report reads is kept by the model gate, whose violations name what reads it. A profile is blocked while it is its report's default. Roles are blocked while a binding, calculation dimension or report source names them.
 
 | Class | Records |
 | --- | --- |
-| `CalculationModelService` | `CalculationModelRecord`, `CalculationModelVersionRecord` |
-| `CalculationModelVersionService` | `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
-| `ModelVersionCloner`, `ModelKeys` | `VariableRecord`, `CalculatedMeasureRecord` |
+| `CalculationModelService` | `CalculationModelRecord`, `VariableRecord`, `CalculatedMeasureRecord`; through `ReportUses`, `ReportRecord` |
+| `ModelChanges` | `VariableRecord`, `CalculatedMeasureRecord`, `ReportRecord`; through `ReportGraphReader`, the enabled reports of the model |
+| `ModelKeys` | `VariableRecord`, `CalculatedMeasureRecord` |
 | `VariableService`, `CalculatedMeasureService`, `CalculationDimensionService` | Their own record each |
-| `ReportUses` | `ReportRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportSourceRecord`, `ReportSourceVariableRecord`, `ReportVariableScopeRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `CalculationModelVersionRecord` |
+| `ReportUses` | `ReportRecord` |
 | `ReportService`, `ReportStatusService`, `ReportChanges` | `ReportRecord` |
 | `ReportContentRemover` | `ReportSourceRecord`, `ReportSourceVariableRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `CalculationDimensionRecord`, `ReportVariableScopeRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`; through `BridgeService` and `AssumptionPins`, a bridge source's bridge and its pins |
 | `ReportVariableScopeService`, `ReportColumnService` | Their own record each |
 | `SourceProfileService` | `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportRecord` |
-| `ModelMetricsReader` | `ReportRecord`, `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
-| `ReportGraphReader` | `ReportRecord`, `DimensionMemberRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableScopeRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportSourceRecord`, `ReportSourceVariableRecord`, `CalculationDimensionRecord`, `CalculationModelVersionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `DimensionRoleRecord` |
+| `ModelMetricsReader` | `ReportRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
+| `ReportGraphReader` | `ReportRecord`, `DimensionMemberRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableScopeRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportSourceRecord`, `ReportSourceVariableRecord`, `BridgeMappingRecord`, `CalculationDimensionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `DimensionRoleRecord` |
 | `ReleaseDatasets` | `DatabaseInfoRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `FieldRecord`, `DimensionBindingRecord`, `TimeBindingRecord`, `MeasureRecord` |
 | `OwnedVersions` | `DimensionVersionRecord`, `BridgeVersionRecord` |
 
-**Sources:** [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Reports), [IOwnedContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/IOwnedContent.cs), [OwnedRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/OwnedRows.cs), [OwnedItemReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/OwnedItemReferenceValidator.cs), [ContentKeys.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/ContentKeys.cs), [ModelVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelVersionRows.cs), [IReportContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/IReportContent.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs), [model services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels), [ReportService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportService.cs), [ReportStatusService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportStatusService.cs), [ReportChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportChanges.cs), [ReportRules.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportRules.cs), [ReportConsumerRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportConsumerRule.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [report services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/Reports), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), [ReportUsesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ReportUsesTests.cs), [Reports tests](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports).
+**Sources:** [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Reports), [IOwnedContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/IOwnedContent.cs), [OwnedRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/OwnedRows.cs), [OwnedItemReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/OwnedItemReferenceValidator.cs), [ContentKeys.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Content/ContentKeys.cs), [ModelRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelRows.cs), [IModelContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/IModelContent.cs), [ModelChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelChanges.cs), [IReportContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/IReportContent.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs), [model services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels), [ReportService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportService.cs), [ReportStatusService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportStatusService.cs), [ReportChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportChanges.cs), [ReportRules.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportRules.cs), [ReportConsumerRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportConsumerRule.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [report services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/Reports), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), [CalculationModels tests](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels), [Reports tests](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports).
 
 ## Report editor
 
@@ -1044,7 +1054,6 @@ classDiagram
     SourceItemService ..> BridgeEntries
     SourceCoverageReader --> PublishedDimensionReader
     ReportEditorReader --> OwnedVersions
-    ReportEditorReader --> ModelMetricsReader
     ReportEditorReader --> PublishedDimensionReader
     ReportEditorReader ..> SourceCoverageReader : unmapped counts
     ReportRowsInputValidator ..> ReportRowTree

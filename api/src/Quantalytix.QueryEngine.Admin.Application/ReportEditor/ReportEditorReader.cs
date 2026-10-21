@@ -21,7 +21,6 @@ public sealed class ReportEditorReader(
     ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<DimensionRoleRecord> roles,
-    ModelMetricsReader models,
     OwnedVersions owned,
     PublishedDimensionReader publishedDimensions)
 {
@@ -59,7 +58,6 @@ public sealed class ReportEditorReader(
         return new EditorView
         {
             Report = report,
-            ModelVersionId = (await models.PublishedVersionAsync(report.ModelId, cancellationToken)).ModelVersionId,
             DimensionVersionId = structure.DimensionVersionId,
             Rows = [.. rows.OrderBy(row => row.SortOrder).ThenBy(row => row.Key, StringComparer.Ordinal)],
             Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId), cancellationToken)

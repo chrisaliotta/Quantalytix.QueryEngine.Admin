@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Content;
 /// Accepts a content route only when the row belongs to the owner the route names. The feature registration closes it once per
 /// content kind and route, because assembly scanning skips open generic validators.
 /// </summary>
-/// <typeparam name="TReference">The route: a model version's or a report's.</typeparam>
+/// <typeparam name="TReference">The route: a model's or a report's.</typeparam>
 /// <typeparam name="TItem">The kind of content row.</typeparam>
 /// <typeparam name="TInput">The row as the create and edit endpoints take it.</typeparam>
 public sealed class OwnedItemReferenceValidator<TReference, TItem, TInput> : AbstractValidator<TReference>

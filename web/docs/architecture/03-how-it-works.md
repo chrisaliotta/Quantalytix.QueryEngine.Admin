@@ -96,10 +96,10 @@ Query keys decide what TanStack Query caches and what a write refreshes. Tenant-
 | `['dimensions', tenantId, ...]`, `['dimension-roles', ...]`, `['dimension-versions', ...]`, `['dimension-levels', ...]`, `['dimension-members', ...]`, `['range-bands', ...]` | `dimensions/api.ts` | `refresh` of the changed keys and lookup kinds; `setQueryData` after a member reorder or a band replace |
 | `['mapping-sets', tenantId, ...]`, `['mapping-entries', tenantId, versionId]` | `mappings/api.ts` | The changed keys and lookups; `setQueryData` after a bulk entry replace |
 | `['bridges', tenantId, ...]`, `['bridge-versions', ...]`, `['bridge-mappings', ...]` | `bridges/api.ts`; the list key holds the `purpose` filter | The changed keys and lookups; `setQueryData` after a bulk mapping replace; a report source write refreshes `['bridges', tenantId]` |
-| `['calculation-models', tenantId, ...]`, `['model-versions', ...]` | `calculation-models/api.ts` | The changed keys and lookups |
+| `['calculation-models', tenantId, ...]` | `calculation-models/api.ts` | The changed keys and lookups |
 | `['reports', tenantId, ...]`, `['report-columns', ...]`, `['report-variable-scopes', ...]`; `['dimension-members', ...]` of the report dimension's version | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column or variable scope replace; a column replace refreshes the editor view, whose formula rows name columns; enabling or disabling a report refreshes it and the list |
 | `['report-editor', tenantId, reportId]`, `['report-unmapped', tenantId, reportId, sourceId]` | `reports/editorApi.ts`, with the keys shared with `api.ts` in `reports/queryKeys.ts` | Each editor write answers the editor view, which `setQueryData` caches, and refreshes the unmapped items; a row write also refreshes the variable scopes and the `members` lookups; a source write also refreshes the report's content, the report, whose default profile a first variable sets, and the bridges and `bridges` lookups |
-| `['version-content', tenantId, scope, ownerId, kind]`, where the scope is `model-versions` or `reports` | `shared/versionContent.ts` | A content write refreshes `['version-content', tenantId, scope, ownerId]` and the scope's content lookups |
+| `['owned-content', tenantId, scope, ownerId, kind]`, where the scope is `calculation-models` or `reports` | `shared/ownedContent.ts` | A content write refreshes `['owned-content', tenantId, scope, ownerId]` and the scope's content lookups |
 | `['releases', tenantId, ...]` | `useReleases.ts` | `invalidateReleases` or the release keys; `invalidateTenantQueries` after an activation |
 | `['assumption-sets', tenantId, ...]` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; `invalidateTenantQueries` after a publish |
 
@@ -144,7 +144,7 @@ flowchart LR
 
 | `LookupKind` | `parentId` |
 | --- | --- |
-| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None (`dimensions` takes an optional `purpose`; a model's `classifier` is its published version's key, null while it has none) |
+| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None (`dimensions` takes an optional `purpose`; a model's `classifier` is its currency) |
 | `dimension-roles` | Optional dimension (each role's `parentId` is its template, its `classifier` the template's kind, and its label reads like "Servicing branch · Branch") |
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
@@ -153,8 +153,7 @@ flowchart LR
 | `mapping-sets` | Optional dimension |
 | `mapping-versions` | Mapping set |
 | `bridge-versions` | Bridge |
-| `model-versions` | Calculation model |
-| `variables`, `calculated-measures` | Model version |
+| `variables`, `calculated-measures` | Calculation model |
 | `report-sources`, `source-profiles`, `calculation-dimensions`, `report-columns` | Report (a source's `classifier` is its mapping method) |
 | `bound-roles` | Dataset version (the roles it binds into members with an enabled binding; each role's `parentId` is its template) |
 | `bridges` | Optional source dimension (each bridge's `parentId` is its target dimension) |
@@ -222,7 +221,7 @@ flowchart TB
 | `DateTimeField` | `datetime-local` input edited in UTC, labelled "(UTC)" | ISO 8601 UTC string or null |
 | `VocabularyField`, `MultiVocabularyField` | `VocabularySelect`; registry `MultiSelect` | A value or null; a list of values |
 | `EntityField` | `EntitySelect` | Item ID or null |
-| `KeyField` | Registry `Combobox` over the given lookup items, such as a dataset's latest fields (`useLatestVersionItems`) or the members of a dimension's published version (`usePublishedVersionItems`) | Item key or null, for references by key |
+| `KeyField` | Registry `Combobox` over the given lookup items, such as a dataset's latest fields (`useLatestVersionItems`) or the members of a dimension's published version (`usePublishedDimensionItems`) | Item key or null, for references by key |
 | `ExpressionField` | `ExpressionEditor` (Monaco) with `[f.` and `[m.` completion | Expression text |
 | `JsonField` | Shared `JsonEditor` (CodeMirror) | Raw JSON text |
 
@@ -230,7 +229,7 @@ flowchart TB
 
 ## Version lifecycle
 
-Six kinds of resource are versioned, under one of two lifecycles, and `VersionHeader` offers the status changes that the kind's lifecycle allows from the selected version's status. Strict kinds, dataset versions and releases, freeze when published, may have several published versions, and are retired by hand. Living kinds, dimension, mapping, bridge and calculation model versions, have one published version per identity: requests read it by default, it stays editable, and publishing the next version retires it and repoints the active assumption set. Reports are not versioned: the report editor writes a report in place, and a switch in its header enables it; see [flow 12](04-critical-flows.md#12-building-a-report). The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
+Five kinds of resource are versioned, under one of two lifecycles, and `VersionHeader` offers the status changes that the kind's lifecycle allows from the selected version's status. Strict kinds, dataset versions and releases, freeze when published, may have several published versions, and are retired by hand. Living kinds, dimension, mapping and bridge versions, have one published version per identity: requests read it by default, it stays editable, and publishing the next version retires it and repoints the active assumption set. Calculation models and reports are not versioned: the model page edits a model's metrics in place, and the API refuses an edit that would break a formula or an enabled report over the model; the report editor writes a report in place, and a switch in its header enables it; see [flow 12](04-critical-flows.md#12-building-a-report). The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
 
 ```mermaid
 flowchart LR
@@ -244,7 +243,7 @@ flowchart LR
         Validated -->|"Publish, confirmed"| Published
         Published -->|"Retire, confirmed, destructive"| Retired
     end
-    subgraph living ["living: dimension, mapping, bridge and calculation model versions"]
+    subgraph living ["living: dimension, mapping and bridge versions"]
         LivingDraft["draft"]
         LivingValidated["validated"]
         LivingPublished["published, edited live"]
@@ -268,7 +267,6 @@ flowchart LR
 | `dimension_version` | `DimensionDetailPage` | Living |
 | `mapping_version` | `MappingSetDetailPage` | Living |
 | `bridge_version` | `BridgeDetailPage` | Living |
-| `calculation_model_version` | `CalculationModelDetailPage` | Living |
 
 **Sources:** [versionTransitions.ts](../../src/shared/versionTransitions.ts), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [types.ts](../../src/shared/types.ts), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx).
 
@@ -279,7 +277,7 @@ One component wires the version picker, the status badge and the lifecycle actio
 ```mermaid
 flowchart TB
     Page["versioned page"]
-    Lookup["useLookup of the version kind: dataset-versions, dimension-versions, mapping-versions, bridge-versions, model-versions or releases"]
+    Lookup["useLookup of the version kind: dataset-versions, dimension-versions, mapping-versions, bridge-versions or releases"]
     Select["selectedVersion(versions, searchParams.get('version'))"]
     Header["VersionHeader(kind, versions, selectedVersionId, callbacks)"]
     Picker["VersionPicker: Combobox, lookupItemText, StatusBadge per item"]
@@ -294,7 +292,7 @@ flowchart TB
     Alert["ApiErrorAlert: the transition error while it is for the selected version"]
     Callbacks["page callbacks: onCreateVersion, onCloneVersion, onDeleteVersion, onTransitioned"]
     Page --> Lookup
-    Page -->|"datasets, dimensions, mapping sets, bridges, calculation models"| Select
+    Page -->|"datasets, dimensions, mapping sets, bridges"| Select
     Page --> Header
     Header --> Picker
     Header --> Badge
@@ -309,7 +307,7 @@ flowchart TB
     Mutation -->|"onSuccess"| Invalidate
 ```
 
-- `selectedVersion` returns the version that `?version=` names, or else the latest, since lookups list versions by version number. A missing or stale parameter, such as a deleted draft's ID, falls back to the latest. The dataset page pushes a history entry when it selects a version; the dimension, mapping set, bridge and calculation model pages replace the current one.
+- `selectedVersion` returns the version that `?version=` names, or else the latest, since lookups list versions by version number. A missing or stale parameter, such as a deleted draft's ID, falls back to the latest. The dataset page pushes a history entry when it selects a version; the dimension, mapping set and bridge pages replace the current one.
 - `VersionHeader` shows the transition error only while `transition.variables.id` is the selected version, so a 422 list stays with the version it was for: it hides when another version is selected and shows again when that one is selected, until the next transition.
 - After a successful change `VersionHeader` shows a toast and calls `onTransitioned`; `useVersionTransition` has already invalidated every query of the tenant.
 - A published living version offers "Validate", which runs the publication rules without changing the version: a pass shows a toast, and violations show in a destructive alert under the header, kept with the version they were for like a transition error.
@@ -323,10 +321,9 @@ flowchart TB
 | `DimensionDetailPage` | `?version=` | `NewVersionSheet` | `NewVersionSheet` with the source | `useDeleteDimensionVersion` |
 | `MappingSetDetailPage` | `?version=` | `NewMappingVersionDialog` | `NewMappingVersionDialog` with the source | `useDeleteMappingVersion` |
 | `BridgeDetailPage` | `?version=` | `NewBridgeVersionDialog` | `NewBridgeVersionDialog` with the source's values | `useDeleteBridgeVersion` |
-| `CalculationModelDetailPage` | `?version=` | `NewModelVersionDialog` | `NewModelVersionDialog` with `cloneFromVersionId` | `useDeleteModelVersion` |
 | `ReleaseEditorPage` | Route `releases/:releaseId` | None | `NewReleaseSheet` with `copyFromReleaseId` | `useDeleteRelease` |
 
-**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionSelection.ts](../../src/shared/versionSelection.ts), [versionSelection.test.ts](../../src/shared/versionSelection.test.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [StatusBadge.tsx](../../src/shared/StatusBadge.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [CalculationModelDetailPage.tsx](../../src/features/calculation-models/CalculationModelDetailPage.tsx), [ReportDetailPage.tsx](../../src/features/reports/ReportDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [useVersionCheck.ts](../../src/shared/useVersionCheck.ts).
+**Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionSelection.ts](../../src/shared/versionSelection.ts), [versionSelection.test.ts](../../src/shared/versionSelection.test.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [StatusBadge.tsx](../../src/shared/StatusBadge.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [ReportDetailPage.tsx](../../src/features/reports/ReportDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [useVersionCheck.ts](../../src/shared/useVersionCheck.ts).
 
 ## Conventions: UTC, lazy pages and editors
 

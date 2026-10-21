@@ -114,7 +114,7 @@ function AssumptionSetDetailView({ assumptionSet, pins }: { assumptionSet: Assum
           <CardTitle>Pinned versions</CardTitle>
           <CardDescription>
             {isActive
-              ? 'The published version of every dimension, mapping set, bridge, calculation model and report.'
+              ? 'The published version of every dimension, mapping set and bridge.'
               : 'The versions published when the set was captured; later publishes retire them, but the set keeps them.'}
           </CardDescription>
         </CardHeader>

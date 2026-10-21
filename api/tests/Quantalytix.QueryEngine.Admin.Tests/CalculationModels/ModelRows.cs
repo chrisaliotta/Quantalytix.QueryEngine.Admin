@@ -3,27 +3,24 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
-/// <summary>Builds the calculation model rows the model, report and release tests seed, all in model version 41 unless changed with <c>with</c>.</summary>
+/// <summary>Builds the calculation model rows the model, report and release tests seed, all of model 40 unless changed with <c>with</c>.</summary>
 internal static class ModelRows
 {
     /// <summary>The calculation model the rows belong to.</summary>
     public const long ModelId = 40;
 
-    /// <summary>The model version the rows belong to.</summary>
-    public const long ModelVersionId = 41;
-
-    /// <summary>A version of model 40, published unless told otherwise.</summary>
-    public static CalculationModelVersionRecord ModelVersion(long modelVersionId = ModelVersionId, string status = PublicationStatuses.Published)
+    /// <summary>Model 40, in US dollars.</summary>
+    public static CalculationModelRecord Model()
     {
-        return new CalculationModelVersionRecord
+        return new CalculationModelRecord
         {
-            ModelVersionId = modelVersionId,
             ModelId = ModelId,
-            VersionNumber = (int)(modelVersionId % 10),
-            Status = status,
+            ModelKey = "margin",
+            DisplayName = "Margin",
             CalendarKey = "gregorian",
             CurrencyCode = "USD",
-            FormulaLanguageVersion = "1.0"
+            FormulaLanguageVersion = "1.0",
+            IsEnabled = true
         };
     }
 
@@ -33,7 +30,7 @@ internal static class ModelRows
         return new VariableRecord
         {
             VariableId = variableId,
-            ModelVersionId = ModelVersionId,
+            ModelId = ModelId,
             VariableKey = variableKey,
             DisplayName = variableKey,
             VariableRole = "input",
@@ -48,7 +45,7 @@ internal static class ModelRows
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = measureId,
-            ModelVersionId = ModelVersionId,
+            ModelId = ModelId,
             MeasureKey = measureKey,
             DisplayName = measureKey,
             ExpressionText = expressionText,

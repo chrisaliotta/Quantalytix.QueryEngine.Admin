@@ -2,26 +2,29 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The calculated measures of calculation model versions: formulas over variables and other calculated measures.</summary>
-public sealed class CalculatedMeasureService(
-    ITableGateway<CalculatedMeasureRecord> table,
-    ReportUses reports,
-    IIdGenerator ids)
-    : ModelVersionRows<CalculatedMeasureRecord, CalculatedMeasureInput>(table, ids)
+/// <summary>The calculated measures of calculation models: formulas over variables and other calculated measures.</summary>
+public sealed class CalculatedMeasureService(ITableGateway<CalculatedMeasureRecord> table, IIdGenerator ids)
+    : ModelRows<CalculatedMeasureRecord, CalculatedMeasureInput>(table, ids)
 {
-    /// <summary>Deletes a calculated measure, unless a live report column returns it or a live formula row evaluates it.</summary>
-    /// <param name="itemId">The calculated measure.</param>
-    /// <param name="cancellationToken">Cancels the reads and the delete.</param>
-    /// <returns>Null when the measure was deleted; otherwise the detail naming the report columns and rows.</returns>
-    public override async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
+    /// <summary>The model with a calculated measure added or replaced.</summary>
+    /// <param name="model">The model's metrics as they stand.</param>
+    /// <param name="item">The composed calculated measure.</param>
+    /// <returns>The model's metrics as the write leaves them.</returns>
+    public override ModelGraph Put(ModelGraph model, CalculatedMeasureRecord item)
     {
-        var measure = await Rows.GetAsync(new { CalculatedMeasureId = itemId }, cancellationToken);
-        var blockers = new DeleteBlockers($"Calculated measure '{measure.MeasureKey}'");
-        blockers.AddNamed("used by reports", await reports.MeasureUsesAsync(measure, cancellationToken));
-        var conflict = blockers.Detail();
-        if (conflict is not null) return conflict;
-        await Rows.DeleteAsync(new { CalculatedMeasureId = itemId }, cancellationToken);
-        return null;
+        return model with
+        {
+            CalculatedMeasures = [.. model.CalculatedMeasures.Where(measure => measure.CalculatedMeasureId != item.CalculatedMeasureId), item]
+        };
+    }
+
+    /// <summary>The model without a calculated measure.</summary>
+    /// <param name="model">The model's metrics as they stand.</param>
+    /// <param name="itemId">The calculated measure.</param>
+    /// <returns>The model's metrics as the delete leaves them.</returns>
+    public override ModelGraph Without(ModelGraph model, long itemId)
+    {
+        return model with { CalculatedMeasures = [.. model.CalculatedMeasures.Where(measure => measure.CalculatedMeasureId != itemId)] };
     }
 
     /// <summary>The gateway key of a calculated measure.</summary>
@@ -32,12 +35,12 @@ public sealed class CalculatedMeasureService(
         return new { CalculatedMeasureId = itemId };
     }
 
-    /// <summary>The model version a calculated measure belongs to.</summary>
+    /// <summary>The model a calculated measure belongs to.</summary>
     /// <param name="row">The calculated measure.</param>
-    /// <returns>Its model version ID.</returns>
+    /// <returns>Its model ID.</returns>
     protected override long OwnerOf(CalculatedMeasureRecord row)
     {
-        return row.ModelVersionId;
+        return row.ModelId;
     }
 
     /// <summary>The key a calculated measure is listed by.</summary>
@@ -50,7 +53,7 @@ public sealed class CalculatedMeasureService(
 
     /// <summary>The calculated measure row an input describes.</summary>
     /// <param name="itemId">The calculated measure ID.</param>
-    /// <param name="ownerId">The model version.</param>
+    /// <param name="ownerId">The model.</param>
     /// <param name="input">The validated input.</param>
     /// <returns>The row to store.</returns>
     protected override CalculatedMeasureRecord ToRecord(long itemId, long ownerId, CalculatedMeasureInput input)
@@ -58,7 +61,7 @@ public sealed class CalculatedMeasureService(
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = itemId,
-            ModelVersionId = ownerId,
+            ModelId = ownerId,
             MeasureKey = input.MeasureKey,
             DisplayName = input.DisplayName,
             ExpressionText = input.ExpressionText,

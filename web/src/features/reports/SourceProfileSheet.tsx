@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { SwitchField, TextField } from '@/shared/form';
-import { useSaveVersionContent, type ContentInput } from '@/shared/versionContent';
+import { useSaveOwnedContent, type ContentInput } from '@/shared/ownedContent';
 import { ProfilePicksField } from './ProfilePicksField';
 import type { EditorView, SourceProfile } from './types';
 
@@ -15,7 +15,7 @@ export interface SourceProfileSheetProps {
 
 /** Creates or edits a source profile and its picks, one source per variable. */
 export function SourceProfileSheet({ view, profile, onClose }: SourceProfileSheetProps) {
-  const save = useSaveVersionContent('profiles', view.report.reportId, profile?.profile.sourceProfileId ?? null);
+  const save = useSaveOwnedContent('profiles', view.report.reportId, profile?.profile.sourceProfileId ?? null);
   const form = useForm<ContentInput<'profiles'>>({
     defaultValues: {
       profileKey: profile?.profile.profileKey ?? '',
@@ -29,7 +29,7 @@ export function SourceProfileSheet({ view, profile, onClose }: SourceProfileShee
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('profile', profile?.profile.profileKey ?? null, false)}
+      title={contentSheetTitle('profile', profile?.profile.profileKey ?? null)}
       description="An enabled report needs every enabled profile to pick a source for every variable its columns and formula rows read."
       form={form}
       onSubmit={save}

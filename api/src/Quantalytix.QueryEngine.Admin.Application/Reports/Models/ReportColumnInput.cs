@@ -15,7 +15,7 @@ public sealed record ReportColumnInput
     /// <summary>A <c>report_value_kind</c> value.</summary>
     public required string ValueKind { get; init; }
 
-    /// <summary>The variable or calculated measure key of the published version of the report's model that the column returns.</summary>
+    /// <summary>The variable or calculated measure key of the report's model that the column returns.</summary>
     public required string MetricKey { get; init; }
 
     /// <summary>A presentation hint such as <c>percent</c> replacing the metric's own; null shows the metric's.</summary>

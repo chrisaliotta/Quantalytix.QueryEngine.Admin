@@ -61,7 +61,6 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
           <Stat label="Mapping versions" value={drafts.mappingVersions} to={`${base}/mappings`} />
           <Stat label="Bridge versions" value={drafts.bridgeVersions} to={`${base}/bridges`} />
           <Stat label="Releases" value={drafts.releases} to={`${base}/releases`} />
-          <Stat label="Model versions" value={drafts.modelVersions} to={`${base}/calculation-models`} />
         </StatList>
       </OverviewCard>
     </div>

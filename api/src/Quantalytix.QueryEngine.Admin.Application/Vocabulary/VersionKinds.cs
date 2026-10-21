@@ -5,7 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 /// <summary>
 /// The <c>version_kind</c> vocabulary: the kinds of versioned object whose status the version workflow changes. Dataset versions
 /// and the releases that pin them are strict: only drafts change. Every other kind is living: each identity has at most one
-/// published version, which queries always use and which can be edited in place. Reports are not versioned.
+/// published version, which queries always use and which can be edited in place. Calculation models and reports are not
+/// versioned.
 /// </summary>
 public static class VersionKinds
 {
@@ -24,9 +25,6 @@ public static class VersionKinds
     /// <summary>Manifest of the structural semantic model (<c>qe_semantic_release</c>).</summary>
     public const string SemanticRelease = "semantic_release";
 
-    /// <summary>Variables and calculated measures of a model (<c>qe_calculation_model_version</c>).</summary>
-    public const string CalculationModelVersion = "calculation_model_version";
-
     /// <summary>
     /// The living kinds: a published version can be edited, publishing a draft retires the version published before it, and
     /// queries reach the change without a release activation.
@@ -35,8 +33,7 @@ public static class VersionKinds
         StringComparer.Ordinal,
         DimensionVersion,
         MappingVersion,
-        BridgeVersion,
-        CalculationModelVersion);
+        BridgeVersion);
 
     /// <summary>The vocabulary's definition, as the web client and validators read it.</summary>
     public static readonly Vocabulary Definition = new()
@@ -49,8 +46,7 @@ public static class VersionKinds
             new() { Value = DimensionVersion, Description = "Levels, members and range bands of a canonical dimension (qe_dimension_version)." },
             new() { Value = MappingVersion, Description = "Source-code mapping entries of a mapping set (qe_mapping_version)." },
             new() { Value = BridgeVersion, Description = "Cardinality, allocation and assignments of a bridge (qe_bridge_version)." },
-            new() { Value = SemanticRelease, Description = "Manifest of the structural semantic model (qe_semantic_release)." },
-            new() { Value = CalculationModelVersion, Description = "Variables and calculated measures of a model (qe_calculation_model_version)." }
+            new() { Value = SemanticRelease, Description = "Manifest of the structural semantic model (qe_semantic_release)." }
         ]
     };
 }

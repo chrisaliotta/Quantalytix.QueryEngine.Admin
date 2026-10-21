@@ -1,9 +1,9 @@
 /**
- * Why these tests exist: an assumption set's pins span four kinds of identities, and each pin must open the page of its own
+ * Why these tests exist: an assumption set's pins span three kinds of identities, and each pin must open the page of its own
  * identity with the pinned version selected, so a historical set's retired versions can be inspected where they live.
  */
 import { describe, expect, it } from 'vitest';
-import { pinKindLabel, pinLink } from './pinLinks';
+import { pinLink } from './pinLinks';
 import type { AssumptionPin } from './types';
 
 function pin(kind: string): AssumptionPin {
@@ -15,6 +15,5 @@ describe('pinLink', () => {
     expect(pinLink('development', pin('dimension_version'))).toBe('/t/development/dimensions/7?version=71');
     expect(pinLink('development', pin('mapping_version'))).toBe('/t/development/mappings/7?version=71');
     expect(pinLink('development', pin('bridge_version'))).toBe('/t/development/bridges/7?version=71');
-    expect(pinKindLabel(pin('calculation_model_version'))).toBe('Calculation model');
   });
 });

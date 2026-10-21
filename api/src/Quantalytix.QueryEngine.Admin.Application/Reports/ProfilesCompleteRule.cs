@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// <c>profiles_complete</c>: every enabled profile of a report picks, for every variable its columns and formula rows read through
-/// the model version's formulas, a source that supplies the variable, because a run under the profile reads each variable it needs
+/// the model's formulas, a source that supplies the variable, because a run under the profile reads each variable it needs
 /// from the profile's pick. Variables the report never reads need no pick.
 /// </summary>
 public sealed class ProfilesCompleteRule : IReportRule
@@ -14,7 +14,7 @@ public sealed class ProfilesCompleteRule : IReportRule
     public const string Code = "profiles_complete";
 
     /// <summary>Reports each enabled profile's missing picks, and picks of a source that does not supply the variable.</summary>
-    /// <param name="report">The report, with the model version it is checked against.</param>
+    /// <param name="report">The report, with its model's metrics.</param>
     /// <param name="scope">Unused: profiles and sources are the report's own.</param>
     /// <returns>One violation per variable a profile cannot fill.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)

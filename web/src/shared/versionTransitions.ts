@@ -13,12 +13,7 @@ export interface VersionTransition {
  * The living kinds: an identity has one published version, which requests read by default, which stays editable, and which
  * the next publish retires. Dataset versions and releases are strict: a published version never changes and is retired by hand.
  */
-const LIVING_KINDS: ReadonlySet<VersionKind> = new Set<VersionKind>([
-  'dimension_version',
-  'mapping_version',
-  'bridge_version',
-  'calculation_model_version',
-]);
+const LIVING_KINDS: ReadonlySet<VersionKind> = new Set<VersionKind>(['dimension_version', 'mapping_version', 'bridge_version']);
 
 /** Whether `kind` is a living kind, whose published version is edited live. */
 export function isLivingKind(kind: VersionKind) {

@@ -2,9 +2,9 @@ import { useForm } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { ExpressionField, NumberField, TextField, VocabularyField } from '@/shared/form';
+import { useSaveOwnedContent } from '@/shared/ownedContent';
 import { emptyToNull } from '@/shared/text';
 import { useLookup } from '@/shared/useLookup';
-import { useSaveVersionContent } from '@/shared/versionContent';
 import type { CalculatedMeasure } from './types';
 
 /** Values of the calculated measure sheet; a choice not made yet is null, and an optional text is empty for none. */
@@ -21,21 +21,20 @@ interface CalculatedMeasureValues {
 }
 
 export interface CalculatedMeasureSheetProps {
-  versionId: number;
-  /** The measure to edit or view; null to create one. */
+  modelId: number;
+  /** The measure to edit; null to create one. */
   measure: CalculatedMeasure | null;
-  readOnly: boolean;
   onClose: () => void;
 }
 
 /**
- * Creates, edits or shows a calculated measure. Its formula reads variables and calculated measures as `[m.KEY]`, and
- * the `@periodDays` and `@yearDays` of the period it is evaluated for.
+ * Creates or edits a calculated measure. Its formula reads variables and calculated measures as `[m.KEY]`, and the
+ * `@periodDays` and `@yearDays` of the period it is evaluated for.
  */
-export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }: CalculatedMeasureSheetProps) {
-  const save = useSaveVersionContent('calculated-measures', versionId, measure?.calculatedMeasureId ?? null);
-  const variables = useLookup('variables', versionId);
-  const measures = useLookup('calculated-measures', versionId);
+export function CalculatedMeasureSheet({ modelId, measure, onClose }: CalculatedMeasureSheetProps) {
+  const save = useSaveOwnedContent('calculated-measures', modelId, measure?.calculatedMeasureId ?? null);
+  const variables = useLookup('variables', modelId);
+  const measures = useLookup('calculated-measures', modelId);
   const metricKeys = [...(variables.data ?? []), ...(measures.data ?? [])].map(item => item.key);
   const form = useForm<CalculatedMeasureValues>({
     defaultValues: {
@@ -59,11 +58,10 @@ export function CalculatedMeasureSheet({ versionId, measure, readOnly, onClose }
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('calculated measure', measure?.measureKey ?? null, readOnly)}
+      title={contentSheetTitle('calculated measure', measure?.measureKey ?? null)}
       description="Variables and calculated measures share one key namespace. Report values are not rounded; clients round by the output scale."
       form={form}
       onSubmit={submit}
-      readOnly={readOnly}
       width="40rem"
     >
       <TextField name="measureKey" label="Key" description="A letter, then letters, digits or underscores." />

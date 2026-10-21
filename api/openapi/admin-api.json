@@ -568,7 +568,7 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name\nthe tenant and have metadata schema version 7.",
+        "summary": "Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name\nthe tenant and have the metadata schema version this API supports.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1260,7 +1260,7 @@
             }
           },
           "400": {
-            "description": "A column key is reserved or repeated, a metric is not in the model's published version, or a formula row still names a removed column; errors are keyed by camelCase JSON path.",
+            "description": "A column key is reserved or repeated, a metric is not in the report's model, or a formula row still names a removed column; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1496,7 +1496,7 @@
         "tags": [
           "Reports"
         ],
-        "summary": "Creates a disabled report over a model with a published version, and its own report dimension, keyed and named like it,\nwhose one version copies the published members of `startFromDimensionId` or holds a single root row and is published\nat once.",
+        "summary": "Creates a disabled report over a calculation model, and its own report dimension, keyed and named like it,\nwhose one version copies the published members of `startFromDimensionId` or holds a single root row and is published\nat once.",
         "parameters": [
           {
             "name": "tenantId",
@@ -1555,7 +1555,7 @@
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as a taken key or a model without a published version; errors are keyed by camelCase JSON path.",
+            "description": "The input breaks a field rule, such as a taken key or an unknown model; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7131,41 +7131,6 @@
         }
       }
     },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tenants/{tenantId}/datasets": {
       "get": {
         "tags": [
@@ -8855,26 +8820,26 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures": {
       "get": {
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Lists a model version's calculated measures.",
+        "summary": "Lists a model's calculated measures.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The model version.",
+            "description": "The calculation model.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -8922,21 +8887,21 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Adds a calculated measure to a draft or published model version.",
+        "summary": "Adds a calculated measure to a calculation model, unless its formula reads a key the model lacks or reads itself.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The draft or published model version.",
+            "description": "The calculation model.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -8972,16 +8937,6 @@
           },
           "403": {
             "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9009,30 +8964,40 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The formula reads a variable or calculated measure the model lacks, or reads itself; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/calculated-measures/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures/{itemId}": {
       "put": {
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Replaces a calculated measure of a draft or published model version, keeping its ID.",
+        "summary": "Replaces a calculated measure of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The version that owns the row.",
+            "description": "The model that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9086,16 +9051,6 @@
               }
             }
           },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "200": {
             "description": "The stored calculated measure.",
             "content": {
@@ -9107,11 +9062,21 @@
             }
           },
           "400": {
-            "description": "The calculated measure is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "description": "The calculated measure is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The change would break the model's formulas or an enabled report that reads the model, such as a formula that now reads a variable no profile picks a source for; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -9122,21 +9087,21 @@
         "tags": [
           "CalculatedMeasures"
         ],
-        "summary": "Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula row evaluates it.",
+        "summary": "Deletes a calculated measure of a calculation model, unless another formula of the model or an enabled report reads it.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The version that owns the row.",
+            "description": "The model that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9175,25 +9140,25 @@
               }
             }
           },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns and lines that use the measure.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "204": {
             "description": "The calculated measure is deleted."
           },
           "400": {
-            "description": "The calculated measure is not in the version; the error is keyed `itemId`.",
+            "description": "The calculated measure is not the model's; the error is keyed `itemId`.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Another formula of the model, or a column or formula row of an enabled report that reads the model, reads the measure; nothing was deleted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -9258,7 +9223,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Creates a calculation model; it has no versions until one is created.",
+        "summary": "Creates a calculation model without variables or calculated measures.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9393,7 +9358,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Edits a calculation model's display name and availability; reports pin model versions, so neither reaches queries.",
+        "summary": "Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9477,7 +9442,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Deletes a calculation model whose versions are all drafts that no report reads, together with their content.",
+        "summary": "Deletes a calculation model that no report reads, together with its variables and calculated measures.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9521,10 +9486,10 @@
             }
           },
           "204": {
-            "description": "The model and its drafts are deleted."
+            "description": "The model and its metrics are deleted."
           },
           "409": {
-            "description": "Nothing was deleted; the detail names the non-draft versions and reports that block the delete.",
+            "description": "Nothing was deleted; the detail names the reports that read the model.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -9536,391 +9501,26 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/versions": {
-      "get": {
-        "tags": [
-          "CalculationModelVersions"
-        ],
-        "summary": "Lists a calculation model's versions with their currency and status.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "modelId",
-            "in": "path",
-            "description": "The model.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The versions by version number.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CalculationModelVersionRecord"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "CalculationModelVersions"
-        ],
-        "summary": "Creates a draft with the model's next version number: empty, or cloned from `cloneFromVersionId` with all its\nvariables, sources, profiles, calculated measures, calculation dimensions and routes.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "modelId",
-            "in": "path",
-            "description": "The model.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewModelVersionInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewModelVersionInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created draft.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationModelVersionRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a clone source of another model; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}": {
-      "get": {
-        "tags": [
-          "CalculationModelVersions"
-        ],
-        "summary": "Reads one calculation model version.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The version.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationModelVersionRecord"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "CalculationModelVersions"
-        ],
-        "summary": "Replaces a draft or published version's currency; its content stays as it is.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft or published model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModelVersionInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModelVersionInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored version.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationModelVersionRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CalculationModelVersions"
-        ],
-        "summary": "Deletes a draft version with its content.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the version.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "description": "The draft model version.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Nothing was deleted: the version is not a draft.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The version and its content are deleted."
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variables": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables": {
       "get": {
         "tags": [
           "Variables"
         ],
-        "summary": "Lists a model version's variables.",
+        "summary": "Lists a model's variables.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The model version.",
+            "description": "The calculation model.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9968,21 +9568,21 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Adds a variable to a draft or published model version.",
+        "summary": "Adds a variable to a calculation model. A new variable breaks no formula and no report, so nothing checks it beyond its fields.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The draft or published model version.",
+            "description": "The calculation model.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10018,16 +9618,6 @@
           },
           "403": {
             "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The version is neither a draft nor published.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10047,7 +9637,7 @@
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as a key another variable or calculated measure of the version has; errors are keyed by camelCase JSON path.",
+            "description": "The input breaks a field rule, such as a key another variable or calculated measure of the model has; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10059,26 +9649,26 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/model-versions/{versionId}/variables/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables/{itemId}": {
       "put": {
         "tags": [
           "Variables"
         ],
-        "summary": "Replaces a variable of a draft or published model version, keeping its ID.",
+        "summary": "Replaces a variable of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The version that owns the row.",
+            "description": "The model that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10132,16 +9722,6 @@
               }
             }
           },
-          "409": {
-            "description": "The version is neither a draft nor published.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "200": {
             "description": "The stored variable.",
             "content": {
@@ -10153,11 +9733,21 @@
             }
           },
           "400": {
-            "description": "The variable is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "description": "The variable is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The change would break the model's formulas, such as a renamed key a formula reads, or an enabled report that reads the model; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -10168,21 +9758,21 @@
         "tags": [
           "Variables"
         ],
-        "summary": "Deletes a variable of a draft or published model version, unless a live report reads it.",
+        "summary": "Deletes a variable of a calculation model, unless a formula of the model or an enabled report reads it.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the version.",
+            "description": "The tenant that owns the model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "versionId",
+            "name": "modelId",
             "in": "path",
-            "description": "The version that owns the row.",
+            "description": "The model that owns the row.",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10221,25 +9811,25 @@
               }
             }
           },
-          "409": {
-            "description": "Nothing was deleted: the version is neither a draft nor published, or the detail names the report columns that return the variable.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "204": {
             "description": "The variable is deleted."
           },
           "400": {
-            "description": "The variable is not in the version; the error is keyed `itemId`.",
+            "description": "The variable is not the model's; the error is keyed `itemId`.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A formula of the model or an enabled report that reads the model reads the variable; nothing was deleted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -12456,7 +12046,7 @@
         "properties": {
           "measureKey": {
             "type": "string",
-            "description": "Key, unique among the version's variables and calculated measures."
+            "description": "Key, unique among the model's variables and calculated measures."
           },
           "displayName": {
             "type": "string",
@@ -12505,12 +12095,12 @@
             "description": "Presentation hint such as `number`, `percent` or `currency`."
           }
         },
-        "description": "A calculated measure of a draft model version, as its create and edit endpoints take it."
+        "description": "A calculated measure of a calculation model, as its create and edit endpoints take it."
       },
       "CalculatedMeasureRecord": {
         "required": [
           "calculatedMeasureId",
-          "modelVersionId",
+          "modelId",
           "measureKey",
           "displayName",
           "expressionText",
@@ -12524,14 +12114,14 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "modelId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning model.",
             "format": "int64"
           },
           "measureKey": {
             "type": "string",
-            "description": "Key, unique among the version's variables and calculated measures."
+            "description": "Key, unique among the model's variables and calculated measures."
           },
           "displayName": {
             "type": "string",
@@ -12580,7 +12170,7 @@
             "description": "Presentation hint such as `number`, `percent` or `currency`."
           }
         },
-        "description": "A `qe_calculated_measure` row: a formula over a model version's variables and other calculated measures."
+        "description": "A `qe_calculated_measure` row: a formula over a model's variables and other calculated measures."
       },
       "CalculationDimensionInput": {
         "required": [
@@ -12729,6 +12319,7 @@
       "CalculationModelInput": {
         "required": [
           "displayName",
+          "currencyCode",
           "isEnabled"
         ],
         "type": "object",
@@ -12737,18 +12328,25 @@
             "type": "string",
             "description": "Human-readable name."
           },
+          "currencyCode": {
+            "type": "string",
+            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
+          },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
           }
         },
-        "description": "The editable identity attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them."
+        "description": "The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them."
       },
       "CalculationModelRecord": {
         "required": [
           "modelId",
           "modelKey",
           "displayName",
+          "calendarKey",
+          "currencyCode",
+          "formulaLanguageVersion",
           "isEnabled"
         ],
         "type": "object",
@@ -12766,44 +12364,6 @@
             "type": "string",
             "description": "Human-readable name."
           },
-          "isEnabled": {
-            "type": "boolean",
-            "description": "Administrative availability flag."
-          }
-        },
-        "description": "A `qe_calculation_model` row: the stable identity of a calculation model, which reports read their figures from."
-      },
-      "CalculationModelVersionRecord": {
-        "required": [
-          "modelVersionId",
-          "modelId",
-          "versionNumber",
-          "status",
-          "calendarKey",
-          "currencyCode",
-          "formulaLanguageVersion"
-        ],
-        "type": "object",
-        "properties": {
-          "modelVersionId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
-          },
-          "modelId": {
-            "type": "integer",
-            "description": "The owning model.",
-            "format": "int64"
-          },
-          "versionNumber": {
-            "type": "integer",
-            "description": "Version number within the model.",
-            "format": "int32"
-          },
-          "status": {
-            "type": "string",
-            "description": "A `publication_status` value."
-          },
           "calendarKey": {
             "type": "string",
             "description": "The calendar its periods follow; `gregorian`."
@@ -12816,16 +12376,12 @@
             "type": "string",
             "description": "The expression grammar version its formulas use."
           },
-          "publishedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Publication time (UTC).",
-            "format": "date-time"
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
           }
         },
-        "description": "A `qe_calculation_model_version` row: one immutable version of a calculation model: its variables, sources, profiles, formulas and calculation dimensions."
+        "description": "A `qe_calculation_model` row: a calculation model, whose variables and calculated measures reports read."
       },
       "DatabaseInfoRecord": {
         "required": [
@@ -13120,52 +12676,6 @@
           }
         },
         "description": "The editable settings of a draft dataset version."
-      },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
       },
       "DimensionBindingRecord": {
         "required": [
@@ -13783,7 +13293,6 @@
       "EditorView": {
         "required": [
           "report",
-          "modelVersionId",
           "dimensionVersionId",
           "rows",
           "sources"
@@ -13791,13 +13300,8 @@
         "type": "object",
         "properties": {
           "report": {
-            "description": "The report, with its settings.",
+            "description": "The report, with its settings and the model whose variables and calculated measures it names.",
             "$ref": "#/components/schemas/ReportRecord"
-          },
-          "modelVersionId": {
-            "type": "integer",
-            "description": "The published version of the report's model, whose variables and calculated measures the report names.",
-            "format": "int64"
           },
           "dimensionVersionId": {
             "type": "integer",
@@ -15282,19 +14786,6 @@
         },
         "description": "Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings."
       },
-      "ModelVersionInput": {
-        "required": [
-          "currencyCode"
-        ],
-        "type": "object",
-        "properties": {
-          "currencyCode": {
-            "type": "string",
-            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
-          }
-        },
-        "description": "The editable attributes of a draft model version, as `PUT model-versions/{versionId}` takes them."
-      },
       "NewBridgeInput": {
         "required": [
           "bridgeKey",
@@ -15360,6 +14851,7 @@
         "required": [
           "modelKey",
           "displayName",
+          "currencyCode",
           "isEnabled"
         ],
         "type": "object",
@@ -15371,6 +14863,10 @@
           "displayName": {
             "type": "string",
             "description": "Human-readable name."
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
           },
           "isEnabled": {
             "type": "boolean",
@@ -15614,27 +15110,6 @@
         },
         "description": "A new member of a draft dimension version, as `POST dimension-versions/{dimensionVersionId}/members` takes it."
       },
-      "NewModelVersionInput": {
-        "required": [
-          "currencyCode"
-        ],
-        "type": "object",
-        "properties": {
-          "cloneFromVersionId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "A version of the same model whose variables and calculated measures the draft copies; null for an empty draft.",
-            "format": "int64"
-          },
-          "currencyCode": {
-            "type": "string",
-            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
-          }
-        },
-        "description": "A new draft version of a calculation model, as `POST calculation-models/{modelId}/versions` takes it: its attributes,\nand optionally a version of the same model whose content it copies."
-      },
       "NewReportInput": {
         "required": [
           "reportKey",
@@ -15650,7 +15125,7 @@
           },
           "modelId": {
             "type": "integer",
-            "description": "The calculation model whose published version the report reads; it must have one, and it never changes.",
+            "description": "The calculation model whose metrics the report reads; it never changes.",
             "format": "int64"
           },
           "startFromDimensionId": {
@@ -15804,8 +15279,7 @@
           "dimensionVersions",
           "mappingVersions",
           "bridgeVersions",
-          "releases",
-          "modelVersions"
+          "releases"
         ],
         "type": "object",
         "properties": {
@@ -15832,11 +15306,6 @@
           "releases": {
             "type": "integer",
             "description": "Draft semantic releases.",
-            "format": "int32"
-          },
-          "modelVersions": {
-            "type": "integer",
-            "description": "Draft calculation model versions.",
             "format": "int32"
           }
         },
@@ -16207,7 +15676,7 @@
           },
           "metricKey": {
             "type": "string",
-            "description": "The variable or calculated measure key of the published version of the report's model that the column returns."
+            "description": "The variable or calculated measure key of the report's model that the column returns."
           },
           "displayFormat": {
             "type": [
@@ -16375,7 +15844,7 @@
           },
           "modelId": {
             "type": "integer",
-            "description": "The calculation model whose published version the report reads; fixed at creation.",
+            "description": "The calculation model whose metrics the report reads; fixed at creation.",
             "format": "int64"
           },
           "defaultProfileKey": {
@@ -16422,7 +15891,7 @@
             "description": "Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout."
           }
         },
-        "description": "A `qe_report` row: a report, its settings and the calculation model whose metrics it shows. Reports are not versioned:\nthe engine reads an enabled report as it stands, with the published version of its model and of every dimension and bridge\nit names."
+        "description": "A `qe_report` row: a report, its settings and the calculation model whose metrics it shows. Reports are not versioned:\nthe engine reads an enabled report as it stands, with its model as it stands and the published version of every dimension and\nbridge it names."
       },
       "ReportRowInput": {
         "required": [
@@ -16472,7 +15941,7 @@
               "null",
               "string"
             ],
-            "description": "The calculated measure of the model's published version that a formula row evaluates; null for the other kinds."
+            "description": "The calculated measure of the report's model that a formula row evaluates; null for the other kinds."
           },
           "valueColumnKey": {
             "type": [
@@ -17129,7 +16598,7 @@
         "properties": {
           "variableKey": {
             "type": "string",
-            "description": "The key of a variable of the published version of the report's model."
+            "description": "The key of a variable of the report's model."
           },
           "measureKey": {
             "type": "string",
@@ -17183,7 +16652,7 @@
         "properties": {
           "isValid": {
             "type": "boolean",
-            "description": "Whether the connection opens a metadata schema version 7 database that belongs to the tenant."
+            "description": "Whether the connection opens a database of the metadata schema version this API supports that belongs to the tenant."
           },
           "message": {
             "type": "string",
@@ -17561,7 +17030,7 @@
         "properties": {
           "variableKey": {
             "type": "string",
-            "description": "Key, unique among the version's variables and calculated measures."
+            "description": "Key, unique among the model's variables and calculated measures."
           },
           "displayName": {
             "type": "string",
@@ -17587,12 +17056,12 @@
             "description": "Optional unit, such as a currency code."
           }
         },
-        "description": "A variable of an editable model version, as its create and edit endpoints take it."
+        "description": "A variable of a calculation model, as its create and edit endpoints take it."
       },
       "VariableRecord": {
         "required": [
           "variableId",
-          "modelVersionId",
+          "modelId",
           "variableKey",
           "displayName",
           "variableRole",
@@ -17606,14 +17075,14 @@
             "description": "Primary key.",
             "format": "int64"
           },
-          "modelVersionId": {
+          "modelId": {
             "type": "integer",
-            "description": "The owning model version.",
+            "description": "The owning model.",
             "format": "int64"
           },
           "variableKey": {
             "type": "string",
-            "description": "Key, unique among the version's variables and calculated measures; reports name the variable by it."
+            "description": "Key, unique among the model's variables and calculated measures; reports name the variable by it."
           },
           "displayName": {
             "type": "string",
@@ -17639,7 +17108,7 @@
             "description": "Optional unit, such as a currency code."
           }
         },
-        "description": "A `qe_variable` row: a logical input of a model version, which each report fills from one of its own sources."
+        "description": "A `qe_variable` row: a logical input of a model, which each report fills from one of its own sources."
       },
       "VersionCheck": {
         "required": [
@@ -17828,9 +17297,6 @@
       "name": "RangeBands"
     },
     {
-      "name": "DevelopmentToken"
-    },
-    {
       "name": "Datasets"
     },
     {
@@ -17847,9 +17313,6 @@
     },
     {
       "name": "CalculationModels"
-    },
-    {
-      "name": "CalculationModelVersions"
     },
     {
       "name": "Variables"

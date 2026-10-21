@@ -9,7 +9,7 @@ public sealed record NewReportInput : ReportInput
     /// <summary>Stable key, unique across reports and fixed once created; the report's own dimension takes it too.</summary>
     public required string ReportKey { get; init; }
 
-    /// <summary>The calculation model whose published version the report reads; it must have one, and it never changes.</summary>
+    /// <summary>The calculation model whose metrics the report reads; it never changes.</summary>
     public required long ModelId { get; init; }
 
     /// <summary>

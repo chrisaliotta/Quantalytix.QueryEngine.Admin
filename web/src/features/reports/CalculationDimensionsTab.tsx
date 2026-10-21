@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { EnabledBadge } from '@/shared/EnabledBadge';
+import { OwnedContentTab } from '@/shared/OwnedContentTab';
 import { useLookup } from '@/shared/useLookup';
-import { VersionContentTab } from '@/shared/VersionContentTab';
 import { CalculationDimensionSheet } from './CalculationDimensionSheet';
 import type { CalculationDimension } from './types';
 
@@ -27,10 +27,9 @@ export function CalculationDimensionsTab({ reportId }: { reportId: number }) {
   ];
 
   return (
-    <VersionContentTab
+    <OwnedContentTab
       kind="calculation-dimensions"
       ownerId={reportId}
-      isEditable
       columns={columns}
       noun="dimension"
       identify={dimension => ({ id: dimension.calculationDimensionId, key: dimension.dimensionKey })}

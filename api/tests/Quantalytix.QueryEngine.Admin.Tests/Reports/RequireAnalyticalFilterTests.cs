@@ -38,7 +38,7 @@ public sealed class RequireAnalyticalFilterTests
     [InlineData(AnalyticalTarget.RoutedVersion, StructureVersionId, VersionKinds.DimensionVersion, true)]
     [InlineData(AnalyticalTarget.Dimension, AccountDimensionId, null, false)]
     [InlineData(AnalyticalTarget.DimensionVersion, AccountVersionId, null, false)]
-    [InlineData(AnalyticalTarget.RoutedVersion, 41L, VersionKinds.CalculationModelVersion, false)]
+    [InlineData(AnalyticalTarget.RoutedVersion, 900L, VersionKinds.SemanticRelease, false)]
     public async Task ReportOwnedObjects_AreRefused(AnalyticalTarget target, long id, string? kind, bool refused)
     {
         var (ran, context) = await RunAsync(target, id, kind);

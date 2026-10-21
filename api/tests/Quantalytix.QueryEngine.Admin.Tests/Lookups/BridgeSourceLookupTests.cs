@@ -103,7 +103,6 @@ public sealed class BridgeSourceLookupTests
             new BindingNames(roles, fields),
             new CalculationLookups(
                 new InMemoryTableGateway<CalculationModelRecord>(),
-                new InMemoryTableGateway<CalculationModelVersionRecord>(),
                 new InMemoryTableGateway<VariableRecord>(),
                 new InMemoryTableGateway<ReportSourceRecord>(),
                 new InMemoryTableGateway<SourceProfileRecord>(),

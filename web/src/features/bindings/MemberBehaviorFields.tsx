@@ -1,7 +1,7 @@
 import { useFormContext, useWatch } from 'react-hook-form';
 import { FieldSeparator } from '@/components/ui/field';
 import { groupingSource, KeyField, VocabularyField } from '@/shared/form';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
+import { usePublishedDimensionItems } from '@/shared/useLatestVersionItems';
 import type { BindingFormValues } from './bindingForm';
 
 export interface MemberBehaviorFieldsProps {
@@ -17,7 +17,7 @@ export interface MemberBehaviorFieldsProps {
 export function MemberBehaviorFields({ dimensionId }: MemberBehaviorFieldsProps) {
   const { control } = useFormContext<BindingFormValues>();
   const unmapped = useWatch({ control, name: 'unmappedBehavior' });
-  const members = usePublishedVersionItems('dimension-versions', dimensionId, 'members');
+  const members = usePublishedDimensionItems(dimensionId, 'members');
 
   return (
     <>

@@ -4,17 +4,16 @@
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
 #     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding of the seed branch role through the
 #     seed mapping set loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors
-#     and publishes calculation model ${PREFIX}margin (2 variables and a yield formula) and builds report ${PREFIX}margin over
-#     it through the report editor: its own report dimension starts as a copy of the seed MarginStatement dimension, 2 GL
-#     monthly bridge sources on the seed account role map accounts to rows as the seed report's gl_monthly source does and
-#     make the default profile, a branch calculation dimension reads the seed branch role, which each GL dataset binds, and
-#     3 columns, a header row and a formula row follow; then it enables the report. It captures assumption set
-#     ${PREFIX}backtest, which keeps the release active at that moment. Then it creates release ${PREFIX}acceptance as a copy of
-#     the active release plus the dataset version, validates, publishes and activates it, renames the report's yield column
-#     live, checks
-#     GetCatalog, Execute, GetReportCatalog (which must show the renamed column) and ExecuteReport on the engine, checks that
-#     GetCatalog naming ${PREFIX}backtest still reads the release it captured, and re-activates the release that was active
-#     before.
+#     calculation model ${PREFIX}margin in US dollars (2 variables and a yield formula, live as written) and builds report
+#     ${PREFIX}margin over it through the report editor: its own report dimension starts as a copy of the seed
+#     MarginStatement dimension, 2 GL monthly bridge sources on the seed account role map accounts to rows as the seed
+#     report's gl_monthly source does and make the default profile, a branch calculation dimension reads the seed branch
+#     role, which each GL dataset binds, and 3 columns, a header row and a formula row follow; then it enables the report. It
+#     captures assumption set ${PREFIX}backtest, which keeps the release active at that moment. Then it creates release
+#     ${PREFIX}acceptance as a copy of the active release plus the dataset version, validates, publishes and activates it,
+#     renames the report's yield column live, checks GetCatalog, Execute, GetReportCatalog (which must show the renamed column)
+#     and ExecuteReport on the engine, checks that GetCatalog naming ${PREFIX}backtest still reads the release it captured, and
+#     re-activates the release that was active before.
 #   PREFIX=zz_live_ DATASET_KEY=zz_bm_loans MEASURES="zzBmBalance zzBmRate zzBmBalanceRate zzBmEndingBalance" ./qe-acceptance.sh
 #     Releases an existing dataset's latest published version instead of authoring one.
 #   PREFIX=zz_w2_ AUTHOR_CHECK_ONLY=1 ./qe-acceptance.sh
@@ -25,9 +24,8 @@
 # under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant $TENANT, development by
 # default, and never prints the control-plane connection string. While it runs, its release is the tenant's active
 # release, so don't run the engine's golden cases at the same time.
-# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model (published v1) and report (enabled)
-# with the report's dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit
-# is reloaded. Their keys stay taken, so every run needs a new PREFIX.
+# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (enabled) with the report's
+# dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is reloaded. Their keys stay taken, so every run needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
@@ -133,8 +131,8 @@ author_dataset() {
   call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"published"}'
 }
 
-# Authors and publishes model ${PREFIX}margin, which holds the metrics, and builds report ${PREFIX}margin over it through the
-# report editor. The report creates its own report dimension as a copy of the seed MarginStatement dimension, whose members
+# Authors model ${PREFIX}margin, which holds the metrics and has no versions to publish, and builds report ${PREFIX}margin over
+# it through the report editor. The report creates its own report dimension as a copy of the seed MarginStatement dimension, whose members
 # are its rows. Two sources bridge from the seed account role, which each GL dataset binds: gl_balance maps the GL accounts to
 # rows as the seed report's gl_monthly source does, and gl_income starts as a copy of gl_balance's mappings. Binding their
 # variables makes profile default, which picks both. The branch calculation dimension on the seed branch role, the columns and
@@ -170,16 +168,12 @@ for row in view['rows']:
         print(json.dumps({'rowKey': row['key'], 'items': items}))
 EOF
 
-  call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'isEnabled': True}")"
+  call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'currencyCode': 'USD', 'isEnabled': True}")"
   MODEL=$(py "r['modelId']")
-  call POST "/calculation-models/$MODEL/versions" 200 '{"currencyCode":"USD","cloneFromVersionId":null}'
-  MODEL_VERSION=$(py "r['modelVersionId']")
-  local M=/model-versions/$MODEL_VERSION
+  local M=/calculation-models/$MODEL
   call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'variableRole': 'average_balance', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
   call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'variableRole': 'interest_income', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
   call POST "$M/calculated-measures" 200 "$(json "{'measureKey': 'YIELD', 'displayName': 'Yield', 'expressionText': '[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays', 'outputDataType': 'decimal', 'outputPrecision': 28, 'outputScale': 6, 'roundingMode': None, 'unitKey': None, 'displayFormat': 'percent'}")"
-  call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"validated"}'
-  call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"published"}'
 
   call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'modelId': $MODEL, 'startFromDimensionId': $statement, 'payloadJson': None}")"
   REPORT=$(py "r['reportId']")
@@ -247,7 +241,7 @@ restore() {
 if [ -n "${DATASET_KEY:-}" ]; then find_published_version; else author_dataset; fi
 echo "Dataset $DATASET_KEY: version $VERSION"
 author_report
-echo "Report $REPORT_KEY: enabled, over model version $MODEL_VERSION"
+echo "Report $REPORT_KEY: enabled, over model $MODEL"
 
 call GET /overview 200
 ORIGINAL_ID=$(py "r['activeRelease']['releaseId']")
@@ -362,7 +356,7 @@ var catalogReports = reportCatalog.GetProperty("reports").EnumerateArray().ToLis
 Console.WriteLine($"GetReportCatalog: releaseKey={Text(reportCatalog, "releaseKey")} reports={catalogReports.Count}");
 foreach (var item in catalogReports)
 {
-    Console.WriteLine($"  report {Text(item, "key")} model={Text(item, "modelKey")} v{Text(item, "modelVersion")} reportDimension={Text(item, "reportDimensionKey")} columns={item.GetProperty("columns").GetArrayLength()} lines={item.GetProperty("lines").GetArrayLength()}");
+    Console.WriteLine($"  report {Text(item, "key")} model={Text(item, "modelKey")} currency={Text(item, "currencyCode")} reportDimension={Text(item, "reportDimensionKey")} columns={item.GetProperty("columns").GetArrayLength()} lines={item.GetProperty("lines").GetArrayLength()}");
 }
 var liveEditServed = catalogReports.Any(item => item.GetProperty("columns").EnumerateArray().Any(column => Text(column, "displayName") == liveColumnName));
 Console.WriteLine($"  live column rename served: {liveEditServed}");

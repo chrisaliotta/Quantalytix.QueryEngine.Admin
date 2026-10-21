@@ -10,7 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Configuration;
 public static class AdminApplicationServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers tenant listing, lookups, the six version stores, their registry, the version workflow with the publication set
+    /// Registers tenant listing, lookups, the five version stores, their registry, the version workflow with the publication set
     /// its rules read, a predecessor retirer for each living kind and the semantic revision, all scoped to the request. The API
     /// registers the FluentValidation validators by scanning this assembly.
     /// </summary>
@@ -26,7 +26,6 @@ public static class AdminApplicationServiceCollectionExtensions
         services.AddScoped<IVersionStore, MappingVersionStore>();
         services.AddScoped<IVersionStore, BridgeVersionStore>();
         services.AddScoped<IVersionStore, SemanticReleaseStore>();
-        services.AddScoped<IVersionStore, CalculationModelVersionStore>();
         services.AddScoped<VersionStoreRegistry>();
         services.AddScoped<PublicationSet>();
         services.AddScoped<VersionWorkflow>();

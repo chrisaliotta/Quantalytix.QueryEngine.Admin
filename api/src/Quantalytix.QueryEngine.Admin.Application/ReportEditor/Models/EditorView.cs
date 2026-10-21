@@ -8,11 +8,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 /// </summary>
 public sealed record EditorView
 {
-    /// <summary>The report, with its settings.</summary>
+    /// <summary>The report, with its settings and the model whose variables and calculated measures it names.</summary>
     public required ReportRecord Report { get; init; }
-
-    /// <summary>The published version of the report's model, whose variables and calculated measures the report names.</summary>
-    public required long ModelVersionId { get; init; }
 
     /// <summary>The report dimension's one version, whose members are the member rows.</summary>
     public required long DimensionVersionId { get; init; }

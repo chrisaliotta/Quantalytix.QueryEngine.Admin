@@ -63,13 +63,10 @@ public static class LookupKinds
     /// <summary>Assumption sets, the active one first.</summary>
     public const string AssumptionSets = "assumption-sets";
 
-    /// <summary>Calculation models, classified by the key of their published version, which a report reads; none while there is none.</summary>
+    /// <summary>Calculation models, classified by their currency code.</summary>
     public const string CalculationModels = "calculation-models";
 
-    /// <summary>Versions of a calculation model; the parent is the model.</summary>
-    public const string ModelVersions = "model-versions";
-
-    /// <summary>Variables of a model version; the parent is the model version.</summary>
+    /// <summary>Variables of a calculation model; the parent is the model.</summary>
     public const string Variables = "variables";
 
     /// <summary>Sources of a report, classified by their mapping method; the parent is the report.</summary>
@@ -78,7 +75,7 @@ public static class LookupKinds
     /// <summary>Source profiles of a report; the parent is the report.</summary>
     public const string SourceProfiles = "source-profiles";
 
-    /// <summary>Calculated measures of a model version; the parent is the model version.</summary>
+    /// <summary>Calculated measures of a calculation model; the parent is the model.</summary>
     public const string CalculatedMeasures = "calculated-measures";
 
     /// <summary>Calculation dimensions of a report; the parent is the report.</summary>
@@ -116,12 +113,11 @@ public static class LookupKinds
             new() { Value = BridgeVersions, Description = "Versions of a bridge; the parent is the bridge." },
             new() { Value = Releases, Description = "Semantic releases." },
             new() { Value = AssumptionSets, Description = "Assumption sets, the active one first." },
-            new() { Value = CalculationModels, Description = "Calculation models, classified by the key of their published version, if any." },
-            new() { Value = ModelVersions, Description = "Versions of a calculation model; the parent is the model." },
-            new() { Value = Variables, Description = "Variables of a model version; the parent is the model version." },
+            new() { Value = CalculationModels, Description = "Calculation models, classified by their currency code." },
+            new() { Value = Variables, Description = "Variables of a calculation model; the parent is the model." },
             new() { Value = ReportSources, Description = "Sources of a report, classified by their mapping method; the parent is the report." },
             new() { Value = SourceProfiles, Description = "Source profiles of a report; the parent is the report." },
-            new() { Value = CalculatedMeasures, Description = "Calculated measures of a model version; the parent is the model version." },
+            new() { Value = CalculatedMeasures, Description = "Calculated measures of a calculation model; the parent is the model." },
             new() { Value = CalculationDimensions, Description = "Calculation dimensions of a report; the parent is the report." },
             new() { Value = Reports, Description = "Reports." },
             new() { Value = ReportColumns, Description = "Columns of a report; the parent is the report." }

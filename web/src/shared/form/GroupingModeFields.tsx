@@ -1,5 +1,5 @@
 import { useWatch } from 'react-hook-form';
-import { usePublishedVersionItems } from '../useLatestVersionItems';
+import { usePublishedDimensionItems } from '../useLatestVersionItems';
 import { groupingSource } from './grouping';
 import { KeyField } from './KeyField';
 import { NumberField } from './NumberField';
@@ -17,8 +17,8 @@ export interface GroupingModeFieldsProps {
  */
 export function GroupingModeFields({ dimensionId }: GroupingModeFieldsProps) {
   const mode = useWatch({ name: 'groupingMode' });
-  const levels = usePublishedVersionItems('dimension-versions', dimensionId, 'levels');
-  const members = usePublishedVersionItems('dimension-versions', dimensionId, 'members');
+  const levels = usePublishedDimensionItems(dimensionId, 'levels');
+  const members = usePublishedDimensionItems(dimensionId, 'members');
   const source = groupingSource(dimensionId, members);
 
   return (

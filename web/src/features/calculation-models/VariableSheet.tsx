@@ -2,8 +2,8 @@ import { useForm } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { TextField, VocabularyField } from '@/shared/form';
+import { useSaveOwnedContent } from '@/shared/ownedContent';
 import { emptyToNull } from '@/shared/text';
-import { useSaveVersionContent } from '@/shared/versionContent';
 import type { Variable } from './types';
 
 /** Values of the variable sheet; a choice not made yet is null, and an optional text is empty for none. */
@@ -17,19 +17,18 @@ interface VariableValues {
 }
 
 export interface VariableSheetProps {
-  versionId: number;
-  /** The variable to edit or view; null to create one. */
+  modelId: number;
+  /** The variable to edit; null to create one. */
   variable: Variable | null;
-  readOnly: boolean;
   onClose: () => void;
 }
 
 /**
- * Creates, edits or shows a variable: its key, role, how missing values count and how clients show it. Which rows it reads
- * is each report's choice, through the report's sources and targets.
+ * Creates or edits a variable: its key, role, how missing values count and how clients show it. Which rows it reads is each
+ * report's choice, through the report's sources and targets.
  */
-export function VariableSheet({ versionId, variable, readOnly, onClose }: VariableSheetProps) {
-  const save = useSaveVersionContent('variables', versionId, variable?.variableId ?? null);
+export function VariableSheet({ modelId, variable, onClose }: VariableSheetProps) {
+  const save = useSaveOwnedContent('variables', modelId, variable?.variableId ?? null);
   const form = useForm<VariableValues>({
     defaultValues: {
       variableKey: variable?.variableKey ?? '',
@@ -49,11 +48,10 @@ export function VariableSheet({ versionId, variable, readOnly, onClose }: Variab
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('variable', variable?.variableKey ?? null, readOnly)}
+      title={contentSheetTitle('variable', variable?.variableKey ?? null)}
       description="Variables and calculated measures share one key namespace, because a formula names either as [m.KEY]."
       form={form}
       onSubmit={submit}
-      readOnly={readOnly}
     >
       <TextField name="variableKey" label="Key" description="A letter, then letters, digits or underscores." />
       <TextField name="displayName" label="Name" description="The label a report column shows unless it names its own." />

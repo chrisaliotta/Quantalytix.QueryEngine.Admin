@@ -7,13 +7,13 @@ using Quantalytix.QueryEngine.Admin.Application.Reports;
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Checks a source's complete variable list: each variable once, a variable of the published version of the report's model, and
+/// Checks a source's complete variable list: each variable once, a variable of the report's model, and
 /// against the active release's version of the source's dataset an enabled measure and a filter over enabled, filterable fields.
 /// </summary>
 public sealed class SourceVariablesInputValidator : AbstractValidator<SourceVariablesInput>
 {
     /// <summary>Declares the rules.</summary>
-    /// <param name="metrics">Reads the variables of the published version of the report's model.</param>
+    /// <param name="metrics">Reads the variables of the report's model.</param>
     /// <param name="sources">Reads the route's source.</param>
     /// <param name="releaseDatasets">Reads the active release's version of the source's dataset.</param>
     /// <param name="keys">Names the route's report and source.</param>
@@ -45,7 +45,7 @@ public sealed class SourceVariablesInputValidator : AbstractValidator<SourceVari
             foreach (var variable in variables)
             {
                 if (!model.VariableKeys.Contains(variable.VariableKey))
-                    context.AddFailure($"'{variable.VariableKey}' is no variable of the published version of the report's model.");
+                    context.AddFailure($"'{variable.VariableKey}' is no variable of the report's model.");
                 if (dataset.Measures.GetValueOrDefault(variable.MeasureKey) is not { IsEnabled: true })
                     context.AddFailure($"Variable '{variable.VariableKey}' reads '{variable.MeasureKey}', which is no enabled measure of '{dataset.DatasetKey}'.");
                 if (variable.SourceFilterJson is not { } filter) continue;

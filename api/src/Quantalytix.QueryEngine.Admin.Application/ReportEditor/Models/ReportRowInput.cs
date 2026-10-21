@@ -24,7 +24,7 @@ public sealed record ReportRowInput
     /// <summary>Whether a group row shows its total; false makes it a header. Every other kind shows its values.</summary>
     public required bool ShowsValues { get; init; }
 
-    /// <summary>The calculated measure of the model's published version that a formula row evaluates; null for the other kinds.</summary>
+    /// <summary>The calculated measure of the report's model that a formula row evaluates; null for the other kinds.</summary>
     public string? CalculatedMeasureKey { get; init; }
 
     /// <summary>The key of the report's column a formula row places its value in; null for the other kinds.</summary>

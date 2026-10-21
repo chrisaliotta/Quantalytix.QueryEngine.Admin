@@ -34,7 +34,7 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     }
 
     /// <summary>
-    /// Creates a disabled report over a model with a published version, and its own report dimension, keyed and named like it,
+    /// Creates a disabled report over a calculation model, and its own report dimension, keyed and named like it,
     /// whose one version copies the published members of <c>startFromDimensionId</c> or holds a single root row and is published
     /// at once.
     /// </summary>
@@ -43,7 +43,7 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created report.</returns>
     /// <response code="200">The created report.</response>
-    /// <response code="400">The input breaks a field rule, such as a taken key or a model without a published version; errors are keyed by camelCase JSON path.</response>
+    /// <response code="400">The input breaks a field rule, such as a taken key or an unknown model; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]

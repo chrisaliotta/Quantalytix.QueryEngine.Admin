@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { EnabledBadge } from '@/shared/EnabledBadge';
-import { VersionContentTab } from '@/shared/VersionContentTab';
+import { OwnedContentTab } from '@/shared/OwnedContentTab';
 import { SourceProfileSheet } from './SourceProfileSheet';
 import type { EditorView, SourceProfile } from './types';
 
@@ -19,10 +19,9 @@ const columns: ColumnDef<SourceProfile>[] = [
 /** The report's source profiles: which source each variable reads when a request runs under the profile. */
 export function SourceProfilesTab({ view }: { view: EditorView }) {
   return (
-    <VersionContentTab
+    <OwnedContentTab
       kind="profiles"
       ownerId={view.report.reportId}
-      isEditable
       columns={columns}
       noun="profile"
       identify={profile => ({ id: profile.profile.sourceProfileId, key: profile.profile.profileKey })}

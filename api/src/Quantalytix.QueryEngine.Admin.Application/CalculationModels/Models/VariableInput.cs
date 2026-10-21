@@ -1,9 +1,9 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>A variable of an editable model version, as its create and edit endpoints take it.</summary>
+/// <summary>A variable of a calculation model, as its create and edit endpoints take it.</summary>
 public sealed record VariableInput
 {
-    /// <summary>Key, unique among the version's variables and calculated measures.</summary>
+    /// <summary>Key, unique among the model's variables and calculated measures.</summary>
     public required string VariableKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

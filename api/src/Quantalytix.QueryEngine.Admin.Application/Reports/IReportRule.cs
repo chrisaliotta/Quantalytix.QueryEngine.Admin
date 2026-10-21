@@ -4,8 +4,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// A check every enabled report passes, because the engine trusts what it reads: it runs when a report is enabled, on every write
-/// to an enabled report before the write, and, through <see cref="ReportConsumerRule"/>, when a model version or a release that
-/// enabled reports read is validated. A rule reads only the report and its scope, so it checks a report as a write would leave it.
+/// to an enabled report before the write, and, through <see cref="ReportConsumerRule"/>, when a release that enabled reports read is
+/// validated; the rules that read a model's metrics also run, through <see cref="CalculationModels.ModelChanges"/>, on every write
+/// to the model. A rule reads only the report and its scope, so it checks a report as a write would leave it.
 /// </summary>
 public interface IReportRule
 {

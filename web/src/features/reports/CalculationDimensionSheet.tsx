@@ -3,8 +3,8 @@ import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { EntityField, GroupingModeFields, SwitchField, TextField, toGroupingReferences, type GroupingValues } from '@/shared/form';
+import { useSaveOwnedContent } from '@/shared/ownedContent';
 import { useLookup } from '@/shared/useLookup';
-import { useSaveVersionContent } from '@/shared/versionContent';
 import type { CalculationDimension } from './types';
 
 /** Values of the calculation dimension sheet; a choice not made yet is null. */
@@ -29,7 +29,7 @@ export interface CalculationDimensionSheetProps {
  * template's members grouped by member, level, ancestor or depth. Levels and members come from the template's published version.
  */
 export function CalculationDimensionSheet({ reportId, dimension, onClose }: CalculationDimensionSheetProps) {
-  const save = useSaveVersionContent('calculation-dimensions', reportId, dimension?.calculationDimensionId ?? null);
+  const save = useSaveOwnedContent('calculation-dimensions', reportId, dimension?.calculationDimensionId ?? null);
   const roles = useLookup('dimension-roles');
   const form = useForm<CalculationDimensionValues>({
     defaultValues: {
@@ -66,7 +66,7 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('dimension', dimension?.dimensionKey ?? null, false)}
+      title={contentSheetTitle('dimension', dimension?.dimensionKey ?? null)}
       form={form}
       onSubmit={submit}
     >

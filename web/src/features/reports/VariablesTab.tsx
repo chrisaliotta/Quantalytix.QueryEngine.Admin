@@ -27,7 +27,7 @@ interface Binding {
  * request's profile picks, which the Profiles tab edits.
  */
 export function VariablesTab({ view, onShowProfiles }: VariablesTabProps) {
-  const variables = useLookup('variables', view.modelVersionId);
+  const variables = useLookup('variables', view.report.modelId);
   const [binding, setBinding] = useState<Binding | null>(null);
 
   if (variables.error) {

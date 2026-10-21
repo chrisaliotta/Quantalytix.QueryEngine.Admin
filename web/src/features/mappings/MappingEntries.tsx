@@ -6,7 +6,7 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EntityTable } from '@/shared/EntityTable';
 import type { LookupItem } from '@/shared/types';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
+import { usePublishedDimensionItems } from '@/shared/useLatestVersionItems';
 import { useDeleteEntry, useMappingEntries } from './api';
 import { EntriesPasteDialog } from './EntriesPasteDialog';
 import { EntrySheet } from './EntrySheet';
@@ -46,7 +46,7 @@ export interface MappingEntriesProps {
  */
 export function MappingEntries({ versionId, dimensionId, isEditable }: MappingEntriesProps) {
   const entries = useMappingEntries(versionId);
-  const members = usePublishedVersionItems('dimension-versions', dimensionId, 'members');
+  const members = usePublishedDimensionItems(dimensionId, 'members');
   const deleteEntry = useDeleteEntry(versionId);
   const [sheet, setSheet] = useState<EntrySheetRequest | null>(null);
   const [pasting, setPasting] = useState(false);

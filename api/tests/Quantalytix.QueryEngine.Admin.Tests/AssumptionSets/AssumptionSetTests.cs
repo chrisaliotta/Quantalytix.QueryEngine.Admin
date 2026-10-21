@@ -50,10 +50,6 @@ public sealed class AssumptionSetTests
         new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = BranchId, DimensionVersionId = 101 },
         new AssumptionSetDimensionRecord { AssumptionSetId = HistoricalSetId, DimensionId = BranchId, DimensionVersionId = 101 });
 
-    /// <summary>The active set pins v1 of the margin model.</summary>
-    private readonly InMemoryTableGateway<AssumptionSetModelRecord> _modelPins = new(
-        new AssumptionSetModelRecord { AssumptionSetId = ActiveSetId, ModelId = 40, ModelVersionId = 41 });
-
     /// <summary>No bridge pins at first.</summary>
     private readonly InMemoryTableGateway<AssumptionSetBridgeRecord> _bridgePins = new();
 
@@ -75,7 +71,7 @@ public sealed class AssumptionSetTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 11,
+        MetadataSchemaVersion = 12,
         SemanticRevision = StartingRevision,
         ActiveReleaseId = ActiveReleaseId,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -87,7 +83,7 @@ public sealed class AssumptionSetTests
     /// <summary>Builds the pins over this test's tables.</summary>
     public AssumptionSetTests()
     {
-        _pins = new AssumptionPins(_sets, _dimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), _bridgePins, _modelPins);
+        _pins = new AssumptionPins(_sets, _dimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), _bridgePins);
     }
 
     /// <summary>
@@ -123,9 +119,7 @@ public sealed class AssumptionSetTests
 
         var set = await Service().CaptureAsync(new AssumptionCaptureInput { AssumptionSetKey = "fy2026_q3", DisplayName = "FY2026 Q3 close" }, cancellationToken);
 
-        Assert.Equal(
-            [new PinnedVersion(VersionKinds.DimensionVersion, BranchId, 101), new PinnedVersion(VersionKinds.CalculationModelVersion, 40, 41)],
-            await _pins.ListAsync(set.AssumptionSetId, cancellationToken));
+        Assert.Equal([new PinnedVersion(VersionKinds.DimensionVersion, BranchId, 101)], await _pins.ListAsync(set.AssumptionSetId, cancellationToken));
     }
 
     /// <summary>Publishing v2 of the branch dimension repoints the active set and leaves the historical set on v1.</summary>
@@ -178,9 +172,7 @@ public sealed class AssumptionSetTests
             new InMemoryTableGateway<MappingSetRecord>(),
             new InMemoryTableGateway<MappingVersionRecord>(),
             _bridges,
-            bridgeVersions,
-            new InMemoryTableGateway<CalculationModelRecord>(),
-            new InMemoryTableGateway<CalculationModelVersionRecord>());
+            bridgeVersions);
         var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, bridgeVersions, new InMemoryTableGateway<ReportRecord>());
         return new AssumptionSetService(
             _sets, _pins, reader, ownership, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);

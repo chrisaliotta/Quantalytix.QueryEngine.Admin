@@ -34,7 +34,7 @@ public sealed class ReportFactorsApplyRuleTests
             violation.Message);
         Assert.Equal(
             violation.Message,
-            Assert.Single(await _fixture.EvaluateConsumersAsync(new ReportFactorsApplyRule(), VersionKinds.SemanticRelease, ReleaseId)).Message);
+            Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportFactorsApplyRule(), ReleaseId)).Message);
     }
 
     /// <summary>Whole rules pass whatever the measure does, and a factor passes once the measure applies bridge factors.</summary>

@@ -12,8 +12,8 @@ interface PinRow extends AssumptionPin {
 }
 
 /**
- * An assumption set's pins: for each dimension, mapping set, bridge, calculation model and report, the version the set
- * pins, linking to it, with its status. A historical set's pins are retired once later versions are published.
+ * An assumption set's pins: for each dimension, mapping set and bridge, the version the set pins, linking to it, with its
+ * status. A historical set's pins are retired once later versions are published.
  */
 export function AssumptionPinsTable({ pins }: { pins: AssumptionPin[] }) {
   const tenantId = useTenantId();

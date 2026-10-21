@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -8,7 +7,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Lookups;
 /// <summary>Serves the pickers of calculation models and reports, for <see cref="LookupService"/>.</summary>
 public sealed class CalculationLookups(
     ITableGateway<CalculationModelRecord> models,
-    ITableGateway<CalculationModelVersionRecord> modelVersions,
     ITableGateway<VariableRecord> variables,
     ITableGateway<ReportSourceRecord> sources,
     ITableGateway<SourceProfileRecord> profiles,
@@ -26,20 +24,15 @@ public sealed class CalculationLookups(
     {
         return kind switch
         {
-            LookupKinds.CalculationModels => await ModelsAsync(cancellationToken),
-            LookupKinds.ModelVersions => [.. (await modelVersions.ListAsync(new { ModelId = parentId }, cancellationToken))
-                .OrderBy(row => row.VersionNumber)
-                .Select(row => new LookupItem
-                {
-                    Id = row.ModelVersionId, Key = VersionKey(row.VersionNumber), Label = $"{VersionKey(row.VersionNumber)} · {row.CurrencyCode}", Status = row.Status
-                })],
-            LookupKinds.Variables => Sorted((await variables.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
+            LookupKinds.CalculationModels => Sorted((await models.ListAsync(null, cancellationToken))
+                .Select(row => new LookupItem { Id = row.ModelId, Key = row.ModelKey, Label = row.DisplayName, Classifier = row.CurrencyCode })),
+            LookupKinds.Variables => Sorted((await variables.ListAsync(new { ModelId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.VariableId, Key = row.VariableKey, Label = row.DisplayName, Classifier = row.VariableRole })),
             LookupKinds.ReportSources => Sorted((await sources.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.ReportSourceId, Key = row.SourceKey, Label = row.DisplayName, Classifier = row.MappingMethod })),
             LookupKinds.SourceProfiles => Sorted((await profiles.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.SourceProfileId, Key = row.ProfileKey, Label = row.DisplayName })),
-            LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { ModelVersionId = parentId }, cancellationToken))
+            LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { ModelId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculatedMeasureId, Key = row.MeasureKey, Label = row.DisplayName, Classifier = row.DisplayFormat })),
             LookupKinds.CalculationDimensions => Sorted((await calculationDimensions.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculationDimensionId, Key = row.DimensionKey, Label = row.DisplayName, Classifier = row.GroupingMode })),
@@ -52,24 +45,9 @@ public sealed class CalculationLookups(
         };
     }
 
-    /// <summary>The calculation models, each classified by the key of its published version, which a new report needs.</summary>
-    private async Task<IReadOnlyList<LookupItem>> ModelsAsync(CancellationToken cancellationToken)
-    {
-        var published = (await modelVersions.ListAsync(new { Status = PublicationStatuses.Published }, cancellationToken))
-            .ToDictionary(version => version.ModelId, version => VersionKey(version.VersionNumber));
-        return Sorted((await models.ListAsync(null, cancellationToken))
-            .Select(row => new LookupItem { Id = row.ModelId, Key = row.ModelKey, Label = row.DisplayName, Classifier = published.GetValueOrDefault(row.ModelId) }));
-    }
-
     /// <summary>Orders items by key, ignoring case.</summary>
     private static IReadOnlyList<LookupItem> Sorted(IEnumerable<LookupItem> items)
     {
         return [.. items.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)];
-    }
-
-    /// <summary>The key of a version: <c>v</c> followed by its number.</summary>
-    private static string VersionKey(int versionNumber)
-    {
-        return string.Create(CultureInfo.InvariantCulture, $"v{versionNumber}");
     }
 }

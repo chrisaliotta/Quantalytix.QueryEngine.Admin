@@ -1,10 +1,9 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { JsonField, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { useOwnedContent } from '@/shared/ownedContent';
 import { emptyToNull } from '@/shared/text';
 import type { LookupItem } from '@/shared/types';
-import { usePublishedVersion } from '@/shared/useLatestVersionItems';
-import { useVersionContent } from '@/shared/versionContent';
 import type { ReportColumnInput } from './types';
 
 /** Values of the column sheet; a choice not made yet is null, and optional text is empty for none. */
@@ -19,7 +18,7 @@ interface ReportColumnValues {
 }
 
 export interface ReportColumnSheetProps {
-  /** The calculation model whose published version's metrics the column can return. */
+  /** The calculation model whose metrics the column can return. */
   modelId: number;
   /** The column to edit; null to add one. */
   column: ReportColumnInput | null;
@@ -33,9 +32,8 @@ export interface ReportColumnSheetProps {
  * name and format it shows instead of the metric's own.
  */
 export function ReportColumnSheet({ modelId, column, onSave, onClose }: ReportColumnSheetProps) {
-  const model = usePublishedVersion('model-versions', modelId);
-  const variables = useVersionContent('variables', model?.id ?? null);
-  const measures = useVersionContent('calculated-measures', model?.id ?? null);
+  const variables = useOwnedContent('variables', modelId);
+  const measures = useOwnedContent('calculated-measures', modelId);
   const form = useForm<ReportColumnValues>({
     defaultValues: {
       columnKey: column?.columnKey ?? '',
@@ -61,7 +59,7 @@ export function ReportColumnSheet({ modelId, column, onSave, onClose }: ReportCo
     label: measure.displayName,
     classifier: measure.displayFormat,
   }));
-  const metrics = model === null ? [] : ((isVariable ? variableItems : measureItems) ?? null);
+  const metrics = (isVariable ? variableItems : measureItems) ?? null;
   const metric = metrics?.find(item => item.key === metricKey);
 
   async function submit(values: ReportColumnValues) {

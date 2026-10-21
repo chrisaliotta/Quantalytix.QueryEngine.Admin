@@ -1,16 +1,16 @@
 # Query Engine Admin API
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
-datasets, fields, grains, dimensions and their roles, members, mappings, bridges, bindings, measures, calculation models
-and their versions, reports, releases, assumption sets and the tenant directory. A role is a named use of a dimension, such
-as `servicingBranch` of `branch`: a binding binds a field to a role, and requests name the binding by the role's key.
-Drafts never reach queries. Dataset versions reach them only
-through an activated release. Dimension, mapping, bridge and calculation model versions are living: the
-published one is the default every request reads through the active assumption set, edits to it are live, and publishing
-the next version retires it. A query can name a captured historical assumption set to backtest against the versions of
-its time, over the dataset versions of the release that was active when it was captured. Reports are not versioned: the
-report editor builds a report's rows and sources in place, the engine runs a report while it is enabled, always on the
-active assumption set, and every write to an enabled report is checked against the report rules before it is made.
+datasets, fields, grains, dimensions and their roles, members, mappings, bridges, bindings, measures, calculation models,
+reports, releases, assumption sets and the tenant directory. A role is a named use of a dimension, such as
+`servicingBranch` of `branch`: a binding binds a field to a role, and requests name the binding by the role's key.
+Drafts never reach queries. Dataset versions reach them only through an activated release. Dimension, mapping and bridge
+versions are living: the published one is the default every request reads through the active assumption set, edits to it
+are live, and publishing the next version retires it. A query can name a captured historical assumption set to backtest
+against the versions of its time, over the dataset versions of the release that was active when it was captured.
+Calculation models and reports are not versioned. The report editor builds a report's rows and sources in place, the
+engine runs a report while it is enabled, always on the active assumption set and with its model as it stands, and every
+write to an enabled report, or to the metrics of a model an enabled report reads, is checked before it is made.
 
 | Project | Holds |
 |---|---|
@@ -30,8 +30,8 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_20.sql`.
-- A tenant database at metadata schema version 11 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_21.sql`.
+- A tenant database at metadata schema version 12 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 
@@ -119,12 +119,12 @@ Commit both files with the API change that produced them.
 the tenant `TENANT` names, it:
 
 1. authors dataset `${PREFIX}loans`, whose branch code binds the seed `branch` role, and publishes its v1;
-2. authors and publishes calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and builds
-   report `${PREFIX}margin` over it through the report editor. The report's own report dimension starts as a copy of the
-   seed `MarginStatement` dimension. Two GL monthly bridge sources on the seed `account` role map accounts to rows as the
-   seed report's `gl_monthly` source does, the second as a copy of the first, and their variables make profile
-   `default`; a branch calculation dimension on the `branch` role, the columns, and rows with a header and a formula row
-   follow. Enabling the report checks it against every report rule;
+2. authors calculation model `${PREFIX}margin` in US dollars, which holds two variables and a yield formula, live as
+   they are written, and builds report `${PREFIX}margin` over it through the report editor. The report's own report
+   dimension starts as a copy of the seed `MarginStatement` dimension. Two GL monthly bridge sources on the seed
+   `account` role map accounts to rows as the seed report's `gl_monthly` source does, the second as a copy of the first,
+   and their variables make profile `default`; a branch calculation dimension on the `branch` role, the columns, and
+   rows with a header and a formula row follow. Enabling the report checks it against every report rule;
 3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
    against whichever release is active, so the release pins no report;
 4. validates, publishes and activates the release;

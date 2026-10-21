@@ -27,9 +27,8 @@ export interface NewReportSheetProps {
 }
 
 /**
- * Creates a disabled report over a calculation model with a published version, with its own report dimension, keyed and named
- * like it, whose rows are a copy of a starting dimension's published members or a single total row. The key and the model are
- * fixed once created.
+ * Creates a disabled report over a calculation model, with its own report dimension, keyed and named like it, whose rows are a
+ * copy of a starting dimension's published members or a single total row. The key and the model are fixed once created.
  */
 export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
   const create = useCreateReport();
@@ -56,8 +55,7 @@ export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
         name="modelId"
         label="Calculation model"
         lookupKind="calculation-models"
-        filter={(item: LookupItem) => item.classifier != null}
-        description="A model with a published version, whose variables and calculated measures the report reads."
+        description="The model whose variables and calculated measures the report reads."
       />
       <EntityField
         name="startFromDimensionId"

@@ -1,9 +1,9 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>A calculated measure of a draft model version, as its create and edit endpoints take it.</summary>
+/// <summary>A calculated measure of a calculation model, as its create and edit endpoints take it.</summary>
 public sealed record CalculatedMeasureInput
 {
-    /// <summary>Key, unique among the version's variables and calculated measures.</summary>
+    /// <summary>Key, unique among the model's variables and calculated measures.</summary>
     public required string MeasureKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

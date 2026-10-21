@@ -25,7 +25,6 @@ public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
         LookupKinds.Members,
         LookupKinds.MappingVersions,
         LookupKinds.BridgeVersions,
-        LookupKinds.ModelVersions,
         LookupKinds.Variables,
         LookupKinds.ReportSources,
         LookupKinds.SourceProfiles,

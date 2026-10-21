@@ -1,15 +1,15 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_calculated_measure</c> row: a formula over a model version's variables and other calculated measures.</summary>
+/// <summary>A <c>qe_calculated_measure</c> row: a formula over a model's variables and other calculated measures.</summary>
 public sealed record CalculatedMeasureRecord
 {
     /// <summary>Primary key.</summary>
     public required long CalculatedMeasureId { get; init; }
 
-    /// <summary>The owning model version.</summary>
-    public required long ModelVersionId { get; init; }
+    /// <summary>The owning model.</summary>
+    public required long ModelId { get; init; }
 
-    /// <summary>Key, unique among the version's variables and calculated measures.</summary>
+    /// <summary>Key, unique among the model's variables and calculated measures.</summary>
     public required string MeasureKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

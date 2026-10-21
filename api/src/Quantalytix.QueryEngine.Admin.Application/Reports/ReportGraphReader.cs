@@ -1,14 +1,11 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Reads what the report rules check. A report is checked against its model's published version and the active release. When a
-/// calculation model version is validated, every enabled report of its model is checked against the version itself, because
-/// publishing it makes it the version those reports read; when a semantic release is validated, every enabled report is checked
-/// against its datasets, because a report runs against whichever release is active.
+/// Reads what the report rules check. A report is checked against its model and the active release; when a semantic release is
+/// validated, every enabled report is checked against its datasets, because a report runs against whichever release is active.
 /// </summary>
 public sealed class ReportGraphReader(
     ITableGateway<ReportRecord> reports,
@@ -24,8 +21,6 @@ public sealed class ReportGraphReader(
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
     ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<CalculationDimensionRecord> dimensions,
-    ITableGateway<CalculationModelVersionRecord> modelVersions,
-    ModelMetricsReader models,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ITableGateway<DatasetRecord> datasets,
@@ -33,34 +28,44 @@ public sealed class ReportGraphReader(
     ReleaseDatasets releaseDatasets,
     PublishedDimensionReader publishedDimensions)
 {
-    /// <summary>Reads a report as it stands, with its model's published version.</summary>
+    /// <summary>Reads a report as it stands, with its model's metrics.</summary>
     /// <param name="report">The report.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The report graph.</returns>
     public async Task<ReportGraph> ReadAsync(ReportRecord report, CancellationToken cancellationToken)
     {
-        return await GraphAsync(report, await models.PublishedVersionAsync(report.ModelId, cancellationToken), cancellationToken);
+        var owner = new { report.ReportId };
+        var structure = await owned.StructureAsync(report, cancellationToken);
+        var reportProfiles = await profiles.ListAsync(owner, cancellationToken);
+        var reportSources = await sources.ListAsync(owner, cancellationToken);
+        var metrics = new { report.ModelId };
+        return new ReportGraph
+        {
+            Report = report,
+            Members = await members.ListAsync(new { structure.DimensionVersionId }, cancellationToken),
+            Lines = await lines.ListAsync(owner, cancellationToken),
+            MemberOptions = await memberOptions.ListAsync(owner, cancellationToken),
+            Scopes = await scopes.ListAsync(owner, cancellationToken),
+            Columns = await columns.ListAsync(owner, cancellationToken),
+            Profiles = reportProfiles,
+            Picks = await picks.ListAsync(new { SourceProfileId = reportProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
+            Sources = reportSources,
+            SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken),
+            SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
+            Dimensions = await dimensions.ListAsync(owner, cancellationToken),
+            Variables = await variables.ListAsync(metrics, cancellationToken),
+            CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken)
+        };
     }
 
-    /// <summary>Reads the enabled reports a model version or a release being validated serves.</summary>
-    /// <param name="kind">The kind being validated: <c>calculation_model_version</c> or <c>semantic_release</c>.</param>
-    /// <param name="versionId">The version being validated.</param>
+    /// <summary>Reads every enabled report, which a release being validated serves.</summary>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The report graphs: a model version's with the version itself, a release's with their models' published versions.</returns>
-    public async Task<IReadOnlyList<ReportGraph>> ConsumersAsync(string kind, long versionId, CancellationToken cancellationToken)
+    /// <returns>The report graphs, by report key.</returns>
+    public async Task<IReadOnlyList<ReportGraph>> EnabledAsync(CancellationToken cancellationToken)
     {
         var graphs = new List<ReportGraph>();
-        if (kind == VersionKinds.CalculationModelVersion)
-        {
-            var model = await modelVersions.GetAsync(new { ModelVersionId = versionId }, cancellationToken);
-            foreach (var report in (await reports.ListAsync(new { model.ModelId }, cancellationToken)).Where(report => report.IsEnabled))
-                graphs.Add(await GraphAsync(report, model, cancellationToken));
-        }
-        else
-        {
-            foreach (var report in (await reports.ListAsync(null, cancellationToken)).Where(report => report.IsEnabled))
-                graphs.Add(await ReadAsync(report, cancellationToken));
-        }
+        foreach (var report in (await reports.ListAsync(null, cancellationToken)).Where(report => report.IsEnabled))
+            graphs.Add(await ReadAsync(report, cancellationToken));
         return [.. graphs.OrderBy(graph => graph.ReportKey, StringComparer.Ordinal)];
     }
 
@@ -84,38 +89,6 @@ public sealed class ReportGraphReader(
             DatasetKeys = (await datasets.ListAsync(new { DatasetId = sourceDatasets }, cancellationToken)).ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey),
             RoleKeys = rolesById.ToDictionary(pair => pair.Key, pair => pair.Value.RoleKey),
             Templates = templates
-        };
-    }
-
-    /// <summary>Reads a report's content and the metrics of a model version.</summary>
-    /// <param name="report">The report.</param>
-    /// <param name="model">The model version the report is checked against.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The graph.</returns>
-    private async Task<ReportGraph> GraphAsync(ReportRecord report, CalculationModelVersionRecord model, CancellationToken cancellationToken)
-    {
-        var owner = new { report.ReportId };
-        var structure = await owned.StructureAsync(report, cancellationToken);
-        var reportProfiles = await profiles.ListAsync(owner, cancellationToken);
-        var reportSources = await sources.ListAsync(owner, cancellationToken);
-        var metrics = new { model.ModelVersionId };
-        return new ReportGraph
-        {
-            Report = report,
-            Members = await members.ListAsync(new { structure.DimensionVersionId }, cancellationToken),
-            Lines = await lines.ListAsync(owner, cancellationToken),
-            MemberOptions = await memberOptions.ListAsync(owner, cancellationToken),
-            Scopes = await scopes.ListAsync(owner, cancellationToken),
-            Columns = await columns.ListAsync(owner, cancellationToken),
-            Profiles = reportProfiles,
-            Picks = await picks.ListAsync(new { SourceProfileId = reportProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
-            Sources = reportSources,
-            SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken),
-            SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
-            Dimensions = await dimensions.ListAsync(owner, cancellationToken),
-            Model = model,
-            Variables = await variables.ListAsync(metrics, cancellationToken),
-            CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken)
         };
     }
 

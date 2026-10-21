@@ -65,7 +65,7 @@ public sealed class LookupService(
             LookupKinds.BridgeVersions => BridgeVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Releases => ReleasesAsync(cancellationToken),
             LookupKinds.AssumptionSets => AssumptionSetsAsync(cancellationToken),
-            LookupKinds.CalculationModels or LookupKinds.ModelVersions or LookupKinds.Variables or LookupKinds.ReportSources
+            LookupKinds.CalculationModels or LookupKinds.Variables or LookupKinds.ReportSources
                 or LookupKinds.SourceProfiles or LookupKinds.CalculatedMeasures or LookupKinds.CalculationDimensions or LookupKinds.Reports
                 or LookupKinds.ReportColumns => calculations.ListAsync(kind, parentId, cancellationToken),
             _ => throw new UnreachableException($"Lookup kind '{kind}' passed validation but has no list.")

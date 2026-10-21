@@ -7,7 +7,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 
-/// <summary>Lists, creates, edits and deletes calculation models: the variables and formulas reports evaluate.</summary>
+/// <summary>Lists, creates, edits and deletes calculation models: the variables and formulas reports evaluate, edited in place.</summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
@@ -29,9 +29,9 @@ public sealed class CalculationModelsController(CalculationModelService models) 
         return Ok(await models.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a calculation model; it has no versions until one is created.</summary>
+    /// <summary>Creates a calculation model without variables or calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="input">The new model's key, display name and availability.</param>
+    /// <param name="input">The new model's key, display name, currency and availability.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created model.</returns>
     /// <response code="200">The created model.</response>
@@ -61,10 +61,10 @@ public sealed class CalculationModelsController(CalculationModelService models) 
         return Ok(await models.GetAsync(modelId, cancellationToken));
     }
 
-    /// <summary>Edits a calculation model's display name and availability; reports pin model versions, so neither reaches queries.</summary>
+    /// <summary>Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
     /// <param name="modelId">The model.</param>
-    /// <param name="input">The new identity attributes.</param>
+    /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored model.</returns>
     /// <response code="200">The stored model.</response>
@@ -72,6 +72,7 @@ public sealed class CalculationModelsController(CalculationModelService models) 
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{modelId:long}")]
+    [AdvancesModelRevision("modelId")]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculationModelRecord>> Update(
@@ -83,15 +84,15 @@ public sealed class CalculationModelsController(CalculationModelService models) 
         return Ok(await models.UpdateAsync(modelId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a calculation model whose versions are all drafts that no report reads, together with their content.</summary>
+    /// <summary>Deletes a calculation model that no report reads, together with its variables and calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
-    /// <response code="204">The model and its drafts are deleted.</response>
+    /// <response code="204">The model and its metrics are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and reports that block the delete.</response>
+    /// <response code="409">Nothing was deleted; the detail names the reports that read the model.</response>
     [HttpDelete("{modelId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

@@ -2,9 +2,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
+import { invalidateOwnedContent } from '@/shared/ownedContent';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import { invalidateVersionContent } from '@/shared/versionContent';
 import { reportEditorKey, reportKey, reportVariableScopesKey } from './queryKeys';
 import type { EditorView, NewReportSourceInput, ReportRowInput, ReportSourceInput, SourceItemInput, SourceVariableInput } from './types';
 
@@ -30,7 +30,7 @@ function storeSourceWrite(tenantId: string, view: EditorView) {
   const reportId = view.report.reportId;
   return Promise.all([
     storeView(tenantId, view),
-    invalidateVersionContent(tenantId, 'reports', reportId),
+    invalidateOwnedContent(tenantId, 'reports', reportId),
     queryClient.invalidateQueries({ queryKey: reportKey(tenantId, reportId) }),
     queryClient.invalidateQueries({ queryKey: ['bridges', tenantId] }),
     queryClient.invalidateQueries({ queryKey: lookupQueryKey(tenantId, 'bridges') }),

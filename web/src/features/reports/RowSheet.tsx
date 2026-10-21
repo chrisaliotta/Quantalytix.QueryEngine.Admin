@@ -33,11 +33,11 @@ export interface RowSheetProps {
 /**
  * Adds or edits a row of the report: a data row taking items from the bridge sources and a direct source's rows keyed like it,
  * which the rows under it add to, a group totalling the rows under it, a section heading them, or a formula row placing a
- * calculated measure of the model's published version in one column. A new row's key is made from its label and is fixed once
- * saved. A stored member row stays a member row and an overlay row an overlay row, and a row with items stays a data row.
+ * calculated measure of the report's model in one column. A new row's key is made from its label and is fixed once saved. A
+ * stored member row stays a member row and an overlay row an overlay row, and a row with items stays a data row.
  */
 export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowSheetProps) {
-  const measures = useLookup('calculated-measures', view.modelVersionId);
+  const measures = useLookup('calculated-measures', view.report.modelId);
   const columns = useLookup('report-columns', view.report.reportId);
   const form = useForm<RowValues>({
     defaultValues: {

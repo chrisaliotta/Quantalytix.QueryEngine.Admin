@@ -1,7 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { toast } from 'sonner';
+import { useNavigate, useParams } from 'react-router';
 import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,21 +8,14 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EnabledBadge } from '@/shared/EnabledBadge';
 import { PageHeader } from '@/shared/PageHeader';
-import type { VersionStatus } from '@/shared/types';
-import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import { VersionHeader } from '@/shared/VersionHeader';
-import { selectedVersion } from '@/shared/versionSelection';
-import { isEditable as isEditableVersion } from '@/shared/versionTransitions';
-import { useCalculationModel, useDeleteCalculationModel, useDeleteModelVersion, useModelVersion } from './api';
+import { useCalculationModel, useDeleteCalculationModel } from './api';
 import { CalculatedMeasuresTab } from './CalculatedMeasuresTab';
 import { CalculationModelIdentitySheet } from './CalculationModelIdentitySheet';
-import { ModelVersionSheet } from './ModelVersionSheet';
-import { NewModelVersionDialog } from './NewModelVersionDialog';
-import type { CalculationModel, CalculationModelVersion, NewModelVersionInput } from './types';
+import type { CalculationModel } from './types';
 import { VariablesTab } from './VariablesTab';
 
-/** One calculation model: identity, version picker with lifecycle actions, and the selected version's metrics in tabs. */
+/** One calculation model: identity, settings, and its metrics in tabs, edited live. */
 export function CalculationModelDetailPage() {
   const modelId = Number(useParams().modelId);
   const model = useCalculationModel(modelId);
@@ -40,28 +32,9 @@ export function CalculationModelDetailPage() {
 function CalculationModelDetail({ model }: { model: CalculationModel }) {
   const tenantId = useTenantId();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const versions = useLookup('model-versions', model.modelId);
   const deleteModel = useDeleteCalculationModel();
-  const deleteVersion = useDeleteModelVersion();
   const [editingIdentity, setEditingIdentity] = useState(false);
-  const [editingVersion, setEditingVersion] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [newVersion, setNewVersion] = useState<NewModelVersionInput | null>(null);
-
-  const versionItems = versions.data ?? [];
-  const selected = selectedVersion(versionItems, searchParams.get('version'));
-  const version = useModelVersion(selected?.id ?? null);
-  const isEditable = isEditableVersion('calculation_model_version', selected?.status as VersionStatus | undefined);
-
-  function selectVersion(id: number) {
-    setSearchParams({ version: String(id) }, { replace: true });
-  }
-
-  function showCreated(created: CalculationModelVersion) {
-    toast.success(`Created draft v${created.versionNumber}.`);
-    selectVersion(created.modelVersionId);
-  }
 
   return (
     <div data-slot="calculation-model-detail" className="space-y-6">
@@ -84,62 +57,34 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
       />
       <ApiErrorAlert error={deleteModel.error} />
 
-      <VersionHeader
-        kind="calculation_model_version"
-        versions={versionItems}
-        selectedVersionId={selected?.id ?? null}
-        onSelectVersion={selectVersion}
-        onCreateVersion={() => setNewVersion({ currencyCode: version.data?.currencyCode ?? 'USD', cloneFromVersionId: null })}
-        onCloneVersion={sourceId => setNewVersion({ currencyCode: version.data?.currencyCode ?? 'USD', cloneFromVersionId: sourceId })}
-        onDeleteVersion={draftId =>
-          deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })
-        }
-      />
-      <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
-      {versions.isSuccess && versionItems.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No versions yet. A version holds the variables and formulas; each report that reads the model brings its own data.
-        </p>
-      )}
-
-      {selected && version.data && (
-        <>
-          <div className="flex flex-wrap items-start gap-x-8 gap-y-3 rounded-md border p-3 text-sm">
-            <Setting label="Currency" value={version.data.currencyCode} />
-            <Setting label="Calendar" value={version.data.calendarKey} />
-            <Setting label="Formula language" value={version.data.formulaLanguageVersion} />
-            {isEditable && (
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => setEditingVersion(true)}>
-                <Pencil />
-                Edit settings
-              </Button>
-            )}
-          </div>
-          <Tabs defaultValue="variables">
-            <TabsList>
-              <TabsTrigger value="variables">Variables</TabsTrigger>
-              <TabsTrigger value="calculated-measures">Calculated measures</TabsTrigger>
-            </TabsList>
-            <TabsContent value="variables">
-              <VariablesTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
-            <TabsContent value="calculated-measures">
-              <CalculatedMeasuresTab key={selected.id} versionId={selected.id} isEditable={isEditable} />
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-3 rounded-md border p-3 text-sm">
+        <Setting label="Currency" value={model.currencyCode} />
+        <Setting label="Calendar" value={model.calendarKey} />
+        <Setting label="Formula language" value={model.formulaLanguageVersion} />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Edits are live: every enabled report over the model reads them at once, so an edit that would break a formula or such a
+        report is refused. Each report brings its own data.
+      </p>
+      <Tabs defaultValue="variables">
+        <TabsList>
+          <TabsTrigger value="variables">Variables</TabsTrigger>
+          <TabsTrigger value="calculated-measures">Calculated measures</TabsTrigger>
+        </TabsList>
+        <TabsContent value="variables">
+          <VariablesTab modelId={model.modelId} />
+        </TabsContent>
+        <TabsContent value="calculated-measures">
+          <CalculatedMeasuresTab modelId={model.modelId} />
+        </TabsContent>
+      </Tabs>
 
       {editingIdentity && <CalculationModelIdentitySheet model={model} onClose={() => setEditingIdentity(false)} />}
-      {editingVersion && version.data && <ModelVersionSheet version={version.data} onClose={() => setEditingVersion(false)} />}
-      {newVersion && (
-        <NewModelVersionDialog model={model} defaults={newVersion} onClose={() => setNewVersion(null)} onCreated={showCreated} />
-      )}
       <ConfirmDialog
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${model.modelKey}?`}
-        description="The model and its draft versions are deleted. A model with validated, published or retired versions, or one a report reads, is kept."
+        description="The model is deleted with its variables and calculated measures. A model a report reads is kept."
         confirmLabel="Delete model"
         destructive
         onConfirm={() =>

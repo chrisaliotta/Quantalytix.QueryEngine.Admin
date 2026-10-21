@@ -1,16 +1,21 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>Reads, creates, edits and deletes calculation models: the stable identities whose versions reports read figures from.</summary>
+/// <summary>Reads, creates, edits and deletes calculation models, whose variables and calculated measures reports read.</summary>
 public sealed class CalculationModelService(
     ITableGateway<CalculationModelRecord> models,
-    ITableGateway<CalculationModelVersionRecord> versions,
-    CalculationModelVersionService versionService,
+    ITableGateway<VariableRecord> variables,
+    ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ReportUses reports,
     IIdGenerator ids)
 {
+    /// <summary>The calendar every model follows.</summary>
+    private const string Gregorian = "gregorian";
+
+    /// <summary>The grammar version of every model formula: the query engine's expression language.</summary>
+    private const string FormulaLanguageVersion = "1.0";
+
     /// <summary>Lists every calculation model.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The models by key, ignoring case.</returns>
@@ -29,7 +34,7 @@ public sealed class CalculationModelService(
         return models.GetAsync(new { ModelId = modelId }, cancellationToken);
     }
 
-    /// <summary>Creates a calculation model without versions.</summary>
+    /// <summary>Creates a calculation model without variables or calculated measures.</summary>
     /// <param name="input">The new model, already validated.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>The stored model.</returns>
@@ -37,43 +42,49 @@ public sealed class CalculationModelService(
     {
         var model = new CalculationModelRecord
         {
-            ModelId = ids.NextId(), ModelKey = input.ModelKey, DisplayName = input.DisplayName, IsEnabled = input.IsEnabled
+            ModelId = ids.NextId(),
+            ModelKey = input.ModelKey,
+            DisplayName = input.DisplayName,
+            CalendarKey = Gregorian,
+            CurrencyCode = input.CurrencyCode,
+            FormulaLanguageVersion = FormulaLanguageVersion,
+            IsEnabled = input.IsEnabled
         };
         await models.InsertAsync(model, cancellationToken);
         return model;
     }
 
-    /// <summary>Edits a model's display name and availability. Reports pin model versions, so neither reaches queries.</summary>
+    /// <summary>Edits a model's display name, currency and availability; the reports that read the model show its new currency.</summary>
     /// <param name="modelId">The model.</param>
-    /// <param name="input">The new identity attributes.</param>
+    /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>The stored model.</returns>
     public async Task<CalculationModelRecord> UpdateAsync(long modelId, CalculationModelInput input, CancellationToken cancellationToken)
     {
-        var updated = await GetAsync(modelId, cancellationToken) with { DisplayName = input.DisplayName, IsEnabled = input.IsEnabled };
+        var updated = await GetAsync(modelId, cancellationToken) with
+        {
+            DisplayName = input.DisplayName, CurrencyCode = input.CurrencyCode, IsEnabled = input.IsEnabled
+        };
         await models.UpdateAsync(updated, cancellationToken);
         return updated;
     }
 
-    /// <summary>Deletes a model whose versions are all drafts and that no report reads, with those drafts and their content.</summary>
+    /// <summary>Deletes a model that no report reads, with its variables and calculated measures.</summary>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the model was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
+    /// <returns>Null when the model was deleted; otherwise the detail naming the reports that read it, and nothing was deleted.</returns>
     public async Task<string?> DeleteAsync(long modelId, CancellationToken cancellationToken)
     {
         var model = await GetAsync(modelId, cancellationToken);
-        var modelVersions = await versions.ListAsync(new { ModelId = modelId }, cancellationToken);
-        long[] versionIds = [.. modelVersions.Select(version => version.ModelVersionId)];
         var blockers = new DeleteBlockers($"Calculation model '{model.ModelKey}'");
-        blockers.AddNamed(
-            "it has non-draft versions",
-            modelVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         blockers.AddNamed("read by", await reports.ModelReadersAsync(modelId, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 
-        await versionService.RemoveAsync(versionIds, cancellationToken);
-        await models.DeleteAsync(new { ModelId = modelId }, cancellationToken);
+        var owner = new { ModelId = modelId };
+        await variables.DeleteAsync(owner, cancellationToken);
+        await calculatedMeasures.DeleteAsync(owner, cancellationToken);
+        await models.DeleteAsync(owner, cancellationToken);
         return null;
     }
 }

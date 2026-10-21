@@ -362,13 +362,13 @@ sequenceDiagram
     Svc->>Own: OwnedIdsAsync()
     Own-->>Svc: the report dimensions and the bridges into them
     Svc->>Pins: ListAsync(active set)
-    Note over Pins: The dimension, mapping, bridge and model pins
+    Note over Pins: The dimension, mapping and bridge pins
     Svc->>Pins: InsertAsync(new set, the active pins but those of report dimensions and their bridges)
     Svc->>Rev: AdvanceAsync()
     Ctl-->>Client: 201 the historical set
 ```
 
-Publishing repoints only the active set, so the captured set keeps its versions, which publishing retires and freezes. Reports always run on the active set, so a historical set holds none of what only reports read. Activating another release leaves the captured set on its release, which the engine keeps reading after the release is retired. Deleting a historical set removes it with its pins and advances the revision too; the active set cannot be deleted.
+Publishing repoints only the active set, so the captured set keeps its versions, which publishing retires and freezes. Reports always run on the active set, so a historical set holds none of what only reports read, and calculation models, which only reports read, have no versions to pin. Activating another release leaves the captured set on its release, which the engine keeps reading after the release is retired. Deleting a historical set removes it with its pins and advances the revision too; the active set cannot be deleted.
 
 **Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [ReportOwnership.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportOwnership.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
 
@@ -545,6 +545,6 @@ sequenceDiagram
     end
 ```
 
-`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 16 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, levels and members, and `ReportUses` for models and the model content live reports name. Deleting a draft version of a living kind has no blockers, because other objects name the identity or keys of its published version, never a draft.
+`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 14 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, levels and members, and `ReportUses` for models any report reads. A variable or calculated measure that a formula or an enabled report reads is kept by the model gate's 422 instead. Deleting a draft version of a living kind has no blockers, because other objects name the identity or keys of its published version, never a draft.
 
 **Sources:** [DatasetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Datasets/DatasetsController.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/DeleteBlockedProblem.cs), [DatasetVersionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionService.cs), [DatasetVersionContentStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionContentStore.cs), [FieldUsage.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/FieldUsage.cs), [DimensionDeleteChecks.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionDeleteChecks.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs).

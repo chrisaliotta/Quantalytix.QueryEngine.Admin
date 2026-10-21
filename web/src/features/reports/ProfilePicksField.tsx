@@ -4,17 +4,17 @@ import { useLookup } from '@/shared/useLookup';
 import type { EditorView, SourceProfilePick } from './types';
 
 export interface ProfilePicksFieldProps extends FormFieldProps {
-  /** The report whose sources the picks name, over the model version whose variables they fill. */
+  /** The report whose sources the picks name, over the model whose variables they fill. */
   view: EditorView;
 }
 
 /**
- * One source picker per variable of the model's published version, each offering the report's sources that supply that variable;
- * value is the picks, which name the variable by key and the source by ID.
+ * One source picker per variable of the report's model, each offering the report's sources that supply that variable; value is
+ * the picks, which name the variable by key and the source by ID.
  */
 export function ProfilePicksField({ name, label, description, disabled, view }: ProfilePicksFieldProps) {
   const { field, id, error, isDisabled } = useFormField(name, disabled);
-  const variables = useLookup('variables', view.modelVersionId);
+  const variables = useLookup('variables', view.report.modelId);
   const picks: SourceProfilePick[] = field.value;
 
   function pick(variableKey: string, reportSourceId: number | null) {
@@ -52,7 +52,7 @@ export function ProfilePicksField({ name, label, description, disabled, view }: 
             </div>
           );
         })}
-        {variables.data?.length === 0 && <p className="text-sm text-muted-foreground">The model's published version has no variables.</p>}
+        {variables.data?.length === 0 && <p className="text-sm text-muted-foreground">The report's model has no variables.</p>}
       </div>
     </FormFieldLayout>
   );

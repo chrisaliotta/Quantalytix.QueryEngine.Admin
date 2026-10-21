@@ -5,7 +5,7 @@ type Schemas = components['schemas'];
 /** A `qe_assumption_set` row: the active set, which holds the default versions, or a captured historical set. */
 export type AssumptionSet = Schemas['AssumptionSetRecord'];
 
-/** One pin of an assumption set: the version of one dimension, mapping set, bridge, calculation model or report. */
+/** One pin of an assumption set: the version of one dimension, mapping set or bridge. */
 export type AssumptionPin = Schemas['AssumptionPin'];
 
 /** The body of `POST assumption-sets`, which captures the active set as a historical set. */

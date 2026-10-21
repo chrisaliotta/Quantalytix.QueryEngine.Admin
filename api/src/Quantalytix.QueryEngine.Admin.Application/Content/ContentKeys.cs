@@ -9,8 +9,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Content;
 /// </summary>
 public sealed class ContentKeys(IRequestRoute route)
 {
-    /// <summary>The model version a model content route names.</summary>
-    public long VersionId => route.Id("versionId");
+    /// <summary>The calculation model a model content route names.</summary>
+    public long ModelId => route.Id("modelId");
 
     /// <summary>The report a report content route names.</summary>
     public long ReportId => route.Id("reportId");

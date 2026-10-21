@@ -1,15 +1,15 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_variable</c> row: a logical input of a model version, which each report fills from one of its own sources.</summary>
+/// <summary>A <c>qe_variable</c> row: a logical input of a model, which each report fills from one of its own sources.</summary>
 public sealed record VariableRecord
 {
     /// <summary>Primary key.</summary>
     public required long VariableId { get; init; }
 
-    /// <summary>The owning model version.</summary>
-    public required long ModelVersionId { get; init; }
+    /// <summary>The owning model.</summary>
+    public required long ModelId { get; init; }
 
-    /// <summary>Key, unique among the version's variables and calculated measures; reports name the variable by it.</summary>
+    /// <summary>Key, unique among the model's variables and calculated measures; reports name the variable by it.</summary>
     public required string VariableKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

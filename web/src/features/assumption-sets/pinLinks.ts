@@ -5,7 +5,6 @@ const PIN_KINDS: Record<string, { path: string; label: string }> = {
   dimension_version: { path: 'dimensions', label: 'Dimension' },
   mapping_version: { path: 'mappings', label: 'Mapping set' },
   bridge_version: { path: 'bridges', label: 'Bridge' },
-  calculation_model_version: { path: 'calculation-models', label: 'Calculation model' },
 };
 
 /** What a pin's identity is called, such as `Mapping set`. */

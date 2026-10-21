@@ -7,9 +7,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// Checks a new report: its identity attributes, a unique, well-formed key that no dimension has either, because the report's
-/// own dimension takes it, and a calculation model with a published version, which the report reads from its creation on. A
-/// dimension the report starts from must be categorical or hierarchical with a published version of one root, because a report's
-/// rows are one tree.
+/// own dimension takes it, and an existing calculation model, which the report reads from its creation on. A dimension the report
+/// starts from must be categorical or hierarchical with a published version of one root, because a report's rows are one tree.
 /// </summary>
 public sealed class NewReportInputValidator : AbstractValidator<NewReportInput>
 {
@@ -19,12 +18,12 @@ public sealed class NewReportInputValidator : AbstractValidator<NewReportInput>
     /// <summary>Declares the rules.</summary>
     /// <param name="reports">Reads existing report keys.</param>
     /// <param name="dimensions">Reads existing dimension keys and the template dimension.</param>
-    /// <param name="modelVersions">Reads the model's published version.</param>
+    /// <param name="models">Reads the model.</param>
     /// <param name="publishedDimensions">Reads the template's published version.</param>
     public NewReportInputValidator(
         ITableGateway<ReportRecord> reports,
         ITableGateway<DimensionRecord> dimensions,
-        ITableGateway<CalculationModelVersionRecord> modelVersions,
+        ITableGateway<CalculationModelRecord> models,
         PublishedDimensionReader publishedDimensions)
     {
         Include(new ReportInputValidator());
@@ -36,9 +35,8 @@ public sealed class NewReportInputValidator : AbstractValidator<NewReportInput>
             .MustAsync(async (key, cancellationToken) => (await dimensions.ListAsync(new { DimensionKey = key }, cancellationToken)).Count == 0)
             .WithMessage(input => $"The report's own dimension takes its key, and a dimension with key '{input.ReportKey}' already exists.");
         RuleFor(input => input.ModelId)
-            .MustAsync(async (modelId, cancellationToken) =>
-                (await modelVersions.ListAsync(new { ModelId = modelId, Status = PublicationStatuses.Published }, cancellationToken)).Count == 1)
-            .WithMessage(input => $"Calculation model {input.ModelId} has no published version, which a report reads.");
+            .MustAsync(async (modelId, cancellationToken) => (await models.ListAsync(new { ModelId = modelId }, cancellationToken)).Count == 1)
+            .WithMessage(input => $"Calculation model {input.ModelId} does not exist.");
         RuleFor(input => input.StartFromDimensionId)
             .Cascade(CascadeMode.Stop)
             .MustAsync(async (dimensionId, cancellationToken) =>

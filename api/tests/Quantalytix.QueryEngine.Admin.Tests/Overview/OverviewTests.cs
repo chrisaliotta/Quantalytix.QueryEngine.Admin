@@ -109,13 +109,11 @@ public sealed class OverviewTests
         ModelId = 401,
         ModelKey = "yield",
         DisplayName = "Yield",
+        CalendarKey = "gregorian",
+        CurrencyCode = "USD",
+        FormulaLanguageVersion = "1.0",
         IsEnabled = true
     });
-
-    /// <summary>The model's published v1 and draft v2.</summary>
-    private readonly InMemoryTableGateway<CalculationModelVersionRecord> _modelVersions = new(
-        ModelVersion(411, PublicationStatuses.Published),
-        ModelVersion(412, PublicationStatuses.Draft));
 
     /// <summary>Two reports.</summary>
     private readonly InMemoryTableGateway<ReportRecord> _reports = new(Report(601), Report(602));
@@ -128,7 +126,7 @@ public sealed class OverviewTests
         var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
-        Assert.Equal(11, overview.MetadataSchemaVersion);
+        Assert.Equal(12, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
@@ -152,8 +150,7 @@ public sealed class OverviewTests
                 DimensionVersions = 2,
                 MappingVersions = 1,
                 BridgeVersions = 0,
-                Releases = 1,
-                ModelVersions = 1
+                Releases = 1
             },
             overview.Drafts);
     }
@@ -187,7 +184,6 @@ public sealed class OverviewTests
             _bridgeVersions,
             _assumptionSets,
             _models,
-            _modelVersions,
             _reports);
     }
 
@@ -198,25 +194,10 @@ public sealed class OverviewTests
         {
             SingletonId = 1,
             TenantKey = "sandbox",
-            MetadataSchemaVersion = 11,
+            MetadataSchemaVersion = 12,
             SemanticRevision = 12,
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created
-        };
-    }
-
-    /// <summary>A version of the yield model.</summary>
-    private static CalculationModelVersionRecord ModelVersion(long modelVersionId, string status)
-    {
-        return new CalculationModelVersionRecord
-        {
-            ModelVersionId = modelVersionId,
-            ModelId = 401,
-            VersionNumber = (int)(modelVersionId % 10),
-            Status = status,
-            CalendarKey = "gregorian",
-            CurrencyCode = "USD",
-            FormulaLanguageVersion = "1.0"
         };
     }
 

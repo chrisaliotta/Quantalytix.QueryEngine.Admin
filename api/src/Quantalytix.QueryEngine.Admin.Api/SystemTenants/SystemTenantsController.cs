@@ -94,7 +94,7 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
 
     /// <summary>
     /// Tests a connection string for a tenant without storing it: it must open, and its <c>qe_database_info</c> must name
-    /// the tenant and have metadata schema version 7.
+    /// the tenant and have the metadata schema version this API supports.
     /// </summary>
     /// <param name="input">The tenant and the candidate connection string.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

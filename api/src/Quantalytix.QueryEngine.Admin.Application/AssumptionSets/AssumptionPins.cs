@@ -12,8 +12,7 @@ public sealed class AssumptionPins(
     ITableGateway<AssumptionSetRecord> sets,
     ITableGateway<AssumptionSetDimensionRecord> dimensions,
     ITableGateway<AssumptionSetMappingRecord> mappings,
-    ITableGateway<AssumptionSetBridgeRecord> bridges,
-    ITableGateway<AssumptionSetModelRecord> models)
+    ITableGateway<AssumptionSetBridgeRecord> bridges)
 {
     /// <summary>The active set, which pins every published version.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
@@ -44,8 +43,7 @@ public sealed class AssumptionPins(
         [
             .. (await dimensions.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.DimensionVersion, pin.DimensionId, pin.DimensionVersionId)),
             .. (await mappings.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.MappingVersion, pin.MappingSetId, pin.MappingVersionId)),
-            .. (await bridges.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.BridgeVersion, pin.BridgeId, pin.BridgeVersionId)),
-            .. (await models.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.CalculationModelVersion, pin.ModelId, pin.ModelVersionId))
+            .. (await bridges.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.BridgeVersion, pin.BridgeId, pin.BridgeVersionId))
         ];
     }
 
@@ -64,9 +62,6 @@ public sealed class AssumptionPins(
             cancellationToken);
         await bridges.InsertManyAsync(
             [.. Of(pins, VersionKinds.BridgeVersion).Select(pin => new AssumptionSetBridgeRecord { AssumptionSetId = assumptionSetId, BridgeId = pin.IdentityId, BridgeVersionId = pin.VersionId })],
-            cancellationToken);
-        await models.InsertManyAsync(
-            [.. Of(pins, VersionKinds.CalculationModelVersion).Select(pin => new AssumptionSetModelRecord { AssumptionSetId = assumptionSetId, ModelId = pin.IdentityId, ModelVersionId = pin.VersionId })],
             cancellationToken);
     }
 
@@ -98,7 +93,6 @@ public sealed class AssumptionPins(
         await dimensions.DeleteAsync(filter, cancellationToken);
         await mappings.DeleteAsync(filter, cancellationToken);
         await bridges.DeleteAsync(filter, cancellationToken);
-        await models.DeleteAsync(filter, cancellationToken);
     }
 
     /// <summary>The pins of one kind.</summary>

@@ -20,8 +20,8 @@ using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
 
 /// <summary>
-/// The tables of one report and the report editor's services over them. Disabled report 60 reads model 40, whose published version
-/// 41 has variable <c>balance</c>, and owns report dimension 500, whose one version 501 holds the rows TOTAL, a group, with LOANS
+/// The tables of one report and the report editor's services over them. Disabled report 60 reads model 40, which has variable
+/// <c>balance</c>, and owns report dimension 500, whose one version 501 holds the rows TOTAL, a group, with LOANS
 /// and CASH, data rows, under it. Its bridge source <c>gl</c> reads GL's <c>balance</c>, which ignores bridge factors, by
 /// <c>as_of_date</c> and classifies GL's rows into account dimension 800, whose published version 801 holds the folder LENDING over
 /// accounts 1001 and 1003, and account 1002; the source's many-to-many bridge 90 maps 1001 to LOANS and 1002 to CASH in its one
@@ -75,7 +75,7 @@ internal sealed class ReportEditorFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 11,
+        MetadataSchemaVersion = 12,
         SemanticRevision = StartingRevision,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -161,9 +161,6 @@ internal sealed class ReportEditorFixture
     /// <summary>The calculation dimensions; none.</summary>
     public InMemoryTableGateway<CalculationDimensionRecord> CalculationDimensions { get; } = new();
 
-    /// <summary>Model 40's published version 41.</summary>
-    public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(ModelVersion());
-
     /// <summary>The balance variable.</summary>
     public InMemoryTableGateway<VariableRecord> Variables { get; } = new(Variable(51, "balance"));
 
@@ -219,13 +216,6 @@ internal sealed class ReportEditorFixture
         return new ReportService(Reports, DimensionService(), PublishedDimensions(), Workflow(), Owned(), Remover(), Pins(), Changes(), _ids);
     }
 
-    /// <summary>The new report validator.</summary>
-    /// <returns>The validator over these tables.</returns>
-    public NewReportInputValidator NewReportValidator()
-    {
-        return new NewReportInputValidator(Reports, Dimensions, ModelVersions, PublishedDimensions());
-    }
-
     /// <summary>The service that enables, disables and checks the report.</summary>
     /// <returns>The service over these tables.</returns>
     public ReportStatusService Statuses()
@@ -238,7 +228,7 @@ internal sealed class ReportEditorFixture
     public ReportEditorReader Reader()
     {
         return new ReportEditorReader(
-            Reports, Members, MemberOptions, Lines, Columns, Sources, SourceVariables, BridgeMappings, Datasets, Roles, Metrics(), Owned(), PublishedDimensions());
+            Reports, Members, MemberOptions, Lines, Columns, Sources, SourceVariables, BridgeMappings, Datasets, Roles, Owned(), PublishedDimensions());
     }
 
     /// <summary>The row tree service.</summary>
@@ -339,13 +329,13 @@ internal sealed class ReportEditorFixture
     {
         return new ReportGraphReader(
             Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings,
-            CalculationDimensions, ModelVersions, Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            CalculationDimensions, Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
-    /// <summary>The reader of the published version of the report's model.</summary>
+    /// <summary>The reader of the metric keys of the report's model.</summary>
     private ModelMetricsReader Metrics()
     {
-        return new ModelMetricsReader(Reports, ModelVersions, Variables, CalculatedMeasures);
+        return new ModelMetricsReader(Reports, Variables, CalculatedMeasures);
     }
 
     /// <summary>The reader of the versions the report owns.</summary>
@@ -375,7 +365,7 @@ internal sealed class ReportEditorFixture
     /// <summary>The assumption set pins.</summary>
     private AssumptionPins Pins()
     {
-        return new AssumptionPins(Sets, DimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), BridgePins, new InMemoryTableGateway<AssumptionSetModelRecord>());
+        return new AssumptionPins(Sets, DimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), BridgePins);
     }
 
     /// <summary>

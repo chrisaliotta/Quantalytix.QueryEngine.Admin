@@ -8,7 +8,7 @@ import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EntityTable } from '@/shared/EntityTable';
 import type { LookupItem } from '@/shared/types';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
+import { usePublishedDimensionItems } from '@/shared/useLatestVersionItems';
 import { useBridgeMappings, useReplaceBridgeMappings } from './api';
 import { BridgeMappingSheet } from './BridgeMappingSheet';
 import { BridgeMappingsPasteDialog } from './BridgeMappingsPasteDialog';
@@ -35,8 +35,8 @@ export interface BridgeMappingsProps {
  */
 export function BridgeMappings({ bridge, version, isEditable }: BridgeMappingsProps) {
   const mappings = useBridgeMappings(version.bridgeVersionId);
-  const sourceMembers = usePublishedVersionItems('dimension-versions', bridge.sourceDimensionId, 'members');
-  const targetMembers = usePublishedVersionItems('dimension-versions', bridge.targetDimensionId, 'members');
+  const sourceMembers = usePublishedDimensionItems(bridge.sourceDimensionId, 'members');
+  const targetMembers = usePublishedDimensionItems(bridge.targetDimensionId, 'members');
   const replace = useReplaceBridgeMappings(version.bridgeVersionId);
   const [sheet, setSheet] = useState<MappingSheetRequest | null>(null);
   const [pasting, setPasting] = useState(false);

@@ -9,10 +9,12 @@ export interface NewCalculationModelSheetProps {
   onCreated: (model: CalculationModel) => void;
 }
 
-/** Creates a calculation model: its key is fixed once created, and it starts without versions. */
+/** Creates a calculation model: its key is fixed once created, and it starts without variables or formulas. */
 export function NewCalculationModelSheet({ onClose, onCreated }: NewCalculationModelSheetProps) {
   const create = useCreateCalculationModel();
-  const form = useForm<NewCalculationModelInput>({ defaultValues: { modelKey: '', displayName: '', isEnabled: true } });
+  const form = useForm<NewCalculationModelInput>({
+    defaultValues: { modelKey: '', displayName: '', currencyCode: 'USD', isEnabled: true },
+  });
 
   async function submit(values: NewCalculationModelInput) {
     onCreated(await create.mutateAsync(values));
@@ -23,13 +25,14 @@ export function NewCalculationModelSheet({ onClose, onCreated }: NewCalculationM
       open
       onOpenChange={open => !open && onClose()}
       title="New calculation model"
-      description="The key is fixed once created. The model starts without versions; each version holds its own variables and formulas."
+      description="The key is fixed once created. The model starts without variables or formulas, which are live as soon as they are saved."
       form={form}
       onSubmit={submit}
       submitLabel="Create"
     >
       <TextField name="modelKey" label="Key" description="A letter, then letters, digits or underscores." />
       <TextField name="displayName" label="Name" />
+      <TextField name="currencyCode" label="Currency" description="The ISO 4217 code of the model's amounts, such as USD." />
       <SwitchField name="isEnabled" label="Enabled" description="Whether the model is offered for new reports." />
     </EntityFormSheet>
   );

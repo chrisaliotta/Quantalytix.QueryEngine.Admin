@@ -53,7 +53,7 @@ public sealed class ReportColumnsInputValidatorTests
             Input(2, "yield", ReportValueKinds.Calculated, "yield"));
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("Column 'amount' returns 'balance', which is no calculated metric of the published version of the report's model.", error.ErrorMessage);
+        Assert.Equal("Column 'amount' returns 'balance', which is no calculated metric of the report's model.", error.ErrorMessage);
     }
 
     /// <summary>Leaving out the yield column fails while the formula row still places its value there.</summary>
@@ -73,13 +73,12 @@ public sealed class ReportColumnsInputValidatorTests
         return new ReportColumnInput { ReportColumnId = columnId, ColumnKey = columnKey, DisplayName = columnKey, ValueKind = valueKind, MetricKey = metricKey, IsVisible = true };
     }
 
-    /// <summary>Validates a column list for report 60 over model 40, whose published version is 41.</summary>
+    /// <summary>Validates a column list for report 60 over model 40.</summary>
     private Task<TestValidationResult<ReportColumnsInput>> ValidateAsync(params ReportColumnInput[] columns)
     {
         var validator = new ReportColumnsInputValidator(
             new ModelMetricsReader(
                 new InMemoryTableGateway<ReportRecord>(Report()),
-                new InMemoryTableGateway<CalculationModelVersionRecord>(ModelVersion()),
                 new InMemoryTableGateway<VariableRecord>(Variable(51, "balance")),
                 new InMemoryTableGateway<CalculatedMeasureRecord>(Calculated(91, "yield", "[m.balance] / 2"))),
             _columns,

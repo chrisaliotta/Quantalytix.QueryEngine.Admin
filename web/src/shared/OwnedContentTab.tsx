@@ -5,13 +5,12 @@ import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ConfirmDialog } from './ConfirmDialog';
 import { EntityTable } from './EntityTable';
-import { useDeleteVersionContent, useVersionContent, type ContentItem, type ContentKind } from './versionContent';
+import { useDeleteOwnedContent, useOwnedContent, type ContentItem, type ContentKind } from './ownedContent';
 
-export interface VersionContentTabProps<K extends ContentKind> {
+export interface OwnedContentTabProps<K extends ContentKind> {
   kind: K;
-  /** The model version or report the rows belong to, as the kind's routes name it. */
+  /** The calculation model or report the rows belong to, as the kind's routes name it. */
   ownerId: number;
-  isEditable: boolean;
   /** The table's columns; the tab adds the delete action. */
   columns: ColumnDef<ContentItem<K>>[];
   /** What a row is called, such as `variable`. */
@@ -20,7 +19,7 @@ export interface VersionContentTabProps<K extends ContentKind> {
   identify: (item: ContentItem<K>) => { id: number; key: string };
   /** What deleting a row also deletes, or what keeps it. */
   deleteDescription: string;
-  /** The sheet that creates a row (`item` null), edits a row of an editable version, or shows a row of any other version. */
+  /** The sheet that creates a row (`item` null) or edits one. */
   renderSheet: (item: ContentItem<K> | null, onClose: () => void) => ReactNode;
 }
 
@@ -29,21 +28,18 @@ interface SheetRequest<K extends ContentKind> {
   item: ContentItem<K> | null;
 }
 
-/**
- * One kind of a model version's or report's content in a table; an editable owner adds, edits and deletes rows in a sheet.
- */
-export function VersionContentTab<K extends ContentKind>({
+/** One kind of a calculation model's or report's content in a table, whose rows a sheet adds and edits. */
+export function OwnedContentTab<K extends ContentKind>({
   kind,
   ownerId,
-  isEditable,
   columns,
   noun,
   identify,
   deleteDescription,
   renderSheet,
-}: VersionContentTabProps<K>) {
-  const rows = useVersionContent(kind, ownerId);
-  const deleteRow = useDeleteVersionContent(kind, ownerId);
+}: OwnedContentTabProps<K>) {
+  const rows = useOwnedContent(kind, ownerId);
+  const deleteRow = useDeleteOwnedContent(kind, ownerId);
   const [sheet, setSheet] = useState<SheetRequest<K> | null>(null);
   const [deleting, setDeleting] = useState<ContentItem<K> | null>(null);
   const deletingKey = deleting === null ? '' : identify(deleting).key;
@@ -53,25 +49,24 @@ export function VersionContentTab<K extends ContentKind>({
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) =>
-        isEditable && (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={`Delete ${identify(row.original).key}`}
-            onClick={event => {
-              event.stopPropagation();
-              setDeleting(row.original);
-            }}
-          >
-            <Trash2 />
-          </Button>
-        ),
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Delete ${identify(row.original).key}`}
+          onClick={event => {
+            event.stopPropagation();
+            setDeleting(row.original);
+          }}
+        >
+          <Trash2 />
+        </Button>
+      ),
     },
   ];
 
   return (
-    <div data-slot="version-content-tab" className="space-y-3">
+    <div data-slot="owned-content-tab" className="space-y-3">
       <EntityTable
         columns={withActions}
         data={rows.data}
@@ -81,12 +76,10 @@ export function VersionContentTab<K extends ContentKind>({
         emptyMessage={`No ${noun}s yet.`}
         onRowClick={item => setSheet({ item })}
         toolbar={
-          isEditable && (
-            <Button size="sm" className="ml-auto" onClick={() => setSheet({ item: null })}>
-              <Plus />
-              New {noun}
-            </Button>
-          )
+          <Button size="sm" className="ml-auto" onClick={() => setSheet({ item: null })}>
+            <Plus />
+            New {noun}
+          </Button>
         }
       />
       <ApiErrorAlert error={deleteRow.error} />

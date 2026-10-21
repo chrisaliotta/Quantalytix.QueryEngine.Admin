@@ -3,8 +3,8 @@ import type { RouteHandle } from '@/shared/routeHandle';
 import { CalculationModelCrumb } from './CalculationModelCrumb';
 
 /**
- * Calculation model routes, mounted under `/t/:tenantId`: the list and one model (`?version=` selects the version). Each
- * page loads on its first visit, as its own chunk.
+ * Calculation model routes, mounted under `/t/:tenantId`: the list and one model. Each page loads on its first visit, as its
+ * own chunk.
  */
 export const calculationModelsRoutes: RouteObject[] = [
   {

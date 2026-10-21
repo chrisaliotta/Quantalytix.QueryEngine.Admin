@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { VersionContentTab } from '@/shared/VersionContentTab';
+import { OwnedContentTab } from '@/shared/OwnedContentTab';
 import type { Variable } from './types';
 import { VariableSheet } from './VariableSheet';
 
@@ -12,20 +12,17 @@ const columns: ColumnDef<Variable>[] = [
   { accessorKey: 'missingBehavior', header: 'Missing' },
 ];
 
-/** The version's variables: the logical inputs each report's profiles fill from the report's own sources. */
-export function VariablesTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
+/** The model's variables: the logical inputs each report's profiles fill from the report's own sources. */
+export function VariablesTab({ modelId }: { modelId: number }) {
   return (
-    <VersionContentTab
+    <OwnedContentTab
       kind="variables"
-      ownerId={versionId}
-      isEditable={isEditable}
+      ownerId={modelId}
       columns={columns}
       noun="variable"
       identify={variable => ({ id: variable.variableId, key: variable.variableKey })}
-      deleteDescription="A variable of the published version that a published report reads, through a column, source, target or formula, is kept."
-      renderSheet={(variable, onClose) => (
-        <VariableSheet versionId={versionId} variable={variable} readOnly={!isEditable} onClose={onClose} />
-      )}
+      deleteDescription="A variable that a formula of the model, or an enabled report through a column, scope, source or pick, reads is kept."
+      renderSheet={(variable, onClose) => <VariableSheet modelId={modelId} variable={variable} onClose={onClose} />}
     />
   );
 }

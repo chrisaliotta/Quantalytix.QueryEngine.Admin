@@ -23,10 +23,10 @@ export interface ReportVariableScopeSheetProps {
 
 /**
  * Adds or edits a variable scope: the row of the report whose branch a variable reads, exactly or with its descendants. Variables
- * come from the model's published version, and rows from the report dimension's one version.
+ * come from the report's model, and rows from the report dimension's one version.
  */
 export function ReportVariableScopeSheet({ view, scope, onSave, onClose }: ReportVariableScopeSheetProps) {
-  const variables = useLookup('variables', view.modelVersionId);
+  const variables = useLookup('variables', view.report.modelId);
   const members = useLookup('members', view.dimensionVersionId);
   const form = useForm<ReportVariableScopeValues>({
     defaultValues: {
@@ -48,7 +48,7 @@ export function ReportVariableScopeSheet({ view, scope, onSave, onClose }: Repor
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('scope', scope?.variableKey ?? null, false)}
+      title={contentSheetTitle('scope', scope?.variableKey ?? null)}
       description="A variable without a scope reads every row its sources reach."
       form={form}
       onSubmit={submit}

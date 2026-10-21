@@ -1,8 +1,8 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Content;
 
 /// <summary>
-/// One kind of content row an owner holds: the variables and calculated measures of a model version, the source profiles and
-/// calculation dimensions of a report. A write composes the row an input describes before storing it, so a report can check what
+/// One kind of content row an owner holds: the variables and calculated measures of a calculation model, the source profiles and
+/// calculation dimensions of a report. A write composes the row an input describes before storing it, so the owner can check what
 /// the write would leave before anything is written.
 /// </summary>
 /// <typeparam name="TItem">The content row as the API returns it.</typeparam>
@@ -10,7 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Content;
 public interface IOwnedContent<TItem, TInput>
 {
     /// <summary>Lists the owner's rows.</summary>
-    /// <param name="ownerId">The owning model version or report.</param>
+    /// <param name="ownerId">The owning model or report.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The rows, by key.</returns>
     Task<IReadOnlyList<TItem>> ListAsync(long ownerId, CancellationToken cancellationToken);

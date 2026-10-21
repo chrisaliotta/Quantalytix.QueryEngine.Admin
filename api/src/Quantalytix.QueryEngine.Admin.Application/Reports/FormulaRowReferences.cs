@@ -4,10 +4,10 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Checks what formula rows of a report name: a calculated measure of the published version of the report's model, which the row
+/// Checks what formula rows of a report name: a calculated measure of the report's model, which the row
 /// evaluates, and one of the report's columns, which the row places its value in.
 /// </summary>
-/// <param name="metrics">Reads the metrics of the published version of the report's model.</param>
+/// <param name="metrics">Reads the metrics of the report's model.</param>
 /// <param name="columns">Reads the report's columns.</param>
 public sealed class FormulaRowReferences(ModelMetricsReader metrics, ITableGateway<ReportColumnRecord> columns)
 {
@@ -29,7 +29,7 @@ public sealed class FormulaRowReferences(ModelMetricsReader metrics, ITableGatew
         foreach (var (rowKey, measureKey, columnKey) in rows)
         {
             if (measureKey is not null && !model.Has(ReportValueKinds.Calculated, measureKey))
-                problems.Add($"Formula row '{rowKey}' evaluates '{measureKey}', which is no calculated measure of the published version of the report's model.");
+                problems.Add($"Formula row '{rowKey}' evaluates '{measureKey}', which is no calculated measure of the report's model.");
             if (columnKey is not null && !columnKeys.Contains(columnKey))
                 problems.Add($"Formula row '{rowKey}' places its value in '{columnKey}', which is no column of this report.");
         }

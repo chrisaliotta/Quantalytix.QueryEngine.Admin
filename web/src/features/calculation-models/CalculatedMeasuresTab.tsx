@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { VersionContentTab } from '@/shared/VersionContentTab';
+import { OwnedContentTab } from '@/shared/OwnedContentTab';
 import { CalculatedMeasureSheet } from './CalculatedMeasureSheet';
 import type { CalculatedMeasure } from './types';
 
@@ -18,20 +18,17 @@ const columns: ColumnDef<CalculatedMeasure>[] = [
   { accessorKey: 'displayFormat', header: 'Format' },
 ];
 
-/** The version's calculated measures: formulas over variables and other calculated measures. */
-export function CalculatedMeasuresTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
+/** The model's calculated measures: formulas over variables and other calculated measures. */
+export function CalculatedMeasuresTab({ modelId }: { modelId: number }) {
   return (
-    <VersionContentTab
+    <OwnedContentTab
       kind="calculated-measures"
-      ownerId={versionId}
-      isEditable={isEditable}
+      ownerId={modelId}
       columns={columns}
       noun="calculated measure"
       identify={measure => ({ id: measure.calculatedMeasureId, key: measure.measureKey })}
-      deleteDescription="A calculated measure of the published version that a published report's column returns, or that its formula row evaluates, is kept."
-      renderSheet={(measure, onClose) => (
-        <CalculatedMeasureSheet versionId={versionId} measure={measure} readOnly={!isEditable} onClose={onClose} />
-      )}
+      deleteDescription="A calculated measure that another formula of the model, or an enabled report's column or formula row, reads is kept."
+      renderSheet={(measure, onClose) => <CalculatedMeasureSheet modelId={modelId} measure={measure} onClose={onClose} />}
     />
   );
 }

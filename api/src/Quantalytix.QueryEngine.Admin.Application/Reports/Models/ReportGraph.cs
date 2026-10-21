@@ -3,9 +3,8 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// A report's content with the metrics of the model version it is checked against, which the report rules evaluate in memory: the
-/// report as it stands, or as a write would leave it. The model version is its model's published version, or the one being
-/// validated.
+/// A report's content with its model's metrics, which the report rules evaluate in memory: the report as it stands, or as a write to
+/// the report or its model would leave it.
 /// </summary>
 public sealed record ReportGraph
 {
@@ -45,13 +44,10 @@ public sealed record ReportGraph
     /// <summary>The report's calculation dimensions, enabled or not.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
 
-    /// <summary>The model version the report is checked against.</summary>
-    public required CalculationModelVersionRecord Model { get; init; }
-
-    /// <summary>The model version's variables.</summary>
+    /// <summary>The model's variables.</summary>
     public required IReadOnlyList<VariableRecord> Variables { get; init; }
 
-    /// <summary>The model version's calculated measures.</summary>
+    /// <summary>The model's calculated measures.</summary>
     public required IReadOnlyList<CalculatedMeasureRecord> CalculatedMeasures { get; init; }
 
     /// <summary>The <c>report_key</c> of the report.</summary>
