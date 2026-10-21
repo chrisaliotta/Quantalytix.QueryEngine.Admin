@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// <summary>Builds the dimension metadata rows the Dimensions tests seed their in-memory tables with.</summary>
 internal static class DimensionRows
 {
-    /// <summary>A user-defined dimension of a kind.</summary>
+    /// <summary>A user-defined analytical dimension of a kind.</summary>
     public static DimensionRecord Dimension(long dimensionId, string kind)
     {
         return new DimensionRecord
@@ -17,7 +17,8 @@ internal static class DimensionRows
             DimensionKind = kind,
             DefinitionOrigin = DefinitionOrigins.User,
             IsRemovable = true,
-            IsEnabled = true
+            IsEnabled = true,
+            DimensionPurpose = DimensionPurposes.Analytical
         };
     }
 

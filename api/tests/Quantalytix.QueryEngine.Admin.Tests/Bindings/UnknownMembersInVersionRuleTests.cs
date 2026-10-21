@@ -92,7 +92,7 @@ public sealed class UnknownMembersInVersionRuleTests
     {
         var rule = new UnknownMembersInVersionRule(
             new InMemoryTableGateway<DimensionBindingRecord>(binding),
-            new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members),
+            new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members, new PublicationSet()),
             new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
         return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
     }

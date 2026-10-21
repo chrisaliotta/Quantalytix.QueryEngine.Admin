@@ -1,6 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
@@ -149,7 +150,8 @@ public sealed class MappingEntryRuleTests
     /// <summary>An entry set reader over the given dimension versions, with the members and the given entries.</summary>
     private static MappingEntrySetReader Reader(InMemoryTableGateway<DimensionVersionRecord> versions, params DimensionMappingRecord[] entries)
     {
-        var dimensions = new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), new InMemoryTableGateway<DimensionMemberRecord>(Members));
+        var dimensions = new PublishedDimensionReader(
+            versions, new InMemoryTableGateway<DimensionLevelRecord>(), new InMemoryTableGateway<DimensionMemberRecord>(Members), new PublicationSet());
         return new MappingEntrySetReader(MappingVersions(), Sets(), Entries(entries), dimensions);
     }
 }

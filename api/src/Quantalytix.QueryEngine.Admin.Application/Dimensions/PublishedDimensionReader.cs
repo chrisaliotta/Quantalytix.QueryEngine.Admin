@@ -1,24 +1,32 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Reads the keys of dimension versions, above all of a dimension's published version: the active assumption set pins it, so
-/// bindings, mapping entries, bridge mappings and reports resolve the keys they name in it.
+/// bindings, mapping entries, bridge mappings and reports resolve the keys they name in it. While a set of versions validates
+/// together, a dimension version of the set counts as its dimension's published version.
 /// </summary>
 public sealed class PublishedDimensionReader(
     ITableGateway<DimensionVersionRecord> versions,
     ITableGateway<DimensionLevelRecord> levels,
-    ITableGateway<DimensionMemberRecord> members)
+    ITableGateway<DimensionMemberRecord> members,
+    PublicationSet publicationSet)
 {
-    /// <summary>Reads the keys of a dimension's published version.</summary>
+    /// <summary>Reads the keys of a dimension's published version, or of the version that counts as published.</summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The published version's keys, or null while the dimension has no published version.</returns>
     public async Task<DimensionKeys?> ReadAsync(long dimensionId, CancellationToken cancellationToken)
     {
-        var published = await versions.ListAsync(new { DimensionId = dimensionId, Status = PublicationStatuses.Published }, cancellationToken);
+        var published = publicationSet.CountingAsPublished(
+            VersionKinds.DimensionVersion,
+            await versions.ListAsync(new { DimensionId = dimensionId }, cancellationToken),
+            version => version.DimensionId,
+            version => version.DimensionVersionId,
+            version => version.Status);
         return published.Count == 0 ? null : await KeysAsync(published[0], cancellationToken);
     }
 

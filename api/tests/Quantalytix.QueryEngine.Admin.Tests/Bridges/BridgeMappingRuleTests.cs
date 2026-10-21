@@ -196,7 +196,8 @@ public sealed class BridgeMappingRuleTests
                 Version(TargetVersionId, 2, 1, PublicationStatuses.Published),
                 Version(21, 2, 2, PublicationStatuses.Draft)),
             new InMemoryTableGateway<DimensionLevelRecord>(),
-            new InMemoryTableGateway<DimensionMemberRecord>(Members));
+            new InMemoryTableGateway<DimensionMemberRecord>(Members),
+            new PublicationSet());
         return new BridgeMappingSetReader(
             new InMemoryTableGateway<BridgeVersionRecord>(BridgeVersion(VersionId, 1, 1, cardinality, allocationMode, PublicationStatuses.Draft)),
             new InMemoryTableGateway<BridgeRecord>(Bridge(1, 1, 2)),

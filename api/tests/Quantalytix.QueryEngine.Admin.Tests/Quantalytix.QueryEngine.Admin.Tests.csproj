@@ -4,7 +4,7 @@
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
     <!-- The schema DDL the records must mirror is the seed kit's generated build script. -->
-    <SchemaDdlPath>$(SeedKitRoot)ddl_srdb_bi_v2_17.sql</SchemaDdlPath>
+    <SchemaDdlPath>$(SeedKitRoot)ddl_srdb_bi_v2_18.sql</SchemaDdlPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />

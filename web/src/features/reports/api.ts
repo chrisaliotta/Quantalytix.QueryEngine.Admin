@@ -4,13 +4,12 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
+import { reportDesignKey, reportVariableScopesKey, reportVersionKey } from './queryKeys';
 import type {
   NewReportInput,
   NewReportVersionInput,
   ReportColumnInput,
   ReportInput,
-  ReportLineInput,
-  ReportMemberOptionInput,
   ReportVariableScopeInput,
   ReportVersionInput,
 } from './types';
@@ -20,27 +19,11 @@ function reportsKey(tenantId: string) {
   return ['reports', tenantId] as const;
 }
 
-function versionKey(tenantId: string, versionId: number) {
-  return ['report-versions', tenantId, versionId] as const;
-}
-
 function columnsKey(tenantId: string, versionId: number) {
   return ['report-columns', tenantId, versionId] as const;
 }
 
-function linesKey(tenantId: string, versionId: number) {
-  return ['report-lines', tenantId, versionId] as const;
-}
-
-function memberOptionsKey(tenantId: string, versionId: number) {
-  return ['report-member-options', tenantId, versionId] as const;
-}
-
-function variableScopesKey(tenantId: string, versionId: number) {
-  return ['report-variable-scopes', tenantId, versionId] as const;
-}
-
-/** The dimensions feature's key of a dimension version's members, so a member edit there refreshes the report's rows. */
+/** The dimensions feature's key of a dimension version's members, so a member edit there refreshes what reads them here. */
 function dimensionMembersKey(tenantId: string, dimensionVersionId: number) {
   return ['dimension-members', tenantId, dimensionVersionId] as const;
 }
@@ -73,7 +56,7 @@ export function useReport(reportId: number) {
 export function useReportVersion(versionId: number | null) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: versionKey(tenantId, versionId ?? 0),
+    queryKey: reportVersionKey(tenantId, versionId ?? 0),
     queryFn: async () =>
       unwrap(
         await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}', {
@@ -98,39 +81,11 @@ export function useReportColumns(versionId: number) {
   });
 }
 
-/** The overlay rows of a report version, by sort order, then key. */
-export function useReportLines(versionId: number) {
-  const tenantId = useTenantId();
-  return useQuery({
-    queryKey: linesKey(tenantId, versionId),
-    queryFn: async () =>
-      unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/lines', {
-          params: { path: { tenantId, versionId } },
-        })
-      ),
-  });
-}
-
-/** The member options of a report version; a member without one shows its own name and values. */
-export function useReportMemberOptions(versionId: number) {
-  const tenantId = useTenantId();
-  return useQuery({
-    queryKey: memberOptionsKey(tenantId, versionId),
-    queryFn: async () =>
-      unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/member-options', {
-          params: { path: { tenantId, versionId } },
-        })
-      ),
-  });
-}
-
 /** The variable scopes of a report version; a variable without one reads every row its sources classify. */
 export function useReportVariableScopes(versionId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: variableScopesKey(tenantId, versionId),
+    queryKey: reportVariableScopesKey(tenantId, versionId),
     queryFn: async () =>
       unwrap(
         await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes', {
@@ -141,10 +96,10 @@ export function useReportVariableScopes(versionId: number) {
 }
 
 /**
- * The members of a version of the report dimension, with their parents and sort orders, which lay out the report's rows;
- * `null` keeps the query idle until the version is known.
+ * The members of a dimension version, with their parents, sort orders and whether they take source values, such as the
+ * members of a design source's bound dimension; `null` keeps the query idle until the version is known.
  */
-export function useReportDimensionMembers(dimensionVersionId: number | null) {
+export function useDimensionVersionMembers(dimensionVersionId: number | null) {
   const tenantId = useTenantId();
   return useQuery({
     queryKey: dimensionMembersKey(tenantId, dimensionVersionId ?? 0),
@@ -158,13 +113,13 @@ export function useReportDimensionMembers(dimensionVersionId: number | null) {
   });
 }
 
-/** Creates a report without versions. */
+/** Creates a report with its own report dimension and without versions. */
 export function useCreateReport() {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (body: NewReportInput) =>
       unwrap(await apiClient.POST('/api/tenants/{tenantId}/reports', { params: { path: { tenantId } }, body })),
-    onSuccess: () => invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'reports')),
+    onSuccess: () => invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'reports'), lookupQueryKey(tenantId, 'dimensions')),
   });
 }
 
@@ -180,7 +135,7 @@ export function useUpdateReport(reportId: number) {
   });
 }
 
-/** Deletes a report whose versions are all drafts; a 409 names what blocks it. */
+/** Deletes a report whose versions are all drafts, with its report dimension and bridges; a 409 names what blocks it. */
 export function useDeleteReport() {
   const tenantId = useTenantId();
   return useMutation({
@@ -189,11 +144,19 @@ export function useDeleteReport() {
         await apiClient.DELETE('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } } })
       ),
     onSuccess: () =>
-      invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'reports'), lookupQueryKey(tenantId, 'report-versions')),
+      invalidate(
+        reportsKey(tenantId),
+        lookupQueryKey(tenantId, 'reports'),
+        lookupQueryKey(tenantId, 'report-versions'),
+        lookupQueryKey(tenantId, 'dimensions')
+      ),
   });
 }
 
-/** Creates a draft report version, empty or a copy of another version's data, rows and columns. */
+/**
+ * Creates the report's draft, empty or a copy of another version's content, with drafts of its report dimension and bridges
+ * that copy their published versions.
+ */
 export function useCreateReportVersion(reportId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -204,7 +167,7 @@ export function useCreateReportVersion(reportId: number) {
           body,
         })
       ),
-    onSuccess: () => invalidate(lookupQueryKey(tenantId, 'report-versions')),
+    onSuccess: () => invalidate(lookupQueryKey(tenantId, 'report-versions'), lookupQueryKey(tenantId, 'dimension-versions')),
   });
 }
 
@@ -219,11 +182,11 @@ export function useUpdateReportVersion(versionId: number) {
           body,
         })
       ),
-    onSuccess: () => invalidate(versionKey(tenantId, versionId)),
+    onSuccess: () => invalidate(reportVersionKey(tenantId, versionId)),
   });
 }
 
-/** Deletes a draft version with all its content. */
+/** Deletes the report's draft with all its content and the drafts paired with it. */
 export function useDeleteReportVersion() {
   const tenantId = useTenantId();
   return useMutation({
@@ -233,7 +196,8 @@ export function useDeleteReportVersion() {
           params: { path: { tenantId, versionId } },
         })
       ),
-    onSuccess: () => invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'report-versions')),
+    onSuccess: () =>
+      invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'report-versions'), lookupQueryKey(tenantId, 'dimension-versions')),
   });
 }
 
@@ -250,41 +214,7 @@ export function useReplaceReportColumns(versionId: number) {
       ),
     onSuccess: columns => {
       queryClient.setQueryData(columnsKey(tenantId, versionId), columns);
-      return invalidate(lookupQueryKey(tenantId, 'report-columns'), linesKey(tenantId, versionId));
-    },
-  });
-}
-
-/** Replaces the overlay rows of a draft or published version; the stored rows replace the cached list. */
-export function useReplaceReportLines(versionId: number) {
-  const tenantId = useTenantId();
-  return useMutation({
-    mutationFn: async (lines: ReportLineInput[]) =>
-      unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/lines', {
-          params: { path: { tenantId, versionId } },
-          body: { lines },
-        })
-      ),
-    onSuccess: lines => {
-      queryClient.setQueryData(linesKey(tenantId, versionId), lines);
-    },
-  });
-}
-
-/** Replaces the member options of a draft or published version; the stored options replace the cached list. */
-export function useReplaceReportMemberOptions(versionId: number) {
-  const tenantId = useTenantId();
-  return useMutation({
-    mutationFn: async (options: ReportMemberOptionInput[]) =>
-      unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/member-options', {
-          params: { path: { tenantId, versionId } },
-          body: { options },
-        })
-      ),
-    onSuccess: options => {
-      queryClient.setQueryData(memberOptionsKey(tenantId, versionId), options);
+      return invalidate(lookupQueryKey(tenantId, 'report-columns'), reportDesignKey(tenantId, versionId));
     },
   });
 }
@@ -301,7 +231,7 @@ export function useReplaceReportVariableScopes(versionId: number) {
         })
       ),
     onSuccess: scopes => {
-      queryClient.setQueryData(variableScopesKey(tenantId, versionId), scopes);
+      queryClient.setQueryData(reportVariableScopesKey(tenantId, versionId), scopes);
     },
   });
 }

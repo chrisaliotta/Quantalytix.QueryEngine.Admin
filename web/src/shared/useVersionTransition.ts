@@ -23,3 +23,6 @@ export function useVersionTransition(kind: VersionKind) {
     onSuccess: () => invalidateTenantQueries(tenantId),
   });
 }
+
+/** A mutation that moves a version to another status, such as `useVersionTransition`'s. */
+export type VersionTransitionMutation = ReturnType<typeof useVersionTransition>;

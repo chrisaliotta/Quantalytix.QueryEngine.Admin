@@ -15,11 +15,11 @@ namespace Quantalytix.QueryEngine.Admin.Api.Bridges;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgesController(BridgeService bridges) : ControllerBase
 {
-    /// <summary>Lists every bridge of the tenant.</summary>
+    /// <summary>Lists the bridges of the tenant but those into a report dimension, which belong to their report's design.</summary>
     /// <param name="tenantId">The tenant that owns the bridges.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The bridges by key.</returns>
-    /// <response code="200">The bridges by key, ignoring case.</response>
+    /// <response code="200">The bridges by key, ignoring case; a report's own bridges are left out.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]

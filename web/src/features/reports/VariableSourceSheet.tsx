@@ -7,10 +7,8 @@ import { useLatestVersionItems, usePublishedVersionItems } from '@/shared/useLat
 import { useSaveVersionContent } from '@/shared/versionContent';
 import { ClassificationFields } from './ClassificationFields';
 import { classificationValues, toClassificationInput, type ClassificationValues } from './classificationOptions';
+import { isTimeField } from './timeFields';
 import type { Report, ReportVersion, VariableSource } from './types';
-
-/** Data types a time field can have. */
-const TIME_TYPES = ['date', 'datetime', 'timestamp'];
 
 /** Values of the source sheet; a choice not made yet is null, and the filter is JSON text, empty for none. */
 interface VariableSourceValues {
@@ -101,7 +99,7 @@ export function VariableSourceSheet({ report, version, source, readOnly, onClose
       <KeyField
         name="timeFieldKey"
         label="Time field"
-        items={fields && fields.filter(field => TIME_TYPES.includes(field.classifier ?? ''))}
+        items={fields && fields.filter(isTimeField)}
         description="A field with a time binding; it places each row in a report period."
       />
       <KeyField name="measureKey" label="Measure" items={measures} />

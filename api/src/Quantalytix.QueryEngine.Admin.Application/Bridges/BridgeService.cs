@@ -10,6 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 public sealed class BridgeService(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
+    ITableGateway<DimensionRecord> dimensions,
     ITableGateway<DimensionBindingRecord> bindings,
     ITableGateway<VariableSourceRecord> sources,
     BindingNames bindingNames,
@@ -18,13 +19,16 @@ public sealed class BridgeService(
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
-    /// <summary>Lists every bridge.</summary>
-    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <summary>Lists every bridge but those into a report dimension, which belong to their report's design.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The bridges by key, ignoring case.</returns>
     public async Task<IReadOnlyList<BridgeRecord>> ListAsync(CancellationToken cancellationToken)
     {
+        var reportDimensionIds = (await dimensions.ListAsync(new { DimensionPurpose = DimensionPurposes.Report }, cancellationToken))
+            .Select(dimension => dimension.DimensionId)
+            .ToHashSet();
         var rows = await bridges.ListAsync(null, cancellationToken);
-        return [.. rows.OrderBy(row => row.BridgeKey, StringComparer.OrdinalIgnoreCase)];
+        return [.. rows.Where(row => !reportDimensionIds.Contains(row.TargetDimensionId)).OrderBy(row => row.BridgeKey, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>Reads one bridge.</summary>
@@ -97,8 +101,21 @@ public sealed class BridgeService(
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 
+        await RemoveAsync(bridgeId, versionIds, cancellationToken);
+        return null;
+    }
+
+    /// <summary>
+    /// Deletes a bridge whose versions are all drafts and that nothing classifies through any more: its drafts with their
+    /// mappings, then the bridge. A report removes its own bridges this way, with the report or with the draft that created them.
+    /// </summary>
+    /// <param name="bridgeId">The bridge.</param>
+    /// <param name="versionIds">Every version of the bridge.</param>
+    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <returns>A task that completes when the bridge is gone.</returns>
+    public async Task RemoveAsync(long bridgeId, IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
+    {
         await versionService.RemoveAsync(versionIds, cancellationToken);
         await bridges.DeleteAsync(new { BridgeId = bridgeId }, cancellationToken);
-        return null;
     }
 }

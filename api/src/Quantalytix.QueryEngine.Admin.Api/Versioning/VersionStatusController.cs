@@ -42,15 +42,16 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
         CancellationToken cancellationToken)
     {
         var result = await workflow.TransitionAsync(version.Kind, version.Id, input.Status, cancellationToken);
+        var state = result.States.Single();
         if (result.Outcome == TransitionOutcome.NotAllowed)
         {
-            var detail = $"{version.Kind} {version.Id} is {result.State.Status}; it cannot move to {input.Status}.";
+            var detail = $"{version.Kind} {version.Id} is {state.Status}; it cannot move to {input.Status}.";
             return Problem(detail, statusCode: StatusCodes.Status409Conflict, title: "Transition not allowed");
         }
 
         if (result.Outcome == TransitionOutcome.Rejected)
             return RuleViolationResults.Create(HttpContext, $"{version.Kind} {version.Id} cannot become {input.Status}.", result.Violations);
-        return Ok(result.State);
+        return Ok(state);
     }
 
     /// <summary>

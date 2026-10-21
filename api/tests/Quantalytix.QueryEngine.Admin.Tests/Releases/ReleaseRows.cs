@@ -106,7 +106,7 @@ internal static class ReleaseRows
         };
     }
 
-    /// <summary>A user-defined categorical dimension.</summary>
+    /// <summary>A user-defined categorical, analytical dimension.</summary>
     /// <param name="dimensionId">The dimension's ID.</param>
     /// <param name="dimensionKey">The dimension's key, which is also its display name.</param>
     /// <returns>The dimension row.</returns>
@@ -120,7 +120,8 @@ internal static class ReleaseRows
             DimensionKind = DimensionKinds.Categorical,
             DefinitionOrigin = DefinitionOrigins.User,
             IsRemovable = true,
-            IsEnabled = true
+            IsEnabled = true,
+            DimensionPurpose = DimensionPurposes.Analytical
         };
     }
 

@@ -79,6 +79,7 @@ public sealed class ReleaseRetirementTests
             [],
             [new ReleaseNotActiveRule(_databaseInfo, _releases)],
             [],
+            new PublicationSet(),
             new SemanticRevision(_databaseInfo, _time),
             _time);
     }

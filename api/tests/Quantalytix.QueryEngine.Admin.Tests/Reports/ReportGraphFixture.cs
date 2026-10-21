@@ -58,7 +58,7 @@ internal sealed class ReportGraphFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 8,
+        MetadataSchemaVersion = 9,
         SemanticRevision = 1,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -173,7 +173,7 @@ internal sealed class ReportGraphFixture
     /// <returns>A reader of the report dimension's published version.</returns>
     public PublishedDimensionReader PublishedDimensions()
     {
-        return new PublishedDimensionReader(DimensionVersions, new InMemoryTableGateway<DimensionLevelRecord>(), Members);
+        return new PublishedDimensionReader(DimensionVersions, new InMemoryTableGateway<DimensionLevelRecord>(), Members, new PublicationSet());
     }
 
     /// <summary>Evaluates a rule against a version.</summary>

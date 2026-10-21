@@ -163,6 +163,51 @@ A failed write, a 400 from the field rules or a 409 from a delete blocker, chang
 
 **Sources:** [RequireEditableAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableAttribute.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionCheck.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionCheck.cs), [RequireEditableFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/RequireEditableFilterTests.cs).
 
+## Publishing together
+
+The drawing shows a report design's status change, which moves a set of versions at once: the report dimension's version, each of the report's bridges' versions and the report version (see [Feature classes](05-feature-classes.md#report-designs)). It matters because such a set can't move one version at a time. A draft that removes one row and adds another breaks `dimension_consumers_resolve` while the published bridge still names the removed row. The bridge draft that maps to the new row breaks `mapping_members_in_endpoint_versions`, because the published dimension lacks that row. Validated as a set, each version counts as its identity's published version, so the drafts check against each other.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web SPA
+    participant Ctl as ReportDesignsController
+    participant Designs as ReportDesignVersions
+    participant Wf as VersionWorkflow
+    participant Set as PublicationSet
+    participant Rules as IPublicationRule
+    participant Store as IVersionStore
+    Client->>Ctl: PUT report-versions/{versionId}/design/status with status validated
+    Ctl->>Designs: SetAsync(versionId)
+    Designs-->>Ctl: the dimension version, each bridge version, then the report version, all of one status
+    Ctl->>Wf: TransitionAsync(versions, validated)
+    Wf->>Store: GetAsync of each version
+    alt Any version's transition is not allowed
+        Wf-->>Ctl: NotAllowed with every current state
+        Ctl-->>Client: 409 Transition not allowed
+    else Allowed
+        Note over Wf: Each version's OnValidatingAsync handlers run first, such as ClosureBuilder
+        Wf->>Set: Add(kind, identity, version) for each version of a living kind
+        loop Each version, then each rule of its kind
+            Wf->>Rules: EvaluateAsync(id)
+            Note over Rules,Set: PublishedDimensionReader and DimensionConsumers read the set's version of an identity it holds
+        end
+        Wf->>Set: Clear()
+        alt Any violation
+            Wf-->>Ctl: Rejected with every version's violations, no status changed
+            Ctl-->>Client: 422 RuleViolationProblemDetails
+        else No violation
+            Wf->>Store: SetStatusAsync of each version, in the set's order
+            Wf-->>Ctl: Applied with every new state
+            Ctl-->>Client: 200 the report version's VersionState
+        end
+    end
+```
+
+Publishing the validated set runs no rules. It writes each status and runs each version's publish handlers in the set's order: the dimension first, then the bridges, then the report. So `PredecessorRetirer` and `ActiveSetPinner` move the active assumption set to each new version before the next version that names its keys, and the semantic revision advances once for the whole transition. The single-version `TransitionAsync` and `CheckAsync` are sets of one, so every transition follows this path. `POST report-versions/{versionId}/design/validation` checks the set the same way and changes nothing. It is the Validate check of a published design, because edits to it are live.
+
+**Sources:** [ReportDesignsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportDesignsController.cs), [ReportDesignVersions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportDesigns/ReportDesignVersions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [PublicationSet.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PublicationSet.cs), [PublishedDimensionReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PublishedDimensionReader.cs), [DimensionConsumers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumers.cs), [PublishTogetherTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/PublishTogetherTests.cs).
+
 ## Retiring
 
 The drawing shows published to retired of a strict kind. Retirement rules guard metadata that runtime queries still read; today the only one is `ReleaseNotActiveRule` (`release_not_active`) for `semantic_release`, which refuses to retire the release `qe_database_info.active_release_id` points at.
@@ -203,7 +248,7 @@ The engine keys its metadata cache by `qe_database_info.semantic_revision`, so t
 
 | Trigger | Code | What changed |
 | --- | --- | --- |
-| Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living` | The published version, which the active assumption set now pins, and its retired predecessor |
+| Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living`, once per transition even when a set publishes together | The published versions, which the active assumption set now pins, and their retired predecessors |
 | Editing the published version of a living kind | `RequireEditableFilter`, after a successful write | Content queries read now |
 | Capturing or deleting an assumption set | `AssumptionSetService.CaptureAsync` and `DeleteAsync` | The set keys requests can name |
 | Activating a release | `ReleaseActivator.ActivateAsync`, after it writes `active_release_id` | The release every query runs on |

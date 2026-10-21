@@ -15,6 +15,7 @@ import { VersionHeader } from '@/shared/VersionHeader';
 import { selectedVersion } from '@/shared/versionSelection';
 import { isEditable } from '@/shared/versionTransitions';
 import { useDeleteReport, useDeleteReportVersion, useReport, useReportVersion } from './api';
+import { useReportDesignCheck, useReportDesignTransition } from './designApi';
 import { NewReportVersionDialog, type NewReportVersionValues } from './NewReportVersionDialog';
 import { ReportIdentitySheet } from './ReportIdentitySheet';
 import { ReportVersionPanel } from './ReportVersionPanel';
@@ -44,6 +45,8 @@ function ReportDetail({ report }: { report: Report }) {
   const versions = useLookup('report-versions', report.reportId);
   const deleteReport = useDeleteReport();
   const deleteVersion = useDeleteReportVersion();
+  const designTransition = useReportDesignTransition();
+  const designCheck = useReportDesignCheck();
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [newVersion, setNewVersion] = useState<NewReportVersionValues | null>(null);
@@ -121,6 +124,8 @@ function ReportDetail({ report }: { report: Report }) {
         onDeleteVersion={draftId =>
           deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })
         }
+        transition={designTransition}
+        check={designCheck}
       />
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
       {versions.isSuccess && versionItems.length === 0 && (
@@ -147,7 +152,7 @@ function ReportDetail({ report }: { report: Report }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${report.reportKey}?`}
-        description="The report and its draft versions are deleted. A report with validated, published or retired versions is kept."
+        description="The report, its draft versions, its report dimension and its bridges are deleted. A report with validated, published or retired versions is kept."
         confirmLabel="Delete report"
         destructive
         onConfirm={() => deleteReport.mutate(report.reportId, { onSuccess: () => navigate(`/t/${tenantId}/reports`) })}

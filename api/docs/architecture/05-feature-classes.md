@@ -241,6 +241,8 @@ classDiagram
 
 `DimensionVersionService` stores the new draft first and then lets `DimensionVersionCloner` copy the source's levels, members with their parents and levels, and range bands; closure rows are not copied, because validation rebuilds them. Mapping sets and bridges name members by key, so they follow the draft once it is published. `DimensionMemberService` rebuilds the closure after every member write, so a live edit of the published version keeps the closure the engine reads current. `DimensionVersionRemover` deletes children first: range bands, closure rows, members, levels, then the versions; nothing else references a draft, so a draft version's delete has no blockers.
 
+A dimension has a purpose, the `dimension_purpose` vocabulary. An `analytical` dimension is one datasets bind through its roles; every dimension `POST dimensions` creates is analytical, and the Dimensions pages list only these. A `report` dimension holds one report's rows: `ReportService` creates it through `DimensionService.CreateReportDimensionAsync`, as a hierarchical dimension without roles whose draft v1 is a single root `total` or a `DimensionVersionCloner` copy of another dimension's published version, and deletes it with the report. Nothing binds a report dimension, so `NewDimensionRoleInputValidator` refuses a role on one, and every bridge into it belongs to its report (see [Report designs](#report-designs)). The `dimensions` lookup takes an optional `purpose`.
+
 Roles are not versioned. `DimensionService` creates a new dimension's first role with it, from `NewDimensionInput.DefaultRole`, which every kind but `time` requires and `time` forbids, because a time binding names its dimension. A role's key is unique in the tenant and fixed; its display name and description are editable, and a change advances the semantic revision, because the engine's catalog shows both. `DimensionDeleteChecks.RoleAsync` refuses to delete a role a binding, calculation dimension or variable source names, and deleting a dimension deletes its roles once nothing names them.
 
 `DimensionConsumers` lists the keys live objects name in a dimension: the unknown member keys of the bindings of published dataset versions, the member keys of the entries of published mapping versions, the source or target member keys of the mappings of published bridge versions, and the member options, overlay row parents and variable scopes of published report versions over the dimension and the grouping level and ancestor keys of their calculation dimensions on its roles. `dimension_consumers_resolve` requires a version being published to hold every one of them, because it becomes the version they resolve in, and `DimensionDeleteChecks` refuses to delete a level or member of the published version that one of them names; drafts resolve nothing, so they never block. `PublishedDimensionReader` gives the binding, mapping, bridge and report rules the keys of a dimension's published version.
@@ -393,6 +395,8 @@ classDiagram
 - **Registration:** the second half of `AddMappingsAndBridgesFeature` in [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs).
 
 A bridge is created without versions, because its mappings belong to versions. A version holds its cardinality, allocation mode and mappings; a clone copies the mappings with their factors and weights under new mapping IDs. Bindings name the bridge itself, so deleting a draft version has no blockers, and deleting the bridge is blocked by the bindings that use it.
+
+`POST bridges` connects analytical dimensions only: `NewBridgeInputValidator` refuses a `report` source or target. A bridge into a report dimension belongs to that report; its design creates, edits and deletes it as a design source (see [Report designs](#report-designs)), so `GET bridges` leaves it out. The `bridges` lookup still lists it, for the advanced Sources tab and as a template a new design source copies mappings from.
 
 | Class | Records |
 | --- | --- |
@@ -746,7 +750,7 @@ classDiagram
 - **Publication rules, retirement rules and lifecycle handlers:** none; tenant directory rows are not versioned.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), which also maps `ITenantDatabaseVerifier` to `TenantDatabaseVerifier` and `IConnectionStringMasker` to `ConnectionStringMasker`.
 
-A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 8, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
+A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 9, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
 
 | Class | Records |
 | --- | --- |
@@ -911,7 +915,7 @@ classDiagram
 - **Retirement rules:** none. **Lifecycle handlers:** `PredecessorRetirer` and `ActiveSetPinner`, as for every living kind.
 - **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each content service as its `IVersionContent<TItem, TInput>` with the closed `VersionItemReferenceValidator<TItem, TInput>` that checks its `{itemId}` routes, and each report rule once per kind it serves.
 
-Models and reports are created without versions. A report names its report dimension when it is created and a report version its model; neither changes, because every classification and row of the report depends on them. A model version holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key, so a model version clone copies them as they are with new IDs. Report content names metrics by key too: scopes, sources and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the model's published version through `ModelMetricsReader`, so one model serves several reports, each with its own data. Report content rows keep their IDs across edits, because profile picks name sources by ID; a report version clone copies every content row through one `IdRemap`. Variable scopes, columns, overlay rows and member options are replaced whole: columns as an ordered list and overlay rows as a tree in pre-order; a row that keeps its key keeps its ID. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources classify.
+Models and reports are created without versions. A report creates its own report dimension, keyed and named like the report, and a report version names its model; neither changes, because every classification and row of the report depends on them. `NewReportInputValidator` checks that the report key is free as a dimension key, and that the optional `startFromDimensionId`, whose published version the new dimension copies, is a categorical or hierarchical dimension whose published version has one root, because a report's rows are one tree. `ReportVersionsController` creates and deletes drafts through `ReportDesignDrafts`, so a report's draft always comes with drafts of its dimension and bridges (see [Report designs](#report-designs)). Deleting a report deletes its bridges and its dimension after its versions, and a mapping set into the dimension blocks it with a 409. A model version holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key, so a model version clone copies them as they are with new IDs. Report content names metrics by key too: scopes, sources and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the model's published version through `ModelMetricsReader`, so one model serves several reports, each with its own data. Report content rows keep their IDs across edits, because profile picks name sources by ID; a report version clone copies every content row through one `IdRemap`. Variable scopes, columns, overlay rows and member options are replaced whole: columns as an ordered list and overlay rows as a tree in pre-order; a row that keeps its key keeps its ID. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources classify.
 
 A source classifies through a `ClassificationInput`, which `ClassificationInputValidator` checks against the report's dimension: a `direct` classification names a field whose values are its member keys, a `mapped` one a field and a mapping set into it, and a `bridge` one a role and a bridge into it whose source dimension is the role's template; a bridge names no field, because it reads the role's binding. `report_sources_resolve` checks that the release's dataset version binds the role into members with an enabled binding. A calculation dimension is a role plus a default grouping of its template's members, which a report request can replace for its own run, and which `GroupingInputValidator` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. `ReportVersionShape` checks a version's default settings, whose `periodicity`, `timeZone` and `layout` (the `report_layout` vocabulary: `statement`, whose lines keep their order, or `list`, whose table a request filters, orders and pages as a whole) affect execution, and its default filter, which compares calculation dimensions and may compare `parameter` operands that every request then supplies, though not `periodDays` or `yearDays`, which calculated measures read. The pickers read the `dimension-roles` lookup, every role labeled with its template, the `bound-roles` lookup, the roles a dataset version binds into members, and the `bridges` lookup narrowed to such a role's template.
 
@@ -936,3 +940,104 @@ Every report rule checks report graphs, which `ReportGraphReader` builds for the
 | `CalculationGroupingResolveRule` | `DimensionRoleRecord`, through `PublishedDimensionReader` each template's published version |
 
 **Sources:** [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.Api/Reports), [IVersionContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionContent.cs), [VersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionRows.cs), [VersionItemReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionItemReferenceValidator.cs), [ModelVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelVersionRows.cs), [ReportVersionRows.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportVersionRows.cs), [ClassificationInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ClassificationInputValidator.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs), [model services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels), [ModelMetricsReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ModelMetricsReader.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [report services and rules](../../src/Quantalytix.QueryEngine.Admin.Application/Reports), [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), [ReportModelRulesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports/ReportModelRulesTests.cs), [ClassificationInputValidatorTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports/ClassificationInputValidatorTests.cs), [ReportUsesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ReportUsesTests.cs).
+
+## Report designs
+
+The drawing shows the report design slice. A design is a report version seen whole: the rows of its report dimension's paired version and its overlay rows, the sources that classify dataset rows into those rows through the report's own bridges, and the source items mapped to each row. It matters because a design edits three kinds of versioned object as one. The report version pairs with the version of its report dimension, and of each bridge into it, that has the same status. A draft pairs with drafts and the published version with published versions. So a design's drafts change nothing requests read, and they validate and publish together (see [Publishing together](04-version-lifecycle.md#publishing-together)).
+
+```mermaid
+classDiagram
+    direction TB
+    class ReportDesignsController
+    class ReportVersionsController
+    class ReportDesignDrafts {
+        +CreateAsync(reportId, input, cancellationToken) Task~ReportVersionRecord~
+        +DeleteAsync(versionId, cancellationToken)
+    }
+    class ReportDesignVersions {
+        +ReadAsync(reportVersionId, cancellationToken) Task~ReportDesignScope~
+        +SetAsync(reportVersionId, cancellationToken) Task~IReadOnlyList~VersionReference~~
+    }
+    class ReportDesignReader {
+        +ReadAsync(reportVersionId, cancellationToken) Task~ReportDesign~
+    }
+    class DesignRowService {
+        +ReplaceAsync(reportVersionId, input, cancellationToken) Task~ReportDesign~
+    }
+    class DesignSourceService {
+        +CreateAsync(reportVersionId, input, cancellationToken) Task~ReportDesign~
+        +UpdateAsync(reportVersionId, bridgeId, input, cancellationToken) Task~ReportDesign~
+        +DeleteAsync(reportVersionId, bridgeId, cancellationToken) Task~ReportDesign~
+    }
+    class RowMappingService {
+        +ReplaceAsync(reportVersionId, input, cancellationToken) Task~ReportDesign~
+    }
+    class DesignCoverageReader {
+        +UnmappedAsync(reportVersionId, bridgeId, cancellationToken) Task~IReadOnlyList~string~~
+    }
+    class DesignRowsInputValidator
+    class DesignRowTree {
+        <<static>>
+        +Problems(rows) IEnumerable~string~
+    }
+    class NewDesignSourceInputValidator
+    class DesignSourceInputValidator
+    class DesignSourceFieldsValidator
+    class RowMappingsInputValidator
+    class DesignSourceKeys {
+        <<static>>
+    }
+    class VersionWorkflow
+    class PublicationSet
+    ReportVersionsController --> ReportDesignDrafts
+    ReportDesignsController --> ReportDesignReader
+    ReportDesignsController --> DesignRowService
+    ReportDesignsController --> DesignSourceService
+    ReportDesignsController --> RowMappingService
+    ReportDesignsController --> DesignCoverageReader
+    ReportDesignsController --> ReportDesignVersions : SetAsync
+    ReportDesignsController --> VersionWorkflow : set transitions and checks
+    VersionWorkflow --> PublicationSet
+    ReportDesignDrafts --> ReportVersionService
+    ReportDesignDrafts --> DimensionVersionService
+    ReportDesignDrafts --> BridgeVersionService
+    ReportDesignReader --> ReportDesignVersions
+    DesignRowService --> DimensionMemberService
+    DesignRowService --> ReportMemberOptionService
+    DesignRowService --> ReportLineService
+    DesignRowService --> ReportVariableScopeService
+    DesignRowService --> BridgeMappingService
+    DesignSourceService --> BridgeService
+    DesignSourceService --> BridgeMappingService
+    DesignSourceService --> IVersionContent : variable sources and profiles
+    DesignSourceService --> VersionWorkflow : publishes a new bridge of the published design
+    DesignSourceService --> DesignSourceKeys
+    RowMappingService --> BridgeMappingService
+    DesignCoverageReader --> PublishedDimensionReader
+    DesignRowsInputValidator --> DesignRowTree
+    DesignRowsInputValidator --> FormulaRowReferences
+    NewDesignSourceInputValidator --> DesignSourceFieldsValidator
+    DesignSourceInputValidator --> DesignSourceFieldsValidator
+    RowMappingsInputValidator --> PublishedDimensionReader
+```
+
+- **Routes:** `api/tenants/{tenantId}/report-versions/{versionId:long}/design` (`ReportDesignsController`). `GET` reads the design of a draft, validated or published version. `PUT rows`, `POST sources`, `PUT sources/{bridgeId:long}`, `DELETE sources/{bridgeId:long}` and `PUT row-mappings` write a draft or the published version (`[RequireEditable]`), each answering the design afterwards. `GET sources/{bridgeId:long}/coverage` lists a source's unmapped items, and `PUT status` and `POST validation` move or check the design's versions as one set.
+- **Publication rules:** none of its own. A design's status change runs the rules of every version in the set: the dimension version's, each bridge version's and the report version's.
+- **Retirement rules:** none. **Lifecycle handlers:** those of the set's kinds, run in the set's order.
+- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs); `PublicationSet` is scoped, in `AddAdminApplication`.
+
+A design row has one of the `design_row_kind` values. A `data` row is an assignable member of the report dimension: it takes source items, and the rows under it add to its total. A `group` row is a member that takes no items and totals the rows under it, or only heads them when it shows no values. A `section` row is an overlay header, and a `formula` row is an overlay row that places one calculated measure in one column. `PUT rows` takes the whole tree. `DesignRowTree` refuses a shape the report dimension or the engine can't hold: a repeated key, other than one top-level member row (the report's total), a missing parent, a member row under an overlay row, a row under a formula row, or a cycle. `DesignRowsInputValidator` keeps a stored member row a member row and an overlay row an overlay row, keeps a row with items a data row, and refuses to remove a row that a mapping set into the report dimension names. `DesignRowService` writes members through `DimensionMemberService`, hidden rows and headers as member options, and overlay rows through `ReportLineService`. It removes a row only after its bridge entries, variable scopes and member option, and removes the rows under it first.
+
+A design source is one of the report's bridges, from the dimension a dataset binds through a role, with one variable source per variable it supplies, each classifying through that bridge. `DesignSourceService` keys the bridge `{reportKey}_{sourceKey}` and each variable source `{sourceKey}_{variableKey}` through `DesignSourceKeys`, because keys allow only letters, digits and `_`. A new source can copy the published entries of another bridge from the same dimension whose targets are rows of the design. On the published design, its bridge is published at once, so its mappings are live like the rest. Every profile without a source for one of its variables picks it, and a version without profiles gets profile `default` as its default. A bridge whose variable sources read different datasets, roles, time fields or filters is not uniform, so the design shows its settings read-only but still edits its row mappings. Direct and mapped sources show read-only, and the advanced Sources tab edits them. `PUT row-mappings` replaces one data row's items across sources: an item is an assignable member of the published version of the source's bound dimension, and a bridge maps each item to one row, so an item listed for the row leaves the row it was on.
+
+| Class | Records |
+| --- | --- |
+| `ReportDesignVersions` | `ReportRecord`, `ReportVersionRecord`, `DimensionVersionRecord`, `BridgeRecord`, `BridgeVersionRecord` |
+| `ReportDesignDrafts` | `ReportRecord`, `DimensionVersionRecord`, `BridgeRecord`, `BridgeVersionRecord` |
+| `ReportDesignReader` | `DimensionMemberRecord`, `ReportMemberOptionRecord`, `ReportLineRecord`, `ReportColumnRecord`, `VariableSourceRecord`, `BridgeMappingRecord`, `MappingSetRecord`, `MappingVersionRecord`, `DimensionMappingRecord` |
+| `DesignRowService` | `ReportLineRecord`, through the member, option, line, scope and bridge mapping services their records |
+| `DesignSourceService` | `BridgeVersionRecord`, `DimensionRoleRecord`, `DimensionMemberRecord`, `VariableSourceRecord`, through the bridge, variable source, profile and report version services their records |
+| `RowMappingService` | `VariableSourceRecord`, through `BridgeMappingService` `BridgeMappingRecord` |
+| `DesignCoverageReader` | `BridgeMappingRecord`, through `PublishedDimensionReader` the bound dimension's published members |
+
+**Sources:** [ReportDesignsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportDesignsController.cs), [ReportVersionsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportVersionsController.cs), [ReportDesigns](../../src/Quantalytix.QueryEngine.Admin.Application/ReportDesigns), [DesignRowKinds.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/DesignRowKinds.cs), [PublicationSet.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PublicationSet.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [DesignRowTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportDesigns/DesignRowTests.cs), [RowMappingTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportDesigns/RowMappingTests.cs), [ReportDesignDraftsTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportDesigns/ReportDesignDraftsTests.cs), [PublishTogetherTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/PublishTogetherTests.cs).

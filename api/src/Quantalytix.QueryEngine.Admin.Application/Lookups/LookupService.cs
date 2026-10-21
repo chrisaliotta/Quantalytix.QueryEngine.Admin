@@ -34,12 +34,16 @@ public sealed class LookupService(
     CalculationLookups calculations)
 {
     /// <summary>Lists one picker. Items are sorted by key unless the kind has a natural order.</summary>
-    /// <param name="kind">A <c>lookup_kind</c> value, already validated by <see cref="LookupQueryValidator"/>.</param>
-    /// <param name="parentId">The owning row's ID; present for child kinds, optional for <c>dimension-roles</c>, <c>mapping-sets</c> and <c>bridges</c>.</param>
+    /// <param name="query">
+    /// The <c>lookup_kind</c> value, already validated by <see cref="LookupQueryValidator"/>; the owning row's ID, present for child
+    /// kinds and optional for <c>dimension-roles</c>, <c>mapping-sets</c> and <c>bridges</c>; and the purpose that narrows <c>dimensions</c>.
+    /// </param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The picker's items.</returns>
-    public Task<IReadOnlyList<LookupItem>> ListAsync(string kind, long? parentId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<LookupItem>> ListAsync(LookupQuery query, CancellationToken cancellationToken)
     {
+        var kind = query.Kind;
+        var parentId = query.ParentId;
         return kind switch
         {
             LookupKinds.Datasets => DatasetsAsync(cancellationToken),
@@ -50,7 +54,7 @@ public sealed class LookupService(
             LookupKinds.Bindings => BindingsAsync(parentId!.Value, cancellationToken),
             LookupKinds.TimeBindings => TimeBindingsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Measures => MeasuresAsync(parentId!.Value, cancellationToken),
-            LookupKinds.Dimensions => DimensionsAsync(cancellationToken),
+            LookupKinds.Dimensions => DimensionsAsync(query.Purpose, cancellationToken),
             LookupKinds.DimensionRoles => DimensionRolesAsync(parentId, cancellationToken),
             LookupKinds.DimensionVersions => DimensionVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Levels => LevelsAsync(parentId!.Value, cancellationToken),
@@ -183,10 +187,12 @@ public sealed class LookupService(
         }));
     }
 
-    /// <summary>Every canonical dimension, classified by dimension kind.</summary>
-    private async Task<IReadOnlyList<LookupItem>> DimensionsAsync(CancellationToken cancellationToken)
+    /// <summary>Every canonical dimension, or every dimension of one purpose, classified by dimension kind.</summary>
+    private async Task<IReadOnlyList<LookupItem>> DimensionsAsync(string? purpose, CancellationToken cancellationToken)
     {
-        var rows = await dimensions.ListAsync(null, cancellationToken);
+        object? filter = null;
+        if (purpose is not null) filter = new { DimensionPurpose = purpose };
+        var rows = await dimensions.ListAsync(filter, cancellationToken);
         return SortByKey(rows.Select(row => new LookupItem
         {
             Id = row.DimensionId,

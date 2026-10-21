@@ -4,7 +4,10 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Lookups;
 
-/// <summary>Accepts only known lookup kinds, and requires the parent ID that a child kind lists rows of.</summary>
+/// <summary>
+/// Accepts only known lookup kinds, requires the parent ID that a child kind lists rows of, and takes a dimension purpose for the
+/// <c>dimensions</c> kind only.
+/// </summary>
 public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
 {
     /// <summary>The kinds whose rows belong to one parent row.</summary>
@@ -39,5 +42,10 @@ public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
             .NotNull()
             .WithMessage(query => $"'{query.Kind}' lists the rows of one parent, so parentId is required.")
             .When(query => ChildKinds.Contains(query.Kind));
+        RuleFor(query => query.Purpose).MustBeIn(DimensionPurposes.Definition);
+        RuleFor(query => query.Purpose)
+            .Null()
+            .WithMessage(query => $"Only the '{LookupKinds.Dimensions}' kind takes a purpose, so '{query.Kind}' does not.")
+            .When(query => query.Kind != LookupKinds.Dimensions);
     }
 }

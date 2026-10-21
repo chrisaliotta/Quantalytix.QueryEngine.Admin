@@ -4,10 +4,11 @@
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
 #     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding of the seed branch role through the
 #     seed mapping set loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors
-#     calculation model ${PREFIX}margin (2 variables and a yield formula) and report ${PREFIX}margin over it on the seed
-#     MarginStatement dimension (GL monthly sources bridged into the statement from the seed account role, a profile, a branch
-#     calculation dimension on the seed branch role, which each GL dataset binds, 3 columns, a member option and a formula
-#     row), and publishes both, which repoints the
+#     calculation model ${PREFIX}margin (2 variables and a yield formula) and report ${PREFIX}margin over it, whose own report
+#     dimension starts as a copy of the seed MarginStatement dimension, through the design endpoints (2 GL monthly sources on
+#     the seed account role starting from the mappings of the seed bridge gl_account_to_margin, which make the default
+#     profile, a branch calculation dimension on the seed branch role, which each GL dataset binds, 3 columns, a header row and
+#     a formula row), and publishes both, the report with its dimension and bridges, which repoints the
 #     active assumption set at them, and captures assumption set ${PREFIX}backtest, which keeps the release active at that
 #     moment. Then it creates release ${PREFIX}acceptance as a copy of the active release plus the
 #     dataset version, validates, publishes and activates it, renames the published report's yield column live, checks
@@ -24,9 +25,9 @@
 # under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant $TENANT, development by
 # default, and never prints the control-plane connection string. While it runs, its release is the tenant's active
 # release, so don't run the engine's golden cases at the same time.
-# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (published v1),
-# ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is reloaded. Their keys stay taken,
-# so every run needs a new PREFIX.
+# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (published v1) with the
+# report's dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is
+# reloaded. Their keys stay taken, so every run needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
@@ -132,12 +133,14 @@ author_dataset() {
   call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"published"}'
 }
 
-# Authors model ${PREFIX}margin, which holds the metrics, and report ${PREFIX}margin over it on the seed MarginStatement
-# dimension, whose version holds the data and the rows, and publishes both. The report's rows are the statement's members; its
-# sources bridge each GL account into them from the seed account role through the seed bridge gl_account_to_margin, and its
-# branch calculation dimension reads the seed branch role, which each GL dataset binds once. Sources name keys and roles only:
-# the active release decides which dataset versions they resolve in, and the active assumption set which dimension, bridge and
-# mapping versions.
+# Authors model ${PREFIX}margin, which holds the metrics, and report ${PREFIX}margin over it, and publishes both. The report
+# creates its own report dimension as a copy of the seed MarginStatement dimension, whose members are its rows. Its version is
+# authored through the design endpoints: two sources, each a bridge of the report from the dimension of the seed account role
+# that starts with the mappings of the seed bridge gl_account_to_margin, and whose first source makes profile default; the
+# branch calculation dimension on the seed branch role, which each GL dataset binds once; the columns; and the rows, with
+# ASSETS as a header and a formula row. The design's status changes publish the report dimension's and bridges' drafts with
+# the report version. Sources name keys and roles only: the active release decides which dataset versions they resolve in,
+# and the active assumption set which dimension, bridge and mapping versions.
 author_report() {
   REPORT_KEY=${PREFIX}margin
   call GET /lookups/datasets 200
@@ -166,24 +169,24 @@ author_report() {
   call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"validated"}'
   call PUT "/versions/calculation_model_version/$MODEL_VERSION/status" 200 '{"status":"published"}'
 
-  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'reportDimensionId': $statement, 'isEnabled': True, 'payloadJson': None}")"
+  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'startFromDimensionId': $statement, 'isEnabled': True, 'payloadJson': None}")"
   REPORT=$(py "r['reportId']")
-  call POST "/reports/$REPORT/versions" 200 "$(json "{'modelId': $MODEL, 'defaultProfileKey': 'gl_monthly', 'subtotalPosition': 'above', 'payloadJson': None, 'defaultFilterJson': None, 'defaultSettingsJson': json.dumps({'periodicity': 'month', 'timeZone': 'UTC'}), 'defaultPivotJson': None, 'cloneFromVersionId': None}")"
+  call POST "/reports/$REPORT/versions" 200 "$(json "{'modelId': $MODEL, 'defaultProfileKey': None, 'subtotalPosition': 'above', 'payloadJson': None, 'defaultFilterJson': None, 'defaultSettingsJson': json.dumps({'periodicity': 'month', 'timeZone': 'UTC'}), 'defaultPivotJson': None, 'cloneFromVersionId': None}")"
   REPORT_VERSION=$(py "r['reportVersionId']")
   local R=/report-versions/$REPORT_VERSION
-  local bridged="'classification': {'kind': 'bridge', 'fieldKey': None, 'roleId': $account_role, 'mappingSetId': None, 'bridgeId': $accounts}"
-  local s_balance s_income
-  call POST "$R/variable-sources" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'sourceKey': 'gl_monthly_balance', 'datasetId': $balances, $bridged, 'timeFieldKey': 'reportingPeriod', 'measureKey': 'periodAverage', 'sourceFilterJson': None, 'isEnabled': True}")"
-  s_balance=$(py "r['variableSourceId']")
-  call POST "$R/variable-sources" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'sourceKey': 'gl_interest_income', 'datasetId': $income, $bridged, 'timeFieldKey': 'reportingPeriod', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}}), 'isEnabled': True}")"
-  s_income=$(py "r['variableSourceId']")
-  call POST "$R/profiles" 200 "$(json "{'profileKey': 'gl_monthly', 'displayName': 'GL monthly balances', 'isEnabled': True, 'picks': [{'variableKey': 'AVERAGE_BALANCE', 'variableSourceId': $s_balance}, {'variableKey': 'INTEREST_INCOME', 'variableSourceId': $s_income}]}")"
+  local gl="'copyMappingsFromBridgeId': $accounts, 'roleId': $account_role, 'timeFieldKey': 'reportingPeriod'"
+  call POST "$R/design/sources" 200 "$(json "{'key': 'gl_balance', 'label': 'GL monthly balances', 'datasetId': $balances, $gl, 'sourceFilterJson': None, 'variables': [{'variableKey': 'AVERAGE_BALANCE', 'measureKey': 'periodAverage'}]}")"
+  call POST "$R/design/sources" 200 "$(json "{'key': 'gl_income', 'label': 'GL interest income', 'datasetId': $income, $gl, 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}}), 'variables': [{'variableKey': 'INTEREST_INCOME', 'measureKey': 'totalValue'}]}")"
+  echo "Design sources and their mapped items: $(py "[(s['key'], sum(1 for row in r['rows'] for m in row['mappings'] if m['bridgeId'] == s['bridgeId'])) for s in r['sources']]")"
+  call GET "$R/profiles" 200
+  echo "Profile default picks $(py "sorted(p['variableKey'] for x in r if x['profile']['profileKey'] == 'default' for p in x['picks'])") (expected AVERAGE_BALANCE and INTEREST_INCOME)"
   call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'roleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
   call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
-  call PUT "$R/member-options" 200 "$(json "{'options': [{'memberKey': 'ASSETS', 'displayName': None, 'isVisible': True, 'showsValues': False}]}")"
-  call PUT "$R/lines" 200 "$(json "{'lines': [{'reportLineId': None, 'lineKey': 'reportYield', 'displayName': 'Report yield', 'lineKind': 'formula', 'parentKey': None, 'calculatedMeasureKey': 'YIELD', 'valueColumnKey': 'yield', 'sortOrder': 99, 'isVisible': True, 'payloadJson': None, 'settingsJson': None}]}")"
-  call PUT "/versions/report_version/$REPORT_VERSION/status" 200 '{"status":"validated"}'
-  call PUT "/versions/report_version/$REPORT_VERSION/status" 200 '{"status":"published"}'
+  # The rows go back as a whole tree: ASSETS becomes a header, and formula row reportYield is added at the top.
+  call GET "$R/design" 200
+  call PUT "$R/design/rows" 200 "$(py "json.dumps({'rows': [dict({k: row.get(k) for k in ['key', 'label', 'kind', 'parentKey', 'sortOrder', 'isVisible', 'calculatedMeasureKey', 'valueColumnKey']}, showsValues=row['showsValues'] and row['key'] != 'ASSETS') for row in r['rows']] + [{'key': 'reportYield', 'label': 'Report yield', 'kind': 'formula', 'parentKey': None, 'sortOrder': 99, 'isVisible': True, 'showsValues': True, 'calculatedMeasureKey': 'YIELD', 'valueColumnKey': 'yield'}]})")"
+  call PUT "$R/design/status" 200 '{"status":"validated"}'
+  call PUT "$R/design/status" 200 '{"status":"published"}'
 }
 
 # Renames the published report's yield column: a live edit, which advances the semantic revision so the engine reloads it.
@@ -311,7 +314,7 @@ foreach (var field in dataset.GetProperty("fields").EnumerateArray())
 }
 foreach (var dimension in dataset.GetProperty("dimensions").EnumerateArray())
 {
-    Console.WriteLine($"  dimension {Text(dimension, "id")} binding={Text(dimension, "bindingKind")} dimensionKey={Text(dimension, "dimensionKey")} kind={Text(dimension, "dimensionKind")} versions={dimension.GetProperty("versions").GetArrayLength()}");
+    Console.WriteLine($"  dimension {Text(dimension, "id")} binding={Text(dimension, "bindingKind")} dimensionKey={Text(dimension, "dimensionKey")} kind={Text(dimension, "dimensionKind")} version={(dimension.TryGetProperty("version", out var version) && version.ValueKind == JsonValueKind.Object ? Text(version, "versionId") : "none")}");
 }
 foreach (var measure in dataset.GetProperty("measures").EnumerateArray())
 {

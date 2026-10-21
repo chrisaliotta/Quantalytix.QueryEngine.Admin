@@ -28,8 +28,8 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_17.sql`.
-- A tenant database at metadata schema version 8 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_18.sql`.
+- A tenant database at metadata schema version 9 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 
@@ -116,9 +116,11 @@ the tenant `TENANT` names, it:
 
 1. authors dataset `${PREFIX}loans`, whose branch code binds the seed `branch` role, and publishes its v1;
 2. authors calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and report
-   `${PREFIX}margin` over it on the seed `MarginStatement` dimension, whose version holds the GL monthly sources, which
-   bridge from the seed `account` role, a profile, a branch calculation dimension on the `branch` role, the columns, a
-   member option and a formula row, and publishes both;
+   `${PREFIX}margin` over it. The report's own report dimension starts as a copy of the seed `MarginStatement`
+   dimension. Its version is authored through the design endpoints: two GL monthly sources on the seed `account` role,
+   which start with the mappings of the seed `gl_account_to_margin` bridge and make profile `default`, a branch
+   calculation dimension on the `branch` role, the columns, and rows with a header and a formula row. It then publishes
+   the model, and the design's status changes publish the report with its dimension and bridges;
 3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
    against whichever release is active, so the release pins no report;
 4. validates, publishes and activates the release;
@@ -136,8 +138,9 @@ Before you run it:
 - Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
   `bank.income_monthly` datasets with their bindings of the `account` and `branch` roles, its `MarginStatement` and
   `Branch` dimensions, its `gl_account_to_margin` bridge, and its 2024 data.
-- Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report, and
-  `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay taken.
+- Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report with the
+  report's dimension and bridges, and `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay
+  taken.
 - Don't run the engine's golden cases at the same time: while the script runs, its release is the tenant's active
   release.
 

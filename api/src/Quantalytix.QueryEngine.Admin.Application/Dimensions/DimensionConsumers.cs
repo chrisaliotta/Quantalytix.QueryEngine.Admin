@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
@@ -9,7 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// versions, entries of published mapping versions, mappings of published bridge versions, and the member options, overlay row
 /// parents, variable scopes and the groupings of calculation dimensions on the dimension's roles of published report versions.
 /// They resolve the keys in the dimension's published version, so publishing another version or deleting from the published one
-/// must keep the keys.
+/// must keep the keys. While a set of versions validates together, a mapping, bridge or report version of the set counts as its
+/// identity's published version.
 /// </summary>
 public sealed class DimensionConsumers(
     ITableGateway<DatasetRecord> datasets,
@@ -28,7 +30,8 @@ public sealed class DimensionConsumers(
     ITableGateway<ReportLineRecord> reportLines,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
-    BindingNames names)
+    BindingNames names,
+    PublicationSet publicationSet)
 {
     /// <summary>Lists every key the live objects name in a dimension.</summary>
     /// <param name="dimensionId">The dimension.</param>
@@ -65,7 +68,12 @@ public sealed class DimensionConsumers(
     {
         var setKeys = (await mappingSets.ListAsync(new { DimensionId = dimensionId }, cancellationToken))
             .ToDictionary(set => set.MappingSetId, set => set.MappingSetKey);
-        var published = await mappingVersions.ListAsync(new { MappingSetId = setKeys.Keys.ToArray(), Status = PublicationStatuses.Published }, cancellationToken);
+        var published = publicationSet.CountingAsPublished(
+            VersionKinds.MappingVersion,
+            await mappingVersions.ListAsync(new { MappingSetId = setKeys.Keys.ToArray() }, cancellationToken),
+            version => version.MappingSetId,
+            version => version.MappingVersionId,
+            version => version.Status);
         var setOf = published.ToDictionary(version => version.MappingVersionId, version => setKeys[version.MappingSetId]);
         var entries = await mappingEntries.ListAsync(new { MappingVersionId = setOf.Keys.ToArray() }, cancellationToken);
         return entries.Select(entry =>
@@ -78,7 +86,12 @@ public sealed class DimensionConsumers(
         var from = await bridges.ListAsync(new { SourceDimensionId = dimensionId }, cancellationToken);
         var to = await bridges.ListAsync(new { TargetDimensionId = dimensionId }, cancellationToken);
         var endpoints = from.Concat(to).DistinctBy(bridge => bridge.BridgeId).ToDictionary(bridge => bridge.BridgeId);
-        var published = await bridgeVersions.ListAsync(new { BridgeId = endpoints.Keys.ToArray(), Status = PublicationStatuses.Published }, cancellationToken);
+        var published = publicationSet.CountingAsPublished(
+            VersionKinds.BridgeVersion,
+            await bridgeVersions.ListAsync(new { BridgeId = endpoints.Keys.ToArray() }, cancellationToken),
+            version => version.BridgeId,
+            version => version.BridgeVersionId,
+            version => version.Status);
         var bridgeOf = published.ToDictionary(version => version.BridgeVersionId, version => endpoints[version.BridgeId]);
         var mappings = await bridgeMappings.ListAsync(new { BridgeVersionId = bridgeOf.Keys.ToArray() }, cancellationToken);
         return mappings.SelectMany(mapping =>
@@ -99,7 +112,12 @@ public sealed class DimensionConsumers(
     /// </summary>
     private async Task<IEnumerable<KeyReference>> ReportsAsync(long dimensionId, CancellationToken cancellationToken)
     {
-        var published = await reportVersions.ListAsync(new { Status = PublicationStatuses.Published }, cancellationToken);
+        var published = publicationSet.CountingAsPublished(
+            VersionKinds.ReportVersion,
+            await reportVersions.ListAsync(null, cancellationToken),
+            version => version.ReportId,
+            version => version.ReportVersionId,
+            version => version.Status);
         var reportsById = (await reports.ListAsync(new { ReportId = published.Select(version => version.ReportId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(report => report.ReportId);
         var reportOf = published.ToDictionary(version => version.ReportVersionId, version => reportsById[version.ReportId]);

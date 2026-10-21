@@ -55,13 +55,15 @@ export function NewBridgeSheet({ onClose, onCreated }: NewBridgeSheetProps) {
         name="sourceDimensionId"
         label="Source dimension"
         lookupKind="dimensions"
+        purpose="analytical"
         description="The dimension whose members the bridge remaps."
       />
       <EntityField
         name="targetDimensionId"
         label="Target dimension"
         lookupKind="dimensions"
-        description="The dimension the members map onto."
+        purpose="analytical"
+        description="The dimension the members map onto. A report's own bridges are created in its designer, one per source."
       />
       <SwitchField name="isEnabled" label="Enabled" description="Whether queries may use the bridge." />
     </EntityFormSheet>

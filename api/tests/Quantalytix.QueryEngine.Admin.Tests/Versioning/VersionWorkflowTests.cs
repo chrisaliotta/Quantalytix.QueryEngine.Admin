@@ -69,7 +69,7 @@ public sealed class VersionWorkflowTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 8,
+        MetadataSchemaVersion = 9,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });
@@ -113,7 +113,7 @@ public sealed class VersionWorkflowTests
 
         Assert.Equal(TransitionOutcome.Rejected, result.Outcome);
         Assert.Equal([violation], result.Violations);
-        Assert.Equal(PublicationStatuses.Draft, result.State.Status);
+        Assert.Equal(PublicationStatuses.Draft, Assert.Single(result.States).Status);
         Assert.Equal(PublicationStatuses.Draft, DimensionVersionRow(DraftDimensionVersionId).Status);
     }
 
@@ -168,7 +168,7 @@ public sealed class VersionWorkflowTests
             VersionKinds.DatasetVersion, DraftDatasetVersionId, PublicationStatuses.Published, TestContext.Current.CancellationToken);
 
         Assert.Equal(TransitionOutcome.NotAllowed, result.Outcome);
-        Assert.Equal(PublicationStatuses.Draft, result.State.Status);
+        Assert.Equal(PublicationStatuses.Draft, Assert.Single(result.States).Status);
         Assert.Equal(PublicationStatuses.Draft, DatasetVersionRow(DraftDatasetVersionId).Status);
         Assert.Empty(_log);
     }
@@ -209,7 +209,7 @@ public sealed class VersionWorkflowTests
     /// <summary>The workflow over this test's stores and clock, with the given rules and handlers.</summary>
     private VersionWorkflow Workflow(IEnumerable<IPublicationRule> rules, IEnumerable<IVersionLifecycleHandler> handlers)
     {
-        return new VersionWorkflow(_stores, rules, [], handlers, new SemanticRevision(_databaseInfo, _time), _time);
+        return new VersionWorkflow(_stores, rules, [], handlers, new PublicationSet(), new SemanticRevision(_databaseInfo, _time), _time);
     }
 
     /// <summary>A rule of a kind that logs to this test's log and reports the given violations.</summary>

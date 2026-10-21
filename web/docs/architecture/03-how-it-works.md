@@ -97,7 +97,8 @@ Query keys decide what TanStack Query caches and what a write refreshes. Tenant-
 | `['mapping-sets', tenantId, ...]`, `['mapping-entries', tenantId, versionId]` | `mappings/api.ts` | The changed keys and lookups; `setQueryData` after a bulk entry replace |
 | `['bridges', tenantId, ...]`, `['bridge-versions', ...]`, `['bridge-mappings', ...]` | `bridges/api.ts` | The changed keys and lookups; `setQueryData` after a bulk mapping replace |
 | `['calculation-models', tenantId, ...]`, `['model-versions', ...]` | `calculation-models/api.ts` | The changed keys and lookups |
-| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-lines', ...]`, `['report-member-options', ...]`, `['report-variable-scopes', ...]`; `['dimension-members', ...]` of the report dimension's published version | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column, overlay row, member option or variable scope replace |
+| `['reports', tenantId, ...]`, `['report-versions', ...]`, `['report-columns', ...]`, `['report-variable-scopes', ...]`; `['dimension-members', ...]` of a design source's bound dimension | `reports/api.ts` | The changed keys and lookups; `setQueryData` after a column or variable scope replace; a column replace refreshes the design, whose formula rows name columns |
+| `['report-design', tenantId, versionId]`, `['report-design-coverage', tenantId, versionId, bridgeId]` | `reports/designApi.ts`, with the keys shared with `api.ts` in `reports/queryKeys.ts` | Each design write answers the design, which `setQueryData` caches, and refreshes the coverage; a row write also refreshes the variable scopes and the `members` lookups; a source write also refreshes the version's content, its default profile and the `bridges` lookups; a status change calls `invalidateTenantQueries` |
 | `['version-content', tenantId, scope, versionId, kind]`, where the scope is `model-versions` or `report-versions` | `shared/versionContent.ts` | A content write refreshes `['version-content', tenantId, scope, versionId]` and the scope's content lookups |
 | `['releases', tenantId, ...]` | `useReleases.ts` | `invalidateReleases` or the release keys; `invalidateTenantQueries` after an activation |
 | `['assumption-sets', tenantId, ...]` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; `invalidateTenantQueries` after a publish |
@@ -114,8 +115,8 @@ Pickers load their options from the API: lookups for entities, vocabularies for 
 flowchart LR
     EntityField["EntityField"]
     EntitySelect["EntitySelect"]
-    UseLookup["useLookup(kind, parentId)"]
-    LookupApi["GET /api/tenants/{tenantId}/lookups/{kind}?parentId"]
+    UseLookup["useLookup(kind, parentId, purpose)"]
+    LookupApi["GET /api/tenants/{tenantId}/lookups/{kind}?parentId&purpose"]
     VocabularyField["VocabularyField"]
     VocabularySelect["VocabularySelect"]
     MultiField["MultiVocabularyField: registry MultiSelect"]
@@ -126,7 +127,7 @@ flowchart LR
     EntityField --> EntitySelect
     EntitySelect --> UseLookup
     EntitySelect --> Combobox
-    UseLookup -->|"key lookups, tenantId, kind, parentId, idle while parentId is null"| LookupApi
+    UseLookup -->|"key lookups, tenantId, kind, parentId, purpose, idle while parentId is null"| LookupApi
     VocabularyField --> VocabularySelect
     VocabularySelect --> UseVocabulary
     VocabularySelect --> Combobox
@@ -136,13 +137,14 @@ flowchart LR
 ```
 
 - `EntitySelect` labels each item with `lookupItemText` (its key and label, each once) and stores the item's ID. A value the options do not list shows its raw ID with "(not in list)". `filter` narrows the options; `PinnedVersionsTable`, for example, offers only published versions.
+- `purpose` narrows the `dimensions` kind to `analytical` or `report` dimensions. `DimensionListPage` and the endpoint pickers of `NewBridgeSheet` ask for analytical ones, because datasets bind them and bridges connect them; `NewReportSheet` offers any categorical or hierarchical dimension of either purpose to start the report's own dimension from.
 - A `null` parent keeps the lookup idle and the select disabled with "Choose the parent first". `GrainFieldsField`, `ComponentsField` and `PinnedVersionsTable` use `EntitySelect` directly, and tables call `useLookup` to show keys for IDs.
 - Vocabularies load once, and every picker selects its vocabulary from that one query. Each option shows the value's description in a tooltip.
 - Because the option lists come from the API, no form holds a list of IDs or vocabulary values. The code does name some vocabulary values where a form shows inputs per kind (such as `json_path`, `decimal` or `time`) or picks a default (such as `table`, `row` or `starrocks`).
 
 | `LookupKind` | `parentId` |
 | --- | --- |
-| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None |
+| `datasets`, `dimensions`, `bridges`, `releases`, `assumption-sets`, `calculation-models`, `reports` | None (`dimensions` takes an optional `purpose`) |
 | `dimension-roles` | Optional dimension (each role's `parentId` is its template, its `classifier` the template's kind, and its label reads like "Servicing branch · Branch") |
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
@@ -313,6 +315,7 @@ flowchart TB
 - `VersionHeader` shows the transition error only while `transition.variables.id` is the selected version, so a 422 list stays with the version it was for: it hides when another version is selected and shows again when that one is selected, until the next transition.
 - After a successful change `VersionHeader` shows a toast and calls `onTransitioned`; `useVersionTransition` has already invalidated every query of the tenant.
 - A published living version offers "Validate", which runs the publication rules without changing the version: a pass shows a toast, and violations show in a destructive alert under the header, kept with the version they were for like a transition error.
+- A page can replace the header's two mutations through its `transition` and `check` props, which take the same variables and answer the same shapes. `ReportDetailPage` passes `useReportDesignTransition` and `useReportDesignCheck`, which call `PUT .../report-versions/{versionId}/design/status` and `POST .../design/validation`. A report version then moves and is checked together with its report dimension's and bridges' versions of the same status; see [flow 12](04-critical-flows.md#12-designing-a-report).
 - A version that cannot change renders read-only, but `VersionHeader` keeps offering its transitions, "Clone selected" and "New version"; see [flow 11](04-critical-flows.md#11-editable-and-read-only-versions).
 - Roles are not versioned. The dimension page's Roles tab, the first tab unless the dimension is a time dimension, which has no roles, shows the same roles whichever version is selected; `RoleSheet` always edits, and a role's key is fixed once created. `NewDimensionSheet` creates a dimension's first role with it, its key and name following the dimension's until changed.
 
@@ -421,7 +424,8 @@ flowchart TB
 | `MultiSelect` | `MultiVocabularyField`, `ColumnsField` |
 | `CodeEditor`, `JsonEditor` | The shared `CodeEditor` and `JsonEditor` wrappers |
 | `NumericInput`, `DatePicker`, `BehaviorSwitch` | `NumberField`, `DateField`, `SwitchField` |
-| `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `ReportRowsTab` and `ReportRowItem` |
+| `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `DesignRowTree` and `DesignRowItem` |
+| `TreeView` | `RowMappingSheet`, which picks a design row's items in a multiple-selection tree of a bound dimension's members |
 | `TruncatedText`, `IconTooltip` | `VersionHeader`, `FieldsTab`, `TenantsPage`; `VocabularySelect` |
 | `pages/ErrorPage` | `RequireSession`, `TenantRedirect`, `NotFoundPage`, `RouteErrorPage` |
 

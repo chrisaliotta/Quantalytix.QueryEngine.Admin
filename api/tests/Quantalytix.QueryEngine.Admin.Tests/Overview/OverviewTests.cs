@@ -139,7 +139,7 @@ public sealed class OverviewTests
         var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
-        Assert.Equal(8, overview.MetadataSchemaVersion);
+        Assert.Equal(9, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
@@ -211,7 +211,7 @@ public sealed class OverviewTests
         {
             SingletonId = 1,
             TenantKey = "sandbox",
-            MetadataSchemaVersion = 8,
+            MetadataSchemaVersion = 9,
             SemanticRevision = 12,
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created
@@ -289,7 +289,7 @@ public sealed class OverviewTests
         };
     }
 
-    /// <summary>A categorical dimension.</summary>
+    /// <summary>A categorical, analytical dimension.</summary>
     private static DimensionRecord Dimension(long dimensionId)
     {
         return new DimensionRecord
@@ -300,7 +300,8 @@ public sealed class OverviewTests
             DimensionKind = DimensionKinds.Categorical,
             DefinitionOrigin = DefinitionOrigins.User,
             IsRemovable = true,
-            IsEnabled = true
+            IsEnabled = true,
+            DimensionPurpose = DimensionPurposes.Analytical
         };
     }
 

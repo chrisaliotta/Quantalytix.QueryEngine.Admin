@@ -95,9 +95,9 @@ export function useVersionContent<K extends ContentKind>(kind: K, versionId: num
 
 /**
  * Refreshes every content kind of the version and its pickers after a write, because deletes cascade: removing a source
- * also removes its profile picks.
+ * also removes its profile picks. A report design's source writes call it too, because they write sources and profile picks.
  */
-function invalidateContent(tenantId: string, kind: ContentKind, versionId: number) {
+export function invalidateVersionContent(tenantId: string, kind: ContentKind, versionId: number) {
   const scope = SCOPES[kind];
   const queryKeys = [contentKey(tenantId, scope, versionId), ...CONTENT_LOOKUPS[scope].map(lookup => lookupQueryKey(tenantId, lookup))];
   return Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey })));
@@ -114,7 +114,7 @@ export function useSaveVersionContent<K extends ContentKind>(kind: K, versionId:
           : await apiClient.PUT(itemPath(kind), { params: { path: { tenantId, versionId, itemId } }, body });
       return unwrap(row) as ContentItem<K>;
     },
-    onSuccess: () => invalidateContent(tenantId, kind, versionId),
+    onSuccess: () => invalidateVersionContent(tenantId, kind, versionId),
   });
   return save.mutateAsync;
 }
@@ -125,6 +125,6 @@ export function useDeleteVersionContent(kind: ContentKind, versionId: number) {
   return useMutation({
     mutationFn: async (itemId: number) =>
       unwrap(await apiClient.DELETE(itemPath(kind), { params: { path: { tenantId, versionId, itemId } } })),
-    onSuccess: () => invalidateContent(tenantId, kind, versionId),
+    onSuccess: () => invalidateVersionContent(tenantId, kind, versionId),
   });
 }

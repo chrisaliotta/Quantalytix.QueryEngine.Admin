@@ -233,7 +233,7 @@ flowchart LR
 | `mappings` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk entry replace |
 | `bridges` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk mapping replace |
 | `calculation-models` | `api.ts`; variables and calculated measures through the shared `useVersionContent` and its writes, typed by `VersionContentTypes` | Its keys and lookups; a content write refreshes every content kind of the version and the metric lookups |
-| `reports` | `api.ts`; sources, profiles and calculation dimensions through the shared `useVersionContent` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade; `setQueryData` after a column, overlay row, member option or variable scope replace |
+| `reports` | `api.ts`; `designApi.ts` for the Design tab; sources, profiles and calculation dimensions through the shared `useVersionContent` | Its keys and lookups; a content write refreshes every content kind of the version and the content lookups, because deletes cascade; `setQueryData` after a column or variable scope replace, and with the design every design write answers |
 | `releases` | `useReleases.ts` | `invalidateReleases` (`['releases', tenantId]` and the `releases` lookup) or the release keys; activation calls `invalidateTenantQueries` |
 | `assumption-sets` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; a publish repoints the active set and refreshes it through `invalidateTenantQueries` |
 | `system` | `useSystemTenants.ts` | `invalidateTenantDirectory`: `['system-tenants']` and `['tenants']` |

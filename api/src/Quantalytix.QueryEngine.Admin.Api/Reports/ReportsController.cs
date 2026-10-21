@@ -29,9 +29,12 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         return Ok(await reports.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a report; it has no versions until one is created.</summary>
+    /// <summary>
+    /// Creates a report with its own report dimension, keyed and named like it, whose draft rows copy the published members of
+    /// <c>startFromDimensionId</c> or hold a single root row; the report has no versions until one is created.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
-    /// <param name="input">The new report's key, display name, type, availability and payload.</param>
+    /// <param name="input">The new report's key, display name, type, availability, payload and optional starting dimension.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created report.</returns>
     /// <response code="200">The created report.</response>
@@ -79,15 +82,17 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         return Ok(await reports.UpdateAsync(reportId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a report whose versions are all drafts that no release pins, together with their lines and columns.</summary>
+    /// <summary>
+    /// Deletes a report whose versions are all drafts, together with their content, its bridges and its report dimension.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
-    /// <response code="204">The report and its drafts are deleted.</response>
+    /// <response code="204">The report, its drafts, its bridges and its report dimension are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and releases that block the delete.</response>
+    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and the mapping sets into its report dimension that block the delete.</response>
     [HttpDelete("{reportId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

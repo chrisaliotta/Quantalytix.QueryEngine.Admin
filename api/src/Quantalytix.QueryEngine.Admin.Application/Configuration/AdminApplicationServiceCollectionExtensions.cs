@@ -10,9 +10,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Configuration;
 public static class AdminApplicationServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers tenant listing, lookups, the seven version stores, their registry, the version workflow, a predecessor retirer
-    /// for each living kind and the semantic revision, all scoped to the request. The API registers the FluentValidation
-    /// validators by scanning this assembly.
+    /// Registers tenant listing, lookups, the seven version stores, their registry, the version workflow with the publication set
+    /// its rules read, a predecessor retirer for each living kind and the semantic revision, all scoped to the request. The API
+    /// registers the FluentValidation validators by scanning this assembly.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -29,6 +29,7 @@ public static class AdminApplicationServiceCollectionExtensions
         services.AddScoped<IVersionStore, CalculationModelVersionStore>();
         services.AddScoped<IVersionStore, ReportVersionStore>();
         services.AddScoped<VersionStoreRegistry>();
+        services.AddScoped<PublicationSet>();
         services.AddScoped<VersionWorkflow>();
         foreach (var kind in VersionKinds.Living)
             services.AddScoped<IVersionLifecycleHandler>(provider => new PredecessorRetirer(kind, provider.GetRequiredService<VersionStoreRegistry>()));

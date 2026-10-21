@@ -36,6 +36,9 @@ export type Tenant = Schemas['AccessibleTenant'];
 /** Lifecycle states of versioned resources. */
 export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired';
 
+/** What a dimension is for (the `dimension_purpose` vocabulary): datasets bind analytical ones; a report dimension holds one report's rows. */
+export type DimensionPurpose = 'analytical' | 'report';
+
 /** Lookup kinds served by the lookups endpoint (comments name the expected `parentId`). */
 export type LookupKind =
   | 'datasets'
@@ -46,7 +49,7 @@ export type LookupKind =
   | 'bindings'
   | 'time-bindings'
   | 'measures'
-  | 'dimensions'
+  | 'dimensions' // optional purpose; classifier = kind
   | 'dimension-roles' // optional dimension; item parentId = the template; classifier = its kind
   | 'dimension-versions' // dimension
   | 'levels' // dimension version

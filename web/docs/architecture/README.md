@@ -9,7 +9,7 @@ Describes `main` at a3ba75b (2026-10-14). The drawings describe implemented beha
 | [High-level architecture](01-architecture.md) | Runtime topology in development and production; source layers and their imports; generated API types |
 | [Composition](02-composition.md) | Provider chain; route tree; a feature's routes and breadcrumbs; app shell layout; anatomy of a feature module; composition of the dataset page |
 | [How it works](03-how-it-works.md) | Data layer; `ApiProblem`; pickers; forms; strict and living version lifecycles; `VersionHeader` wiring; code splitting; theming and the registry; shared building blocks |
-| [Critical flows](04-critical-flows.md) | Sign-in; session restore; a 401; switching tenants; a list page; a 400 on save; a 422 on a transition; cloning a version; bulk paste; activating a release; editable and read-only versions |
+| [Critical flows](04-critical-flows.md) | Sign-in; session restore; a 401; switching tenants; a list page; a 400 on save; a 422 on a transition; cloning a version; bulk paste; activating a release; editable and read-only versions; designing a report |
 
 **Legend.** In flowcharts, arrows mean composition (renders, provides) or calls (imports, calls), as the sentence above each drawing says; edge labels name the call, prop or condition. In the class diagram, a hollow triangle means inheritance and a plain arrow an association. Sequence diagrams summarize async calls: solid arrows are calls, dashed arrows are returns, and they do not show every `await`, re-render or TanStack Query callback. Names in drawings and tables match the exported names in the code; paths are relative to `web/` unless they start with `api/`.
 

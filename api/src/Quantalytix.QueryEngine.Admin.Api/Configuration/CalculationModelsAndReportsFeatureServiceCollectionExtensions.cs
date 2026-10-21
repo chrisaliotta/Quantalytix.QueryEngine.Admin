@@ -1,6 +1,7 @@
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.ReportDesigns;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -36,6 +37,13 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
 
         services.AddScoped<ReportService>();
         services.AddScoped<ReportVersionService>();
+        services.AddScoped<ReportDesignDrafts>();
+        services.AddScoped<ReportDesignVersions>();
+        services.AddScoped<ReportDesignReader>();
+        services.AddScoped<DesignRowService>();
+        services.AddScoped<DesignSourceService>();
+        services.AddScoped<RowMappingService>();
+        services.AddScoped<DesignCoverageReader>();
         services.AddScoped<ReportVersionCloner>();
         services.AddScoped<ReportContentRemover>();
         services.AddScoped<ReportVersionNames>();

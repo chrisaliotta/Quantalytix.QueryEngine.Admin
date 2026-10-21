@@ -21,7 +21,10 @@ const columns: ColumnDef<Dimension>[] = [
   },
 ];
 
-/** Lists the tenant's dimensions and creates new ones. */
+/**
+ * Lists the tenant's analytical dimensions, which datasets bind and queries group by, and creates new ones. A report dimension
+ * holds one report's rows, so its report's designer lists and edits it.
+ */
 export function DimensionListPage() {
   const dimensions = useDimensions();
   const navigate = useNavigate();
@@ -31,7 +34,7 @@ export function DimensionListPage() {
     <>
       <EntityListPage
         title="Dimensions"
-        description="Canonical dimensions and their effective-dated versions."
+        description="Canonical dimensions that datasets bind and queries group by. Each report's rows are a dimension of its own, edited in the report's designer."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus />
@@ -39,7 +42,7 @@ export function DimensionListPage() {
           </Button>
         }
         columns={columns}
-        data={dimensions.data}
+        data={dimensions.data?.filter(dimension => dimension.dimensionPurpose === 'analytical')}
         isLoading={dimensions.isPending}
         error={dimensions.error}
         searchPlaceholder="Search dimensions..."

@@ -9,8 +9,8 @@ Describes `main` at a3ba75b (2026-10-14). The drawings describe implemented beha
 | [High-level architecture](01-architecture.md) | Runtime components, project dependencies, composition root; feature map table |
 | [Request pipeline](02-request-pipeline.md) | A tenant-scoped write, development sign-in and session, tenant routing; error responses table |
 | [Core classes](03-core-classes.md) | Authentication and tenancy, persistence, versioning, errors and validation |
-| [Version lifecycle](04-version-lifecycle.md) | Lifecycle states of the standard kinds and of assumption sets, leaving draft, publishing, retiring; semantic revision and lifecycle handler tables |
-| [Feature classes](05-feature-classes.md) | One class diagram per feature area: datasets, dimensions, mappings, bridges, bindings, measures, releases, assumption sets, system tenants, calculation models and reports |
+| [Version lifecycle](04-version-lifecycle.md) | Lifecycle states of the standard kinds and of assumption sets, leaving draft, publishing, publishing a set together, retiring; semantic revision and lifecycle handler tables |
+| [Feature classes](05-feature-classes.md) | One class diagram per feature area: datasets, dimensions, mappings, bridges, bindings, measures, releases, assumption sets, system tenants, calculation models and reports, report designs |
 | [Key actions](06-key-actions.md) | Eleven write sequences, from creating a dataset to a blocked delete, in the order their statements run |
 
 Endpoint-by-endpoint detail, with request and response schemas and status codes, is in the [OpenAPI document](../../openapi/admin-api.json), which every build regenerates. Building, configuring, testing and running the API are in the [API README](../../README.md). The query engine documents its side in its own [architecture diagrams](../../../../Quantalytix.QueryEngine/docs/architecture/README.md); links into the query engine assume its checkout sits beside this repository, at the default `QueryEngineRoot`.

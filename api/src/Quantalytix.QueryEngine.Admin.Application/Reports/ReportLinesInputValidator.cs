@@ -51,18 +51,12 @@ public sealed class ReportLinesInputValidator : AbstractValidator<ReportLinesInp
                 if (!seen.Add(line.LineKey)) context.AddFailure($"Row key '{line.LineKey}' appears more than once.");
             }
         });
+        var formulaReferences = new FormulaRowReferences(metrics, columns);
         RuleFor(input => input.Lines).CustomAsync(async (list, context, cancellationToken) =>
         {
             var versionId = route.Id("versionId");
-            var model = await metrics.ReadForReportAsync(versionId, cancellationToken);
-            var columnKeys = (await columns.ListAsync(new { ReportVersionId = versionId }, cancellationToken)).Select(column => column.ColumnKey).ToHashSet(StringComparer.Ordinal);
-            foreach (var line in list.Where(line => line.LineKind == ReportLineKinds.Formula))
-            {
-                if (line.CalculatedMeasureKey is { } measure && !model.Has(ReportValueKinds.Calculated, measure))
-                    context.AddFailure($"Formula row '{line.LineKey}' evaluates '{measure}', which is no calculated measure of the published version of the report's model.");
-                if (line.ValueColumnKey is { } column && !columnKeys.Contains(column))
-                    context.AddFailure($"Formula row '{line.LineKey}' places its value in '{column}', which is no column of this report version.");
-            }
+            var formulas = list.Where(line => line.LineKind == ReportLineKinds.Formula).Select(line => (line.LineKey, line.CalculatedMeasureKey, line.ValueColumnKey));
+            foreach (var problem in await formulaReferences.ProblemsAsync(versionId, formulas, cancellationToken)) context.AddFailure(problem);
 
             var stored = (await lines.ListAsync(new { ReportVersionId = versionId }, cancellationToken)).Select(line => line.ReportLineId).ToHashSet();
             foreach (var line in list.Where(line => line.ReportLineId is { } id && !stored.Contains(id)))

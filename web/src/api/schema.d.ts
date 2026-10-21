@@ -1171,6 +1171,673 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads a report version's design. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft, validated or published report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The design. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replaces the design's row tree: member rows become members of the report dimension's paired version, overlay rows the
+         *     version's overlay rows, and a row the tree leaves out is deleted after its row mappings, variable scopes and member option.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft or published report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DesignRowsInput"];
+                    "application/*+json": components["schemas"]["DesignRowsInput"];
+                };
+            };
+            responses: {
+                /** @description The design afterwards. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The tree breaks a rule, such as a member row under an overlay row or a removed row a mapping set names; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is neither a draft nor published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Creates a source: a bridge from the role's dimension into the report dimension, optionally with the published mappings of
+         *     another bridge from that dimension, and one variable source per variable, which every profile without one picks.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft or published report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NewDesignSourceInput"];
+                    "application/*+json": components["schemas"]["NewDesignSourceInput"];
+                };
+            };
+            responses: {
+                /** @description The design afterwards. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a role the dataset does not bind; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is neither a draft nor published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/sources/{bridgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edits a source's label, dataset, role, time field, filter and variables; its key and bound dimension stay. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft or published report version. */
+                    versionId: number;
+                    /** @description The source's bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DesignSourceInput"];
+                    "application/*+json": components["schemas"]["DesignSourceInput"];
+                };
+            };
+            responses: {
+                /** @description The design afterwards. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a role of another dimension; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is neither a draft nor published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a source's variable sources with the profile picks that name them, and its bridge when only drafts of it exist. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft or published report version. */
+                    versionId: number;
+                    /** @description The source's bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The design afterwards. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is neither a draft nor published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/sources/{bridgeId}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the items of a source that map to no row, which the report leaves out. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft, validated or published report version. */
+                    versionId: number;
+                    /** @description The source's bridge. */
+                    bridgeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The assignable members of the published version of the source's bound dimension that map to no row, in ordinal order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string[];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/row-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces the source items that map to one data row; a listed item that maps to another row moves to this one. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description A draft or published report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RowMappingsInput"];
+                    "application/*+json": components["schemas"]["RowMappingsInput"];
+                };
+            };
+            responses: {
+                /** @description The design afterwards. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportDesign"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as a group row or an item the bound dimension lacks; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The version is neither a draft nor published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Moves the design to another status: the report dimension's version, each bridge's version and the report version change
+         *     together. Leaving draft runs every version's publication rules with the set's versions counted as published, so the set
+         *     validates as a whole; publishing writes the dimension first and the report last.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StatusChangeInput"];
+                    "application/*+json": components["schemas"]["StatusChangeInput"];
+                };
+            };
+            responses: {
+                /** @description The transition applied; the body is the report version's new state. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VersionState"];
+                    };
+                };
+                /** @description The target status is not a known value. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The lifecycle does not allow moving from the current status to the target; the detail names both. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Publication rules rejected the transition and no status changed; `violations` lists why. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{versionId}/design/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checks the design against the publication rules of its versions, counted as published together, and changes nothing. Validate
+         *     on the published design runs this check, because its edits are live.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report version. */
+                    versionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The check ran; `violations` lists what the rules found and is empty when the design passes. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VersionCheck"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/report-versions/{versionId}/lines": {
         parameters: {
             query?: never;
@@ -1471,7 +2138,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Creates a report; it has no versions until one is created. */
+        /**
+         * Creates a report with its own report dimension, keyed and named like it, whose draft rows copy the published members of
+         *     `startFromDimensionId` or hold a single root row; the report has no versions until one is created.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1643,7 +2313,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a report whose versions are all drafts that no release pins, together with their lines and columns. */
+        /** Deletes a report whose versions are all drafts, together with their content, its bridges and its report dimension. */
         delete: {
             parameters: {
                 query?: never;
@@ -1658,7 +2328,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The report and its drafts are deleted. */
+                /** @description The report, its drafts, its bridges and its report dimension are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -1683,7 +2353,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted; the detail names the non-draft versions and releases that block the delete. */
+                /** @description Nothing was deleted; the detail names the non-draft versions and the mapping sets into its report dimension that block the delete. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1877,8 +2547,8 @@ export interface paths {
         };
         put?: never;
         /**
-         * Creates a draft with the report's next version number: empty, or with copies of the columns and lines of
-         *     `cloneFromVersionId`.
+         * Creates the report's draft with its next version number, empty or with copies of the content of `cloneFromVersionId`,
+         *     and drafts of its report dimension and of every bridge into it that copy their published versions.
          */
         post: {
             parameters: {
@@ -1887,7 +2557,7 @@ export interface paths {
                 path: {
                     /** @description The tenant that owns the report. */
                     tenantId: string;
-                    /** @description The report. */
+                    /** @description The report, which has no draft. */
                     reportId: number;
                 };
                 cookie?: never;
@@ -1908,7 +2578,7 @@ export interface paths {
                         "application/json": components["schemas"]["ReportVersionRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as a clone source of another report; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, such as a clone source of another report or a report that already has a draft; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2065,7 +2735,10 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a draft version with its lines and columns. */
+        /**
+         * Deletes the report's draft with its content and the drafts of its bridges; the report dimension's draft goes too once the
+         *     dimension has a published version.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -2080,7 +2753,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The version, its lines and its columns are deleted. */
+                /** @description The draft and the drafts paired with it are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -4263,6 +4936,8 @@ export interface paths {
                 query?: {
                     /** @description The owning row's ID; required for child kinds, optional for `mapping-sets`, ignored otherwise. */
                     parentId?: null | number;
+                    /** @description A `dimension_purpose` value that narrows the `dimensions` kind to dimensions of that purpose; only that kind takes it. */
+                    purpose?: string;
                 };
                 header?: never;
                 path: {
@@ -4284,7 +4959,7 @@ export interface paths {
                         "application/json": components["schemas"]["LookupItem"][];
                     };
                 };
-                /** @description The kind is not a `lookup_kind` value, or a child kind has no `parentId`. */
+                /** @description The kind is not a `lookup_kind` value, a child kind has no `parentId`, or the purpose is unknown or given for another kind. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -8553,7 +9228,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists every bridge of the tenant. */
+        /** Lists the bridges of the tenant but those into a report dimension, which belong to their report's design. */
         get: {
             parameters: {
                 query?: never;
@@ -8566,7 +9241,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The bridges by key, ignoring case. */
+                /** @description The bridges by key, ignoring case; a report's own bridges are left out. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -10301,6 +10976,161 @@ export interface components {
             /** @description Extension metadata as raw JSON text, or null. */
             properties?: null | string;
         };
+        /** @description One source code that the published version of a mapping set into the report dimension maps to a row. */
+        DesignMappedCode: {
+            /**
+             * Format: int64
+             * @description The mapping set.
+             */
+            mappingSetId: number;
+            /** @description The source code. */
+            sourceKey: string;
+        };
+        /** @description One row of a report design: a member of the report dimension or an overlay row of the report version. */
+        DesignRow: {
+            /** @description The member or overlay row key, which requests and the row mappings name it by. */
+            key: string;
+            /** @description The label the report shows. */
+            label: string;
+            /** @description A `design_row_kind` value. */
+            kind: string;
+            /** @description The key of the row it sits under; null for the top level. */
+            parentKey?: null | string;
+            /**
+             * Format: int32
+             * @description Order among its siblings; a member comes before an overlay row on a tie.
+             */
+            sortOrder: number;
+            /** @description Whether the row shows; a hidden row's children take its place. */
+            isVisible: boolean;
+            /** @description Whether a group row shows its total; false makes it a header. Always true for the other kinds. */
+            showsValues: boolean;
+            /** @description The calculated measure a formula row evaluates; null for the other kinds. */
+            calculatedMeasureKey?: null | string;
+            /** @description The key of the column a formula row places its value in; null for the other kinds. */
+            valueColumnKey?: null | string;
+            /** @description The items of the design's sources that map to the row, by source, then item key. */
+            mappings: components["schemas"]["DesignRowMapping"][];
+            /** @description The source codes that mapping sets into the report dimension map to the row, which the design shows but does not edit. */
+            mappedCodes: components["schemas"]["DesignMappedCode"][];
+        };
+        /** @description One row of a report design's complete row tree. */
+        DesignRowInput: {
+            /** @description The row's key, fixed once created: a stored row keeps its key, and a new key is a new row. */
+            key: string;
+            /** @description The label the report shows. */
+            label: string;
+            /** @description A `design_row_kind` value; a stored member row stays a member row and a stored overlay row an overlay row. */
+            kind: string;
+            /** @description The key of the row it sits under, which the list holds; null for the top level. */
+            parentKey?: null | string;
+            /**
+             * Format: int32
+             * @description Order among its siblings; a member comes before an overlay row on a tie.
+             */
+            sortOrder: number;
+            /** @description Whether the row shows; a hidden row's children take its place. */
+            isVisible: boolean;
+            /** @description Whether a group row shows its total; false makes it a header. Every other kind shows its values. */
+            showsValues: boolean;
+            /** @description The calculated measure of the model's published version that a formula row evaluates; null for the other kinds. */
+            calculatedMeasureKey?: null | string;
+            /** @description The key of the report version's column a formula row places its value in; null for the other kinds. */
+            valueColumnKey?: null | string;
+        };
+        /** @description One item of a design source that maps to a row: an entry of the source's bridge. */
+        DesignRowMapping: {
+            /**
+             * Format: int64
+             * @description The design source's bridge.
+             */
+            bridgeId: number;
+            /** @description The key of the member of the source's bound dimension that maps to the row. */
+            itemKey: string;
+            /**
+             * Format: double
+             * @description The signed coefficient the item's values take in the row, such as -1 to flip a sign.
+             */
+            factor: number;
+        };
+        /** @description A report design's complete row tree, as `PUT report-versions/{versionId}/design/rows` takes it. */
+        DesignRowsInput: {
+            /** @description Every row; a stored row the list leaves out is deleted, and a key the design does not hold yet is a new row. */
+            rows: components["schemas"]["DesignRowInput"][];
+        };
+        /**
+         * @description One source of a report design: a bridge of the report from the dimension a dataset binds through a role, and the report
+         *     version's variable sources that classify through it, one per variable the dataset supplies.
+         */
+        DesignSource: {
+            /**
+             * Format: int64
+             * @description The source's bridge.
+             */
+            bridgeId: number;
+            /** @description The source's key: its bridge's key after the report's prefix. */
+            key: string;
+            /** @description The source's label: its bridge's name. */
+            label: string;
+            /**
+             * Format: int64
+             * @description The bound dimension whose members the source maps to rows: its bridge's source dimension.
+             */
+            sourceDimensionId: number;
+            /**
+             * @description Whether every variable source reads the same dataset, role, time field and filter, so the design can edit them as one;
+             *     false for a bridge the design did not create that several datasets share. Its row mappings stay editable.
+             */
+            isUniform: boolean;
+            /**
+             * Format: int64
+             * @description The role the dataset binds the bound dimension through; null unless uniform.
+             */
+            roleId?: null | number;
+            /**
+             * Format: int64
+             * @description The dataset; null unless uniform.
+             */
+            datasetId?: null | number;
+            /** @description The dataset's time field; null unless uniform. */
+            timeFieldKey?: null | string;
+            /** @description The structured filter over the dataset's fields; null when there is none or the source is not uniform. */
+            sourceFilterJson?: null | string;
+            /** @description The variable sources that classify through the bridge, by variable key. */
+            variables: components["schemas"]["VariableSourceRecord"][];
+        };
+        /**
+         * @description A design source's editable attributes, as `PUT report-versions/{versionId}/design/sources/{bridgeId}` takes them: the
+         *     dataset whose rows it classifies, the role the dataset binds the bound dimension through, and the measure that supplies each
+         *     variable.
+         */
+        DesignSourceInput: {
+            /** @description The source's label, which its bridge takes as its name. */
+            label: string;
+            /**
+             * Format: int64
+             * @description The dataset; the release the report runs against decides its version.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description A role of an analytical dimension that the dataset binds into members; its dimension is the source's bound dimension.
+             */
+            roleId: number;
+            /** @description The dataset time field the source's periods are read on. */
+            timeFieldKey: string;
+            /** @description Optional structured filter over the dataset's fields, in the query contract's `filterNode` vocabulary. */
+            sourceFilterJson?: null | string;
+            /** @description The dataset measure that supplies each model variable the source fulfils; each variable appears once. */
+            variables: components["schemas"]["DesignVariableInput"][];
+        };
+        /** @description The dataset measure that supplies one model variable from a design source. */
+        DesignVariableInput: {
+            /** @description The key of the model variable; the model's published version must have it at publication. */
+            variableKey: string;
+            /** @description The dataset measure that supplies the variable. */
+            measureKey: string;
+        };
         /** @description The tenant a development token names, and whether it carries the SystemAdmin role. */
         DevelopmentTokenRequest: {
             /** @description The tenant claim the token carries, such as `development`. */
@@ -10495,6 +11325,8 @@ export interface components {
             isRemovable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /** @description A `dimension_purpose` value: `report` for the dimension whose members are one report's rows. */
+            dimensionPurpose: string;
         };
         /** @description The editable attributes of a dimension role, as `PUT dimensions/{dimensionId}/roles/{roleId}` takes them. */
         DimensionRoleInput: {
@@ -11247,6 +12079,38 @@ export interface components {
             isEnabled: boolean;
         };
         /**
+         * @description A new design source, as `POST report-versions/{versionId}/design/sources` takes it: its fixed key, its editable
+         *     attributes, and optionally a bridge whose published row mappings its own bridge starts with.
+         */
+        NewDesignSourceInput: {
+            /** @description Stable key, fixed once created; the source's bridge and variable sources take it in their keys. */
+            key: string;
+            /**
+             * Format: int64
+             * @description A bridge from the bound dimension whose published entries into members of the report dimension the source's bridge copies;
+             *     null for a source without mappings yet.
+             */
+            copyMappingsFromBridgeId?: null | number;
+            /** @description The source's label, which its bridge takes as its name. */
+            label: string;
+            /**
+             * Format: int64
+             * @description The dataset; the release the report runs against decides its version.
+             */
+            datasetId: number;
+            /**
+             * Format: int64
+             * @description A role of an analytical dimension that the dataset binds into members; its dimension is the source's bound dimension.
+             */
+            roleId: number;
+            /** @description The dataset time field the source's periods are read on. */
+            timeFieldKey: string;
+            /** @description Optional structured filter over the dataset's fields, in the query contract's `filterNode` vocabulary. */
+            sourceFilterJson?: null | string;
+            /** @description The dataset measure that supplies each model variable the source fulfils; each variable appears once. */
+            variables: components["schemas"]["DesignVariableInput"][];
+        };
+        /**
          * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, the
          *     range data type of its draft version 1, and its first role.
          */
@@ -11376,15 +12240,19 @@ export interface components {
             /** @description The ISO 4217 currency of the model's monetary figures, such as `USD`. */
             currencyCode: string;
         };
-        /** @description A new report, as `POST reports` takes it: its fixed key and report dimension plus its identity attributes. */
+        /**
+         * @description A new report, as `POST reports` takes it: its fixed key, its identity attributes, and optionally the dimension whose
+         *     published rows its own report dimension starts as a copy of.
+         */
         NewReportInput: {
-            /** @description Stable key, unique across reports and fixed once created. */
+            /** @description Stable key, unique across reports and fixed once created; the report's own dimension takes it too. */
             reportKey: string;
             /**
              * Format: int64
-             * @description The canonical dimension whose members are the report's rows and into which every source classifies; fixed once created.
+             * @description A categorical or hierarchical dimension with one root, whose published members and levels the report dimension copies;
+             *     null for a report dimension with a single root row.
              */
-            reportDimensionId: number;
+            startFromDimensionId?: null | number;
             /** @description Human-readable name. */
             displayName: string;
             /** @description Free-form classification such as `margin_analysis`. */
@@ -11735,6 +12603,35 @@ export interface components {
             /** @description The columns in their presentation order. */
             columns: components["schemas"]["ReportColumnInput"][];
         };
+        /**
+         * @description A report version as one design: its rows with the source items mapped to each, and its sources, each a bridge from a bound
+         *     dimension with the dataset measures that supply the model's variables.
+         */
+        ReportDesign: {
+            /**
+             * Format: int64
+             * @description The report.
+             */
+            reportId: number;
+            /**
+             * Format: int64
+             * @description The report version.
+             */
+            reportVersionId: number;
+            /** @description The status the report version and the versions of the report's own objects share. */
+            status: string;
+            /**
+             * Format: int64
+             * @description The report dimension's version whose members are the member rows.
+             */
+            dimensionVersionId: number;
+            /** @description Every row: members of the report dimension and the version's overlay rows, by sort order, then key. */
+            rows: components["schemas"]["DesignRow"][];
+            /** @description The sources that classify through the report's own bridges, by key. */
+            sources: components["schemas"]["DesignSource"][];
+            /** @description The variable sources that classify directly or through a mapping set, which the design shows but does not edit, by key. */
+            otherSources: components["schemas"]["VariableSourceRecord"][];
+        };
         /** @description The editable identity attributes of a report, as `PUT reports/{reportId}` takes them. */
         ReportInput: {
             /** @description Human-readable name. */
@@ -11971,6 +12868,28 @@ export interface components {
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
             defaultPivotJson?: null | string;
+        };
+        /** @description One source item that maps to a row. */
+        RowMappingInput: {
+            /**
+             * Format: int64
+             * @description The design source's bridge.
+             */
+            bridgeId: number;
+            /** @description The key of an assignable member of the published version of the source's bound dimension. */
+            itemKey: string;
+            /**
+             * Format: double
+             * @description The signed coefficient the item's values take in the row, such as -1 to flip a sign.
+             */
+            factor: number;
+        };
+        /** @description Every source item that maps to one row of a report design, as `PUT report-versions/{versionId}/design/row-mappings` takes it. */
+        RowMappingsInput: {
+            /** @description The data row the items map to. */
+            rowKey: string;
+            /** @description The row's complete mapping list: the row's entries the list leaves out are deleted, and a listed item mapped to another row moves here. */
+            mappings: components["schemas"]["RowMappingInput"][];
         };
         /** @description One reason a publication rule rejects a version. */
         RuleViolation: {

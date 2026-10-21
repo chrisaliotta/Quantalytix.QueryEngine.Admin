@@ -20,3 +20,6 @@ export function useVersionCheck(kind: VersionKind) {
       ),
   });
 }
+
+/** A mutation that runs a version's publication rules without changing it, such as `useVersionCheck`'s. */
+export type VersionCheckMutation = ReturnType<typeof useVersionCheck>;

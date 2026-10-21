@@ -35,7 +35,7 @@ public sealed class ClassificationLookupTests
     [Fact]
     public async Task BoundRoles_AreTheRolesWhoseEnabledBindingClassifiesMembers()
     {
-        var items = await _lookups.ListAsync(LookupKinds.BoundRoles, 11, TestContext.Current.CancellationToken);
+        var items = await _lookups.ListAsync(new LookupQuery { Kind = LookupKinds.BoundRoles, ParentId = 11 }, TestContext.Current.CancellationToken);
 
         Assert.Equal([("glAccount", (long?)800, BindingKinds.Mapped)], items.Select(item => (item.Key, item.ParentId, item.Classifier)));
     }
@@ -47,8 +47,8 @@ public sealed class ClassificationLookupTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var all = await _lookups.ListAsync(LookupKinds.DimensionRoles, null, cancellationToken);
-        var accounts = await _lookups.ListAsync(LookupKinds.DimensionRoles, 800, cancellationToken);
+        var all = await _lookups.ListAsync(new LookupQuery { Kind = LookupKinds.DimensionRoles }, cancellationToken);
+        var accounts = await _lookups.ListAsync(new LookupQuery { Kind = LookupKinds.DimensionRoles, ParentId = 800 }, cancellationToken);
 
         Assert.Equal(["glAccount", "product", "region"], all.Select(item => item.Key));
         Assert.Equal([("GL account · Accounts", (long?)800, DimensionKinds.Categorical)], accounts.Select(item => (item.Label, item.ParentId, item.Classifier)));
@@ -61,8 +61,10 @@ public sealed class ClassificationLookupTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        Assert.Equal([(95L, (long?)500)], (await _lookups.ListAsync(LookupKinds.Bridges, 800, cancellationToken)).Select(item => (item.Id, item.ParentId)));
-        Assert.Equal(2, (await _lookups.ListAsync(LookupKinds.Bridges, null, cancellationToken)).Count);
+        Assert.Equal(
+            [(95L, (long?)500)],
+            (await _lookups.ListAsync(new LookupQuery { Kind = LookupKinds.Bridges, ParentId = 800 }, cancellationToken)).Select(item => (item.Id, item.ParentId)));
+        Assert.Equal(2, (await _lookups.ListAsync(new LookupQuery { Kind = LookupKinds.Bridges }, cancellationToken)).Count);
     }
 
     /// <summary>

@@ -17,8 +17,9 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// <summary>
 /// Confirms the role lifecycle: a new dimension other than a time dimension comes with its first role, so bindings can bind it at
 /// once, and a time dimension, whose bindings name the dimension, has none; a role key is unique in the tenant, because requests
-/// name a binding by it; a role that a binding, a calculation dimension or a variable source names is not deleted, naming each;
-/// and renaming a role advances the semantic revision, because the query engine's catalog shows the name.
+/// name a binding by it; a report dimension gets no role, because no dataset binds a report's rows; a role that a binding, a
+/// calculation dimension or a variable source names is not deleted, naming each; and renaming a role advances the semantic
+/// revision, because the query engine's catalog shows the name.
 /// </summary>
 public sealed class DimensionRoleTests
 {
@@ -42,7 +43,7 @@ public sealed class DimensionRoleTests
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 8,
+        MetadataSchemaVersion = 9,
         SemanticRevision = 1,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
     });
@@ -80,6 +81,26 @@ public sealed class DimensionRoleTests
         missing.ShouldHaveValidationErrorFor(input => input.DefaultRole);
         onTime.ShouldHaveValidationErrorFor(input => input.DefaultRole);
         Assert.Equal("A role with key 'branch' already exists.", Assert.Single(taken.Errors).ErrorMessage);
+    }
+
+    /// <summary>A role of the branch dimension passes, while a role of a report dimension is refused.</summary>
+    /// <returns>A task that completes when the inputs are validated.</returns>
+    [Fact]
+    public async Task RoleOfAReportDimension_IsRefused()
+    {
+        const long StatementId = 700;
+        var dimensions = new InMemoryTableGateway<DimensionRecord>(
+            ReleaseRows.Dimension(BranchId, "branch"),
+            ReleaseRows.Dimension(StatementId, "margin_statement") with { DimensionPurpose = DimensionPurposes.Report });
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var onBranch = await new NewDimensionRoleInputValidator(_roles, dimensions, Route(BranchId))
+            .TestValidateAsync(NewRole("servicingBranch"), cancellationToken: cancellationToken);
+        var onStatement = await new NewDimensionRoleInputValidator(_roles, dimensions, Route(StatementId))
+            .TestValidateAsync(NewRole("marginLine"), cancellationToken: cancellationToken);
+
+        onBranch.ShouldNotHaveAnyValidationErrors();
+        Assert.Equal("The dimension holds a report's rows, and a report dimension has no roles.", Assert.Single(onStatement.Errors).ErrorMessage);
     }
 
     /// <summary>A role a binding, a calculation dimension and a bridge source name is kept, and the detail names each.</summary>
@@ -124,6 +145,12 @@ public sealed class DimensionRoleTests
         return new NewDimensionRoleInput { RoleKey = roleKey, DisplayName = roleKey };
     }
 
+    /// <summary>The route of a request to a dimension's roles.</summary>
+    private static FixedRequestRoute Route(long dimensionId)
+    {
+        return new FixedRequestRoute(new Dictionary<string, long> { ["dimensionId"] = dimensionId });
+    }
+
     /// <summary>The dimension service over the test tables.</summary>
     private DimensionService DimensionService()
     {
@@ -132,13 +159,15 @@ public sealed class DimensionRoleTests
         var levels = new InMemoryTableGateway<DimensionLevelRecord>();
         var members = new InMemoryTableGateway<DimensionMemberRecord>();
         var bands = new InMemoryTableGateway<RangeBandRecord>();
-        var remover = new DimensionVersionRemover(versions, levels, members, new InMemoryTableGateway<DimensionClosureRecord>(), bands);
+        var closure = new InMemoryTableGateway<DimensionClosureRecord>();
+        var remover = new DimensionVersionRemover(versions, levels, members, closure, bands);
         return new DimensionService(
             _dimensions,
             versions,
             _roles,
             new DimensionVersionService(versions, new DimensionVersionCloner(levels, members, bands, ids), remover, ids),
             RoleService(),
+            new DimensionMemberService(members, Checks(), new ClosureBuilder(members, closure), ids),
             remover,
             Checks(),
             new SemanticRevision(_databaseInfo, new FakeTimeProvider()),
@@ -167,7 +196,8 @@ public sealed class DimensionRoleTests
             new InMemoryTableGateway<MappingSetRecord>(), new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
             new InMemoryTableGateway<BridgeRecord>(), new InMemoryTableGateway<BridgeVersionRecord>(), new InMemoryTableGateway<BridgeMappingRecord>(),
             reports, reportVersions, new InMemoryTableGateway<ReportMemberOptionRecord>(), new InMemoryTableGateway<ReportLineRecord>(),
-            new InMemoryTableGateway<ReportVariableScopeRecord>(), calculationDimensions, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
+            new InMemoryTableGateway<ReportVariableScopeRecord>(), calculationDimensions, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()),
+            new PublicationSet());
         return new DimensionDeleteChecks(
             new InMemoryTableGateway<DimensionVersionRecord>(),
             new InMemoryTableGateway<DimensionMemberRecord>(),

@@ -8,4 +8,7 @@ public sealed record LookupQuery
 
     /// <summary>The owning row's ID; required for child kinds, optional for <c>mapping-sets</c>, ignored otherwise.</summary>
     public long? ParentId { get; init; }
+
+    /// <summary>A <c>dimension_purpose</c> value that narrows the <c>dimensions</c> kind to dimensions of that purpose; only that kind takes it.</summary>
+    public string? Purpose { get; init; }
 }

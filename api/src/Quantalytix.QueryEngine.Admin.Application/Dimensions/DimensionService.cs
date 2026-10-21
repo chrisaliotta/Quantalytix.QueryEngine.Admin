@@ -11,11 +11,15 @@ public sealed class DimensionService(
     ITableGateway<DimensionRoleRecord> roles,
     DimensionVersionService dimensionVersions,
     DimensionRoleService dimensionRoles,
+    DimensionMemberService members,
     DimensionVersionRemover remover,
     DimensionDeleteChecks deleteChecks,
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
+    /// <summary>The key of the single root row a new report dimension starts with.</summary>
+    public const string ReportRootKey = "total";
+
     /// <summary>Lists every dimension.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The dimensions by key, ignoring case.</returns>
@@ -34,7 +38,10 @@ public sealed class DimensionService(
         return dimensions.GetAsync(new { DimensionId = dimensionId }, cancellationToken);
     }
 
-    /// <summary>Creates a user-defined dimension, its draft version 1 and, unless it is a time dimension, its first role.</summary>
+    /// <summary>
+    /// Creates a user-defined analytical dimension, its draft version 1 and, unless it is a time dimension, its first role.
+    /// Report dimensions are created with their report, through <see cref="CreateReportDimensionAsync"/>.
+    /// </summary>
     /// <param name="input">The new dimension, already validated.</param>
     /// <param name="cancellationToken">Cancels the writes.</param>
     /// <returns>The stored dimension.</returns>
@@ -48,12 +55,47 @@ public sealed class DimensionService(
             DimensionKind = input.DimensionKind,
             DefinitionOrigin = DefinitionOrigins.User,
             IsRemovable = input.IsRemovable,
-            IsEnabled = input.IsEnabled
+            IsEnabled = input.IsEnabled,
+            DimensionPurpose = DimensionPurposes.Analytical
         };
         await dimensions.InsertAsync(dimension, cancellationToken);
         var firstVersion = new NewDimensionVersionInput { RangeDataType = input.RangeDataType };
         await dimensionVersions.CreateAsync(dimension.DimensionId, firstVersion, cancellationToken);
         if (input.DefaultRole is { } role) await dimensionRoles.CreateAsync(dimension.DimensionId, role, cancellationToken);
+        return dimension;
+    }
+
+    /// <summary>
+    /// Creates the report dimension of a new report: a hierarchical dimension of purpose <c>report</c> without roles, keyed and
+    /// named like the report, whose draft version 1 holds a copy of the template version's levels and members, or else a
+    /// single root row named after the report. Validation rebuilds a copy's closure.
+    /// </summary>
+    /// <param name="key">The report's key, which the dimension takes.</param>
+    /// <param name="displayName">The report's name, which the dimension and its root row take.</param>
+    /// <param name="templateVersionId">The published version of the dimension the report starts from, or null for a single root row.</param>
+    /// <param name="cancellationToken">Cancels the writes.</param>
+    /// <returns>The stored dimension.</returns>
+    public async Task<DimensionRecord> CreateReportDimensionAsync(string key, string displayName, long? templateVersionId, CancellationToken cancellationToken)
+    {
+        var dimension = new DimensionRecord
+        {
+            DimensionId = ids.NextId(),
+            DimensionKey = key,
+            DisplayName = displayName,
+            DimensionKind = DimensionKinds.Hierarchical,
+            DefinitionOrigin = DefinitionOrigins.User,
+            IsRemovable = true,
+            IsEnabled = true,
+            DimensionPurpose = DimensionPurposes.Report
+        };
+        await dimensions.InsertAsync(dimension, cancellationToken);
+        var firstVersion = await dimensionVersions.CreateAsync(
+            dimension.DimensionId, new NewDimensionVersionInput { CloneFromVersionId = templateVersionId }, cancellationToken);
+        if (templateVersionId is null)
+        {
+            var root = new NewMemberInput { MemberKey = ReportRootKey, DisplayName = displayName, IsAssignable = false, SortOrder = 0 };
+            await members.CreateAsync(firstVersion.DimensionVersionId, root, cancellationToken);
+        }
         return dimension;
     }
 
@@ -93,10 +135,23 @@ public sealed class DimensionService(
         var ownVersions = await versions.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
         var conflict = await deleteChecks.DimensionAsync(dimension, ownVersions, cancellationToken);
         if (conflict is not null) return conflict;
+        await RemoveAsync(dimensionId, ownVersions, cancellationToken);
+        return null;
+    }
+
+    /// <summary>
+    /// Deletes a dimension whose versions are all drafts and that nothing references any more: its drafts with their content,
+    /// then its roles, then the dimension. Its report deletes a report dimension this way, once the report and its bridges are gone.
+    /// </summary>
+    /// <param name="dimensionId">The dimension.</param>
+    /// <param name="ownVersions">Every version of the dimension.</param>
+    /// <param name="cancellationToken">Cancels the deletes.</param>
+    /// <returns>A task that completes when the dimension is gone.</returns>
+    public async Task RemoveAsync(long dimensionId, IReadOnlyList<DimensionVersionRecord> ownVersions, CancellationToken cancellationToken)
+    {
         await remover.RemoveAsync([.. ownVersions.Select(version => version.DimensionVersionId)], cancellationToken);
         await roles.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
         await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
-        return null;
     }
 
     /// <summary>The removability an update stores: the input's, except that a system dimension keeps its own.</summary>

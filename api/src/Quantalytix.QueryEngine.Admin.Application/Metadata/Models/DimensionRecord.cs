@@ -23,4 +23,7 @@ public sealed record DimensionRecord
 
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
+
+    /// <summary>A <c>dimension_purpose</c> value: <c>report</c> for the dimension whose members are one report's rows.</summary>
+    public required string DimensionPurpose { get; init; }
 }

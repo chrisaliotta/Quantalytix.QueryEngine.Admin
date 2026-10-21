@@ -8,7 +8,7 @@ import { useLookup } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import { CalculationDimensionsTab } from './CalculationDimensionsTab';
 import { ReportColumnsTab } from './ReportColumnsTab';
-import { ReportRowsTab } from './ReportRowsTab';
+import { ReportDesignTab } from './ReportDesignTab';
 import { ReportVariableScopesTab } from './ReportVariableScopesTab';
 import { ReportVersionSheet } from './ReportVersionSheet';
 import { SourceProfilesTab } from './SourceProfilesTab';
@@ -23,11 +23,15 @@ export interface ReportVersionPanelProps {
 
 /**
  * The selected report version: the calculation model it reads, its defaults, editable on a draft or the published version,
- * above its sources, profiles, calculation dimensions, variable scopes, columns and rows. Requests read the model version
- * their assumption set pins, by default its published one, which the panel links to.
+ * above its design (rows, sources and the items mapped to each row) and the advanced tabs of its sources, profiles,
+ * calculation dimensions, variable scopes and columns. A retired version has no design to open, because its report's own
+ * objects have moved on. Requests read the model version their assumption set pins, by default its published one, which
+ * the panel links to.
  */
 export function ReportVersionPanel({ report, version, isEditable }: ReportVersionPanelProps) {
   const tenantId = useTenantId();
+  const hasDesign = version.status !== 'retired';
+  const [tab, setTab] = useState(hasDesign ? 'design' : 'sources');
   const [editing, setEditing] = useState(false);
   const dimensions = useLookup('dimensions');
   const models = useLookup('calculation-models');
@@ -60,15 +64,20 @@ export function ReportVersionPanel({ report, version, isEditable }: ReportVersio
           </Button>
         )}
       </div>
-      <Tabs defaultValue="sources">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
+          {hasDesign && <TabsTrigger value="design">Design</TabsTrigger>}
           <TabsTrigger value="sources">Sources</TabsTrigger>
           <TabsTrigger value="profiles">Profiles</TabsTrigger>
           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
           <TabsTrigger value="scopes">Variable scope</TabsTrigger>
           <TabsTrigger value="columns">Columns</TabsTrigger>
-          <TabsTrigger value="rows">Rows</TabsTrigger>
         </TabsList>
+        {hasDesign && (
+          <TabsContent value="design">
+            <ReportDesignTab version={version} isEditable={isEditable} onShowSources={() => setTab('sources')} />
+          </TabsContent>
+        )}
         <TabsContent value="sources">
           <VariableSourcesTab report={report} version={version} isEditable={isEditable} />
         </TabsContent>
@@ -79,13 +88,10 @@ export function ReportVersionPanel({ report, version, isEditable }: ReportVersio
           <CalculationDimensionsTab versionId={versionId} isEditable={isEditable} />
         </TabsContent>
         <TabsContent value="scopes">
-          <ReportVariableScopesTab report={report} version={version} isEditable={isEditable} />
+          <ReportVariableScopesTab version={version} isEditable={isEditable} />
         </TabsContent>
         <TabsContent value="columns">
           <ReportColumnsTab version={version} isEditable={isEditable} />
-        </TabsContent>
-        <TabsContent value="rows">
-          <ReportRowsTab report={report} version={version} isEditable={isEditable} />
         </TabsContent>
       </Tabs>
       {editing && <ReportVersionSheet version={version} onClose={() => setEditing(false)} />}

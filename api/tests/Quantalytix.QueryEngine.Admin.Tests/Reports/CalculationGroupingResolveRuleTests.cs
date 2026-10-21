@@ -1,6 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
@@ -66,6 +67,6 @@ public sealed class CalculationGroupingResolveRuleTests
     /// <summary>The rule over the fixture's report and roles and the region dimension's tables.</summary>
     private CalculationGroupingResolveRule Rule()
     {
-        return new CalculationGroupingResolveRule(_fixture.Reader(), _fixture.Roles, new PublishedDimensionReader(_versions, _levels, _members));
+        return new CalculationGroupingResolveRule(_fixture.Reader(), _fixture.Roles, new PublishedDimensionReader(_versions, _levels, _members, new PublicationSet()));
     }
 }

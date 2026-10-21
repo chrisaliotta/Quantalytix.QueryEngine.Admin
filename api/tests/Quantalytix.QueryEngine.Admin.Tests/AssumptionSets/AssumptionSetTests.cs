@@ -61,7 +61,7 @@ public sealed class AssumptionSetTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 8,
+        MetadataSchemaVersion = 9,
         SemanticRevision = StartingRevision,
         ActiveReleaseId = ActiveReleaseId,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)

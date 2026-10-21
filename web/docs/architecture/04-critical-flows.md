@@ -323,7 +323,7 @@ sequenceDiagram
 ```
 
 - A clone copies the source's rows as they are. Entries, bridge mappings, bindings' unknown members and a report's variable scopes, sources, profile picks, columns, overlay rows and member options name members, metrics and measures by key, and bindings, calculation dimensions and bridge sources name roles, which are not versioned, so nothing is dropped; the publication rules check that the keys resolve in the published versions requests read them in.
-- Dimensions clone through `NewVersionSheet`, which copies levels, members and range bands. Bridges clone through `NewBridgeVersionDialog`, which copies the mappings. Calculation models clone through `NewModelVersionDialog`, which copies the variables and calculated measures; reports clone through `NewReportVersionDialog`, which starts from the source's model, default profile and subtotal position and copies the sources, profiles, calculation dimensions, variable scopes, columns, overlay rows and member options. The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromReleaseId`, then opens the new release. Assumption sets are not versioned; "Capture" snapshots the active set and the active release under a new key.
+- Dimensions clone through `NewVersionSheet`, which copies levels, members and range bands. Bridges clone through `NewBridgeVersionDialog`, which copies the mappings. Calculation models clone through `NewModelVersionDialog`, which copies the variables and calculated measures; reports clone through `NewReportVersionDialog`, which starts from the source's model, default profile and subtotal position and copies the sources, profiles, calculation dimensions, variable scopes, columns, overlay rows and member options. Any new report draft, empty or cloned, comes with drafts of the report's dimension and bridges that copy their published versions, which the design edits; see [flow 12](#12-designing-a-report). The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromReleaseId`, then opens the new release. Assumption sets are not versioned; "Capture" snapshots the active set and the active release under a new key.
 - What the API does for a clone is drawn in [the API's key actions](../../../api/docs/architecture/06-key-actions.md).
 
 **Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [NewMappingVersionDialog.tsx](../../src/features/mappings/NewMappingVersionDialog.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [NewVersionSheet.tsx](../../src/features/dimensions/NewVersionSheet.tsx), [dimensions/api.ts](../../src/features/dimensions/api.ts), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [NewBridgeVersionDialog.tsx](../../src/features/bridges/NewBridgeVersionDialog.tsx), [NewReportVersionDialog.tsx](../../src/features/reports/NewReportVersionDialog.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [NewReleaseSheet.tsx](../../src/features/releases/NewReleaseSheet.tsx), [CaptureSheet.tsx](../../src/features/assumption-sets/CaptureSheet.tsx).
@@ -446,8 +446,58 @@ flowchart TB
 ```
 
 - Dimension, mapping set, bridge, calculation model and report pages pass `isEditable(kind, selected.status)` down for the version that `selectedVersion` picks. Dataset versions are strict, so the dataset page passes `isDraft`; the release editor compares the loaded record's `status` with `draft`.
-- `PinnedVersionsTable` shows a release's manifest. The report column editor hides its drag handles, add, remove, Save and Discard controls; the Rows and Variable scope tabs hide their add and delete actions; their sheets open read-only; `MembersTab` turns off dragging.
+- `PinnedVersionsTable` shows a release's manifest. The report column editor hides its drag handles, add, remove, Save and Discard controls; the Design tab hides its new row, drag handle, delete, pick items, sign, new source and assign actions, and the Variable scope tab its add and delete actions; their sheets open read-only; `MembersTab` turns off dragging.
 - Assumption sets are not versioned and their pins are never edited by hand: `AssumptionPinsTable` lists them read-only, the active set follows every publish and reads the active release, and a historical set keeps the versions and the release it captured, which its page links to with the release's status. Either set can be relabelled, and a historical one deleted.
 - `VersionHeader` does not read `isEditable`: it offers what `getVersionTransitions` allows for the kind and status, "Validate" on a published living version, "Clone selected" and "New version" when the page passes them, and "Delete draft" only on drafts.
 
 **Sources:** [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DatasetVersionTabs.tsx](../../src/features/datasets/DatasetVersionTabs.tsx), [FieldsTab.tsx](../../src/features/datasets/FieldsTab.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [SettingsTab.tsx](../../src/features/datasets/SettingsTab.tsx), [EntityFormSheet.tsx](../../src/shared/EntityFormSheet.tsx), [FormReadOnlyContext.ts](../../src/shared/form/FormReadOnlyContext.ts), [useFormField.ts](../../src/shared/form/useFormField.ts), [ExpressionField.tsx](../../src/shared/form/ExpressionField.tsx), [JsonField.tsx](../../src/shared/form/JsonField.tsx), [PinnedVersionsTable.tsx](../../src/shared/PinnedVersionsTable.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [AssumptionPinsTable.tsx](../../src/features/assumption-sets/AssumptionPinsTable.tsx), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [MembersTab.tsx](../../src/features/dimensions/MembersTab.tsx), [RangeBandsTab.tsx](../../src/features/dimensions/RangeBandsTab.tsx), [dimensions/SettingsTab.tsx](../../src/features/dimensions/SettingsTab.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [BridgeVersionPanel.tsx](../../src/features/bridges/BridgeVersionPanel.tsx), [BridgeMappings.tsx](../../src/features/bridges/BridgeMappings.tsx), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx).
+
+## 12. Designing a report
+
+A report's rows are its own report dimension's members with the version's overlay rows among them, and its sources map the members of the dimensions datasets bind (the items) to those rows. The Design tab edits all of it as one design. The drawing shows a row move, an item pick and the publish, each answered with the whole design. What the API writes and checks is in [the API's report designs](../../../api/docs/architecture/05-feature-classes.md#report-designs) and [publishing together](../../../api/docs/architecture/04-version-lifecycle.md#publishing-together).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Panel as ReportVersionPanel
+    participant Tree as DesignRowTree
+    participant Sheet as RowMappingSheet
+    participant Hooks as designApi.ts
+    participant Api as Admin API
+    participant Cache as queryClient
+    participant Header as VersionHeader
+    User->>Panel: open a draft, validated or published version
+    Panel->>Hooks: ReportDesignTab, useReportDesign(versionId)
+    Hooks->>Api: GET .../report-versions/{versionId}/design
+    Api-->>Panel: rows with their mapped items, sources, read-only other sources
+    User->>Tree: drag a row under another row
+    Tree->>Tree: canDrop through canPlace, which refuses what the API would
+    Tree->>Hooks: useReplaceDesignRows, rowsAfterMove(rows, tree, movedKey)
+    Note over Tree: the tree shows the sent rows until the API answers
+    Hooks->>Api: PUT .../design/rows with every row
+    Api-->>Cache: the design afterwards, by setQueryData
+    User->>Sheet: Pick items on a data row, then choose a source
+    Sheet->>Api: the members of the published version of the source's bound dimension
+    User->>Sheet: click members; a group picks the items under it (toggledItems)
+    Sheet->>Hooks: useReplaceRowMappings, rowMappingsFrom(row, selections)
+    Hooks->>Api: PUT .../design/row-mappings
+    Api-->>Cache: the design afterwards, with the items that were on other rows moved here
+    User->>Header: Validate, then Publish
+    Header->>Hooks: useReportDesignTransition, through the transition prop
+    Hooks->>Api: PUT .../design/status
+    alt rules fail
+        Api-->>Header: 422 with the violations of every version of the set
+    else accepted
+        Api-->>Header: the report version's VersionState
+        Hooks->>Cache: invalidateTenantQueries(tenantId)
+    end
+```
+
+- The Design tab comes first and is the default for draft, validated and published versions. A retired version has no design, so its panel opens on Sources. The advanced Sources, Profiles, Dimensions, Variable scope and Columns tabs stay.
+- The rows sit on the left. `buildRowTree` nests them in the engine's order. "New row" adds a data row, group, section or formula row in `DesignRowSheet`, under the selected row when it takes that kind. A new row's key is made from its label by `keyFromLabel` and is fixed once saved. A data row is an assignable member that takes items, and the rows under it add to its total; a group takes none.
+- The right side has three tabs. Mappings is `RowMappingTable`, the selected row's items by source, bound dimension, item key and sign, with sign flips and removals. Sources is `DesignSourcesPanel`. Coverage is `DesignCoveragePanel`, each source's unmapped items, each with "Assign to row".
+- `DesignSourceSheet` takes a dataset, a role it binds (the `bound-roles` lookup), a time field, a filter, a bridge to start the mappings from, and a measure for each variable of the model's published version. The first source makes profile `default`, and the profiles show under the sources only when a variable has several sources. Sources whose variables read different datasets, and direct and mapped sources, show read-only with a link to the Sources tab.
+- `ReportVariableScopeSheet` offers the rows of the design's paired dimension version, so a draft can scope its new rows.
+
+**Sources:** [ReportVersionPanel.tsx](../../src/features/reports/ReportVersionPanel.tsx), [ReportDesignTab.tsx](../../src/features/reports/ReportDesignTab.tsx), [DesignRowTree.tsx](../../src/features/reports/DesignRowTree.tsx), [DesignRowItem.tsx](../../src/features/reports/DesignRowItem.tsx), [DesignRowSheet.tsx](../../src/features/reports/DesignRowSheet.tsx), [rowTree.ts](../../src/features/reports/rowTree.ts), [rowTree.test.ts](../../src/features/reports/rowTree.test.ts), [RowMappingTable.tsx](../../src/features/reports/RowMappingTable.tsx), [RowMappingSheet.tsx](../../src/features/reports/RowMappingSheet.tsx), [designMappings.ts](../../src/features/reports/designMappings.ts), [designMappings.test.ts](../../src/features/reports/designMappings.test.ts), [DesignSourcesPanel.tsx](../../src/features/reports/DesignSourcesPanel.tsx), [DesignSourceSheet.tsx](../../src/features/reports/DesignSourceSheet.tsx), [DesignCoveragePanel.tsx](../../src/features/reports/DesignCoveragePanel.tsx), [designApi.ts](../../src/features/reports/designApi.ts), [queryKeys.ts](../../src/features/reports/queryKeys.ts), [ReportVariableScopeSheet.tsx](../../src/features/reports/ReportVariableScopeSheet.tsx), [ReportDetailPage.tsx](../../src/features/reports/ReportDetailPage.tsx), [VersionHeader.tsx](../../src/shared/VersionHeader.tsx).

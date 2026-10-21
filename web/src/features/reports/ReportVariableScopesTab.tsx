@@ -7,10 +7,9 @@ import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EntityTable } from '@/shared/EntityTable';
 import { useReplaceReportVariableScopes, useReportVariableScopes } from './api';
 import { ReportVariableScopeSheet } from './ReportVariableScopeSheet';
-import type { Report, ReportVariableScopeInput, ReportVersion } from './types';
+import type { ReportVariableScopeInput, ReportVersion } from './types';
 
 export interface ReportVariableScopesTabProps {
-  report: Report;
   version: ReportVersion;
   isEditable: boolean;
 }
@@ -24,7 +23,7 @@ interface ScopeSheetRequest {
  * The version's variable scopes: the member whose branch each scoped variable reads. A draft or the published version adds,
  * edits and deletes scopes one at a time, each saved as a replace of the whole list.
  */
-export function ReportVariableScopesTab({ report, version, isEditable }: ReportVariableScopesTabProps) {
+export function ReportVariableScopesTab({ version, isEditable }: ReportVariableScopesTabProps) {
   const scopes = useReportVariableScopes(version.reportVersionId);
   const save = useReplaceReportVariableScopes(version.reportVersionId);
   const remove = useReplaceReportVariableScopes(version.reportVersionId);
@@ -42,7 +41,7 @@ export function ReportVariableScopesTab({ report, version, isEditable }: ReportV
 
   const columns: ColumnDef<ReportVariableScopeInput>[] = [
     { accessorKey: 'variableKey', header: 'Variable' },
-    { accessorKey: 'scopeMemberKey', header: 'Member' },
+    { accessorKey: 'scopeMemberKey', header: 'Row' },
     { accessorKey: 'selectionScope', header: 'Selection' },
     {
       id: 'actions',
@@ -90,7 +89,6 @@ export function ReportVariableScopesTab({ report, version, isEditable }: ReportV
       <ApiErrorAlert error={remove.error} />
       {sheet && (
         <ReportVariableScopeSheet
-          report={report}
           version={version}
           scope={sheet.scope}
           readOnly={!isEditable}

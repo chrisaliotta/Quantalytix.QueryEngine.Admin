@@ -1,5 +1,5 @@
 import { EntitySelect } from '../EntitySelect';
-import type { LookupItem, LookupKind } from '../types';
+import type { DimensionPurpose, LookupItem, LookupKind } from '../types';
 import { FormFieldLayout } from './FormFieldLayout';
 import { useFormField, type FormFieldProps } from './useFormField';
 
@@ -7,6 +7,8 @@ export interface EntityFieldProps extends FormFieldProps {
   lookupKind: LookupKind;
   /** Parent id for parent-scoped kinds; `null` keeps the field disabled until the parent is chosen. */
   parentId?: number | null;
+  /** Narrows the `dimensions` kind to dimensions of one purpose. */
+  purpose?: DimensionPurpose;
   /** Lets the user clear the value back to null. */
   allowEmpty?: boolean;
   /** Narrows the options, e.g. `item => item.classifier === 'date'`. */
@@ -21,6 +23,7 @@ export function EntityField({
   disabled,
   lookupKind,
   parentId,
+  purpose,
   allowEmpty,
   filter,
 }: EntityFieldProps) {
@@ -30,6 +33,7 @@ export function EntityField({
       <EntitySelect
         lookupKind={lookupKind}
         parentId={parentId}
+        purpose={purpose}
         value={field.value}
         onChange={field.onChange}
         allowEmpty={allowEmpty}

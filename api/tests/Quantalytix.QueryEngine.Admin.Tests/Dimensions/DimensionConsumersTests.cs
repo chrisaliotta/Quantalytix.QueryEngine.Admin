@@ -2,6 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Quantalytix.QueryEngine.Admin.Tests.Mappings;
@@ -65,7 +66,7 @@ public sealed class DimensionConsumersTests
     [Fact]
     public async Task VersionDroppingKeysLiveObjectsName_IsReported()
     {
-        var rule = new DimensionConsumersResolveRule(_versions, Consumers(), new PublishedDimensionReader(_versions, _levels, _members));
+        var rule = new DimensionConsumersResolveRule(_versions, Consumers(), new PublishedDimensionReader(_versions, _levels, _members, new PublicationSet()));
 
         var violations = await rule.EvaluateAsync(DraftVersionId, TestContext.Current.CancellationToken);
 
@@ -182,6 +183,7 @@ public sealed class DimensionConsumersTests
                 ReportRows.Line(2, "detail", ReportLineKinds.Section, "notes", 1)),
             new InMemoryTableGateway<ReportVariableScopeRecord>(ReportRows.Scope("balance", "BR01")),
             CalculationDimensions(),
-            new BindingNames(roles, new InMemoryTableGateway<FieldRecord>()));
+            new BindingNames(roles, new InMemoryTableGateway<FieldRecord>()),
+            new PublicationSet());
     }
 }

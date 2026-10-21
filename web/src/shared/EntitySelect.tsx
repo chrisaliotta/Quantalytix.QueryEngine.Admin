@@ -1,13 +1,15 @@
 import { Combobox, type ComboboxItem } from '@registry/components/Combobox';
 import { ClearSelectionButton } from './ClearSelectionButton';
 import { lookupItemText } from './lookupItemText';
-import type { LookupItem, LookupKind } from './types';
+import type { DimensionPurpose, LookupItem, LookupKind } from './types';
 import { useLookup } from './useLookup';
 
 export interface EntitySelectProps {
   lookupKind: LookupKind;
   /** Parent id for parent-scoped kinds; `null` disables the select until the parent is chosen. */
   parentId?: number | null;
+  /** Narrows the `dimensions` kind to dimensions of one purpose. */
+  purpose?: DimensionPurpose;
   value: number | null;
   onChange: (value: number | null) => void;
   /** Shows a clear button that sets the value to null. */
@@ -25,6 +27,7 @@ export interface EntitySelectProps {
 export function EntitySelect({
   lookupKind,
   parentId,
+  purpose,
   value,
   onChange,
   allowEmpty = false,
@@ -32,7 +35,7 @@ export function EntitySelect({
   disabled = false,
   placeholder = 'Select...',
 }: EntitySelectProps) {
-  const lookup = useLookup(lookupKind, parentId);
+  const lookup = useLookup(lookupKind, parentId, purpose);
   const items = lookup.data ?? [];
   const options = (filter ? items.filter(filter) : items).map(item => ({
     value: String(item.id),
