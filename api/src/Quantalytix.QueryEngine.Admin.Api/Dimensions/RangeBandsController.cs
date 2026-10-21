@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -52,6 +53,7 @@ public sealed class RangeBandsController(RangeBandService bands) : ControllerBas
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<RangeBandRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<RangeBandRecord>>> Replace(

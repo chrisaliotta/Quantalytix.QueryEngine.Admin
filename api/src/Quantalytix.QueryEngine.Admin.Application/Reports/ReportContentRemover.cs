@@ -1,33 +1,49 @@
+using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
+using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Deletes the content rows of editable report versions together with the rows that only they give meaning to: the profile picks
-/// of a source or a profile. Each call is ordered single statements, dependents first.
+/// Deletes report content together with the rows that only it gives meaning to: the variables, profile picks and bridge of a
+/// source, and the picks of a profile. Each call is ordered single statements, dependents first.
 /// </summary>
 public sealed class ReportContentRemover(
-    ITableGateway<VariableSourceRecord> sources,
+    ITableGateway<ReportSourceRecord> sources,
+    ITableGateway<ReportSourceVariableRecord> sourceVariables,
     ITableGateway<SourceProfileRecord> profiles,
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<CalculationDimensionRecord> dimensions,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
-    ITableGateway<ReportMemberOptionRecord> memberOptions)
+    ITableGateway<ReportMemberOptionRecord> memberOptions,
+    OwnedVersions owned,
+    BridgeService bridges,
+    AssumptionPins pins)
 {
-    /// <summary>Deletes sources with the profile picks that name them.</summary>
-    /// <param name="sourceIds">Sources of editable versions.</param>
-    /// <param name="cancellationToken">Cancels the deletes.</param>
-    /// <returns>A task that completes when the rows are deleted.</returns>
-    public async Task RemoveSourcesAsync(IReadOnlyCollection<long> sourceIds, CancellationToken cancellationToken)
+    /// <summary>
+    /// Deletes sources with their variables and the profile picks that name them, then each bridge source's bridge, unpinned first.
+    /// </summary>
+    /// <param name="removed">Sources of one report.</param>
+    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
+    /// <returns>A task that completes when the sources and their bridges are gone.</returns>
+    public async Task RemoveSourcesAsync(IReadOnlyCollection<ReportSourceRecord> removed, CancellationToken cancellationToken)
     {
-        await picks.DeleteAsync(new { VariableSourceId = sourceIds }, cancellationToken);
-        await sources.DeleteAsync(new { VariableSourceId = sourceIds }, cancellationToken);
+        var bridgeVersions = await owned.BridgesAsync(removed, cancellationToken);
+        long[] sourceIds = [.. removed.Select(source => source.ReportSourceId)];
+        await picks.DeleteAsync(new { ReportSourceId = sourceIds }, cancellationToken);
+        await sourceVariables.DeleteAsync(new { ReportSourceId = sourceIds }, cancellationToken);
+        await sources.DeleteAsync(new { ReportSourceId = sourceIds }, cancellationToken);
+        foreach (var bridgeVersion in bridgeVersions.Values)
+        {
+            await pins.UnpinBridgeAsync(bridgeVersion.BridgeId, cancellationToken);
+            await bridges.RemoveAsync(bridgeVersion.BridgeId, [bridgeVersion.BridgeVersionId], cancellationToken);
+        }
     }
 
     /// <summary>Deletes profiles with their picks.</summary>
-    /// <param name="profileIds">Profiles of editable versions.</param>
+    /// <param name="profileIds">Profiles of a report.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the rows are deleted.</returns>
     public async Task RemoveProfilesAsync(IReadOnlyCollection<long> profileIds, CancellationToken cancellationToken)
@@ -36,20 +52,19 @@ public sealed class ReportContentRemover(
         await profiles.DeleteAsync(new { SourceProfileId = profileIds }, cancellationToken);
     }
 
-    /// <summary>Deletes every content row of draft versions.</summary>
-    /// <param name="versionIds">Draft report versions.</param>
+    /// <summary>Deletes every content row of a report: profiles, sources with their bridges, calculation dimensions, scopes, rows and columns.</summary>
+    /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>A task that completes when the rows are deleted.</returns>
-    public async Task RemoveContentAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
+    public async Task RemoveContentAsync(long reportId, CancellationToken cancellationToken)
     {
-        var owners = new { ReportVersionId = versionIds };
-        var versionProfiles = await profiles.ListAsync(owners, cancellationToken);
-        await RemoveProfilesAsync([.. versionProfiles.Select(profile => profile.SourceProfileId)], cancellationToken);
-        await sources.DeleteAsync(owners, cancellationToken);
-        await dimensions.DeleteAsync(owners, cancellationToken);
-        await scopes.DeleteAsync(owners, cancellationToken);
-        await lines.DeleteAsync(owners, cancellationToken);
-        await columns.DeleteAsync(owners, cancellationToken);
-        await memberOptions.DeleteAsync(owners, cancellationToken);
+        var owner = new { ReportId = reportId };
+        await RemoveProfilesAsync([.. (await profiles.ListAsync(owner, cancellationToken)).Select(profile => profile.SourceProfileId)], cancellationToken);
+        await RemoveSourcesAsync(await sources.ListAsync(owner, cancellationToken), cancellationToken);
+        await dimensions.DeleteAsync(owner, cancellationToken);
+        await scopes.DeleteAsync(owner, cancellationToken);
+        await lines.DeleteAsync(owner, cancellationToken);
+        await columns.DeleteAsync(owner, cancellationToken);
+        await memberOptions.DeleteAsync(owner, cancellationToken);
     }
 }

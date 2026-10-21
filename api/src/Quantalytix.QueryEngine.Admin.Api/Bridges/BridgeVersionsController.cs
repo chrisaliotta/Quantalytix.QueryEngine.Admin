@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -44,6 +45,7 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("bridges/{bridgeId:long}/versions")]
+    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeVersionRecord>> Create(
@@ -83,6 +85,7 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("bridge-versions/{versionId:long}")]
     [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
+    [RequireAnalytical(AnalyticalTarget.BridgeVersion, "versionId")]
     [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeVersionRecord>> Update(

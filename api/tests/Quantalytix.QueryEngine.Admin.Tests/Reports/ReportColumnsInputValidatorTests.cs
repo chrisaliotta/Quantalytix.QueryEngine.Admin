@@ -1,4 +1,5 @@
 using FluentValidation.TestHelper;
+using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -17,7 +18,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// </summary>
 public sealed class ReportColumnsInputValidatorTests
 {
-    /// <summary>The stored columns of report version 61: amount returns the balance variable, yield the yield measure.</summary>
+    /// <summary>The stored columns of report 60: amount returns the balance variable, yield the yield measure.</summary>
     private readonly InMemoryTableGateway<ReportColumnRecord> _columns = new(
         Column(1, "amount", ReportValueKinds.Variable, "balance", 1),
         Column(2, "yield", ReportValueKinds.Calculated, "yield", 2));
@@ -72,18 +73,18 @@ public sealed class ReportColumnsInputValidatorTests
         return new ReportColumnInput { ReportColumnId = columnId, ColumnKey = columnKey, DisplayName = columnKey, ValueKind = valueKind, MetricKey = metricKey, IsVisible = true };
     }
 
-    /// <summary>Validates a column list for report version 61 over model 40, whose published version is 41.</summary>
+    /// <summary>Validates a column list for report 60 over model 40, whose published version is 41.</summary>
     private Task<TestValidationResult<ReportColumnsInput>> ValidateAsync(params ReportColumnInput[] columns)
     {
         var validator = new ReportColumnsInputValidator(
             new ModelMetricsReader(
-                new InMemoryTableGateway<ReportVersionRecord>(ReportVersion(ReportVersionId)),
+                new InMemoryTableGateway<ReportRecord>(Report()),
                 new InMemoryTableGateway<CalculationModelVersionRecord>(ModelVersion()),
                 new InMemoryTableGateway<VariableRecord>(Variable(51, "balance")),
                 new InMemoryTableGateway<CalculatedMeasureRecord>(Calculated(91, "yield", "[m.balance] / 2"))),
             _columns,
             _lines,
-            new FixedRequestRoute(new Dictionary<string, long> { ["versionId"] = ReportVersionId }));
+            new ContentKeys(new FixedRequestRoute(new Dictionary<string, long> { ["reportId"] = ReportId })));
         return validator.TestValidateAsync(new ReportColumnsInput { Columns = columns }, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

@@ -57,10 +57,6 @@ public static class TableCatalog
             "qe_assumption_set_model",
             [nameof(AssumptionSetModelRecord.AssumptionSetId), nameof(AssumptionSetModelRecord.ModelId)],
             []),
-        [typeof(AssumptionSetReportRecord)] = Tenant(
-            "qe_assumption_set_report",
-            [nameof(AssumptionSetReportRecord.AssumptionSetId), nameof(AssumptionSetReportRecord.ReportId)],
-            []),
         [typeof(BridgeRecord)] = Tenant("qe_bridge", [nameof(BridgeRecord.BridgeId)], []),
         [typeof(BridgeVersionRecord)] = Tenant("qe_bridge_version", [nameof(BridgeVersionRecord.BridgeVersionId)], []),
         [typeof(BridgeMappingRecord)] = Tenant("qe_bridge_mapping", [nameof(BridgeMappingRecord.BridgeMappingId)], []),
@@ -77,8 +73,11 @@ public static class TableCatalog
         [typeof(CalculationModelVersionRecord)] = Tenant(
             "qe_calculation_model_version", [nameof(CalculationModelVersionRecord.ModelVersionId)], []),
         [typeof(VariableRecord)] = Tenant("qe_variable", [nameof(VariableRecord.VariableId)], []),
-        [typeof(VariableSourceRecord)] = Tenant(
-            "qe_variable_source", [nameof(VariableSourceRecord.VariableSourceId)], [nameof(VariableSourceRecord.SourceFilterJson)]),
+        [typeof(ReportSourceRecord)] = Tenant("qe_report_source", [nameof(ReportSourceRecord.ReportSourceId)], []),
+        [typeof(ReportSourceVariableRecord)] = Tenant(
+            "qe_report_source_variable",
+            [nameof(ReportSourceVariableRecord.ReportSourceId), nameof(ReportSourceVariableRecord.VariableKey)],
+            [nameof(ReportSourceVariableRecord.SourceFilterJson)]),
         [typeof(SourceProfileRecord)] = Tenant("qe_calculation_source_profile", [nameof(SourceProfileRecord.SourceProfileId)], []),
         [typeof(SourceProfileVariableRecord)] = Tenant(
             "qe_calculation_source_profile_variable",
@@ -87,16 +86,10 @@ public static class TableCatalog
         [typeof(CalculatedMeasureRecord)] = Tenant("qe_calculated_measure", [nameof(CalculatedMeasureRecord.CalculatedMeasureId)], []),
         [typeof(CalculationDimensionRecord)] = Tenant(
             "qe_calculation_dimension", [nameof(CalculationDimensionRecord.CalculationDimensionId)], []),
-        [typeof(ReportRecord)] = Tenant("qe_report", [nameof(ReportRecord.ReportId)], [nameof(ReportRecord.PayloadJson)]),
-        [typeof(ReportVersionRecord)] = Tenant(
-            "qe_report_version",
-            [nameof(ReportVersionRecord.ReportVersionId)],
-            [
-                nameof(ReportVersionRecord.PayloadJson),
-                nameof(ReportVersionRecord.DefaultFilterJson),
-                nameof(ReportVersionRecord.DefaultSettingsJson),
-                nameof(ReportVersionRecord.DefaultPivotJson)
-            ]),
+        [typeof(ReportRecord)] = Tenant(
+            "qe_report",
+            [nameof(ReportRecord.ReportId)],
+            [nameof(ReportRecord.PayloadJson), nameof(ReportRecord.DefaultFilterJson), nameof(ReportRecord.DefaultSettingsJson), nameof(ReportRecord.DefaultPivotJson)]),
         [typeof(ReportLineRecord)] = Tenant(
             "qe_report_line",
             [nameof(ReportLineRecord.ReportLineId)],
@@ -104,9 +97,9 @@ public static class TableCatalog
         [typeof(ReportColumnRecord)] = Tenant(
             "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)]),
         [typeof(ReportMemberOptionRecord)] = Tenant(
-            "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportVersionId), nameof(ReportMemberOptionRecord.MemberKey)], []),
+            "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportId), nameof(ReportMemberOptionRecord.MemberKey)], []),
         [typeof(ReportVariableScopeRecord)] = Tenant(
-            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportVersionId), nameof(ReportVariableScopeRecord.VariableKey)], [])
+            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportId), nameof(ReportVariableScopeRecord.VariableKey)], [])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>

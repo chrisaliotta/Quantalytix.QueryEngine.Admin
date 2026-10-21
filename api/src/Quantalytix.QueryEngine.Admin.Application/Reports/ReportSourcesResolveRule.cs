@@ -1,68 +1,56 @@
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>report_sources_resolve</c>: every enabled source of a report reads a dataset the release pins, and every key it names resolves
-/// in that dataset version. A direct or mapped classification reads an enabled field, and a bridge classification's role has an
-/// enabled binding into members, which the bridge remaps; its time field has a time binding; its measure is enabled; and its filter
-/// compares enabled, filterable fields. The engine trusts these keys, so a key that does not resolve would fail the report at run
-/// time. Report versions and semantic releases both run the rule, each in the scope <see cref="ReportGraphReader"/> gives its kind.
+/// <c>report_sources_resolve</c>: every source of a report reads a dataset the release pins, and every key it names resolves in
+/// that dataset version. A direct source's field is enabled, and a bridge source's role has an enabled binding into members, which
+/// its bridge remaps; its time field has a time binding; and each variable it supplies reads an enabled measure through a filter
+/// over enabled, filterable fields. The engine trusts these keys, so a key that does not resolve would fail the report at run time.
 /// </summary>
-/// <param name="kind">The kind the rule is registered for.</param>
-/// <param name="reader">Reads the reports and the release's dataset versions.</param>
-public sealed class ReportSourcesResolveRule(string kind, ReportGraphReader reader) : IPublicationRule
+public sealed class ReportSourcesResolveRule : IReportRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_sources_resolve";
 
-    /// <summary>The kind the rule checks: report versions or semantic releases.</summary>
-    public string Kind { get; } = kind;
-
     /// <summary>Reports every source key that does not resolve in the release.</summary>
-    /// <param name="versionId">The version being validated.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <param name="report">The report.</param>
+    /// <param name="scope">Holds the release's dataset versions.</param>
     /// <returns>One violation per unresolved key.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        var scope = await reader.ScopeAsync(Kind, versionId, cancellationToken);
-        var violations = new List<RuleViolation>();
-        foreach (var report in scope.Reports)
+        var variablesOf = report.SourceVariables.ToLookup(variable => variable.ReportSourceId);
+        foreach (var source in report.Sources.OrderBy(source => source.SourceKey, StringComparer.Ordinal))
         {
-            foreach (var source in report.Sources.OrderBy(source => source.SourceKey, StringComparer.Ordinal))
+            var subject = $"Report '{report.ReportKey}' source '{source.SourceKey}'";
+            if (!scope.Datasets.TryGetValue(source.DatasetId, out var dataset))
             {
-                var subject = $"Report '{report.ReportKey}' source '{source.SourceKey}'";
-                if (!scope.Datasets.TryGetValue(source.DatasetId, out var dataset))
-                {
-                    violations.Add(Violation($"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the release does not pin."));
-                    continue;
-                }
+                yield return Violation($"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the release does not pin.");
+                continue;
+            }
 
-                if (source.ClassificationRoleId is { } roleId)
-                {
-                    if (!ClassificationFields.BridgesFrom(dataset, roleId))
-                        violations.Add(Violation($"{subject} bridges from role '{scope.RoleKeys[roleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding."));
-                }
-                else if (dataset.Fields.GetValueOrDefault(source.ClassificationFieldKey!) is not { IsEnabled: true })
-                {
-                    violations.Add(Violation($"{subject} classifies by '{source.ClassificationFieldKey}', which is no enabled field of '{dataset.DatasetKey}'."));
-                }
-                if (dataset.Fields.GetValueOrDefault(source.TimeFieldKey) is not { } timeField
-                    || !dataset.Bindings.Any(time => time.SourceFieldId == timeField.FieldId && dataset.TimeBindingIds.Contains(time.BindingId)))
-                    violations.Add(Violation($"{subject}: time field '{source.TimeFieldKey}' of '{dataset.DatasetKey}' has no time binding."));
-                if (dataset.Measures.GetValueOrDefault(source.MeasureKey) is not { IsEnabled: true })
-                    violations.Add(Violation($"{subject}: measure '{source.MeasureKey}' is no enabled measure of '{dataset.DatasetKey}'."));
-                if (source.SourceFilterJson is { } filter)
-                {
-                    foreach (var field in FilterNodes.Inspect(filter).Operands.Select(operand => operand.Id).Distinct(StringComparer.Ordinal)
-                        .Where(key => dataset.Fields.GetValueOrDefault(key) is not { IsEnabled: true, IsFilterable: true }))
-                        violations.Add(Violation($"{subject}: its filter compares '{field}', which is no enabled, filterable field of '{dataset.DatasetKey}'."));
-                }
+            if (source.RoleId is { } roleId)
+            {
+                if (!SourceBindings.BridgesFrom(dataset, roleId))
+                    yield return Violation($"{subject} bridges from role '{scope.RoleKeys[roleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding.");
+            }
+            else if (dataset.Fields.GetValueOrDefault(source.FieldKey!) is not { IsEnabled: true })
+            {
+                yield return Violation($"{subject} maps rows by '{source.FieldKey}', which is no enabled field of '{dataset.DatasetKey}'.");
+            }
+            if (!dataset.IsTimeField(source.TimeFieldKey))
+                yield return Violation($"{subject}: time field '{source.TimeFieldKey}' of '{dataset.DatasetKey}' has no time binding.");
+            foreach (var variable in variablesOf[source.ReportSourceId].OrderBy(variable => variable.VariableKey, StringComparer.Ordinal))
+            {
+                if (dataset.Measures.GetValueOrDefault(variable.MeasureKey) is not { IsEnabled: true })
+                    yield return Violation($"{subject}: variable '{variable.VariableKey}' reads '{variable.MeasureKey}', which is no enabled measure of '{dataset.DatasetKey}'.");
+                if (variable.SourceFilterJson is not { } filter) continue;
+                foreach (var field in FilterNodes.Inspect(filter).Operands.Select(operand => operand.Id).Distinct(StringComparer.Ordinal)
+                    .Where(key => dataset.Fields.GetValueOrDefault(key) is not { IsEnabled: true, IsFilterable: true }))
+                    yield return Violation($"{subject}: variable '{variable.VariableKey}' filters on '{field}', which is no enabled, filterable field of '{dataset.DatasetKey}'.");
             }
         }
-        return violations;
     }
 
     /// <summary>A violation of this rule.</summary>

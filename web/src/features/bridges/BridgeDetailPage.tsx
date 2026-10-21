@@ -1,8 +1,9 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Loading } from '@registry/components/Loading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
@@ -19,23 +20,28 @@ import { BridgeIdentitySheet } from './BridgeIdentitySheet';
 import { BridgeVersionPanel } from './BridgeVersionPanel';
 import { bridgeVersionValues } from './bridgeVersionForm';
 import { NewBridgeVersionDialog, type NewBridgeVersionValues } from './NewBridgeVersionDialog';
-import type { Bridge, BridgeVersion } from './types';
+import type { BridgeSummary, BridgeVersion } from './types';
 
-/** One bridge: identity, version picker with lifecycle actions, and the selected version's settings and mappings. */
+/**
+ * One bridge: identity, version picker with lifecycle actions, and the selected version's settings and mappings. A report
+ * bridge shows read-only and links to the report editor, the only place its items change.
+ */
 export function BridgeDetailPage() {
   const bridgeId = Number(useParams().bridgeId);
-  const bridge = useBridge(bridgeId);
+  const summary = useBridge(bridgeId);
 
-  if (bridge.isPending) {
+  if (summary.isPending) {
     return <Loading />;
   }
-  if (bridge.error) {
-    return <ApiErrorAlert error={bridge.error} />;
+  if (summary.error) {
+    return <ApiErrorAlert error={summary.error} />;
   }
-  return <BridgeDetail bridge={bridge.data} />;
+  return <BridgeDetail summary={summary.data} />;
 }
 
-function BridgeDetail({ bridge }: { bridge: Bridge }) {
+function BridgeDetail({ summary }: { summary: BridgeSummary }) {
+  const { bridge, owner } = summary;
+  const isAnalytical = owner == null;
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -80,17 +86,31 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
         title={bridge.displayName}
         description={`${bridge.bridgeKey} · ${sourceKey} → ${targetKey}`}
         actions={
-          <>
-            <EnabledBadge enabled={bridge.isEnabled} />
-            <Button variant="outline" onClick={() => setEditingIdentity(true)}>
-              <Pencil />
-              Edit
-            </Button>
-            <Button variant="outline" className="text-destructive" onClick={() => setConfirmingDelete(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          </>
+          isAnalytical ? (
+            <>
+              <EnabledBadge enabled={bridge.isEnabled} />
+              <Button variant="outline" onClick={() => setEditingIdentity(true)}>
+                <Pencil />
+                Edit
+              </Button>
+              <Button variant="outline" className="text-destructive" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 />
+                Delete
+              </Button>
+            </>
+          ) : (
+            <>
+              <Badge variant="secondary">
+                Report bridge of {owner.reportKey} · {owner.sourceKey}
+              </Badge>
+              <Button variant="outline" asChild>
+                <Link to={`/t/${tenantId}/reports/${owner.reportId}?source=${owner.reportSourceId}`}>
+                  <ExternalLink />
+                  Open in report editor
+                </Link>
+              </Button>
+            </>
+          )
         }
       />
       <ApiErrorAlert error={deleteBridge.error} />
@@ -100,10 +120,12 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
         versions={versionItems.map(item => ({ ...item, label: item.classifier ?? item.label }))}
         selectedVersionId={versionId}
         onSelectVersion={selectVersion}
-        onCreateVersion={openNew}
-        onCloneVersion={openClone}
-        onDeleteVersion={draftId =>
-          deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })
+        onCreateVersion={isAnalytical ? openNew : undefined}
+        onCloneVersion={isAnalytical ? openClone : undefined}
+        onDeleteVersion={
+          isAnalytical
+            ? draftId => deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })
+            : undefined
         }
       />
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
@@ -119,7 +141,7 @@ function BridgeDetail({ bridge }: { bridge: Bridge }) {
           key={version.data.bridgeVersionId}
           bridge={bridge}
           version={version.data}
-          isEditable={isEditable('bridge_version', selected.status as VersionStatus)}
+          isEditable={isAnalytical && isEditable('bridge_version', selected.status as VersionStatus)}
         />
       )}
 

@@ -9,6 +9,6 @@ public sealed record SourceProfileVariableRecord
     /// <summary>The key of the model variable; second part of the primary key.</summary>
     public required string VariableKey { get; init; }
 
-    /// <summary>The picked source, one of the variable's.</summary>
-    public required long VariableSourceId { get; init; }
+    /// <summary>The picked report source, which supplies the variable.</summary>
+    public required long ReportSourceId { get; init; }
 }

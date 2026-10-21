@@ -13,8 +13,7 @@ public sealed class AssumptionPins(
     ITableGateway<AssumptionSetDimensionRecord> dimensions,
     ITableGateway<AssumptionSetMappingRecord> mappings,
     ITableGateway<AssumptionSetBridgeRecord> bridges,
-    ITableGateway<AssumptionSetModelRecord> models,
-    ITableGateway<AssumptionSetReportRecord> reports)
+    ITableGateway<AssumptionSetModelRecord> models)
 {
     /// <summary>The active set, which pins every published version.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
@@ -46,8 +45,7 @@ public sealed class AssumptionPins(
             .. (await dimensions.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.DimensionVersion, pin.DimensionId, pin.DimensionVersionId)),
             .. (await mappings.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.MappingVersion, pin.MappingSetId, pin.MappingVersionId)),
             .. (await bridges.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.BridgeVersion, pin.BridgeId, pin.BridgeVersionId)),
-            .. (await models.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.CalculationModelVersion, pin.ModelId, pin.ModelVersionId)),
-            .. (await reports.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.ReportVersion, pin.ReportId, pin.ReportVersionId))
+            .. (await models.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.CalculationModelVersion, pin.ModelId, pin.ModelVersionId))
         ];
     }
 
@@ -70,9 +68,24 @@ public sealed class AssumptionPins(
         await models.InsertManyAsync(
             [.. Of(pins, VersionKinds.CalculationModelVersion).Select(pin => new AssumptionSetModelRecord { AssumptionSetId = assumptionSetId, ModelId = pin.IdentityId, ModelVersionId = pin.VersionId })],
             cancellationToken);
-        await reports.InsertManyAsync(
-            [.. Of(pins, VersionKinds.ReportVersion).Select(pin => new AssumptionSetReportRecord { AssumptionSetId = assumptionSetId, ReportId = pin.IdentityId, ReportVersionId = pin.VersionId })],
-            cancellationToken);
+    }
+
+    /// <summary>Deletes every pin of a dimension that is going away with its report, the only kind of dimension deleted with pins.</summary>
+    /// <param name="dimensionId">A report dimension.</param>
+    /// <param name="cancellationToken">Cancels the delete.</param>
+    /// <returns>A task that completes when the pins are gone.</returns>
+    public async Task UnpinDimensionAsync(long dimensionId, CancellationToken cancellationToken)
+    {
+        await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
+    }
+
+    /// <summary>Deletes every pin of a bridge that is going away with its report source, the only kind of bridge deleted with pins.</summary>
+    /// <param name="bridgeId">A report bridge.</param>
+    /// <param name="cancellationToken">Cancels the delete.</param>
+    /// <returns>A task that completes when the pins are gone.</returns>
+    public async Task UnpinBridgeAsync(long bridgeId, CancellationToken cancellationToken)
+    {
+        await bridges.DeleteAsync(new { BridgeId = bridgeId }, cancellationToken);
     }
 
     /// <summary>Deletes every pin of a set.</summary>
@@ -86,7 +99,6 @@ public sealed class AssumptionPins(
         await mappings.DeleteAsync(filter, cancellationToken);
         await bridges.DeleteAsync(filter, cancellationToken);
         await models.DeleteAsync(filter, cancellationToken);
-        await reports.DeleteAsync(filter, cancellationToken);
     }
 
     /// <summary>The pins of one kind.</summary>

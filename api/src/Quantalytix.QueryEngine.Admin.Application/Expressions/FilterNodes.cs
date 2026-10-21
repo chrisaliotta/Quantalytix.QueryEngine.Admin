@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace Quantalytix.QueryEngine.Admin.Application.Expressions;
 
 /// <summary>
-/// Reads filters in the query contract's structured <c>filterNode</c> form, as variable sources and report defaults store
-/// them: checks each node's shape the way the contract's schema defines it, and lists the operands the filter compares. The
+/// Reads filters in the query contract's structured <c>filterNode</c> form, as report sources' variables and report defaults
+/// store them: checks each node's shape the way the contract's schema defines it, and lists the operands the filter compares. The
 /// engine trusts published filters, so a filter that passes here is one the engine parses.
 /// </summary>
 public static class FilterNodes

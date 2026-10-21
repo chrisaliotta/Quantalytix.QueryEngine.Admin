@@ -35,7 +35,7 @@ public sealed class CalculatedMeasureService(
     /// <summary>The model version a calculated measure belongs to.</summary>
     /// <param name="row">The calculated measure.</param>
     /// <returns>Its model version ID.</returns>
-    protected override long VersionOf(CalculatedMeasureRecord row)
+    protected override long OwnerOf(CalculatedMeasureRecord row)
     {
         return row.ModelVersionId;
     }
@@ -50,15 +50,15 @@ public sealed class CalculatedMeasureService(
 
     /// <summary>The calculated measure row an input describes.</summary>
     /// <param name="itemId">The calculated measure ID.</param>
-    /// <param name="versionId">The model version.</param>
+    /// <param name="ownerId">The model version.</param>
     /// <param name="input">The validated input.</param>
     /// <returns>The row to store.</returns>
-    protected override CalculatedMeasureRecord ToRecord(long itemId, long versionId, CalculatedMeasureInput input)
+    protected override CalculatedMeasureRecord ToRecord(long itemId, long ownerId, CalculatedMeasureInput input)
     {
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = itemId,
-            ModelVersionId = versionId,
+            ModelVersionId = ownerId,
             MeasureKey = input.MeasureKey,
             DisplayName = input.DisplayName,
             ExpressionText = input.ExpressionText,

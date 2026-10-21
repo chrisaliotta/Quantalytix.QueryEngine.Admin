@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -44,6 +45,7 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
     [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
+    [RequireAnalytical(AnalyticalTarget.BridgeVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<BridgeMappingRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<BridgeMappingRecord>>> Replace(

@@ -1,0 +1,81 @@
+using FluentValidation.TestHelper;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Tests.Reports;
+using Xunit;
+using static Quantalytix.QueryEngine.Admin.Tests.ReportEditor.ReportEditorFixture;
+
+namespace Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
+
+/// <summary>
+/// Confirms how a report starts and ends. A new report is disabled, because nothing about it has been checked, and its report
+/// dimension's one version is published and pinned in the active set from the start, because the editor edits it in place and every
+/// run reads the active set. Creating a report needs a model with a published version, which it reads from then on. Deleting a
+/// report removes everything it owns, with the pins of its dimension and bridges, so the active set reads nothing that is gone.
+/// </summary>
+public sealed class ReportLifecycleTests
+{
+    /// <summary>A new report is disabled with the default settings, over a report dimension whose published, pinned version 1 holds its total.</summary>
+    /// <returns>A task that completes when the report is checked.</returns>
+    [Fact]
+    public async Task NewReport_IsDisabledWithAPublishedPinnedDimension()
+    {
+        var fixture = new ReportEditorFixture();
+
+        var report = await fixture.ReportService().CreateAsync(NewReport(), TestContext.Current.CancellationToken);
+
+        Assert.False(report.IsEnabled);
+        Assert.Equal(ReportService.DefaultSettingsJson, report.DefaultSettingsJson);
+        var dimension = Assert.Single(fixture.Dimensions.All, dimension => dimension.DimensionId == report.ReportDimensionId);
+        Assert.Equal(("cash_flow", DimensionPurposes.Report), (dimension.DimensionKey, dimension.DimensionPurpose));
+        var version = Assert.Single(fixture.DimensionVersions.All, version => version.DimensionId == report.ReportDimensionId);
+        Assert.Equal((1, PublicationStatuses.Published), (version.VersionNumber, version.Status));
+        Assert.Contains(fixture.DimensionPins.All, pin => pin.DimensionId == report.ReportDimensionId && pin.DimensionVersionId == version.DimensionVersionId);
+        Assert.Equal(["total"], fixture.Members.All.Where(member => member.DimensionVersionId == version.DimensionVersionId).Select(member => member.MemberKey));
+    }
+
+    /// <summary>A model whose only version is a draft cannot back a new report, because a report reads its model's published version.</summary>
+    /// <returns>A task that completes when the input is validated.</returns>
+    [Fact]
+    public async Task NewReport_NeedsAModelWithAPublishedVersion()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var fixture = new ReportEditorFixture();
+        await fixture.ModelVersions.UpdateAsync(ModelRows.ModelVersion(status: PublicationStatuses.Draft), cancellationToken);
+
+        var result = await fixture.NewReportValidator().TestValidateAsync(NewReport(), cancellationToken: cancellationToken);
+
+        result.ShouldHaveValidationErrorFor(input => input.ModelId)
+            .WithErrorMessage($"Calculation model {ModelRows.ModelId} has no published version, which a report reads.");
+    }
+
+    /// <summary>Deleting the report removes its content, its source with its bridge, its report dimension, and their pins; the account dimension stays.</summary>
+    /// <returns>A task that completes when the delete is checked.</returns>
+    [Fact]
+    public async Task DeletedReport_TakesWhatItOwnsWithIt()
+    {
+        var fixture = new ReportEditorFixture();
+
+        await fixture.ReportService().DeleteAsync(ReportRows.ReportId, TestContext.Current.CancellationToken);
+
+        Assert.Empty(fixture.Reports.All);
+        Assert.Empty(fixture.Sources.All);
+        Assert.Empty(fixture.SourceVariables.All);
+        Assert.Empty(fixture.Profiles.All);
+        Assert.Empty(fixture.Picks.All);
+        Assert.Empty(fixture.Columns.All);
+        Assert.Empty(fixture.Bridges.All);
+        Assert.Empty(fixture.BridgeMappings.All);
+        Assert.Empty(fixture.BridgePins.All);
+        Assert.Equal([AccountDimensionId], fixture.Dimensions.All.Select(dimension => dimension.DimensionId));
+        Assert.DoesNotContain(fixture.Members.All, member => member.DimensionVersionId == StructureVersionId);
+        Assert.Equal([AccountDimensionId], fixture.DimensionPins.All.Select(pin => pin.DimensionId));
+    }
+
+    /// <summary>A cash flow report over model 40.</summary>
+    private static NewReportInput NewReport()
+    {
+        return new NewReportInput { ReportKey = "cash_flow", DisplayName = "Cash flow", ReportType = "financial", ModelId = ModelRows.ModelId };
+    }
+}

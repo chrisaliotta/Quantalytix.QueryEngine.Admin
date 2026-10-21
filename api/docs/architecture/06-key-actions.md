@@ -243,7 +243,7 @@ sequenceDiagram
     loop The 11 dimension_version rules in registration order
         Wf->>Rules: EvaluateAsync(id)
     end
-    Note over Rules,Consumers: dimension_consumers_resolve lists the keys live bindings, mapping entries, bridge mappings and reports name, and reports each one the version lacks
+    Note over Rules,Consumers: dimension_consumers_resolve lists the keys live bindings, mapping entries, bridge mappings and enabled reports' calculation dimensions name, and reports each one the version lacks
     Rules->>Consumers: ListAsync(DimensionId)
     Wf->>Store: SetStatusAsync(id, validated)
     Note over Ctl,Rev: Second request, status published
@@ -348,6 +348,7 @@ sequenceDiagram
     participant Ctl as AssumptionSetsController
     participant Svc as AssumptionSetService
     participant Pins as AssumptionPins
+    participant Own as ReportOwnership
     participant Sets as AssumptionSetRecord gateway
     participant Info as DatabaseInfoRecord gateway
     participant Rev as SemanticRevision
@@ -358,16 +359,18 @@ sequenceDiagram
     Svc->>Pins: ActiveAsync()
     Svc->>Info: GetAsync(singleton)
     Svc->>Sets: InsertAsync(historical set with release_id the active release and captured_at now)
+    Svc->>Own: OwnedIdsAsync()
+    Own-->>Svc: the report dimensions and the bridges into them
     Svc->>Pins: ListAsync(active set)
-    Note over Pins: The dimension, mapping, bridge, model and report pins
-    Svc->>Pins: InsertAsync(new set, the active pins)
+    Note over Pins: The dimension, mapping, bridge and model pins
+    Svc->>Pins: InsertAsync(new set, the active pins but those of report dimensions and their bridges)
     Svc->>Rev: AdvanceAsync()
     Ctl-->>Client: 201 the historical set
 ```
 
-Publishing repoints only the active set, so the captured set keeps its versions, which publishing retires and freezes. Activating another release leaves the captured set on its release, which the engine keeps reading after the release is retired. Deleting a historical set removes it with its pins and advances the revision too; the active set cannot be deleted.
+Publishing repoints only the active set, so the captured set keeps its versions, which publishing retires and freezes. Reports always run on the active set, so a historical set holds none of what only reports read. Activating another release leaves the captured set on its release, which the engine keeps reading after the release is retired. Deleting a historical set removes it with its pins and advances the revision too; the active set cannot be deleted.
 
-**Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
+**Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [ReportOwnership.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportOwnership.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionCaptureInputValidator.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
 
 ## Verifying and creating a system tenant
 
@@ -418,6 +421,91 @@ sequenceDiagram
 
 **Sources:** [SystemTenantsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/SystemTenants/SystemTenantsController.cs), [TenantConnectionVerification.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionVerification.cs), [TenantDatabaseVerifier.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/TenantVerification/TenantDatabaseVerifier.cs), [StarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/StarRocksConnectionFactory.cs), [TenantVerifyInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantVerifyInputValidator.cs), [TenantCreateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantCreateInputValidator.cs), [TenantConnectionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/TenantConnectionRuleExtensions.cs), [SystemTenantService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/SystemTenantService.cs), [ConnectionStringMasker.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/TenantVerification/ConnectionStringMasker.cs), [TableCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableCatalog.cs).
 
+## Adding a bridge source to a report
+
+The drawing shows `POST .../reports/{reportId}/sources` with mapping method `bridge`, from the report editor. The source gets a bridge of its own, from the dimension of the role it names into the report dimension, and the bridge's one version is published at once, so the editor's item mappings are live edits from then on. On an enabled report the report rules check the report with the new source before anything is written.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web SPA
+    participant Filter as AdvancesReportRevisionFilter
+    participant Ctl as ReportSourcesController
+    participant Svc as ReportSourceService
+    participant Changes as ReportChanges
+    participant Bridges as BridgeService
+    participant Versions as BridgeVersionService
+    participant Mappings as BridgeMappingService
+    participant Wf as VersionWorkflow
+    participant Sources as ReportSourceRecord gateway
+    participant Reader as ReportEditorReader
+    Client->>Filter: POST reports/{reportId}/sources with key, dataset, method bridge, role, time field and an optional source to copy
+    Note over Client,Filter: NewReportSourceInputValidator checks them against the active release, otherwise 400
+    Filter->>Ctl: the action
+    Ctl->>Svc: CreateAsync(reportId, input)
+    Svc->>Changes: ApplyAsync(reportId, the report with the source, write)
+    Note over Changes: An enabled report is checked first; any violation answers 422 and writes nothing
+    Changes->>Svc: write()
+    Svc->>Bridges: CreateAsync({reportKey}_{sourceKey}, from the role's dimension into the report dimension)
+    Svc->>Versions: CreateAsync(bridge, many-to-one, no allocation)
+    opt A source to copy
+        Svc->>Mappings: ListAsync(the sibling's bridge version)
+        Svc->>Mappings: ReplaceAsync(new version, the sibling's entries)
+    end
+    Svc->>Wf: PublishAsync(bridge_version, new version)
+    Note over Wf: Validates and publishes the version, which pins it in the active set and advances the revision
+    Svc->>Sources: InsertAsync(source with its bridge)
+    Ctl->>Reader: ReadAsync(reportId)
+    Ctl-->>Filter: 200 EditorView
+    opt The report is enabled
+        Filter->>Filter: SemanticRevision.AdvanceAsync()
+    end
+    Filter-->>Client: result
+```
+
+The bridge is written before the source that names it, and a direct source writes no bridge, only the source with its field. The copy is a one-time copy: the two bridges never change together. The new source supplies no variables yet; `PUT sources/{sourceId}/variables` binds them to measures and completes the report's profiles.
+
+**Sources:** [ReportSourcesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportSourcesController.cs), [ReportSourceService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportSourceService.cs), [NewReportSourceInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/NewReportSourceInputValidator.cs), [ReportSourceKeys.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportSourceKeys.cs), [ReportChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportChanges.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [ReportEditorReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportEditorReader.cs), [ReportSourceTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportEditor/ReportSourceTests.cs).
+
+## Enabling a report
+
+The drawing shows `PUT .../reports/{reportId}/status` with `isEnabled: true`. Only enabled reports reach the engine, so enabling one checks it against every report rule, and a report that breaks one stays disabled.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web SPA
+    participant Filter as AdvancesReportRevisionFilter
+    participant Ctl as ReportsController
+    participant Svc as ReportStatusService
+    participant Reports as ReportRecord gateway
+    participant Reader as ReportGraphReader
+    participant Rules as ReportRules
+    participant Rev as SemanticRevision
+    Client->>Filter: PUT reports/{reportId}/status with isEnabled true
+    Filter->>Reports: GetAsync(reportId), disabled
+    Filter->>Ctl: the action
+    Ctl->>Svc: SetAsync(reportId, enabled)
+    Svc->>Reports: GetAsync(reportId)
+    Svc->>Reader: ReadAsync(report)
+    Svc->>Rules: EvaluateAsync([graph])
+    Note over Rules: Reads the scope once, the active release's dataset versions and the templates of the calculation dimensions, then runs every IReportRule
+    alt Any violation
+        Svc-->>Ctl: violations
+        Ctl-->>Filter: 422 from ReportWriteResults.NotEnabled
+    else No violation
+        Svc->>Reports: UpdateAsync(report enabled)
+        Ctl-->>Filter: 200 the report
+        Filter->>Reports: ListAsync(reportId), now enabled
+        Filter->>Rev: AdvanceAsync()
+    end
+    Filter-->>Client: result
+```
+
+Disabling always succeeds and advances the revision too, because the engine stops seeing the report. `POST reports/{reportId}/validation` runs the same check without changing anything, so the editor can show what blocks enabling.
+
+**Sources:** [ReportsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportsController.cs), [AdvancesReportRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/AdvancesReportRevisionFilter.cs), [ReportWriteResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportWriteResults.cs), [ReportStatusService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportStatusService.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [ReportRules.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportRules.cs), [ReportLifecycleTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportEditor/ReportLifecycleTests.cs).
+
 ## A blocked delete answered with 409
 
 The drawing shows `DELETE .../datasets/{datasetId}`. The service collects every reason the delete is blocked before it deletes anything; only when nothing blocks it does it delete, children first.
@@ -457,6 +545,6 @@ sequenceDiagram
     end
 ```
 
-`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 19 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, levels and members, and `ReportUses` for models and the model content live reports name. Deleting a draft version of a living kind has no blockers, because other objects name the identity or keys of its published version, never a draft.
+`DeleteBlockers` lists at most ten names per reason and counts the rest. The same pattern guards the other 16 deletes that answer "Delete blocked", with the checks of each slice, such as `FieldUsage` for fields, `DimensionDeleteChecks` for dimensions, levels and members, and `ReportUses` for models and the model content live reports name. Deleting a draft version of a living kind has no blockers, because other objects name the identity or keys of its published version, never a draft.
 
 **Sources:** [DatasetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Datasets/DatasetsController.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/DeleteBlockedProblem.cs), [DatasetVersionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionService.cs), [DatasetVersionContentStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetVersionContentStore.cs), [FieldUsage.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/FieldUsage.cs), [DimensionDeleteChecks.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionDeleteChecks.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs).

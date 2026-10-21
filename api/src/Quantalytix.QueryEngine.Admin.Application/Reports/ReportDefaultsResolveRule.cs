@@ -1,39 +1,28 @@
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>report_defaults_resolve</c>: the default filter compares enabled, filterable calculation dimensions of the report version, and
-/// the default pivot breaks out by enabled, groupable ones, because every run of the report applies them.
+/// <c>report_defaults_resolve</c>: the calculation dimensions the report's default filter compares are filterable, and those its
+/// default pivot breaks out by are groupable, enabled calculation dimensions of the report, because every request that takes the
+/// defaults reads them.
 /// </summary>
-/// <param name="reader">Reads the report version.</param>
-public sealed class ReportDefaultsResolveRule(ReportGraphReader reader) : IPublicationRule
+public sealed class ReportDefaultsResolveRule : IReportRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_defaults_resolve";
 
-    /// <summary>The kind the rule checks: report versions.</summary>
-    public string Kind { get; } = VersionKinds.ReportVersion;
-
-    /// <summary>Reports each default dimension that the report version cannot serve.</summary>
-    /// <param name="versionId">The report version being validated.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports each default dimension that the report cannot serve.</summary>
+    /// <param name="report">The report.</param>
+    /// <param name="scope">Unused: calculation dimensions are the report's own.</param>
     /// <returns>One violation per unserved dimension.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        var violations = new List<RuleViolation>();
-        foreach (var report in await reader.ReportsAsync(Kind, versionId, cancellationToken))
-        {
-            var available = report.Dimensions.ToDictionary(dimension => dimension.DimensionKey, StringComparer.Ordinal);
-            violations.AddRange(ReportDefaults.FilterDimensions(report.Version.DefaultFilterJson)
-                .Where(key => available.GetValueOrDefault(key) is not { IsFilterable: true })
-                .Select(key => Violation($"Report '{report.ReportKey}' filters by default on '{key}', which is no filterable calculation dimension of the report version.")));
-            violations.AddRange(ReportDefaults.PivotDimensions(report.Version.DefaultPivotJson)
-                .Where(key => available.GetValueOrDefault(key) is not { IsGroupable: true })
-                .Select(key => Violation($"Report '{report.ReportKey}' breaks out by default by '{key}', which is no groupable calculation dimension of the report version.")));
-        }
-        return violations;
+        var available = report.EnabledDimensions.ToDictionary(dimension => dimension.DimensionKey, StringComparer.Ordinal);
+        foreach (var key in ReportDefaults.FilterDimensions(report.Report.DefaultFilterJson).Where(key => available.GetValueOrDefault(key) is not { IsFilterable: true }))
+            yield return Violation($"Report '{report.ReportKey}' filters by default on '{key}', which is no filterable calculation dimension of the report.");
+        foreach (var key in ReportDefaults.PivotDimensions(report.Report.DefaultPivotJson).Where(key => available.GetValueOrDefault(key) is not { IsGroupable: true }))
+            yield return Violation($"Report '{report.ReportKey}' breaks out by default by '{key}', which is no groupable calculation dimension of the report.");
     }
 
     /// <summary>A violation of this rule.</summary>

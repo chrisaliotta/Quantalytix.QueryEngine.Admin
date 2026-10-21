@@ -23,7 +23,7 @@ export function CalculatedMeasuresTab({ versionId, isEditable }: { versionId: nu
   return (
     <VersionContentTab
       kind="calculated-measures"
-      versionId={versionId}
+      ownerId={versionId}
       isEditable={isEditable}
       columns={columns}
       noun="calculated measure"

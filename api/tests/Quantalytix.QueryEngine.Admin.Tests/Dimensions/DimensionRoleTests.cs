@@ -18,7 +18,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// Confirms the role lifecycle: a new dimension other than a time dimension comes with its first role, so bindings can bind it at
 /// once, and a time dimension, whose bindings name the dimension, has none; a role key is unique in the tenant, because requests
 /// name a binding by it; a report dimension gets no role, because no dataset binds a report's rows; a role that a binding, a
-/// calculation dimension or a variable source names is not deleted, naming each; and renaming a role advances the semantic
+/// calculation dimension or a report source names is not deleted, naming each; and renaming a role advances the semantic
 /// revision, because the query engine's catalog shows the name.
 /// </summary>
 public sealed class DimensionRoleTests
@@ -43,7 +43,7 @@ public sealed class DimensionRoleTests
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 9,
+        MetadataSchemaVersion = 10,
         SemanticRevision = 1,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
     });
@@ -111,8 +111,8 @@ public sealed class DimensionRoleTests
         var detail = await RoleService().DeleteAsync(BranchRoleId, TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            "Role 'branch' cannot be deleted: bound by dataset versions 'loans' v1; read by calculation dimensions 'branch' of 'balance_sheet' v1; " +
-            "bridged from by variable sources 'gl_bridged' of 'balance_sheet' v1.",
+            "Role 'branch' cannot be deleted: bound by dataset versions 'loans' v1; read by calculation dimensions 'branch' of report 'balance_sheet'; " +
+            "bridged from by report sources 'gl_bridged' of report 'balance_sheet'.",
             detail);
         Assert.Single(_roles.All);
     }
@@ -181,13 +181,12 @@ public sealed class DimensionRoleTests
     }
 
     /// <summary>
-    /// The delete checks over the test tables: the balance sheet's published v1 reads the branch role through calculation dimension
+    /// The delete checks over the test tables: the balance sheet reads the branch role through calculation dimension
     /// <c>branch</c> and bridges from it in source <c>gl_bridged</c>.
     /// </summary>
     private DimensionDeleteChecks Checks()
     {
         var reports = new InMemoryTableGateway<ReportRecord>(ReportRows.Report());
-        var reportVersions = new InMemoryTableGateway<ReportVersionRecord>(ReportRows.ReportVersion(ReportRows.ReportVersionId, PublicationStatuses.Published));
         var datasets = new InMemoryTableGateway<DatasetRecord>(ReleaseRows.Dataset(1, "loans"));
         var datasetVersions = new InMemoryTableGateway<DatasetVersionRecord>(ReleaseRows.DatasetVersion(11, 1, 1, PublicationStatuses.Published));
         var calculationDimensions = new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchRoleId));
@@ -195,9 +194,7 @@ public sealed class DimensionRoleTests
             datasets, datasetVersions, _bindings, _roles,
             new InMemoryTableGateway<MappingSetRecord>(), new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
             new InMemoryTableGateway<BridgeRecord>(), new InMemoryTableGateway<BridgeVersionRecord>(), new InMemoryTableGateway<BridgeMappingRecord>(),
-            reports, reportVersions, new InMemoryTableGateway<ReportMemberOptionRecord>(), new InMemoryTableGateway<ReportLineRecord>(),
-            new InMemoryTableGateway<ReportVariableScopeRecord>(), calculationDimensions, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()),
-            new PublicationSet());
+            reports, calculationDimensions, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
         return new DimensionDeleteChecks(
             new InMemoryTableGateway<DimensionVersionRecord>(),
             new InMemoryTableGateway<DimensionMemberRecord>(),
@@ -210,14 +207,14 @@ public sealed class DimensionRoleTests
             datasetVersions,
             reports,
             calculationDimensions,
-            new InMemoryTableGateway<VariableSourceRecord>(ReportRows.Source(72, "balance", "gl_bridged", 1) with
+            new InMemoryTableGateway<ReportSourceRecord>(ReportRows.Source(72, "gl_bridged", 1) with
             {
-                ClassificationKind = ClassificationKinds.Bridge,
-                ClassificationFieldKey = null,
-                ClassificationRoleId = BranchRoleId,
+                MappingMethod = ReportMappingMethods.Bridge,
+                FieldKey = null,
+                RoleId = BranchRoleId,
                 BridgeId = 95
             }),
-            new ReportVersionNames(reports, reportVersions),
+            new ReportNames(reports),
             consumers);
     }
 }

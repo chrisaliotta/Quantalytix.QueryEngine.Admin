@@ -139,7 +139,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${model.modelKey}?`}
-        description="The model and its draft versions are deleted. A model with validated, published or retired versions, or one a report version reads, is kept."
+        description="The model and its draft versions are deleted. A model with validated, published or retired versions, or one a report reads, is kept."
         confirmLabel="Delete model"
         destructive
         onConfirm={() =>

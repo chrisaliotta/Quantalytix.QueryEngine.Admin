@@ -1,56 +1,36 @@
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>report_items_resolve</c>: a report's dimension has a published version with one root, whose members are the report's rows. Every
-/// member option and variable scope names one of its members, every overlay row sits under one of its members or another overlay
-/// row, and no overlay row's key is also a member key, because rows are keyed by both. Sources classify into the version the active
-/// assumption set pins and the orchestrator evaluates formula rows at the root. Publishing a dimension version checks the same keys
-/// through <c>dimension_consumers_resolve</c>.
+/// <c>report_items_resolve</c>: the report's rows are one tree, and every key that names a row resolves. The report dimension has
+/// one root; member options, the parents of overlay rows that are no overlay row, and variable scopes name members of the report
+/// dimension; and no overlay row has a member's key, because rows are keyed by both.
 /// </summary>
-/// <param name="reader">Reads the report version.</param>
-/// <param name="dimensions">Reads the report dimension's published version.</param>
-public sealed class ReportItemsResolveRule(ReportGraphReader reader, PublishedDimensionReader dimensions) : IPublicationRule
+public sealed class ReportItemsResolveRule : IReportRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_items_resolve";
 
-    /// <summary>The kind the rule checks: report versions.</summary>
-    public string Kind { get; } = VersionKinds.ReportVersion;
-
-    /// <summary>Reports every key of the report version that leaves its dimension's published members.</summary>
-    /// <param name="versionId">The report version being validated.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports every row key that leaves the report dimension's members, and a tree without one root.</summary>
+    /// <param name="report">The report.</param>
+    /// <param name="scope">Unused: the report dimension is the report's own.</param>
     /// <returns>The violations found.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        var violations = new List<RuleViolation>();
-        foreach (var report in await reader.ReportsAsync(Kind, versionId, cancellationToken))
-        {
-            var subject = $"Report '{report.ReportKey}'";
-            if (await dimensions.ReadAsync(report.Report.ReportDimensionId, cancellationToken) is not { } items)
-            {
-                violations.Add(Violation($"{subject} reads a report dimension with no published version."));
-                continue;
-            }
-
-            const string lacking = "which the published version of the report dimension lacks";
-            if (items.RootCount != 1)
-                violations.Add(Violation($"{subject} reads a report dimension whose published version has {items.RootCount} roots; it needs one."));
-            var overlayKeys = report.Lines.Select(line => line.LineKey).ToHashSet(StringComparer.Ordinal);
-            foreach (var option in report.MemberOptions.Where(option => !items.MemberKeys.Contains(option.MemberKey)))
-                violations.Add(Violation($"{subject} has an option for member '{option.MemberKey}', {lacking}."));
-            foreach (var line in report.Lines.Where(line => line.ParentKey is { } parent && !overlayKeys.Contains(parent) && !items.MemberKeys.Contains(parent)))
-                violations.Add(Violation($"{subject} row '{line.LineKey}' sits under '{line.ParentKey}', which is no overlay row and no member the published version of the report dimension has."));
-            foreach (var line in report.Lines.Where(line => items.MemberKeys.Contains(line.LineKey)))
-                violations.Add(Violation($"{subject} row '{line.LineKey}' has the key of a member of the report dimension; rows are keyed by both."));
-            foreach (var scope in report.Scopes.Where(scope => !items.MemberKeys.Contains(scope.ScopeMemberKey)))
-                violations.Add(Violation($"{subject} scopes variable '{scope.VariableKey}' to member '{scope.ScopeMemberKey}', {lacking}."));
-        }
-        return violations;
+        var subject = $"Report '{report.ReportKey}'";
+        var memberKeys = report.Members.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal);
+        var roots = report.Members.Count(member => member.ParentMemberId is null);
+        if (roots != 1) yield return Violation($"{subject} has {roots} top-level member rows; it needs one, the report's total.");
+        var overlayKeys = report.Lines.Select(line => line.LineKey).ToHashSet(StringComparer.Ordinal);
+        foreach (var option in report.MemberOptions.Where(option => !memberKeys.Contains(option.MemberKey)))
+            yield return Violation($"{subject} has an option for row '{option.MemberKey}', which is no member row.");
+        foreach (var line in report.Lines.Where(line => line.ParentKey is { } parent && !overlayKeys.Contains(parent) && !memberKeys.Contains(parent)))
+            yield return Violation($"{subject} row '{line.LineKey}' sits under '{line.ParentKey}', which is no row of the report.");
+        foreach (var line in report.Lines.Where(line => memberKeys.Contains(line.LineKey)))
+            yield return Violation($"{subject} row '{line.LineKey}' has the key of a member row; rows are keyed by both.");
+        foreach (var scoped in report.Scopes.Where(scoped => !memberKeys.Contains(scoped.ScopeMemberKey)))
+            yield return Violation($"{subject} scopes variable '{scoped.VariableKey}' to row '{scoped.ScopeMemberKey}', which is no member row.");
     }
 
     /// <summary>A violation of this rule.</summary>

@@ -21,8 +21,7 @@ export type VersionKind =
   | 'mapping_version'
   | 'bridge_version'
   | 'semantic_release'
-  | 'calculation_model_version'
-  | 'report_version';
+  | 'calculation_model_version';
 
 /** Result of a version status change. */
 export type VersionStatusResult = Schemas['VersionState'];
@@ -60,13 +59,12 @@ export type LookupKind =
   | 'bridge-versions' // bridge
   | 'releases'
   | 'assumption-sets'
-  | 'calculation-models'
+  | 'calculation-models' // classifier = the published version's key, null while none
   | 'model-versions' // calculation model
   | 'variables' // model version; classifier = role
-  | 'variable-sources' // report version; classifier = variable key
-  | 'source-profiles' // report version
+  | 'report-sources' // report; classifier = mapping method
+  | 'source-profiles' // report
   | 'calculated-measures' // model version; classifier = display format
-  | 'calculation-dimensions' // report version; classifier = grouping mode
+  | 'calculation-dimensions' // report; classifier = grouping mode
   | 'reports' // classifier = report type
-  | 'report-versions' // report
-  | 'report-columns'; // report version; classifier = value kind
+  | 'report-columns'; // report; classifier = value kind

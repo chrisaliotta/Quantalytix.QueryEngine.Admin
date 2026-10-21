@@ -2,10 +2,10 @@ using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>A calculation dimension of an editable report version, as its create and edit endpoints take it.</summary>
+/// <summary>A calculation dimension of a report, as its create and edit endpoints take it.</summary>
 public sealed record CalculationDimensionInput : IGroupingInput
 {
-    /// <summary>Key, unique among the version's calculation dimensions.</summary>
+    /// <summary>Key, unique among the report's calculation dimensions.</summary>
     public required string DimensionKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

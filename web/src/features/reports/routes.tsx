@@ -3,8 +3,8 @@ import type { RouteHandle } from '@/shared/routeHandle';
 import { ReportCrumb } from './ReportCrumb';
 
 /**
- * Report routes, mounted under `/t/:tenantId`: the list and one report (`?version=` selects the version). Each page loads
- * on its first visit, as its own chunk.
+ * Report routes, mounted under `/t/:tenantId`: the list and one report's editor (`?source=` opens it on a source). Each page
+ * loads on its first visit, as its own chunk.
  */
 export const reportsRoutes: RouteObject[] = [
   {

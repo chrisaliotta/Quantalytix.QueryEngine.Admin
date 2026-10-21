@@ -8,9 +8,13 @@ import { ReportIdentityFields } from './ReportIdentityFields';
 import type { ReportValues } from './reportForm';
 import type { Report } from './types';
 
-/** Values of the new-report sheet: the identity attributes, the key, and the dimension the rows start from, null for none. */
+/**
+ * Values of the new-report sheet: the identity attributes, the key, the model, and the dimension the rows start from, null for
+ * none; a choice not made yet is null.
+ */
 interface NewReportValues extends ReportValues {
   reportKey: string;
+  modelId: number | null;
   startFromDimensionId: number | null;
 }
 
@@ -23,17 +27,18 @@ export interface NewReportSheetProps {
 }
 
 /**
- * Creates a report with its own report dimension, keyed and named like it, whose rows are a copy of a starting dimension's
- * published members or a single total row. The key is fixed once created, and the report starts without versions.
+ * Creates a disabled report over a calculation model with a published version, with its own report dimension, keyed and named
+ * like it, whose rows are a copy of a starting dimension's published members or a single total row. The key and the model are
+ * fixed once created.
  */
 export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
   const create = useCreateReport();
   const form = useForm<NewReportValues>({
-    defaultValues: { reportKey: '', startFromDimensionId: null, displayName: '', reportType: '', isEnabled: true, payloadJson: '' },
+    defaultValues: { reportKey: '', modelId: null, startFromDimensionId: null, displayName: '', reportType: '', payloadJson: '' },
   });
 
   async function submit(values: NewReportValues) {
-    onCreated(await create.mutateAsync({ ...values, payloadJson: emptyToNull(values.payloadJson) }));
+    onCreated(await create.mutateAsync({ ...values, modelId: values.modelId ?? 0, payloadJson: emptyToNull(values.payloadJson) }));
   }
 
   return (
@@ -41,12 +46,19 @@ export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
       open
       onOpenChange={open => !open && onClose()}
       title="New report"
-      description="The key is fixed once created. The report owns its rows, a dimension of its own that its designer edits; each version reads one calculation model, so the report starts without one."
+      description="The key and the model are fixed once created. The report owns its rows, a dimension of its own that its editor edits, and starts disabled until it passes its rules."
       form={form}
       onSubmit={submit}
       submitLabel="Create"
     >
       <TextField name="reportKey" label="Key" description="A letter, then letters, digits or underscores, as report requests name it." />
+      <EntityField
+        name="modelId"
+        label="Calculation model"
+        lookupKind="calculation-models"
+        filter={(item: LookupItem) => item.classifier != null}
+        description="A model with a published version, whose variables and calculated measures the report reads."
+      />
       <EntityField
         name="startFromDimensionId"
         label="Start from"

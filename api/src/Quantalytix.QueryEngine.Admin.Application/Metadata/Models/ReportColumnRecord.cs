@@ -1,15 +1,15 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_report_column</c> row: one returned field of a report version: a model variable or calculated measure.</summary>
+/// <summary>A <c>qe_report_column</c> row: one returned field of a report: a model variable or calculated measure.</summary>
 public sealed record ReportColumnRecord
 {
     /// <summary>Primary key.</summary>
     public required long ReportColumnId { get; init; }
 
-    /// <summary>The owning report version.</summary>
-    public required long ReportVersionId { get; init; }
+    /// <summary>The owning report.</summary>
+    public required long ReportId { get; init; }
 
-    /// <summary>Key, unique among the version's columns.</summary>
+    /// <summary>Key, unique among the report's columns.</summary>
     public required string ColumnKey { get; init; }
 
     /// <summary>A label replacing the metric's own; null shows the metric's.</summary>
@@ -21,7 +21,7 @@ public sealed record ReportColumnRecord
     /// <summary>The key of the model's variable or calculated measure the column shows, according to its value kind.</summary>
     public required string MetricKey { get; init; }
 
-    /// <summary>Order among the version's columns.</summary>
+    /// <summary>Order among the report's columns.</summary>
     public required int SortOrder { get; init; }
 
     /// <summary>A presentation hint such as <c>percent</c> replacing the metric's own; null shows the metric's.</summary>

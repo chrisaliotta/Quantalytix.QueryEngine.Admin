@@ -1,10 +1,6 @@
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportGraphFixture;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
@@ -18,27 +14,19 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// </summary>
 public sealed class CalculationGroupingResolveRuleTests
 {
-    /// <summary>The seeded tables.</summary>
+    /// <summary>The seeded tables, with version 601 of the region dimension, published, holding level <c>region</c> and member <c>west</c>.</summary>
     private readonly ReportGraphFixture _fixture = new();
-
-    /// <summary>Version 601 of the region dimension, published, with the level <c>region</c> and the member <c>west</c>.</summary>
-    private readonly InMemoryTableGateway<DimensionVersionRecord> _versions = new(DimensionRows.Version(601, 600, 1, PublicationStatuses.Published));
-
-    /// <summary>The region dimension's level.</summary>
-    private readonly InMemoryTableGateway<DimensionLevelRecord> _levels = new(DimensionRows.Level(1, 601, "region", 1));
-
-    /// <summary>The region dimension's member.</summary>
-    private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new(DimensionRows.Member(1, 601, "west"));
 
     /// <summary>Grouping at the region level resolves.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task GroupingKeysOfThePublishedVersion_Pass()
     {
+        await SeedRegionsAsync();
         await _fixture.Dimensions.InsertAsync(
             CalculationDimension(81, "region", RegionRoleId) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "region" }, TestContext.Current.CancellationToken);
 
-        Assert.Empty(await EvaluateAsync(Rule(), ReportVersionId));
+        Assert.Empty(await _fixture.EvaluateAsync(new CalculationGroupingResolveRule()));
     }
 
     /// <summary>A level and an ancestor the published version lacks are each reported, as is a template with no published version.</summary>
@@ -47,6 +35,7 @@ public sealed class CalculationGroupingResolveRuleTests
     public async Task KeysTheVersionLacks_AreReported()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
+        await SeedRegionsAsync();
         await _fixture.Roles.InsertAsync(DimensionRows.Role(87, "product", 610), cancellationToken);
         await _fixture.Dimensions.InsertAsync(
             CalculationDimension(81, "region", RegionRoleId) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "district" }, cancellationToken);
@@ -55,7 +44,7 @@ public sealed class CalculationGroupingResolveRuleTests
         await _fixture.Dimensions.InsertAsync(
             CalculationDimension(83, "product", 87) with { GroupingMode = GroupingModes.Level, GroupingLevelKey = "line" }, cancellationToken);
 
-        var violations = await EvaluateAsync(Rule(), ReportVersionId);
+        var violations = await _fixture.EvaluateAsync(new CalculationGroupingResolveRule());
 
         Assert.Equal(
             ["Report 'balance_sheet' calculation dimension 'east' groups under ancestor member 'east', which is not a member of v1, the published version of its role's dimension.",
@@ -64,9 +53,12 @@ public sealed class CalculationGroupingResolveRuleTests
             violations.Select(violation => violation.Message));
     }
 
-    /// <summary>The rule over the fixture's report and roles and the region dimension's tables.</summary>
-    private CalculationGroupingResolveRule Rule()
+    /// <summary>Publishes version 601 of the region dimension with the level <c>region</c> and the member <c>west</c>.</summary>
+    private async Task SeedRegionsAsync()
     {
-        return new CalculationGroupingResolveRule(_fixture.Reader(), _fixture.Roles, new PublishedDimensionReader(_versions, _levels, _members, new PublicationSet()));
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await _fixture.DimensionVersions.InsertAsync(DimensionRows.Version(601, 600, 1, PublicationStatuses.Published), cancellationToken);
+        await _fixture.Levels.InsertAsync(DimensionRows.Level(1, 601, "region", 1), cancellationToken);
+        await _fixture.Members.InsertAsync(DimensionRows.Member(11, 601, "west"), cancellationToken);
     }
 }

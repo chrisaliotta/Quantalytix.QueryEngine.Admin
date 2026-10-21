@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -48,6 +49,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Create(
@@ -72,6 +74,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{levelId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Update(
@@ -95,6 +98,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names what uses the level.</response>
     [HttpDelete("{levelId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] LevelReference level, CancellationToken cancellationToken)

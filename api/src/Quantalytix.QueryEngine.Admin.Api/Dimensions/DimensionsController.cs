@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
@@ -75,6 +76,7 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{dimensionId:long}")]
+    [RequireAnalytical(AnalyticalTarget.Dimension, "dimensionId")]
     [ProducesResponseType<DimensionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRecord>> Update(

@@ -9,7 +9,7 @@ import { getVersionTransitions, isEditable } from './versionTransitions';
 describe('isEditable', () => {
   it("edits drafts of every kind and a living kind's published version, never a retired one", () => {
     expect(isEditable('dimension_version', 'draft')).toBe(true);
-    expect(isEditable('report_version', 'published')).toBe(true);
+    expect(isEditable('calculation_model_version', 'published')).toBe(true);
     expect(isEditable('dataset_version', 'published')).toBe(false);
     expect(isEditable('mapping_version', 'retired')).toBe(false);
   });

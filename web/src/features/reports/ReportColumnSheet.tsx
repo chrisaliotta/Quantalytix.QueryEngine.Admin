@@ -21,19 +21,18 @@ interface ReportColumnValues {
 export interface ReportColumnSheetProps {
   /** The calculation model whose published version's metrics the column can return. */
   modelId: number;
-  /** The column to edit or view; null to add one. */
+  /** The column to edit; null to add one. */
   column: ReportColumnInput | null;
-  readOnly: boolean;
   /** Keeps the column in the tab's list; saving the list sends it. */
   onSave: (column: ReportColumnInput) => void;
   onClose: () => void;
 }
 
 /**
- * Adds, edits or shows a column of the list being edited: the variable or calculated measure it returns, and optionally the
+ * Adds or edits a column of the list being edited: the variable or calculated measure it returns, and optionally the
  * name and format it shows instead of the metric's own.
  */
-export function ReportColumnSheet({ modelId, column, readOnly, onSave, onClose }: ReportColumnSheetProps) {
+export function ReportColumnSheet({ modelId, column, onSave, onClose }: ReportColumnSheetProps) {
   const model = usePublishedVersion('model-versions', modelId);
   const variables = useVersionContent('variables', model?.id ?? null);
   const measures = useVersionContent('calculated-measures', model?.id ?? null);
@@ -82,12 +81,11 @@ export function ReportColumnSheet({ modelId, column, readOnly, onSave, onClose }
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={column === null ? 'New column' : readOnly ? `Column ${column.columnKey}` : `Edit ${column.columnKey}`}
+      title={column === null ? 'New column' : `Edit ${column.columnKey}`}
       description="The keys line and period name the report table's own columns, and a column key cannot be a calculation dimension's."
       form={form}
       onSubmit={submit}
       submitLabel="Keep"
-      readOnly={readOnly}
     >
       <TextField name="columnKey" label="Key" description="The name of the column in the report table." />
       <VocabularyField name="valueKind" label="Returns" vocabulary="report_value_kind" />

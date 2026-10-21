@@ -17,7 +17,7 @@ export function VariablesTab({ versionId, isEditable }: { versionId: number; isE
   return (
     <VersionContentTab
       kind="variables"
-      versionId={versionId}
+      ownerId={versionId}
       isEditable={isEditable}
       columns={columns}
       noun="variable"

@@ -59,7 +59,7 @@ public sealed class DimensionRoleService(
         return updated;
     }
 
-    /// <summary>Deletes a role that no binding, calculation dimension or variable source names.</summary>
+    /// <summary>Deletes a role that no binding, calculation dimension or report source names.</summary>
     /// <param name="roleId">The role.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
     /// <returns>Null when the role was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>

@@ -4,8 +4,8 @@ using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class CalculatedMeasuresController(IVersionContent<CalculatedMeasureRecord, CalculatedMeasureInput> calculatedMeasures) : ControllerBase
+public sealed class CalculatedMeasuresController(IOwnedContent<CalculatedMeasureRecord, CalculatedMeasureInput> calculatedMeasures) : ControllerBase
 {
     /// <summary>Lists a model version's calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
@@ -50,7 +50,9 @@ public sealed class CalculatedMeasuresController(IVersionContent<CalculatedMeasu
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Create(string tenantId, long versionId, CalculatedMeasureInput input, CancellationToken cancellationToken)
     {
-        return Ok(await calculatedMeasures.CreateAsync(versionId, input, cancellationToken));
+        var created = calculatedMeasures.Compose(versionId, null, input);
+        await calculatedMeasures.InsertAsync(created, cancellationToken);
+        return Ok(created);
     }
 
     /// <summary>Replaces a calculated measure of a draft or published model version, keeping its ID.</summary>
@@ -74,7 +76,9 @@ public sealed class CalculatedMeasuresController(IVersionContent<CalculatedMeasu
         CalculatedMeasureInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await calculatedMeasures.UpdateAsync(measure.VersionId, measure.ItemId, input, cancellationToken));
+        var updated = calculatedMeasures.Compose(measure.VersionId, measure.ItemId, input);
+        await calculatedMeasures.UpdateAsync(updated, cancellationToken);
+        return Ok(updated);
     }
 
     /// <summary>Deletes a calculated measure of a draft or published model version, unless a live report column returns it or a live formula row evaluates it.</summary>

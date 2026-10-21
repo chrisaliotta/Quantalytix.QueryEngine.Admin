@@ -55,7 +55,7 @@ public sealed class CalculationModelService(
         return updated;
     }
 
-    /// <summary>Deletes a model whose versions are all drafts and that no report version reads, with those drafts and their content.</summary>
+    /// <summary>Deletes a model whose versions are all drafts and that no report reads, with those drafts and their content.</summary>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the model was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
@@ -68,7 +68,7 @@ public sealed class CalculationModelService(
         blockers.AddNamed(
             "it has non-draft versions",
             modelVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        blockers.AddNamed("read by report versions", await reports.ModelReadersAsync(modelId, cancellationToken));
+        blockers.AddNamed("read by", await reports.ModelReadersAsync(modelId, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

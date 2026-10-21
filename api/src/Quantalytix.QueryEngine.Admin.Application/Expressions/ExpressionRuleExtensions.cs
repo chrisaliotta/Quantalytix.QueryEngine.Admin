@@ -70,7 +70,7 @@ public static class ExpressionRuleExtensions
 
     /// <summary>
     /// Requires a structured filter to be a well-formed <c>filterNode</c> whose operands are all of one type, such as a
-    /// variable source's filter over dataset fields or a report's default filter over calculation dimensions; null passes.
+    /// source variable's filter over dataset fields or a report's default filter over calculation dimensions; null passes.
     /// Whether each key resolves depends on what the filter reads and is checked where that is known.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>

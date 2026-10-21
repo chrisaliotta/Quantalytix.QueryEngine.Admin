@@ -2,6 +2,7 @@ import { useMutation, useQuery, type QueryKey } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
+import type { DimensionPurpose } from '@/shared/types';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import type {
@@ -30,17 +31,17 @@ function invalidate(...queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey })));
 }
 
-/** Every bridge of the current tenant, by key. */
-export function useBridges() {
+/** The bridges of the current tenant with their purposes, by key; `purpose` narrows them to analytical or report bridges. */
+export function useBridges(purpose?: DimensionPurpose) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: bridgesKey(tenantId),
+    queryKey: [...bridgesKey(tenantId), 'list', purpose],
     queryFn: async () =>
-      unwrap(await apiClient.GET('/api/tenants/{tenantId}/bridges', { params: { path: { tenantId } } })),
+      unwrap(await apiClient.GET('/api/tenants/{tenantId}/bridges', { params: { path: { tenantId }, query: { purpose } } })),
   });
 }
 
-/** One bridge, with its current-version pointer. */
+/** One bridge with its purpose and, for a report bridge, the report source that owns it. */
 export function useBridge(bridgeId: number) {
   const tenantId = useTenantId();
   return useQuery({

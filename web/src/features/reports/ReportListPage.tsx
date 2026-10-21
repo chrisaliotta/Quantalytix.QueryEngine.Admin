@@ -14,9 +14,11 @@ import type { Report } from './types';
 export function ReportListPage() {
   const reports = useReports();
   const dimensions = useLookup('dimensions');
+  const models = useLookup('calculation-models');
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const dimensionKeys = new Map(dimensions.data?.map(item => [item.id, item.key]));
+  const modelKeys = new Map(models.data?.map(item => [item.id, item.key]));
 
   const columns: ColumnDef<Report>[] = [
     { accessorKey: 'reportKey', header: 'Key' },
@@ -27,6 +29,7 @@ export function ReportListPage() {
       header: 'Report dimension',
       accessorFn: report => dimensionKeys.get(report.reportDimensionId) ?? report.reportDimensionId,
     },
+    { id: 'model', header: 'Calculation model', accessorFn: report => modelKeys.get(report.modelId) ?? report.modelId },
     {
       accessorKey: 'isEnabled',
       header: 'Enabled',

@@ -1,34 +1,38 @@
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>Reads, creates, edits and deletes bridges: the semantic remappings from one canonical dimension to another.</summary>
+/// <summary>
+/// Reads, creates, edits and deletes bridges: the semantic remappings from one canonical dimension to another. A bridge into a
+/// report dimension belongs to the report source that created it, which alone edits and deletes it.
+/// </summary>
 public sealed class BridgeService(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
     ITableGateway<DimensionRecord> dimensions,
     ITableGateway<DimensionBindingRecord> bindings,
-    ITableGateway<VariableSourceRecord> sources,
+    ITableGateway<ReportSourceRecord> sources,
+    ITableGateway<ReportRecord> reports,
     BindingNames bindingNames,
-    ReportVersionNames reportVersions,
     BridgeVersionService versionService,
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
-    /// <summary>Lists every bridge but those into a report dimension, which belong to their report's design.</summary>
+    /// <summary>Lists bridges with their purpose and owner.</summary>
+    /// <param name="query">The purpose to narrow the list to, if any.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The bridges by key, ignoring case.</returns>
-    public async Task<IReadOnlyList<BridgeRecord>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<BridgeSummary>> ListAsync(BridgeListQuery query, CancellationToken cancellationToken)
     {
-        var reportDimensionIds = (await dimensions.ListAsync(new { DimensionPurpose = DimensionPurposes.Report }, cancellationToken))
-            .Select(dimension => dimension.DimensionId)
-            .ToHashSet();
-        var rows = await bridges.ListAsync(null, cancellationToken);
-        return [.. rows.Where(row => !reportDimensionIds.Contains(row.TargetDimensionId)).OrderBy(row => row.BridgeKey, StringComparer.OrdinalIgnoreCase)];
+        var summaries = await SummariesAsync(await bridges.ListAsync(null, cancellationToken), cancellationToken);
+        return
+        [
+            .. summaries.Where(summary => query.Purpose is null || summary.Purpose == query.Purpose)
+                .OrderBy(summary => summary.Bridge.BridgeKey, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     /// <summary>Reads one bridge.</summary>
@@ -38,6 +42,15 @@ public sealed class BridgeService(
     public Task<BridgeRecord> GetAsync(long bridgeId, CancellationToken cancellationToken)
     {
         return bridges.GetAsync(new { BridgeId = bridgeId }, cancellationToken);
+    }
+
+    /// <summary>Reads one bridge with its purpose and owner.</summary>
+    /// <param name="bridgeId">The bridge.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The bridge's summary.</returns>
+    public async Task<BridgeSummary> SummaryAsync(long bridgeId, CancellationToken cancellationToken)
+    {
+        return (await SummariesAsync([await GetAsync(bridgeId, cancellationToken)], cancellationToken)).Single();
     }
 
     /// <summary>Creates a bridge without versions; its mappings belong to versions, so none exists yet.</summary>
@@ -77,8 +90,8 @@ public sealed class BridgeService(
     }
 
     /// <summary>
-    /// Deletes a bridge whose versions are all drafts and that no binding or report source classifies through: its drafts with
-    /// their mappings first, then the bridge.
+    /// Deletes a bridge whose versions are all drafts and that no binding uses: its drafts with their mappings first, then the
+    /// bridge.
     /// </summary>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
@@ -95,9 +108,6 @@ public sealed class BridgeService(
         var boundBy = await bindings.ListAsync(new { BridgeId = bridgeId }, cancellationToken);
         var bound = await bindingNames.OfAsync(boundBy, cancellationToken);
         blockers.AddNamed("used by bindings", boundBy.Select(binding => $"'{bound[binding.BindingId]}'"));
-        var classifying = await sources.ListAsync(new { BridgeId = bridgeId }, cancellationToken);
-        var names = await reportVersions.OfIdsAsync(classifying.Select(source => source.ReportVersionId), cancellationToken);
-        blockers.AddNamed("used by report sources", classifying.Select(source => $"'{source.SourceKey}' of {names[source.ReportVersionId]}"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 
@@ -106,8 +116,8 @@ public sealed class BridgeService(
     }
 
     /// <summary>
-    /// Deletes a bridge whose versions are all drafts and that nothing classifies through any more: its drafts with their
-    /// mappings, then the bridge. A report removes its own bridges this way, with the report or with the draft that created them.
+    /// Deletes a bridge that nothing uses any more, with every version and its mappings, then the bridge. A report source removes
+    /// its own bridge this way when it is deleted.
     /// </summary>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="versionIds">Every version of the bridge.</param>
@@ -117,5 +127,30 @@ public sealed class BridgeService(
     {
         await versionService.RemoveAsync(versionIds, cancellationToken);
         await bridges.DeleteAsync(new { BridgeId = bridgeId }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gives bridges their purpose, the purpose of their target dimension, and report bridges the report source that owns them.
+    /// </summary>
+    private async Task<IReadOnlyList<BridgeSummary>> SummariesAsync(IReadOnlyList<BridgeRecord> rows, CancellationToken cancellationToken)
+    {
+        var reportDimensionIds = (await dimensions.ListAsync(new { DimensionPurpose = DimensionPurposes.Report }, cancellationToken))
+            .Select(dimension => dimension.DimensionId)
+            .ToHashSet();
+        var owners = (await sources.ListAsync(new { BridgeId = rows.Select(row => row.BridgeId).ToArray() }, cancellationToken))
+            .ToDictionary(source => source.BridgeId!.Value);
+        var reportKeys = (await reports.ListAsync(new { ReportId = owners.Values.Select(source => source.ReportId).Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(report => report.ReportId, report => report.ReportKey);
+        return
+        [
+            .. rows.Select(row => new BridgeSummary
+            {
+                Bridge = row,
+                Purpose = reportDimensionIds.Contains(row.TargetDimensionId) ? DimensionPurposes.Report : DimensionPurposes.Analytical,
+                Owner = owners.TryGetValue(row.BridgeId, out var source)
+                    ? new BridgeOwner { ReportId = source.ReportId, ReportKey = reportKeys[source.ReportId], ReportSourceId = source.ReportSourceId, SourceKey = source.SourceKey }
+                    : null
+            })
+        ];
     }
 }

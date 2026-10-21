@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -48,6 +49,7 @@ public sealed class DimensionVersionsController(DimensionVersionService versions
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("dimensions/{dimensionId:long}/versions")]
+    [RequireAnalytical(AnalyticalTarget.Dimension, "dimensionId")]
     [ProducesResponseType<DimensionVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionVersionRecord>> Create(
@@ -87,6 +89,7 @@ public sealed class DimensionVersionsController(DimensionVersionService versions
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("dimension-versions/{dimensionVersionId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionVersionRecord>> Update(

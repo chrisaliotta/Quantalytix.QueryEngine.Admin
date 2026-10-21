@@ -63,7 +63,7 @@ public static class LookupKinds
     /// <summary>Assumption sets, the active one first.</summary>
     public const string AssumptionSets = "assumption-sets";
 
-    /// <summary>Calculation models.</summary>
+    /// <summary>Calculation models, classified by the key of their published version, which a report reads; none while there is none.</summary>
     public const string CalculationModels = "calculation-models";
 
     /// <summary>Versions of a calculation model; the parent is the model.</summary>
@@ -72,25 +72,22 @@ public static class LookupKinds
     /// <summary>Variables of a model version; the parent is the model version.</summary>
     public const string Variables = "variables";
 
-    /// <summary>Variable sources of a report version, classified by their variable; the parent is the report version.</summary>
-    public const string VariableSources = "variable-sources";
+    /// <summary>Sources of a report, classified by their mapping method; the parent is the report.</summary>
+    public const string ReportSources = "report-sources";
 
-    /// <summary>Source profiles of a report version; the parent is the report version.</summary>
+    /// <summary>Source profiles of a report; the parent is the report.</summary>
     public const string SourceProfiles = "source-profiles";
 
     /// <summary>Calculated measures of a model version; the parent is the model version.</summary>
     public const string CalculatedMeasures = "calculated-measures";
 
-    /// <summary>Calculation dimensions of a report version; the parent is the report version.</summary>
+    /// <summary>Calculation dimensions of a report; the parent is the report.</summary>
     public const string CalculationDimensions = "calculation-dimensions";
 
     /// <summary>Reports.</summary>
     public const string Reports = "reports";
 
-    /// <summary>Versions of a report; the parent is the report.</summary>
-    public const string ReportVersions = "report-versions";
-
-    /// <summary>Columns of a report version; the parent is the report version.</summary>
+    /// <summary>Columns of a report; the parent is the report.</summary>
     public const string ReportColumns = "report-columns";
 
     /// <summary>The vocabulary's definition, as the web client and validators read it.</summary>
@@ -119,16 +116,15 @@ public static class LookupKinds
             new() { Value = BridgeVersions, Description = "Versions of a bridge; the parent is the bridge." },
             new() { Value = Releases, Description = "Semantic releases." },
             new() { Value = AssumptionSets, Description = "Assumption sets, the active one first." },
-            new() { Value = CalculationModels, Description = "Calculation models." },
+            new() { Value = CalculationModels, Description = "Calculation models, classified by the key of their published version, if any." },
             new() { Value = ModelVersions, Description = "Versions of a calculation model; the parent is the model." },
             new() { Value = Variables, Description = "Variables of a model version; the parent is the model version." },
-            new() { Value = VariableSources, Description = "Variable sources of a report version, classified by their variable; the parent is the report version." },
-            new() { Value = SourceProfiles, Description = "Source profiles of a report version; the parent is the report version." },
+            new() { Value = ReportSources, Description = "Sources of a report, classified by their mapping method; the parent is the report." },
+            new() { Value = SourceProfiles, Description = "Source profiles of a report; the parent is the report." },
             new() { Value = CalculatedMeasures, Description = "Calculated measures of a model version; the parent is the model version." },
-            new() { Value = CalculationDimensions, Description = "Calculation dimensions of a report version; the parent is the report version." },
+            new() { Value = CalculationDimensions, Description = "Calculation dimensions of a report; the parent is the report." },
             new() { Value = Reports, Description = "Reports." },
-            new() { Value = ReportVersions, Description = "Versions of a report; the parent is the report." },
-            new() { Value = ReportColumns, Description = "Columns of a report version; the parent is the report version." }
+            new() { Value = ReportColumns, Description = "Columns of a report; the parent is the report." }
         ]
     };
 }

@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
 /// Checks a new bridge: its identity attributes, a unique, well-formed key, and analytical endpoint dimensions that exist. A bridge
-/// into a report dimension belongs to that dimension's report, whose design creates it, and no bridge starts from one.
+/// into a report dimension belongs to a source of that dimension's report, whose editor creates it, and no bridge starts from one.
 /// </summary>
 public sealed class NewBridgeInputValidator : AbstractValidator<NewBridgeInput>
 {
@@ -32,7 +32,7 @@ public sealed class NewBridgeInputValidator : AbstractValidator<NewBridgeInput>
             .MustAsync(async (dimensionId, cancellationToken) => await PurposeAsync(dimensions, dimensionId, cancellationToken) is not null)
             .WithMessage(input => $"Dimension {input.TargetDimensionId} does not exist.")
             .MustAsync(async (dimensionId, cancellationToken) => await PurposeAsync(dimensions, dimensionId, cancellationToken) == DimensionPurposes.Analytical)
-            .WithMessage(input => $"Dimension {input.TargetDimensionId} holds a report's rows; its report's design creates the bridges into it.");
+            .WithMessage(input => $"Dimension {input.TargetDimensionId} holds a report's rows; its report's sources create the bridges into it.");
     }
 
     /// <summary>The purpose of a dimension, or null when it does not exist.</summary>

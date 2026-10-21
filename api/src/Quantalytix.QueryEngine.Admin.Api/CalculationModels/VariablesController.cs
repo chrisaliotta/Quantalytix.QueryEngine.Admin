@@ -4,8 +4,8 @@ using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class VariablesController(IVersionContent<VariableRecord, VariableInput> variables) : ControllerBase
+public sealed class VariablesController(IOwnedContent<VariableRecord, VariableInput> variables) : ControllerBase
 {
     /// <summary>Lists a model version's variables.</summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
@@ -50,7 +50,9 @@ public sealed class VariablesController(IVersionContent<VariableRecord, Variable
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Create(string tenantId, long versionId, VariableInput input, CancellationToken cancellationToken)
     {
-        return Ok(await variables.CreateAsync(versionId, input, cancellationToken));
+        var created = variables.Compose(versionId, null, input);
+        await variables.InsertAsync(created, cancellationToken);
+        return Ok(created);
     }
 
     /// <summary>Replaces a variable of a draft or published model version, keeping its ID.</summary>
@@ -74,7 +76,9 @@ public sealed class VariablesController(IVersionContent<VariableRecord, Variable
         VariableInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await variables.UpdateAsync(variable.VersionId, variable.ItemId, input, cancellationToken));
+        var updated = variables.Compose(variable.VersionId, variable.ItemId, input);
+        await variables.UpdateAsync(updated, cancellationToken);
+        return Ok(updated);
     }
 
     /// <summary>Deletes a variable of a draft or published model version, unless a live report reads it.</summary>

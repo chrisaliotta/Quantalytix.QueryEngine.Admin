@@ -11,16 +11,11 @@ export interface ReportIdentitySheetProps {
   onClose: () => void;
 }
 
-/** Edits a report's name, type, availability and payload; its key is fixed. */
+/** Edits a report's name, type and payload; its key and model are fixed. */
 export function ReportIdentitySheet({ report, onClose }: ReportIdentitySheetProps) {
   const update = useUpdateReport(report.reportId);
   const form = useForm<ReportValues>({
-    defaultValues: {
-      displayName: report.displayName,
-      reportType: report.reportType,
-      isEnabled: report.isEnabled,
-      payloadJson: report.payloadJson ?? '',
-    },
+    defaultValues: { displayName: report.displayName, reportType: report.reportType, payloadJson: report.payloadJson ?? '' },
   });
 
   return (
@@ -28,7 +23,7 @@ export function ReportIdentitySheet({ report, onClose }: ReportIdentitySheetProp
       open
       onOpenChange={open => !open && onClose()}
       title={`Edit ${report.reportKey}`}
-      description="A change refreshes the query engine's cached report definitions."
+      description="An enabled report's change refreshes the query engine's cached report definitions."
       form={form}
       onSubmit={values => update.mutateAsync({ ...values, payloadJson: emptyToNull(values.payloadJson) })}
     >

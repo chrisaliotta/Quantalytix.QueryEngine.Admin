@@ -26,7 +26,7 @@ export function CalculationModelIdentitySheet({ model, onClose }: CalculationMod
       onSubmit={values => update.mutateAsync(values)}
     >
       <TextField name="displayName" label="Name" />
-      <SwitchField name="isEnabled" label="Enabled" description="Whether the model is offered for new report versions." />
+      <SwitchField name="isEnabled" label="Enabled" description="Whether the model is offered for new reports." />
     </EntityFormSheet>
   );
 }

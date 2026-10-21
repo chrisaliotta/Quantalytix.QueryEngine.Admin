@@ -91,7 +91,7 @@ public sealed class CalculationModelsController(CalculationModelService models) 
     /// <response code="204">The model and its drafts are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and report versions that block the delete.</response>
+    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and reports that block the delete.</response>
     [HttpDelete("{modelId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

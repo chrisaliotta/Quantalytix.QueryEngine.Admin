@@ -74,8 +74,8 @@ public sealed class DimensionService(
     /// <param name="displayName">The report's name, which the dimension and its root row take.</param>
     /// <param name="templateVersionId">The published version of the dimension the report starts from, or null for a single root row.</param>
     /// <param name="cancellationToken">Cancels the writes.</param>
-    /// <returns>The stored dimension.</returns>
-    public async Task<DimensionRecord> CreateReportDimensionAsync(string key, string displayName, long? templateVersionId, CancellationToken cancellationToken)
+    /// <returns>The dimension's draft version 1.</returns>
+    public async Task<DimensionVersionRecord> CreateReportDimensionAsync(string key, string displayName, long? templateVersionId, CancellationToken cancellationToken)
     {
         var dimension = new DimensionRecord
         {
@@ -96,7 +96,7 @@ public sealed class DimensionService(
             var root = new NewMemberInput { MemberKey = ReportRootKey, DisplayName = displayName, IsAssignable = false, SortOrder = 0 };
             await members.CreateAsync(firstVersion.DimensionVersionId, root, cancellationToken);
         }
-        return dimension;
+        return firstVersion;
     }
 
     /// <summary>
@@ -140,8 +140,9 @@ public sealed class DimensionService(
     }
 
     /// <summary>
-    /// Deletes a dimension whose versions are all drafts and that nothing references any more: its drafts with their content,
-    /// then its roles, then the dimension. Its report deletes a report dimension this way, once the report and its bridges are gone.
+    /// Deletes a dimension that nothing references any more: its versions with their content, then its roles, then the
+    /// dimension. Its report deletes a report dimension this way, published version and all, once the report's content, its
+    /// bridges and its pins are gone.
     /// </summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="ownVersions">Every version of the dimension.</param>

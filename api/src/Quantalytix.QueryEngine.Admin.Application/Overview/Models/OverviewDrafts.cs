@@ -20,7 +20,4 @@ public sealed record OverviewDrafts
 
     /// <summary>Draft calculation model versions.</summary>
     public required int ModelVersions { get; init; }
-
-    /// <summary>Draft report versions.</summary>
-    public required int ReportVersions { get; init; }
 }

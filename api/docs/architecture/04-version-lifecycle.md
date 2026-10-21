@@ -4,7 +4,7 @@
 
 ## Lifecycle states
 
-The drawings show the transitions `VersionTransitions` allows for the seven versioned kinds. Every status change goes through `PUT /api/tenants/{tenantId}/versions/{kind}/{id}/status`, which `VersionStatusController` hands to `VersionWorkflow`; any other pair of statuses is refused with 409 "Transition not allowed", so a version cannot skip validation, and `retired` is final.
+The drawings show the transitions `VersionTransitions` allows for the six versioned kinds. Every status change goes through `PUT /api/tenants/{tenantId}/versions/{kind}/{id}/status`, which `VersionStatusController` hands to `VersionWorkflow`; any other pair of statuses is refused with 409 "Transition not allowed", so a version cannot skip validation, and `retired` is final.
 
 The kinds come in two families. The strict kinds, `dataset_version` and `semantic_release`, are versioned for reproducibility: a published version never changes, several can be published at once for releases to pin, and one is retired by hand.
 
@@ -17,7 +17,7 @@ stateDiagram-v2
     published --> retired : retire
 ```
 
-The living kinds, `dimension_version`, `mapping_version`, `bridge_version`, `calculation_model_version` and `report_version`, hold the default content queries read. An identity has at most one published version, which stays editable; publishing the next version retires it, so a living version is never retired by hand.
+The living kinds, `dimension_version`, `mapping_version`, `bridge_version` and `calculation_model_version`, hold the default content queries read. An identity has at most one published version, which stays editable; publishing the next version retires it, so a living version is never retired by hand. Reports are not versioned: a report is edited in place and enabled or disabled, and [the report gate](#the-report-gate) keeps an enabled report valid.
 
 ```mermaid
 stateDiagram-v2
@@ -87,7 +87,7 @@ sequenceDiagram
     end
 ```
 
-Every rule of the kind runs, so the 422 lists all violations at once rather than the first. Handlers run before the rules and write even when a rule then rejects the change: `ClosureBuilder` rebuilds the closure of a dimension version every time it is validated. A living kind's rules check the version against what it will replace as well as on its own: a dimension version must keep every key live objects name (`dimension_consumers_resolve`), and a calculation model version must serve every published report of its model (the report rules run through those reports, see [Feature classes](05-feature-classes.md#calculation-models-and-reports)).
+Every rule of the kind runs, so the 422 lists all violations at once rather than the first. Handlers run before the rules and write even when a rule then rejects the change: `ClosureBuilder` rebuilds the closure of a dimension version every time it is validated. A living kind's rules check the version against what it will replace as well as on its own: a dimension version must keep every key live objects name (`dimension_consumers_resolve`), a calculation model version must serve every enabled report of its model (`report_metrics_resolve` and `profiles_complete` run over those reports), and a release must serve every enabled report's sources (`report_sources_resolve`); see [the report gate](#the-report-gate).
 
 **Sources:** [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionStoreRegistry.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStoreRegistry.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStore.cs), [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [IVersionLifecycleHandler.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionLifecycleHandler.cs), [IPublicationRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IPublicationRule.cs), [RuleViolationResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Errors/RuleViolationResults.cs), [VersionReferenceValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionReferenceValidator.cs), [StatusChangeInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/StatusChangeInputValidator.cs).
 
@@ -159,54 +159,62 @@ sequenceDiagram
     Status-->>Client: 200 VersionCheck with violations, empty when the version passes
 ```
 
-A failed write, a 400 from the field rules or a 409 from a delete blocker, changed nothing, so it keeps the revision. Edits to a draft never advance it, because nothing reads drafts.
+A failed write, a 400 from the field rules or a 409 from a delete blocker, changed nothing, so it keeps the revision. Edits to a draft never advance it, because nothing reads drafts. A report's dimension and its sources' bridges are living versions too, but `[RequireAnalytical]` refuses these generic writes and status changes to them with 409 "Owned by a report": the report editor writes them, under [the report gate](#the-report-gate).
 
 **Sources:** [RequireEditableAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableAttribute.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionCheck.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionCheck.cs), [RequireEditableFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/RequireEditableFilterTests.cs).
 
-## Publishing together
+## The report gate
 
-The drawing shows a report design's status change, which moves a set of versions at once: the report dimension's version, each of the report's bridges' versions and the report version (see [Feature classes](05-feature-classes.md#report-designs)). It matters because such a set can't move one version at a time. A draft that removes one row and adds another breaks `dimension_consumers_resolve` while the published bridge still names the removed row. The bridge draft that maps to the new row breaks `mapping_members_in_endpoint_versions`, because the published dimension lacks that row. Validated as a set, each version counts as its identity's published version, so the drafts check against each other.
+The drawing shows a write to an enabled report, `PUT reports/{reportId}/rows` from the report editor. Reports have no versions, so every write goes to the report the engine runs, and the report rules gate the write itself rather than a transition. It matters because an enabled report never breaks its rules: a write that would is refused, and nothing is written.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Web SPA
-    participant Ctl as ReportDesignsController
-    participant Designs as ReportDesignVersions
-    participant Wf as VersionWorkflow
-    participant Set as PublicationSet
-    participant Rules as IPublicationRule
-    participant Store as IVersionStore
-    Client->>Ctl: PUT report-versions/{versionId}/design/status with status validated
-    Ctl->>Designs: SetAsync(versionId)
-    Designs-->>Ctl: the dimension version, each bridge version, then the report version, all of one status
-    Ctl->>Wf: TransitionAsync(versions, validated)
-    Wf->>Store: GetAsync of each version
-    alt Any version's transition is not allowed
-        Wf-->>Ctl: NotAllowed with every current state
-        Ctl-->>Client: 409 Transition not allowed
-    else Allowed
-        Note over Wf: Each version's OnValidatingAsync handlers run first, such as ClosureBuilder
-        Wf->>Set: Add(kind, identity, version) for each version of a living kind
-        loop Each version, then each rule of its kind
-            Wf->>Rules: EvaluateAsync(id)
-            Note over Rules,Set: PublishedDimensionReader and DimensionConsumers read the set's version of an identity it holds
-        end
-        Wf->>Set: Clear()
-        alt Any violation
-            Wf-->>Ctl: Rejected with every version's violations, no status changed
-            Ctl-->>Client: 422 RuleViolationProblemDetails
-        else No violation
-            Wf->>Store: SetStatusAsync of each version, in the set's order
-            Wf-->>Ctl: Applied with every new state
-            Ctl-->>Client: 200 the report version's VersionState
+    participant Filter as AdvancesReportRevisionFilter
+    participant Ctl as ReportEditorController
+    participant Svc as ReportRowService
+    participant Changes as ReportChanges
+    participant Reports as ReportRecord gateway
+    participant Reader as ReportGraphReader
+    participant Rules as ReportRules
+    participant Rev as SemanticRevision
+    Client->>Filter: PUT reports/{reportId}/rows
+    Note over Client,Filter: ValidationFilter has checked the rows' shape and keys, otherwise 400
+    Filter->>Reports: GetAsync(reportId), whether it is enabled
+    Filter->>Ctl: the action
+    Ctl->>Svc: ReplaceAsync(reportId, input)
+    Note over Svc: Computes the members, overlay rows, member options and kept variable scopes in memory
+    Svc->>Changes: ApplyAsync(reportId, change, write)
+    Changes->>Reports: GetAsync(reportId)
+    opt The report is enabled
+        Changes->>Reader: ReadAsync(report)
+        Reader-->>Changes: the stored ReportGraph
+        Changes->>Rules: EvaluateAsync(the graph the change returns)
+        Rules-->>Changes: every report rule's violations, in the active release and the model's published version
+    end
+    alt Any violation
+        Changes-->>Svc: violations, nothing written
+        Svc-->>Ctl: violations
+        Ctl-->>Filter: 422 from ReportWriteResults.Rejected
+    else No violation, or the report is disabled
+        Changes->>Changes: write(): bulk upserts and deletes, then one closure rebuild
+        Changes-->>Svc: no violations
+        Ctl-->>Filter: 200 EditorView
+        opt The report was or is enabled
+            Filter->>Rev: AdvanceAsync()
         end
     end
+    Filter-->>Client: result
 ```
 
-Publishing the validated set runs no rules. It writes each status and runs each version's publish handlers in the set's order: the dimension first, then the bridges, then the report. So `PredecessorRetirer` and `ActiveSetPinner` move the active assumption set to each new version before the next version that names its keys, and the semantic revision advances once for the whole transition. The single-version `TransitionAsync` and `CheckAsync` are sets of one, so every transition follows this path. `POST report-versions/{versionId}/design/validation` checks the set the same way and changes nothing. It is the Validate check of a published design, because edits to it are live.
+`ReportChanges.ApplyAsync` takes the change as a function over the report's `ReportGraph`, so the rules see the report as the write would leave it, without a draft or a transaction. Each `IReportRule` is a pure `Evaluate(ReportGraph, ReportScope)`; `ReportRules` reads the scope once: the active release's versions of the sources' datasets and the templates of the calculation dimensions' roles. Every report write goes through it: the settings, rows, sources, source variables, profiles, calculation dimensions, variable scopes and columns. Two writes skip it. A source's bridge items (`PUT reports/{reportId}/sources/{sourceId}/items`) are checked by their validator against the report's rows and the source's dimension, and no report rule reads them. The identity attributes (`PUT reports/{reportId}`) are read by no report rule.
 
-**Sources:** [ReportDesignsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportDesignsController.cs), [ReportDesignVersions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportDesigns/ReportDesignVersions.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [PublicationSet.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PublicationSet.cs), [PublishedDimensionReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/PublishedDimensionReader.cs), [DimensionConsumers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionConsumers.cs), [PublishTogetherTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Versioning/PublishTogetherTests.cs).
+A disabled report takes any write. `PUT reports/{reportId}/status` with `isEnabled: true` checks the report as it stands and enables it only when every rule passes, answering 422 from `ReportWriteResults.NotEnabled` otherwise; disabling always succeeds. `POST reports/{reportId}/validation` runs the same check and changes nothing. `AdvancesReportRevisionFilter` advances the semantic revision after a successful write to a report that was enabled before it or is enabled after it, so enabling, disabling and deleting an enabled report advance it too.
+
+The report rules also guard what enabled reports read. `ReportConsumerRule` adapts a report rule into a publication rule: `report_metrics_resolve` and `profiles_complete` run over every enabled report of a calculation model whose version is leaving draft, and `report_sources_resolve` over every enabled report when a release is leaving draft, against that release's dataset versions. A violation rejects the transition with 422 like any publication rule.
+
+**Sources:** [ReportEditorController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportEditorController.cs), [AdvancesReportRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/AdvancesReportRevisionFilter.cs), [ReportWriteResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportWriteResults.cs), [ReportsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportsController.cs), [ReportRowService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportRowService.cs), [ReportChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportChanges.cs), [ReportRules.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportRules.cs), [IReportRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/IReportRule.cs), [ReportGraphReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportGraphReader.cs), [ReportStatusService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportStatusService.cs), [ReportConsumerRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportConsumerRule.cs), [ReportGateTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportEditor/ReportGateTests.cs), [AdvancesReportRevisionFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/Reports/AdvancesReportRevisionFilterTests.cs).
 
 ## Retiring
 
@@ -248,19 +256,20 @@ The engine keys its metadata cache by `qe_database_info.semantic_revision`, so t
 
 | Trigger | Code | What changed |
 | --- | --- | --- |
-| Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living`, once per transition even when a set publishes together | The published versions, which the active assumption set now pins, and their retired predecessors |
+| Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living`, once per transition | The published version, which the active assumption set now pins, and its retired predecessor |
 | Editing the published version of a living kind | `RequireEditableFilter`, after a successful write | Content queries read now |
 | Capturing or deleting an assumption set | `AssumptionSetService.CaptureAsync` and `DeleteAsync` | The set keys requests can name |
 | Activating a release | `ReleaseActivator.ActivateAsync`, after it writes `active_release_id` | The release every query runs on |
 | Editing a dataset | `DatasetService.UpdateAsync`, always | `qe_dataset.display_name` and `is_enabled` |
 | Editing a dimension | `DimensionService.UpdateAsync`, when `display_name` or `is_enabled` changed | `qe_dimension` identity |
+| Editing a dimension role | `DimensionRoleService.UpdateAsync`, when the row changed | `qe_dimension_role.display_name` and `description` |
 | Editing a mapping set | `MappingSetService.UpdateAsync`, when the row changed | `qe_mapping_set.source_namespace` and `display_name` |
 | Editing a bridge | `BridgeService.UpdateAsync`, when the row changed | `qe_bridge.display_name` and `is_enabled` |
-| Editing a report | `ReportService.UpdateAsync`, when the row changed | `qe_report.display_name`, `report_type`, `is_enabled` and `payload_json`, which the engine caches with each report definition |
+| Writing to a report | `AdvancesReportRevisionFilter`, after a successful write to a report enabled before or after it | Anything the engine caches with the report's definition, including whether it is enabled at all |
 
 Publishing or retiring a `dataset_version` or `semantic_release` never advances it: these reach queries only through the release that pins them, and activating a release advances it in `ReleaseActivator`. Relabelling an assumption set does not advance it either, because the engine reads only its key and pins.
 
-**Sources:** [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [MappingSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingSetService.cs), [BridgeService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeService.cs), [ReportService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportService.cs).
+**Sources:** [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Versioning/RequireEditableFilter.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [ReleaseActivator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Releases/ReleaseActivator.cs), [DatasetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/DatasetService.cs), [DimensionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionService.cs), [MappingSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Mappings/MappingSetService.cs), [BridgeService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bridges/BridgeService.cs), [DimensionRoleService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Dimensions/DimensionRoleService.cs), [AdvancesReportRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/AdvancesReportRevisionFilter.cs).
 
 ## Lifecycle handlers
 

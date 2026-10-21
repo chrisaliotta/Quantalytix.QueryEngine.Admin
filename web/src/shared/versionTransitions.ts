@@ -18,7 +18,6 @@ const LIVING_KINDS: ReadonlySet<VersionKind> = new Set<VersionKind>([
   'mapping_version',
   'bridge_version',
   'calculation_model_version',
-  'report_version',
 ]);
 
 /** Whether `kind` is a living kind, whose published version is edited live. */

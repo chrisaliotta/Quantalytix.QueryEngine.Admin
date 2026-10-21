@@ -1,4 +1,4 @@
-using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -7,23 +7,24 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// Reads, creates, edits and deletes reports: the stable identities whose versions releases pin. Each report owns its report
-/// dimension, which it creates, and every bridge into that dimension.
+/// Reads, creates, edits and deletes reports. Each report reads one calculation model, fixed at creation, and owns its report
+/// dimension, whose one version is published from the start and edited in place, and the bridges of its sources. A report runs on
+/// the active assumption set and release once it is enabled, which <see cref="ReportStatusService"/> does.
 /// </summary>
 public sealed class ReportService(
     ITableGateway<ReportRecord> reports,
-    ITableGateway<ReportVersionRecord> versions,
-    ITableGateway<DimensionVersionRecord> dimensionVersions,
-    ITableGateway<MappingSetRecord> mappingSets,
-    ITableGateway<BridgeRecord> bridges,
-    ITableGateway<BridgeVersionRecord> bridgeVersions,
-    ReportVersionService versionService,
     DimensionService dimensionService,
-    BridgeService bridgeService,
     PublishedDimensionReader publishedDimensions,
-    SemanticRevision semanticRevision,
+    VersionWorkflow workflow,
+    OwnedVersions owned,
+    ReportContentRemover remover,
+    AssumptionPins pins,
+    ReportChanges changes,
     IIdGenerator ids)
 {
+    /// <summary>The settings a new report starts with: monthly periods in UTC.</summary>
+    public const string DefaultSettingsJson = """{"periodicity":"month","timeZone":"UTC"}""";
+
     /// <summary>Lists every report.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The reports by key, ignoring case.</returns>
@@ -43,82 +44,81 @@ public sealed class ReportService(
     }
 
     /// <summary>
-    /// Creates a report without versions, and first its own report dimension, keyed and named like the report, whose draft
-    /// version 1 copies the published version of the dimension the report starts from, or holds a single root row.
+    /// Creates a disabled report, and first its own report dimension, keyed and named like the report, whose version 1 copies the
+    /// published version of the dimension the report starts from, or holds a single root row, and is published at once, which pins
+    /// it in the active assumption set.
     /// </summary>
     /// <param name="input">The new report, already validated.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>The stored report.</returns>
     public async Task<ReportRecord> CreateAsync(NewReportInput input, CancellationToken cancellationToken)
     {
-        long? templateVersionId = null;
-        if (input.StartFromDimensionId is { } templateId)
-            templateVersionId = (await publishedDimensions.ReadAsync(templateId, cancellationToken))!.Version.DimensionVersionId;
-        var dimension = await dimensionService.CreateReportDimensionAsync(input.ReportKey, input.DisplayName, templateVersionId, cancellationToken);
+        long? templateVersionId = input.StartFromDimensionId is { } templateId
+            ? (await publishedDimensions.ReadAsync(templateId, cancellationToken))!.Version.DimensionVersionId
+            : null;
+        var structure = await dimensionService.CreateReportDimensionAsync(input.ReportKey, input.DisplayName, templateVersionId, cancellationToken);
+        await workflow.PublishAsync(VersionKinds.DimensionVersion, structure.DimensionVersionId, cancellationToken);
         var report = new ReportRecord
         {
             ReportId = ids.NextId(),
             ReportKey = input.ReportKey,
             DisplayName = input.DisplayName,
             ReportType = input.ReportType,
-            ReportDimensionId = dimension.DimensionId,
-            IsEnabled = input.IsEnabled,
-            PayloadJson = input.PayloadJson
+            ReportDimensionId = structure.DimensionId,
+            ModelId = input.ModelId,
+            SubtotalPosition = SubtotalPositions.Above,
+            IsEnabled = false,
+            PayloadJson = input.PayloadJson,
+            DefaultSettingsJson = DefaultSettingsJson
         };
         await reports.InsertAsync(report, cancellationToken);
         return report;
     }
 
-    /// <summary>
-    /// Edits a report's identity attributes. A change advances the semantic revision, because the engine caches report
-    /// definitions with their name, type, availability and payload.
-    /// </summary>
+    /// <summary>Edits a report's identity attributes, which no report rule reads.</summary>
     /// <param name="reportId">The report.</param>
     /// <param name="input">The new identity attributes.</param>
-    /// <param name="cancellationToken">Cancels the read and the writes.</param>
+    /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>The stored report.</returns>
     public async Task<ReportRecord> UpdateAsync(long reportId, ReportInput input, CancellationToken cancellationToken)
     {
-        var current = await GetAsync(reportId, cancellationToken);
-        var updated = current with { DisplayName = input.DisplayName, ReportType = input.ReportType, IsEnabled = input.IsEnabled, PayloadJson = input.PayloadJson };
+        var updated = await GetAsync(reportId, cancellationToken) with { DisplayName = input.DisplayName, ReportType = input.ReportType, PayloadJson = input.PayloadJson };
         await reports.UpdateAsync(updated, cancellationToken);
-        if (updated != current) await semanticRevision.AdvanceAsync(cancellationToken);
         return updated;
     }
 
+    /// <summary>Replaces a report's settings: its default profile, subtotal position and defaults.</summary>
+    /// <param name="reportId">The report.</param>
+    /// <param name="input">The new settings, already validated.</param>
+    /// <param name="cancellationToken">Cancels the reads and the write.</param>
+    /// <returns>The violations that kept an enabled report from taking the settings, in which case nothing was written.</returns>
+    public async Task<IReadOnlyList<RuleViolation>> UpdateSettingsAsync(long reportId, ReportSettingsInput input, CancellationToken cancellationToken)
+    {
+        var updated = await GetAsync(reportId, cancellationToken) with
+        {
+            DefaultProfileKey = input.DefaultProfileKey,
+            SubtotalPosition = input.SubtotalPosition,
+            DefaultFilterJson = input.DefaultFilterJson,
+            DefaultSettingsJson = input.DefaultSettingsJson,
+            DefaultPivotJson = input.DefaultPivotJson
+        };
+        return await changes.ApplyAsync(reportId, report => report with { Report = updated }, () => reports.UpdateAsync(updated, cancellationToken), cancellationToken);
+    }
+
     /// <summary>
-    /// Deletes a report whose versions are all drafts, with those drafts and their content, then the bridges into its report
-    /// dimension and the dimension itself, whose versions are drafts too. A mapping set that maps into the report dimension
-    /// blocks the delete, because the dimension goes with the report.
+    /// Deletes a report with everything it owns: its content, its sources with their bridges, then the report, and its report
+    /// dimension, unpinned first. Nothing outside the report names what it owns, so nothing blocks the delete.
     /// </summary>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>Null when the report was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long reportId, CancellationToken cancellationToken)
+    /// <returns>A task that completes when the report is gone.</returns>
+    public async Task DeleteAsync(long reportId, CancellationToken cancellationToken)
     {
         var report = await GetAsync(reportId, cancellationToken);
-        var reportVersions = await versions.ListAsync(new { ReportId = reportId }, cancellationToken);
-        long[] versionIds = [.. reportVersions.Select(version => version.ReportVersionId)];
-        var blockers = new DeleteBlockers($"Report '{report.ReportKey}'");
-        blockers.AddNamed(
-            "it has non-draft versions",
-            reportVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        var mappingInto = await mappingSets.ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken);
-        blockers.AddNamed("mapping sets map into its report dimension", mappingInto.Select(set => $"'{set.MappingSetKey}'"));
-        var conflict = blockers.Detail();
-        if (conflict is not null) return conflict;
-
-        await versionService.RemoveAsync(versionIds, cancellationToken);
+        var structure = await owned.StructureAsync(report, cancellationToken);
+        await remover.RemoveContentAsync(reportId, cancellationToken);
         await reports.DeleteAsync(new { ReportId = reportId }, cancellationToken);
-        foreach (var bridge in await bridges.ListAsync(new { TargetDimensionId = report.ReportDimensionId }, cancellationToken))
-        {
-            var ownVersions = await bridgeVersions.ListAsync(new { bridge.BridgeId }, cancellationToken);
-            await bridgeService.RemoveAsync(bridge.BridgeId, [.. ownVersions.Select(version => version.BridgeVersionId)], cancellationToken);
-        }
-        await dimensionService.RemoveAsync(
-            report.ReportDimensionId,
-            await dimensionVersions.ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken),
-            cancellationToken);
-        return null;
+        await pins.UnpinDimensionAsync(report.ReportDimensionId, cancellationToken);
+        await dimensionService.RemoveAsync(report.ReportDimensionId, [structure], cancellationToken);
     }
 }

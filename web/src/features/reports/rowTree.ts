@@ -1,6 +1,6 @@
 import type { TreeItems } from '@registry/components/Nestable';
 import type { LookupItem } from '@/shared/types';
-import type { DesignRow, DesignRowInput } from './types';
+import type { EditorRow, ReportRowInput } from './types';
 
 /** Compares keys by UTF-16 code unit, as the engine's ordinal comparison does. */
 function compareOrdinal(left: string, right: string) {
@@ -16,7 +16,7 @@ export function isMemberRow(kind: string) {
 }
 
 /** Orders sibling rows as the engine lays them out: by sort order, members before overlay rows, then key. */
-function bySiblingOrder(left: DesignRowInput, right: DesignRowInput) {
+function bySiblingOrder(left: ReportRowInput, right: ReportRowInput) {
   return (
     left.sortOrder - right.sortOrder ||
     Number(!isMemberRow(left.kind)) - Number(!isMemberRow(right.kind)) ||
@@ -25,7 +25,7 @@ function bySiblingOrder(left: DesignRowInput, right: DesignRowInput) {
 }
 
 /** A stored row as the rows body takes it back. */
-export function toRowInput(row: DesignRow): DesignRowInput {
+export function toRowInput(row: EditorRow): ReportRowInput {
   return {
     key: row.key,
     label: row.label,
@@ -40,14 +40,14 @@ export function toRowInput(row: DesignRow): DesignRowInput {
 }
 
 /**
- * Nests a design's rows as the engine lays them out: each row under the row its parent key names, siblings by sort order,
+ * Nests a report's rows as the engine lays them out: each row under the row its parent key names, siblings by sort order,
  * members before overlay rows, then key. A row whose parent the list lacks shows at the top, so it stays editable; saving
  * reports it.
  */
-export function buildRowTree(rows: DesignRowInput[], collapsedKeys: ReadonlySet<string>): TreeItems<DesignRowInput> {
+export function buildRowTree(rows: ReportRowInput[], collapsedKeys: ReadonlySet<string>): TreeItems<ReportRowInput> {
   const keys = new Set(rows.map(row => row.key));
 
-  function under(parentKey: string | null): TreeItems<DesignRowInput> {
+  function under(parentKey: string | null): TreeItems<ReportRowInput> {
     return rows
       .filter(row => (row.parentKey != null && keys.has(row.parentKey) ? row.parentKey : null) === parentKey)
       .sort(bySiblingOrder)
@@ -59,10 +59,10 @@ export function buildRowTree(rows: DesignRowInput[], collapsedKeys: ReadonlySet<
 
 /** The moved item's parent and siblings in a tree, or null when the tree does not hold it. */
 function siblingsOf(
-  items: TreeItems<DesignRowInput>,
+  items: TreeItems<ReportRowInput>,
   key: string,
   parentKey: string | null
-): { parentKey: string | null; siblings: TreeItems<DesignRowInput> } | null {
+): { parentKey: string | null; siblings: TreeItems<ReportRowInput> } | null {
   if (items.some(item => item.id === key)) {
     return { parentKey, siblings: items };
   }
@@ -79,7 +79,7 @@ function siblingsOf(
  * The rows after a drag and drop: the moved row takes the parent it was dropped under, and its new sibling group is
  * renumbered by position (sort order 0, 1, 2, ...), which is the order the tree showed.
  */
-export function rowsAfterMove(rows: DesignRowInput[], tree: TreeItems<DesignRowInput>, movedKey: string): DesignRowInput[] {
+export function rowsAfterMove(rows: ReportRowInput[], tree: TreeItems<ReportRowInput>, movedKey: string): ReportRowInput[] {
   const group = siblingsOf(tree, movedKey, null);
   if (!group) {
     return rows;
@@ -92,12 +92,12 @@ export function rowsAfterMove(rows: DesignRowInput[], tree: TreeItems<DesignRowI
 }
 
 /** The sort order that places a new row after the rows already under its parent, or at the top when it is null. */
-export function nextSortOrder(rows: DesignRowInput[], parentKey: string | null) {
+export function nextSortOrder(rows: ReportRowInput[], parentKey: string | null) {
   return Math.max(-1, ...rows.filter(row => (row.parentKey ?? null) === parentKey).map(row => row.sortOrder)) + 1;
 }
 
 /** The rows with one row saved: a new row is added, and an edited row, which keeps its key, replaces the stored one. */
-export function withRow(rows: DesignRowInput[], previousKey: string | null, row: DesignRowInput): DesignRowInput[] {
+export function withRow(rows: ReportRowInput[], previousKey: string | null, row: ReportRowInput): ReportRowInput[] {
   if (previousKey === null) {
     return [...rows, row];
   }
@@ -105,13 +105,13 @@ export function withRow(rows: DesignRowInput[], previousKey: string | null, row:
 }
 
 /** The rows without one row; the rows under it move up to its parent. */
-export function withoutRow(rows: DesignRowInput[], key: string): DesignRowInput[] {
+export function withoutRow(rows: ReportRowInput[], key: string): ReportRowInput[] {
   const parentKey = rows.find(row => row.key === key)?.parentKey ?? null;
   return rows.filter(row => row.key !== key).map(row => (row.parentKey === key ? { ...row, parentKey } : row));
 }
 
 /** A row and every row under it, none of which can become its parent. */
-function selfAndBelow(rows: DesignRowInput[], key: string): string[] {
+function selfAndBelow(rows: ReportRowInput[], key: string): string[] {
   return [key, ...rows.filter(row => row.parentKey === key).flatMap(row => selfAndBelow(rows, row.key))];
 }
 
@@ -124,7 +124,7 @@ function takesChild(parentKind: string, childKind: string) {
 }
 
 /** The rows a row of a kind can sit under, as picker items; the row itself and the rows under it are left out. */
-export function parentsFor(rows: DesignRowInput[], kind: string, key: string | null): LookupItem[] {
+export function parentsFor(rows: ReportRowInput[], kind: string, key: string | null): LookupItem[] {
   const excluded = new Set(key === null ? [] : selfAndBelow(rows, key));
   return rows
     .filter(row => !excluded.has(row.key) && takesChild(row.kind, kind))
@@ -135,7 +135,7 @@ export function parentsFor(rows: DesignRowInput[], kind: string, key: string | n
  * Whether a drag and drop may place a row under a parent, or at the top when it is null: under a row that takes its kind,
  * and at the top only an overlay row or the report's total, the one member row there.
  */
-export function canPlace(rows: DesignRowInput[], key: string, parentKey: string | null): boolean {
+export function canPlace(rows: ReportRowInput[], key: string, parentKey: string | null): boolean {
   const row = rows.find(stored => stored.key === key)!;
   if (parentKey === null) {
     return !isMemberRow(row.kind) || row.parentKey == null;

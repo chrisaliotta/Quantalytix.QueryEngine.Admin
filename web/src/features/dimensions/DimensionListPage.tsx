@@ -23,7 +23,7 @@ const columns: ColumnDef<Dimension>[] = [
 
 /**
  * Lists the tenant's analytical dimensions, which datasets bind and queries group by, and creates new ones. A report dimension
- * holds one report's rows, so its report's designer lists and edits it.
+ * holds one report's rows, so its report's editor lists and edits it.
  */
 export function DimensionListPage() {
   const dimensions = useDimensions();
@@ -34,7 +34,7 @@ export function DimensionListPage() {
     <>
       <EntityListPage
         title="Dimensions"
-        description="Canonical dimensions that datasets bind and queries group by. Each report's rows are a dimension of its own, edited in the report's designer."
+        description="Canonical dimensions that datasets bind and queries group by. Each report's rows are a dimension of its own, edited in the report's editor."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus />

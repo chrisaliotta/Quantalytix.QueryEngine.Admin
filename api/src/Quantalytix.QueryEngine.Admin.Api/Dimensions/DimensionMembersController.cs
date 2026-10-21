@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Api.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -48,6 +49,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Create(
@@ -72,6 +74,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{memberId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Update(
@@ -96,6 +99,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("order")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<DimensionMemberRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<DimensionMemberRecord>>> Reorder(
@@ -119,6 +123,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names what references the member.</response>
     [HttpDelete("{memberId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
+    [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] MemberReference member, CancellationToken cancellationToken)

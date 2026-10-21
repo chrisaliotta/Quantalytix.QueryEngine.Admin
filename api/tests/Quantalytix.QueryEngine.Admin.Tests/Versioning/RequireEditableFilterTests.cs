@@ -37,7 +37,7 @@ public sealed class RequireEditableFilterTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 9,
+        MetadataSchemaVersion = 10,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });

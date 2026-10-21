@@ -21,13 +21,13 @@ public sealed class DimensionDeleteChecks(
     ITableGateway<DatasetVersionRecord> datasetVersions,
     ITableGateway<ReportRecord> reports,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
-    ITableGateway<VariableSourceRecord> sources,
-    ReportVersionNames reportVersions,
+    ITableGateway<ReportSourceRecord> sources,
+    ReportNames reportNames,
     DimensionConsumers consumers)
 {
     /// <summary>
     /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set, bridge (either
-    /// end) or report references it, or a calculation dimension or variable source names one of its roles. The roles themselves
+    /// end) or report references it, or a calculation dimension or report source names one of its roles. The roles themselves
     /// go with the dimension.
     /// </summary>
     /// <param name="dimension">The dimension.</param>
@@ -58,7 +58,7 @@ public sealed class DimensionDeleteChecks(
         return blockers.Detail();
     }
 
-    /// <summary>What blocks deleting a role: a binding, calculation dimension or variable source names it.</summary>
+    /// <summary>What blocks deleting a role: a binding, calculation dimension or report source names it.</summary>
     /// <param name="role">The role.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The 409 detail naming the blockers, or null when the role can be deleted.</returns>
@@ -71,15 +71,14 @@ public sealed class DimensionDeleteChecks(
         return blockers.Detail();
     }
 
-    /// <summary>Adds the calculation dimensions that read the roles and the variable sources that bridge from them, in report versions of any status.</summary>
+    /// <summary>Adds the calculation dimensions that read the roles and the report sources that bridge from them, in reports enabled or not.</summary>
     private async Task AddReportUsesAsync(DeleteBlockers blockers, long[] roleIds, CancellationToken cancellationToken)
     {
         var reading = await calculationDimensions.ListAsync(new { RoleId = roleIds }, cancellationToken);
-        var bridging = await sources.ListAsync(new { ClassificationRoleId = roleIds }, cancellationToken);
-        var names = await reportVersions.OfIdsAsync(
-            reading.Select(dimension => dimension.ReportVersionId).Concat(bridging.Select(source => source.ReportVersionId)), cancellationToken);
-        blockers.AddNamed("read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportVersionId]}"));
-        blockers.AddNamed("bridged from by variable sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportVersionId]}"));
+        var bridging = await sources.ListAsync(new { RoleId = roleIds }, cancellationToken);
+        var names = await reportNames.OfIdsAsync(reading.Select(dimension => dimension.ReportId).Concat(bridging.Select(source => source.ReportId)), cancellationToken);
+        blockers.AddNamed("read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportId]}"));
+        blockers.AddNamed("bridged from by report sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportId]}"));
     }
 
     /// <summary>Names the dataset versions that hold bindings, like <c>'loans.details' v2</c>.</summary>

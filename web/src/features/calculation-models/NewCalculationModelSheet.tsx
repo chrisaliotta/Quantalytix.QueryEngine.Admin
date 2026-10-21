@@ -30,7 +30,7 @@ export function NewCalculationModelSheet({ onClose, onCreated }: NewCalculationM
     >
       <TextField name="modelKey" label="Key" description="A letter, then letters, digits or underscores." />
       <TextField name="displayName" label="Name" />
-      <SwitchField name="isEnabled" label="Enabled" description="Whether the model is offered for new report versions." />
+      <SwitchField name="isEnabled" label="Enabled" description="Whether the model is offered for new reports." />
     </EntityFormSheet>
   );
 }

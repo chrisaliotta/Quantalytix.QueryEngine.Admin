@@ -1,9 +1,9 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>A source profile of an editable report version with its complete pick list, as its create and edit endpoints take it.</summary>
+/// <summary>A source profile of a report with its complete pick list, as its create and edit endpoints take it.</summary>
 public sealed record SourceProfileInput
 {
-    /// <summary>Key, unique among the version's profiles.</summary>
+    /// <summary>Key, unique among the report's profiles.</summary>
     public required string ProfileKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

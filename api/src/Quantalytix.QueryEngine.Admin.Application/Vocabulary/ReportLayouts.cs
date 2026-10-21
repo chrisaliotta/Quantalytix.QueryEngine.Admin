@@ -1,8 +1,8 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 /// <summary>
-/// The <c>report_layout</c> vocabulary, a report version's settings' <c>layout</c>: how a request's result stage, its result filter,
-/// ordering and paging, treats the version's lines.
+/// The <c>report_layout</c> vocabulary, a report's settings' <c>layout</c>: how a request's result stage, its result filter, ordering
+/// and paging, treats the report's rows.
 /// </summary>
 public static class ReportLayouts
 {
@@ -16,7 +16,7 @@ public static class ReportLayouts
     public static readonly Vocabulary Definition = new()
     {
         Name = "report_layout",
-        Description = "How a request's result filter, ordering and paging treat a report version's lines.",
+        Description = "How a request's result filter, ordering and paging treat a report's rows.",
         Values =
         [
             new() { Value = Statement, Description = "The lines and periods keep their order; requests filter, order and page breakout rows within each." },

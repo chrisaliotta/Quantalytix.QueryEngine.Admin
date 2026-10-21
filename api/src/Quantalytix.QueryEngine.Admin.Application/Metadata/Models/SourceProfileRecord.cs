@@ -1,15 +1,15 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_calculation_source_profile</c> row: a named choice of one source per variable a report version reads.</summary>
+/// <summary>A <c>qe_calculation_source_profile</c> row: a named choice of one source per variable a report reads.</summary>
 public sealed record SourceProfileRecord
 {
     /// <summary>Primary key.</summary>
     public required long SourceProfileId { get; init; }
 
-    /// <summary>The owning report version.</summary>
-    public required long ReportVersionId { get; init; }
+    /// <summary>The owning report.</summary>
+    public required long ReportId { get; init; }
 
-    /// <summary>Key, unique among the version's profiles.</summary>
+    /// <summary>Key, unique among the report's profiles.</summary>
     public required string ProfileKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

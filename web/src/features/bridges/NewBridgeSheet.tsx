@@ -63,7 +63,7 @@ export function NewBridgeSheet({ onClose, onCreated }: NewBridgeSheetProps) {
         label="Target dimension"
         lookupKind="dimensions"
         purpose="analytical"
-        description="The dimension the members map onto. A report's own bridges are created in its designer, one per source."
+        description="The dimension the members map onto. A report's own bridges are created in its editor, one per bridge source."
       />
       <SwitchField name="isEnabled" label="Enabled" description="Whether queries may use the bridge." />
     </EntityFormSheet>

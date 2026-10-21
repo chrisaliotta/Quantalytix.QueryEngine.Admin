@@ -1,23 +1,23 @@
 /**
- * Why these tests exist: a report design's rows are the members of its report dimension's version with the version's overlay
- * rows among them, and the Design tab must show them in the order the engine lays them out: siblings by sort order, members
+ * Why these tests exist: a report's rows are the members of its report dimension with its overlay rows among them, and the
+ * Rows & mappings tab must show them in the order the engine lays them out: siblings by sort order, members
  * before overlay rows, then key. The tree is saved in one replace of every row, so they also pin down what a drag and drop
  * sends (the dropped row's new parent and its sibling group renumbered as shown), which drops the tree refuses because the
  * API would (nothing under a formula row, member rows only under member rows, one member row at the top), that deleting a
  * row hands its children to its parent, that each kind is offered only the parents it can have, and that a new row's key is
- * a well-formed key unique in the design.
+ * a well-formed key unique in the report.
  */
 import { describe, expect, it } from 'vitest';
 import type { TreeItems } from '@registry/components/Nestable';
 import { buildRowTree, canPlace, keyFromLabel, nextSortOrder, parentsFor, rowsAfterMove, withoutRow } from './rowTree';
-import type { DesignRowInput } from './types';
+import type { ReportRowInput } from './types';
 
-function row(key: string, kind: string, parentKey: string | null, sortOrder: number): DesignRowInput {
+function row(key: string, kind: string, parentKey: string | null, sortOrder: number): ReportRowInput {
   return { key, label: key, kind, parentKey, sortOrder, isVisible: true, showsValues: true, calculatedMeasureKey: null, valueColumnKey: null };
 }
 
 /** The tree as nested [key, children] pairs. */
-function shape(tree: TreeItems<DesignRowInput>): unknown[] {
+function shape(tree: TreeItems<ReportRowInput>): unknown[] {
   return tree.map(item => [item.id, shape(item.children)]);
 }
 
@@ -38,7 +38,7 @@ describe('buildRowTree', () => {
     ]);
   });
 
-  it('shows a row whose parent the design lacks at the top', () => {
+  it('shows a row whose parent the report lacks at the top', () => {
     expect(buildRowTree([row('TOTAL', 'group', null, 0), row('orphan', 'section', 'GONE', 0)], new Set()).map(item => item.id)).toEqual([
       'TOTAL',
       'orphan',
@@ -51,7 +51,7 @@ describe('rowsAfterMove', () => {
     const tree = buildRowTree(rows, new Set());
     const total = tree[0];
     const loans = total.children[2];
-    const dropped: TreeItems<DesignRowInput> = [
+    const dropped: TreeItems<ReportRowInput> = [
       { ...total, children: [total.children[0], { ...loans, children: [...loans.children, total.children[1]] }] },
       tree[1],
     ];

@@ -65,9 +65,9 @@ public sealed class LookupService(
             LookupKinds.BridgeVersions => BridgeVersionsAsync(parentId!.Value, cancellationToken),
             LookupKinds.Releases => ReleasesAsync(cancellationToken),
             LookupKinds.AssumptionSets => AssumptionSetsAsync(cancellationToken),
-            LookupKinds.CalculationModels or LookupKinds.ModelVersions or LookupKinds.Variables or LookupKinds.VariableSources
+            LookupKinds.CalculationModels or LookupKinds.ModelVersions or LookupKinds.Variables or LookupKinds.ReportSources
                 or LookupKinds.SourceProfiles or LookupKinds.CalculatedMeasures or LookupKinds.CalculationDimensions or LookupKinds.Reports
-                or LookupKinds.ReportVersions or LookupKinds.ReportColumns => calculations.ListAsync(kind, parentId, cancellationToken),
+                or LookupKinds.ReportColumns => calculations.ListAsync(kind, parentId, cancellationToken),
             _ => throw new UnreachableException($"Lookup kind '{kind}' passed validation but has no list.")
         };
     }
@@ -110,12 +110,12 @@ public sealed class LookupService(
 
     /// <summary>
     /// The roles one dataset version binds into members with an enabled binding, each pointing at its template and classified by
-    /// binding kind: the roles a bridge classification can start from.
+    /// binding kind: the roles a bridge source can start from.
     /// </summary>
     private async Task<IReadOnlyList<LookupItem>> BoundRolesAsync(long datasetVersionId, CancellationToken cancellationToken)
     {
         var feeding = (await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken))
-            .Where(ClassificationFields.FeedsBridges)
+            .Where(SourceBindings.FeedsBridges)
             .DistinctBy(binding => binding.RoleId)
             .ToList();
         var bound = (await roles.ListAsync(new { RoleId = feeding.Select(binding => binding.RoleId!.Value).ToArray() }, cancellationToken))

@@ -2,16 +2,15 @@ using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Xunit;
-using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportGraphFixture;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Confirms <c>report_items_resolve</c>: the report dimension's published version must have one root, every member option and
-/// variable scope must name one of its members, every overlay row must sit under one of its members or another overlay row, and no
-/// overlay row may take a member's key, because rows are keyed by both. Sources classify into the version the active assumption set
-/// pins; the orchestrator lays the rows out from its members and evaluates formula rows at its root.
+/// Confirms <c>report_items_resolve</c>: the report's member rows must be one tree, every member option and variable scope must
+/// name a member row, every overlay row must sit under a member row or another overlay row, and no overlay row may take a member
+/// row's key, because rows are keyed by both. The orchestrator lays the rows out from the report dimension's members and
+/// evaluates formula rows at its root.
 /// </summary>
 public sealed class ReportItemsResolveRuleTests
 {
@@ -28,7 +27,7 @@ public sealed class ReportItemsResolveRuleTests
         await _fixture.Lines.InsertAsync(Line(11, "notes", ReportLineKinds.Section, "assets", 0), cancellationToken);
         await _fixture.Lines.InsertAsync(Line(12, "detail", ReportLineKinds.Section, "notes", 0), cancellationToken);
 
-        Assert.Empty(await EvaluateAsync(Rule(), ReportVersionId));
+        Assert.Empty(await _fixture.EvaluateAsync(new ReportItemsResolveRule()));
     }
 
     /// <summary>
@@ -46,20 +45,14 @@ public sealed class ReportItemsResolveRuleTests
         await _fixture.Lines.InsertAsync(Line(12, "assets", ReportLineKinds.Section, null, 2), cancellationToken);
         await _fixture.Scopes.InsertAsync(Scope("balance", "equity"), cancellationToken);
 
-        var violations = await EvaluateAsync(Rule(), ReportVersionId);
+        var violations = await _fixture.EvaluateAsync(new ReportItemsResolveRule());
 
         Assert.Equal(
-            ["Report 'balance_sheet' reads a report dimension whose published version has 2 roots; it needs one.",
-             "Report 'balance_sheet' has an option for member 'liabilities', which the published version of the report dimension lacks.",
-             "Report 'balance_sheet' row 'notes' sits under 'equity', which is no overlay row and no member the published version of the report dimension has.",
-             "Report 'balance_sheet' row 'assets' has the key of a member of the report dimension; rows are keyed by both.",
-             "Report 'balance_sheet' scopes variable 'balance' to member 'equity', which the published version of the report dimension lacks."],
+            ["Report 'balance_sheet' has 2 top-level member rows; it needs one, the report's total.",
+             "Report 'balance_sheet' has an option for row 'liabilities', which is no member row.",
+             "Report 'balance_sheet' row 'notes' sits under 'equity', which is no row of the report.",
+             "Report 'balance_sheet' row 'assets' has the key of a member row; rows are keyed by both.",
+             "Report 'balance_sheet' scopes variable 'balance' to row 'equity', which is no member row."],
             violations.Select(violation => violation.Message));
-    }
-
-    /// <summary>The rule over the fixture's tables.</summary>
-    private ReportItemsResolveRule Rule()
-    {
-        return new ReportItemsResolveRule(_fixture.Reader(), _fixture.PublishedDimensions());
     }
 }

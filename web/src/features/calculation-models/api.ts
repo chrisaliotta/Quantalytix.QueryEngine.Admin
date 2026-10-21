@@ -84,7 +84,7 @@ export function useUpdateCalculationModel(modelId: number) {
   });
 }
 
-/** Deletes a model whose versions are all drafts and that no report version reads; a 409 names what blocks it. */
+/** Deletes a model whose versions are all drafts and that no report reads; a 409 names what blocks it. */
 export function useDeleteCalculationModel() {
   const tenantId = useTenantId();
   return useMutation({

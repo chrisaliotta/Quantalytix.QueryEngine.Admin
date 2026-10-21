@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Time.Testing;
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
+using Quantalytix.QueryEngine.Admin.Tests.Releases;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
@@ -51,6 +54,17 @@ public sealed class AssumptionSetTests
     private readonly InMemoryTableGateway<AssumptionSetModelRecord> _modelPins = new(
         new AssumptionSetModelRecord { AssumptionSetId = ActiveSetId, ModelId = 40, ModelVersionId = 41 });
 
+    /// <summary>No bridge pins at first.</summary>
+    private readonly InMemoryTableGateway<AssumptionSetBridgeRecord> _bridgePins = new();
+
+    /// <summary>The analytical branch dimension and report 60's report dimension 500.</summary>
+    private readonly InMemoryTableGateway<DimensionRecord> _dimensions = new(
+        ReleaseRows.Dimension(BranchId, "branch"),
+        ReleaseRows.Dimension(500, "balance_sheet") with { DimensionPurpose = DimensionPurposes.Report });
+
+    /// <summary>Bridge 95 of a source of report 60, from branches into its report dimension.</summary>
+    private readonly InMemoryTableGateway<BridgeRecord> _bridges = new(BridgeRows.Bridge(95, BranchId, 500));
+
     /// <summary>The branch dimension's published v1 and v2.</summary>
     private readonly InMemoryTableGateway<DimensionVersionRecord> _dimensionVersions = new(
         DimensionRows.Version(101, BranchId, 1, PublicationStatuses.Published),
@@ -61,7 +75,7 @@ public sealed class AssumptionSetTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 9,
+        MetadataSchemaVersion = 10,
         SemanticRevision = StartingRevision,
         ActiveReleaseId = ActiveReleaseId,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -73,13 +87,7 @@ public sealed class AssumptionSetTests
     /// <summary>Builds the pins over this test's tables.</summary>
     public AssumptionSetTests()
     {
-        _pins = new AssumptionPins(
-            _sets,
-            _dimensionPins,
-            new InMemoryTableGateway<AssumptionSetMappingRecord>(),
-            new InMemoryTableGateway<AssumptionSetBridgeRecord>(),
-            _modelPins,
-            new InMemoryTableGateway<AssumptionSetReportRecord>());
+        _pins = new AssumptionPins(_sets, _dimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), _bridgePins, _modelPins);
     }
 
     /// <summary>
@@ -99,6 +107,25 @@ public sealed class AssumptionSetTests
             await _pins.ListAsync(ActiveSetId, TestContext.Current.CancellationToken),
             await _pins.ListAsync(set.AssumptionSetId, TestContext.Current.CancellationToken));
         Assert.Equal(StartingRevision + 1, Revision());
+    }
+
+    /// <summary>
+    /// A capture leaves out the pins of a report's dimension and of its sources' bridges, because reports always run on the active
+    /// set: a historical set holding them would keep versions alive that their report edits in place.
+    /// </summary>
+    /// <returns>A task that completes when the capture is checked.</returns>
+    [Fact]
+    public async Task Capture_SkipsReportOwnedPins()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await _dimensionPins.InsertAsync(new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = 500, DimensionVersionId = 501 }, cancellationToken);
+        await _bridgePins.InsertAsync(new AssumptionSetBridgeRecord { AssumptionSetId = ActiveSetId, BridgeId = 95, BridgeVersionId = 96 }, cancellationToken);
+
+        var set = await Service().CaptureAsync(new AssumptionCaptureInput { AssumptionSetKey = "fy2026_q3", DisplayName = "FY2026 Q3 close" }, cancellationToken);
+
+        Assert.Equal(
+            [new PinnedVersion(VersionKinds.DimensionVersion, BranchId, 101), new PinnedVersion(VersionKinds.CalculationModelVersion, 40, 41)],
+            await _pins.ListAsync(set.AssumptionSetId, cancellationToken));
     }
 
     /// <summary>Publishing v2 of the branch dimension repoints the active set and leaves the historical set on v1.</summary>
@@ -143,19 +170,20 @@ public sealed class AssumptionSetTests
     private AssumptionSetService Service()
     {
         var time = new FakeTimeProvider(Now);
+        var bridgeVersions = new InMemoryTableGateway<BridgeVersionRecord>();
         var reader = new AssumptionPinReader(
             _pins,
-            new InMemoryTableGateway<DimensionRecord>(),
+            _dimensions,
             _dimensionVersions,
             new InMemoryTableGateway<MappingSetRecord>(),
             new InMemoryTableGateway<MappingVersionRecord>(),
-            new InMemoryTableGateway<BridgeRecord>(),
-            new InMemoryTableGateway<BridgeVersionRecord>(),
+            _bridges,
+            bridgeVersions,
             new InMemoryTableGateway<CalculationModelRecord>(),
-            new InMemoryTableGateway<CalculationModelVersionRecord>(),
-            new InMemoryTableGateway<ReportRecord>(),
-            new InMemoryTableGateway<ReportVersionRecord>());
-        return new AssumptionSetService(_sets, _pins, reader, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
+            new InMemoryTableGateway<CalculationModelVersionRecord>());
+        var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, bridgeVersions, new InMemoryTableGateway<ReportRecord>());
+        return new AssumptionSetService(
+            _sets, _pins, reader, ownership, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
     }
 
     /// <summary>The branch dimension version a set pins.</summary>

@@ -120,17 +120,6 @@ public sealed class OverviewTests
     /// <summary>Two reports.</summary>
     private readonly InMemoryTableGateway<ReportRecord> _reports = new(Report(601), Report(602));
 
-    /// <summary>One draft report version.</summary>
-    private readonly InMemoryTableGateway<ReportVersionRecord> _reportVersions = new(new ReportVersionRecord
-    {
-        ReportVersionId = 611,
-        ReportId = 601,
-        VersionNumber = 1,
-        ModelId = 401,
-        SubtotalPosition = SubtotalPositions.Above,
-        Status = PublicationStatuses.Draft
-    });
-
     /// <summary>The overview reports the tenant's identity and active release, counts every identity row, and counts drafts per kind.</summary>
     /// <returns>A task that completes when the overview is checked.</returns>
     [Fact]
@@ -139,7 +128,7 @@ public sealed class OverviewTests
         var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
-        Assert.Equal(9, overview.MetadataSchemaVersion);
+        Assert.Equal(10, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
@@ -164,8 +153,7 @@ public sealed class OverviewTests
                 MappingVersions = 1,
                 BridgeVersions = 0,
                 Releases = 1,
-                ModelVersions = 1,
-                ReportVersions = 1
+                ModelVersions = 1
             },
             overview.Drafts);
     }
@@ -200,8 +188,7 @@ public sealed class OverviewTests
             _assumptionSets,
             _models,
             _modelVersions,
-            _reports,
-            _reportVersions);
+            _reports);
     }
 
     /// <summary>The sandbox tenant's database info, pointing at the given active release.</summary>
@@ -211,7 +198,7 @@ public sealed class OverviewTests
         {
             SingletonId = 1,
             TenantKey = "sandbox",
-            MetadataSchemaVersion = 9,
+            MetadataSchemaVersion = 10,
             SemanticRevision = 12,
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created
@@ -238,7 +225,8 @@ public sealed class OverviewTests
     {
         return new ReportRecord
         {
-            ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", ReportDimensionId = 300, IsEnabled = true
+            ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", ReportDimensionId = 300, ModelId = 401,
+            SubtotalPosition = SubtotalPositions.Above, IsEnabled = true
         };
     }
 

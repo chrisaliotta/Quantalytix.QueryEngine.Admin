@@ -5,6 +5,12 @@ type Schemas = components['schemas'];
 /** A semantic remapping from one canonical dimension to another (`qe_bridge`). */
 export type Bridge = Schemas['BridgeRecord'];
 
+/**
+ * A bridge with its purpose, the purpose of its target dimension: `analytical`, or `report` for the bridge a report source owns,
+ * which names that source and its report.
+ */
+export type BridgeSummary = Schemas['BridgeSummary'];
+
 /** A bridge version: its allocation semantics (`qe_bridge_version`). */
 export type BridgeVersion = Schemas['BridgeVersionRecord'];
 

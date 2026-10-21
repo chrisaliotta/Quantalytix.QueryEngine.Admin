@@ -1,5 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Content;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
@@ -10,7 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 public sealed class ModelKeys(
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
-    VersionKeys keys)
+    ContentKeys keys)
 {
     /// <summary>Whether no other variable or calculated measure of the version has the key.</summary>
     /// <param name="key">The metric key.</param>

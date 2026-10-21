@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
@@ -15,18 +16,24 @@ namespace Quantalytix.QueryEngine.Admin.Api.Bridges;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgesController(BridgeService bridges) : ControllerBase
 {
-    /// <summary>Lists the bridges of the tenant but those into a report dimension, which belong to their report's design.</summary>
+    /// <summary>
+    /// Lists the bridges of the tenant with their purpose: <c>analytical</c>, or <c>report</c> for a bridge a report source owns,
+    /// with that source and its report.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the bridges.</param>
+    /// <param name="query">The purpose to narrow the list to; omitted for every bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The bridges by key.</returns>
-    /// <response code="200">The bridges by key, ignoring case; a report's own bridges are left out.</response>
+    /// <response code="200">The bridges of the purpose by key, ignoring case.</response>
+    /// <response code="400">The purpose is no <c>dimension_purpose</c> value.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<BridgeRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<BridgeRecord>>> List(string tenantId, CancellationToken cancellationToken)
+    [ProducesResponseType<IReadOnlyList<BridgeSummary>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    public async Task<ActionResult<IReadOnlyList<BridgeSummary>>> List(string tenantId, [FromQuery] BridgeListQuery query, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.ListAsync(cancellationToken));
+        return Ok(await bridges.ListAsync(query, cancellationToken));
     }
 
     /// <summary>Creates a bridge between two dimensions; it has no versions until one is created.</summary>
@@ -46,19 +53,19 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
         return Ok(await bridges.CreateAsync(input, cancellationToken));
     }
 
-    /// <summary>Reads one bridge.</summary>
+    /// <summary>Reads one bridge with its purpose and, for a report bridge, the report source that owns it.</summary>
     /// <param name="tenantId">The tenant that owns the bridge.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The bridge.</returns>
-    /// <response code="200">The bridge.</response>
+    /// <returns>The bridge's summary.</returns>
+    /// <response code="200">The bridge's summary.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{bridgeId:long}")]
-    [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BridgeRecord>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
+    [ProducesResponseType<BridgeSummary>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BridgeSummary>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.GetAsync(bridgeId, cancellationToken));
+        return Ok(await bridges.SummaryAsync(bridgeId, cancellationToken));
     }
 
     /// <summary>Edits a bridge's display name and availability; a change advances the semantic revision.</summary>
@@ -72,6 +79,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{bridgeId:long}")]
+    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeRecord>> Update(string tenantId, long bridgeId, BridgeInput input, CancellationToken cancellationToken)
@@ -91,6 +99,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.</response>
     [HttpDelete("{bridgeId:long}")]
+    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long bridgeId, CancellationToken cancellationToken)

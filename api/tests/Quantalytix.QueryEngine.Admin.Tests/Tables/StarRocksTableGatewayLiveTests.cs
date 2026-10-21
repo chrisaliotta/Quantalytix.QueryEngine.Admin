@@ -1,11 +1,7 @@
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Configuration;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
@@ -23,9 +19,6 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Tables;
 /// </summary>
 public sealed class StarRocksTableGatewayLiveTests
 {
-    /// <summary>The tenant whose database the round trip writes to.</summary>
-    private const string TenantId = "development";
-
     /// <summary>The JSON the insert writes to the first row's <c>properties</c> column.</summary>
     private const string InsertedProperties = """{"origin":"admin-api-live-test","tags":["a","b"],"n":1}""";
 
@@ -39,13 +32,7 @@ public sealed class StarRocksTableGatewayLiveTests
     private static readonly DateTime PublicationTime = new DateTime(2026, 10, 14, 17, 30, 15, DateTimeKind.Utc).AddTicks(1234567);
 
     /// <summary>Whether the live round trip is enabled.</summary>
-    public static bool IsEnabled
-    {
-        get
-        {
-            return string.Equals(Environment.GetEnvironmentVariable("QE_ADMIN_LIVE_GATEWAY"), "true", StringComparison.OrdinalIgnoreCase);
-        }
-    }
+    public static bool IsEnabled => LiveTenant.IsEnabled;
 
     /// <summary>
     /// Two dataset versions of a dataset no release references round-trip through insert, upsert, update and delete, keeping
@@ -56,7 +43,7 @@ public sealed class StarRocksTableGatewayLiveTests
     public async Task GatewayStatements_RoundTripThroughStarRocks()
     {
         var token = TestContext.Current.CancellationToken;
-        await using var services = TenantServices();
+        await using var services = LiveTenant.Services();
         await using var scope = services.CreateAsyncScope();
         var gateway = scope.ServiceProvider.GetRequiredService<ITableGateway<DatasetVersionRecord>>();
         var ids = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
@@ -140,19 +127,6 @@ public sealed class StarRocksTableGatewayLiveTests
         return value.AddTicks(-(value.Ticks % TimeSpan.TicksPerSecond));
     }
 
-    /// <summary>The StarRocks infrastructure as the API registers it, scoped to the development tenant.</summary>
-    private static ServiceProvider TenantServices()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddUserSecrets(typeof(AdminPolicies).Assembly)
-            .AddEnvironmentVariables()
-            .Build();
-        return new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
-            .AddStarRocksInfrastructure(configuration)
-            .AddSingleton<ITenantContext>(new FixedTenantContext(TenantId))
-            .BuildServiceProvider();
-    }
 
     /// <summary>A draft version of a dataset over the <c>loan_daily</c> table.</summary>
     private static DatasetVersionRecord DatasetVersion(long datasetVersionId, long datasetId, int versionNumber, string? properties)

@@ -43,13 +43,7 @@ internal sealed class RequireEditableFilter(
         }
 
         var executed = await next();
-        if (state.Status == PublicationStatuses.Published && Succeeded(executed))
+        if (state.Status == PublicationStatuses.Published && ExecutedActions.Succeeded(executed))
             await semanticRevision.AdvanceAsync(context.HttpContext.RequestAborted);
-    }
-
-    /// <summary>A write succeeded when the action threw nothing and answered with a 2xx status, or with no status of its own.</summary>
-    private static bool Succeeded(ActionExecutedContext executed)
-    {
-        return executed.Exception is null && (executed.Result as IStatusCodeActionResult)?.StatusCode is null or (>= 200 and < 300);
     }
 }

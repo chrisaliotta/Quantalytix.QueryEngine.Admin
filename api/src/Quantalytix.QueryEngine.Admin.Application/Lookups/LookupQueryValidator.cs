@@ -27,11 +27,10 @@ public sealed class LookupQueryValidator : AbstractValidator<LookupQuery>
         LookupKinds.BridgeVersions,
         LookupKinds.ModelVersions,
         LookupKinds.Variables,
-        LookupKinds.VariableSources,
+        LookupKinds.ReportSources,
         LookupKinds.SourceProfiles,
         LookupKinds.CalculatedMeasures,
         LookupKinds.CalculationDimensions,
-        LookupKinds.ReportVersions,
         LookupKinds.ReportColumns);
 
     /// <summary>Declares the rules.</summary>

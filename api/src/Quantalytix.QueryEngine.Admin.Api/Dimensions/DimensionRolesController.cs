@@ -79,7 +79,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
         return Ok(await roles.UpdateAsync(roleId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a role that no binding, calculation dimension or variable source names.</summary>
+    /// <summary>Deletes a role that no binding, calculation dimension or report source names.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
     /// <param name="dimensionId">The role's dimension.</param>
     /// <param name="roleId">The role.</param>
@@ -88,7 +88,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="204">The role is deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions and variable sources that name the role.</response>
+    /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions and report sources that name the role.</response>
     [HttpDelete("{roleId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

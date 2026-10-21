@@ -9,9 +9,6 @@ public record ReportInput
     /// <summary>Free-form classification such as <c>margin_analysis</c>.</summary>
     public required string ReportType { get; init; }
 
-    /// <summary>Administrative availability flag.</summary>
-    public required bool IsEnabled { get; init; }
-
-    /// <summary>Optional catalog payload passed through to clients.</summary>
+    /// <summary>Optional payload passed through to clients.</summary>
     public string? PayloadJson { get; init; }
 }

@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Reads the keys of dimension versions, above all of a dimension's published version: the active assumption set pins it, so
-/// bindings, mapping entries, bridge mappings and reports resolve the keys they name in it. While a set of versions validates
-/// together, a dimension version of the set counts as its dimension's published version.
+/// bindings, mapping entries, bridge mappings and reports resolve the keys they name in it. While a dimension version's own rules
+/// run, it counts as its dimension's published version.
 /// </summary>
 public sealed class PublishedDimensionReader(
     ITableGateway<DimensionVersionRecord> versions,

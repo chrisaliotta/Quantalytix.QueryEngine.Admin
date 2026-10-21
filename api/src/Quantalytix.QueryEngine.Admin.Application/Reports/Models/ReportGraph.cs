@@ -3,44 +3,47 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// A report version's content with the metrics of the model version it is checked against, which the report rules follow: its
-/// model's published version, or the model version being published. The metrics are empty while the model has no published
-/// version, which <c>model_version_published</c> reports.
+/// A report's content with the metrics of the model version it is checked against, which the report rules evaluate in memory: the
+/// report as it stands, or as a write would leave it. The model version is its model's published version, or the one being
+/// validated.
 /// </summary>
 public sealed record ReportGraph
 {
-    /// <summary>The report, which names the report's dimension.</summary>
+    /// <summary>The report, with its settings.</summary>
     public required ReportRecord Report { get; init; }
 
-    /// <summary>The report version.</summary>
-    public required ReportVersionRecord Version { get; init; }
+    /// <summary>The members of the report dimension's version, which are the report's member rows.</summary>
+    public required IReadOnlyList<DimensionMemberRecord> Members { get; init; }
 
-    /// <summary>The version's columns.</summary>
-    public required IReadOnlyList<ReportColumnRecord> Columns { get; init; }
-
-    /// <summary>The version's overlay rows.</summary>
+    /// <summary>The report's overlay rows.</summary>
     public required IReadOnlyList<ReportLineRecord> Lines { get; init; }
 
-    /// <summary>The version's member options.</summary>
+    /// <summary>The report's member options.</summary>
     public required IReadOnlyList<ReportMemberOptionRecord> MemberOptions { get; init; }
 
-    /// <summary>The version's variable scopes.</summary>
+    /// <summary>The report's variable scopes.</summary>
     public required IReadOnlyList<ReportVariableScopeRecord> Scopes { get; init; }
 
-    /// <summary>The version's source profiles.</summary>
+    /// <summary>The report's columns.</summary>
+    public required IReadOnlyList<ReportColumnRecord> Columns { get; init; }
+
+    /// <summary>The report's source profiles.</summary>
     public required IReadOnlyList<SourceProfileRecord> Profiles { get; init; }
 
-    /// <summary>The picks of the version's profiles.</summary>
+    /// <summary>The picks of the report's profiles.</summary>
     public required IReadOnlyList<SourceProfileVariableRecord> Picks { get; init; }
 
-    /// <summary>The version's enabled sources, which its profiles may pick.</summary>
-    public required IReadOnlyList<VariableSourceRecord> Sources { get; init; }
+    /// <summary>The report's sources.</summary>
+    public required IReadOnlyList<ReportSourceRecord> Sources { get; init; }
 
-    /// <summary>The version's enabled calculation dimensions.</summary>
+    /// <summary>The variables the report's sources supply.</summary>
+    public required IReadOnlyList<ReportSourceVariableRecord> SourceVariables { get; init; }
+
+    /// <summary>The report's calculation dimensions, enabled or not.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
 
-    /// <summary>The model version the report is checked against; null while the model has no published version.</summary>
-    public required CalculationModelVersionRecord? Model { get; init; }
+    /// <summary>The model version the report is checked against.</summary>
+    public required CalculationModelVersionRecord Model { get; init; }
 
     /// <summary>The model version's variables.</summary>
     public required IReadOnlyList<VariableRecord> Variables { get; init; }
@@ -50,4 +53,7 @@ public sealed record ReportGraph
 
     /// <summary>The <c>report_key</c> of the report.</summary>
     public string ReportKey => Report.ReportKey;
+
+    /// <summary>The calculation dimensions the engine reads: the enabled ones.</summary>
+    public IEnumerable<CalculationDimensionRecord> EnabledDimensions => Dimensions.Where(dimension => dimension.IsEnabled);
 }

@@ -1,17 +1,17 @@
 # Query Engine Admin API architecture diagrams
 
-The Query Engine Admin API is the .NET 10 ASP.NET Core Web API that authors the semantic metadata the Quantalytix query engine reads from StarRocks: datasets with their fields, grains, bindings and measures; dimensions with their levels, members and range bands; mapping sets, bridges, semantic releases and assumption sets; calculation models with their variables and formulas, and the reports over them with their sources, profiles, calculation dimensions, columns and rows; and the control plane's tenant directory. It writes each tenant's `qe_*` tables through table gateways, one statement per call, moves the eight versioned kinds through a draft, validated, published and retired lifecycle guarded by publication and retirement rules, and advances the tenant's semantic revision whenever rows the engine may have cached change. The engine never sees a draft: it loads published rows through the `vw_qe_*` views, and dataset and report versions only through the active release.
+The Query Engine Admin API is the .NET 10 ASP.NET Core Web API that authors the semantic metadata the Quantalytix query engine reads from StarRocks: datasets with their fields, grains, bindings and measures; dimensions with their levels, members and range bands; mapping sets, bridges, semantic releases and assumption sets; calculation models with their variables and formulas, and the reports over them with their rows, sources and the bridges they own, variables, profiles, calculation dimensions and columns; and the control plane's tenant directory. It writes each tenant's `qe_*` tables through table gateways, one statement per call, moves the six versioned kinds through a draft, validated, published and retired lifecycle guarded by publication and retirement rules, checks every change to an enabled report against the report rules before writing it, and advances the tenant's semantic revision whenever rows the engine may have cached change. The engine never sees a draft or a disabled report: it loads published rows and enabled reports through the `vw_qe_*` views, and dataset versions only through the active release.
 
-Describes `main` at a3ba75b (2026-10-14). The drawings describe implemented behavior only.
+Describes `main` as of 2026-10-20, after eef70ae. The drawings describe implemented behavior only.
 
 | Page | Drawings |
 | --- | --- |
 | [High-level architecture](01-architecture.md) | Runtime components, project dependencies, composition root; feature map table |
 | [Request pipeline](02-request-pipeline.md) | A tenant-scoped write, development sign-in and session, tenant routing; error responses table |
 | [Core classes](03-core-classes.md) | Authentication and tenancy, persistence, versioning, errors and validation |
-| [Version lifecycle](04-version-lifecycle.md) | Lifecycle states of the standard kinds and of assumption sets, leaving draft, publishing, publishing a set together, retiring; semantic revision and lifecycle handler tables |
-| [Feature classes](05-feature-classes.md) | One class diagram per feature area: datasets, dimensions, mappings, bridges, bindings, measures, releases, assumption sets, system tenants, calculation models and reports, report designs |
-| [Key actions](06-key-actions.md) | Eleven write sequences, from creating a dataset to a blocked delete, in the order their statements run |
+| [Version lifecycle](04-version-lifecycle.md) | Lifecycle states of the standard kinds and of assumption sets, leaving draft, publishing, retiring, the report gate; semantic revision and lifecycle handler tables |
+| [Feature classes](05-feature-classes.md) | One class diagram per feature area: datasets, dimensions, mappings, bridges, bindings, measures, releases, assumption sets, system tenants, calculation models and reports, the report editor |
+| [Key actions](06-key-actions.md) | Thirteen write sequences, from creating a dataset to a blocked delete, in the order their statements run |
 
 Endpoint-by-endpoint detail, with request and response schemas and status codes, is in the [OpenAPI document](../../openapi/admin-api.json), which every build regenerates. Building, configuring, testing and running the API are in the [API README](../../README.md). The query engine documents its side in its own [architecture diagrams](../../../../Quantalytix.QueryEngine/docs/architecture/README.md); links into the query engine assume its checkout sits beside this repository, at the default `QueryEngineRoot`.
 

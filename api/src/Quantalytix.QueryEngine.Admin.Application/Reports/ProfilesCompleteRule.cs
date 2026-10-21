@@ -4,52 +4,41 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>profiles_complete</c>: every enabled profile of a report picks an enabled source for every variable its columns and formula
-/// rows read, through the model version's formulas, because a run under the profile reads each variable it needs from the profile's
-/// pick; a missing or disabled pick leaves the variable without data. Variables the report never reads need no pick. Report versions
-/// and calculation model versions both run the rule.
+/// <c>profiles_complete</c>: every enabled profile of a report picks, for every variable its columns and formula rows read through
+/// the model version's formulas, a source that supplies the variable, because a run under the profile reads each variable it needs
+/// from the profile's pick. Variables the report never reads need no pick.
 /// </summary>
-/// <param name="kind">The kind the rule is registered for.</param>
-/// <param name="reader">Reads the reports with the model version they are checked against.</param>
-public sealed class ProfilesCompleteRule(string kind, ReportGraphReader reader) : IPublicationRule
+public sealed class ProfilesCompleteRule : IReportRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "profiles_complete";
 
-    /// <summary>The kind the rule checks: report versions or calculation model versions.</summary>
-    public string Kind { get; } = kind;
-
-    /// <summary>Reports each enabled profile's missing or disabled picks.</summary>
-    /// <param name="versionId">The report or model version being validated.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports each enabled profile's missing picks, and picks of a source that does not supply the variable.</summary>
+    /// <param name="report">The report, with the model version it is checked against.</param>
+    /// <param name="scope">Unused: profiles and sources are the report's own.</param>
     /// <returns>One violation per variable a profile cannot fill.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        var violations = new List<RuleViolation>();
-        foreach (var report in await reader.ReportsAsync(Kind, versionId, cancellationToken))
+        var graph = new FormulaGraph(report.Variables, report.CalculatedMeasures);
+        var read = report.Columns.Select(column => column.MetricKey)
+            .Concat(report.Lines.Select(line => line.CalculatedMeasureKey).OfType<string>())
+            .SelectMany(graph.Variables)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var supplied = report.SourceVariables.Select(variable => (variable.ReportSourceId, variable.VariableKey)).ToHashSet();
+        var picked = report.Picks.ToDictionary(pick => (pick.SourceProfileId, pick.VariableKey), pick => pick.ReportSourceId);
+        foreach (var profile in report.Profiles.Where(profile => profile.IsEnabled).OrderBy(profile => profile.ProfileKey, StringComparer.Ordinal))
         {
-            var graph = new FormulaGraph(report.Variables, report.CalculatedMeasures);
-            var read = report.Columns.Select(column => column.MetricKey)
-                .Concat(report.Lines.Select(line => line.CalculatedMeasureKey).OfType<string>())
-                .SelectMany(graph.Variables)
-                .Distinct(StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
-            var enabledSources = report.Sources.Select(source => source.VariableSourceId).ToHashSet();
-            var picked = report.Picks.ToDictionary(pick => (pick.SourceProfileId, pick.VariableKey), pick => pick.VariableSourceId);
-            foreach (var profile in report.Profiles.Where(profile => profile.IsEnabled).OrderBy(profile => profile.ProfileKey, StringComparer.Ordinal))
+            var subject = $"Report '{report.ReportKey}' profile '{profile.ProfileKey}'";
+            foreach (var variable in read)
             {
-                var subject = $"Report '{report.ReportKey}' profile '{profile.ProfileKey}'";
-                foreach (var variable in read)
-                {
-                    if (!picked.TryGetValue((profile.SourceProfileId, variable), out var sourceId))
-                        violations.Add(Violation($"{subject} picks no source for variable '{variable}'."));
-                    else if (!enabledSources.Contains(sourceId))
-                        violations.Add(Violation($"{subject} picks a disabled source for variable '{variable}'."));
-                }
+                if (!picked.TryGetValue((profile.SourceProfileId, variable), out var sourceId))
+                    yield return Violation($"{subject} picks no source for variable '{variable}'.");
+                else if (!supplied.Contains((sourceId, variable)))
+                    yield return Violation($"{subject} picks a source that does not supply variable '{variable}'.");
             }
         }
-        return violations;
     }
 
     /// <summary>A violation of this rule.</summary>

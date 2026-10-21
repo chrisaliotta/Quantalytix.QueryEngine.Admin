@@ -1,7 +1,7 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// The complete variable scopes of an editable report version, as <c>PUT report-versions/{versionId}/variable-scopes</c> takes
+/// The complete variable scopes of a report, as <c>PUT reports/{reportId}/variable-scopes</c> takes
 /// them; a variable without a scope reads every row its sources classify.
 /// </summary>
 public sealed record ReportVariableScopesInput

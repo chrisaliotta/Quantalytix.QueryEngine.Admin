@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.Api.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
@@ -31,6 +32,7 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <response code="409">The lifecycle does not allow moving from the current status to the target; the detail names both.</response>
     /// <response code="422">Publication or retirement rules rejected the transition and the status is unchanged; <c>violations</c> lists why.</response>
     [HttpPut("{kind}/{id:long}/status")]
+    [RequireAnalytical(AnalyticalTarget.RoutedVersion, "id")]
     [ProducesResponseType<VersionState>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
@@ -42,16 +44,15 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
         CancellationToken cancellationToken)
     {
         var result = await workflow.TransitionAsync(version.Kind, version.Id, input.Status, cancellationToken);
-        var state = result.States.Single();
         if (result.Outcome == TransitionOutcome.NotAllowed)
         {
-            var detail = $"{version.Kind} {version.Id} is {state.Status}; it cannot move to {input.Status}.";
+            var detail = $"{version.Kind} {version.Id} is {result.State.Status}; it cannot move to {input.Status}.";
             return Problem(detail, statusCode: StatusCodes.Status409Conflict, title: "Transition not allowed");
         }
 
         if (result.Outcome == TransitionOutcome.Rejected)
             return RuleViolationResults.Create(HttpContext, $"{version.Kind} {version.Id} cannot become {input.Status}.", result.Violations);
-        return Ok(state);
+        return Ok(result.State);
     }
 
     /// <summary>

@@ -2,7 +2,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { EnabledBadge } from '@/shared/EnabledBadge';
 import { VersionContentTab } from '@/shared/VersionContentTab';
 import { SourceProfileSheet } from './SourceProfileSheet';
-import type { ReportVersion, SourceProfile } from './types';
+import type { EditorView, SourceProfile } from './types';
 
 const columns: ColumnDef<SourceProfile>[] = [
   { id: 'profileKey', header: 'Key', accessorFn: profile => profile.profile.profileKey },
@@ -16,20 +16,18 @@ const columns: ColumnDef<SourceProfile>[] = [
   },
 ];
 
-/** The version's source profiles: which source each variable reads when a request runs under the profile. */
-export function SourceProfilesTab({ version, isEditable }: { version: ReportVersion; isEditable: boolean }) {
+/** The report's source profiles: which source each variable reads when a request runs under the profile. */
+export function SourceProfilesTab({ view }: { view: EditorView }) {
   return (
     <VersionContentTab
       kind="profiles"
-      versionId={version.reportVersionId}
-      isEditable={isEditable}
+      ownerId={view.report.reportId}
+      isEditable
       columns={columns}
       noun="profile"
       identify={profile => ({ id: profile.profile.sourceProfileId, key: profile.profile.profileKey })}
-      deleteDescription="Its picks are deleted too. The version's default profile is kept."
-      renderSheet={(profile, onClose) => (
-        <SourceProfileSheet version={version} profile={profile} readOnly={!isEditable} onClose={onClose} />
-      )}
+      deleteDescription="Its picks are deleted too. The report's default profile is kept."
+      renderSheet={(profile, onClose) => <SourceProfileSheet view={view} profile={profile} onClose={onClose} />}
     />
   );
 }

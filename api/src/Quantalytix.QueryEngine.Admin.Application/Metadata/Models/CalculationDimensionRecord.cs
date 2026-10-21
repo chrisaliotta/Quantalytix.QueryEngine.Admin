@@ -1,7 +1,7 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
-/// A <c>qe_calculation_dimension</c> row: a dimension shared by a report version's datasets, which runs break out and filter by.
+/// A <c>qe_calculation_dimension</c> row: a dimension shared by a report's datasets, which runs break out and filter by.
 /// It reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its
 /// dataset binds the role.
 /// </summary>
@@ -10,10 +10,10 @@ public sealed record CalculationDimensionRecord
     /// <summary>Primary key.</summary>
     public required long CalculationDimensionId { get; init; }
 
-    /// <summary>The owning report version.</summary>
-    public required long ReportVersionId { get; init; }
+    /// <summary>The owning report.</summary>
+    public required long ReportId { get; init; }
 
-    /// <summary>Key, unique among the version's calculation dimensions.</summary>
+    /// <summary>Key, unique among the report's calculation dimensions.</summary>
     public required string DimensionKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

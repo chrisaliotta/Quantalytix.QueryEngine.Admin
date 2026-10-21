@@ -3,7 +3,7 @@ using Quantalytix.QueryEngine.Admin.Application.Expressions;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>Reads the calculation dimensions a report version's default filter and default pivot name.</summary>
+/// <summary>Reads the calculation dimensions a report's default filter and default pivot name.</summary>
 public static class ReportDefaults
 {
     /// <summary>The pivot's row dimensions, then its column dimensions.</summary>

@@ -13,11 +13,9 @@ public sealed class AssumptionPinReader(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<CalculationModelRecord> models,
-    ITableGateway<CalculationModelVersionRecord> modelVersions,
-    ITableGateway<ReportRecord> reports,
-    ITableGateway<ReportVersionRecord> reportVersions)
+    ITableGateway<CalculationModelVersionRecord> modelVersions)
 {
-    /// <summary>Lists a set's pins: dimensions, mapping sets, bridges, models, then reports, each by identity key.</summary>
+    /// <summary>Lists a set's pins: dimensions, mapping sets, bridges, then models, each by identity key.</summary>
     /// <param name="assumptionSetId">The assumption set.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The labelled pins.</returns>
@@ -41,11 +39,7 @@ public sealed class AssumptionPinReader(
             .. await LabelAsync(all[VersionKinds.CalculationModelVersion],
                 async ids => (await models.ListAsync(new { ModelId = ids }, cancellationToken)).ToDictionary(row => row.ModelId, row => row.ModelKey),
                 async ids => (await modelVersions.ListAsync(new { ModelVersionId = ids }, cancellationToken))
-                    .ToDictionary(row => row.ModelVersionId, row => (row.VersionNumber, row.Status))),
-            .. await LabelAsync(all[VersionKinds.ReportVersion],
-                async ids => (await reports.ListAsync(new { ReportId = ids }, cancellationToken)).ToDictionary(row => row.ReportId, row => row.ReportKey),
-                async ids => (await reportVersions.ListAsync(new { ReportVersionId = ids }, cancellationToken))
-                    .ToDictionary(row => row.ReportVersionId, row => (row.VersionNumber, row.Status)))
+                    .ToDictionary(row => row.ModelVersionId, row => (row.VersionNumber, row.Status)))
         ];
     }
 

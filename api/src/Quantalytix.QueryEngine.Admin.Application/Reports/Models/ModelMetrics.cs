@@ -5,9 +5,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>The variable and calculated measure keys of a model's published version, which report columns and lines name.</summary>
 public sealed record ModelMetrics
 {
-    /// <summary>The metrics of a model with no published version: none.</summary>
-    public static readonly ModelMetrics None = new() { VariableKeys = new HashSet<string>(), CalculatedMeasureKeys = new HashSet<string>() };
-
     /// <summary>The version's variable keys.</summary>
     public required IReadOnlySet<string> VariableKeys { get; init; }
 

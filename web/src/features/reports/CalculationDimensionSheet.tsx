@@ -18,19 +18,18 @@ interface CalculationDimensionValues extends GroupingValues {
 }
 
 export interface CalculationDimensionSheetProps {
-  versionId: number;
-  /** The dimension to edit or view; null to create one. */
+  reportId: number;
+  /** The dimension to edit; null to create one. */
   dimension: CalculationDimension | null;
-  readOnly: boolean;
   onClose: () => void;
 }
 
 /**
- * Creates, edits or shows a calculation dimension: a role, whose binding each source's dataset classifies rows by, with its
+ * Creates or edits a calculation dimension: a role, whose binding each source's dataset classifies rows by, with its
  * template's members grouped by member, level, ancestor or depth. Levels and members come from the template's published version.
  */
-export function CalculationDimensionSheet({ versionId, dimension, readOnly, onClose }: CalculationDimensionSheetProps) {
-  const save = useSaveVersionContent('calculation-dimensions', versionId, dimension?.calculationDimensionId ?? null);
+export function CalculationDimensionSheet({ reportId, dimension, onClose }: CalculationDimensionSheetProps) {
+  const save = useSaveVersionContent('calculation-dimensions', reportId, dimension?.calculationDimensionId ?? null);
   const roles = useLookup('dimension-roles');
   const form = useForm<CalculationDimensionValues>({
     defaultValues: {
@@ -67,10 +66,9 @@ export function CalculationDimensionSheet({ versionId, dimension, readOnly, onCl
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('dimension', dimension?.dimensionKey ?? null, readOnly)}
+      title={contentSheetTitle('dimension', dimension?.dimensionKey ?? null, false)}
       form={form}
       onSubmit={submit}
-      readOnly={readOnly}
     >
       <TextField name="dimensionKey" label="Key" description="The key report requests and defaults use; it cannot be a column key." />
       <TextField name="displayName" label="Name" />

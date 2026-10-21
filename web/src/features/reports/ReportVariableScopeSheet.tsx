@@ -2,10 +2,8 @@ import { useForm } from 'react-hook-form';
 import { contentSheetTitle } from '@/shared/contentSheet';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
 import { KeyField, VocabularyField } from '@/shared/form';
-import { usePublishedVersionItems } from '@/shared/useLatestVersionItems';
 import { useLookup } from '@/shared/useLookup';
-import { useReportDesign } from './designApi';
-import type { ReportVariableScopeInput, ReportVersion } from './types';
+import type { EditorView, ReportVariableScopeInput } from './types';
 
 /** Values of the scope sheet; a choice not made yet is null. */
 interface ReportVariableScopeValues {
@@ -15,25 +13,21 @@ interface ReportVariableScopeValues {
 }
 
 export interface ReportVariableScopeSheetProps {
-  version: ReportVersion;
-  /** The scope to edit or view; null to add one. */
+  view: EditorView;
+  /** The scope to edit; null to add one. */
   scope: ReportVariableScopeInput | null;
-  readOnly: boolean;
-  /** Saves the scope into the version's list. */
+  /** Saves the scope into the report's list. */
   onSave: (scope: ReportVariableScopeInput) => Promise<unknown>;
   onClose: () => void;
 }
 
 /**
- * Adds, edits or shows a variable scope: the row of the report whose branch a variable reads, exactly or with its descendants.
- * Variables come from the model's published version, the one the active assumption set pins, and rows from the report
- * dimension's version paired with the report version, so a draft can scope its new rows. A retired version shows its stored
- * keys only, because it has no design.
+ * Adds or edits a variable scope: the row of the report whose branch a variable reads, exactly or with its descendants. Variables
+ * come from the model's published version, and rows from the report dimension's one version.
  */
-export function ReportVariableScopeSheet({ version, scope, readOnly, onSave, onClose }: ReportVariableScopeSheetProps) {
-  const variables = usePublishedVersionItems('model-versions', version.modelId, 'variables');
-  const design = useReportDesign(version.status === 'retired' ? null : version.reportVersionId);
-  const members = useLookup('members', design.data?.dimensionVersionId ?? null);
+export function ReportVariableScopeSheet({ view, scope, onSave, onClose }: ReportVariableScopeSheetProps) {
+  const variables = useLookup('variables', view.modelVersionId);
+  const members = useLookup('members', view.dimensionVersionId);
   const form = useForm<ReportVariableScopeValues>({
     defaultValues: {
       variableKey: scope?.variableKey ?? null,
@@ -54,19 +48,13 @@ export function ReportVariableScopeSheet({ version, scope, readOnly, onSave, onC
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={contentSheetTitle('scope', scope?.variableKey ?? null, readOnly)}
-      description="A variable without a scope reads every row its sources classify."
+      title={contentSheetTitle('scope', scope?.variableKey ?? null, false)}
+      description="A variable without a scope reads every row its sources reach."
       form={form}
       onSubmit={submit}
-      readOnly={readOnly}
     >
-      <KeyField name="variableKey" label="Variable" items={variables} description="Each variable takes one scope." />
-      <KeyField
-        name="scopeMemberKey"
-        label="Row"
-        items={members.data ?? null}
-        description="A data or group row of the report's design, such as LOANS."
-      />
+      <KeyField name="variableKey" label="Variable" items={variables.data ?? null} description="Each variable takes one scope." />
+      <KeyField name="scopeMemberKey" label="Row" items={members.data ?? null} description="A data or group row of the report, such as LOANS." />
       <VocabularyField
         name="selectionScope"
         label="Selection"

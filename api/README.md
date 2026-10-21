@@ -1,14 +1,16 @@
 # Query Engine Admin API
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
-datasets, fields, grains, dimensions and their roles, members, mappings, bridges, bindings, measures, calculation models,
-reports, their versions, releases, assumption sets and the tenant directory. A role is a named use of a dimension, such
+datasets, fields, grains, dimensions and their roles, members, mappings, bridges, bindings, measures, calculation models
+and their versions, reports, releases, assumption sets and the tenant directory. A role is a named use of a dimension, such
 as `servicingBranch` of `branch`: a binding binds a field to a role, and requests name the binding by the role's key.
 Drafts never reach queries. Dataset versions reach them only
-through an activated release. Dimension, mapping, bridge, calculation model and report versions are living: the
+through an activated release. Dimension, mapping, bridge and calculation model versions are living: the
 published one is the default every request reads through the active assumption set, edits to it are live, and publishing
-the next version retires it. A request can name a captured historical assumption set to backtest against the versions of
-its time, over the dataset versions of the release that was active when it was captured.
+the next version retires it. A query can name a captured historical assumption set to backtest against the versions of
+its time, over the dataset versions of the release that was active when it was captured. Reports are not versioned: the
+report editor builds a report's rows and sources in place, the engine runs a report while it is enabled, always on the
+active assumption set, and every write to an enabled report is checked against the report rules before it is made.
 
 | Project | Holds |
 |---|---|
@@ -28,8 +30,8 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_18.sql`.
-- A tenant database at metadata schema version 9 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_19.sql`.
+- A tenant database at metadata schema version 10 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 
@@ -78,8 +80,10 @@ dotnet test --solution Quantalytix.QueryEngine.Admin.slnx --no-build
 - Don't pass `-maxcpucount` to `dotnet test`. The platform forwards it to the test app, which then runs no tests.
 - To run one class, use the xUnit runner from the test project's directory:
   `./bin/Debug/net10.0/Quantalytix.QueryEngine.Admin.Tests -class <full class name>`.
-- The live gateway round trip is skipped unless you opt in with `QE_ADMIN_LIVE_GATEWAY=true`. It writes and then deletes
-  its own rows in tenant `development`, so it needs the control-plane secret and the cluster.
+- The live tests are skipped unless you opt in with `QE_ADMIN_LIVE_GATEWAY=true`: the gateway round trip, a check that
+  every seeded report passes the report rules and opens in the editor, and a new report's round trip from creation to
+  deletion. They write and then delete their own rows in tenant `development`, so they need the control-plane secret and
+  the cluster.
 
 ## Run
 
@@ -115,16 +119,16 @@ Commit both files with the API change that produced them.
 the tenant `TENANT` names, it:
 
 1. authors dataset `${PREFIX}loans`, whose branch code binds the seed `branch` role, and publishes its v1;
-2. authors calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and report
-   `${PREFIX}margin` over it. The report's own report dimension starts as a copy of the seed `MarginStatement`
-   dimension. Its version is authored through the design endpoints: two GL monthly sources on the seed `account` role,
-   which start with the mappings of the seed `gl_account_to_margin` bridge and make profile `default`, a branch
-   calculation dimension on the `branch` role, the columns, and rows with a header and a formula row. It then publishes
-   the model, and the design's status changes publish the report with its dimension and bridges;
+2. authors and publishes calculation model `${PREFIX}margin`, which holds two variables and a yield formula, and builds
+   report `${PREFIX}margin` over it through the report editor. The report's own report dimension starts as a copy of the
+   seed `MarginStatement` dimension. Two GL monthly bridge sources on the seed `account` role map accounts to rows as the
+   seed report's `gl_monthly` source does, the second as a copy of the first, and their variables make profile
+   `default`; a branch calculation dimension on the `branch` role, the columns, and rows with a header and a formula row
+   follow. Enabling the report checks it against every report rule;
 3. creates release `${PREFIX}acceptance` as a copy of the active release plus the dataset version; the report runs
    against whichever release is active, so the release pins no report;
 4. validates, publishes and activates the release;
-5. renames the published report's yield column, a live edit;
+5. renames the enabled report's yield column, a live edit;
 6. runs `GetCatalog`, `Execute`, `GetReportCatalog` and `ExecuteReport` on the engine, and expects the report catalog
    to show the renamed column;
 7. re-activates the release that was active before.
@@ -137,7 +141,7 @@ Before you run it:
 - Run it outside any shell sandbox, because it calls localhost and StarRocks.
 - Load the seed kit, which registers tenant `development`: the report reads its `bank.balance_monthly` and
   `bank.income_monthly` datasets with their bindings of the `account` and `branch` roles, its `MarginStatement` and
-  `Branch` dimensions, its `gl_account_to_margin` bridge, and its 2024 data.
+  `Branch` dimensions, the account mappings of report `bank.margin_statement`'s `gl_monthly` source, and its 2024 data.
 - Use a new `PREFIX` for every run. Each run leaves `${PREFIX}loans`, the `${PREFIX}margin` model and report with the
   report's dimension and bridges, and `${PREFIX}acceptance` behind until you reload the seed kit, and their keys stay
   taken.

@@ -3,8 +3,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 /// <summary>A <c>qe_report_variable_scope</c> row: the member of the report dimension whose branch of the report one variable reads.</summary>
 public sealed record ReportVariableScopeRecord
 {
-    /// <summary>The owning report version; first part of the primary key.</summary>
-    public required long ReportVersionId { get; init; }
+    /// <summary>The owning report; first part of the primary key.</summary>
+    public required long ReportId { get; init; }
 
     /// <summary>The key of the model's variable; second part of the primary key.</summary>
     public required string VariableKey { get; init; }

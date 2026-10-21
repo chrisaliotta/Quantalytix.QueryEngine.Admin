@@ -1,15 +1,15 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_report_line</c> row: an overlay row of a report version, placed among the rows of the report dimension's members.</summary>
+/// <summary>A <c>qe_report_line</c> row: an overlay row of a report, placed among the rows of the report dimension's members.</summary>
 public sealed record ReportLineRecord
 {
     /// <summary>Primary key.</summary>
     public required long ReportLineId { get; init; }
 
-    /// <summary>The owning report version.</summary>
-    public required long ReportVersionId { get; init; }
+    /// <summary>The owning report.</summary>
+    public required long ReportId { get; init; }
 
-    /// <summary>Key, unique among the version's overlay rows and distinct from every member key of the report dimension.</summary>
+    /// <summary>Key, unique among the report's overlay rows and distinct from every member key of the report dimension.</summary>
     public required string LineKey { get; init; }
 
     /// <summary>Human-readable name.</summary>

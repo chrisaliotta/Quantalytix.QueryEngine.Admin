@@ -4,24 +4,8 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import { reportDesignKey, reportVariableScopesKey, reportVersionKey } from './queryKeys';
-import type {
-  NewReportInput,
-  NewReportVersionInput,
-  ReportColumnInput,
-  ReportInput,
-  ReportVariableScopeInput,
-  ReportVersionInput,
-} from './types';
-
-// Query keys start with [resource, tenantId] so invalidateTenantQueries reaches them.
-function reportsKey(tenantId: string) {
-  return ['reports', tenantId] as const;
-}
-
-function columnsKey(tenantId: string, versionId: number) {
-  return ['report-columns', tenantId, versionId] as const;
-}
+import { reportColumnsKey, reportEditorKey, reportKey, reportsKey, reportVariableScopesKey } from './queryKeys';
+import type { NewReportInput, Report, ReportColumnInput, ReportInput, ReportSettingsInput, ReportVariableScopeInput } from './types';
 
 /** The dimensions feature's key of a dimension version's members, so a member edit there refreshes what reads them here. */
 function dimensionMembersKey(tenantId: string, dimensionVersionId: number) {
@@ -33,6 +17,12 @@ function invalidate(...queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey })));
 }
 
+/** Caches a report a write answers with, and refreshes the list and the editor view, which holds it too. */
+function storeReport(tenantId: string, report: Report) {
+  queryClient.setQueryData(reportKey(tenantId, report.reportId), report);
+  return invalidate(reportsKey(tenantId), reportEditorKey(tenantId, report.reportId));
+}
+
 /** Every report of the current tenant, by key. */
 export function useReports() {
   const tenantId = useTenantId();
@@ -42,62 +32,41 @@ export function useReports() {
   });
 }
 
-/** One report, with its current-version pointer. */
+/** One report, with its settings and whether it is enabled. */
 export function useReport(reportId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: [...reportsKey(tenantId), reportId],
+    queryKey: reportKey(tenantId, reportId),
     queryFn: async () =>
       unwrap(await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } } })),
   });
 }
 
-/** One report version; `null` keeps the query idle until a version is selected. */
-export function useReportVersion(versionId: number | null) {
+/** The columns of a report, in display order. */
+export function useReportColumns(reportId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: reportVersionKey(tenantId, versionId ?? 0),
+    queryKey: reportColumnsKey(tenantId, reportId),
     queryFn: async () =>
-      unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}', {
-          params: { path: { tenantId, versionId: versionId as number } },
-        })
-      ),
-    enabled: versionId !== null,
+      unwrap(await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}/columns', { params: { path: { tenantId, reportId } } })),
   });
 }
 
-/** The columns of a report version, in display order. */
-export function useReportColumns(versionId: number) {
+/** The variable scopes of a report; a variable without one reads every row its sources reach. */
+export function useReportVariableScopes(reportId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: columnsKey(tenantId, versionId),
+    queryKey: reportVariableScopesKey(tenantId, reportId),
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/columns', {
-          params: { path: { tenantId, versionId } },
-        })
-      ),
-  });
-}
-
-/** The variable scopes of a report version; a variable without one reads every row its sources classify. */
-export function useReportVariableScopes(versionId: number) {
-  const tenantId = useTenantId();
-  return useQuery({
-    queryKey: reportVariableScopesKey(tenantId, versionId),
-    queryFn: async () =>
-      unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes', {
-          params: { path: { tenantId, versionId } },
-        })
+        await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}/variable-scopes', { params: { path: { tenantId, reportId } } })
       ),
   });
 }
 
 /**
  * The members of a dimension version, with their parents, sort orders and whether they take source values, such as the
- * members of a design source's bound dimension; `null` keeps the query idle until the version is known.
+ * members of a bridge source's item dimension; `null` keeps the query idle until the version is known.
  */
 export function useDimensionVersionMembers(dimensionVersionId: number | null) {
   const tenantId = useTenantId();
@@ -113,7 +82,7 @@ export function useDimensionVersionMembers(dimensionVersionId: number | null) {
   });
 }
 
-/** Creates a report with its own report dimension and without versions. */
+/** Creates a disabled report over a model with a published version, with its own report dimension. */
 export function useCreateReport() {
   const tenantId = useTenantId();
   return useMutation({
@@ -123,115 +92,99 @@ export function useCreateReport() {
   });
 }
 
-/** Edits a report's name, type, availability and payload; a change refreshes the engine's cached definitions. */
+/** Edits a report's name, type and payload; the engine reloads when the report is enabled. */
 export function useUpdateReport(reportId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (body: ReportInput) =>
-      unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } }, body })
-      ),
-    onSuccess: () => invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'reports')),
+      unwrap(await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } }, body })),
+    onSuccess: report => Promise.all([storeReport(tenantId, report), invalidate(lookupQueryKey(tenantId, 'reports'))]),
   });
 }
 
-/** Deletes a report whose versions are all drafts, with its report dimension and bridges; a 409 names what blocks it. */
+/** Replaces a report's default profile, subtotal position and defaults; an enabled report refuses settings that break its rules. */
+export function useUpdateReportSettings(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (body: ReportSettingsInput) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/settings', { params: { path: { tenantId, reportId } }, body })
+      ),
+    onSuccess: report => storeReport(tenantId, report),
+  });
+}
+
+/** Enables or disables a report; enabling answers 422 with the rules the report breaks, and it stays disabled. */
+export function useSetReportEnabled(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (isEnabled: boolean) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/status', {
+          params: { path: { tenantId, reportId } },
+          body: { isEnabled },
+        })
+      ),
+    onSuccess: report => storeReport(tenantId, report),
+  });
+}
+
+/** Checks a report against every report rule, enabled or not, changing nothing. */
+export function useReportCheck(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async () =>
+      unwrap(await apiClient.POST('/api/tenants/{tenantId}/reports/{reportId}/validation', { params: { path: { tenantId, reportId } } })),
+  });
+}
+
+/** Deletes a report with its content, its sources' bridges and its report dimension. */
 export function useDeleteReport() {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (reportId: number) =>
-      unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } } })
-      ),
+      unwrap(await apiClient.DELETE('/api/tenants/{tenantId}/reports/{reportId}', { params: { path: { tenantId, reportId } } })),
     onSuccess: () =>
       invalidate(
         reportsKey(tenantId),
         lookupQueryKey(tenantId, 'reports'),
-        lookupQueryKey(tenantId, 'report-versions'),
-        lookupQueryKey(tenantId, 'dimensions')
+        lookupQueryKey(tenantId, 'dimensions'),
+        lookupQueryKey(tenantId, 'bridges')
       ),
   });
 }
 
-/**
- * Creates the report's draft, empty or a copy of another version's content, with drafts of its report dimension and bridges
- * that copy their published versions.
- */
-export function useCreateReportVersion(reportId: number) {
-  const tenantId = useTenantId();
-  return useMutation({
-    mutationFn: async (body: NewReportVersionInput) =>
-      unwrap(
-        await apiClient.POST('/api/tenants/{tenantId}/reports/{reportId}/versions', {
-          params: { path: { tenantId, reportId } },
-          body,
-        })
-      ),
-    onSuccess: () => invalidate(lookupQueryKey(tenantId, 'report-versions'), lookupQueryKey(tenantId, 'dimension-versions')),
-  });
-}
-
-/** Edits a draft or published version's default profile, subtotal position and defaults. */
-export function useUpdateReportVersion(versionId: number) {
-  const tenantId = useTenantId();
-  return useMutation({
-    mutationFn: async (body: ReportVersionInput) =>
-      unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}', {
-          params: { path: { tenantId, versionId } },
-          body,
-        })
-      ),
-    onSuccess: () => invalidate(reportVersionKey(tenantId, versionId)),
-  });
-}
-
-/** Deletes the report's draft with all its content and the drafts paired with it. */
-export function useDeleteReportVersion() {
-  const tenantId = useTenantId();
-  return useMutation({
-    mutationFn: async (versionId: number) =>
-      unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/report-versions/{versionId}', {
-          params: { path: { tenantId, versionId } },
-        })
-      ),
-    onSuccess: () =>
-      invalidate(reportsKey(tenantId), lookupQueryKey(tenantId, 'report-versions'), lookupQueryKey(tenantId, 'dimension-versions')),
-  });
-}
-
-/** Replaces the columns of a draft or published version; the stored columns replace the cached list. */
-export function useReplaceReportColumns(versionId: number) {
+/** Replaces a report's columns; the stored columns replace the cached list. */
+export function useReplaceReportColumns(reportId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (columns: ReportColumnInput[]) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/columns', {
-          params: { path: { tenantId, versionId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/columns', {
+          params: { path: { tenantId, reportId } },
           body: { columns },
         })
       ),
     onSuccess: columns => {
-      queryClient.setQueryData(columnsKey(tenantId, versionId), columns);
-      return invalidate(lookupQueryKey(tenantId, 'report-columns'), reportDesignKey(tenantId, versionId));
+      queryClient.setQueryData(reportColumnsKey(tenantId, reportId), columns);
+      return invalidate(lookupQueryKey(tenantId, 'report-columns'), reportEditorKey(tenantId, reportId));
     },
   });
 }
 
-/** Replaces the variable scopes of a draft or published version; the stored scopes replace the cached list. */
-export function useReplaceReportVariableScopes(versionId: number) {
+/** Replaces a report's variable scopes; the stored scopes replace the cached list. */
+export function useReplaceReportVariableScopes(reportId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (scopes: ReportVariableScopeInput[]) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/report-versions/{versionId}/variable-scopes', {
-          params: { path: { tenantId, versionId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/variable-scopes', {
+          params: { path: { tenantId, reportId } },
           body: { scopes },
         })
       ),
     onSuccess: scopes => {
-      queryClient.setQueryData(reportVariableScopesKey(tenantId, versionId), scopes);
+      queryClient.setQueryData(reportVariableScopesKey(tenantId, reportId), scopes);
     },
   });
 }

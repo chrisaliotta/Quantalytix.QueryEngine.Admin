@@ -9,8 +9,8 @@ import { useDeleteVersionContent, useVersionContent, type ContentItem, type Cont
 
 export interface VersionContentTabProps<K extends ContentKind> {
   kind: K;
-  /** The model or report version the rows belong to, as the kind's routes name it. */
-  versionId: number;
+  /** The model version or report the rows belong to, as the kind's routes name it. */
+  ownerId: number;
   isEditable: boolean;
   /** The table's columns; the tab adds the delete action. */
   columns: ColumnDef<ContentItem<K>>[];
@@ -30,12 +30,11 @@ interface SheetRequest<K extends ContentKind> {
 }
 
 /**
- * One kind of a model or report version's content in a table; a draft or the published version adds, edits and deletes rows
- * in a sheet.
+ * One kind of a model version's or report's content in a table; an editable owner adds, edits and deletes rows in a sheet.
  */
 export function VersionContentTab<K extends ContentKind>({
   kind,
-  versionId,
+  ownerId,
   isEditable,
   columns,
   noun,
@@ -43,8 +42,8 @@ export function VersionContentTab<K extends ContentKind>({
   deleteDescription,
   renderSheet,
 }: VersionContentTabProps<K>) {
-  const rows = useVersionContent(kind, versionId);
-  const deleteRow = useDeleteVersionContent(kind, versionId);
+  const rows = useVersionContent(kind, ownerId);
+  const deleteRow = useDeleteVersionContent(kind, ownerId);
   const [sheet, setSheet] = useState<SheetRequest<K> | null>(null);
   const [deleting, setDeleting] = useState<ContentItem<K> | null>(null);
   const deletingKey = deleting === null ? '' : identify(deleting).key;

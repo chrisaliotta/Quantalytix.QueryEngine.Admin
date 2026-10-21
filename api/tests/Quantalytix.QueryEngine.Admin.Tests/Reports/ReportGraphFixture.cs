@@ -14,15 +14,15 @@ using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// The tables the report rules read, seeded with one published report that resolves. Release 900 is active and pins GL version 11,
+/// The tables the report rules read, seeded with one enabled report that resolves. Release 900 is active and pins GL version 11,
 /// whose <c>gl_account</c> binds role <c>gl_account</c> of account dimension 800, whose <c>as_of_date</c> is a time binding and
 /// whose <c>region</c> binds role <c>region</c> of region dimension 600. Report <c>balance_sheet</c> over dimension 500 reads model
-/// 40, whose published version 41 has variable <c>balance</c> and calculated measure <c>yield</c>. The report's published v1 returns
-/// <c>balance</c> in column <c>amount</c>, scopes it to member <c>assets</c>, fills it from GL's <c>balance</c> classified by the
-/// member keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
-/// dimension <c>region</c> on the region role. Version 501 of dimension 500 is published, with <c>total</c> at the root and
-/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. Model version 42 is an empty draft, and the loans
-/// dataset exists but is not pinned. Tests change rows to break one thing.
+/// 40, whose published version 41 has variable <c>balance</c> and calculated measure <c>yield</c>. The report returns
+/// <c>balance</c> in column <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's
+/// <c>balance</c> with the row keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and
+/// breaks out by calculation dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with
+/// <c>total</c> at the root and <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. Model version 42 is an
+/// empty draft, and the loans dataset exists but is not pinned. Tests change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
 {
@@ -37,6 +37,9 @@ internal sealed class ReportGraphFixture
 
     /// <summary>The loans version, which a test can pin.</summary>
     public const long LoansVersionId = 21;
+
+    /// <summary>The GL source.</summary>
+    public const long GlSourceId = 71;
 
     /// <summary>The draft version of model 40, which tests fill and validate as the version being published.</summary>
     public const long DraftModelVersionId = 42;
@@ -58,7 +61,7 @@ internal sealed class ReportGraphFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 9,
+        MetadataSchemaVersion = 10,
         SemanticRevision = 1,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -67,11 +70,8 @@ internal sealed class ReportGraphFixture
     /// <summary>The release pins GL v11.</summary>
     public InMemoryTableGateway<ReleaseDatasetRecord> Manifest { get; } = new(Pin(GlDatasetId, GlVersionId));
 
-    /// <summary>The balance sheet report.</summary>
-    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(Report());
-
-    /// <summary>The published v1 of the report, which defaults to the base profile.</summary>
-    public InMemoryTableGateway<ReportVersionRecord> ReportVersions { get; } = new(ReportVersion(ReportVersionId, PublicationStatuses.Published) with { DefaultProfileKey = "base" });
+    /// <summary>The balance sheet report, which defaults to the base profile.</summary>
+    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(Report() with { DefaultProfileKey = "base" });
 
     /// <summary>The amount column, which returns the balance variable.</summary>
     public InMemoryTableGateway<ReportColumnRecord> Columns { get; } = new(Column(1, "amount", ReportValueKinds.Variable, "balance", 1));
@@ -89,10 +89,13 @@ internal sealed class ReportGraphFixture
     public InMemoryTableGateway<SourceProfileRecord> Profiles { get; } = new(Profile(75, "base"));
 
     /// <summary>The base profile's pick of the GL source for the balance variable.</summary>
-    public InMemoryTableGateway<SourceProfileVariableRecord> Picks { get; } = new(Pick(75, "balance", 71));
+    public InMemoryTableGateway<SourceProfileVariableRecord> Picks { get; } = new(Pick(75, "balance", GlSourceId));
 
-    /// <summary>The GL source of the balance variable.</summary>
-    public InMemoryTableGateway<VariableSourceRecord> Sources { get; } = new(Source(71, "balance", "gl_balance", GlDatasetId));
+    /// <summary>The GL source.</summary>
+    public InMemoryTableGateway<ReportSourceRecord> Sources { get; } = new(Source(GlSourceId, "gl", GlDatasetId));
+
+    /// <summary>The GL source's supply of the balance variable.</summary>
+    public InMemoryTableGateway<ReportSourceVariableRecord> SourceVariables { get; } = new(SourceVariable(GlSourceId, "balance"));
 
     /// <summary>The region calculation dimension, on the region role.</summary>
     public InMemoryTableGateway<CalculationDimensionRecord> Dimensions { get; } = new(CalculationDimension(81, "region", RegionRoleId));
@@ -139,8 +142,15 @@ internal sealed class ReportGraphFixture
     /// <summary>The bridge from accounts into the report's dimension.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(BridgeRows.Bridge(AccountBridgeId, AccountDimensionId, ReportDimensionId));
 
-    /// <summary>Version 501 of the report dimension, published.</summary>
+    /// <summary>The bridge's one version, published.</summary>
+    public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(
+        BridgeRows.BridgeVersion(96, AccountBridgeId, 1, Cardinalities.ManyToOne, AllocationModes.None, PublicationStatuses.Published));
+
+    /// <summary>Version 501 of the report dimension, its one version, published.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(501, ReportDimensionId, 1, PublicationStatuses.Published));
+
+    /// <summary>No levels.</summary>
+    public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new();
 
     /// <summary>The report dimension's version 501: total at the root, with assets under it.</summary>
     public InMemoryTableGateway<DimensionMemberRecord> Members { get; } = new(
@@ -164,24 +174,68 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            DatabaseInfo, Manifest, Reports, ReportVersions, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, Dimensions, ModelVersions,
-            new ModelMetricsReader(ReportVersions, ModelVersions, Variables, CalculatedMeasures),
-            Variables, CalculatedMeasures, Datasets, Fields, Bindings, TimeBindings, Measures, Bridges, Roles);
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, Dimensions, ModelVersions,
+            Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+    }
+
+    /// <summary>The model metrics reader over these tables.</summary>
+    /// <returns>A reader of the published version of the report's model.</returns>
+    public ModelMetricsReader Metrics()
+    {
+        return new ModelMetricsReader(Reports, ModelVersions, Variables, CalculatedMeasures);
+    }
+
+    /// <summary>The reader of the versions the report owns.</summary>
+    /// <returns>A reader of the report dimension's and the bridges' versions.</returns>
+    public OwnedVersions Owned()
+    {
+        return new OwnedVersions(DimensionVersions, BridgeVersions);
+    }
+
+    /// <summary>The release dataset reader over these tables.</summary>
+    /// <returns>A reader of the pinned dataset versions.</returns>
+    public ReleaseDatasets ReleaseDatasets()
+    {
+        return new ReleaseDatasets(DatabaseInfo, Manifest, Datasets, Fields, Bindings, TimeBindings, Measures);
     }
 
     /// <summary>The published dimension reader over these tables.</summary>
-    /// <returns>A reader of the report dimension's published version.</returns>
+    /// <returns>A reader of the dimensions' published versions.</returns>
     public PublishedDimensionReader PublishedDimensions()
     {
-        return new PublishedDimensionReader(DimensionVersions, new InMemoryTableGateway<DimensionLevelRecord>(), Members, new PublicationSet());
+        return new PublishedDimensionReader(DimensionVersions, Levels, Members, new PublicationSet());
     }
 
-    /// <summary>Evaluates a rule against a version.</summary>
-    /// <param name="rule">The rule.</param>
-    /// <param name="versionId">The release, report version or model version the rule's kind validates.</param>
-    /// <returns>The rule's violations.</returns>
-    public static Task<IReadOnlyList<RuleViolation>> EvaluateAsync(IPublicationRule rule, long versionId)
+    /// <summary>Every report rule, over these tables.</summary>
+    /// <returns>The rules, as a write to an enabled report and enabling a report run them.</returns>
+    public ReportRules Rules()
     {
-        return rule.EvaluateAsync(versionId, Xunit.TestContext.Current.CancellationToken);
+        IReportRule[] rules =
+        [
+            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new DefaultProfileEnabledRule(), new ReportDefaultsResolveRule(),
+            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule()
+        ];
+        return new ReportRules(rules, Reader());
+    }
+
+    /// <summary>Checks the report as it stands against one rule, in the scope of the active release.</summary>
+    /// <param name="rule">The rule.</param>
+    /// <returns>The rule's violations.</returns>
+    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(IReportRule rule)
+    {
+        var cancellationToken = Xunit.TestContext.Current.CancellationToken;
+        var reader = Reader();
+        var report = await reader.ReadAsync(await Reports.GetAsync(new { ReportId }, cancellationToken), cancellationToken);
+        return [.. rule.Evaluate(report, await reader.ScopeAsync([report], null, cancellationToken))];
+    }
+
+    /// <summary>Checks the enabled reports a model version or a release being validated serves against one rule.</summary>
+    /// <param name="rule">The rule.</param>
+    /// <param name="kind">The kind being validated: <c>calculation_model_version</c> or <c>semantic_release</c>.</param>
+    /// <param name="versionId">The version being validated.</param>
+    /// <returns>The rule's violations.</returns>
+    public Task<IReadOnlyList<RuleViolation>> EvaluateConsumersAsync(IReportRule rule, string kind, long versionId)
+    {
+        return new ReportConsumerRule(kind, rule, Reader()).EvaluateAsync(versionId, Xunit.TestContext.Current.CancellationToken);
     }
 }

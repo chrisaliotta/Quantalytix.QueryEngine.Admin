@@ -11,8 +11,8 @@ function grouping(dimension: CalculationDimension) {
   return [dimension.groupingMode, reference].filter(part => part != null).join(' ');
 }
 
-/** The version's calculation dimensions: the roles the report can break out or filter by, each with its default grouping. */
-export function CalculationDimensionsTab({ versionId, isEditable }: { versionId: number; isEditable: boolean }) {
+/** The report's calculation dimensions: the roles it can break out or filter by, each with its default grouping. */
+export function CalculationDimensionsTab({ reportId }: { reportId: number }) {
   const roles = useLookup('dimension-roles');
   const roleLabels = new Map(roles.data?.map(item => [item.id, item.label]));
 
@@ -29,14 +29,14 @@ export function CalculationDimensionsTab({ versionId, isEditable }: { versionId:
   return (
     <VersionContentTab
       kind="calculation-dimensions"
-      versionId={versionId}
-      isEditable={isEditable}
+      ownerId={reportId}
+      isEditable
       columns={columns}
       noun="dimension"
       identify={dimension => ({ id: dimension.calculationDimensionId, key: dimension.dimensionKey })}
-      deleteDescription="Report defaults name dimensions by key, so validating the version reports a default that no longer resolves."
+      deleteDescription="Report defaults name dimensions by key, so an enabled report keeps a dimension its defaults name."
       renderSheet={(dimension, onClose) => (
-        <CalculationDimensionSheet versionId={versionId} dimension={dimension} readOnly={!isEditable} onClose={onClose} />
+        <CalculationDimensionSheet reportId={reportId} dimension={dimension} onClose={onClose} />
       )}
     />
   );

@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -13,6 +14,7 @@ public sealed class AssumptionSetService(
     ITableGateway<AssumptionSetRecord> sets,
     AssumptionPins pins,
     AssumptionPinReader pinReader,
+    ReportOwnership ownership,
     ITableGateway<DatabaseInfoRecord> databaseInfo,
     SemanticRevision semanticRevision,
     IIdGenerator ids,
@@ -46,6 +48,7 @@ public sealed class AssumptionSetService(
     /// <summary>
     /// Captures a historical set: a copy of the active set's pins under a new key, stamped with the capture time, that reads the
     /// active release's dataset versions from then on, so a backtest runs the pins over the datasets they were validated with.
+    /// Reports always run on the active set, so the pins of report dimensions and of the bridges into them are not copied.
     /// </summary>
     /// <param name="input">The validated key and labels.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
@@ -67,7 +70,14 @@ public sealed class AssumptionSetService(
             CreatedAt = now
         };
         await sets.InsertAsync(set, cancellationToken);
-        await pins.InsertAsync(set.AssumptionSetId, await pins.ListAsync(active.AssumptionSetId, cancellationToken), cancellationToken);
+        var (reportDimensions, reportBridges) = await ownership.OwnedIdsAsync(cancellationToken);
+        PinnedVersion[] captured =
+        [
+            .. (await pins.ListAsync(active.AssumptionSetId, cancellationToken)).Where(pin =>
+                !(pin.Kind == VersionKinds.DimensionVersion && reportDimensions.Contains(pin.IdentityId))
+                && !(pin.Kind == VersionKinds.BridgeVersion && reportBridges.Contains(pin.IdentityId)))
+        ];
+        await pins.InsertAsync(set.AssumptionSetId, captured, cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return set;
     }

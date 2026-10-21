@@ -2,23 +2,17 @@ import type { components } from '@/api/schema';
 
 type Schemas = components['schemas'];
 
-/** A report with its own report dimension, whose members are its rows and which it creates (`qe_report`). */
+/** A report: its rows are a dimension of its own, it reads one calculation model, and the engine sees it while enabled (`qe_report`). */
 export type Report = Schemas['ReportRecord'];
 
-/** A version of a report over one calculation model, with its data, rows, columns and defaults (`qe_report_version`). */
-export type ReportVersion = Schemas['ReportVersionRecord'];
-
-/** A column of a report version: the key of the model metric it returns, with optional label and format overrides (`qe_report_column`). */
+/** A column of a report: the key of the model metric it returns, with optional label and format overrides (`qe_report_column`). */
 export type ReportColumn = Schemas['ReportColumnRecord'];
 
-/** The member whose branch of the report a variable reads, and whether its descendants count (`qe_report_variable_scope`). */
+/** The row whose branch of the report a variable reads, and whether its descendants count (`qe_report_variable_scope`). */
 export type ReportVariableScope = Schemas['ReportVariableScopeRecord'];
 
 /** A member of a dimension version, with its parent, its sort order and whether it takes source values. */
 export type DimensionMember = Schemas['DimensionMemberRecord'];
-
-/** Where a variable can read its values: a dataset's classification field, time field, measure and filter (`qe_variable_source`). */
-export type VariableSource = Schemas['VariableSourceRecord'];
 
 /** A source profile with its picks: the source each variable reads under the profile. */
 export type SourceProfile = Schemas['SourceProfile'];
@@ -29,53 +23,56 @@ export type SourceProfilePick = Schemas['SourceProfilePick'];
 /** A dimension the report can break out or filter by: a role with a grouping of its template's members (`qe_calculation_dimension`). */
 export type CalculationDimension = Schemas['CalculationDimensionRecord'];
 
-/** How a source classifies a dataset's rows into the report's dimension: the kind, the field or role, and the mapping set or bridge. */
-export type ClassificationInput = Schemas['ClassificationInput'];
-
 /** Body of `POST reports`. */
 export type NewReportInput = Schemas['NewReportInput'];
 
 /** Body of `PUT reports/{reportId}`. */
 export type ReportInput = Schemas['ReportInput'];
 
-/** Body of `POST reports/{reportId}/versions`. */
-export type NewReportVersionInput = Schemas['NewReportVersionInput'];
+/** Body of `PUT reports/{reportId}/settings`. */
+export type ReportSettingsInput = Schemas['ReportSettingsInput'];
 
-/** Body of `PUT report-versions/{versionId}`. */
-export type ReportVersionInput = Schemas['ReportVersionInput'];
-
-/** One column of `PUT report-versions/{versionId}/columns`, naming its metric by key. */
+/** One column of `PUT reports/{reportId}/columns`, naming its metric by key. */
 export type ReportColumnInput = Schemas['ReportColumnInput'];
 
-/** One scope of `PUT report-versions/{versionId}/variable-scopes`. */
+/** One scope of `PUT reports/{reportId}/variable-scopes`. */
 export type ReportVariableScopeInput = Schemas['ReportVariableScopeInput'];
 
-/** A report version as one design: its rows with the source items mapped to each, and its sources. */
-export type ReportDesign = Schemas['ReportDesign'];
+/** A report as its editor shows it: its rows with the items each bridge source maps to them, and its sources. */
+export type EditorView = Schemas['EditorView'];
 
-/** One row of a design: a member of the report dimension or an overlay row. */
-export type DesignRow = Schemas['DesignRow'];
+/** One row of a report: a member of the report dimension or an overlay row. */
+export type EditorRow = Schemas['EditorRow'];
 
-/** One source item mapped to a row: an entry of the source's bridge. */
-export type DesignRowMapping = Schemas['DesignRowMapping'];
+/** One item a bridge source maps to a row: an entry of the source's bridge. */
+export type EditorRowItem = Schemas['EditorRowItem'];
 
-/** One source of a design: a bridge from a bound dimension, with the variable sources that classify through it. */
-export type DesignSource = Schemas['DesignSource'];
+/** One source of a report, with its dataset, item dimension, bridge version, unmapped count and variables. */
+export type EditorSource = Schemas['EditorSource'];
 
-/** One row of `PUT report-versions/{versionId}/design/rows`. */
-export type DesignRowInput = Schemas['DesignRowInput'];
+/** A dataset a report reads, and whether its rows reach the report's rows by bridge or by field (`qe_report_source`). */
+export type ReportSource = Schemas['ReportSourceRecord'];
 
-/** Body of `PUT report-versions/{versionId}/design/sources/{bridgeId}`. */
-export type DesignSourceInput = Schemas['DesignSourceInput'];
+/** The dataset measure a source supplies one variable with, and its filter (`qe_report_source_variable`). */
+export type ReportSourceVariable = Schemas['ReportSourceVariableRecord'];
 
-/** Body of `POST report-versions/{versionId}/design/sources`. */
-export type NewDesignSourceInput = Schemas['NewDesignSourceInput'];
+/** One row of `PUT reports/{reportId}/rows`. */
+export type ReportRowInput = Schemas['ReportRowInput'];
 
-/** Body of `PUT report-versions/{versionId}/design/row-mappings`. */
-export type RowMappingsInput = Schemas['RowMappingsInput'];
+/** Body of `POST reports/{reportId}/sources`. */
+export type NewReportSourceInput = Schemas['NewReportSourceInput'];
 
-/** One item of a row's mapping list. */
-export type RowMappingInput = Schemas['RowMappingInput'];
+/** Body of `PUT reports/{reportId}/sources/{sourceId}`. */
+export type ReportSourceInput = Schemas['ReportSourceInput'];
 
-/** The `design_row_kind` vocabulary: data and group rows are members of the report dimension, sections and formulas overlay rows. */
-export type DesignRowKind = 'data' | 'group' | 'section' | 'formula';
+/** One variable of `PUT reports/{reportId}/sources/{sourceId}/variables`. */
+export type SourceVariableInput = Schemas['SourceVariableInput'];
+
+/** One item of `PUT reports/{reportId}/sources/{sourceId}/items`. */
+export type SourceItemInput = Schemas['SourceItemInput'];
+
+/** The `report_row_kind` vocabulary: data and group rows are members of the report dimension, sections and formulas overlay rows. */
+export type ReportRowKind = 'data' | 'group' | 'section' | 'formula';
+
+/** The `report_mapping_method` vocabulary: a source reaches the rows through its own bridge, or by a field of row keys. */
+export type ReportMappingMethod = 'bridge' | 'direct';

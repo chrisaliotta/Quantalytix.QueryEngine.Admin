@@ -3,11 +3,10 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
-/// The versions that count as their identities' published versions while the publication rules of one transition run. A rule
-/// checks the keys a version names against the published versions of the objects it names; when several versions validate
-/// together, as a report's draft does with the drafts of its report dimension and bridges, each counts as its identity's
-/// published version, so a set that removes one row and adds another validates as a whole. Empty outside a transition, when the
-/// published versions count.
+/// The version that counts as its identity's published version while the rules of one transition run. A rule checks the keys a
+/// version names against the published versions of the objects it names; while a version's own rules run, it counts as its
+/// identity's published version, so the rules see the content it is about to publish rather than the version it replaces.
+/// Empty outside a transition, when the published versions count.
 /// </summary>
 public sealed class PublicationSet
 {

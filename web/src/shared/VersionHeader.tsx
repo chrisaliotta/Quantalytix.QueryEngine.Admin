@@ -11,8 +11,8 @@ import { lookupItemText } from './lookupItemText';
 import { RuleViolationList } from './RuleViolationList';
 import { StatusBadge } from './StatusBadge';
 import type { LookupItem, VersionKind, VersionStatus, VersionStatusResult } from './types';
-import { useVersionCheck, type VersionCheckMutation } from './useVersionCheck';
-import { useVersionTransition, type VersionTransitionMutation } from './useVersionTransition';
+import { useVersionCheck } from './useVersionCheck';
+import { useVersionTransition } from './useVersionTransition';
 import { getVersionTransitions, isLivingKind, type VersionTransition } from './versionTransitions';
 
 export interface VersionHeaderProps {
@@ -31,10 +31,6 @@ export interface VersionHeaderProps {
   onTransitioned?: (result: VersionStatusResult) => void;
   /** Replaces the confirmation text of the transitions to these statuses, e.g. a warning before retiring a release. */
   confirmDescriptions?: Partial<Record<VersionStatus, ReactNode>>;
-  /** Moves the selected version instead of the kind's status route, e.g. a report version with the versions its report owns. */
-  transition?: VersionTransitionMutation;
-  /** Checks the selected published version instead of the kind's validation route, e.g. a report's design as a whole. */
-  check?: VersionCheckMutation;
 }
 
 type Confirmation = Omit<ConfirmDialogProps, 'open' | 'onOpenChange'>;
@@ -56,13 +52,9 @@ export function VersionHeader({
   onDeleteVersion,
   onTransitioned,
   confirmDescriptions,
-  transition: transitionOverride,
-  check: checkOverride,
 }: VersionHeaderProps) {
-  const kindTransition = useVersionTransition(kind);
-  const kindCheck = useVersionCheck(kind);
-  const transition = transitionOverride ?? kindTransition;
-  const check = checkOverride ?? kindCheck;
+  const transition = useVersionTransition(kind);
+  const check = useVersionCheck(kind);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const selected = versions.find(version => version.id === selectedVersionId);
   const status = selected?.status as VersionStatus | undefined;

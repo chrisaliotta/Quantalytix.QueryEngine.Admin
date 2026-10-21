@@ -32,7 +32,7 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, ReportU
     /// <summary>The model version a variable belongs to.</summary>
     /// <param name="row">The variable.</param>
     /// <returns>Its model version ID.</returns>
-    protected override long VersionOf(VariableRecord row)
+    protected override long OwnerOf(VariableRecord row)
     {
         return row.ModelVersionId;
     }
@@ -47,15 +47,15 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, ReportU
 
     /// <summary>The variable row an input describes.</summary>
     /// <param name="itemId">The variable ID.</param>
-    /// <param name="versionId">The model version.</param>
+    /// <param name="ownerId">The model version.</param>
     /// <param name="input">The validated input.</param>
     /// <returns>The row to store.</returns>
-    protected override VariableRecord ToRecord(long itemId, long versionId, VariableInput input)
+    protected override VariableRecord ToRecord(long itemId, long ownerId, VariableInput input)
     {
         return new VariableRecord
         {
             VariableId = itemId,
-            ModelVersionId = versionId,
+            ModelVersionId = ownerId,
             VariableKey = input.VariableKey,
             DisplayName = input.DisplayName,
             VariableRole = input.VariableRole,

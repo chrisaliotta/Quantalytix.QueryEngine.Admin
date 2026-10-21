@@ -19,4 +19,13 @@ public sealed record PinnedDatasetVersion
 
     /// <summary>The version's measures, by key.</summary>
     public required IReadOnlyDictionary<string, MeasureRecord> Measures { get; init; }
+
+    /// <summary>Whether a field has a time binding, which a source reads its periods on.</summary>
+    /// <param name="fieldKey">A field key.</param>
+    /// <returns>True when the version has the field and a time binding of it.</returns>
+    public bool IsTimeField(string fieldKey)
+    {
+        return Fields.GetValueOrDefault(fieldKey) is { } field
+            && Bindings.Any(binding => binding.SourceFieldId == field.FieldId && TimeBindingIds.Contains(binding.BindingId));
+    }
 }

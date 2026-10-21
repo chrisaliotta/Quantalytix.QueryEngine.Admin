@@ -5,21 +5,18 @@ using Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Builds the report rows the report and release tests seed: report 60 over report dimension 500, and the content of its version
-/// 61 unless changed with <c>with</c>.
+/// Builds the report rows the report and release tests seed: enabled report 60 over report dimension 500 and model 40, and its
+/// content unless changed with <c>with</c>.
 /// </summary>
 internal static class ReportRows
 {
     /// <summary>The report the rows belong to.</summary>
     public const long ReportId = 60;
 
-    /// <summary>The report version the rows belong to.</summary>
-    public const long ReportVersionId = 61;
-
     /// <summary>The report's dimension.</summary>
     public const long ReportDimensionId = 500;
 
-    /// <summary>The balance sheet report over dimension 500.</summary>
+    /// <summary>The enabled balance sheet report over dimension 500, which reads model 40 with subtotals above.</summary>
     public static ReportRecord Report()
     {
         return new ReportRecord
@@ -29,21 +26,9 @@ internal static class ReportRows
             DisplayName = "Balance sheet",
             ReportType = "financial",
             ReportDimensionId = ReportDimensionId,
-            IsEnabled = true
-        };
-    }
-
-    /// <summary>A version of report 60 that reads model 40, with subtotals above.</summary>
-    public static ReportVersionRecord ReportVersion(long reportVersionId, string status = PublicationStatuses.Draft)
-    {
-        return new ReportVersionRecord
-        {
-            ReportVersionId = reportVersionId,
-            ReportId = ReportId,
-            VersionNumber = (int)(reportVersionId % 10),
             ModelId = ModelRows.ModelId,
             SubtotalPosition = SubtotalPositions.Above,
-            Status = status
+            IsEnabled = true
         };
     }
 
@@ -53,7 +38,7 @@ internal static class ReportRows
         return new ReportColumnRecord
         {
             ReportColumnId = columnId,
-            ReportVersionId = ReportVersionId,
+            ReportId = ReportId,
             ColumnKey = columnKey,
             DisplayName = columnKey,
             ValueKind = valueKind,
@@ -69,7 +54,7 @@ internal static class ReportRows
         return new ReportLineRecord
         {
             ReportLineId = lineId,
-            ReportVersionId = ReportVersionId,
+            ReportId = ReportId,
             LineKey = lineKey,
             DisplayName = lineKey,
             LineKind = lineKind,
@@ -82,7 +67,7 @@ internal static class ReportRows
     /// <summary>A member option that makes a member a header.</summary>
     public static ReportMemberOptionRecord MemberOption(string memberKey)
     {
-        return new ReportMemberOptionRecord { ReportVersionId = ReportVersionId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
+        return new ReportMemberOptionRecord { ReportId = ReportId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
     }
 
     /// <summary>A scope that reads a variable at a member and its descendants.</summary>
@@ -90,38 +75,42 @@ internal static class ReportRows
     {
         return new ReportVariableScopeRecord
         {
-            ReportVersionId = ReportVersionId, VariableKey = variableKey, ScopeMemberKey = scopeMemberKey, SelectionScope = SelectionScopes.Descendants
+            ReportId = ReportId, VariableKey = variableKey, ScopeMemberKey = scopeMemberKey, SelectionScope = SelectionScopes.Descendants
         };
     }
 
-    /// <summary>An enabled source of a variable that reads <c>balance</c> by <c>as_of_date</c>, classifying by the member keys <c>gl_account</c> holds.</summary>
-    public static VariableSourceRecord Source(long sourceId, string variableKey, string sourceKey, long datasetId)
+    /// <summary>A direct source that reads by <c>as_of_date</c>, with the row keys <c>gl_account</c> holds.</summary>
+    public static ReportSourceRecord Source(long sourceId, string sourceKey, long datasetId)
     {
-        return new VariableSourceRecord
+        return new ReportSourceRecord
         {
-            VariableSourceId = sourceId,
-            ReportVersionId = ReportVersionId,
-            VariableKey = variableKey,
+            ReportSourceId = sourceId,
+            ReportId = ReportId,
             SourceKey = sourceKey,
+            DisplayName = sourceKey,
             DatasetId = datasetId,
-            ClassificationKind = ClassificationKinds.Direct,
-            ClassificationFieldKey = "gl_account",
-            TimeFieldKey = "as_of_date",
-            MeasureKey = "balance",
-            IsEnabled = true
+            MappingMethod = ReportMappingMethods.Direct,
+            FieldKey = "gl_account",
+            TimeFieldKey = "as_of_date"
         };
+    }
+
+    /// <summary>A source's supply of a variable from the <c>balance</c> measure, unfiltered.</summary>
+    public static ReportSourceVariableRecord SourceVariable(long sourceId, string variableKey, string measureKey = "balance")
+    {
+        return new ReportSourceVariableRecord { ReportSourceId = sourceId, VariableKey = variableKey, MeasureKey = measureKey };
     }
 
     /// <summary>An enabled source profile.</summary>
     public static SourceProfileRecord Profile(long profileId, string profileKey)
     {
-        return new SourceProfileRecord { SourceProfileId = profileId, ReportVersionId = ReportVersionId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
+        return new SourceProfileRecord { SourceProfileId = profileId, ReportId = ReportId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
     }
 
     /// <summary>A profile's pick of a source for a variable.</summary>
     public static SourceProfileVariableRecord Pick(long profileId, string variableKey, long sourceId)
     {
-        return new SourceProfileVariableRecord { SourceProfileId = profileId, VariableKey = variableKey, VariableSourceId = sourceId };
+        return new SourceProfileVariableRecord { SourceProfileId = profileId, VariableKey = variableKey, ReportSourceId = sourceId };
     }
 
     /// <summary>An enabled, groupable and filterable calculation dimension that groups a role's members by member.</summary>
@@ -130,7 +119,7 @@ internal static class ReportRows
         return new CalculationDimensionRecord
         {
             CalculationDimensionId = calculationDimensionId,
-            ReportVersionId = ReportVersionId,
+            ReportId = ReportId,
             DimensionKey = dimensionKey,
             DisplayName = dimensionKey,
             RoleId = roleId,
