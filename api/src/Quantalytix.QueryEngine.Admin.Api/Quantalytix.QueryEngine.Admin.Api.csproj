@@ -8,14 +8,14 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.10">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.13">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- Overrides the vulnerable Microsoft.OpenApi 2.0.0 that Microsoft.AspNetCore.OpenApi references (GHSA-v5pm-xwqc-g5wc). -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
+    <!-- Latest 2.x. Microsoft.AspNetCore.OpenApi 10 accepts [2.12.2, 3.0.0). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Quantalytix.QueryEngine.Admin.Tests" />
