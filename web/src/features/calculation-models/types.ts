@@ -19,3 +19,15 @@ export type NewCalculationModelInput = Schemas['NewCalculationModelInput'];
 
 /** Body of `PUT calculation-models/{modelId}`. */
 export type CalculationModelInput = Schemas['CalculationModelInput'];
+
+/**
+ * How a metric's change between two values splits into the effects of its drivers, with the variable that weighs its member
+ * contributions (`qe_metric_attribution` with its `qe_metric_attribution_driver` rows).
+ */
+export type MetricAttribution = Schemas['MetricAttribution'];
+
+/** One driver of an attribution: the expression's inputs that switch together. */
+export type AttributionDriver = Schemas['AttributionDriver'];
+
+/** Body of `PUT calculation-models/{modelId}/attributions/{metricKey}`. */
+export type MetricAttributionInput = Schemas['MetricAttributionInput'];

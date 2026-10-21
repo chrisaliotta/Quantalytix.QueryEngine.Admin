@@ -69,6 +69,9 @@ export function VariablesTab({ view, onShowProfiles }: VariablesTabProps) {
                           <>
                             <span className="font-mono text-xs">{supplied.measureKey}</span>
                             {supplied.sourceFilterJson && <Filter aria-label="Filtered" />}
+                            {supplied.missingBehavior && (
+                              <span className="text-xs text-muted-foreground">missing as {supplied.missingBehavior}</span>
+                            )}
                           </>
                         ) : (
                           <span className="text-muted-foreground">—</span>

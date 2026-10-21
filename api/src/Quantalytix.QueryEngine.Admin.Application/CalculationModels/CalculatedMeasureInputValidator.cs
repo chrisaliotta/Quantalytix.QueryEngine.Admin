@@ -21,7 +21,7 @@ public sealed class CalculatedMeasureInputValidator : AbstractValidator<Calculat
             .MustAsync(keys.MetricKeyFreeAsync)
             .WithMessage(input => $"The model already has a variable or calculated measure with key '{input.MeasureKey}'.");
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
-        RuleFor(input => input.ExpressionText).Cascade(CascadeMode.Stop).NotEmpty().MustFitVarchar(4096).MustBeCalculatedMeasureFormula();
+        RuleFor(input => input.ExpressionText).Cascade(CascadeMode.Stop).NotEmpty().MustFitVarchar(4096).MustBeModelFormula();
         RuleFor(input => input.OutputDataType).MustBeIn(MeasureOutputDataTypes.Definition);
         RuleFor(input => input.RoundingMode).MustBeIn(RoundingModes.Definition);
         RuleFor(input => input.UnitKey).MustFitVarchar(64);

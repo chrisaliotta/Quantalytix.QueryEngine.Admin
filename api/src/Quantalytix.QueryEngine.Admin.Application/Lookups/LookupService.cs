@@ -270,7 +270,8 @@ public sealed class LookupService(
                     Id = row.MemberId,
                     Key = row.MemberKey,
                     Label = row.DisplayName,
-                    ParentId = row.ParentMemberId
+                    ParentId = row.ParentMemberId,
+                    IsAssignable = row.IsAssignable
                 })
         ];
     }

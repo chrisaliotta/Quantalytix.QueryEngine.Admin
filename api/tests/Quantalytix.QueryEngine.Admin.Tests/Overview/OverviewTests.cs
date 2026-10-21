@@ -112,7 +112,8 @@ public sealed class OverviewTests
         CalendarKey = "gregorian",
         CurrencyCode = "USD",
         FormulaLanguageVersion = "1.0",
-        IsEnabled = true
+        IsEnabled = true,
+        AttributionMethod = "shapley"
     });
 
     /// <summary>Two reports.</summary>

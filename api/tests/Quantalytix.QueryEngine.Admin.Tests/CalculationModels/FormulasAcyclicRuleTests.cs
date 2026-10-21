@@ -15,17 +15,14 @@ public sealed class FormulasAcyclicRuleTests
     [Fact]
     public void MeasuresOnACycle_AreReported()
     {
-        var model = new ModelGraph
-        {
-            Variables = [Variable(51, "income"), Variable(52, "balance")],
-            CalculatedMeasures =
+        var model = Graph(
+            [Variable(51, "income"), Variable(52, "balance")],
             [
                 Calculated(91, "a", "[m.b] + 1"),
                 Calculated(92, "b", "[m.a] * 2"),
                 Calculated(93, "c", "[m.a] / 2"),
                 Calculated(94, "yield", "[m.income] / [m.balance]")
-            ]
-        };
+            ]);
 
         Assert.Equal(
             ["Calculated measure 'a' reads itself through the calculated measures its formula reads.",

@@ -24,6 +24,7 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddScoped<DimensionVersionRemover>();
         services.AddScoped<DimensionDeleteChecks>();
         services.AddScoped<DimensionConsumers>();
+        services.AddScoped<DimensionChanges>();
         services.AddScoped<PublishedDimensionReader>();
         services.AddScoped<RangeBandSetReader>();
 

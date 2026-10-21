@@ -4,14 +4,20 @@ import { JsonField, KeyField, VocabularyField } from '@/shared/form';
 import { emptyToNull } from '@/shared/text';
 import { useLookup } from '@/shared/useLookup';
 import { useUpdateReportSettings } from './api';
+import { joinSettings, settingsFieldPath, splitSettings, type ComparisonValues } from './comparisonSettings';
+import { DefaultComparisonsField } from './DefaultComparisonsField';
 import type { Report } from './types';
 
-/** Values of the settings sheet; a choice not made yet is null, and the defaults are JSON text, empty for none. */
+/**
+ * Values of the settings sheet; a choice not made yet is null, and the defaults are JSON text, empty for none. The settings' default
+ * comparisons are listed apart from the rest of the settings and stored inside them.
+ */
 interface ReportSettingsValues {
   defaultProfileKey: string | null;
   subtotalPosition: string | null;
   defaultFilterJson: string;
   defaultSettingsJson: string;
+  comparisons: ComparisonValues[];
   defaultPivotJson: string;
 }
 
@@ -22,18 +28,20 @@ export interface ReportSettingsSheetProps {
 
 /**
  * Edits a report's default profile, subtotal position and defaults. The profile is named by key, offered from the report's own
- * profiles. Only `periodicity`, `timeZone` and `layout` of the settings change how the engine runs the report; the rest pass
- * through to clients. An enabled report refuses settings that break its rules, naming them.
+ * profiles. Only `periodicity`, `timeZone`, `layout` and the default comparisons change how the engine runs the report; the rest
+ * pass through to clients. An enabled report refuses settings that break its rules, naming them.
  */
 export function ReportSettingsSheet({ report, onClose }: ReportSettingsSheetProps) {
   const update = useUpdateReportSettings(report.reportId);
   const profiles = useLookup('source-profiles', report.reportId);
+  const settings = splitSettings(report.defaultSettingsJson);
   const form = useForm<ReportSettingsValues>({
     defaultValues: {
       defaultProfileKey: report.defaultProfileKey ?? null,
       subtotalPosition: report.subtotalPosition,
       defaultFilterJson: report.defaultFilterJson ?? '',
-      defaultSettingsJson: report.defaultSettingsJson ?? '',
+      defaultSettingsJson: settings.settingsJson,
+      comparisons: settings.comparisons,
       defaultPivotJson: report.defaultPivotJson ?? '',
     },
   });
@@ -43,7 +51,7 @@ export function ReportSettingsSheet({ report, onClose }: ReportSettingsSheetProp
       defaultProfileKey: values.defaultProfileKey,
       subtotalPosition: values.subtotalPosition ?? '',
       defaultFilterJson: emptyToNull(values.defaultFilterJson),
-      defaultSettingsJson: emptyToNull(values.defaultSettingsJson),
+      defaultSettingsJson: joinSettings(values.defaultSettingsJson, values.comparisons),
       defaultPivotJson: emptyToNull(values.defaultPivotJson),
     });
   }
@@ -53,10 +61,11 @@ export function ReportSettingsSheet({ report, onClose }: ReportSettingsSheetProp
       open
       onOpenChange={open => !open && onClose()}
       title={`Settings of ${report.reportKey}`}
-      description="Enabling the report checks that the default profile is enabled and that the filter and pivot name calculation dimensions that allow them."
+      description="Enabling the report checks that the default profile is enabled, that the filter and pivot name calculation dimensions that allow them, and that the default comparisons' profiles, scenarios and assumption sets exist."
       form={form}
       onSubmit={submit}
-      width="40rem"
+      errorFieldPath={settingsFieldPath}
+      width="44rem"
     >
       <KeyField
         name="defaultProfileKey"
@@ -74,8 +83,9 @@ export function ReportSettingsSheet({ report, onClose }: ReportSettingsSheetProp
       <JsonField
         name="defaultSettingsJson"
         label="Default settings"
-        description='Such as {"periodicity":"month","timeZone":"UTC","layout":"statement"}. A list layout lets requests filter, order and page the whole table.'
+        description='Such as {"periodicity":"month","timeZone":"UTC","layout":"statement"}. A list layout lets requests filter, order and page the whole table. The default comparisons below are stored here too.'
       />
+      <DefaultComparisonsField reportId={report.reportId} />
       <JsonField
         name="defaultPivotJson"
         label="Default pivot"

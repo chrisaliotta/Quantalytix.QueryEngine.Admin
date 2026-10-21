@@ -50,12 +50,16 @@ public static class VocabularyCatalog
         ProviderIds.Definition,
         SelectionScopes.Definition,
         VariableMissingBehaviors.Definition,
+        FormulaLanguageVersions.Definition,
+        AttributionMethods.Definition,
         ReportMappingMethods.Definition,
         ReportLineKinds.Definition,
         ReportRowKinds.Definition,
         ReportValueKinds.Definition,
         SubtotalPositions.Definition,
         ReportLayouts.Definition,
+        ReportTransforms.Definition,
+        ComparisonPeriodTypes.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

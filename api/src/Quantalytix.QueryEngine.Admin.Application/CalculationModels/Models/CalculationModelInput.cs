@@ -11,4 +11,10 @@ public record CalculationModelInput
 
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
+
+    /// <summary>A <c>formula_language_version</c> value: <c>1.0</c>, or <c>1.1</c>, whose formulas may call <c>POWER</c>.</summary>
+    public required string FormulaLanguageVersion { get; init; }
+
+    /// <summary>An <c>attribution_method</c> value: <c>shapley</c> or <c>sequential</c>.</summary>
+    public required string AttributionMethod { get; init; }
 }

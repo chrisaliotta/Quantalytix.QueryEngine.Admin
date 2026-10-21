@@ -149,7 +149,7 @@ flowchart LR
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
 | `dimension-versions` | Dimension |
-| `levels`, `members` | Dimension version (a member's own `parentId` is its parent member) |
+| `levels`, `members` | Dimension version (a member's own `parentId` is its parent member, and `isAssignable` says whether it takes values of its own) |
 | `mapping-sets` | Optional dimension |
 | `mapping-versions` | Mapping set |
 | `bridge-versions` | Bridge |
@@ -171,7 +171,7 @@ flowchart TB
         Dialog["FormDialog"]
         Inline["SettingsTab, dimension SettingsTab, RangeBandsTab"]
     end
-    Submit["useProblemSubmit(form, onSubmit, onSuccess)"]
+    Submit["useProblemSubmit(form, onSubmit, onSuccess, fieldPath)"]
     ShowErrors["showFieldErrors"]
     ToFieldErrors["toFieldErrors"]
     SetError["form.setError(path, type server)"]
@@ -179,7 +179,7 @@ flowchart TB
     ReadOnly["FormReadOnlyContext"]
     subgraph fields ["src/shared/form"]
         TextFields["TextField, TextAreaField, PasswordField, NumberField"]
-        PickerFields["EntityField, KeyField, VocabularyField, MultiVocabularyField"]
+        PickerFields["EntityField, KeyField, MultiKeyField, VocabularyField, MultiVocabularyField"]
         DateFields["DateField, DateTimeField"]
         EditorFields["ExpressionField, JsonField"]
         Toggle["SwitchField"]
@@ -207,7 +207,7 @@ flowchart TB
     EditorFields --> Layout
 ```
 
-- `useProblemSubmit` clears every error before a submit, because react-hook-form keeps an error on a path that no field registers, such as a list-level key, and refuses later submits while it is there. It then runs `handleSubmit`, awaits `onSubmit` (usually a mutation's `mutateAsync`) and calls `onSuccess`, which closes the sheet or dialog. On failure it calls `showFieldErrors` and keeps the error as `problem` for `ApiErrorAlert`; the form stays open.
+- `useProblemSubmit` clears every error before a submit, because react-hook-form keeps an error on a path that no field registers, such as a list-level key, and refuses later submits while it is there. It then runs `handleSubmit`, awaits `onSubmit` (usually a mutation's `mutateAsync`) and calls `onSuccess`, which closes the sheet or dialog. On failure it calls `showFieldErrors` and keeps the error as `problem` for `ApiErrorAlert`; the form stays open. A form whose fields are not the body it sends passes `errorFieldPath`, which `showFieldErrors` maps each error's path through: `ReportSettingsSheet` puts the API's `defaultSettingsJson.comparisons[1].scenario` on that comparison row's scenario field, through `settingsFieldPath`.
 - `EntityFormSheet` and `FormDialog` mount the form body only while open, so each opening starts without a stale problem, and `useSheetForm` resets a form to its entity before it opens the sheet. A read-only `EntityFormSheet` disables its `fieldset`, sets `FormReadOnlyContext`, which `useFormField` turns into `isDisabled` so the Monaco and CodeMirror editors render read-only as well, and shows "Close" without a submit button.
 - The form-value modules (`fieldForm.ts`, `bindingForm.ts`, `measureForm.ts`, `bridgeVersionForm.ts`) build the request bodies and leave out the values of inputs that the sheet no longer shows, which the API would otherwise reject; their tests say why.
 
@@ -222,6 +222,7 @@ flowchart TB
 | `VocabularyField`, `MultiVocabularyField` | `VocabularySelect`; registry `MultiSelect` | A value or null; a list of values |
 | `EntityField` | `EntitySelect` | Item ID or null |
 | `KeyField` | Registry `Combobox` over the given lookup items, such as a dataset's latest fields (`useLatestVersionItems`) or the members of a dimension's published version (`usePublishedDimensionItems`) | Item key or null, for references by key |
+| `MultiKeyField` | Registry `MultiSelect` over the given lookup items, such as the metrics an attribution driver switches | A list of item keys |
 | `ExpressionField` | `ExpressionEditor` (Monaco) with `[f.` and `[m.` completion | Expression text |
 | `JsonField` | Shared `JsonEditor` (CodeMirror) | Raw JSON text |
 
@@ -229,7 +230,7 @@ flowchart TB
 
 ## Version lifecycle
 
-Five kinds of resource are versioned, under one of two lifecycles, and `VersionHeader` offers the status changes that the kind's lifecycle allows from the selected version's status. Strict kinds, dataset versions and releases, freeze when published, may have several published versions, and are retired by hand. Living kinds, dimension, mapping and bridge versions, have one published version per identity: requests read it by default, it stays editable, and publishing the next version retires it and repoints the active assumption set. Calculation models and reports are not versioned: the model page edits a model's metrics in place, and the API refuses an edit that would break a formula or an enabled report over the model; the report editor writes a report in place, and a switch in its header enables it; see [flow 12](04-critical-flows.md#12-building-a-report). The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
+Five kinds of resource are versioned, under one of two lifecycles, and `VersionHeader` offers the status changes that the kind's lifecycle allows from the selected version's status. Strict kinds, dataset versions and releases, freeze when published, may have several published versions, and are retired by hand. Living kinds, dimension, mapping and bridge versions, have one published version per identity: requests read it by default, it stays editable, and publishing the next version retires it and repoints the active assumption set. Calculation models and reports are not versioned: the model page edits a model's metrics, and from each metric's row its attribution in `AttributionSheet`, in place, and the API refuses an edit that would break a formula, an attribution or an enabled report over the model; the report editor writes a report in place, and a switch in its header enables it; see [flow 12](04-critical-flows.md#12-building-a-report). The drawing shows the changes `getVersionTransitions` offers; the API decides whether each one succeeds, as drawn in [the API's version lifecycle](../../../api/docs/architecture/04-version-lifecycle.md).
 
 ```mermaid
 flowchart LR
@@ -415,7 +416,7 @@ flowchart TB
 | `Loading` | Pages, tabs, `EntityTable`, `FormDialog`, `LoginPage`, `RequireSession`, `TenantRedirect`, and the editor fallbacks |
 | `Combobox` | `EntitySelect`, `VocabularySelect`, `KeyField`, `VersionHeader`, `TenantSwitcher`, `SourceObjectField`, `SourceColumnField`, `ComponentsField` |
 | `DataTable`, `Sheet` | `EntityTable`; `EntityFormSheet` |
-| `MultiSelect` | `MultiVocabularyField`, `ColumnsField` |
+| `MultiSelect` | `MultiVocabularyField`, `MultiKeyField`, `ColumnsField` |
 | `CodeEditor`, `JsonEditor` | The shared `CodeEditor` and `JsonEditor` wrappers |
 | `NumericInput`, `DatePicker`, `BehaviorSwitch` | `NumberField`, `DateField`, `SwitchField`, and the enable switch of `ReportDetailPage` |
 | `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `RowTree` and `RowItem` |

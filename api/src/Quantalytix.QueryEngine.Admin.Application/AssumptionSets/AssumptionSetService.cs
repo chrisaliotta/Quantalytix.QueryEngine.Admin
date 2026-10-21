@@ -7,14 +7,16 @@ namespace Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 
 /// <summary>
 /// Lists and shows assumption sets, captures historical sets from the active set and the active release, relabels sets and
-/// deletes historical ones. The active set is never created or deleted here: the tenant database holds it, and every publish
-/// repoints it. Capturing or deleting a set changes which keys requests can name, so both advance the semantic revision.
+/// deletes historical ones that no enabled report's default comparison reads. The active set is never created or deleted here:
+/// the tenant database holds it, and every publish repoints it. Capturing or deleting a set changes which keys requests can name,
+/// so both advance the semantic revision.
 /// </summary>
 public sealed class AssumptionSetService(
     ITableGateway<AssumptionSetRecord> sets,
     AssumptionPins pins,
     AssumptionPinReader pinReader,
     ReportOwnership ownership,
+    ITableGateway<ReportRecord> reports,
     ITableGateway<DatabaseInfoRecord> databaseInfo,
     SemanticRevision semanticRevision,
     IIdGenerator ids,
@@ -95,15 +97,29 @@ public sealed class AssumptionSetService(
         return updated;
     }
 
-    /// <summary>Deletes a historical set with its pins; the active set holds the default versions and cannot be deleted.</summary>
+    /// <summary>
+    /// Deletes a historical set with its pins. The active set holds the default versions and cannot be deleted, nor can a set an
+    /// enabled report's default comparison reads, because every request that takes the report's defaults would fail.
+    /// </summary>
     /// <param name="assumptionSetId">The assumption set.</param>
-    /// <param name="cancellationToken">Cancels the read and the deletes.</param>
+    /// <param name="cancellationToken">Cancels the reads and the deletes.</param>
     /// <returns>Null when the set was deleted; otherwise the detail naming why not, and nothing was deleted.</returns>
     public async Task<string?> DeleteAsync(long assumptionSetId, CancellationToken cancellationToken)
     {
         var set = await sets.GetAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
         if (set.Status == AssumptionSetStatuses.Active)
             return $"Assumption set '{set.AssumptionSetKey}' is the active set, which holds the default versions; it cannot be deleted.";
+        var blockers = new DeleteBlockers($"Assumption set '{set.AssumptionSetKey}'");
+        blockers.AddNamed(
+            "read by",
+            (await reports.ListAsync(null, cancellationToken))
+                .Where(report => report.IsEnabled)
+                .SelectMany(report => ReportComparisons.Of(report.DefaultSettingsJson)
+                    .Where(comparison => comparison.AssumptionSet == set.AssumptionSetKey)
+                    .Select(comparison => $"default comparison '{comparison.Key}' of report '{report.ReportKey}'")));
+        var conflict = blockers.Detail();
+        if (conflict is not null) return conflict;
+
         await pins.DeleteAsync(assumptionSetId, cancellationToken);
         await sets.DeleteAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);

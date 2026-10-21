@@ -126,7 +126,8 @@ public sealed class DimensionConsumersTests
             CalculationDimensions(),
             new InMemoryTableGateway<ReportSourceRecord>(),
             new ReportNames(Reports()),
-            Consumers());
+            Consumers(),
+            new DimensionChanges(_versions, _levels, _members, Consumers()));
     }
 
     /// <summary>The branch dimension's branch role.</summary>

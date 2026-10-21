@@ -78,6 +78,12 @@ public static class TableCatalog
             [nameof(SourceProfileVariableRecord.SourceProfileId), nameof(SourceProfileVariableRecord.VariableKey)],
             []),
         [typeof(CalculatedMeasureRecord)] = Tenant("qe_calculated_measure", [nameof(CalculatedMeasureRecord.CalculatedMeasureId)], []),
+        [typeof(MetricAttributionRecord)] = Tenant(
+            "qe_metric_attribution", [nameof(MetricAttributionRecord.ModelId), nameof(MetricAttributionRecord.MetricKey)], []),
+        [typeof(MetricAttributionDriverRecord)] = Tenant(
+            "qe_metric_attribution_driver",
+            [nameof(MetricAttributionDriverRecord.ModelId), nameof(MetricAttributionDriverRecord.MetricKey), nameof(MetricAttributionDriverRecord.DriverKey)],
+            [nameof(MetricAttributionDriverRecord.InputKeysJson)]),
         [typeof(CalculationDimensionRecord)] = Tenant(
             "qe_calculation_dimension", [nameof(CalculationDimensionRecord.CalculationDimensionId)], []),
         [typeof(ReportRecord)] = Tenant(

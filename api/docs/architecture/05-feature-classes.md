@@ -176,6 +176,10 @@ classDiagram
     class DimensionConsumers {
         +ListAsync(dimensionId, cancellationToken) Task~IReadOnlyList~KeyReference~~
     }
+    class DimensionChanges {
+        +BrokenAsync(versionId, change, cancellationToken) Task~IReadOnlyList~KeyReference~~
+        +CheckAsync(versionId, change, cancellationToken) Task~IReadOnlyList~RuleViolation~~
+    }
     class PublishedDimensionReader {
         +ReadAsync(dimensionId, cancellationToken) Task~DimensionKeys~
         +KeysAsync(version, cancellationToken) Task~DimensionKeys~
@@ -217,8 +221,11 @@ classDiagram
     DimensionVersionService --> DimensionVersionRemover
     DimensionLevelService --> DimensionDeleteChecks
     DimensionMemberService --> DimensionDeleteChecks
+    DimensionMemberService --> DimensionChanges : updates and moves
     DimensionMemberService --> ClosureBuilder
     DimensionDeleteChecks --> DimensionConsumers : published versions only
+    DimensionDeleteChecks --> DimensionChanges : member deletes
+    DimensionChanges --> DimensionConsumers
     DimensionVersionCloner ..> IdRemap : one per clone
     IVersionLifecycleHandler <|.. ClosureBuilder
     IPublicationRule <|.. DimensionConsumersResolveRule
@@ -245,7 +252,7 @@ A dimension has a purpose, the `dimension_purpose` vocabulary. An `analytical` d
 
 Roles are not versioned. `DimensionService` creates a new dimension's first role with it, from `NewDimensionInput.DefaultRole`, which every kind but `time` requires and `time` forbids, because a time binding names its dimension. A role's key is unique in the tenant and fixed; its display name and description are editable, and a change advances the semantic revision, because the engine's catalog shows both. `DimensionDeleteChecks.RoleAsync` refuses to delete a role a binding, calculation dimension or report source names, and deleting a dimension deletes its roles once nothing names them.
 
-`DimensionConsumers` lists the keys live objects name in a dimension: the unknown member keys of the bindings of published dataset versions, the member keys of the entries of published mapping versions, the source or target member keys of the mappings of published bridge versions, and the grouping level and ancestor keys of the enabled calculation dimensions of enabled reports on its roles. A report's own rows name keys of its report dimension, which only its editor changes and keeps resolved. `dimension_consumers_resolve` requires a version being published to hold every one of them, because it becomes the version they resolve in, and `DimensionDeleteChecks` refuses to delete a level or member of the published version that one of them names; drafts resolve nothing, so they never block. `PublishedDimensionReader` gives the binding, mapping, bridge and report rules the keys of a dimension's published version.
+`DimensionConsumers` lists the keys live objects name in a dimension: the unknown member keys of the bindings of published dataset versions, the member keys of the entries of published mapping versions, the source or target member keys of the mappings of published bridge versions, and the grouping level and ancestor keys of the enabled calculation dimensions of enabled reports on its roles, and the scenarios the default comparisons of enabled reports read through their enabled scenario dimension on one of its roles. A report's own rows name keys of its report dimension, which only its editor changes and keeps resolved. Each `KeyReference` carries what its object needs of the key (`KeyRequirement`): that it exists, that it is an assignable member, as a scenario version a comparison names, or that an assignable member sits under it, as a folder whose latest version a comparison reads; `DimensionKeys.Resolves` answers for a version. `dimension_consumers_resolve` requires a version being published to resolve every one of them, because it becomes the version they resolve in. The published version stays editable, so `DimensionChanges` applies a member update or move to it in memory first and refuses, with 422 and nothing written, one that would stop a reference resolving that resolves now, and `DimensionDeleteChecks` refuses to delete a level the version's consumers name, or a member that a consumer names or needs as the last assignable member under a folder; drafts resolve nothing, so they never block. `PublishedDimensionReader` gives the binding, mapping, bridge and report rules the keys of a dimension's published version.
 
 | Class | Records |
 | --- | --- |
@@ -256,6 +263,7 @@ Roles are not versioned. `DimensionService` creates a new dimension's first role
 | `DimensionVersionRemover` | `DimensionVersionRecord`, `DimensionLevelRecord`, `DimensionMemberRecord`, `DimensionClosureRecord`, `RangeBandRecord` |
 | `DimensionDeleteChecks` | `DimensionVersionRecord`, `DimensionMemberRecord`, `RangeBandRecord`, `DimensionRoleRecord`, `MappingSetRecord`, `BridgeRecord`, `DimensionBindingRecord`, `DatasetRecord`, `DatasetVersionRecord`, `ReportRecord`, `CalculationDimensionRecord`, `ReportSourceRecord` |
 | `DimensionConsumers` | `DatasetRecord`, `DatasetVersionRecord`, `DimensionBindingRecord`, `DimensionRoleRecord`, `MappingSetRecord`, `MappingVersionRecord`, `DimensionMappingRecord`, `BridgeRecord`, `BridgeVersionRecord`, `BridgeMappingRecord`, `ReportRecord`, `CalculationDimensionRecord` |
+| `DimensionChanges` | `DimensionVersionRecord`, `DimensionLevelRecord`, `DimensionMemberRecord`; through `DimensionConsumers`, the keys live objects name |
 | `PublishedDimensionReader` | `DimensionVersionRecord`, `DimensionLevelRecord`, `DimensionMemberRecord` |
 | `DimensionLevelService` | `DimensionLevelRecord` |
 | `DimensionMemberService` | `DimensionMemberRecord` |
@@ -536,18 +544,20 @@ classDiagram
 ```
 
 - **Routes:** `api/tenants/{tenantId}/dataset-versions/{versionId:long}/measures` (`MeasuresController`).
-- **Publication rules** (`dataset_version`, after the Bindings rules): `measure_key_unique` (`MeasureKeyUniqueRule`), `component_fields_in_version` (`ComponentFieldsInVersionRule`), `component_roles_match_kind` (`ComponentRolesMatchKindRule`), `formula_references_known_measures` (`FormulaReferencesKnownMeasuresRule`), `formula_acyclic` (`FormulaAcyclicRule`), `time_policy_series_grain` (`TimePolicySeriesGrainRule`), `time_policy_time_binding_in_version` (`TimePolicyTimeBindingInVersionRule`).
+- **Publication rules** (`dataset_version`, after the Bindings rules): `measure_key_unique` (`MeasureKeyUniqueRule`), `component_fields_in_version` (`ComponentFieldsInVersionRule`), `component_roles_match_kind` (`ComponentRolesMatchKindRule`), `formula_references_known_measures` (`FormulaReferencesKnownMeasuresRule`), `formula_acyclic` (`FormulaAcyclicRule`), `time_policy_series_grain` (`TimePolicySeriesGrainRule`), `time_policy_time_binding_in_version` (`TimePolicyTimeBindingInVersionRule`), then `interval_estimates_for_finer_periods` (`IntervalEstimatesForFinerPeriodsRule`, a binding rule that reads the measures' time policies).
 - **Retirement rules and lifecycle handlers:** none.
 - **Registration:** `AddBindingsAndMeasuresFeature` in [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs), which also registers `MeasureDependencyDeriver`.
 
-Every save derives the dependency rows of every formula of the version again, because a formula may name a measure created after it. A key that names no measure produces no row; `formula_references_known_measures` reports it at validation. A measure that another formula depends on cannot be deleted.
+Every save derives the dependency rows of every formula of the version again, because a formula may name a measure created after it. A key that names no measure produces no row; `formula_references_known_measures` reports it at validation. A measure that another formula depends on cannot be deleted. Dataset expressions, field expressions, measure formulas and row filters, are expression language 1.0, so `MustBeValidExpression` refuses `POWER`, which only model formulas on formula language 1.1 call.
+
+A time binding of interval rows that allows a periodicity finer than its native one, such as a monthly plan read by day, can only serve estimates: `interval_estimates_for_finer_periods` requires every enabled measure that aggregates on it, the binding its time policy requires or else the version's default time binding, to have a time policy with `partial_interval_behavior` `uniform_estimate`, so the engine spreads each interval over the periods it overlaps.
 
 | Class | Records |
 | --- | --- |
 | `MeasureService` | `MeasureRecord`, `MeasureComponentRecord`, `MeasureDependencyRecord`, `MeasureTimePolicyRecord` |
 | `MeasureDependencyDeriver` | `MeasureRecord`, `MeasureDependencyRecord` |
 
-**Sources:** [MeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Measures/MeasuresController.cs), [MeasureService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureService.cs), [MeasureDependencyDeriver.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureDependencyDeriver.cs), [MeasureDetail.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/Models/MeasureDetail.cs), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs), [ExpressionInspection.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/Models/ExpressionInspection.cs), [MeasureUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureUpdateInputValidator.cs), [measure rules](../../src/Quantalytix.QueryEngine.Admin.Application/Measures), [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs); in the query engine checkout: [ExpressionParser.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Domain/Expressions/ExpressionParser.cs), [ExpressionTree.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Domain/Expressions/ExpressionTree.cs).
+**Sources:** [MeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Measures/MeasuresController.cs), [MeasureService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureService.cs), [MeasureDependencyDeriver.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureDependencyDeriver.cs), [MeasureDetail.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/Models/MeasureDetail.cs), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs), [ExpressionInspection.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/Models/ExpressionInspection.cs), [MeasureUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/MeasureUpdateInputValidator.cs), [measure rules](../../src/Quantalytix.QueryEngine.Admin.Application/Measures), [IntervalEstimatesForFinerPeriodsRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Bindings/IntervalEstimatesForFinerPeriodsRule.cs), [BindingsAndMeasuresFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/BindingsAndMeasuresFeatureServiceCollectionExtensions.cs); in the query engine checkout: [ExpressionParser.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Domain/Expressions/ExpressionParser.cs), [ExpressionTree.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Domain/Expressions/ExpressionTree.cs).
 
 ## Releases and overview
 
@@ -686,7 +696,7 @@ classDiagram
     ActiveSetPinner --> VersionStoreRegistry
 ```
 
-- **Routes:** `api/tenants/{tenantId}/assumption-sets` (`AssumptionSetsController`): `GET` lists the sets, `POST` captures a historical set (201), and `{assumptionSetId:long}` reads a set with its pins, relabels it (`PUT`) or deletes it (`DELETE`, 409 for the active set).
+- **Routes:** `api/tenants/{tenantId}/assumption-sets` (`AssumptionSetsController`): `GET` lists the sets, `POST` captures a historical set (201), and `{assumptionSetId:long}` reads a set with its pins, relabels it (`PUT`) or deletes it (`DELETE`, 409 for the active set, and for a set the default comparison of an enabled report reads, which every request taking the report's defaults would name).
 - **Publication and retirement rules:** none; assumption sets are not a versioned kind. **Lifecycle handlers:** `ActiveSetPinner`, one per living kind.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
@@ -768,7 +778,7 @@ classDiagram
 - **Publication rules, retirement rules and lifecycle handlers:** none; tenant directory rows are not versioned.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), which also maps `ITenantDatabaseVerifier` to `TenantDatabaseVerifier` and `IConnectionStringMasker` to `ConnectionStringMasker`.
 
-A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 12, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
+A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 13, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
 
 | Class | Records |
 | --- | --- |
@@ -779,7 +789,7 @@ A connection string is external input, so it is verified whenever one is supplie
 
 ## Calculation models and reports
 
-The drawing shows the calculation-model slice and the report slice. A calculation model holds the reusable metrics, variables, with their display format and unit, and calculated measures, with the currency, calendar and formula language they are read in. Neither models nor reports are versioned: a report names its model and its report dimension by identity, both fixed at creation, and holds everything that ties the model's metrics to data and rows: sources and the variables they supply, source profiles, calculation dimensions, each a role with a default grouping, variable scopes, columns, overlay rows and member options, with its settings. It matters because an enabled report and its model are live: the engine reads every write at once, so the report rules check each write to the report, and the model gate each write to the model's metrics, before it is made, and the report is checked again when a release is validated.
+The drawing shows the calculation-model slice and the report slice. A calculation model holds the reusable metrics, variables, with their display format and unit, and calculated measures, with the currency, calendar and formula language they are read in, the attributions that split a metric's change across its drivers, and the attribution method that splits it. Neither models nor reports are versioned: a report names its model and its report dimension by identity, both fixed at creation, and holds everything that ties the model's metrics to data and rows: sources and the variables they supply, source profiles, calculation dimensions, each a role with a default grouping, variable scopes, columns, overlay rows and member options, with its settings. It matters because an enabled report and its model are live: the engine reads every write at once, so the report rules check each write to the report, and the model gate each write to the model's metrics, before it is made, and the report is checked again when a release is validated.
 
 ```mermaid
 classDiagram
@@ -787,6 +797,7 @@ classDiagram
     class CalculationModelsController
     class VariablesController
     class CalculatedMeasuresController
+    class MetricAttributionsController
     class ReportsController
     class SourceProfilesController
     class CalculationDimensionsController
@@ -820,8 +831,17 @@ classDiagram
     class OwnedItemReferenceValidator~TReference, TItem, TInput~
     class CalculationModelService {
         +CreateAsync(input, cancellationToken)
-        +UpdateAsync(modelId, input, cancellationToken)
+        +ComposeAsync(modelId, input, cancellationToken) Task~CalculationModelRecord~
+        +UpdateAsync(model, cancellationToken)
         +DeleteAsync(modelId, cancellationToken) Task~string~
+    }
+    class MetricAttributionService {
+        +ListAsync(modelId, cancellationToken) Task~IReadOnlyList~MetricAttribution~~
+        +Compose(metricKey, input)$ MetricAttribution
+        +Put(model, attribution)$ ModelGraph
+        +Without(model, metricKey)$ ModelGraph
+        +ReplaceAsync(modelId, attribution, cancellationToken)
+        +DeleteAsync(modelId, metricKey, cancellationToken)
     }
     class ModelChanges {
         +ApplyAsync(modelId, change, write, cancellationToken) Task~IReadOnlyList~RuleViolation~~
@@ -829,8 +849,25 @@ classDiagram
     class FormulaReferencesResolveRule {
         <<static>>
         +Evaluate(model) IEnumerable~RuleViolation~
+        +Unresolved(metricKeys, expressionText) IEnumerable~string~
     }
     class FormulasAcyclicRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
+    }
+    class FormulasFitLanguageRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
+    }
+    class AttributionReferencesResolveRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
+    }
+    class AttributionDriversRule {
+        <<static>>
+        +Evaluate(model) IEnumerable~RuleViolation~
+    }
+    class AttributionWeightVariableRule {
         <<static>>
         +Evaluate(model) IEnumerable~RuleViolation~
     }
@@ -893,10 +930,13 @@ classDiagram
         <<interface>>
     }
     CalculationModelsController --> CalculationModelService
+    CalculationModelsController --> ModelChanges
     VariablesController --> IModelContent
     CalculatedMeasuresController --> IModelContent
     VariablesController --> ModelChanges
     CalculatedMeasuresController --> ModelChanges
+    MetricAttributionsController --> MetricAttributionService
+    MetricAttributionsController --> ModelChanges
     SourceProfilesController --> IReportContent
     CalculationDimensionsController --> IReportContent
     SourceProfilesController --> ReportChanges
@@ -913,8 +953,14 @@ classDiagram
     IReportContent <|.. SourceProfileService
     OwnedItemReferenceValidator --> IOwnedContent : BelongsAsync
     CalculationModelService --> ReportUses
+    ModelChanges --> MetricAttributionService : the model's attributions
     ModelChanges ..> FormulaReferencesResolveRule
     ModelChanges ..> FormulasAcyclicRule
+    ModelChanges ..> FormulasFitLanguageRule
+    ModelChanges ..> AttributionReferencesResolveRule
+    ModelChanges ..> AttributionDriversRule
+    ModelChanges ..> AttributionWeightVariableRule
+    AttributionReferencesResolveRule ..> FormulaReferencesResolveRule : Unresolved
     ModelChanges --> ReportGraphReader : the enabled reports of the model
     ModelChanges ..> ReportMetricsResolveRule
     ModelChanges ..> ProfilesCompleteRule
@@ -942,6 +988,7 @@ classDiagram
     ReportConsumerRule --> ReportGraphReader
     IReportRule <|.. ReportItemsResolveRule
     IReportRule <|.. CalculationGroupingResolveRule
+    IReportRule <|.. ScenarioDimensionRule
     IReportRule <|.. DefaultProfileEnabledRule
     IReportRule <|.. ReportDefaultsResolveRule
     IReportRule <|.. ColumnKeysDistinctRule
@@ -951,25 +998,32 @@ classDiagram
     IReportRule <|.. ReportFactorsApplyRule
 ```
 
-- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`), with `{modelId:long}`; under `api/tenants/{tenantId}/calculation-models/{modelId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), each with `{itemId:long}` for an edit or delete. The metric writes and `PUT calculation-models/{modelId:long}` are `[AdvancesModelRevision]`. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, and `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
+- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`), with `{modelId:long}`; under `api/tenants/{tenantId}/calculation-models/{modelId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), each with `{itemId:long}` for an edit or delete, and `attributions` (`MetricAttributionsController`), listed whole, with `{metricKey}` for a `PUT` that replaces a metric's attribution and drivers or a `DELETE`. The metric and attribution writes and `PUT calculation-models/{modelId:long}` are `[AdvancesModelRevision]`. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, and `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
 - **Publication rules** (`semantic_release`): `report_sources_resolve` and `report_factors_apply` through `ReportConsumerRule`, over every enabled report, against the release's dataset versions.
-- **Model rules** (run by `ModelChanges` on every write to a model's metrics; see [The model gate](04-version-lifecycle.md#the-model-gate)): `formula_references_resolve` (`FormulaReferencesResolveRule`) and `formulas_acyclic` (`FormulasAcyclicRule`) on the model, then `report_metrics_resolve` and `profiles_complete` over every enabled report of the model.
-- **Report rules** (`IReportRule`, run by `ReportRules` on enabling a report, on every write to an enabled report and on `POST validation`): `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve` (`ReportMetricsResolveRule`), `profiles_complete` (`ProfilesCompleteRule`), `report_sources_resolve` (`ReportSourcesResolveRule`) and `report_factors_apply` (`ReportFactorsApplyRule`).
+- **Model rules** (run by `ModelChanges` on every write to a model, its metrics or their attributions; see [The model gate](04-version-lifecycle.md#the-model-gate)): `formula_references_resolve` (`FormulaReferencesResolveRule`), `formulas_acyclic` (`FormulasAcyclicRule`), `formulas_fit_language` (`FormulasFitLanguageRule`), `attribution_references_resolve` (`AttributionReferencesResolveRule`), `attribution_drivers` (`AttributionDriversRule`) and `attribution_weight_variable` (`AttributionWeightVariableRule`) on the model, then `report_metrics_resolve` and `profiles_complete` over every enabled report of the model.
+- **Report rules** (`IReportRule`, run by `ReportRules` on enabling a report, on every write to an enabled report and on `POST validation`): `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `scenario_dimension` (`ScenarioDimensionRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve` (`ReportMetricsResolveRule`), `profiles_complete` (`ProfilesCompleteRule`), `report_sources_resolve` (`ReportSourcesResolveRule`) and `report_factors_apply` (`ReportFactorsApplyRule`).
 - **Retirement rules and lifecycle handlers:** none; neither models nor reports are a versioned kind.
-- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each model content service as its `IModelContent<TItem, TInput>` and each report content service as its `IReportContent<TItem, TInput>`, both also as `IOwnedContent<TItem, TInput>` and each with the closed `OwnedItemReferenceValidator` that checks its `{itemId}` routes, `ModelChanges`, every report rule once, and the two release rules as `ReportConsumerRule`s.
+- **Registration:** `AddCalculationModelsAndReportsFeature` in [CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/CalculationModelsAndReportsFeatureServiceCollectionExtensions.cs), which registers each model content service as its `IModelContent<TItem, TInput>` and each report content service as its `IReportContent<TItem, TInput>`, both also as `IOwnedContent<TItem, TInput>` and each with the closed `OwnedItemReferenceValidator` that checks its `{itemId}` routes, `ModelChanges`, `MetricAttributionService`, every report rule once, and the two release rules as `ReportConsumerRule`s.
 
-Models are created without metrics, in the currency the input names, on the `gregorian` calendar and formula language `1.0`; reports are created disabled. `NewReportInputValidator` checks that the report key is free as a dimension key, that the model exists, and that the optional `startFromDimensionId`, whose published version the new dimension copies, is a categorical or hierarchical dimension whose published version has one root, because a report's rows are one tree. `ReportService.CreateAsync` creates the report dimension, publishes its v1 through `VersionWorkflow.PublishAsync` and stores the report with default settings, monthly periods in UTC. Deleting a report deletes everything it owns, through `ReportContentRemover`, then the report and its dimension, unpinned first; nothing outside the report names what it owns, so nothing blocks it. Deleting a model is blocked while any report reads it, through `ReportUses.ModelReadersAsync`, and otherwise deletes its variables and calculated measures with it.
+Models are created without metrics on the `gregorian` calendar, in the currency, formula language (`formula_language_version`: `1.0`, or `1.1`, which adds `POWER`) and attribution method (`attribution_method`: `shapley` or `sequential`) the input names; editing a model goes through the model gate, so a model whose formulas call `POWER` stays on 1.1. Reports are created disabled. `NewReportInputValidator` checks that the report key is free as a dimension key, that the model exists, and that the optional `startFromDimensionId`, whose published version the new dimension copies, is a categorical or hierarchical dimension whose published version has one root, because a report's rows are one tree. `ReportService.CreateAsync` creates the report dimension, publishes its v1 through `VersionWorkflow.PublishAsync` and stores the report with default settings, monthly periods in UTC. Deleting a report deletes everything it owns, through `ReportContentRemover`, then the report and its dimension, unpinned first; nothing outside the report names what it owns, so nothing blocks it. Deleting a model is blocked while any report reads it, through `ReportUses.ModelReadersAsync`, and otherwise deletes its variables, calculated measures and attributions with it.
+
+An attribution says how a metric's change between two values, such as a month and the month before or actuals and a budget, splits into the effects of its drivers, which the engine evaluates under the model's attribution method. It belongs to one variable or calculated measure, by key: an expression the drivers are switched in, which defaults to the calculated measure's formula and which a variable must bring, an optional weight variable for the member contributions of a ratio, and drivers, each a set of the expression's inputs, metric keys and `@periodDays` or `@yearDays`, that switch together. A metric without drivers has the default ones: one per metric it reads, and one `days` driver for the context parameters. `MetricAttributionsController` writes an attribution whole, drivers included, and `MetricAttributionInputValidator` checks its shape: a model formula, driver keys other than `residual`, which names the unexplained part, and inputs listed once. Whether it resolves in the model and splits its expression is the model gate's concern, because later edits to the metrics change both.
 
 A model holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key. Report content names metrics by key too: source variables, scopes and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the report's model through `ModelMetricsReader`, so one model serves several reports, each with its own data. `IOwnedContent<TItem, TInput>` serves both owners: `ContentKeys` reads the owner from the route, a model's `modelId` or a report's `reportId`, and `Compose` builds the row a write would store, so `IModelContent.Put` and `Without` can show the model gate the model, and `IReportContent.Put` and `Without` the report rules the report, as the write would leave it before `InsertAsync`, `UpdateAsync` or `DeleteAsync` runs. Variable scopes and columns are replaced whole, columns as an ordered list. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources reach.
 
-A calculation dimension is a role plus a default grouping of its template's members, which a report request can replace for its own run, and which `GroupingInputValidator<T>` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. `ReportSettingsInputValidator` checks the default settings, whose `periodicity`, `timeZone` and `layout` (the `report_layout` vocabulary: `statement`, whose lines keep their order, or `list`, whose table a request filters, orders and pages as a whole) affect execution, and the default filter, which compares calculation dimensions and may compare `parameter` operands that every request then supplies, though not `periodDays` or `yearDays`, which calculated measures read.
+A calculation dimension is a role plus a default grouping of its template's members, which a report request can replace for its own run, and which `GroupingInputValidator<T>` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. `ReportSettingsInputValidator` checks the default settings, whose `periodicity`, `timeZone`, `layout` (the `report_layout` vocabulary: `statement`, whose lines keep their order, or `list`, whose table a request filters, orders and pages as a whole) and `comparisons` affect execution, and the default filter, which compares calculation dimensions and may compare `parameter` operands that every request then supplies, though not `periodDays` or `yearDays`, which calculated measures read.
 
-Every report rule is a pure `Evaluate(ReportGraph, ReportScope)`. `ReportGraphReader` reads a `ReportGraph`, a report's content with its model's metrics, its report dimension's members and its bridge sources' rules, and `ReportRules` adds the `ReportScope` it is checked in: the active release's versions of the sources' datasets, through `ReleaseDatasets`, and the published versions of the calculation dimensions' templates. `ReportChanges.ApplyAsync` checks a write to an enabled report on the graph the write would leave (see [The report gate](04-version-lifecycle.md#the-report-gate)), and `ModelChanges.ApplyAsync` a write to a model's metrics on the model the write would leave and on each enabled report over it, given those metrics (see [The model gate](04-version-lifecycle.md#the-model-gate)). `ReportConsumerRule` checks the other side: a semantic release through every enabled report, which `ReportGraphReader.EnabledAsync` reads, against its own dataset versions, so a release whose dataset version stops applying bridge factors to a measure a factored source reads is refused. A variable or calculated measure that a formula of its model or an enabled report reads is kept by the model gate, whose violations name what reads it. A profile is blocked while it is its report's default. Roles are blocked while a binding, calculation dimension or report source names them.
+The default `comparisons` are what a report contract 2.1 request compares its run with when it names none, each in the request's shape: a `key`, `transforms` from the `report_transform` vocabulary, and optionally a `profileKey`, a `scenario` (a member key or `{ "latest": "<folder key>" }`), a `period` rule of the `comparison_period_type` vocabulary (`shift` by a `length` of a `unit`, a whole `period` or a `periodEnd` an `offset` of 0 or below back, or a fixed `range`), an `assumptionSet` and a `base` comparison. `ReportComparisons` checks their shape for the settings validator, at most six with distinct keys that hold no `.` and are never `totals`, keying each problem by the value's path inside the settings, such as `defaultSettingsJson.comparisons[1].scenario`, and lists what each names, which `report_defaults_resolve` resolves: an enabled profile of the report, an assignable member of the published version of the report's scenario dimension, or a folder with one under it, and a captured historical assumption set, whose keys `ReportScope` carries. The other side keeps them resolved: `DimensionConsumers` holds the scenario dimension's publishes and member edits to the scenarios an enabled report's comparisons read, and `AssumptionSetService` keeps a set they read.
+
+A scenario dimension, a calculation dimension with `IsScenario`, holds plan versions, such as budgets and forecasts, which a run never adds together: a run names one version as its scenario instead, so `CalculationDimensionInputValidator` keeps it neither groupable nor filterable, and `scenario_dimension` allows a report one enabled scenario dimension. A source variable's `MissingBehavior` overrides the variable's own for that source alone, so a budget source can read null where it has no rows.
+
+Every report rule is a pure `Evaluate(ReportGraph, ReportScope)`. `ReportGraphReader` reads a `ReportGraph`, a report's content with its model's metrics, its report dimension's members and its bridge sources' rules, and `ReportRules` adds the `ReportScope` it is checked in: the active release's versions of the sources' datasets, through `ReleaseDatasets`, the published versions of the calculation dimensions' templates, and the keys of the captured historical assumption sets. `ReportChanges.ApplyAsync` checks a write to an enabled report on the graph the write would leave (see [The report gate](04-version-lifecycle.md#the-report-gate)), and `ModelChanges.ApplyAsync` a write to a model's metrics on the model the write would leave and on each enabled report over it, given those metrics (see [The model gate](04-version-lifecycle.md#the-model-gate)). `ReportConsumerRule` checks the other side: a semantic release through every enabled report, which `ReportGraphReader.EnabledAsync` reads, against its own dataset versions, so a release whose dataset version stops applying bridge factors to a measure a factored source reads is refused. A variable or calculated measure that a formula of its model or an enabled report reads is kept by the model gate, whose violations name what reads it. A profile is blocked while it is its report's default. Roles are blocked while a binding, calculation dimension or report source names them.
 
 | Class | Records |
 | --- | --- |
-| `CalculationModelService` | `CalculationModelRecord`, `VariableRecord`, `CalculatedMeasureRecord`; through `ReportUses`, `ReportRecord` |
-| `ModelChanges` | `VariableRecord`, `CalculatedMeasureRecord`, `ReportRecord`; through `ReportGraphReader`, the enabled reports of the model |
+| `CalculationModelService` | `CalculationModelRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `MetricAttributionRecord`, `MetricAttributionDriverRecord`; through `ReportUses`, `ReportRecord` |
+| `ModelChanges` | `CalculationModelRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `ReportRecord`; through `MetricAttributionService`, the model's attributions; through `ReportGraphReader`, the enabled reports of the model |
+| `MetricAttributionService` | `MetricAttributionRecord`, `MetricAttributionDriverRecord` |
 | `ModelKeys` | `VariableRecord`, `CalculatedMeasureRecord` |
 | `VariableService`, `CalculatedMeasureService`, `CalculationDimensionService` | Their own record each |
 | `ReportUses` | `ReportRecord` |
@@ -978,7 +1032,7 @@ Every report rule is a pure `Evaluate(ReportGraph, ReportScope)`. `ReportGraphRe
 | `ReportVariableScopeService`, `ReportColumnService` | Their own record each |
 | `SourceProfileService` | `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportRecord` |
 | `ModelMetricsReader` | `ReportRecord`, `VariableRecord`, `CalculatedMeasureRecord` |
-| `ReportGraphReader` | `ReportRecord`, `DimensionMemberRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableScopeRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportSourceRecord`, `ReportSourceVariableRecord`, `BridgeMappingRecord`, `CalculationDimensionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `DimensionRoleRecord` |
+| `ReportGraphReader` | `ReportRecord`, `DimensionMemberRecord`, `ReportColumnRecord`, `ReportLineRecord`, `ReportMemberOptionRecord`, `ReportVariableScopeRecord`, `SourceProfileRecord`, `SourceProfileVariableRecord`, `ReportSourceRecord`, `ReportSourceVariableRecord`, `BridgeMappingRecord`, `CalculationDimensionRecord`, `VariableRecord`, `CalculatedMeasureRecord`, `DatasetRecord`, `DimensionRoleRecord`, `AssumptionSetRecord` |
 | `ReleaseDatasets` | `DatabaseInfoRecord`, `ReleaseDatasetRecord`, `DatasetRecord`, `FieldRecord`, `DimensionBindingRecord`, `TimeBindingRecord`, `MeasureRecord` |
 | `OwnedVersions` | `DimensionVersionRecord`, `BridgeVersionRecord` |
 
@@ -1068,7 +1122,7 @@ A row has one of the `report_row_kind` values. A `data` row is an assignable mem
 
 A source names its dataset, mapping method, time field and, by method, a role or a field; all but its label and time field are fixed once it is created. `NewReportSourceInputValidator` checks them against the active release, which reports run against: a dataset the release pins, a time field with a time binding, and for a bridge source a role the dataset binds into members, which only analytical dimensions have. `ReportSourceService` gives a bridge source a bridge of its own, keyed `{reportKey}_{sourceKey}` by `ReportSourceKeys` and labelled like the source, from the role's dimension into the report dimension, `many_to_many` with `replicate` allocation, and publishes its one version at once, so its rules are live edits like the rest of the report. A new bridge source can start as a copy of another bridge source's entries over the same dimension; the copy is never linked. Deleting a source deletes its variables, the profile picks that name it and its bridge, unpinned first.
 
-`PUT variables` replaces what a source supplies: each variable of the model a measure of the source's dataset, with an optional filter over its fields. A variable the source no longer supplies leaves the profiles that picked the source for it, every profile without a source for one of the source's variables picks the source, and a report without profiles gets profile `default`, which becomes its default, so a report can be enabled as soon as its sources supply what its columns read. `PUT items` replaces the rules of one bridge source that add into one data row. A rule takes an item, an assignable member of the published version of the role's dimension, or, with the `descendants` selection, a folder: a member with every member under it, including the members added under it later. Each rule has a factor, such as -1 to take back out an item that a folder rule brings into the row, or 0.5 to take half of it. The bridge replicates, so the source's other rows keep their rules: an item may add into several rows, and its values count once for each rule, times the rule's factor. `SourceItemsInputValidator` checks every key, that a rule taking an item alone names an assignable member, and that the list names each item once. The write goes through `ReportChanges`: the graph carries every bridge source's rules as `ReportSourceItem`s, so `report_factors_apply` refuses a factor other than 1 in a source that supplies a variable from a measure that ignores bridge factors. `SourceCoverageReader` lists the items no rule reaches, by itself or through a folder above it: their dataset rows reach no member of the report dimension, so the report leaves them out without a trace, and the editor shows them. The editor view carries each rule's selection and factor, from which the web app also lists the items whose factors do not add up to 1.
+`PUT variables` replaces what a source supplies: each variable of the model a measure of the source's dataset, with an optional filter over its fields and an optional `missingBehavior` that replaces the variable's own for this source alone, such as `null` for a budget source with no rows for some lines. A variable the source no longer supplies leaves the profiles that picked the source for it, every profile without a source for one of the source's variables picks the source, and a report without profiles gets profile `default`, which becomes its default, so a report can be enabled as soon as its sources supply what its columns read. `PUT items` replaces the rules of one bridge source that add into one data row. A rule takes an item, an assignable member of the published version of the role's dimension, or, with the `descendants` selection, a folder: a member with every member under it, including the members added under it later. Each rule has a factor, such as -1 to take back out an item that a folder rule brings into the row, or 0.5 to take half of it. The bridge replicates, so the source's other rows keep their rules: an item may add into several rows, and its values count once for each rule, times the rule's factor. `SourceItemsInputValidator` checks every key, that a rule taking an item alone names an assignable member, and that the list names each item once. The write goes through `ReportChanges`: the graph carries every bridge source's rules as `ReportSourceItem`s, so `report_factors_apply` refuses a factor other than 1 in a source that supplies a variable from a measure that ignores bridge factors. `SourceCoverageReader` lists the items no rule reaches, by itself or through a folder above it: their dataset rows reach no member of the report dimension, so the report leaves them out without a trace, and the editor shows them. The editor view carries each rule's selection and factor, from which the web app also lists the items whose factors do not add up to 1.
 
 | Class | Records |
 | --- | --- |

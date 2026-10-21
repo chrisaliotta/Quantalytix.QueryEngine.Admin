@@ -23,6 +23,7 @@ export function CalculationDimensionsTab({ reportId }: { reportId: number }) {
     { id: 'grouping', header: 'Default grouping', accessorFn: grouping },
     { accessorKey: 'isGroupable', header: 'Groupable', cell: ({ row }) => (row.original.isGroupable ? 'Yes' : '') },
     { accessorKey: 'isFilterable', header: 'Filterable', cell: ({ row }) => (row.original.isFilterable ? 'Yes' : '') },
+    { accessorKey: 'isScenario', header: 'Scenario', cell: ({ row }) => (row.original.isScenario ? 'Yes' : '') },
     { accessorKey: 'isEnabled', header: 'Enabled', cell: ({ row }) => <EnabledBadge enabled={row.original.isEnabled} /> },
   ];
 

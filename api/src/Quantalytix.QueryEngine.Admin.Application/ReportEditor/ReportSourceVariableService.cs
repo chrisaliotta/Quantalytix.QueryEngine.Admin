@@ -5,8 +5,8 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Replaces the variables a report source supplies, each a dataset measure with an optional filter. A variable the source no longer
-/// supplies leaves the profiles that picked the source for it. Every profile that picks no source for one of the source's variables
+/// Replaces the variables a report source supplies, each a dataset measure with an optional filter and an optional override of the
+/// variable's missing behavior. A variable the source no longer supplies leaves the profiles that picked the source for it. Every profile that picks no source for one of the source's variables
 /// picks the source, and a report without profiles gets profile <c>default</c>, which it runs under.
 /// </summary>
 public sealed class ReportSourceVariableService(
@@ -36,7 +36,8 @@ public sealed class ReportSourceVariableService(
                 ReportSourceId = sourceId,
                 VariableKey = variable.VariableKey,
                 MeasureKey = variable.MeasureKey,
-                SourceFilterJson = variable.SourceFilterJson
+                SourceFilterJson = variable.SourceFilterJson,
+                MissingBehavior = variable.MissingBehavior
             })
         ];
         var listed = supplied.Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal);

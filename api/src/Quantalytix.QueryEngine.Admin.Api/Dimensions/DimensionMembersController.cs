@@ -61,7 +61,10 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
         return Ok(await members.CreateAsync(dimensionVersionId, input, cancellationToken));
     }
 
-    /// <summary>Replaces a member's editable attributes, including its parent and level; its key stays.</summary>
+    /// <summary>
+    /// Replaces a member's editable attributes, including its parent and level; its key stays. An edit to the published version
+    /// that would leave a key some live object needs unresolved is refused.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="member">The draft or published version and its member.</param>
     /// <param name="input">The new attributes.</param>
@@ -72,21 +75,28 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
+    /// <response code="422">In the published version, the edit would leave a key a live object needs unresolved, such as a scenario a report's default comparison reads that is no longer assignable; nothing was written.</response>
     [HttpPut("{memberId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Update(
         string tenantId,
         [FromRoute] MemberReference member,
         MemberInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await members.UpdateAsync(member, input, cancellationToken));
+        var violations = await members.UpdateAsync(member, input, cancellationToken);
+        if (violations.Count > 0) return DimensionWriteResults.Rejected(HttpContext, member.DimensionVersionId, violations);
+        return Ok(await members.GetAsync(member, cancellationToken));
     }
 
-    /// <summary>Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed.</summary>
+    /// <summary>
+    /// Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. A move in
+    /// the published version that would leave a key some live object needs unresolved is refused.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="dimensionVersionId">The draft or published version.</param>
     /// <param name="input">The members' new parents and sort orders.</param>
@@ -97,21 +107,28 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
+    /// <response code="422">In the published version, the move would leave a key a live object needs unresolved, such as a folder a report's default comparison reads the latest version of without an assignable member; nothing was written.</response>
     [HttpPut("order")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<DimensionMemberRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<DimensionMemberRecord>>> Reorder(
         string tenantId,
         long dimensionVersionId,
         MemberOrderInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await members.ReorderAsync(dimensionVersionId, input, cancellationToken));
+        var violations = await members.ReorderAsync(dimensionVersionId, input, cancellationToken);
+        if (violations.Count > 0) return DimensionWriteResults.Rejected(HttpContext, dimensionVersionId, violations);
+        return Ok(await members.ListAsync(dimensionVersionId, cancellationToken));
     }
 
-    /// <summary>Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key.</summary>
+    /// <summary>
+    /// Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live
+    /// objects name its key or need it as the last assignable member under a folder.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the version.</param>
     /// <param name="member">The draft or published version and its member.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

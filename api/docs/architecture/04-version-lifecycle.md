@@ -218,7 +218,7 @@ The report rules also guard what enabled reports read. `ReportConsumerRule` adap
 
 ## The model gate
 
-The drawing shows a write to a calculation model's metrics, `PUT calculation-models/{modelId}/calculated-measures/{itemId}`. Models have no versions, so every write goes to the model the engine reads through each enabled report over it, and the gate checks the write itself. It matters because a model's formulas always evaluate and an enabled report over it never breaks: a write that would is refused, and nothing is written.
+The drawing shows a write to a calculation model's metrics, `PUT calculation-models/{modelId}/calculated-measures/{itemId}`. Models have no versions, so every write goes to the model the engine reads through each enabled report over it, and the gate checks the write itself. It matters because a model's formulas and attributions always evaluate and an enabled report over it never breaks: a write that would is refused, and nothing is written.
 
 ```mermaid
 sequenceDiagram
@@ -228,7 +228,8 @@ sequenceDiagram
     participant Ctl as CalculatedMeasuresController
     participant Svc as CalculatedMeasureService
     participant Changes as ModelChanges
-    participant Metrics as VariableRecord and CalculatedMeasureRecord gateways
+    participant Metrics as CalculationModelRecord, VariableRecord and CalculatedMeasureRecord gateways
+    participant Attributions as MetricAttributionService
     participant Reports as ReportRecord gateway
     participant Reader as ReportGraphReader
     participant Rev as SemanticRevision
@@ -238,8 +239,9 @@ sequenceDiagram
     Ctl->>Svc: Compose(modelId, itemId, input)
     Svc-->>Ctl: the row the write would store
     Ctl->>Changes: ApplyAsync(modelId, Put(model, row), UpdateAsync(row))
-    Changes->>Metrics: ListAsync(ModelId)
-    Note over Changes: Applies the change to the model's metrics in memory, then runs formula_references_resolve and formulas_acyclic
+    Changes->>Metrics: GetAsync and ListAsync(ModelId)
+    Changes->>Attributions: ListAsync(modelId)
+    Note over Changes: Applies the change to the model in memory, then runs the six model rules, from formula_references_resolve to attribution_weight_variable
     Changes->>Reports: ListAsync(ModelId)
     loop Each enabled report of the model, by key
         Changes->>Reader: ReadAsync(report)
@@ -264,11 +266,20 @@ sequenceDiagram
     Filter-->>Client: result
 ```
 
-`ModelChanges.ApplyAsync` takes the change as a function over the model's `ModelGraph`, its variables and calculated measures, which `IModelContent.Put` and `Without` build from the composed row or the deleted ID, so the rules see the model as the write would leave it, without a draft. `FormulaReferencesResolveRule` (`formula_references_resolve`) and `FormulasAcyclicRule` (`formulas_acyclic`) are pure functions of the `ModelGraph`: every `[m.KEY]` names a metric of the model, and no formula reads itself, directly or through other formulas. Each enabled report of the model is then read as a `ReportGraph` with the changed metrics in place of the stored ones, and `report_metrics_resolve` and `profiles_complete`, the two report rules that read metrics, run over it. Creating, editing and deleting a calculated measure, and editing and deleting a variable, go through the gate; creating a variable does not, because a new key breaks no formula and no report.
+`ModelChanges.ApplyAsync` takes the change as a function over the model's `ModelGraph`: the model itself, its variables, its calculated measures and its metrics' attributions with their drivers. `IModelContent.Put` and `Without` build the change from the composed row or the deleted ID, `MetricAttributionService.Put` and `Without` from a composed attribution or a metric key, and a model edit replaces the model, so the rules see the model as the write would leave it, without a draft. The six model rules are pure functions of the `ModelGraph`, run in this order:
 
-`AdvancesModelRevisionFilter` advances the semantic revision after a successful write to a model an enabled report reads, the metric writes and `PUT calculation-models/{modelId}`, whose currency the report catalog shows, because the engine reads a model only through such reports; a write to a model that only disabled reports read, or a refused write, keeps it. A model that any report reads, enabled or not, cannot be deleted; deleting any other model deletes its variables and calculated measures with it.
+- `formula_references_resolve` (`FormulaReferencesResolveRule`): every `[m.KEY]` of a formula names a metric of the model;
+- `formulas_acyclic` (`FormulasAcyclicRule`): no formula reads itself, directly or through other formulas;
+- `formulas_fit_language` (`FormulasFitLanguageRule`): formulas and attribution expressions call only what the model's formula language has, so `POWER` needs 1.1;
+- `attribution_references_resolve` (`AttributionReferencesResolveRule`): an attribution names a metric of the model, a variable's has an expression, and its expression's keys and drivers' inputs resolve, through the check `formula_references_resolve` uses;
+- `attribution_drivers` (`AttributionDriversRule`): the drivers split the expression's inputs exactly, with distinct keys and sort orders, and a metric has one to eight drivers, its own or the default ones;
+- `attribution_weight_variable` (`AttributionWeightVariableRule`): the weight variable is a variable of the model.
 
-**Sources:** [CalculatedMeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/CalculatedMeasuresController.cs), [VariablesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/VariablesController.cs), [AdvancesModelRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/AdvancesModelRevisionFilter.cs), [ModelWriteResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/ModelWriteResults.cs), [ModelChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelChanges.cs), [ModelGraph.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/Models/ModelGraph.cs), [IModelContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/IModelContent.cs), [FormulaReferencesResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulaReferencesResolveRule.cs), [FormulasAcyclicRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulasAcyclicRule.cs), [CalculationModelService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/CalculationModelService.cs), [ModelChangesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ModelChangesTests.cs), [AdvancesModelRevisionFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/AdvancesModelRevisionFilterTests.cs), [CalculationModelServiceTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/CalculationModelServiceTests.cs).
+Each enabled report of the model is then read as a `ReportGraph` with the changed metrics in place of the stored ones, and `report_metrics_resolve` and `profiles_complete`, the two report rules that read metrics, run over it. Creating, editing and deleting a calculated measure, editing and deleting a variable, replacing and deleting an attribution, and editing the model, whose formula language the formulas must fit, go through the gate; creating a variable does not, because a new key breaks no formula, attribution or report.
+
+`AdvancesModelRevisionFilter` advances the semantic revision after a successful write to a model an enabled report reads, the metric and attribution writes and `PUT calculation-models/{modelId}`, whose currency, formula language and attribution method the engine reads, because the engine reads a model only through such reports; a write to a model that only disabled reports read, or a refused write, keeps it. A model that any report reads, enabled or not, cannot be deleted; deleting any other model deletes its variables, calculated measures and attributions with it.
+
+**Sources:** [CalculatedMeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/CalculatedMeasuresController.cs), [VariablesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/VariablesController.cs), [AdvancesModelRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/AdvancesModelRevisionFilter.cs), [ModelWriteResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/ModelWriteResults.cs), [ModelChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelChanges.cs), [ModelGraph.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/Models/ModelGraph.cs), [IModelContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/IModelContent.cs), [FormulaReferencesResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulaReferencesResolveRule.cs), [FormulasAcyclicRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulasAcyclicRule.cs), [FormulasFitLanguageRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulasFitLanguageRule.cs), [AttributionReferencesResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionReferencesResolveRule.cs), [AttributionDriversRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionDriversRule.cs), [AttributionWeightVariableRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionWeightVariableRule.cs), [MetricAttributionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/MetricAttributionService.cs), [MetricAttributionsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/MetricAttributionsController.cs), [CalculationModelsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/CalculationModelsController.cs), [CalculationModelService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/CalculationModelService.cs), [ModelChangesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ModelChangesTests.cs), [AdvancesModelRevisionFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/AdvancesModelRevisionFilterTests.cs), [CalculationModelServiceTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/CalculationModelServiceTests.cs).
 
 ## Retiring
 

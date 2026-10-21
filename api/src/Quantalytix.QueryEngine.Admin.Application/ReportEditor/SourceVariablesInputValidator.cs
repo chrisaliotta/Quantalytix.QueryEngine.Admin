@@ -3,12 +3,13 @@ using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Checks a source's complete variable list: each variable once, a variable of the report's model, and
-/// against the active release's version of the source's dataset an enabled measure and a filter over enabled, filterable fields.
+/// Checks a source's complete variable list: each variable once, a variable of the report's model, a known missing-behavior override,
+/// and against the active release's version of the source's dataset an enabled measure and a filter over enabled, filterable fields.
 /// </summary>
 public sealed class SourceVariablesInputValidator : AbstractValidator<SourceVariablesInput>
 {
@@ -28,6 +29,7 @@ public sealed class SourceVariablesInputValidator : AbstractValidator<SourceVari
             variable.RuleFor(input => input.VariableKey).MustBeKey(128);
             variable.RuleFor(input => input.MeasureKey).NotEmpty().MustFitVarchar(128);
             variable.RuleFor(input => input.SourceFilterJson).MustBeFilterOver("field", "the dataset's fields");
+            variable.RuleFor(input => input.MissingBehavior).MustBeIn(VariableMissingBehaviors.Definition);
         });
         RuleFor(input => input.Variables)
             .Must(list => list.DistinctBy(variable => variable.VariableKey).Count() == list.Count)

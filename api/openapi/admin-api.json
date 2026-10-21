@@ -5642,7 +5642,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Replaces a member's editable attributes, including its parent and level; its key stays.",
+        "summary": "Replaces a member's editable attributes, including its parent and level; its key stays. An edit to the published version\nthat would leave a key some live object needs unresolved is refused.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5739,6 +5739,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "In the published version, the edit would leave a key a live object needs unresolved, such as a scenario a report's default comparison reads that is no longer assignable; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -5746,7 +5756,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key.",
+        "summary": "Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live\nobjects name its key or need it as the last assignable member under a folder.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5830,7 +5840,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed.",
+        "summary": "Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. A move in\nthe published version that would leave a key some live object needs unresolved is refused.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5917,6 +5927,16 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "In the published version, the move would leave a key a live object needs unresolved, such as a folder a report's default comparison reads the latest version of without an assignable member; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -7124,41 +7144,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
                 }
               }
             }
@@ -9393,7 +9378,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once.",
+        "summary": "Edits a calculation model's display name, currency, availability, formula language and attribution method; the enabled reports\nthat read it show its new currency and attribute by its new method at once. A formula language that lacks a function the\nmodel's formulas call is refused.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9470,6 +9455,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -9477,7 +9472,7 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Deletes a calculation model that no report reads, together with its variables and calculated measures.",
+        "summary": "Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions.",
         "parameters": [
           {
             "name": "tenantId",
@@ -9521,7 +9516,7 @@
             }
           },
           "204": {
-            "description": "The model and its metrics are deleted."
+            "description": "The model, its metrics and their attributions are deleted."
           },
           "409": {
             "description": "Nothing was deleted; the detail names the reports that read the model.",
@@ -9529,6 +9524,246 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions": {
+      "get": {
+        "tags": [
+          "MetricAttributions"
+        ],
+        "summary": "Lists a model's attributions, each with its drivers.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The calculation model.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The attributions by metric key, their drivers by sort order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetricAttribution"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}": {
+      "put": {
+        "tags": [
+          "MetricAttributions"
+        ],
+        "summary": "Sets a metric's attribution, with every one of its drivers, in place of the one stored, unless it breaks the model's rules:\nthe metric, the expression's keys, the drivers' inputs and the weight variable must resolve in the model, and the drivers must\nsplit the expression's inputs among them.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The calculation model.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "metricKey",
+            "in": "path",
+            "description": "The key of the variable or calculated measure attributed.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricAttributionInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricAttributionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored attribution, its drivers by sort order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricAttribution"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The input breaks a field rule, such as an expression that does not parse or a driver keyed residual; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The attribution breaks a model rule, such as a key the model lacks, an input no driver switches, or POWER in a model of formula language 1.0; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MetricAttributions"
+        ],
+        "summary": "Deletes a metric's attribution with its drivers: a calculated measure then has the default drivers, one per reference of its\nformula, and no member contributions.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The calculation model.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "metricKey",
+            "in": "path",
+            "description": "The key of the metric attributed.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The attribution is deleted, or the metric had none."
+          },
+          "422": {
+            "description": "The model breaks its rules without the attribution; nothing was deleted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -11393,7 +11628,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Deletes a historical set with its pins; requests can no longer name its key.",
+        "summary": "Deletes a historical set with its pins, unless an enabled report's default comparison reads it; requests can no longer name its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11440,7 +11675,7 @@
             "description": "The set and its pins are deleted."
           },
           "409": {
-            "description": "Nothing was deleted: the set is the active set, which holds the default versions.",
+            "description": "Nothing was deleted: the set is the active set, which holds the default versions, or the detail names the enabled reports' default comparisons that read it.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -11637,6 +11872,38 @@
           }
         },
         "description": "The editable labels of an assumption set; its key and pins never change."
+      },
+      "AttributionDriver": {
+        "required": [
+          "driverKey",
+          "displayName",
+          "sortOrder",
+          "inputKeys"
+        ],
+        "type": "object",
+        "properties": {
+          "driverKey": {
+            "type": "string",
+            "description": "Key, unique among the metric's drivers and never `residual`; it names the driver's expanded report column."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "sortOrder": {
+            "type": "integer",
+            "description": "The order sequential attribution switches the drivers in, unique among the metric's drivers.",
+            "format": "int32"
+          },
+          "inputKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The metric keys and `@periodDays` or `@yearDays` parameters of the expression that switch together."
+          }
+        },
+        "description": "One driver of a metric's attribution, as the attribution endpoints take and return it: inputs of the attribution expression that\nswitch together between the two values compared."
       },
       "BindingDetail": {
         "required": [
@@ -12215,7 +12482,8 @@
           "groupingMode",
           "isGroupable",
           "isFilterable",
-          "isEnabled"
+          "isEnabled",
+          "isScenario"
         ],
         "type": "object",
         "properties": {
@@ -12269,6 +12537,10 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
+          },
+          "isScenario": {
+            "type": "boolean",
+            "description": "Whether its members are plan versions, such as budgets and forecasts, which runs never add together: a report has at most\none such dimension, and it is neither groupable nor filterable."
           }
         },
         "description": "A calculation dimension of a report, as its create and edit endpoints take it."
@@ -12283,7 +12555,8 @@
           "groupingMode",
           "isGroupable",
           "isFilterable",
-          "isEnabled"
+          "isEnabled",
+          "isScenario"
         ],
         "type": "object",
         "properties": {
@@ -12347,6 +12620,10 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
+          },
+          "isScenario": {
+            "type": "boolean",
+            "description": "Whether its members are plan versions, such as budgets and forecasts: a report has at most one such dimension, which is\nneither groupable nor filterable, and a run names one of its members whenever one of its sources reaches it."
           }
         },
         "description": "A `qe_calculation_dimension` row: a dimension shared by a report's datasets, which runs break out and filter by.\nIt reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its\ndataset binds the role."
@@ -12355,7 +12632,9 @@
         "required": [
           "displayName",
           "currencyCode",
-          "isEnabled"
+          "isEnabled",
+          "formulaLanguageVersion",
+          "attributionMethod"
         ],
         "type": "object",
         "properties": {
@@ -12370,6 +12649,14 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
+          },
+          "formulaLanguageVersion": {
+            "type": "string",
+            "description": "A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: `shapley` or `sequential`."
           }
         },
         "description": "The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them."
@@ -12382,7 +12669,8 @@
           "calendarKey",
           "currencyCode",
           "formulaLanguageVersion",
-          "isEnabled"
+          "isEnabled",
+          "attributionMethod"
         ],
         "type": "object",
         "properties": {
@@ -12409,11 +12697,15 @@
           },
           "formulaLanguageVersion": {
             "type": "string",
-            "description": "The expression grammar version its formulas use."
+            "description": "A `formula_language_version` value: the expression grammar its formulas and attribution expressions use."
           },
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: how a metric's change between two values splits into the effects of its drivers."
           }
         },
         "description": "A `qe_calculation_model` row: a calculation model, whose variables and calculated measures reports read."
@@ -12711,52 +13003,6 @@
           }
         },
         "description": "The editable settings of a draft dataset version."
-      },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
       },
       "DimensionBindingRecord": {
         "required": [
@@ -13897,6 +14143,13 @@
               "string"
             ],
             "description": "A vocabulary value that classifies the row, such as a field's data type."
+          },
+          "isAssignable": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a member takes values of its own, such as a plan version, rather than only totalling the members under it; null for other kinds."
           }
         },
         "description": "One option of a picker: a metadata row reduced to what a select list shows."
@@ -14867,6 +15120,71 @@
         },
         "description": "Where one member sits in the tree after a drag-and-drop: its parent and its order among its siblings."
       },
+      "MetricAttribution": {
+        "required": [
+          "metricKey",
+          "drivers"
+        ],
+        "type": "object",
+        "properties": {
+          "metricKey": {
+            "type": "string",
+            "description": "The key of the variable or calculated measure attributed."
+          },
+          "expressionText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The expression the drivers are switched in; null means the calculated measure's own formula."
+          },
+          "weightVariableKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The variable that weighs child rows and members when a ratio's change splits into rate, mix and interaction."
+          },
+          "drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttributionDriver"
+            },
+            "description": "The drivers, by sort order; none for the default drivers."
+          }
+        },
+        "description": "How a change in one metric of a model, between two values such as a month and the month before, splits into the effects of its\ndrivers, with the drivers it switches. Without drivers, each reference of the expression is a driver of its own, and\n`@periodDays` with `@yearDays` together form one `days` driver."
+      },
+      "MetricAttributionInput": {
+        "required": [
+          "drivers"
+        ],
+        "type": "object",
+        "properties": {
+          "expressionText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The expression the drivers are switched in, over `[m.KEY]` references and `@periodDays` and `@yearDays`;\nnull keeps a calculated measure's own formula, and a variable needs one."
+          },
+          "weightVariableKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the variable that weighs members for the metric's contributions; null for none."
+          },
+          "drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttributionDriver"
+            },
+            "description": "Every driver of the metric, at most eight; none for the default drivers."
+          }
+        },
+        "description": "A metric's attribution with its drivers, as `PUT calculation-models/{modelId}/attributions/{metricKey}` takes it."
+      },
       "NewBridgeInput": {
         "required": [
           "bridgeKey",
@@ -14933,7 +15251,9 @@
           "modelKey",
           "displayName",
           "currencyCode",
-          "isEnabled"
+          "isEnabled",
+          "formulaLanguageVersion",
+          "attributionMethod"
         ],
         "type": "object",
         "properties": {
@@ -14952,6 +15272,14 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
+          },
+          "formulaLanguageVersion": {
+            "type": "string",
+            "description": "A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: `shapley` or `sequential`."
           }
         },
         "description": "A new calculation model, as `POST calculation-models` takes it: its fixed key plus its identity attributes."
@@ -15962,7 +16290,7 @@
               "null",
               "string"
             ],
-            "description": "Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution."
+            "description": "Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons` affect execution."
           },
           "defaultPivotJson": {
             "type": [
@@ -16079,7 +16407,7 @@
               "null",
               "string"
             ],
-            "description": "Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution."
+            "description": "Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons`, the comparisons a request\nmakes when it names none, affect execution."
           },
           "defaultPivotJson": {
             "type": [
@@ -16205,6 +16533,13 @@
               "string"
             ],
             "description": "Optional structured filter over the dataset's fields, applied before aggregation."
+          },
+          "missingBehavior": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `variable_missing_behavior` value that replaces the variable's own for this source alone; null keeps the variable's."
           }
         },
         "description": "A `qe_report_source_variable` row: the dataset measure a report source supplies one variable of the report's model with,\nand an optional filter over the dataset's fields."
@@ -16691,6 +17026,13 @@
               "string"
             ],
             "description": "Optional structured filter over the dataset's filterable fields, in the query contract's `filterNode` vocabulary."
+          },
+          "missingBehavior": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional `variable_missing_behavior` value that replaces the variable's own for this source alone, such as `null` for a\nbudget source with no rows for some lines; null keeps the variable's."
           }
         },
         "description": "The dataset measure that supplies one model variable from a report source."
@@ -17378,9 +17720,6 @@
       "name": "RangeBands"
     },
     {
-      "name": "DevelopmentToken"
-    },
-    {
       "name": "Datasets"
     },
     {
@@ -17397,6 +17736,9 @@
     },
     {
       "name": "CalculationModels"
+    },
+    {
+      "name": "MetricAttributions"
     },
     {
       "name": "Variables"

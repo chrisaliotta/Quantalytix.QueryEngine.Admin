@@ -13,7 +13,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class CalculationModelsController(CalculationModelService models) : ControllerBase
+public sealed class CalculationModelsController(CalculationModelService models, ModelChanges changes) : ControllerBase
 {
     /// <summary>Lists every calculation model of the tenant.</summary>
     /// <param name="tenantId">The tenant that owns the models.</param>
@@ -31,7 +31,7 @@ public sealed class CalculationModelsController(CalculationModelService models) 
 
     /// <summary>Creates a calculation model without variables or calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="input">The new model's key, display name, currency and availability.</param>
+    /// <param name="input">The new model's key, display name, currency, availability, formula language and attribution method.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created model.</returns>
     /// <response code="200">The created model.</response>
@@ -61,7 +61,11 @@ public sealed class CalculationModelsController(CalculationModelService models) 
         return Ok(await models.GetAsync(modelId, cancellationToken));
     }
 
-    /// <summary>Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once.</summary>
+    /// <summary>
+    /// Edits a calculation model's display name, currency, availability, formula language and attribution method; the enabled reports
+    /// that read it show its new currency and attribute by its new method at once. A formula language that lacks a function the
+    /// model's formulas call is refused.
+    /// </summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
     /// <param name="modelId">The model.</param>
     /// <param name="input">The new attributes.</param>
@@ -71,25 +75,31 @@ public sealed class CalculationModelsController(CalculationModelService models) 
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
+    /// <response code="422">The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written.</response>
     [HttpPut("{modelId:long}")]
     [AdvancesModelRevision("modelId")]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculationModelRecord>> Update(
         string tenantId,
         long modelId,
         CalculationModelInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await models.UpdateAsync(modelId, input, cancellationToken));
+        var updated = await models.ComposeAsync(modelId, input, cancellationToken);
+        var violations = await changes.ApplyAsync(
+            modelId, model => model with { Model = updated }, () => models.UpdateAsync(updated, cancellationToken), cancellationToken);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+        return Ok(updated);
     }
 
-    /// <summary>Deletes a calculation model that no report reads, together with its variables and calculated measures.</summary>
+    /// <summary>Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
-    /// <response code="204">The model and its metrics are deleted.</response>
+    /// <response code="204">The model, its metrics and their attributions are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the reports that read the model.</response>

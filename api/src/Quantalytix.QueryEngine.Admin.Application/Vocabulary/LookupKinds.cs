@@ -106,7 +106,7 @@ public static class LookupKinds
             new() { Value = DimensionRoles, Description = "Roles of dimensions, labeled with their template and classified by its kind, each pointing at the template; an optional parent narrows them to one dimension." },
             new() { Value = DimensionVersions, Description = "Versions of a dimension; the parent is the dimension." },
             new() { Value = Levels, Description = "Levels of a dimension version; the parent is the dimension version." },
-            new() { Value = Members, Description = "Members of a dimension version; the parent is the dimension version." },
+            new() { Value = Members, Description = "Members of a dimension version, each with its parent member and whether it is assignable; the parent is the dimension version." },
             new() { Value = MappingSets, Description = "Mapping sets; an optional parent narrows them to one dimension." },
             new() { Value = MappingVersions, Description = "Versions of a mapping set; the parent is the mapping set." },
             new() { Value = Bridges, Description = "Bridges, each pointing at its target dimension; an optional parent narrows them to one source dimension." },

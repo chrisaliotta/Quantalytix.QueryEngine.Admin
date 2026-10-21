@@ -96,6 +96,7 @@ export function SourcesTab({ view, highlightedSourceId }: SourcesTabProps) {
                   <Badge key={variable.variableKey} variant="outline">
                     {variable.variableKey} ← {variable.measureKey}
                     {variable.sourceFilterJson && ' (filtered)'}
+                    {variable.missingBehavior && ` (missing as ${variable.missingBehavior})`}
                   </Badge>
                 ))}
               </div>

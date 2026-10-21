@@ -12,11 +12,12 @@ using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
 /// <summary>
-/// Confirms the gate every write to a model's metrics goes through. A model has no draft: the engine reads its metrics as they
-/// stand through each enabled report over it, so a write is applied in memory first and refused, with nothing written, when it
-/// would leave a formula reading a key the model lacks or reading itself, or leave an enabled report naming a metric the model
-/// lacks or reading a variable a profile picks no source for. Disabled reports are not checked, because the engine does not read
-/// them; enabling one runs the report rules then.
+/// Confirms the gate every write to a model, its metrics or their attributions goes through. A model has no draft: the engine reads
+/// it as it stands through each enabled report over it, so a write is applied in memory first and refused, with nothing written,
+/// when it would leave a formula reading a key the model lacks, reading itself or calling a function its language lacks, an
+/// attribution that no longer resolves or splits its expression, or an enabled report naming a metric the model lacks or reading a
+/// variable a profile picks no source for. Disabled reports are not checked, because the engine does not read them; enabling one
+/// runs the report rules then.
 /// </summary>
 public sealed class ModelChangesTests
 {
@@ -110,6 +111,72 @@ public sealed class ModelChangesTests
 
         Assert.Empty(violations);
         Assert.Equal("[m.balance] / 4", Assert.Single(_fixture.CalculatedMeasures.All).ExpressionText);
+    }
+
+    /// <summary>
+    /// An attribution is a live model write: one whose driver switches an input its expression does not read is refused and nothing is
+    /// stored, and one that passes is stored with its drivers, which list back as written.
+    /// </summary>
+    /// <returns>A task that completes when both writes are checked.</returns>
+    [Fact]
+    public async Task Attribution_IsWrittenOnlyWhenItPassesTheModelRules()
+    {
+        var refused = await ReplaceAttributionAsync(Attribution("yield", null, Driver("volume", 1, "balance"), Driver("income", 2, "income")));
+        var written = await ReplaceAttributionAsync(Attribution("yield", null, Driver("volume", 1, "balance")) with { WeightVariableKey = "balance" });
+
+        Assert.Equal([AttributionReferencesResolveRule.Code, AttributionDriversRule.Code], refused.Select(violation => violation.Rule));
+        Assert.Empty(written);
+        var stored = Assert.Single(await _fixture.AttributionService().ListAsync(ModelId, TestContext.Current.CancellationToken));
+        Assert.Equal(("yield", "balance"), (stored.MetricKey, stored.WeightVariableKey));
+        Assert.Equal(["balance"], Assert.Single(stored.Drivers).InputKeys);
+    }
+
+    /// <summary>
+    /// The attribution rules run on every metric write too: deleting yield, which an attribution explains, is refused, because the
+    /// engine would read an attribution of a metric the model no longer has.
+    /// </summary>
+    /// <returns>A task that completes when the delete is checked.</returns>
+    [Fact]
+    public async Task DeletingAnAttributedMeasure_IsRefused()
+    {
+        Assert.Empty(await ReplaceAttributionAsync(Attribution("yield", null)));
+
+        var violations = await _fixture.Changes().ApplyAsync(
+            ModelId, model => _measures.Without(model, 61), () => _measures.DeleteAsync(61, TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["The attribution of 'yield' names no variable or calculated measure of the model."], violations.Select(violation => violation.Message));
+        Assert.Single(_fixture.CalculatedMeasures.All);
+    }
+
+    /// <summary>
+    /// A model on formula language 1.1 whose yield calls POWER cannot go back to 1.0, because the engine would then refuse the formula;
+    /// the model keeps 1.1.
+    /// </summary>
+    /// <returns>A task that completes when the edit is checked.</returns>
+    [Fact]
+    public async Task LeavingTheLanguageAFormulaNeeds_IsRefused()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await _fixture.Models.UpdateAsync(Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version11 }, cancellationToken);
+        Assert.Empty(await UpdateMeasureAsync(Calculated(61, "yield", "POWER([m.balance], 2)")));
+        var downgraded = Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version10 };
+
+        var violations = await _fixture.Changes().ApplyAsync(
+            ModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
+
+        Assert.Equal([FormulasFitLanguageRule.Code], violations.Select(violation => violation.Rule));
+        Assert.Equal(FormulaLanguageVersions.Version11, Assert.Single(_fixture.Models.All).FormulaLanguageVersion);
+    }
+
+    /// <summary>Replaces an attribution of model 40 through the gate, as the attributions controller does.</summary>
+    private Task<IReadOnlyList<RuleViolation>> ReplaceAttributionAsync(MetricAttribution attribution)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        return _fixture.Changes().ApplyAsync(
+            ModelId,
+            model => MetricAttributionService.Put(model, attribution),
+            () => _fixture.AttributionService().ReplaceAsync(ModelId, attribution, cancellationToken),
+            cancellationToken);
     }
 
     /// <summary>Replaces a calculated measure of model 40 through the gate, as the calculated measures controller does.</summary>

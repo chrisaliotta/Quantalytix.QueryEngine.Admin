@@ -17,4 +17,7 @@ public sealed record ReportSourceVariableRecord
 
     /// <summary>Optional structured filter over the dataset's fields, applied before aggregation.</summary>
     public string? SourceFilterJson { get; init; }
+
+    /// <summary>A <c>variable_missing_behavior</c> value that replaces the variable's own for this source alone; null keeps the variable's.</summary>
+    public string? MissingBehavior { get; init; }
 }

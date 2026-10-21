@@ -260,6 +260,20 @@ internal sealed class ReportEditorFixture
         return new NewReportSourceInputValidator(Reports, Sources, Bridges, Roles, ReleaseDatasets(), Keys);
     }
 
+    /// <summary>The source variable service.</summary>
+    /// <returns>The service over these tables.</returns>
+    public ReportSourceVariableService SourceVariableService()
+    {
+        return new ReportSourceVariableService(Reports, SourceVariables, Profiles, Picks, Changes(), _ids);
+    }
+
+    /// <summary>The source variable validator, for a request to the report's source.</summary>
+    /// <returns>The validator over these tables.</returns>
+    public SourceVariablesInputValidator VariablesValidator()
+    {
+        return new SourceVariablesInputValidator(Metrics(), Sources, ReleaseDatasets(), Keys);
+    }
+
     /// <summary>The item service.</summary>
     /// <returns>The service over these tables.</returns>
     public SourceItemService Items()
@@ -317,9 +331,9 @@ internal sealed class ReportEditorFixture
     {
         IReportRule[] rules =
         [
-            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new DefaultProfileEnabledRule(), new ReportDefaultsResolveRule(),
-            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule(),
-            new ReportFactorsApplyRule()
+            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
+            new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
+            new ReportSourcesResolveRule(), new ReportFactorsApplyRule()
         ];
         return new ReportRules(rules, GraphReader());
     }
@@ -329,7 +343,7 @@ internal sealed class ReportEditorFixture
     {
         return new ReportGraphReader(
             Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings,
-            CalculationDimensions, Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            CalculationDimensions, Variables, CalculatedMeasures, Datasets, Roles, Sets, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The reader of the metric keys of the report's model.</summary>
@@ -394,7 +408,7 @@ internal sealed class ReportEditorFixture
             new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands),
             _ids);
         var checks = Checks(bands);
-        var members = new DimensionMemberService(Members, checks, new ClosureBuilder(Members, Closure), _ids);
+        var members = new DimensionMemberService(Members, checks, Changes(Consumers()), new ClosureBuilder(Members, Closure), _ids);
         return new DimensionService(
             Dimensions,
             DimensionVersions,
@@ -411,15 +425,25 @@ internal sealed class ReportEditorFixture
     /// <summary>The delete checks over these tables, whose live consumers are read through an empty publication set.</summary>
     private DimensionDeleteChecks Checks(InMemoryTableGateway<RangeBandRecord> bands)
     {
-        var datasetVersions = new InMemoryTableGateway<DatasetVersionRecord>();
-        var mappingSets = new InMemoryTableGateway<MappingSetRecord>();
-        var names = new BindingNames(Roles, Fields);
-        var consumers = new DimensionConsumers(
-            Datasets, datasetVersions, Bindings, Roles, mappingSets, new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
-            Bridges, BridgeVersions, BridgeMappings, Reports, CalculationDimensions, names);
+        var consumers = Consumers();
         return new DimensionDeleteChecks(
-            DimensionVersions, Members, bands, Roles, mappingSets, Bridges, Bindings, Datasets, datasetVersions, Reports, CalculationDimensions, Sources,
-            new ReportNames(Reports), consumers);
+            DimensionVersions, Members, bands, Roles, new InMemoryTableGateway<MappingSetRecord>(), Bridges, Bindings, Datasets,
+            new InMemoryTableGateway<DatasetVersionRecord>(), Reports, CalculationDimensions, Sources, new ReportNames(Reports), consumers, Changes(consumers));
+    }
+
+    /// <summary>The keys live objects name in the dimensions of these tables.</summary>
+    private DimensionConsumers Consumers()
+    {
+        return new DimensionConsumers(
+            Datasets, new InMemoryTableGateway<DatasetVersionRecord>(), Bindings, Roles, new InMemoryTableGateway<MappingSetRecord>(),
+            new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(), Bridges, BridgeVersions, BridgeMappings, Reports,
+            CalculationDimensions, new BindingNames(Roles, Fields));
+    }
+
+    /// <summary>The check of member writes against the live objects.</summary>
+    private DimensionChanges Changes(DimensionConsumers consumers)
+    {
+        return new DimensionChanges(DimensionVersions, Levels, Members, consumers);
     }
 
     /// <summary>The bridge version service.</summary>

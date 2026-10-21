@@ -1,4 +1,5 @@
 using FluentValidation;
+using Quantalytix.QueryEngine.Domain.Expressions;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Expressions;
 
@@ -10,7 +11,8 @@ public static class ExpressionRuleExtensions
     /// parameters and no <c>[d.key]</c> dimension members; null or empty text passes. A syntax failure carries the engine's
     /// message, which names the failing character. Metadata expressions read no request parameters: the query engine renders
     /// field expressions and row filters with none bound, and the catalog declares none that a request would know to send for
-    /// a formula. Dimension member references belong to a query's <c>where</c> filter, which resolves members first.
+    /// a formula. Dimension member references belong to a query's <c>where</c> filter, which resolves members first. Every
+    /// dataset version's expressions are language 1.0, so they call no <c>POWER</c>, which only language 1.1 has.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for an expression property of the input.</param>
@@ -33,6 +35,9 @@ public static class ExpressionRuleExtensions
                 context.AddFailure($"Metadata expressions read fields, not dimension members, so '{context.DisplayName}' cannot read {dimensions}.");
             }
 
+            if (inspection.Functions.Contains(ExpressionFunction.Power))
+                context.AddFailure($"Metadata expressions are expression language 1.0, which has no POWER, so '{context.DisplayName}' cannot call it.");
+
             if (inspection.ParameterNames.Count == 0) return;
             var parameters = string.Join(", ", inspection.ParameterNames.Select(name => $"'@{name}'"));
             context.AddFailure($"Metadata expressions bind no request parameters, so '{context.DisplayName}' cannot read {parameters}.");
@@ -40,15 +45,16 @@ public static class ExpressionRuleExtensions
     }
 
     /// <summary>
-    /// Requires a calculated measure's formula to parse and to read only <c>[m.KEY]</c> model keys and the <c>@periodDays</c>
-    /// and <c>@yearDays</c> context parameters: a model formula is evaluated over aligned report values, so it has no dataset
-    /// fields or dimension members to read. Whether each key names a variable or calculated measure of the version, and whether
-    /// the formulas are acyclic, are publication rules, because later edits to the version can change both.
+    /// Requires a model formula, a calculated measure's formula or a metric's attribution expression, to parse and to read only
+    /// <c>[m.KEY]</c> model keys and the <c>@periodDays</c> and <c>@yearDays</c> context parameters: a model formula is evaluated
+    /// over aligned report values, so it has no dataset fields or dimension members to read. Whether each key names a metric of the
+    /// model, whether the formulas are acyclic, and whether the model's formula language has the functions they call, are model
+    /// rules, because later edits to the model can change all three.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for the formula text.</param>
     /// <returns>The rule, for further configuration.</returns>
-    public static IRuleBuilderOptionsConditions<T, string?> MustBeCalculatedMeasureFormula<T>(this IRuleBuilder<T, string?> rule)
+    public static IRuleBuilderOptionsConditions<T, string?> MustBeModelFormula<T>(this IRuleBuilder<T, string?> rule)
     {
         return rule.Custom((text, context) =>
         {
@@ -61,10 +67,10 @@ public static class ExpressionRuleExtensions
             }
 
             if (inspection.FieldKeys.Count > 0 || inspection.DimensionKeys.Count > 0)
-                context.AddFailure("A calculated measure reads model variables and calculated measures through [m.KEY], not dataset fields or dimension members.");
+                context.AddFailure("A model formula reads variables and calculated measures through [m.KEY], not dataset fields or dimension members.");
             var unknown = inspection.ParameterNames.Where(name => !CalculatedMeasureParameters.Contains(name)).ToArray();
             if (unknown.Length > 0)
-                context.AddFailure($"A calculated measure reads only @periodDays and @yearDays, not {string.Join(", ", unknown.Select(name => $"'@{name}'"))}.");
+                context.AddFailure($"A model formula reads only @periodDays and @yearDays, not {string.Join(", ", unknown.Select(name => $"'@{name}'"))}.");
         });
     }
 

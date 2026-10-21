@@ -34,6 +34,7 @@ public static class BindingsAndMeasuresFeatureServiceCollectionExtensions
         services.AddScoped<IPublicationRule, FormulaAcyclicRule>();
         services.AddScoped<IPublicationRule, TimePolicySeriesGrainRule>();
         services.AddScoped<IPublicationRule, TimePolicyTimeBindingInVersionRule>();
+        services.AddScoped<IPublicationRule, IntervalEstimatesForFinerPeriodsRule>();
         return services;
     }
 }

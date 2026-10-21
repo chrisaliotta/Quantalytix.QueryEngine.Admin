@@ -1,15 +1,19 @@
 import { useForm } from 'react-hook-form';
-import { JsonField, KeyField } from '@/shared/form';
+import { JsonField, KeyField, VocabularyField } from '@/shared/form';
 import { FormDialog } from '@/shared/FormDialog';
 import { emptyToNull } from '@/shared/text';
 import { useLatestVersionItems } from '@/shared/useLatestVersionItems';
 import { useReplaceSourceVariables } from './editorApi';
 import type { EditorSource, EditorView, SourceVariableInput } from './types';
 
-/** Values of the binding dialog; no measure means the source does not supply the variable, and the filter is JSON text. */
+/**
+ * Values of the binding dialog; no measure means the source does not supply the variable, the filter is JSON text, and no
+ * missing behavior keeps the variable's own.
+ */
 interface SourceVariableValues {
   measureKey: string | null;
   sourceFilterJson: string;
+  missingBehavior: string | null;
 }
 
 export interface SourceVariableDialogProps {
@@ -21,23 +25,36 @@ export interface SourceVariableDialogProps {
 }
 
 /**
- * Binds one model variable to a measure of a source's dataset, with an optional filter over the dataset's fields, or unbinds it.
- * The source's other variables stay as they are; a profile that picks no source for the variable picks this one.
+ * Binds one model variable to a measure of a source's dataset, with an optional filter over the dataset's fields and an optional
+ * override of the variable's missing behavior, or unbinds it. The source's other variables stay as they are; a profile that picks
+ * no source for the variable picks this one.
  */
 export function SourceVariableDialog({ view, source, variableKey, onClose }: SourceVariableDialogProps) {
   const replace = useReplaceSourceVariables(view.report.reportId);
   const measures = useLatestVersionItems('dataset-versions', source.source.datasetId, 'measures');
   const current = source.variables.find(variable => variable.variableKey === variableKey);
   const form = useForm<SourceVariableValues>({
-    defaultValues: { measureKey: current?.measureKey ?? null, sourceFilterJson: current?.sourceFilterJson ?? '' },
+    defaultValues: {
+      measureKey: current?.measureKey ?? null,
+      sourceFilterJson: current?.sourceFilterJson ?? '',
+      missingBehavior: current?.missingBehavior ?? null,
+    },
   });
 
   function submit(values: SourceVariableValues) {
     const others: SourceVariableInput[] = source.variables
       .filter(variable => variable.variableKey !== variableKey)
-      .map(({ variableKey: key, measureKey, sourceFilterJson }) => ({ variableKey: key, measureKey, sourceFilterJson }));
+      .map(({ variableKey: key, measureKey, sourceFilterJson, missingBehavior }) => ({ variableKey: key, measureKey, sourceFilterJson, missingBehavior }));
     const variables = values.measureKey
-      ? [...others, { variableKey, measureKey: values.measureKey, sourceFilterJson: emptyToNull(values.sourceFilterJson) }]
+      ? [
+          ...others,
+          {
+            variableKey,
+            measureKey: values.measureKey,
+            sourceFilterJson: emptyToNull(values.sourceFilterJson),
+            missingBehavior: values.missingBehavior,
+          },
+        ]
       : others;
     return replace.mutateAsync({ sourceId: source.source.reportSourceId, variables });
   }
@@ -63,6 +80,13 @@ export function SourceVariableDialog({ view, source, variableKey, onClose }: Sou
         name="sourceFilterJson"
         label="Filter"
         description={`Optional: a structured filter over the dataset's filterable fields, such as {"operator":"eq","left":{"type":"field","id":"accountKey"},"right":{"type":"literal","value":"4000"}}.`}
+      />
+      <VocabularyField
+        name="missingBehavior"
+        label="Missing values"
+        vocabulary="variable_missing_behavior"
+        allowEmpty
+        description="Optional: how a row or period this source has no data for reads, in place of the variable's own; a budget source sets null where it plans nothing."
       />
     </FormDialog>
   );

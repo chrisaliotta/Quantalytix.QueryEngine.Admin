@@ -90,7 +90,8 @@ public sealed class CalculationDimensionService(ITableGateway<CalculationDimensi
             GroupingDepth = input.GroupingDepth,
             IsGroupable = input.IsGroupable,
             IsFilterable = input.IsFilterable,
-            IsEnabled = input.IsEnabled
+            IsEnabled = input.IsEnabled,
+            IsScenario = input.IsScenario
         };
     }
 }

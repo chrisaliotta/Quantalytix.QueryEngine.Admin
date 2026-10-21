@@ -4,11 +4,15 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import type { CalculationModelInput, NewCalculationModelInput } from './types';
+import type { CalculationModelInput, MetricAttributionInput, NewCalculationModelInput } from './types';
 
 // Query keys start with [resource, tenantId] so invalidateTenantQueries reaches them.
 function modelsKey(tenantId: string) {
   return ['calculation-models', tenantId] as const;
+}
+
+function attributionsKey(tenantId: string, modelId: number) {
+  return [...modelsKey(tenantId), modelId, 'attributions'] as const;
 }
 
 /** Marks the given queries stale. */
@@ -50,7 +54,7 @@ export function useCreateCalculationModel() {
   });
 }
 
-/** Edits a calculation model's name, currency and availability. */
+/** Edits a calculation model's name, currency, availability, formula language and attribution method; a 422 names the formulas a language lacks a function for. */
 export function useUpdateCalculationModel(modelId: number) {
   const tenantId = useTenantId();
   return useMutation({
@@ -65,7 +69,50 @@ export function useUpdateCalculationModel(modelId: number) {
   });
 }
 
-/** Deletes a model that no report reads, with its variables and calculated measures; a 409 names the reports that read it. */
+/** Every attribution of a model's metrics, by metric key, with its drivers by sort order. */
+export function useAttributions(modelId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: attributionsKey(tenantId, modelId),
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions', {
+          params: { path: { tenantId, modelId } },
+        })
+      ),
+  });
+}
+
+/** Replaces a metric's attribution with its drivers; a 422 names the model rules it breaks. */
+export function useReplaceAttribution(modelId: number, metricKey: string) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (body: MetricAttributionInput) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}', {
+          params: { path: { tenantId, modelId, metricKey } },
+          body,
+        })
+      ),
+    onSuccess: () => invalidate(attributionsKey(tenantId, modelId)),
+  });
+}
+
+/** Deletes a metric's attribution with its drivers, which leaves a calculated measure the default drivers of its formula. */
+export function useDeleteAttribution(modelId: number, metricKey: string) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async () =>
+      unwrap(
+        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}', {
+          params: { path: { tenantId, modelId, metricKey } },
+        })
+      ),
+    onSuccess: () => invalidate(attributionsKey(tenantId, modelId)),
+  });
+}
+
+/** Deletes a model that no report reads, with its variables, calculated measures and attributions; a 409 names the reports that read it. */
 export function useDeleteCalculationModel() {
   const tenantId = useTenantId();
   return useMutation({

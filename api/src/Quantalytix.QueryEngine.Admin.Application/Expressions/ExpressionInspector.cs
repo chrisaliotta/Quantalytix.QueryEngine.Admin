@@ -5,8 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Expressions;
 /// <summary>Checks expression text with the query engine's own parser, so the admin API accepts exactly what queries can run.</summary>
 public static class ExpressionInspector
 {
-    /// <summary>Parses an expression and lists the fields, measures, dimensions and request parameters it references.</summary>
-    /// <param name="text">Expression language 1.0 text, such as <c>[f.balance] * [m.rate]</c>.</param>
+    /// <summary>Parses an expression and lists the fields, measures, dimensions, request parameters and functions it references.</summary>
+    /// <param name="text">Expression language 1.1 text, such as <c>[f.balance] * [m.rate]</c>.</param>
     /// <returns>The references when the text parses; otherwise the engine's error message and position.</returns>
     public static ExpressionInspection Inspect(string text)
     {
@@ -19,7 +19,8 @@ public static class ExpressionInspector
                 FieldKeys = [.. ExpressionTree.FieldKeys(expression).Distinct(StringComparer.Ordinal)],
                 MeasureKeys = [.. ExpressionTree.MeasureKeys(expression).Distinct(StringComparer.Ordinal)],
                 DimensionKeys = [.. ExpressionTree.DimensionKeys(expression).Distinct(StringComparer.Ordinal)],
-                ParameterNames = [.. ExpressionTree.ParameterNames(expression).Distinct(StringComparer.Ordinal)]
+                ParameterNames = [.. ExpressionTree.ParameterNames(expression).Distinct(StringComparer.Ordinal)],
+                Functions = [.. ExpressionTree.Functions(expression).Distinct()]
             };
         }
         catch (ExpressionSyntaxException exception)
@@ -32,7 +33,8 @@ public static class ExpressionInspector
                 FieldKeys = [],
                 MeasureKeys = [],
                 DimensionKeys = [],
-                ParameterNames = []
+                ParameterNames = [],
+                Functions = []
             };
         }
     }

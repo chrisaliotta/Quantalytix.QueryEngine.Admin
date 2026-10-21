@@ -4760,7 +4760,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replaces a member's editable attributes, including its parent and level; its key stays. */
+        /**
+         * Replaces a member's editable attributes, including its parent and level; its key stays. An edit to the published version
+         *     that would leave a key some live object needs unresolved is refused.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -4827,10 +4830,22 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description In the published version, the edit would leave a key a live object needs unresolved, such as a scenario a report's default comparison reads that is no longer assignable; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
             };
         };
         post?: never;
-        /** Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key. */
+        /**
+         * Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live
+         *     objects name its key or need it as the last assignable member under a folder.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -4905,7 +4920,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. */
+        /**
+         * Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. A move in
+         *     the published version that would leave a key some live object needs unresolved is refused.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -4968,6 +4986,15 @@ export interface paths {
                     };
                     content: {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description In the published version, the move would leave a key a live object needs unresolved, such as a folder a report's default comparison reads the latest version of without an assignable member; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -7755,7 +7782,11 @@ export interface paths {
                 };
             };
         };
-        /** Edits a calculation model's display name, currency and availability; the enabled reports that read it show its new currency at once. */
+        /**
+         * Edits a calculation model's display name, currency, availability, formula language and attribution method; the enabled reports
+         *     that read it show its new currency and attribute by its new method at once. A formula language that lacks a function the
+         *     model's formulas call is refused.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -7811,10 +7842,19 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
             };
         };
         post?: never;
-        /** Deletes a calculation model that no report reads, together with its variables and calculated measures. */
+        /** Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions. */
         delete: {
             parameters: {
                 query?: never;
@@ -7829,7 +7869,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The model and its metrics are deleted. */
+                /** @description The model, its metrics and their attributions are deleted. */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -7861,6 +7901,208 @@ export interface paths {
                     };
                     content: {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model's attributions, each with its drivers. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The calculation model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The attributions by metric key, their drivers by sort order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MetricAttribution"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Sets a metric's attribution, with every one of its drivers, in place of the one stored, unless it breaks the model's rules:
+         *     the metric, the expression's keys, the drivers' inputs and the weight variable must resolve in the model, and the drivers must
+         *     split the expression's inputs among them.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The calculation model. */
+                    modelId: number;
+                    /** @description The key of the variable or calculated measure attributed. */
+                    metricKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MetricAttributionInput"];
+                    "application/*+json": components["schemas"]["MetricAttributionInput"];
+                };
+            };
+            responses: {
+                /** @description The stored attribution, its drivers by sort order. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MetricAttribution"];
+                    };
+                };
+                /** @description The input breaks a field rule, such as an expression that does not parse or a driver keyed residual; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The attribution breaks a model rule, such as a key the model lacks, an input no driver switches, or POWER in a model of formula language 1.0; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Deletes a metric's attribution with its drivers: a calculated measure then has the default drivers, one per reference of its
+         *     formula, and no member contributions.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The calculation model. */
+                    modelId: number;
+                    /** @description The key of the metric attributed. */
+                    metricKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The attribution is deleted, or the metric had none. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The model breaks its rules without the attribution; nothing was deleted. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -9356,7 +9598,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a historical set with its pins; requests can no longer name its key. */
+        /** Deletes a historical set with its pins, unless an enabled report's default comparison reads it; requests can no longer name its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -9396,7 +9638,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the set is the active set, which holds the default versions. */
+                /** @description Nothing was deleted: the set is the active set, which holds the default versions, or the detail names the enabled reports' default comparisons that read it. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -9504,6 +9746,23 @@ export interface components {
             displayName: string;
             /** @description An optional note, such as the close the snapshot records. */
             description?: null | string;
+        };
+        /**
+         * @description One driver of a metric's attribution, as the attribution endpoints take and return it: inputs of the attribution expression that
+         *     switch together between the two values compared.
+         */
+        AttributionDriver: {
+            /** @description Key, unique among the metric's drivers and never `residual`; it names the driver's expanded report column. */
+            driverKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /**
+             * Format: int32
+             * @description The order sequential attribution switches the drivers in, unique among the metric's drivers.
+             */
+            sortOrder: number;
+            /** @description The metric keys and `@periodDays` or `@yearDays` parameters of the expression that switch together. */
+            inputKeys: string[];
         };
         /**
          * @description A dimension binding with the role it binds its field to and its time extension, joined from `qe_dimension_binding`,
@@ -9819,6 +10078,11 @@ export interface components {
             isFilterable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /**
+             * @description Whether its members are plan versions, such as budgets and forecasts, which runs never add together: a report has at most
+             *     one such dimension, and it is neither groupable nor filterable.
+             */
+            isScenario: boolean;
         };
         /**
          * @description A `qe_calculation_dimension` row: a dimension shared by a report's datasets, which runs break out and filter by.
@@ -9862,6 +10126,11 @@ export interface components {
             isFilterable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /**
+             * @description Whether its members are plan versions, such as budgets and forecasts: a report has at most one such dimension, which is
+             *     neither groupable nor filterable, and a run names one of its members whenever one of its sources reaches it.
+             */
+            isScenario: boolean;
         };
         /** @description The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
         CalculationModelInput: {
@@ -9871,6 +10140,10 @@ export interface components {
             currencyCode: string;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /** @description A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`. */
+            formulaLanguageVersion: string;
+            /** @description An `attribution_method` value: `shapley` or `sequential`. */
+            attributionMethod: string;
         };
         /** @description A `qe_calculation_model` row: a calculation model, whose variables and calculated measures reports read. */
         CalculationModelRecord: {
@@ -9887,10 +10160,12 @@ export interface components {
             calendarKey: string;
             /** @description The ISO 4217 currency of its monetary figures. */
             currencyCode: string;
-            /** @description The expression grammar version its formulas use. */
+            /** @description A `formula_language_version` value: the expression grammar its formulas and attribution expressions use. */
             formulaLanguageVersion: string;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /** @description An `attribution_method` value: how a metric's change between two values splits into the effects of its drivers. */
+            attributionMethod: string;
         };
         /** @description The `qe_database_info` row: the singleton tenant metadata record that points runtime queries at the active release. */
         DatabaseInfoRecord: {
@@ -10571,6 +10846,8 @@ export interface components {
             status?: null | string;
             /** @description A vocabulary value that classifies the row, such as a field's data type. */
             classifier?: null | string;
+            /** @description Whether a member takes values of its own, such as a plan version, rather than only totalling the members under it; null for other kinds. */
+            isAssignable?: null | boolean;
         };
         /** @description The complete entry list of a draft mapping version, as `PUT mapping-versions/{versionId}/entries` takes it. */
         MappingEntriesInput: {
@@ -11007,6 +11284,33 @@ export interface components {
              */
             sortOrder: number;
         };
+        /**
+         * @description How a change in one metric of a model, between two values such as a month and the month before, splits into the effects of its
+         *     drivers, with the drivers it switches. Without drivers, each reference of the expression is a driver of its own, and
+         *     `@periodDays` with `@yearDays` together form one `days` driver.
+         */
+        MetricAttribution: {
+            /** @description The key of the variable or calculated measure attributed. */
+            metricKey: string;
+            /** @description The expression the drivers are switched in; null means the calculated measure's own formula. */
+            expressionText?: null | string;
+            /** @description The variable that weighs child rows and members when a ratio's change splits into rate, mix and interaction. */
+            weightVariableKey?: null | string;
+            /** @description The drivers, by sort order; none for the default drivers. */
+            drivers: components["schemas"]["AttributionDriver"][];
+        };
+        /** @description A metric's attribution with its drivers, as `PUT calculation-models/{modelId}/attributions/{metricKey}` takes it. */
+        MetricAttributionInput: {
+            /**
+             * @description The expression the drivers are switched in, over `[m.KEY]` references and `@periodDays` and `@yearDays`;
+             *     null keeps a calculated measure's own formula, and a variable needs one.
+             */
+            expressionText?: null | string;
+            /** @description The key of the variable that weighs members for the metric's contributions; null for none. */
+            weightVariableKey?: null | string;
+            /** @description Every driver of the metric, at most eight; none for the default drivers. */
+            drivers: components["schemas"]["AttributionDriver"][];
+        };
         /** @description A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes. */
         NewBridgeInput: {
             /** @description Stable key, unique across bridges and fixed once created. */
@@ -11051,6 +11355,10 @@ export interface components {
             currencyCode: string;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
+            /** @description A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`. */
+            formulaLanguageVersion: string;
+            /** @description An `attribution_method` value: `shapley` or `sequential`. */
+            attributionMethod: string;
         };
         /**
          * @description A new user-defined dimension, as `POST dimensions` takes it: its fixed key and kind, its identity attributes, the
@@ -11581,7 +11889,7 @@ export interface components {
             payloadJson?: null | string;
             /** @description Optional filter over calculation dimensions, ANDed with every request's. */
             defaultFilterJson?: null | string;
-            /** @description Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution. */
+            /** @description Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons` affect execution. */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
             defaultPivotJson?: null | string;
@@ -11623,7 +11931,10 @@ export interface components {
             subtotalPosition: string;
             /** @description Optional filter over calculation dimensions and request parameters, ANDed with every request's. */
             defaultFilterJson?: null | string;
-            /** @description Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution. */
+            /**
+             * @description Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons`, the comparisons a request
+             *     makes when it names none, affect execution.
+             */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
             defaultPivotJson?: null | string;
@@ -11693,6 +12004,8 @@ export interface components {
             measureKey: string;
             /** @description Optional structured filter over the dataset's fields, applied before aggregation. */
             sourceFilterJson?: null | string;
+            /** @description A `variable_missing_behavior` value that replaces the variable's own for this source alone; null keeps the variable's. */
+            missingBehavior?: null | string;
         };
         /** @description Whether the engine offers a report, as `PUT reports/{reportId}/status` takes it. */
         ReportStatusInput: {
@@ -11906,6 +12219,11 @@ export interface components {
             measureKey: string;
             /** @description Optional structured filter over the dataset's filterable fields, in the query contract's `filterNode` vocabulary. */
             sourceFilterJson?: null | string;
+            /**
+             * @description Optional `variable_missing_behavior` value that replaces the variable's own for this source alone, such as `null` for a
+             *     budget source with no rows for some lines; null keeps the variable's.
+             */
+            missingBehavior?: null | string;
         };
         /** @description Every variable a report source supplies, as `PUT reports/{reportId}/sources/{sourceId}/variables` takes them. */
         SourceVariablesInput: {

@@ -61,10 +61,12 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
         <Setting label="Currency" value={model.currencyCode} />
         <Setting label="Calendar" value={model.calendarKey} />
         <Setting label="Formula language" value={model.formulaLanguageVersion} />
+        <Setting label="Attribution method" value={model.attributionMethod} />
       </div>
       <p className="text-sm text-muted-foreground">
-        Edits are live: every enabled report over the model reads them at once, so an edit that would break a formula or such a
-        report is refused. Each report brings its own data.
+        Edits are live: every enabled report over the model reads them at once, so an edit that would break a formula, an
+        attribution or such a report is refused. Each report brings its own data. A metric's attribution says how its change
+        between two values splits into the effects of its drivers.
       </p>
       <Tabs defaultValue="variables">
         <TabsList>
@@ -84,7 +86,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${model.modelKey}?`}
-        description="The model is deleted with its variables and calculated measures. A model a report reads is kept."
+        description="The model is deleted with its variables, calculated measures and attributions. A model a report reads is kept."
         confirmLabel="Delete model"
         destructive
         onConfirm={() =>

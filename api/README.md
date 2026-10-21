@@ -10,7 +10,9 @@ are live, and publishing the next version retires it. A query can name a capture
 against the versions of its time, over the dataset versions of the release that was active when it was captured.
 Calculation models and reports are not versioned. The report editor builds a report's rows and sources in place, the
 engine runs a report while it is enabled, always on the active assumption set and with its model as it stands, and every
-write to an enabled report, or to the metrics of a model an enabled report reads, is checked before it is made.
+write to an enabled report, or to a model, its metrics or their attributions, is checked before it is made. A model's
+attributions say how each metric's change between two values, such as actuals and a budget, splits into the effects of
+its drivers, and a report's settings can hold the default comparisons a report request makes when it names none.
 
 | Project | Holds |
 |---|---|
@@ -30,8 +32,9 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`. The tests read its generated schema build script, `ddl_srdb_bi_v2_21.sql`.
-- A tenant database at metadata schema version 12 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`, at design revision 2.22.0. The tests read its generated schema build script,
+  `ddl_srdb_bi_v2_22.sql`.
+- A tenant database at metadata schema version 13 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 

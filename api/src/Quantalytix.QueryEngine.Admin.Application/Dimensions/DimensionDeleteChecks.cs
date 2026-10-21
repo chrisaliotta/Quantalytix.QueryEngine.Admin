@@ -23,7 +23,8 @@ public sealed class DimensionDeleteChecks(
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
     ITableGateway<ReportSourceRecord> sources,
     ReportNames reportNames,
-    DimensionConsumers consumers)
+    DimensionConsumers consumers,
+    DimensionChanges changes)
 {
     /// <summary>
     /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set, bridge (either
@@ -100,13 +101,15 @@ public sealed class DimensionDeleteChecks(
         var blockers = new DeleteBlockers($"Level '{level.LevelKey}'");
         var users = await members.ListAsync(new { level.LevelId }, cancellationToken);
         blockers.AddNamed("used by members", users.Select(member => $"'{member.MemberKey}'"));
-        blockers.AddNamed("named by", await LiveConsumersAsync(level.DimensionVersionId, isLevel: true, level.LevelKey, cancellationToken));
+        blockers.AddNamed("named by", await LevelConsumersAsync(level, cancellationToken));
         return blockers.Detail();
     }
 
     /// <summary>
-    /// What blocks deleting a member: it has children or range bands, and in a published version the live objects that name
-    /// its key.
+    /// What blocks deleting a member: it has children or range bands, and in a published version the live objects whose keys the
+    /// delete would leave unresolved: those that name the member, and those that need an assignable member under a folder that
+    /// it would leave without one. Live objects are checked once the member has no children, because its children would otherwise
+    /// lose their parent.
     /// </summary>
     /// <param name="member">The member of a draft or published version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
@@ -118,16 +121,24 @@ public sealed class DimensionDeleteChecks(
         blockers.AddNamed("it has child members", children.Select(child => $"'{child.MemberKey}'"));
         var bandsOfMember = await bands.ListAsync(new { member.MemberId }, cancellationToken);
         blockers.AddNamed("used by range bands", bandsOfMember.Select(band => $"#{band.Ordinal}"));
-        blockers.AddNamed("named by", await LiveConsumersAsync(member.DimensionVersionId, isLevel: false, member.MemberKey, cancellationToken));
+        if (children.Count == 0)
+        {
+            var broken = await changes.BrokenAsync(
+                member.DimensionVersionId, stored => [.. stored.Where(other => other.MemberId != member.MemberId)], cancellationToken);
+            blockers.AddNamed("named by", broken.Where(reference => reference.Key == member.MemberKey).Select(reference => reference.Consumer));
+            blockers.AddNamed(
+                "needed by",
+                broken.Where(reference => reference.Key != member.MemberKey).Select(reference => $"{reference.Consumer} (an assignable member under '{reference.Key}')"));
+        }
         return blockers.Detail();
     }
 
-    /// <summary>The live objects that name a level or member key of a version: none for a draft, which nothing resolves keys in.</summary>
-    private async Task<IEnumerable<string>> LiveConsumersAsync(long dimensionVersionId, bool isLevel, string key, CancellationToken cancellationToken)
+    /// <summary>The live objects that name a level's key in a published version: none for a draft, which nothing resolves keys in.</summary>
+    private async Task<IEnumerable<string>> LevelConsumersAsync(DimensionLevelRecord level, CancellationToken cancellationToken)
     {
-        var version = await versions.GetAsync(new { DimensionVersionId = dimensionVersionId }, cancellationToken);
+        var version = await versions.GetAsync(new { level.DimensionVersionId }, cancellationToken);
         if (version.Status != PublicationStatuses.Published) return [];
         var references = await consumers.ListAsync(version.DimensionId, cancellationToken);
-        return references.Where(reference => reference.IsLevel == isLevel && reference.Key == key).Select(reference => reference.Consumer).Distinct();
+        return references.Where(reference => reference.IsLevel && reference.Key == level.LevelKey).Select(reference => reference.Consumer).Distinct();
     }
 }

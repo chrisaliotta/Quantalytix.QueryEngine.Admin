@@ -22,8 +22,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's <c>balance</c> with the row
 /// keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
 /// dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with <c>total</c> at the root and
-/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Tests
-/// change rows to break one thing.
+/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Besides the
+/// active assumption set, the tenant has captured set <c>close_2025</c>. Tests change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
 {
@@ -106,11 +106,41 @@ internal sealed class ReportGraphFixture
         DimensionRows.Role(AccountRoleId, "gl_account", AccountDimensionId),
         DimensionRows.Role(RegionRoleId, "region", 600));
 
+    /// <summary>Model 40.</summary>
+    public InMemoryTableGateway<CalculationModelRecord> Models { get; } = new(Model());
+
     /// <summary>The balance variable.</summary>
     public InMemoryTableGateway<VariableRecord> Variables { get; } = new(Variable(51, "balance"));
 
     /// <summary>The yield calculated measure.</summary>
     public InMemoryTableGateway<CalculatedMeasureRecord> CalculatedMeasures { get; } = new(Calculated(61, "yield", "[m.balance] / 2"));
+
+    /// <summary>No attributions.</summary>
+    public InMemoryTableGateway<MetricAttributionRecord> Attributions { get; } = new();
+
+    /// <summary>No attribution drivers.</summary>
+    public InMemoryTableGateway<MetricAttributionDriverRecord> AttributionDrivers { get; } = new();
+
+    /// <summary>The active assumption set and the historical set <c>close_2025</c>.</summary>
+    public InMemoryTableGateway<AssumptionSetRecord> AssumptionSets { get; } = new(
+        new AssumptionSetRecord
+        {
+            AssumptionSetId = 1,
+            AssumptionSetKey = "active",
+            DisplayName = "Active",
+            Status = AssumptionSetStatuses.Active,
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        },
+        new AssumptionSetRecord
+        {
+            AssumptionSetId = 2,
+            AssumptionSetKey = "close_2025",
+            DisplayName = "2025 close",
+            Status = AssumptionSetStatuses.Historical,
+            ReleaseId = ReleaseId,
+            CapturedAt = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc)
+        });
 
     /// <summary>The GL and loans datasets.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"), Dataset(LoansDatasetId, "loans"));
@@ -176,14 +206,21 @@ internal sealed class ReportGraphFixture
     {
         return new ReportGraphReader(
             Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings, Dimensions,
-            Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Variables, CalculatedMeasures, Datasets, Roles, AssumptionSets, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The model gate over these tables.</summary>
-    /// <returns>The checks a write to model 40's metrics goes through.</returns>
+    /// <returns>The checks a write to model 40 or its metrics goes through.</returns>
     public ModelChanges Changes()
     {
-        return new ModelChanges(Variables, CalculatedMeasures, Reports, Reader());
+        return new ModelChanges(Models, Variables, CalculatedMeasures, AttributionService(), Reports, Reader());
+    }
+
+    /// <summary>The attributions of model 40's metrics over these tables.</summary>
+    /// <returns>The service that reads and writes attributions with their drivers.</returns>
+    public MetricAttributionService AttributionService()
+    {
+        return new MetricAttributionService(Attributions, AttributionDrivers);
     }
 
     /// <summary>The reader of the versions the report owns.</summary>
@@ -213,9 +250,9 @@ internal sealed class ReportGraphFixture
     {
         IReportRule[] rules =
         [
-            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new DefaultProfileEnabledRule(), new ReportDefaultsResolveRule(),
-            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule(),
-            new ReportFactorsApplyRule()
+            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
+            new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
+            new ReportSourcesResolveRule(), new ReportFactorsApplyRule()
         ];
         return new ReportRules(rules, Reader());
     }

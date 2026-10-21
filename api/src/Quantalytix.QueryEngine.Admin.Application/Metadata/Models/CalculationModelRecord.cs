@@ -18,9 +18,12 @@ public sealed record CalculationModelRecord
     /// <summary>The ISO 4217 currency of its monetary figures.</summary>
     public required string CurrencyCode { get; init; }
 
-    /// <summary>The expression grammar version its formulas use.</summary>
+    /// <summary>A <c>formula_language_version</c> value: the expression grammar its formulas and attribution expressions use.</summary>
     public required string FormulaLanguageVersion { get; init; }
 
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
+
+    /// <summary>An <c>attribution_method</c> value: how a metric's change between two values splits into the effects of its drivers.</summary>
+    public required string AttributionMethod { get; init; }
 }

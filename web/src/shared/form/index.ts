@@ -8,6 +8,7 @@ export { GroupingModeFields, type GroupingModeFieldsProps } from './GroupingMode
 export { groupingSource, toGroupingReferences, type GroupingValues } from './grouping';
 export { JsonField } from './JsonField';
 export { KeyField, type KeyFieldProps } from './KeyField';
+export { MultiKeyField, type MultiKeyFieldProps } from './MultiKeyField';
 export { MultiVocabularyField, type MultiVocabularyFieldProps } from './MultiVocabularyField';
 export { NumberField } from './NumberField';
 export { PasswordField } from './PasswordField';

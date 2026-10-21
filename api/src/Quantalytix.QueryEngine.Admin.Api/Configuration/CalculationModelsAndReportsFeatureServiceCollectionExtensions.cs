@@ -15,9 +15,10 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     /// Registers the slice's services and the report rules, all scoped. Each content kind is registered under
     /// <see cref="IOwnedContent{TItem, TInput}"/>, a model's also under <see cref="IModelContent{TItem, TInput}"/> and a report's
     /// under <see cref="IReportContent{TItem, TInput}"/>, with the validator of its item routes. The report rules run when a report
-    /// is enabled and on every write to an enabled report; <see cref="ModelChanges"/> runs the model's formula rules and the report
-    /// rules that read its metrics on every write to a model's metrics; and the report rules that read what a release gives reports
-    /// also run, over the enabled reports, when a release is validated, after the release slice's own rules.
+    /// is enabled and on every write to an enabled report; <see cref="ModelChanges"/> runs the model's formula and attribution rules
+    /// and the report rules that read its metrics on every write to a model, its metrics or their attributions; and the report rules
+    /// that read what a release gives reports also run, over the enabled reports, when a release is validated, after the release
+    /// slice's own rules.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -29,6 +30,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ModelKeys>();
         services.AddScoped<ReportUses>();
         services.AddScoped<ModelChanges>();
+        services.AddScoped<MetricAttributionService>();
         services.AddModelContent<VariableService, VariableRecord, VariableInput>();
         services.AddModelContent<CalculatedMeasureService, CalculatedMeasureRecord, CalculatedMeasureInput>();
 
@@ -58,6 +60,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
 
         services.AddScoped<IReportRule, ReportItemsResolveRule>();
         services.AddScoped<IReportRule, CalculationGroupingResolveRule>();
+        services.AddScoped<IReportRule, ScenarioDimensionRule>();
         services.AddScoped<IReportRule, DefaultProfileEnabledRule>();
         services.AddScoped<IReportRule, ReportDefaultsResolveRule>();
         services.AddScoped<IReportRule, ColumnKeysDistinctRule>();

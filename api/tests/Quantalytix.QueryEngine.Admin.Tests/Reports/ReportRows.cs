@@ -126,7 +126,8 @@ internal static class ReportRows
             GroupingMode = GroupingModes.Member,
             IsGroupable = true,
             IsFilterable = true,
-            IsEnabled = true
+            IsEnabled = true,
+            IsScenario = false
         };
     }
 }

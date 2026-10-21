@@ -88,15 +88,15 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
         return Ok(await sets.UpdateAsync(assumptionSetId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a historical set with its pins; requests can no longer name its key.</summary>
+    /// <summary>Deletes a historical set with its pins, unless an enabled report's default comparison reads it; requests can no longer name its key.</summary>
     /// <param name="tenantId">The tenant that owns the assumption set.</param>
     /// <param name="assumptionSetId">The historical set.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the set is the active one.</returns>
+    /// <returns>No content; 409 when the set is the active one or a default comparison reads it.</returns>
     /// <response code="204">The set and its pins are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted: the set is the active set, which holds the default versions.</response>
+    /// <response code="409">Nothing was deleted: the set is the active set, which holds the default versions, or the detail names the enabled reports' default comparisons that read it.</response>
     [HttpDelete("{assumptionSetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

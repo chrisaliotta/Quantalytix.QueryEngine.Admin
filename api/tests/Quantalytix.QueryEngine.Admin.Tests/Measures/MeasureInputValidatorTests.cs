@@ -124,6 +124,21 @@ public sealed class MeasureInputValidatorTests
         _validator.TestValidate(empty).ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
     }
 
+    /// <summary>
+    /// Dataset expressions stay on expression language 1.0, so a measure formula or row filter that calls POWER fails, though the
+    /// shared parser reads it: only model formulas on formula language 1.1 may call it.
+    /// </summary>
+    [Fact]
+    public void DatasetExpressions_CannotCallPower()
+    {
+        var formula = Measure(MeasureKinds.Formula) with { ExpressionText = "POWER([m.rate] + 1, 12) - 1" };
+        var rowFilter = Measure(MeasureKinds.Aggregate) with { RowFilterExpression = "POWER([f.balance], 2) > 4" };
+
+        _validator.TestValidate(formula).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
+            .WithErrorMessage("Metadata expressions are expression language 1.0, which has no POWER, so 'Expression Text' cannot call it.");
+        _validator.TestValidate(rowFilter).ShouldHaveValidationErrorFor(measure => measure.RowFilterExpression);
+    }
+
     /// <summary>Only formulas have an expression.</summary>
     [Fact]
     public void ExpressionOnAnotherKind_IsRejected()
