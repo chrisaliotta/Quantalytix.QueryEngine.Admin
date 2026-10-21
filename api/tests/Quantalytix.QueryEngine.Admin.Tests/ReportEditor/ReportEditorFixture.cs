@@ -22,11 +22,12 @@ namespace Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
 /// <summary>
 /// The tables of one report and the report editor's services over them. Disabled report 60 reads model 40, whose published version
 /// 41 has variable <c>balance</c>, and owns report dimension 500, whose one version 501 holds the rows TOTAL, a group, with LOANS
-/// and CASH, data rows, under it. Its bridge source <c>gl</c> reads GL's <c>balance</c> by <c>as_of_date</c> and classifies GL's
-/// rows into account dimension 800, whose published version 801 holds accounts 1001, 1002 and 1003; the source's bridge 90 maps
-/// 1001 to LOANS and 1002 to CASH in its one version 91. Profile <c>base</c>, the report's default, picks the source for balance,
-/// and column <c>amount</c> returns balance, so the report passes every report rule. Release 900 is active and pins GL version 11;
-/// the active assumption set pins versions 501, 801 and 91.
+/// and CASH, data rows, under it. Its bridge source <c>gl</c> reads GL's <c>balance</c>, which ignores bridge factors, by
+/// <c>as_of_date</c> and classifies GL's rows into account dimension 800, whose published version 801 holds the folder LENDING over
+/// accounts 1001 and 1003, and account 1002; the source's many-to-many bridge 90 maps 1001 to LOANS and 1002 to CASH in its one
+/// version 91. Profile <c>base</c>, the report's default, picks the source for balance, and column <c>amount</c> returns balance,
+/// so the report passes every report rule. Release 900 is active and pins GL version 11; the active assumption set pins versions
+/// 501, 801 and 91.
 /// </summary>
 internal sealed class ReportEditorFixture
 {
@@ -74,7 +75,7 @@ internal sealed class ReportEditorFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 10,
+        MetadataSchemaVersion = 11,
         SemanticRevision = StartingRevision,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -99,14 +100,15 @@ internal sealed class ReportEditorFixture
     /// <summary>No levels.</summary>
     public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new();
 
-    /// <summary>The rows TOTAL, a group, and LOANS and CASH, data rows under it; and the accounts.</summary>
+    /// <summary>The rows TOTAL, a group, and LOANS and CASH, data rows under it; and the accounts, 1001 and 1003 in folder LENDING.</summary>
     public InMemoryTableGateway<DimensionMemberRecord> Members { get; } = new(
         DimensionRows.Member(1, StructureVersionId, "TOTAL") with { IsAssignable = false },
         DimensionRows.Member(2, StructureVersionId, "LOANS", parentId: 1),
         DimensionRows.Member(3, StructureVersionId, "CASH", parentId: 1) with { SortOrder = 1 },
-        DimensionRows.Member(11, AccountVersionId, "1001"),
+        DimensionRows.Member(14, AccountVersionId, "LENDING") with { IsAssignable = false },
+        DimensionRows.Member(11, AccountVersionId, "1001", parentId: 14),
         DimensionRows.Member(12, AccountVersionId, "1002"),
-        DimensionRows.Member(13, AccountVersionId, "1003"));
+        DimensionRows.Member(13, AccountVersionId, "1003", parentId: 14));
 
     /// <summary>The closure rows the member writes rebuild.</summary>
     public InMemoryTableGateway<DimensionClosureRecord> Closure { get; } = new();
@@ -117,9 +119,9 @@ internal sealed class ReportEditorFixture
     /// <summary>The source's bridge.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(BridgeRows.Bridge(BridgeId, AccountDimensionId, ReportRows.ReportDimensionId));
 
-    /// <summary>The bridge's one version, published.</summary>
+    /// <summary>The bridge's one version, published, which replicates each item into every row its rules name.</summary>
     public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(
-        BridgeRows.BridgeVersion(BridgeVersionId, BridgeId, 1, Cardinalities.ManyToOne, AllocationModes.None, PublicationStatuses.Published));
+        BridgeRows.BridgeVersion(BridgeVersionId, BridgeId, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published));
 
     /// <summary>The item mappings: 1001 to LOANS and 1002 to CASH.</summary>
     public InMemoryTableGateway<BridgeMappingRecord> BridgeMappings { get; } = new(
@@ -272,7 +274,21 @@ internal sealed class ReportEditorFixture
     /// <returns>The service over these tables.</returns>
     public SourceItemService Items()
     {
-        return new SourceItemService(Sources, Mappings(), Owned());
+        return new SourceItemService(Sources, Mappings(), Owned(), Changes());
+    }
+
+    /// <summary>The item validator, for a request to the report's source.</summary>
+    /// <returns>The validator over these tables.</returns>
+    public SourceItemsInputValidator ItemsValidator()
+    {
+        return new SourceItemsInputValidator(Reports, Sources, Roles, Owned(), Members, PublishedDimensions(), Keys);
+    }
+
+    /// <summary>The coverage reader.</summary>
+    /// <returns>The reader over these tables.</returns>
+    public SourceCoverageReader Coverage()
+    {
+        return new SourceCoverageReader(Sources, Roles, BridgeMappings, Owned(), PublishedDimensions());
     }
 
     /// <summary>The column service.</summary>
@@ -312,7 +328,8 @@ internal sealed class ReportEditorFixture
         IReportRule[] rules =
         [
             new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new DefaultProfileEnabledRule(), new ReportDefaultsResolveRule(),
-            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule()
+            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule(),
+            new ReportFactorsApplyRule()
         ];
         return new ReportRules(rules, GraphReader());
     }
@@ -321,8 +338,8 @@ internal sealed class ReportEditorFixture
     private ReportGraphReader GraphReader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, CalculationDimensions, ModelVersions,
-            Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings,
+            CalculationDimensions, ModelVersions, Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The reader of the published version of the report's model.</summary>

@@ -2139,8 +2139,9 @@ export interface paths {
         };
         get?: never;
         /**
-         * Replaces the items a bridge source maps to one data row; an item listed for the row leaves the row it mapped to before.
-         *     Every key is checked as a field rule, and no report rule reads items, so the write is never refused with 422.
+         * Replaces the rules a bridge source adds into one data row: items, or every item under a member, each with a factor. The
+         *     source's other rows keep their rules, so an item may add into several rows. While the report is enabled, the write is
+         *     checked against the report rules first, such as that a factor other than 1 only scales measures that apply bridge factors.
          */
         put: {
             parameters: {
@@ -2172,7 +2173,7 @@ export interface paths {
                         "application/json": components["schemas"]["EditorView"];
                     };
                 };
-                /** @description The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no assignable member; errors are keyed by camelCase JSON path. */
+                /** @description The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no member, or an item taken alone that is no assignable member; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2199,6 +2200,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description The report is enabled and the rules would break a report rule; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
             };
         };
         post?: never;
@@ -2215,7 +2225,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists the assignable items of a bridge source's item dimension that its bridge maps to no row. */
+        /** Lists the assignable items of a bridge source's item dimension that no rule of its bridge reaches. */
         get: {
             parameters: {
                 query?: never;
@@ -9888,10 +9898,16 @@ export interface components {
              * @description Ownership multiplier of 0 or more; fractional for `partition` allocation; fits `DECIMAL(38, 12)`.
              */
             allocationWeight: number;
+            /**
+             * @description A `source_selection` value, `member` when omitted. Only a report source's bridge maps a member's descendants; its
+             *     editor writes them.
+             */
+            sourceSelection?: string;
         };
         /**
          * @description A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version, by member key. The keys
-         *     resolve in the versions of the bridge's dimensions an assumption set pins.
+         *     resolve in the versions of the bridge's dimensions an assumption set pins. A mapping of the source member's descendants maps
+         *     every member under it as well, so a report row can take a folder of accounts, including accounts added to it later.
          */
         BridgeMappingRecord: {
             /**
@@ -9918,6 +9934,8 @@ export interface components {
              * @description Nonnegative ownership multiplier; fractional for `partition` allocation.
              */
             allocationWeight: number;
+            /** @description A `source_selection` value: the source member alone, or with every member under it. */
+            sourceSelection: string;
         };
         /** @description The complete mapping list of a draft bridge version, as `PUT bridge-versions/{versionId}/mappings` takes it. */
         BridgeMappingsInput: {
@@ -10605,18 +10623,20 @@ export interface components {
             /** @description The items the report's bridge sources map to the row, by source, then item key. */
             items: components["schemas"]["EditorRowItem"][];
         };
-        /** @description One item of a bridge source that maps to a row: an entry of the source's bridge. */
+        /** @description One rule of a bridge source that adds into a row: an entry of the source's bridge. */
         EditorRowItem: {
             /**
              * Format: int64
              * @description The bridge source.
              */
             reportSourceId: number;
-            /** @description The key of the member of the source's item dimension that maps to the row. */
+            /** @description The key of the member of the source's item dimension the rule takes. */
             itemKey: string;
+            /** @description A `source_selection` value: the member alone, or the member and every member under it. */
+            selection: string;
             /**
              * Format: double
-             * @description The signed coefficient the item's values take in the row, such as -1 to flip a sign.
+             * @description The coefficient the rule's values take in the row, such as 0.5 to take half of them or -1 to take them back out.
              */
             factor: number;
         };
@@ -10649,7 +10669,7 @@ export interface components {
             bridgeVersionId?: null | number;
             /**
              * Format: int32
-             * @description How many assignable items of a bridge source map to no row; null for a direct source.
+             * @description How many assignable items of a bridge source no rule reaches; null for a direct source.
              */
             unmappedCount?: null | number;
             /** @description The variables the source supplies, by variable key. */
@@ -12136,24 +12156,29 @@ export interface components {
             /** @description Whether StarRocks computes the column from an expression, as it does for a materialized JSON path. */
             isGenerated: boolean;
         };
-        /** @description One item of a bridge source that maps to a row. */
+        /** @description One rule of a bridge source that adds into a row: an item, or every item under a member, with a factor. */
         SourceItemInput: {
-            /** @description The key of an assignable member of the published version of the source's item dimension. */
+            /**
+             * @description The key of a member of the published version of the source's item dimension: an assignable member when the rule takes the
+             *     member alone, and any member when it takes every member under it.
+             */
             itemKey: string;
+            /** @description A `source_selection` value: the member alone, or the member and every member under it. */
+            selection: string;
             /**
              * Format: double
-             * @description The signed coefficient the item's values take in the row, such as -1 to flip a sign.
+             * @description The coefficient the rule's values take in the row, such as 0.5 to take half of them or -1 to take them back out.
              */
             factor: number;
         };
         /**
-         * @description Every item of one bridge source that maps to one row, as `PUT reports/{reportId}/sources/{sourceId}/items` takes them. The
-         *     row key travels in the body because member keys may hold characters a path segment cannot.
+         * @description Every rule of one bridge source that adds into one row, as `PUT reports/{reportId}/sources/{sourceId}/items` takes them.
+         *     The row key travels in the body because member keys may hold characters a path segment cannot.
          */
         SourceItemsInput: {
-            /** @description The data row the items map to. */
+            /** @description The data row the rules add into. */
             rowKey: string;
-            /** @description The row's complete item list: the row's entries the list leaves out are deleted, and a listed item mapped to another row moves here. */
+            /** @description The row's complete rule list: the row's rules the list leaves out are deleted, and the source's other rows keep theirs. */
             items: components["schemas"]["SourceItemInput"][];
         };
         /** @description A table or view of the tenant database that a dataset version can query. */

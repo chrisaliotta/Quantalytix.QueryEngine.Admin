@@ -1,53 +1,62 @@
-import { ChevronRight, Folder, Square, SquareCheck } from 'lucide-react';
+import { ChevronRight, Folder, FolderCheck, Square, SquareCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Loading } from '@registry/components/Loading';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@registry/components/Sheet';
 import { TreeView } from '@registry/components/TreeView';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
+import { count } from '@/shared/text';
 import { useDimensionVersionMembers } from './api';
 import { useReplaceSourceItems } from './editorApi';
-import { itemRows, itemsFrom, memberTree, movedItems, rowItems, toggledItems } from './itemMappings';
+import { coveringFolder, isFolder, memberTree, otherRows, pickedRules, rulesFrom, toggledRules, type FolderPick } from './itemMappings';
 import type { EditorRow, EditorSource, EditorView } from './types';
 
 export interface ItemPickerSheetProps {
   view: EditorView;
-  /** The bridge source whose items are picked. */
+  /** The bridge source whose rules are picked. */
   source: EditorSource;
-  /** The data row the items map to. */
+  /** The data row the rules add into. */
   row: EditorRow;
   onClose: () => void;
 }
 
 /**
- * Picks a data row's items in one bridge source: the members of the source's item dimension, from its published version, whose
- * values the row adds up. Picking a group picks the members under it that take values. An item on another row says so, and
- * saving moves it here; the row's other items keep their signs, and new ones start positive.
+ * Picks a data row's rules in one bridge source from the members of the source's item dimension, in its published version. A
+ * folder is taken as one rule, which takes every item under it, including items added later, or as its current items, each taken
+ * alone; the items a folder rule takes show as covered. An item may also add into other rows, which it says; the source's other
+ * rows keep their rules. The row's rules keep their factors, and new rules start whole.
  */
 export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetProps) {
   const replace = useReplaceSourceItems(view.report.reportId);
   const sourceId = source.source.reportSourceId;
-  const [selected, setSelected] = useState(() => new Set(rowItems(row, sourceId).map(item => item.itemKey)));
+  const [rules, setRules] = useState(() => pickedRules(row, sourceId));
+  const [pick, setPick] = useState<FolderPick>('folder');
   const members = useDimensionVersionMembers(source.itemDimensionVersionId ?? null);
   const tree = useMemo(() => members.data && memberTree(members.data), [members.data]);
-  const placedOn = itemRows(view.rows, sourceId);
-  const moved = movedItems(view.rows, row, sourceId, selected);
+  const folders = [...rules.values()].filter(selection => selection === 'descendants').length;
 
   return (
     <Sheet open onOpenChange={open => !open && onClose()}>
-      <SheetContent className="gap-0 sm:max-w-none" style={{ width: '36rem', maxWidth: '100vw' }}>
+      <SheetContent className="gap-0 sm:max-w-none" style={{ width: '38rem', maxWidth: '100vw' }}>
         <SheetHeader className="border-b">
           <SheetTitle>
-            {source.source.displayName} items of {row.label}
+            {source.source.displayName} rules of {row.label}
           </SheetTitle>
           <SheetDescription>
-            Pick the members of {source.roleKey}'s dimension whose values the row adds up. Picking a group picks the members under it
-            that take values.
+            Pick the members of {source.roleKey}'s dimension whose values the row adds up. A folder rule takes every item under the
+            folder, including items added to it later.
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+          <Tabs value={pick} onValueChange={value => setPick(value as FolderPick)}>
+            <TabsList>
+              <TabsTrigger value="folder">Pick a folder as one rule</TabsTrigger>
+              <TabsTrigger value="items">Pick a folder's current items</TabsTrigger>
+            </TabsList>
+          </Tabs>
           {!tree && <Loading size="sm" />}
           <ApiErrorAlert error={members.error} />
           {tree && (
@@ -56,14 +65,15 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
                 className="h-full"
                 data={tree}
                 selectionMode="multiple"
-                selectedIds={selected}
-                onSelectionChange={next => setSelected(toggledItems(selected, next, members.data!))}
+                selectedIds={new Set(rules.keys())}
+                onSelectionChange={next => setRules(toggledRules(rules, next, pick, members.data!))}
                 defaultOpenIds={new Set(tree.map(node => node.id))}
                 allowSearch
                 virtualized
-                renderItem={({ node, toggle, isExpanded, isSelected, hasChildren }) => {
-                  const item = node.node.data!;
-                  const elsewhere = placedOn.get(item.memberKey);
+                renderItem={({ node, toggle, isExpanded, hasChildren }) => {
+                  const key = node.node.data!.memberKey;
+                  const covering = coveringFolder(rules, key, members.data!);
+                  const others = otherRows(view.rows, row, sourceId, members.data!, key);
                   return (
                     <div className="flex cursor-pointer items-center gap-2 px-2 py-1 text-sm select-none">
                       <button
@@ -77,19 +87,14 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
                       >
                         <ChevronRight className={cn('size-3.5 text-muted-foreground transition-transform', isExpanded && 'rotate-90')} />
                       </button>
-                      {!item.isAssignable ? (
-                        <Folder className="size-4 text-muted-foreground" />
-                      ) : isSelected ? (
-                        <SquareCheck className="size-4 text-primary" />
-                      ) : (
-                        <Square className="size-4 text-muted-foreground" />
-                      )}
+                      <PickIcon
+                        isFolder={isFolder(members.data!, key)}
+                        isPicked={rules.has(key)}
+                        isCovered={covering !== undefined}
+                      />
                       <span className="truncate">{node.label}</span>
-                      {elsewhere && elsewhere.key !== row.key && (
-                        <Badge variant={isSelected ? 'default' : 'secondary'}>
-                          {isSelected ? `moves from ${elsewhere.label}` : `on ${elsewhere.label}`}
-                        </Badge>
-                      )}
+                      {covering && <Badge variant="outline">in {covering}</Badge>}
+                      {others.length > 0 && <Badge variant="secondary">also on {others.join(', ')}</Badge>}
                     </div>
                   );
                 }}
@@ -99,7 +104,7 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
         </div>
         <SheetFooter className="border-t">
           <p className="text-sm text-muted-foreground">
-            {selected.size} items picked{moved.length > 0 && `; ${moved.length} move here from other rows`}.
+            {count(folders, ['folder', 'folders'])} and {count(rules.size - folders, ['item', 'items'])} picked.
           </p>
           <ApiErrorAlert error={replace.error} />
           <div className="flex justify-end gap-2">
@@ -109,7 +114,7 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
             <Button
               type="button"
               disabled={replace.isPending}
-              onClick={() => replace.mutate({ sourceId, rowKey: row.key, items: itemsFrom(row, sourceId, selected) }, { onSuccess: onClose })}
+              onClick={() => replace.mutate({ sourceId, rowKey: row.key, items: rulesFrom(row, sourceId, rules) }, { onSuccess: onClose })}
             >
               Save
             </Button>
@@ -118,4 +123,15 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
       </SheetContent>
     </Sheet>
   );
+}
+
+/** A member's mark in the picker: a folder taken as one rule, an item taken alone, an item a folder rule takes, or neither. */
+function PickIcon({ isFolder, isPicked, isCovered }: { isFolder: boolean; isPicked: boolean; isCovered: boolean }) {
+  if (isFolder) {
+    return isPicked ? <FolderCheck className="size-4 text-primary" /> : <Folder className="size-4 text-muted-foreground" />;
+  }
+  if (isPicked || isCovered) {
+    return <SquareCheck className={cn('size-4', isPicked ? 'text-primary' : 'text-muted-foreground')} />;
+  }
+  return <Square className="size-4 text-muted-foreground" />;
 }

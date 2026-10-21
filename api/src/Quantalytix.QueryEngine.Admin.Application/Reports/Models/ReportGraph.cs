@@ -39,6 +39,9 @@ public sealed record ReportGraph
     /// <summary>The variables the report's sources supply.</summary>
     public required IReadOnlyList<ReportSourceVariableRecord> SourceVariables { get; init; }
 
+    /// <summary>The rules of the report's bridge sources: the entries of their bridges.</summary>
+    public required IReadOnlyList<ReportSourceItem> SourceItems { get; init; }
+
     /// <summary>The report's calculation dimensions, enabled or not.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
 

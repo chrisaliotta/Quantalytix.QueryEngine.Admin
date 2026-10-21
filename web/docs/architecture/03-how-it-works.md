@@ -422,7 +422,7 @@ flowchart TB
 | `CodeEditor`, `JsonEditor` | The shared `CodeEditor` and `JsonEditor` wrappers |
 | `NumericInput`, `DatePicker`, `BehaviorSwitch` | `NumberField`, `DateField`, `SwitchField`, and the enable switch of `ReportDetailPage` |
 | `Sortable`, `Nestable` | `GrainFieldsField`, `RangeBandsTab` and `ReportColumnsTab`; `MembersTab`, `MemberTreeRow`, `RowTree` and `RowItem` |
-| `TreeView` | `ItemPickerSheet`, which picks a data row's items in a multiple-selection tree of a bridge source's item dimension members |
+| `TreeView` | `ItemPickerSheet`, which picks a data row's rules, folders and items, in a multiple-selection tree of a bridge source's item dimension members |
 | `TruncatedText`, `IconTooltip` | `VersionHeader`, `FieldsTab`, `TenantsPage`; `VocabularySelect` |
 | `pages/ErrorPage` | `RequireSession`, `TenantRedirect`, `NotFoundPage`, `RouteErrorPage` |
 
@@ -533,7 +533,7 @@ Only the five hooks call `apiClient`; the other shared pieces reach the API thro
 | `ClearSelectionButton` | Clears an optional select | `EntitySelect`, `VocabularySelect`, `SourceColumnField` |
 | `lookupItemText` | A lookup item's key and label, each once | `EntitySelect`, `VersionHeader` |
 | `utcTime.ts` | UTC display and `datetime-local` conversion | Lists, cards, `DateTimeField` |
-| `text.ts` | `emptyToNull` for optional text | Form-value modules, `SettingsTab` |
+| `text.ts` | `emptyToNull` for optional text, and `count`, a count with its singular or plural noun | Form-value modules and `SettingsTab`; `BulkPasteDialog`, `RowItem`, `RowSources` and `ItemPickerSheet` |
 | `routeHandle.ts`, `types.ts` | `RouteHandle`; schema aliases and unions | Routes and `AppBreadcrumbs`; everywhere |
 | `PlaceholderPage` | A stand-in page for an unbuilt feature | Nothing at a3ba75b |
 

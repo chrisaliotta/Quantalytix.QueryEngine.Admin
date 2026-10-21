@@ -64,7 +64,7 @@ flowchart TB
     App -->|"through the QueryEngineRoot MSBuild property"| Domain
 ```
 
-`Directory.Build.props` defaults `QueryEngineRoot` to `../../Quantalytix.QueryEngine` from `api/`; an environment variable of the same name overrides it. Application references `$(QueryEngineRoot)src/Quantalytix.QueryEngine.Domain/Quantalytix.QueryEngine.Domain.csproj` for `ExpressionParser` and `ExpressionTree`, so the API accepts exactly the expressions the engine parses. The test project also copies the seed kit's `ddl_srdb_bi_v2_19.sql` from `SeedKitRoot`, which defaults to `../../database/srdb_ebm` from `api/`, and Application, Infrastructure.StarRocks and Api make their internals visible to it.
+`Directory.Build.props` defaults `QueryEngineRoot` to `../../Quantalytix.QueryEngine` from `api/`; an environment variable of the same name overrides it. Application references `$(QueryEngineRoot)src/Quantalytix.QueryEngine.Domain/Quantalytix.QueryEngine.Domain.csproj` for `ExpressionParser` and `ExpressionTree`, so the API accepts exactly the expressions the engine parses. The test project also copies the seed kit's `ddl_srdb_bi_v2_20.sql` from `SeedKitRoot`, which defaults to `../../database/srdb_ebm` from `api/`, and Application, Infrastructure.StarRocks and Api make their internals visible to it.
 
 | Project | Main packages | Holds |
 | --- | --- | --- |

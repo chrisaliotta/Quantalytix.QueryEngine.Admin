@@ -1,13 +1,15 @@
 using FluentValidation.TestHelper;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 
 /// <summary>
-/// Confirms the bulk bridge mapping check: a source and target pair listed twice is rejected, because the pair is unique
-/// within a version; a negative weight and a weight with more than the column's 12 decimals are rejected; signed factors
-/// pass.
+/// Confirms the bulk bridge mapping check of an analytical bridge: a source and target pair listed twice is rejected, because the
+/// pair is unique within a version; a negative weight and a weight with more than the column's 12 decimals are rejected; signed
+/// factors pass; and a mapping of a member's descendants is rejected, because the cardinality and allocation rules count each
+/// source member's targets one member at a time.
 /// </summary>
 public sealed class BridgeMappingsInputValidatorTests
 {
@@ -44,6 +46,17 @@ public sealed class BridgeMappingsInputValidatorTests
 
         result.ShouldHaveValidationErrorFor("Mappings[0].AllocationWeight");
         result.ShouldHaveValidationErrorFor("Mappings[1].AllocationWeight");
+    }
+
+    /// <summary>A mapping of a member's descendants fails, because only a report source's bridge maps them.</summary>
+    /// <returns>A task that completes when the validation is checked.</returns>
+    [Fact]
+    public async Task DescendantsMapping_Fails()
+    {
+        var result = await ValidateAsync(Mapping("LOANS", "EAST", 1m) with { SourceSelection = SourceSelections.Descendants });
+
+        result.ShouldHaveValidationErrorFor("Mappings[0].SourceSelection")
+            .WithErrorMessage("An analytical bridge maps each source member alone; only a report source's bridge maps a member's descendants.");
     }
 
     /// <summary>Validates a mapping list holding the given mappings.</summary>

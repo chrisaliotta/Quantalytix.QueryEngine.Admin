@@ -9,10 +9,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
 
 /// <summary>
 /// Confirms how report sources reach the report's rows. A bridge source gets a bridge of its own, published at once and pinned in the
-/// active set, so its item mappings are live; a copy of a sibling's entries is a snapshot that later edits of the sibling do not
-/// reach, because each source's items are mapped on their own; and deleting the source deletes its bridge with its version,
-/// entries and pin, which nothing else uses. A direct source needs an enabled field of the active release's dataset version, whose
-/// values the engine reads as row keys.
+/// active set, so its rules are live, and many-to-many and replicating, so an item can add into several rows; a copy of a sibling's
+/// rules is a snapshot that later edits of the sibling do not reach, because each source's rules are its own; and deleting the
+/// source deletes its bridge with its version, entries and pin, which nothing else uses. A direct source needs an enabled field of
+/// the active release's dataset version, whose values the engine reads as row keys.
 /// </summary>
 public sealed class ReportSourceTests
 {
@@ -41,10 +41,11 @@ public sealed class ReportSourceTests
         Assert.Equal(("balance_sheet_gl_copy", AccountDimensionId, ReportRows.ReportDimensionId), (bridge.BridgeKey, bridge.SourceDimensionId, bridge.TargetDimensionId));
         var version = Assert.Single(fixture.BridgeVersions.All, version => version.BridgeId == bridge.BridgeId);
         Assert.Equal(PublicationStatuses.Published, version.Status);
+        Assert.Equal((Cardinalities.ManyToMany, AllocationModes.Replicate), (version.Cardinality, version.AllocationMode));
         Assert.Contains(fixture.BridgePins.All, pin => pin.BridgeId == bridge.BridgeId && pin.BridgeVersionId == version.BridgeVersionId);
         Assert.Equal([("1001", "LOANS"), ("1002", "CASH")], Entries(fixture, version.BridgeVersionId));
 
-        await fixture.Items().ReplaceAsync(SourceId, new SourceItemsInput { RowKey = "LOANS", Items = [Item("1001"), Item("1003")] }, cancellationToken);
+        await fixture.Items().ReplaceAsync(ReportRows.ReportId, SourceId, new SourceItemsInput { RowKey = "LOANS", Items = [Item("1001"), Item("1003")] }, cancellationToken);
         Assert.Equal([("1001", "LOANS"), ("1002", "CASH")], Entries(fixture, version.BridgeVersionId));
 
         Assert.Empty(await fixture.SourceService().DeleteAsync(ReportRows.ReportId, source.ReportSourceId, cancellationToken));
@@ -84,10 +85,10 @@ public sealed class ReportSourceTests
         };
     }
 
-    /// <summary>An item with its whole value.</summary>
+    /// <summary>A rule taking one item alone, whole.</summary>
     private static SourceItemInput Item(string itemKey)
     {
-        return new SourceItemInput { ItemKey = itemKey, Factor = 1m };
+        return new SourceItemInput { ItemKey = itemKey, Selection = SourceSelections.Member, Factor = 1m };
     }
 
     /// <summary>A bridge version's entries as (item, row) pairs, by item.</summary>

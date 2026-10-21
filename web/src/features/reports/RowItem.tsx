@@ -3,6 +3,7 @@ import type { NestableRenderItemProps } from '@registry/components/Nestable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { count } from '@/shared/text';
 import type { ReportRowInput } from './types';
 
 /** The Nestable render props of the row, plus what the row shows and does. */
@@ -10,8 +11,8 @@ export interface RowItemProps extends NestableRenderItemProps<ReportRowInput> {
   /** Whether the row can be edited now: not while a save of the tree is pending. */
   isEditable: boolean;
   isSelected: boolean;
-  /** How many items the bridge sources map to the row; data rows only. */
-  itemCount: number;
+  /** How many rules of the bridge sources add into the row; data rows only. */
+  ruleCount: number;
   /** Whether the row can be deleted: every row but the report's total. */
   isRemovable: boolean;
   onSelect: () => void;
@@ -22,7 +23,7 @@ export interface RowItemProps extends NestableRenderItemProps<ReportRowInput> {
 
 /**
  * One row of the report's row tree: drag handle, collapse toggle, key, label, kind, what a formula row shows, how the row
- * shows, how many items map to a data row, and its actions. Clicking the row selects it for its source sections.
+ * shows, how many rules add into a data row, and its actions. Clicking the row selects it for its source sections.
  */
 export function RowItem({
   item,
@@ -38,7 +39,7 @@ export function RowItem({
   isDragging,
   isEditable,
   isSelected,
-  itemCount,
+  ruleCount,
   isRemovable,
   onSelect,
   onOpen,
@@ -91,7 +92,9 @@ export function RowItem({
             {row.calculatedMeasureKey} → {row.valueColumnKey}
           </span>
         )}
-        {row.kind === 'data' && <Badge variant={itemCount === 0 ? 'destructive' : 'secondary'}>{itemCount} items</Badge>}
+        {row.kind === 'data' && (
+          <Badge variant={ruleCount === 0 ? 'destructive' : 'secondary'}>{count(ruleCount, ['rule', 'rules'])}</Badge>
+        )}
         {!row.showsValues && <Badge variant="secondary">Header</Badge>}
         {!row.isVisible && <Badge variant="secondary">Hidden</Badge>}
       </button>

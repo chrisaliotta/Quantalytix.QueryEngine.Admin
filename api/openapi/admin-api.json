@@ -2409,7 +2409,7 @@
         "tags": [
           "ReportSources"
         ],
-        "summary": "Replaces the items a bridge source maps to one data row; an item listed for the row leaves the row it mapped to before.\nEvery key is checked as a field rule, and no report rule reads items, so the write is never refused with 422.",
+        "summary": "Replaces the rules a bridge source adds into one data row: items, or every item under a member, each with a factor. The\nsource's other rows keep their rules, so an item may add into several rows. While the report is enabled, the write is\nchecked against the report rules first, such as that a factor other than 1 only scales measures that apply bridge factors.",
         "parameters": [
           {
             "name": "tenantId",
@@ -2488,11 +2488,21 @@
             }
           },
           "400": {
-            "description": "The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no assignable member; errors are keyed by camelCase JSON path.",
+            "description": "The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no member, or an item taken alone that is no assignable member; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The report is enabled and the rules would break a report rule; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -2505,7 +2515,7 @@
         "tags": [
           "ReportSources"
         ],
-        "summary": "Lists the assignable items of a bridge source's item dimension that its bridge maps to no row.",
+        "summary": "Lists the assignable items of a bridge source's item dimension that no rule of its bridge reaches.",
         "parameters": [
           {
             "name": "tenantId",
@@ -12196,6 +12206,10 @@
             "type": "number",
             "description": "Ownership multiplier of 0 or more; fractional for `partition` allocation; fits `DECIMAL(38, 12)`.",
             "format": "double"
+          },
+          "sourceSelection": {
+            "type": "string",
+            "description": "A `source_selection` value, `member` when omitted. Only a report source's bridge maps a member's descendants; its\neditor writes them."
           }
         },
         "description": "One assignment of a source member to a target member, with its value factor and allocation weight."
@@ -12207,7 +12221,8 @@
           "sourceMemberKey",
           "targetMemberKey",
           "factor",
-          "allocationWeight"
+          "allocationWeight",
+          "sourceSelection"
         ],
         "type": "object",
         "properties": {
@@ -12238,9 +12253,13 @@
             "type": "number",
             "description": "Nonnegative ownership multiplier; fractional for `partition` allocation.",
             "format": "double"
+          },
+          "sourceSelection": {
+            "type": "string",
+            "description": "A `source_selection` value: the source member alone, or with every member under it."
           }
         },
-        "description": "A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version, by member key. The keys\nresolve in the versions of the bridge's dimensions an assumption set pins."
+        "description": "A `qe_bridge_mapping` row: one source-member to target-member assignment of a bridge version, by member key. The keys\nresolve in the versions of the bridge's dimensions an assumption set pins. A mapping of the source member's descendants maps\nevery member under it as well, so a report row can take a folder of accounts, including accounts added to it later."
       },
       "BridgeMappingsInput": {
         "required": [
@@ -13670,6 +13689,7 @@
         "required": [
           "reportSourceId",
           "itemKey",
+          "selection",
           "factor"
         ],
         "type": "object",
@@ -13681,15 +13701,19 @@
           },
           "itemKey": {
             "type": "string",
-            "description": "The key of the member of the source's item dimension that maps to the row."
+            "description": "The key of the member of the source's item dimension the rule takes."
+          },
+          "selection": {
+            "type": "string",
+            "description": "A `source_selection` value: the member alone, or the member and every member under it."
           },
           "factor": {
             "type": "number",
-            "description": "The signed coefficient the item's values take in the row, such as -1 to flip a sign.",
+            "description": "The coefficient the rule's values take in the row, such as 0.5 to take half of them or -1 to take them back out.",
             "format": "double"
           }
         },
-        "description": "One item of a bridge source that maps to a row: an entry of the source's bridge."
+        "description": "One rule of a bridge source that adds into a row: an entry of the source's bridge."
       },
       "EditorSource": {
         "required": [
@@ -13743,7 +13767,7 @@
               "null",
               "integer"
             ],
-            "description": "How many assignable items of a bridge source map to no row; null for a direct source.",
+            "description": "How many assignable items of a bridge source no rule reaches; null for a direct source.",
             "format": "int32"
           },
           "variables": {
@@ -16905,21 +16929,26 @@
       "SourceItemInput": {
         "required": [
           "itemKey",
+          "selection",
           "factor"
         ],
         "type": "object",
         "properties": {
           "itemKey": {
             "type": "string",
-            "description": "The key of an assignable member of the published version of the source's item dimension."
+            "description": "The key of a member of the published version of the source's item dimension: an assignable member when the rule takes the\nmember alone, and any member when it takes every member under it."
+          },
+          "selection": {
+            "type": "string",
+            "description": "A `source_selection` value: the member alone, or the member and every member under it."
           },
           "factor": {
             "type": "number",
-            "description": "The signed coefficient the item's values take in the row, such as -1 to flip a sign.",
+            "description": "The coefficient the rule's values take in the row, such as 0.5 to take half of them or -1 to take them back out.",
             "format": "double"
           }
         },
-        "description": "One item of a bridge source that maps to a row."
+        "description": "One rule of a bridge source that adds into a row: an item, or every item under a member, with a factor."
       },
       "SourceItemsInput": {
         "required": [
@@ -16930,17 +16959,17 @@
         "properties": {
           "rowKey": {
             "type": "string",
-            "description": "The data row the items map to."
+            "description": "The data row the rules add into."
           },
           "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SourceItemInput"
             },
-            "description": "The row's complete item list: the row's entries the list leaves out are deleted, and a listed item mapped to another row moves here."
+            "description": "The row's complete rule list: the row's rules the list leaves out are deleted, and the source's other rows keep theirs."
           }
         },
-        "description": "Every item of one bridge source that maps to one row, as `PUT reports/{reportId}/sources/{sourceId}/items` takes them. The\nrow key travels in the body because member keys may hold characters a path segment cannot."
+        "description": "Every rule of one bridge source that adds into one row, as `PUT reports/{reportId}/sources/{sourceId}/items` takes them.\nThe row key travels in the body because member keys may hold characters a path segment cannot."
       },
       "SourceObject": {
         "required": [

@@ -41,7 +41,7 @@ export function RowTree({ view, selectedKey, onSelect }: RowTreeProps) {
   const [deleting, setDeleting] = useState<ReportRowInput | null>(null);
   const rows = replace.isPending ? replace.variables : view.rows.map(toRowInput);
   const tree = buildRowTree(rows, collapsedKeys);
-  const itemCounts = new Map(view.rows.map(row => [row.key, row.items.length]));
+  const ruleCounts = new Map(view.rows.map(row => [row.key, row.items.length]));
 
   function handleItemsChange(items: TreeItems<ReportRowInput>, details: NestableItemsChange<ReportRowInput>) {
     if (details.source === 'collapse') {
@@ -99,7 +99,7 @@ export function RowTree({ view, selectedKey, onSelect }: RowTreeProps) {
                 {...props}
                 isEditable={!replace.isPending}
                 isSelected={row.key === selectedKey}
-                itemCount={itemCounts.get(row.key) ?? 0}
+                ruleCount={ruleCounts.get(row.key) ?? 0}
                 isRemovable={!(isMemberRow(row.kind) && row.parentKey == null)}
                 onSelect={() => onSelect(row.key)}
                 onOpen={() => setSheet({ row })}

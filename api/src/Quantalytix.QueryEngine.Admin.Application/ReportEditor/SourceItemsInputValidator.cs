@@ -4,14 +4,15 @@ using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Checks one row's complete item list for one source: the source is a bridge source, the row is a data row of the report, each
-/// item is an assignable member of the published version of the source's item dimension, which its binding classifies rows into,
-/// each factor fits the <c>DECIMAL(38, 12)</c> column, and each item appears once. Every key is checked here, and no report rule
-/// reads items, so item writes need no check against the report rules.
+/// Checks one row's complete rule list for one source: the source is a bridge source, the row is a data row of the report, each
+/// rule names a member of the published version of the source's item dimension, which its binding classifies rows into, an
+/// assignable member when the rule takes it alone, each factor fits the <c>DECIMAL(38, 12)</c> column, and each member appears
+/// once. Whether the factors reach the report depends on the source's measures, which the report rules check.
 /// </summary>
 public sealed class SourceItemsInputValidator : AbstractValidator<SourceItemsInput>
 {
@@ -44,6 +45,7 @@ public sealed class SourceItemsInputValidator : AbstractValidator<SourceItemsInp
         RuleForEach(input => input.Items).ChildRules(item =>
         {
             item.RuleFor(input => input.ItemKey).MustBeMemberKey();
+            item.RuleFor(input => input.Selection).MustBeIn(SourceSelections.Definition);
             item.RuleFor(input => input.Factor).PrecisionScale(38, 12, true);
         });
         RuleFor(input => input.Items)
@@ -59,9 +61,11 @@ public sealed class SourceItemsInputValidator : AbstractValidator<SourceItemsInp
             }
 
             var role = await roles.GetAsync(new { RoleId = roleId }, cancellationToken);
-            var itemKeys = await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken);
-            foreach (var item in items.Where(item => itemKeys is null || !itemKeys.MemberKeys.Contains(item.ItemKey) || itemKeys.UnassignableMemberKeys.Contains(item.ItemKey)))
-                context.AddFailure($"Item '{item.ItemKey}' is no assignable member of the published version of the dimension source '{source.SourceKey}' maps from.");
+            var itemKeys = (await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken))!;
+            foreach (var item in items.Where(item => !itemKeys.MemberKeys.Contains(item.ItemKey)))
+                context.AddFailure($"Item '{item.ItemKey}' is no member of the published version of the dimension source '{source.SourceKey}' maps from.");
+            foreach (var item in items.Where(item => item.Selection == SourceSelections.Member && itemKeys.UnassignableMemberKeys.Contains(item.ItemKey)))
+                context.AddFailure($"Item '{item.ItemKey}' takes no source values of its own; take every item under it instead.");
         });
     }
 }

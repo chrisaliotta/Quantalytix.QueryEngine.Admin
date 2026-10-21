@@ -52,8 +52,11 @@ public sealed class ReportLiveTests
 
     /// <summary>
     /// A report built like the margin statement, with a direct and a bridge source, is created with its dimension published and
-    /// pinned through the tenant's real publication rules, takes rows, sources, variables and a column, passes its rules when
-    /// enabled, and leaves nothing behind when deleted: its dimension, its bridge and their pins go with it.
+    /// pinned through the tenant's real publication rules, and takes rows, sources, variables and a column. Its bridge source takes
+    /// the margin statement's rules for Loans, which take a folder of accounts and take one account back out at -1, so the rules'
+    /// selections and factors round-trip through StarRocks, and the factor passes the report rules because the seed's balance
+    /// measure applies bridge factors. The report passes its rules when enabled, and leaves nothing behind when deleted: its
+    /// dimension, its bridge and their pins go with it.
     /// </summary>
     /// <returns>A task that completes when the round trip is checked and the report is deleted.</returns>
     [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_GATEWAY=true to round-trip a report through tenant development.")]
@@ -92,10 +95,26 @@ public sealed class ReportLiveTests
             var sources = provider.GetRequiredService<ReportSourceService>();
             Assert.Empty(await sources.CreateAsync(report.ReportId, Source("direct", direct, ReportMappingMethods.Direct), cancellationToken));
             Assert.Empty(await sources.CreateAsync(report.ReportId, Source("bridged", bridged, ReportMappingMethods.Bridge), cancellationToken));
-            var directId = (await editor.ReadAsync(report.ReportId, cancellationToken)).Sources.Single(source => source.Source.SourceKey == "direct").Source.ReportSourceId;
-            var supplied = new SourceVariableInput { VariableKey = variable.VariableKey, MeasureKey = variable.MeasureKey, SourceFilterJson = variable.SourceFilterJson };
-            Assert.Empty(await provider.GetRequiredService<ReportSourceVariableService>()
-                .ReplaceAsync(report.ReportId, directId, new SourceVariablesInput { Variables = [supplied] }, cancellationToken));
+            var created = (await editor.ReadAsync(report.ReportId, cancellationToken)).Sources;
+            var directId = created.Single(source => source.Source.SourceKey == "direct").Source.ReportSourceId;
+            var bridgedId = created.Single(source => source.Source.SourceKey == "bridged").Source.ReportSourceId;
+            var variables = provider.GetRequiredService<ReportSourceVariableService>();
+            Assert.Empty(await variables.ReplaceAsync(report.ReportId, directId, new SourceVariablesInput { Variables = [Supplied(variable)] }, cancellationToken));
+            Assert.Empty(await variables.ReplaceAsync(
+                report.ReportId, bridgedId, new SourceVariablesInput { Variables = [.. bridged.Variables.Select(Supplied)] }, cancellationToken));
+            SourceItemInput[] loansRules =
+            [
+                .. Assert.Single(template.Rows, row => row.Key == "LOANS").Items
+                    .Where(item => item.ReportSourceId == bridged.Source.ReportSourceId)
+                    .Select(item => new SourceItemInput { ItemKey = item.ItemKey, Selection = item.Selection, Factor = item.Factor })
+            ];
+            Assert.Contains(loansRules, rule => rule.Selection == SourceSelections.Descendants);
+            Assert.Contains(loansRules, rule => rule.Factor == -1m);
+            Assert.Empty(await provider.GetRequiredService<SourceItemService>()
+                .ReplaceAsync(report.ReportId, bridgedId, new SourceItemsInput { RowKey = "LOANS", Items = loansRules }, cancellationToken));
+            var stored = Assert.Single((await editor.ReadAsync(report.ReportId, cancellationToken)).Rows, row => row.Key == "LOANS").Items
+                .Select(item => new SourceItemInput { ItemKey = item.ItemKey, Selection = item.Selection, Factor = item.Factor });
+            Assert.Equal(loansRules.OrderBy(rule => rule.ItemKey, StringComparer.Ordinal), stored.OrderBy(rule => rule.ItemKey, StringComparer.Ordinal));
             var column = new ReportColumnInput { ColumnKey = "amount", ValueKind = ReportValueKinds.Variable, MetricKey = variable.VariableKey, IsVisible = true };
             Assert.Empty(await provider.GetRequiredService<ReportColumnService>()
                 .ReplaceAsync(report.ReportId, new ReportColumnsInput { Columns = [column] }, cancellationToken));
@@ -114,6 +133,12 @@ public sealed class ReportLiveTests
         Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken));
         Assert.DoesNotContain(bridges, bridge => bridge.Bridge.TargetDimensionId == report.ReportDimensionId);
         Assert.DoesNotContain(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == report.ReportDimensionId);
+    }
+
+    /// <summary>The supply of a variable as a margin statement source supplies it.</summary>
+    private static SourceVariableInput Supplied(ReportSourceVariableRecord variable)
+    {
+        return new SourceVariableInput { VariableKey = variable.VariableKey, MeasureKey = variable.MeasureKey, SourceFilterJson = variable.SourceFilterJson };
     }
 
     /// <summary>A visible row that shows its values, labelled with its key.</summary>

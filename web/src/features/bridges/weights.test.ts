@@ -9,7 +9,7 @@ import type { BridgeMapping } from './types';
 import { decimalText, sourceWeightSums } from './weights';
 
 function mapping(sourceMemberKey: string, targetMemberKey: string, allocationWeight: number): BridgeMapping {
-  return { bridgeMappingId: 0, bridgeVersionId: 50, sourceMemberKey, targetMemberKey, factor: 1, allocationWeight };
+  return { bridgeMappingId: 0, bridgeVersionId: 50, sourceMemberKey, targetMemberKey, factor: 1, allocationWeight, sourceSelection: 'member' };
 }
 
 describe('sourceWeightSums', () => {

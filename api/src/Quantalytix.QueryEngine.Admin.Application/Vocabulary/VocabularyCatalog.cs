@@ -46,6 +46,7 @@ public static class VocabularyCatalog
         MissingPeriodBehaviors.Definition,
         Cardinalities.Definition,
         AllocationModes.Definition,
+        SourceSelections.Definition,
         ProviderIds.Definition,
         SelectionScopes.Definition,
         VariableMissingBehaviors.Definition,

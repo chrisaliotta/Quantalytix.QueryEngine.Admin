@@ -8,7 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.Reports;
 
 /// <summary>
 /// Creates, edits and deletes a report's sources: datasets whose rows reach the report's rows through the source's own bridge or a
-/// field of row keys. Edits the variables each source supplies, and the items a bridge source maps to each row.
+/// field of row keys. Edits the variables each source supplies, and the rules a bridge source adds into each row.
 /// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/sources")]
@@ -128,33 +128,37 @@ public sealed class ReportSourcesController(
     }
 
     /// <summary>
-    /// Replaces the items a bridge source maps to one data row; an item listed for the row leaves the row it mapped to before.
-    /// Every key is checked as a field rule, and no report rule reads items, so the write is never refused with 422.
+    /// Replaces the rules a bridge source adds into one data row: items, or every item under a member, each with a factor. The
+    /// source's other rows keep their rules, so an item may add into several rows. While the report is enabled, the write is
+    /// checked against the report rules first, such as that a factor other than 1 only scales measures that apply bridge factors.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
     /// <param name="source">The report and its bridge source.</param>
-    /// <param name="input">The row and its complete item list.</param>
+    /// <param name="input">The row and its complete rule list.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
-    /// <response code="400">The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no assignable member; errors are keyed by camelCase JSON path.</response>
+    /// <response code="400">The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no member, or an item taken alone that is no assignable member; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
+    /// <response code="422">The report is enabled and the rules would break a report rule; nothing was written.</response>
     [HttpPut("{sourceId:long}/items")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> ReplaceItems(
         string tenantId,
         [FromRoute] ReportSourceReference source,
         SourceItemsInput input,
         CancellationToken cancellationToken)
     {
-        await items.ReplaceAsync(source.SourceId, input, cancellationToken);
+        var violations = await items.ReplaceAsync(source.ReportId, source.SourceId, input, cancellationToken);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, source.ReportId, violations);
         return Ok(await reader.ReadAsync(source.ReportId, cancellationToken));
     }
 
-    /// <summary>Lists the assignable items of a bridge source's item dimension that its bridge maps to no row.</summary>
+    /// <summary>Lists the assignable items of a bridge source's item dimension that no rule of its bridge reaches.</summary>
     /// <param name="tenantId">The tenant that owns the report.</param>
     /// <param name="source">The report and its bridge source.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

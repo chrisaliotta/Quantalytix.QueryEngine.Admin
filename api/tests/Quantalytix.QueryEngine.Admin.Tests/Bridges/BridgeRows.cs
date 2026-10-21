@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 
@@ -46,7 +47,8 @@ internal static class BridgeRows
             SourceMemberKey = sourceMemberKey,
             TargetMemberKey = targetMemberKey,
             Factor = factor,
-            AllocationWeight = allocationWeight
+            AllocationWeight = allocationWeight,
+            SourceSelection = SourceSelections.Member
         };
     }
 }

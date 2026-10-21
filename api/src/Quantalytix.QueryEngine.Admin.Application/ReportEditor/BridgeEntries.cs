@@ -16,17 +16,27 @@ internal static class BridgeEntries
             SourceMemberKey = entry.SourceMemberKey,
             TargetMemberKey = entry.TargetMemberKey,
             Factor = entry.Factor,
-            AllocationWeight = entry.AllocationWeight
+            AllocationWeight = entry.AllocationWeight,
+            SourceSelection = entry.SourceSelection
         };
     }
 
-    /// <summary>An entry that maps one item to one row with its whole weight, as every bridge source's bridge does.</summary>
-    /// <param name="itemKey">The member of the item dimension.</param>
+    /// <summary>
+    /// The entry of a rule that adds an item, or every item under it, into a row with its whole weight: a report source's bridge
+    /// replicates its items into every row a rule names, and the rule's factor scales them.
+    /// </summary>
+    /// <param name="item">The rule.</param>
     /// <param name="rowKey">The member of the report dimension.</param>
-    /// <param name="factor">The signed coefficient.</param>
     /// <returns>The mapping input.</returns>
-    public static BridgeMappingInput ToRow(string itemKey, string rowKey, decimal factor)
+    public static BridgeMappingInput ToRow(SourceItemInput item, string rowKey)
     {
-        return new BridgeMappingInput { SourceMemberKey = itemKey, TargetMemberKey = rowKey, Factor = factor, AllocationWeight = 1m };
+        return new BridgeMappingInput
+        {
+            SourceMemberKey = item.ItemKey,
+            TargetMemberKey = rowKey,
+            Factor = item.Factor,
+            AllocationWeight = 1m,
+            SourceSelection = item.Selection
+        };
     }
 }

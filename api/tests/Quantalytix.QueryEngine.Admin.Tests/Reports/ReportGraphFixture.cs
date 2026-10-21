@@ -50,6 +50,9 @@ internal sealed class ReportGraphFixture
     /// <summary>The bridge from accounts into the report's dimension.</summary>
     public const long AccountBridgeId = 95;
 
+    /// <summary>The bridge's one version.</summary>
+    public const long AccountBridgeVersionId = 96;
+
     /// <summary>The account role GL's <c>gl_account</c> binds, which a bridge source can start from.</summary>
     public const long AccountRoleId = 85;
 
@@ -61,7 +64,7 @@ internal sealed class ReportGraphFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 10,
+        MetadataSchemaVersion = 11,
         SemanticRevision = 1,
         ActiveReleaseId = ReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -144,7 +147,10 @@ internal sealed class ReportGraphFixture
 
     /// <summary>The bridge's one version, published.</summary>
     public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(
-        BridgeRows.BridgeVersion(96, AccountBridgeId, 1, Cardinalities.ManyToOne, AllocationModes.None, PublicationStatuses.Published));
+        BridgeRows.BridgeVersion(AccountBridgeVersionId, AccountBridgeId, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published));
+
+    /// <summary>The bridge's rules; none until a test makes GL a bridge source.</summary>
+    public InMemoryTableGateway<BridgeMappingRecord> BridgeMappings { get; } = new();
 
     /// <summary>Version 501 of the report dimension, its one version, published.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(501, ReportDimensionId, 1, PublicationStatuses.Published));
@@ -174,8 +180,8 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, Dimensions, ModelVersions,
-            Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings, Dimensions,
+            ModelVersions, Metrics(), Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The model metrics reader over these tables.</summary>
@@ -213,7 +219,8 @@ internal sealed class ReportGraphFixture
         IReportRule[] rules =
         [
             new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new DefaultProfileEnabledRule(), new ReportDefaultsResolveRule(),
-            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule()
+            new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportSourcesResolveRule(),
+            new ReportFactorsApplyRule()
         ];
         return new ReportRules(rules, Reader());
     }

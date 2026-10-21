@@ -30,7 +30,8 @@ public sealed class BridgeMappingService(ITableGateway<BridgeMappingRecord> mapp
                 SourceMemberKey = mapping.SourceMemberKey,
                 TargetMemberKey = mapping.TargetMemberKey,
                 Factor = mapping.Factor,
-                AllocationWeight = mapping.AllocationWeight
+                AllocationWeight = mapping.AllocationWeight,
+                SourceSelection = mapping.SourceSelection
             })
         ];
         await mappings.DeleteAsync(new { BridgeVersionId = versionId }, cancellationToken);

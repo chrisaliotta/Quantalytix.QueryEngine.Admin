@@ -423,7 +423,7 @@ sequenceDiagram
 
 ## Adding a bridge source to a report
 
-The drawing shows `POST .../reports/{reportId}/sources` with mapping method `bridge`, from the report editor. The source gets a bridge of its own, from the dimension of the role it names into the report dimension, and the bridge's one version is published at once, so the editor's item mappings are live edits from then on. On an enabled report the report rules check the report with the new source before anything is written.
+The drawing shows `POST .../reports/{reportId}/sources` with mapping method `bridge`, from the report editor. The source gets a bridge of its own, from the dimension of the role it names into the report dimension, and the bridge's one version, many-to-many with replicate allocation so the same item can add into several rows, is published at once, so the editor's rules are live edits from then on. On an enabled report the report rules check the report with the new source before anything is written.
 
 ```mermaid
 sequenceDiagram
@@ -447,7 +447,7 @@ sequenceDiagram
     Note over Changes: An enabled report is checked first; any violation answers 422 and writes nothing
     Changes->>Svc: write()
     Svc->>Bridges: CreateAsync({reportKey}_{sourceKey}, from the role's dimension into the report dimension)
-    Svc->>Versions: CreateAsync(bridge, many-to-one, no allocation)
+    Svc->>Versions: CreateAsync(bridge, many-to-many, replicate)
     opt A source to copy
         Svc->>Mappings: ListAsync(the sibling's bridge version)
         Svc->>Mappings: ReplaceAsync(new version, the sibling's entries)
@@ -463,7 +463,7 @@ sequenceDiagram
     Filter-->>Client: result
 ```
 
-The bridge is written before the source that names it, and a direct source writes no bridge, only the source with its field. The copy is a one-time copy: the two bridges never change together. The new source supplies no variables yet; `PUT sources/{sourceId}/variables` binds them to measures and completes the report's profiles.
+The bridge is written before the source that names it, and a direct source writes no bridge, only the source with its field. The copy is a one-time copy of the sibling's rules, folders and factors included: the two bridges never change together. The new source supplies no variables yet; `PUT sources/{sourceId}/variables` binds them to measures and completes the report's profiles.
 
 **Sources:** [ReportSourcesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Reports/ReportSourcesController.cs), [ReportSourceService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportSourceService.cs), [NewReportSourceInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/NewReportSourceInputValidator.cs), [ReportSourceKeys.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportSourceKeys.cs), [ReportChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportChanges.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [ReportEditorReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/ReportEditor/ReportEditorReader.cs), [ReportSourceTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/ReportEditor/ReportSourceTests.cs).
 

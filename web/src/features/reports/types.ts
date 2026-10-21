@@ -44,7 +44,7 @@ export type EditorView = Schemas['EditorView'];
 /** One row of a report: a member of the report dimension or an overlay row. */
 export type EditorRow = Schemas['EditorRow'];
 
-/** One item a bridge source maps to a row: an entry of the source's bridge. */
+/** One rule a bridge source adds into a row: an item, or every item under a member, with a factor; an entry of the source's bridge. */
 export type EditorRowItem = Schemas['EditorRowItem'];
 
 /** One source of a report, with its dataset, item dimension, bridge version, unmapped count and variables. */
@@ -68,7 +68,7 @@ export type ReportSourceInput = Schemas['ReportSourceInput'];
 /** One variable of `PUT reports/{reportId}/sources/{sourceId}/variables`. */
 export type SourceVariableInput = Schemas['SourceVariableInput'];
 
-/** One item of `PUT reports/{reportId}/sources/{sourceId}/items`. */
+/** One rule of `PUT reports/{reportId}/sources/{sourceId}/items`. */
 export type SourceItemInput = Schemas['SourceItemInput'];
 
 /** The `report_row_kind` vocabulary: data and group rows are members of the report dimension, sections and formulas overlay rows. */
@@ -76,3 +76,6 @@ export type ReportRowKind = 'data' | 'group' | 'section' | 'formula';
 
 /** The `report_mapping_method` vocabulary: a source reaches the rows through its own bridge, or by a field of row keys. */
 export type ReportMappingMethod = 'bridge' | 'direct';
+
+/** The `source_selection` vocabulary: a rule takes its member alone, or the member and every member under it. */
+export type SourceSelection = 'member' | 'descendants';

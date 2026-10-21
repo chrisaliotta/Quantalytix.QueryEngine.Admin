@@ -33,8 +33,8 @@ describe('readMappingLines', () => {
 describe('writeMappingLines', () => {
   it('writes the mappings as lines that read back as the same mappings', () => {
     const mappings = [
-      { bridgeMappingId: 1, bridgeVersionId: 50, sourceMemberKey: 'LOAN_A', targetMemberKey: 'EAST', factor: 1, allocationWeight: 0.086 },
-      { bridgeMappingId: 2, bridgeVersionId: 50, sourceMemberKey: 'LOAN_B', targetMemberKey: 'WEST', factor: -1, allocationWeight: 1 },
+      { bridgeMappingId: 1, bridgeVersionId: 50, sourceMemberKey: 'LOAN_A', targetMemberKey: 'EAST', factor: 1, allocationWeight: 0.086, sourceSelection: 'member' },
+      { bridgeMappingId: 2, bridgeVersionId: 50, sourceMemberKey: 'LOAN_B', targetMemberKey: 'WEST', factor: -1, allocationWeight: 1, sourceSelection: 'member' },
     ];
 
     const text = writeMappingLines(mappings);

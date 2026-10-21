@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { problemOnLines, type PastedRows, type UnresolvedLine } from './bulkLists';
 import { TextAreaField } from './form';
 import { FormDialog } from './FormDialog';
+import { count } from './text';
 
 interface BulkPasteValues {
   text: string;
@@ -95,9 +96,4 @@ function UnresolvedLines({ lines }: { lines: UnresolvedLine[] }) {
       </ul>
     </div>
   );
-}
-
-/** A count with its noun, such as `1 entry` or `3 entries`. */
-function count(total: number, noun: readonly [string, string]) {
-  return `${total} ${total === 1 ? noun[0] : noun[1]}`;
 }

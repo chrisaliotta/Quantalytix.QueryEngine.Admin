@@ -22,6 +22,7 @@ public sealed class ReportGraphReader(
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<ReportSourceRecord> sources,
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
+    ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<CalculationDimensionRecord> dimensions,
     ITableGateway<CalculationModelVersionRecord> modelVersions,
     ModelMetricsReader models,
@@ -110,10 +111,29 @@ public sealed class ReportGraphReader(
             Picks = await picks.ListAsync(new { SourceProfileId = reportProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
             Sources = reportSources,
             SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken),
+            SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
             Dimensions = await dimensions.ListAsync(owner, cancellationToken),
             Model = model,
             Variables = await variables.ListAsync(metrics, cancellationToken),
             CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken)
         };
+    }
+
+    /// <summary>The rules of the bridge sources: the entries of each one's bridge.</summary>
+    private async Task<IReadOnlyList<ReportSourceItem>> SourceItemsAsync(IReadOnlyList<ReportSourceRecord> reportSources, CancellationToken cancellationToken)
+    {
+        var sourceOf = (await owned.BridgesAsync(reportSources, cancellationToken)).ToDictionary(pair => pair.Value.BridgeVersionId, pair => pair.Key);
+        var entries = await bridgeMappings.ListAsync(new { BridgeVersionId = sourceOf.Keys.ToArray() }, cancellationToken);
+        return
+        [
+            .. entries.Select(entry => new ReportSourceItem
+            {
+                ReportSourceId = sourceOf[entry.BridgeVersionId],
+                ItemKey = entry.SourceMemberKey,
+                Selection = entry.SourceSelection,
+                RowKey = entry.TargetMemberKey,
+                Factor = entry.Factor
+            })
+        ];
     }
 }

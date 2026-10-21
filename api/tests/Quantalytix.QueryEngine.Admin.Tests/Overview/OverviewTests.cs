@@ -128,7 +128,7 @@ public sealed class OverviewTests
         var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
-        Assert.Equal(10, overview.MetadataSchemaVersion);
+        Assert.Equal(11, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
         Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
         Assert.Equal(
@@ -198,7 +198,7 @@ public sealed class OverviewTests
         {
             SingletonId = 1,
             TenantKey = "sandbox",
-            MetadataSchemaVersion = 10,
+            MetadataSchemaVersion = 11,
             SemanticRevision = 12,
             ActiveReleaseId = activeReleaseId,
             UpdatedAt = Created

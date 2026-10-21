@@ -158,13 +158,14 @@ author_report() {
   local seed
   seed=$(py "[x['reportId'] for x in r if x['reportKey'] == 'bank.margin_statement'][0]")
   call GET "/reports/$seed/editor" 200
-  # One item list per row the seed report's gl_monthly source maps accounts to; the copied rows keep the seed's keys.
+  # One rule list per row the seed report's gl_monthly source maps accounts or account folders to; the copied rows keep the
+  # seed's keys.
   python3 - "$W/last.json" > "$W/items.jsonl" <<'EOF'
 import json, sys
 view = json.load(open(sys.argv[1]))
 source = [s['source']['reportSourceId'] for s in view['sources'] if s['source']['sourceKey'] == 'gl_monthly'][0]
 for row in view['rows']:
-    items = [{'itemKey': item['itemKey'], 'factor': item['factor']} for item in row['items'] if item['reportSourceId'] == source]
+    items = [{'itemKey': item['itemKey'], 'selection': item['selection'], 'factor': item['factor']} for item in row['items'] if item['reportSourceId'] == source]
     if items:
         print(json.dumps({'rowKey': row['key'], 'items': items}))
 EOF

@@ -27,7 +27,7 @@ public sealed record EditorSource
     /// <summary>The one version of a bridge source's bridge, which holds its entries; null for a direct source.</summary>
     public long? BridgeVersionId { get; init; }
 
-    /// <summary>How many assignable items of a bridge source map to no row; null for a direct source.</summary>
+    /// <summary>How many assignable items of a bridge source no rule reaches; null for a direct source.</summary>
     public int? UnmappedCount { get; init; }
 
     /// <summary>The variables the source supplies, by variable key.</summary>

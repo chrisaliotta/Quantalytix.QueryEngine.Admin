@@ -2,7 +2,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
 /// A <c>qe_bridge_mapping</c> row: one source-member to target-member assignment of a bridge version, by member key. The keys
-/// resolve in the versions of the bridge's dimensions an assumption set pins.
+/// resolve in the versions of the bridge's dimensions an assumption set pins. A mapping of the source member's descendants maps
+/// every member under it as well, so a report row can take a folder of accounts, including accounts added to it later.
 /// </summary>
 public sealed record BridgeMappingRecord
 {
@@ -23,4 +24,7 @@ public sealed record BridgeMappingRecord
 
     /// <summary>Nonnegative ownership multiplier; fractional for <c>partition</c> allocation.</summary>
     public required decimal AllocationWeight { get; init; }
+
+    /// <summary>A <c>source_selection</c> value: the source member alone, or with every member under it.</summary>
+    public required string SourceSelection { get; init; }
 }

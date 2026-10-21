@@ -68,9 +68,11 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<IReportRule, ReportMetricsResolveRule>();
         services.AddScoped<IReportRule, ProfilesCompleteRule>();
         services.AddScoped<IReportRule, ReportSourcesResolveRule>();
+        services.AddScoped<IReportRule, ReportFactorsApplyRule>();
         services.AddConsumerRule<ReportMetricsResolveRule>(VersionKinds.CalculationModelVersion);
         services.AddConsumerRule<ProfilesCompleteRule>(VersionKinds.CalculationModelVersion);
         services.AddConsumerRule<ReportSourcesResolveRule>(VersionKinds.SemanticRelease);
+        services.AddConsumerRule<ReportFactorsApplyRule>(VersionKinds.SemanticRelease);
         return services;
     }
 

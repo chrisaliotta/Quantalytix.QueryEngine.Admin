@@ -6,8 +6,8 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Reads a report as its editor shows it: the members of its report dimension and its overlay rows, the items each bridge source's
-/// bridge maps to each row, and the sources with their variables. A member row is a data row when its member is assignable, so it
+/// Reads a report as its editor shows it: the members of its report dimension and its overlay rows, the rules each bridge source's
+/// bridge adds into each row, and the sources with their variables. A member row is a data row when its member is assignable, so it
 /// takes items and the rows under it add to its total, and a group otherwise.
 /// </summary>
 public sealed class ReportEditorReader(
@@ -43,7 +43,13 @@ public sealed class ReportEditorReader(
             .ThenBy(entry => entry.SourceMemberKey, StringComparer.Ordinal)
             .ToLookup(
                 entry => entry.TargetMemberKey,
-                entry => new EditorRowItem { ReportSourceId = sourceOf[entry.BridgeVersionId], ItemKey = entry.SourceMemberKey, Factor = entry.Factor },
+                entry => new EditorRowItem
+                {
+                    ReportSourceId = sourceOf[entry.BridgeVersionId],
+                    ItemKey = entry.SourceMemberKey,
+                    Selection = entry.SourceSelection,
+                    Factor = entry.Factor
+                },
                 StringComparer.Ordinal);
         IEnumerable<EditorRow> rows =
         [
@@ -56,7 +62,7 @@ public sealed class ReportEditorReader(
             ModelVersionId = (await models.PublishedVersionAsync(report.ModelId, cancellationToken)).ModelVersionId,
             DimensionVersionId = structure.DimensionVersionId,
             Rows = [.. rows.OrderBy(row => row.SortOrder).ThenBy(row => row.Key, StringComparer.Ordinal)],
-            Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId, entry => entry.SourceMemberKey), cancellationToken)
+            Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId), cancellationToken)
         };
     }
 
@@ -111,7 +117,7 @@ public sealed class ReportEditorReader(
     private async Task<IReadOnlyList<EditorSource>> SourcesAsync(
         IReadOnlyList<ReportSourceRecord> reportSources,
         IReadOnlyDictionary<long, BridgeVersionRecord> bridgeVersions,
-        ILookup<long, string> mappedItems,
+        ILookup<long, BridgeMappingRecord> entriesOf,
         CancellationToken cancellationToken)
     {
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = reportSources.Select(source => source.DatasetId).Distinct().ToArray() }, cancellationToken))
@@ -134,7 +140,7 @@ public sealed class ReportEditorReader(
                 ItemDimensionId = role?.DimensionId,
                 ItemDimensionVersionId = itemKeys?.Version.DimensionVersionId,
                 BridgeVersionId = bridgeVersion?.BridgeVersionId,
-                UnmappedCount = itemKeys is null || bridgeVersion is null ? null : SourceCoverageReader.Unmapped(itemKeys, mappedItems[bridgeVersion.BridgeVersionId]).Count,
+                UnmappedCount = itemKeys is null || bridgeVersion is null ? null : SourceCoverageReader.Unmapped(itemKeys, entriesOf[bridgeVersion.BridgeVersionId]).Count,
                 Variables = [.. variablesOf[source.ReportSourceId].OrderBy(variable => variable.VariableKey, StringComparer.Ordinal)]
             });
         }

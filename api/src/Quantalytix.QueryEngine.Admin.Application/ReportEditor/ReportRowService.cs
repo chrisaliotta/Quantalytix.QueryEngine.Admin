@@ -59,7 +59,14 @@ public sealed class ReportRowService(
 
         return await changes.ApplyAsync(
             reportId,
-            graph => graph with { Members = tree, Lines = overlay, MemberOptions = options, Scopes = keptScopes },
+            graph => graph with
+            {
+                Members = tree,
+                Lines = overlay,
+                MemberOptions = options,
+                Scopes = keptScopes,
+                SourceItems = [.. graph.SourceItems.Where(item => !removedKeys.Contains(item.RowKey))]
+            },
             async () =>
             {
                 await RemoveEntriesToAsync(reportId, removedKeys, cancellationToken);

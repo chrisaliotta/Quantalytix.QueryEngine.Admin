@@ -8,9 +8,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
 /// Creates, edits and deletes report sources. A bridge source owns one bridge, from its role's dimension into the report dimension,
-/// whose one version is published at once, so the source's item mappings are live edits like the rest of the report; it may start
-/// as a copy of a sibling's entries, which is never linked. A direct source stores its field. Dataset, mapping method, role and
-/// field are fixed once created.
+/// whose one version is published at once, so the source's rules are live edits like the rest of the report. The bridge is
+/// many-to-many and replicates: each rule adds an item, or every item under a member, into one row with its factor, and an item
+/// may add into several rows. A bridge source may start as a copy of a sibling's rules, which is never linked. A direct source
+/// stores its field. Dataset, mapping method, role and field are fixed once created.
 /// </summary>
 public sealed class ReportSourceService(
     ITableGateway<ReportRecord> reports,
@@ -89,6 +90,7 @@ public sealed class ReportSourceService(
             {
                 Sources = [.. report.Sources.Where(other => other.ReportSourceId != sourceId)],
                 SourceVariables = [.. report.SourceVariables.Where(variable => variable.ReportSourceId != sourceId)],
+                SourceItems = [.. report.SourceItems.Where(item => item.ReportSourceId != sourceId)],
                 Picks = [.. report.Picks.Where(pick => pick.ReportSourceId != sourceId)]
             },
             () => remover.RemoveSourcesAsync([source], cancellationToken),
@@ -96,8 +98,8 @@ public sealed class ReportSourceService(
     }
 
     /// <summary>
-    /// Creates a bridge source's bridge from its role's dimension into the report dimension, with a version that maps each item to
-    /// one row with its whole weight, starting from a copy of a sibling's entries, and publishes the version.
+    /// Creates a bridge source's bridge from its role's dimension into the report dimension, with a version that replicates each
+    /// item into every row its rules name, starting from a copy of a sibling's rules, and publishes the version.
     /// </summary>
     private async Task<long> CreateBridgeAsync(ReportSourceRecord source, long roleId, long? copyFromSourceId, CancellationToken cancellationToken)
     {
@@ -115,7 +117,7 @@ public sealed class ReportSourceService(
             cancellationToken);
         var version = await bridgeVersions.CreateAsync(
             bridge.BridgeId,
-            new NewBridgeVersionInput { Cardinality = Cardinalities.ManyToOne, AllocationMode = AllocationModes.None },
+            new NewBridgeVersionInput { Cardinality = Cardinalities.ManyToMany, AllocationMode = AllocationModes.Replicate },
             cancellationToken);
         if (copyFromSourceId is { } siblingId)
         {

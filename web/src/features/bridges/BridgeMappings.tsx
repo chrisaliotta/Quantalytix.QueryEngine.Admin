@@ -1,6 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardPaste, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
@@ -29,7 +30,8 @@ export interface BridgeMappingsProps {
 /**
  * A bridge version's mappings in a table, each member labelled from the published version of its dimension, with each
  * source member's weight sum in allocation mode `partition`. On a draft or the published version they are added, edited
- * and deleted one by one, or replaced by a bulk paste; edits to the published version reach the next request.
+ * and deleted one by one, or replaced by a bulk paste; edits to the published version reach the next request. A report
+ * source's bridge, which this page shows read-only, can map a member with every member under it.
  */
 export function BridgeMappings({ bridge, version, isEditable }: BridgeMappingsProps) {
   const mappings = useBridgeMappings(version.bridgeVersionId);
@@ -47,7 +49,12 @@ export function BridgeMappings({ bridge, version, isEditable }: BridgeMappingsPr
     {
       accessorKey: 'sourceMemberKey',
       header: 'Source member',
-      cell: ({ row }) => <MemberCell memberKey={row.original.sourceMemberKey} label={row.original.sourceLabel} />,
+      cell: ({ row }) => (
+        <span className="flex items-baseline gap-2">
+          <MemberCell memberKey={row.original.sourceMemberKey} label={row.original.sourceLabel} />
+          {row.original.sourceSelection === 'descendants' && <Badge variant="secondary">and every member under it</Badge>}
+        </span>
+      ),
     },
     {
       accessorKey: 'targetMemberKey',
