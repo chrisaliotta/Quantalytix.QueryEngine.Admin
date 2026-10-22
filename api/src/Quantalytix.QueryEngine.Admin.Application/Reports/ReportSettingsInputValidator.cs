@@ -10,10 +10,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>
 /// Checks a report's settings: a default profile of the report's own, its subtotal position, and the shape of its executable
 /// JSON: a default filter over calculation dimensions and request parameters only, settings whose <c>periodicity</c>,
-/// <c>timeZone</c>, <c>layout</c> and <c>comparisons</c> are well formed, each comparison problem keyed by its path inside the
-/// settings, such as <c>defaultSettingsJson.comparisons[1].scenario</c>, and a pivot of row and column dimension lists. Whether the
-/// dimensions exist and allow what the defaults ask of them, and whether the comparisons' profiles, scenarios and assumption sets
-/// exist, is the <c>report_defaults_resolve</c> rule's concern, because each can still change.
+/// <c>timeZone</c> and <c>layout</c> are well formed, and a pivot of row and column dimension lists. Whether the dimensions exist,
+/// and allow what the defaults ask of them, is the <c>report_defaults_resolve</c> rule's concern, because the report's calculation
+/// dimensions can still change.
 /// </summary>
 public sealed class ReportSettingsInputValidator : AbstractValidator<ReportSettingsInput>
 {
@@ -42,8 +41,6 @@ public sealed class ReportSettingsInputValidator : AbstractValidator<ReportSetti
             if (settings.TryGetProperty("timeZone", out var timeZone) && (timeZone.ValueKind != JsonValueKind.String || timeZone.GetString()!.Length == 0))
                 context.AddFailure("'timeZone' must be an IANA time zone name, such as 'UTC'.");
             CheckSetting(settings, "layout", ReportLayouts.Definition, context);
-            if (settings.TryGetProperty("comparisons", out var comparisons))
-                foreach (var problem in ReportComparisons.Problems(comparisons)) context.AddFailure($"{context.PropertyPath}.{problem.Path}", problem.Message);
         });
         RuleFor(input => input.DefaultPivotJson).Custom((json, context) =>
         {

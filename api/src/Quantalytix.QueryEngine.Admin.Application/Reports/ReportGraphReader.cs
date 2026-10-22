@@ -1,6 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
@@ -26,7 +25,6 @@ public sealed class ReportGraphReader(
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<DimensionRoleRecord> roles,
-    ITableGateway<AssumptionSetRecord> assumptionSets,
     ReleaseDatasets releaseDatasets,
     PublishedDimensionReader publishedDimensions)
 {
@@ -75,7 +73,7 @@ public sealed class ReportGraphReader(
     /// <param name="graphs">The reports.</param>
     /// <param name="releaseId">The release being validated; null for the active release.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The release's versions of the datasets the reports read, the templates of their calculation dimensions, and the captured sets.</returns>
+    /// <returns>The release's versions of the datasets the reports read, and the templates of their calculation dimensions.</returns>
     public async Task<ReportScope> ScopeAsync(IReadOnlyList<ReportGraph> graphs, long? releaseId, CancellationToken cancellationToken)
     {
         long[] sourceDatasets = [.. graphs.SelectMany(report => report.Sources.Select(source => source.DatasetId)).Distinct()];
@@ -90,10 +88,7 @@ public sealed class ReportGraphReader(
             Datasets = await releaseDatasets.ReadAsync(releaseId, sourceDatasets, cancellationToken),
             DatasetKeys = (await datasets.ListAsync(new { DatasetId = sourceDatasets }, cancellationToken)).ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey),
             RoleKeys = rolesById.ToDictionary(pair => pair.Key, pair => pair.Value.RoleKey),
-            Templates = templates,
-            HistoricalSetKeys = (await assumptionSets.ListAsync(new { Status = AssumptionSetStatuses.Historical }, cancellationToken))
-                .Select(set => set.AssumptionSetKey)
-                .ToHashSet(StringComparer.Ordinal)
+            Templates = templates
         };
     }
 

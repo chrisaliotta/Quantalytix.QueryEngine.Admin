@@ -4760,10 +4760,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Replaces a member's editable attributes, including its parent and level; its key stays. An edit to the published version
-         *     that would leave a key some live object needs unresolved is refused.
-         */
+        /** Replaces a member's editable attributes, including its parent and level; its key stays. */
         put: {
             parameters: {
                 query?: never;
@@ -4830,22 +4827,10 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description In the published version, the edit would leave a key a live object needs unresolved, such as a scenario a report's default comparison reads that is no longer assignable; nothing was written. */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
-                    };
-                };
             };
         };
         post?: never;
-        /**
-         * Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live
-         *     objects name its key or need it as the last assignable member under a folder.
-         */
+        /** Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -4920,10 +4905,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. A move in
-         *     the published version that would leave a key some live object needs unresolved is refused.
-         */
+        /** Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. */
         put: {
             parameters: {
                 query?: never;
@@ -4986,15 +4968,6 @@ export interface paths {
                     };
                     content: {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description In the published version, the move would leave a key a live object needs unresolved, such as a folder a report's default comparison reads the latest version of without an assignable member; nothing was written. */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
                     };
                 };
             };
@@ -9598,7 +9571,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a historical set with its pins, unless an enabled report's default comparison reads it; requests can no longer name its key. */
+        /** Deletes a historical set with its pins; requests can no longer name its key. */
         delete: {
             parameters: {
                 query?: never;
@@ -9638,7 +9611,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted: the set is the active set, which holds the default versions, or the detail names the enabled reports' default comparisons that read it. */
+                /** @description Nothing was deleted: the set is the active set, which holds the default versions. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -10846,8 +10819,6 @@ export interface components {
             status?: null | string;
             /** @description A vocabulary value that classifies the row, such as a field's data type. */
             classifier?: null | string;
-            /** @description Whether a member takes values of its own, such as a plan version, rather than only totalling the members under it; null for other kinds. */
-            isAssignable?: null | boolean;
         };
         /** @description The complete entry list of a draft mapping version, as `PUT mapping-versions/{versionId}/entries` takes it. */
         MappingEntriesInput: {
@@ -11889,7 +11860,7 @@ export interface components {
             payloadJson?: null | string;
             /** @description Optional filter over calculation dimensions, ANDed with every request's. */
             defaultFilterJson?: null | string;
-            /** @description Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons` affect execution. */
+            /** @description Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution. */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
             defaultPivotJson?: null | string;
@@ -11931,10 +11902,7 @@ export interface components {
             subtotalPosition: string;
             /** @description Optional filter over calculation dimensions and request parameters, ANDed with every request's. */
             defaultFilterJson?: null | string;
-            /**
-             * @description Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons`, the comparisons a request
-             *     makes when it names none, affect execution.
-             */
+            /** @description Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution. */
             defaultSettingsJson?: null | string;
             /** @description Optional `rowDimensions` and `columnDimensions`, whose union is the default breakout. */
             defaultPivotJson?: null | string;

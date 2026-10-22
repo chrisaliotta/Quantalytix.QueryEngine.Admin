@@ -8,7 +8,6 @@ using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Releases;
-using Quantalytix.QueryEngine.Admin.Tests.Reports;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
@@ -17,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.AssumptionSets;
 /// <summary>
 /// Confirms the assumption sets that let requests read the default versions or backtest against history. The one active set
 /// holds the default versions: publishing a living version repoints it, while historical sets keep the versions they
-/// captured, and it cannot be deleted, nor can a historical set an enabled report's default comparison reads. Capturing copies the active set's pins into a new historical set that reads the active
+/// captured, and it cannot be deleted. Capturing copies the active set's pins into a new historical set that reads the active
 /// release, so a backtest runs the pins over the datasets they were validated with, and capturing or deleting a set advances the
 /// semantic revision, because the engine caches which set keys requests can name by revision.
 /// </summary>
@@ -53,9 +52,6 @@ public sealed class AssumptionSetTests
 
     /// <summary>No bridge pins at first.</summary>
     private readonly InMemoryTableGateway<AssumptionSetBridgeRecord> _bridgePins = new();
-
-    /// <summary>No reports at first.</summary>
-    private readonly InMemoryTableGateway<ReportRecord> _reports = new();
 
     /// <summary>The analytical branch dimension and report 60's report dimension 500.</summary>
     private readonly InMemoryTableGateway<DimensionRecord> _dimensions = new(
@@ -164,30 +160,6 @@ public sealed class AssumptionSetTests
         Assert.Equal(StartingRevision + 1, Revision());
     }
 
-    /// <summary>
-    /// A historical set that an enabled report's default comparison reads is kept, because every request that takes the report's
-    /// defaults would name a set that no longer exists; once the report is disabled the engine no longer reads it, and the set goes.
-    /// </summary>
-    /// <returns>A task that completes when both deletes are checked.</returns>
-    [Fact]
-    public async Task SetADefaultComparisonReads_IsKeptWhileItsReportIsEnabled()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var report = ReportRows.Report() with
-        {
-            DefaultSettingsJson = """{"comparisons":[{"key":"py","assumptionSet":"fy2026_q2","transforms":["change"]}]}"""
-        };
-        await _reports.InsertAsync(report, cancellationToken);
-
-        var kept = await Service().DeleteAsync(HistoricalSetId, cancellationToken);
-        await _reports.UpdateAsync(report with { IsEnabled = false }, cancellationToken);
-        var deleted = await Service().DeleteAsync(HistoricalSetId, cancellationToken);
-
-        Assert.Equal("Assumption set 'fy2026_q2' cannot be deleted: read by default comparison 'py' of report 'balance_sheet'.", kept);
-        Assert.Null(deleted);
-        Assert.DoesNotContain(_sets.All, set => set.AssumptionSetId == HistoricalSetId);
-    }
-
     /// <summary>The service over this test's tables and clock.</summary>
     private AssumptionSetService Service()
     {
@@ -203,7 +175,7 @@ public sealed class AssumptionSetTests
             bridgeVersions);
         var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, bridgeVersions, new InMemoryTableGateway<ReportRecord>());
         return new AssumptionSetService(
-            _sets, _pins, reader, ownership, _reports, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
+            _sets, _pins, reader, ownership, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
     }
 
     /// <summary>The branch dimension version a set pins.</summary>

@@ -149,7 +149,7 @@ flowchart LR
 | `dataset-versions` | Dataset |
 | `fields`, `grains`, `bindings`, `time-bindings`, `measures` | Dataset version (a field's `classifier` is its data type) |
 | `dimension-versions` | Dimension |
-| `levels`, `members` | Dimension version (a member's own `parentId` is its parent member, and `isAssignable` says whether it takes values of its own) |
+| `levels`, `members` | Dimension version (a member's own `parentId` is its parent member) |
 | `mapping-sets` | Optional dimension |
 | `mapping-versions` | Mapping set |
 | `bridge-versions` | Bridge |
@@ -171,7 +171,7 @@ flowchart TB
         Dialog["FormDialog"]
         Inline["SettingsTab, dimension SettingsTab, RangeBandsTab"]
     end
-    Submit["useProblemSubmit(form, onSubmit, onSuccess, fieldPath)"]
+    Submit["useProblemSubmit(form, onSubmit, onSuccess)"]
     ShowErrors["showFieldErrors"]
     ToFieldErrors["toFieldErrors"]
     SetError["form.setError(path, type server)"]
@@ -207,7 +207,7 @@ flowchart TB
     EditorFields --> Layout
 ```
 
-- `useProblemSubmit` clears every error before a submit, because react-hook-form keeps an error on a path that no field registers, such as a list-level key, and refuses later submits while it is there. It then runs `handleSubmit`, awaits `onSubmit` (usually a mutation's `mutateAsync`) and calls `onSuccess`, which closes the sheet or dialog. On failure it calls `showFieldErrors` and keeps the error as `problem` for `ApiErrorAlert`; the form stays open. A form whose fields are not the body it sends passes `errorFieldPath`, which `showFieldErrors` maps each error's path through: `ReportSettingsSheet` puts the API's `defaultSettingsJson.comparisons[1].scenario` on that comparison row's scenario field, through `settingsFieldPath`.
+- `useProblemSubmit` clears every error before a submit, because react-hook-form keeps an error on a path that no field registers, such as a list-level key, and refuses later submits while it is there. It then runs `handleSubmit`, awaits `onSubmit` (usually a mutation's `mutateAsync`) and calls `onSuccess`, which closes the sheet or dialog. On failure it calls `showFieldErrors` and keeps the error as `problem` for `ApiErrorAlert`; the form stays open.
 - `EntityFormSheet` and `FormDialog` mount the form body only while open, so each opening starts without a stale problem, and `useSheetForm` resets a form to its entity before it opens the sheet. A read-only `EntityFormSheet` disables its `fieldset`, sets `FormReadOnlyContext`, which `useFormField` turns into `isDisabled` so the Monaco and CodeMirror editors render read-only as well, and shows "Close" without a submit button.
 - The form-value modules (`fieldForm.ts`, `bindingForm.ts`, `measureForm.ts`, `bridgeVersionForm.ts`) build the request bodies and leave out the values of inputs that the sheet no longer shows, which the API would otherwise reject; their tests say why.
 

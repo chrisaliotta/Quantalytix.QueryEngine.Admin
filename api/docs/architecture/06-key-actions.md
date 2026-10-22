@@ -243,7 +243,7 @@ sequenceDiagram
     loop The 11 dimension_version rules in registration order
         Wf->>Rules: EvaluateAsync(id)
     end
-    Note over Rules,Consumers: dimension_consumers_resolve lists the keys live bindings, mapping entries, bridge mappings, enabled reports' calculation dimensions and default comparisons name, and reports each one the version does not resolve as its object needs
+    Note over Rules,Consumers: dimension_consumers_resolve lists the keys live bindings, mapping entries, bridge mappings and enabled reports' calculation dimensions name, and reports each one the version lacks
     Rules->>Consumers: ListAsync(DimensionId)
     Wf->>Store: SetStatusAsync(id, validated)
     Note over Ctl,Rev: Second request, status published

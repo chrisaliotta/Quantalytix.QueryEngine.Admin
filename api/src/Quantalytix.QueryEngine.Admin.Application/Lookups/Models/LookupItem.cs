@@ -20,7 +20,4 @@ public sealed record LookupItem
 
     /// <summary>A vocabulary value that classifies the row, such as a field's data type.</summary>
     public string? Classifier { get; init; }
-
-    /// <summary>Whether a member takes values of its own, such as a plan version, rather than only totalling the members under it; null for other kinds.</summary>
-    public bool? IsAssignable { get; init; }
 }

@@ -5642,7 +5642,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Replaces a member's editable attributes, including its parent and level; its key stays. An edit to the published version\nthat would leave a key some live object needs unresolved is refused.",
+        "summary": "Replaces a member's editable attributes, including its parent and level; its key stays.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5739,16 +5739,6 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "In the published version, the edit would leave a key a live object needs unresolved, such as a scenario a report's default comparison reads that is no longer assignable; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
-                }
-              }
-            }
           }
         }
       },
@@ -5756,7 +5746,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live\nobjects name its key or need it as the last assignable member under a folder.",
+        "summary": "Deletes a member of a draft or published version, unless it has children or range bands or, in the published version, live objects name its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5840,7 +5830,7 @@
         "tags": [
           "DimensionMembers"
         ],
-        "summary": "Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed. A move in\nthe published version that would leave a key some live object needs unresolved is refused.",
+        "summary": "Stores a drag-and-drop reparent or reorder in one call: one update per member whose parent or sort order changed.",
         "parameters": [
           {
             "name": "tenantId",
@@ -5927,16 +5917,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "In the published version, the move would leave a key a live object needs unresolved, such as a folder a report's default comparison reads the latest version of without an assignable member; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
                 }
               }
             }
@@ -11628,7 +11608,7 @@
         "tags": [
           "AssumptionSets"
         ],
-        "summary": "Deletes a historical set with its pins, unless an enabled report's default comparison reads it; requests can no longer name its key.",
+        "summary": "Deletes a historical set with its pins; requests can no longer name its key.",
         "parameters": [
           {
             "name": "tenantId",
@@ -11675,7 +11655,7 @@
             "description": "The set and its pins are deleted."
           },
           "409": {
-            "description": "Nothing was deleted: the set is the active set, which holds the default versions, or the detail names the enabled reports' default comparisons that read it.",
+            "description": "Nothing was deleted: the set is the active set, which holds the default versions.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -14143,13 +14123,6 @@
               "string"
             ],
             "description": "A vocabulary value that classifies the row, such as a field's data type."
-          },
-          "isAssignable": {
-            "type": [
-              "null",
-              "boolean"
-            ],
-            "description": "Whether a member takes values of its own, such as a plan version, rather than only totalling the members under it; null for other kinds."
           }
         },
         "description": "One option of a picker: a metadata row reduced to what a select list shows."
@@ -16290,7 +16263,7 @@
               "null",
               "string"
             ],
-            "description": "Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons` affect execution."
+            "description": "Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution."
           },
           "defaultPivotJson": {
             "type": [
@@ -16407,7 +16380,7 @@
               "null",
               "string"
             ],
-            "description": "Optional defaults; only `periodicity`, `timeZone`, `layout` and `comparisons`, the comparisons a request\nmakes when it names none, affect execution."
+            "description": "Optional defaults; only `periodicity`, `timeZone` and `layout` affect execution."
           },
           "defaultPivotJson": {
             "type": [

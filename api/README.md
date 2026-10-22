@@ -12,7 +12,7 @@ Calculation models and reports are not versioned. The report editor builds a rep
 engine runs a report while it is enabled, always on the active assumption set and with its model as it stands, and every
 write to an enabled report, or to a model, its metrics or their attributions, is checked before it is made. A model's
 attributions say how each metric's change between two values, such as actuals and a budget, splits into the effects of
-its drivers, and a report's settings can hold the default comparisons a report request makes when it names none.
+its drivers.
 
 | Project | Holds |
 |---|---|

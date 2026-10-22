@@ -22,8 +22,6 @@ export interface EntityFormSheetProps<TValues extends FieldValues> {
   form: UseFormReturn<TValues>;
   /** Saves the values, e.g. `mutation.mutateAsync`. An `ApiProblem` with `errors` is mapped onto the fields. */
   onSubmit: (values: TValues) => Promise<unknown>;
-  /** Maps an API error path to the field it belongs on, for a form whose fields are not the body it sends. */
-  errorFieldPath?: (path: string) => string;
   submitLabel?: string;
   /** Disables every field and hides the submit button, e.g. for published versions. */
   readOnly?: boolean;
@@ -60,7 +58,7 @@ export function EntityFormSheet<TValues extends FieldValues>({
 
 type EntityFormProps<TValues extends FieldValues> = Pick<
   EntityFormSheetProps<TValues>,
-  'onOpenChange' | 'form' | 'onSubmit' | 'errorFieldPath' | 'submitLabel' | 'readOnly' | 'children'
+  'onOpenChange' | 'form' | 'onSubmit' | 'submitLabel' | 'readOnly' | 'children'
 >;
 
 /** Mounted only while the sheet is open, so each opening starts without a stale problem. */
@@ -68,12 +66,11 @@ function EntityForm<TValues extends FieldValues>({
   onOpenChange,
   form,
   onSubmit,
-  errorFieldPath,
   submitLabel = 'Save',
   readOnly = false,
   children,
 }: EntityFormProps<TValues>) {
-  const { submit, problem } = useProblemSubmit(form, onSubmit, () => onOpenChange(false), errorFieldPath);
+  const { submit, problem } = useProblemSubmit(form, onSubmit, () => onOpenChange(false));
   const { isSubmitting } = form.formState;
 
   return (

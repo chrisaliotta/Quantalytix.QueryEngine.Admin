@@ -167,7 +167,7 @@ public sealed class DimensionRoleTests
             _roles,
             new DimensionVersionService(versions, new DimensionVersionCloner(levels, members, bands, ids), remover, ids),
             RoleService(),
-            new DimensionMemberService(members, Checks(), new DimensionChanges(versions, levels, members, Consumers()), new ClosureBuilder(members, closure), ids),
+            new DimensionMemberService(members, Checks(), new ClosureBuilder(members, closure), ids),
             remover,
             Checks(),
             new SemanticRevision(_databaseInfo, new FakeTimeProvider()),
@@ -186,22 +186,27 @@ public sealed class DimensionRoleTests
     /// </summary>
     private DimensionDeleteChecks Checks()
     {
-        var reports = Reports();
-        var versions = new InMemoryTableGateway<DimensionVersionRecord>();
-        var members = new InMemoryTableGateway<DimensionMemberRecord>();
-        var consumers = Consumers();
+        var reports = new InMemoryTableGateway<ReportRecord>(ReportRows.Report());
+        var datasets = new InMemoryTableGateway<DatasetRecord>(ReleaseRows.Dataset(1, "loans"));
+        var datasetVersions = new InMemoryTableGateway<DatasetVersionRecord>(ReleaseRows.DatasetVersion(11, 1, 1, PublicationStatuses.Published));
+        var calculationDimensions = new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchRoleId));
+        var consumers = new DimensionConsumers(
+            datasets, datasetVersions, _bindings, _roles,
+            new InMemoryTableGateway<MappingSetRecord>(), new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
+            new InMemoryTableGateway<BridgeRecord>(), new InMemoryTableGateway<BridgeVersionRecord>(), new InMemoryTableGateway<BridgeMappingRecord>(),
+            reports, calculationDimensions, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
         return new DimensionDeleteChecks(
-            versions,
-            members,
+            new InMemoryTableGateway<DimensionVersionRecord>(),
+            new InMemoryTableGateway<DimensionMemberRecord>(),
             new InMemoryTableGateway<RangeBandRecord>(),
             _roles,
             new InMemoryTableGateway<MappingSetRecord>(),
             new InMemoryTableGateway<BridgeRecord>(),
             _bindings,
-            Datasets(),
-            DatasetVersions(),
+            datasets,
+            datasetVersions,
             reports,
-            CalculationDimensions(),
+            calculationDimensions,
             new InMemoryTableGateway<ReportSourceRecord>(ReportRows.Source(72, "gl_bridged", 1) with
             {
                 MappingMethod = ReportMappingMethods.Bridge,
@@ -210,41 +215,6 @@ public sealed class DimensionRoleTests
                 BridgeId = 95
             }),
             new ReportNames(reports),
-            consumers,
-            new DimensionChanges(versions, new InMemoryTableGateway<DimensionLevelRecord>(), members, consumers));
-    }
-
-    /// <summary>The keys live objects name in the branch dimension, read by the balance sheet's calculation dimension.</summary>
-    private DimensionConsumers Consumers()
-    {
-        return new DimensionConsumers(
-            Datasets(), DatasetVersions(), _bindings, _roles,
-            new InMemoryTableGateway<MappingSetRecord>(), new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
-            new InMemoryTableGateway<BridgeRecord>(), new InMemoryTableGateway<BridgeVersionRecord>(), new InMemoryTableGateway<BridgeMappingRecord>(),
-            Reports(), CalculationDimensions(), new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
-    }
-
-    /// <summary>The enabled balance sheet.</summary>
-    private static InMemoryTableGateway<ReportRecord> Reports()
-    {
-        return new InMemoryTableGateway<ReportRecord>(ReportRows.Report());
-    }
-
-    /// <summary>The loans dataset.</summary>
-    private static InMemoryTableGateway<DatasetRecord> Datasets()
-    {
-        return new InMemoryTableGateway<DatasetRecord>(ReleaseRows.Dataset(1, "loans"));
-    }
-
-    /// <summary>The loans dataset's published v1.</summary>
-    private static InMemoryTableGateway<DatasetVersionRecord> DatasetVersions()
-    {
-        return new InMemoryTableGateway<DatasetVersionRecord>(ReleaseRows.DatasetVersion(11, 1, 1, PublicationStatuses.Published));
-    }
-
-    /// <summary>The balance sheet's calculation dimension on the branch role.</summary>
-    private static InMemoryTableGateway<CalculationDimensionRecord> CalculationDimensions()
-    {
-        return new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchRoleId));
+            consumers);
     }
 }

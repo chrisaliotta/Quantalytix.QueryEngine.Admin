@@ -40,7 +40,7 @@ public sealed record ReportRecord
     /// <summary>Optional filter over calculation dimensions, ANDed with every request's.</summary>
     public string? DefaultFilterJson { get; init; }
 
-    /// <summary>Optional defaults; only <c>periodicity</c>, <c>timeZone</c>, <c>layout</c> and <c>comparisons</c> affect execution.</summary>
+    /// <summary>Optional defaults; only <c>periodicity</c>, <c>timeZone</c> and <c>layout</c> affect execution.</summary>
     public string? DefaultSettingsJson { get; init; }
 
     /// <summary>Optional <c>rowDimensions</c> and <c>columnDimensions</c>, whose union is the default breakout.</summary>

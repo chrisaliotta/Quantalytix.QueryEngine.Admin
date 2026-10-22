@@ -22,8 +22,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's <c>balance</c> with the row
 /// keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
 /// dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with <c>total</c> at the root and
-/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Besides the
-/// active assumption set, the tenant has captured set <c>close_2025</c>. Tests change rows to break one thing.
+/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Tests
+/// change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
 {
@@ -121,27 +121,6 @@ internal sealed class ReportGraphFixture
     /// <summary>No attribution drivers.</summary>
     public InMemoryTableGateway<MetricAttributionDriverRecord> AttributionDrivers { get; } = new();
 
-    /// <summary>The active assumption set and the historical set <c>close_2025</c>.</summary>
-    public InMemoryTableGateway<AssumptionSetRecord> AssumptionSets { get; } = new(
-        new AssumptionSetRecord
-        {
-            AssumptionSetId = 1,
-            AssumptionSetKey = "active",
-            DisplayName = "Active",
-            Status = AssumptionSetStatuses.Active,
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-        },
-        new AssumptionSetRecord
-        {
-            AssumptionSetId = 2,
-            AssumptionSetKey = "close_2025",
-            DisplayName = "2025 close",
-            Status = AssumptionSetStatuses.Historical,
-            ReleaseId = ReleaseId,
-            CapturedAt = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc),
-            CreatedAt = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc)
-        });
-
     /// <summary>The GL and loans datasets.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"), Dataset(LoansDatasetId, "loans"));
 
@@ -206,7 +185,7 @@ internal sealed class ReportGraphFixture
     {
         return new ReportGraphReader(
             Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings, Dimensions,
-            Variables, CalculatedMeasures, Datasets, Roles, AssumptionSets, ReleaseDatasets(), PublishedDimensions());
+            Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The model gate over these tables.</summary>

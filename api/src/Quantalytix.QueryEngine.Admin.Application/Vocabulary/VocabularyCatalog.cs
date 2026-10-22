@@ -58,8 +58,6 @@ public static class VocabularyCatalog
         ReportValueKinds.Definition,
         SubtotalPositions.Definition,
         ReportLayouts.Definition,
-        ReportTransforms.Definition,
-        ComparisonPeriodTypes.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

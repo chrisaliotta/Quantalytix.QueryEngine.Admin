@@ -1,19 +1,15 @@
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Lists the level and member keys that live objects name in a dimension: the unknown members of bindings of published dataset
-/// versions, entries of published mapping versions, mappings of published bridge versions, the groupings of the enabled
-/// calculation dimensions of enabled reports on the dimension's roles, and the scenarios the default comparisons of enabled
-/// reports read when the dimension's role is their enabled scenario dimension's. They resolve the keys in the dimension's
-/// published version, so publishing another version or editing the published one must keep resolving them as each object needs:
-/// a scenario version must stay an assignable member, and a folder whose latest version a comparison reads must keep an
-/// assignable member under it. A report's own rows name keys of its report dimension, which only the report editor changes, and
-/// it keeps them resolved.
+/// versions, entries of published mapping versions, mappings of published bridge versions, and the groupings of the enabled
+/// calculation dimensions of enabled reports on the dimension's roles. They resolve the keys in the dimension's published version,
+/// so publishing another version or deleting from the published one must keep the keys. A report's own rows name keys of its
+/// report dimension, which only the report editor changes, and it keeps them resolved.
 /// </summary>
 public sealed class DimensionConsumers(
     ITableGateway<DatasetRecord> datasets,
@@ -95,37 +91,21 @@ public sealed class DimensionConsumers(
         });
     }
 
-    /// <summary>
-    /// The grouping keys of the enabled calculation dimensions of enabled reports on the dimension's roles, and the scenarios the
-    /// default comparisons of those reports read through such a calculation dimension that is their scenario dimension.
-    /// </summary>
+    /// <summary>The grouping keys of the enabled calculation dimensions of enabled reports on the dimension's roles.</summary>
     private async Task<IEnumerable<KeyReference>> ReportsAsync(long dimensionId, CancellationToken cancellationToken)
     {
-        var enabled = (await reports.ListAsync(null, cancellationToken)).Where(report => report.IsEnabled).ToDictionary(report => report.ReportId);
+        var enabled = (await reports.ListAsync(null, cancellationToken)).Where(report => report.IsEnabled).ToDictionary(report => report.ReportId, report => report.ReportKey);
         var roleIds = (await roles.ListAsync(new { DimensionId = dimensionId }, cancellationToken)).Select(role => role.RoleId).ToArray();
-        var reading = (await calculationDimensions.ListAsync(new { ReportId = enabled.Keys.ToArray(), RoleId = roleIds }, cancellationToken))
-            .Where(dimension => dimension.IsEnabled)
-            .ToList();
-        var grouping = reading.SelectMany(dimension =>
+        var grouping = (await calculationDimensions.ListAsync(new { ReportId = enabled.Keys.ToArray(), RoleId = roleIds }, cancellationToken))
+            .Where(dimension => dimension.IsEnabled);
+        return grouping.SelectMany(dimension =>
         {
-            var consumer = $"Calculation dimension '{dimension.DimensionKey}' of report '{enabled[dimension.ReportId].ReportKey}'";
+            var consumer = $"Calculation dimension '{dimension.DimensionKey}' of report '{enabled[dimension.ReportId]}'";
             return new[]
             {
                 dimension.GroupingLevelKey is { } level ? KeyReference.Level(level, consumer) : null,
                 dimension.GroupingAncestorMemberKey is { } ancestor ? KeyReference.Member(ancestor, consumer) : null
             }.OfType<KeyReference>();
         });
-        return grouping.Concat(reading.Where(dimension => dimension.IsScenario).SelectMany(dimension => Scenarios(enabled[dimension.ReportId])));
-    }
-
-    /// <summary>The scenarios a report's default comparisons read: each version as an assignable member, and each folder as one with an assignable member under it.</summary>
-    private static IEnumerable<KeyReference> Scenarios(ReportRecord report)
-    {
-        return ReportComparisons.Of(report.DefaultSettingsJson)
-            .Where(comparison => comparison.Scenario is not null)
-            .Select(comparison => KeyReference.Member(
-                comparison.Scenario!.Key,
-                $"Default comparison '{comparison.Key}' of report '{report.ReportKey}'",
-                comparison.Scenario.Latest ? KeyRequirement.AssignableBelow : KeyRequirement.Assignable));
     }
 }

@@ -4,8 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// What the report rules check reports against besides their own content: the dataset versions of the release they run against,
-/// the published versions of the dimensions their calculation dimensions' roles template, and the captured assumption sets their
-/// default comparisons may read as reported.
+/// and the published versions of the dimensions their calculation dimensions' roles template.
 /// </summary>
 public sealed record ReportScope
 {
@@ -23,7 +22,4 @@ public sealed record ReportScope
     /// dimension has no published version.
     /// </summary>
     public required IReadOnlyDictionary<long, DimensionKeys?> Templates { get; init; }
-
-    /// <summary>The keys of the captured historical assumption sets.</summary>
-    public required IReadOnlySet<string> HistoricalSetKeys { get; init; }
 }

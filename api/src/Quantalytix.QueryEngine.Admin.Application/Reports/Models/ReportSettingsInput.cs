@@ -12,10 +12,7 @@ public sealed record ReportSettingsInput
     /// <summary>Optional filter over calculation dimensions and request parameters, ANDed with every request's.</summary>
     public string? DefaultFilterJson { get; init; }
 
-    /// <summary>
-    /// Optional defaults; only <c>periodicity</c>, <c>timeZone</c>, <c>layout</c> and <c>comparisons</c>, the comparisons a request
-    /// makes when it names none, affect execution.
-    /// </summary>
+    /// <summary>Optional defaults; only <c>periodicity</c>, <c>timeZone</c> and <c>layout</c> affect execution.</summary>
     public string? DefaultSettingsJson { get; init; }
 
     /// <summary>Optional <c>rowDimensions</c> and <c>columnDimensions</c>, whose union is the default breakout.</summary>
