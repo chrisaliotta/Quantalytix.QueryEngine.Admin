@@ -2288,6 +2288,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/reports/{reportId}/styles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a report's styles. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The styles by key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportStyleRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/styles/{styleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sets a style of a report, creating it under the key or replacing the one stored. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report that owns the style. */
+                    reportId: number;
+                    /** @description The style's key. */
+                    styleKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportStyleInput"];
+                    "application/*+json": components["schemas"]["ReportStyleInput"];
+                };
+            };
+            responses: {
+                /** @description The stored style. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportStyleRecord"];
+                    };
+                };
+                /** @description The key or the input breaks a field rule, such as a color that is not #RRGGBB; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The report is enabled and the style would break its rules, such as a second default style of a role; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a style of a report, unless a row of the report shows it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                    /** @description The style's key. */
+                    styleKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The style is deleted, or the report had none by the key. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nothing was deleted: rows of the report show the style; the detail names them. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The report is enabled and losing the style would break its rules, such as a row that shows it; nothing was deleted. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/reports/{reportId}/variable-scopes": {
         parameters: {
             query?: never;
@@ -8085,6 +8289,206 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists a model's parameters. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The calculation model. */
+                    modelId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The parameters by key. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ModelParameter"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Sets a parameter of a calculation model, creating it under the key or replacing the one stored, unless the change breaks the
+         *     model's formulas or a report's row values: a formula must read the parameter where its new type belongs, and YEARFRAC a text
+         *     parameter whose allowed values are day count conventions, and every value a report's rows set must fit its new type and allowed
+         *     values.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The model that declares the parameter. */
+                    modelId: number;
+                    /** @description The parameter's key. */
+                    parameterKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModelParameterInput"];
+                    "application/*+json": components["schemas"]["ModelParameterInput"];
+                };
+            };
+            responses: {
+                /** @description The stored parameter. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ModelParameter"];
+                    };
+                };
+                /** @description The key or the input breaks a field rule, such as a number parameter with allowed values; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The change would break a formula of the model or a report's row values, such as a type a formula or row reads otherwise; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a parameter of a calculation model, unless a formula of the model reads it or a report's rows set it. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the model. */
+                    tenantId: string;
+                    /** @description The calculation model. */
+                    modelId: number;
+                    /** @description The parameter's key. */
+                    parameterKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The parameter is deleted, or the model had none by the key. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description A formula of the model reads the parameter or a report's rows set it; nothing was deleted. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/calculation-models/{modelId}/variables": {
         parameters: {
             query?: never;
@@ -10542,6 +10946,12 @@ export interface components {
             calculatedMeasureKey?: null | string;
             /** @description The key of the column a formula row places its value in; null for the other kinds. */
             valueColumnKey?: null | string;
+            /** @description The key of the report's style the row shows; null for its role's default style. */
+            styleKey?: null | string;
+            /** @description The row's own parameter values by parameter key, a JSON number or string as the parameter's type says; inherited values are not listed. */
+            parameters: {
+                [key: string]: number | string;
+            };
             /** @description The items the report's bridge sources map to the row, by source, then item key. */
             items: components["schemas"]["EditorRowItem"][];
         };
@@ -10598,8 +11008,8 @@ export interface components {
             variables: components["schemas"]["ReportSourceVariableRecord"][];
         };
         /**
-         * @description A report as its editor shows it: the report, its rows with the items each bridge source maps to them, and its sources with the
-         *     variables they supply.
+         * @description A report as its editor shows it: the report, its rows with the items each bridge source maps to them, its sources with the
+         *     variables they supply, and the parameters of its model, whose defaults the rows inherit.
          */
         EditorView: {
             /** @description The report, with its settings and the model whose variables and calculated measures it names. */
@@ -10613,6 +11023,8 @@ export interface components {
             rows: components["schemas"]["EditorRow"][];
             /** @description The report's sources, by key. */
             sources: components["schemas"]["EditorSource"][];
+            /** @description The parameters the report's model declares, by key, which rows set or inherit. */
+            parameters: components["schemas"]["ModelParameter"][];
         };
         /** @description A new field of a draft dataset version. */
         FieldInput: {
@@ -11282,6 +11694,47 @@ export interface components {
             /** @description Every driver of the metric, at most eight; none for the default drivers. */
             drivers: components["schemas"]["AttributionDriver"][];
         };
+        /**
+         * @description A value a calculation model declares for its formulas to read as `@key`, as the parameter endpoints return it. Each report
+         *     sets values on its rows; a row without one of its own takes its nearest ancestor's, and else the default.
+         */
+        ModelParameter: {
+            /** @description The key formulas read the parameter by, as `@key`; never `periodDays` or `yearDays`. */
+            parameterKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `parameter_value_type` value: `number` or `text`. */
+            valueType: string;
+            /** @description The texts a text parameter may take; null when it may take any text, and for a number parameter. */
+            allowedValues?: null | string[];
+            /**
+             * Format: double
+             * @description The value of a number parameter on the rows no row above sets; null for a text parameter.
+             */
+            defaultNumber?: null | number;
+            /** @description The value of a text parameter on the rows no row above sets; null for a number parameter. */
+            defaultText?: null | string;
+            /** @description Optional description. */
+            description?: null | string;
+        };
+        /** @description A parameter of a calculation model, as `PUT calculation-models/{modelId}/parameters/{parameterKey}` takes it. */
+        ModelParameterInput: {
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `parameter_value_type` value: `number` or `text`. */
+            valueType: string;
+            /** @description The texts a text parameter may take, each once; null for any text, and for a number parameter. */
+            allowedValues?: null | string[];
+            /**
+             * Format: double
+             * @description A number parameter's default, which fits `DECIMAL(38, 12)`; null for a text parameter.
+             */
+            defaultNumber?: null | number;
+            /** @description A text parameter's default, one of its allowed values when it has them; null for a number parameter. */
+            defaultText?: null | string;
+            /** @description Optional description. */
+            description?: null | string;
+        };
         /** @description A new bridge, as `POST bridges` takes it: its fixed key and endpoint dimensions, plus its identity attributes. */
         NewBridgeInput: {
             /** @description Stable key, unique across bridges and fixed once created. */
@@ -11888,6 +12341,15 @@ export interface components {
             calculatedMeasureKey?: null | string;
             /** @description The key of the report's column a formula row places its value in; null for the other kinds. */
             valueColumnKey?: null | string;
+            /** @description The key of the report's style the row shows; null for its role's default style. */
+            styleKey?: null | string;
+            /**
+             * @description The row's own values of the model's parameters, by parameter key: a JSON number for a number parameter and a JSON string for a
+             *     text parameter. A parameter the row leaves out takes its nearest ancestor's value, and else the model's default.
+             */
+            parameters?: {
+                [key: string]: number | string;
+            };
         };
         /** @description A report's complete row tree, as `PUT reports/{reportId}/rows` takes it. */
         ReportRowsInput: {
@@ -11979,6 +12441,78 @@ export interface components {
         ReportStatusInput: {
             /** @description True enables the report, which the report rules must pass; false disables it. */
             isEnabled: boolean;
+        };
+        /** @description A style of a report, as `PUT reports/{reportId}/styles/{styleKey}` takes it. A property left null keeps the client's own. */
+        ReportStyleInput: {
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `row_role` value whose rows show the style when they name none; null for none. */
+            defaultRole?: null | string;
+            /** @description A CSS font family. */
+            fontFamily?: null | string;
+            /**
+             * Format: double
+             * @description The font size in points, from 6 to 72, with at most two decimals.
+             */
+            fontSize?: null | number;
+            /** @description A `font_weight` value. */
+            fontWeight?: null | string;
+            /** @description Whether the text is italic. */
+            isItalic: boolean;
+            /** @description A `#RRGGBB` text color. */
+            textColor?: null | string;
+            /** @description A `#RRGGBB` background color. */
+            backgroundColor?: null | string;
+            /** @description A `border_style` value for the rule above the row. */
+            borderTop?: null | string;
+            /** @description A `border_style` value for the rule below the row. */
+            borderBottom?: null | string;
+            /**
+             * Format: int32
+             * @description Indent levels, from 0 to 10, added to the row's depth.
+             */
+            indent?: null | number;
+        };
+        /**
+         * @description A `qe_report_style` row: how a report shows the rows that name it, or every row of its default role that names no style.
+         *     Styles are presentation only; a property left null keeps the client's own.
+         */
+        ReportStyleRecord: {
+            /**
+             * Format: int64
+             * @description The owning report; first part of the primary key.
+             */
+            reportId: number;
+            /** @description The key rows name the style by; second part of the primary key. */
+            styleKey: string;
+            /** @description Human-readable name. */
+            displayName: string;
+            /** @description A `row_role` value whose rows show the style when they name none; at most one style of a report per role. */
+            defaultRole?: null | string;
+            /** @description A CSS font family. */
+            fontFamily?: null | string;
+            /**
+             * Format: double
+             * @description The font size in points, from 6 to 72.
+             */
+            fontSize?: null | number;
+            /** @description A `font_weight` value. */
+            fontWeight?: null | string;
+            /** @description Whether the text is italic. */
+            isItalic: boolean;
+            /** @description A `#RRGGBB` text color. */
+            textColor?: null | string;
+            /** @description A `#RRGGBB` background color. */
+            backgroundColor?: null | string;
+            /** @description A `border_style` value for the rule above the row. */
+            borderTop?: null | string;
+            /** @description A `border_style` value for the rule below the row. */
+            borderBottom?: null | string;
+            /**
+             * Format: int32
+             * @description Indent levels, from 0 to 10, added to the row's depth.
+             */
+            indent?: null | number;
         };
         /** @description The member of the report's dimension whose branch one variable reads. */
         ReportVariableScopeInput: {

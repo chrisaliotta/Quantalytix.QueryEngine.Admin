@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentValidation;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -7,6 +8,21 @@ public static class DecimalRuleExtensions
 {
     /// <summary>The largest decimal precision StarRocks supports.</summary>
     private const int MaxPrecision = 38;
+
+    /// <summary>
+    /// Whether a value fits a <c>DECIMAL(precision, scale)</c> column: at most <paramref name="scale"/> decimals once trailing zeros
+    /// are dropped, and at most <paramref name="precision"/> minus <paramref name="scale"/> digits before the point. Use it where a
+    /// value is not a property a rule can name, such as a value in a JSON map; a property keeps FluentValidation's <c>PrecisionScale</c>.
+    /// </summary>
+    /// <param name="value">The value.</param>
+    /// <param name="precision">The column's precision.</param>
+    /// <param name="scale">The column's scale.</param>
+    /// <returns>True when the column holds the value exactly.</returns>
+    public static bool Fits(decimal value, int precision, int scale)
+    {
+        return decimal.Round(value, scale) == value
+            && decimal.Truncate(Math.Abs(value)).ToString(CultureInfo.InvariantCulture).Length <= precision - scale;
+    }
 
     /// <summary>Requires a decimal precision StarRocks supports: given, from 1 to 38.</summary>
     /// <typeparam name="T">The validated input type.</typeparam>

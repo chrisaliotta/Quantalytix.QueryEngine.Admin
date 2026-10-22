@@ -41,4 +41,7 @@ public sealed record ReportLineRecord
 
     /// <summary>Optional presentation settings passed through to clients.</summary>
     public string? SettingsJson { get; init; }
+
+    /// <summary>The key of the report style the row shows; null for its role's default style.</summary>
+    public string? StyleKey { get; init; }
 }

@@ -83,6 +83,12 @@ internal sealed class ReportGraphFixture
     /// <summary>No member options.</summary>
     public InMemoryTableGateway<ReportMemberOptionRecord> MemberOptions { get; } = new();
 
+    /// <summary>No styles.</summary>
+    public InMemoryTableGateway<ReportStyleRecord> Styles { get; } = new();
+
+    /// <summary>No row parameter values.</summary>
+    public InMemoryTableGateway<ReportRowParameterRecord> RowParameters { get; } = new();
+
     /// <summary>The balance variable's scope, assets.</summary>
     public InMemoryTableGateway<ReportVariableScopeRecord> Scopes { get; } = new(Scope("balance", "assets"));
 
@@ -120,6 +126,9 @@ internal sealed class ReportGraphFixture
 
     /// <summary>No attribution drivers.</summary>
     public InMemoryTableGateway<MetricAttributionDriverRecord> AttributionDrivers { get; } = new();
+
+    /// <summary>No model parameters.</summary>
+    public InMemoryTableGateway<ModelParameterRecord> Parameters { get; } = new();
 
     /// <summary>The GL and loans datasets.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"), Dataset(LoansDatasetId, "loans"));
@@ -184,15 +193,22 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings, Dimensions,
-            Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Profiles, Picks, Sources, SourceVariables,
+            BridgeMappings, Dimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The model gate over these tables.</summary>
-    /// <returns>The checks a write to model 40 or its metrics goes through.</returns>
+    /// <returns>The checks a write to model 40, its metrics or its parameters goes through.</returns>
     public ModelChanges Changes()
     {
-        return new ModelChanges(Models, Variables, CalculatedMeasures, AttributionService(), Reports, Reader());
+        return new ModelChanges(Models, Variables, CalculatedMeasures, AttributionService(), ParameterService(), new ReportUses(Reports), Reader());
+    }
+
+    /// <summary>The parameters of model 40 over these tables.</summary>
+    /// <returns>The service that reads and writes model parameters.</returns>
+    public ModelParameterService ParameterService()
+    {
+        return new ModelParameterService(Parameters);
     }
 
     /// <summary>The attributions of model 40's metrics over these tables.</summary>
@@ -231,7 +247,7 @@ internal sealed class ReportGraphFixture
         [
             new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
             new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
-            new ReportSourcesResolveRule(), new ReportFactorsApplyRule()
+            new ReportSourcesResolveRule(), new ReportFactorsApplyRule(), new ReportRowParametersResolveRule(), new ReportStylesResolveRule()
         ];
         return new ReportRules(rules, Reader());
     }

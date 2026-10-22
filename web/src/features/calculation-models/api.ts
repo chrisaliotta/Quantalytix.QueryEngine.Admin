@@ -4,7 +4,7 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import type { CalculationModelInput, MetricAttributionInput, NewCalculationModelInput } from './types';
+import type { CalculationModelInput, MetricAttributionInput, ModelParameterInput, NewCalculationModelInput } from './types';
 
 // Query keys start with [resource, tenantId] so invalidateTenantQueries reaches them.
 function modelsKey(tenantId: string) {
@@ -13,6 +13,15 @@ function modelsKey(tenantId: string) {
 
 function attributionsKey(tenantId: string, modelId: number) {
   return [...modelsKey(tenantId), modelId, 'attributions'] as const;
+}
+
+function parametersKey(tenantId: string, modelId: number) {
+  return [...modelsKey(tenantId), modelId, 'parameters'] as const;
+}
+
+/** The reports feature's key of every report's editor view, which shows the parameters of the report's model. */
+function reportEditorsKey(tenantId: string) {
+  return ['report-editor', tenantId] as const;
 }
 
 /** Marks the given queries stale. */
@@ -112,7 +121,53 @@ export function useDeleteAttribution(modelId: number, metricKey: string) {
   });
 }
 
-/** Deletes a model that no report reads, with its variables, calculated measures and attributions; a 409 names the reports that read it. */
+/** Every parameter a model declares, by key. */
+export function useModelParameters(modelId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: parametersKey(tenantId, modelId),
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters', {
+          params: { path: { tenantId, modelId } },
+        })
+      ),
+  });
+}
+
+/**
+ * Writes a parameter whole under its key, creating it or replacing the one stored; a 422 names the formulas or report rows the
+ * change would break, such as a new type a formula reads otherwise.
+ */
+export function useSaveModelParameter(modelId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async ({ parameterKey, body }: { parameterKey: string; body: ModelParameterInput }) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}', {
+          params: { path: { tenantId, modelId, parameterKey } },
+          body,
+        })
+      ),
+    onSuccess: () => invalidate(parametersKey(tenantId, modelId), reportEditorsKey(tenantId)),
+  });
+}
+
+/** Deletes a parameter; a 422 names the formulas that read it and the report rows that set it. */
+export function useDeleteModelParameter(modelId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (parameterKey: string) =>
+      unwrap(
+        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}', {
+          params: { path: { tenantId, modelId, parameterKey } },
+        })
+      ),
+    onSuccess: () => invalidate(parametersKey(tenantId, modelId), reportEditorsKey(tenantId)),
+  });
+}
+
+/** Deletes a model that no report reads, with its variables, calculated measures, attributions and parameters; a 409 names the reports that read it. */
 export function useDeleteCalculationModel() {
   const tenantId = useTenantId();
   return useMutation({

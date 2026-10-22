@@ -10,13 +10,15 @@ export interface KeyFieldProps extends FormFieldProps {
   items: LookupItem[] | null;
   /** Lets the user clear the value back to null. */
   allowEmpty?: boolean;
+  /** What the picker shows while no key is chosen, such as a value the row inherits. */
+  placeholder?: string;
 }
 
 /**
  * Picker of one key among lookup items, for references by key rather than ID, such as a source's measure key; value is
  * the key text, or null. A key the items do not list, such as one a later version dropped, is shown as it is.
  */
-export function KeyField({ name, label, description, disabled, items, allowEmpty }: KeyFieldProps) {
+export function KeyField({ name, label, description, disabled, items, allowEmpty, placeholder = 'Select...' }: KeyFieldProps) {
   const { field, id, error, isDisabled } = useFormField(name, disabled);
   const value: string | null = field.value;
   const options = (items ?? []).map(item => ({ value: item.key, label: lookupItemText(item) }));
@@ -30,7 +32,7 @@ export function KeyField({ name, label, description, disabled, items, allowEmpty
           value={value ?? ''}
           onValueChange={field.onChange}
           selectedItemRenderer={item => item?.label ?? value}
-          placeholder={items === null ? 'Choose the owner first' : 'Select...'}
+          placeholder={items === null ? 'Choose the owner first' : placeholder}
           emptyMessage="No matching keys."
           disabled={isDisabled || items === null}
         />

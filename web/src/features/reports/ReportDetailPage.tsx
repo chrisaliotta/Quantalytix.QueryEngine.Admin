@@ -23,6 +23,7 @@ import { ReportVariableScopesTab } from './ReportVariableScopesTab';
 import { RowsAndMappingsTab } from './RowsAndMappingsTab';
 import { SourceProfilesTab } from './SourceProfilesTab';
 import { SourcesTab } from './SourcesTab';
+import { StylesTab } from './StylesTab';
 import type { EditorView } from './types';
 import { VariablesTab } from './VariablesTab';
 
@@ -43,8 +44,8 @@ export function ReportDetailPage() {
 /**
  * A report's editor: its header, with the switch that enables it once it passes every report rule, and its tabs, in the order a
  * report is built: rows and what each source gives them, the sources, the variables each source supplies, the profiles that pick
- * between them, and the calculation dimensions, scopes and columns. While the report is enabled, a write that would break a rule
- * is refused and names it.
+ * between them, the calculation dimensions, scopes and columns, and the styles its rows show. While the report is enabled, a
+ * write that would break a rule is refused and names it.
  */
 function ReportEditor({ view }: { view: EditorView }) {
   const report = view.report;
@@ -148,6 +149,7 @@ function ReportEditor({ view }: { view: EditorView }) {
           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
           <TabsTrigger value="scopes">Scope</TabsTrigger>
           <TabsTrigger value="columns">Columns</TabsTrigger>
+          <TabsTrigger value="styles">Styles</TabsTrigger>
         </TabsList>
         <TabsContent value="rows">
           <RowsAndMappingsTab view={view} />
@@ -169,6 +171,9 @@ function ReportEditor({ view }: { view: EditorView }) {
         </TabsContent>
         <TabsContent value="columns">
           <ReportColumnsTab report={report} />
+        </TabsContent>
+        <TabsContent value="styles">
+          <StylesTab reportId={report.reportId} />
         </TabsContent>
       </Tabs>
       {editingIdentity && <ReportIdentitySheet report={report} onClose={() => setEditingIdentity(false)} />}

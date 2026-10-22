@@ -12,10 +12,11 @@ import { useTenantId } from '@/shared/useTenantId';
 import { useCalculationModel, useDeleteCalculationModel } from './api';
 import { CalculatedMeasuresTab } from './CalculatedMeasuresTab';
 import { CalculationModelIdentitySheet } from './CalculationModelIdentitySheet';
+import { ParametersTab } from './ParametersTab';
 import type { CalculationModel } from './types';
 import { VariablesTab } from './VariablesTab';
 
-/** One calculation model: identity, settings, and its metrics in tabs, edited live. */
+/** One calculation model: identity, settings, and its metrics and parameters in tabs, edited live. */
 export function CalculationModelDetailPage() {
   const modelId = Number(useParams().modelId);
   const model = useCalculationModel(modelId);
@@ -65,19 +66,23 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
       </div>
       <p className="text-sm text-muted-foreground">
         Edits are live: every enabled report over the model reads them at once, so an edit that would break a formula, an
-        attribution or such a report is refused. Each report brings its own data. A metric's attribution says how its change
-        between two values splits into the effects of its drivers.
+        attribution, a report's row values or such a report is refused. Each report brings its own data and sets the parameters
+        on its rows. A metric's attribution says how its change between two values splits into the effects of its drivers.
       </p>
       <Tabs defaultValue="variables">
         <TabsList>
           <TabsTrigger value="variables">Variables</TabsTrigger>
           <TabsTrigger value="calculated-measures">Calculated measures</TabsTrigger>
+          <TabsTrigger value="parameters">Parameters</TabsTrigger>
         </TabsList>
         <TabsContent value="variables">
           <VariablesTab modelId={model.modelId} />
         </TabsContent>
         <TabsContent value="calculated-measures">
           <CalculatedMeasuresTab modelId={model.modelId} />
+        </TabsContent>
+        <TabsContent value="parameters">
+          <ParametersTab modelId={model.modelId} />
         </TabsContent>
       </Tabs>
 
@@ -86,7 +91,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete ${model.modelKey}?`}
-        description="The model is deleted with its variables, calculated measures and attributions. A model a report reads is kept."
+        description="The model is deleted with its variables, calculated measures, attributions and parameters. A model a report reads is kept."
         confirmLabel="Delete model"
         destructive
         onConfirm={() =>

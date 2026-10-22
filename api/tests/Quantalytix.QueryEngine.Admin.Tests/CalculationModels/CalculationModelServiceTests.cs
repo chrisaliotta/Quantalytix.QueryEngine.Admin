@@ -9,9 +9,10 @@ using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
 /// <summary>
-/// Confirms how a calculation model is deleted. The model owns its variables, calculated measures and their attributions, so
-/// deleting it removes them and leaves other models' rows alone. A report names its model whether it is enabled or not, so a model
-/// any report reads is not deleted, and the refusal names the reports, which the administrator must delete or repoint first.
+/// Confirms how a calculation model is deleted. The model owns its variables, calculated measures, their attributions and its
+/// parameters, so deleting it removes them and leaves other models' rows alone. A report names its model whether it is enabled or
+/// not, so a model any report reads is not deleted, and the refusal names the reports, which the administrator must delete or
+/// repoint first.
 /// </summary>
 public sealed class CalculationModelServiceTests
 {
@@ -35,7 +36,15 @@ public sealed class CalculationModelServiceTests
         ModelId = ModelId, MetricKey = "yield", DriverKey = "balance", DisplayName = "Balance", SortOrder = 1, InputKeysJson = """["balance"]"""
     });
 
-    /// <summary>A model no report reads is deleted with its own metrics and attributions; model 41's variable and attribution stay.</summary>
+    /// <summary>Model 40's day count parameter and model 41's scale parameter.</summary>
+    private readonly InMemoryTableGateway<ModelParameterRecord> _parameters = new(
+        new ModelParameterRecord { ModelId = ModelId, ParameterKey = "dayCount", DisplayName = "Day count", ValueType = "text", DefaultText = "actual_actual" },
+        new ModelParameterRecord { ModelId = 41, ParameterKey = "scale", DisplayName = "Scale", ValueType = "number", DefaultNumber = 1m });
+
+    /// <summary>
+    /// A model no report reads is deleted with its own metrics, attributions and parameters; model 41's variable, attribution and
+    /// parameter stay.
+    /// </summary>
     /// <returns>A task that completes when the delete is checked.</returns>
     [Fact]
     public async Task ModelNoReportReads_IsDeletedWithItsMetrics()
@@ -48,6 +57,7 @@ public sealed class CalculationModelServiceTests
         Assert.Empty(_measures.All);
         Assert.Equal(["rate"], _attributions.All.Select(attribution => attribution.MetricKey));
         Assert.Empty(_drivers.All);
+        Assert.Equal(["scale"], _parameters.All.Select(parameter => parameter.ParameterKey));
     }
 
     /// <summary>A model a disabled report reads is not deleted: the refusal names the report, and the model and its metrics stay.</summary>
@@ -68,6 +78,6 @@ public sealed class CalculationModelServiceTests
     /// <summary>The service over this test's tables and the given reports.</summary>
     private CalculationModelService Service(InMemoryTableGateway<ReportRecord> reports)
     {
-        return new CalculationModelService(_models, _variables, _measures, _attributions, _drivers, new ReportUses(reports), new SequentialIdGenerator(1000));
+        return new CalculationModelService(_models, _variables, _measures, _attributions, _drivers, _parameters, new ReportUses(reports), new SequentialIdGenerator(1000));
     }
 }

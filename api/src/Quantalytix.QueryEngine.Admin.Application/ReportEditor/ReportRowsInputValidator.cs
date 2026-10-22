@@ -1,5 +1,8 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentValidation;
+using FluentValidation.Results;
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -10,8 +13,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 /// <summary>
 /// Checks a report's complete row tree before anything is written: each row's fields, the tree's shape
 /// (<see cref="ReportRowTree"/>), and against the stored report that a new key is well formed, a stored member row stays a member
-/// row and a stored overlay row an overlay row, a row that takes items from bridge sources stays a data row, and each formula row
-/// names a calculated measure and a column that resolve.
+/// row and a stored overlay row an overlay row, a row that takes items from bridge sources stays a data row, each formula row
+/// names a calculated measure and a column that resolve, each style a row names is one of the report's, and each parameter value is
+/// of a parameter the report's model declares and fits its type, its allowed values and its column. A disabled report is not checked
+/// by the report rules, and the model gate checks every report's values against each parameter change, so the values are checked
+/// here for every report.
 /// </summary>
 public sealed class ReportRowsInputValidator : AbstractValidator<ReportRowsInput>
 {
@@ -22,6 +28,8 @@ public sealed class ReportRowsInputValidator : AbstractValidator<ReportRowsInput
     /// <param name="lines">Reads the stored overlay rows.</param>
     /// <param name="sources">Reads the report's sources.</param>
     /// <param name="bridgeMappings">Reads the bridge sources' entries.</param>
+    /// <param name="styles">Reads the report's styles.</param>
+    /// <param name="parameters">Reads the parameters of the report's model.</param>
     /// <param name="formulaReferences">Checks what formula rows name.</param>
     /// <param name="keys">Names the route's report.</param>
     public ReportRowsInputValidator(
@@ -31,6 +39,8 @@ public sealed class ReportRowsInputValidator : AbstractValidator<ReportRowsInput
         ITableGateway<ReportLineRecord> lines,
         ITableGateway<ReportSourceRecord> sources,
         ITableGateway<BridgeMappingRecord> bridgeMappings,
+        ITableGateway<ReportStyleRecord> styles,
+        ModelParameterService parameters,
         FormulaRowReferences formulaReferences,
         ContentKeys keys)
     {
@@ -80,6 +90,33 @@ public sealed class ReportRowsInputValidator : AbstractValidator<ReportRowsInput
 
             var formulas = rows.Where(row => row.Kind == ReportRowKinds.Formula).Select(row => (row.Key, row.CalculatedMeasureKey, row.ValueColumnKey));
             foreach (var problem in await formulaReferences.ProblemsAsync(keys.ReportId, formulas, cancellationToken)) context.AddFailure(problem);
+
+            var styleKeys = (await styles.ListAsync(owner, cancellationToken)).Select(style => style.StyleKey).ToHashSet(StringComparer.Ordinal);
+            var declared = (await parameters.ListAsync(report.ModelId, cancellationToken)).ToDictionary(parameter => parameter.ParameterKey, StringComparer.Ordinal);
+            for (var index = 0; index < rows.Count; index++)
+            {
+                var row = rows[index];
+                if (row.StyleKey is { } styleKey && !styleKeys.Contains(styleKey))
+                    context.AddFailure(new ValidationFailure($"rows[{index}].styleKey", $"Row '{row.Key}' shows style '{styleKey}', which is no style of the report."));
+                foreach (var (parameterKey, value) in row.Parameters)
+                {
+                    if (ValueProblem(declared, parameterKey, value) is { } problem)
+                        context.AddFailure(new ValidationFailure($"rows[{index}].parameters.{parameterKey}", $"Row '{row.Key}' sets '{parameterKey}', which {problem}."));
+                }
+            }
         });
+    }
+
+    /// <summary>What keeps a row from setting a parameter to a value; null when it may.</summary>
+    private static string? ValueProblem(IReadOnlyDictionary<string, ModelParameter> declared, string parameterKey, JsonElement value)
+    {
+        if (!declared.TryGetValue(parameterKey, out var parameter)) return "is no parameter of the report's model";
+        var (number, text) = RowParameterJson.Read(value);
+        if (ParameterValues.Problem(parameter, number, text) is { } problem) return problem;
+        if (number is { } decimalValue && !DecimalRuleExtensions.Fits(decimalValue, 38, 12))
+            return "takes numbers that fit DECIMAL(38, 12): at most 26 digits before the point and 12 after";
+        if (text is not null && !VarcharRuleExtensions.Fits(text, 256))
+            return "takes text of at most 256 bytes of UTF-8";
+        return null;
     }
 }

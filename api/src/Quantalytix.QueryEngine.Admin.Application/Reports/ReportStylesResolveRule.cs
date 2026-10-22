@@ -1,0 +1,46 @@
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
+
+namespace Quantalytix.QueryEngine.Admin.Application.Reports;
+
+/// <summary>
+/// <c>report_styles_resolve</c>: every style a report's rows name is one of the report's styles, and each row role has at most one
+/// default style, because a row that names no style shows its role's default, which must be one style.
+/// </summary>
+public sealed class ReportStylesResolveRule : IReportRule
+{
+    /// <summary>The rule code violations carry.</summary>
+    public const string Code = "report_styles_resolve";
+
+    /// <summary>Reports each row that names a style the report lacks, and each role with more than one default style.</summary>
+    /// <param name="report">The report.</param>
+    /// <param name="scope">Unused: styles and rows are the report's own.</param>
+    /// <returns>One violation per problem.</returns>
+    public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
+    {
+        var subject = $"Report '{report.ReportKey}'";
+        var styleKeys = report.Styles.Select(style => style.StyleKey).ToHashSet(StringComparer.Ordinal);
+        var named = report.MemberOptions.Select(option => (Row: option.MemberKey, option.StyleKey))
+            .Concat(report.Lines.Select(line => (Row: line.LineKey, line.StyleKey)))
+            .Where(row => row.StyleKey is not null && !styleKeys.Contains(row.StyleKey))
+            .OrderBy(row => row.Row, StringComparer.Ordinal);
+        foreach (var (row, styleKey) in named)
+            yield return Violation($"{subject} row '{row}' shows style '{styleKey}', which is no style of the report.");
+
+        var defaults = report.Styles
+            .Where(style => style.DefaultRole is not null)
+            .GroupBy(style => style.DefaultRole!, StringComparer.Ordinal)
+            .Where(role => role.Count() > 1)
+            .OrderBy(role => role.Key, StringComparer.Ordinal);
+        foreach (var role in defaults)
+        {
+            var keys = string.Join(", ", role.Select(style => $"'{style.StyleKey}'").Order(StringComparer.Ordinal));
+            yield return Violation($"{subject} styles {keys} are each the default of {role.Key} rows; a role has at most one default style.");
+        }
+    }
+
+    /// <summary>A violation of this rule.</summary>
+    private static RuleViolation Violation(string message)
+    {
+        return new RuleViolation { Rule = Code, Message = message };
+    }
+}

@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 public sealed class TenantConnectionVerification(ITenantDatabaseVerifier verifier)
 {
     /// <summary>The metadata schema version this API reads and writes.</summary>
-    public const int SupportedSchemaVersion = 13;
+    public const int SupportedSchemaVersion = 14;
 
     /// <summary>Opens the connection string and checks the database it reaches.</summary>
     /// <param name="tenantId">The tenant the connection string must route to.</param>

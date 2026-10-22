@@ -28,4 +28,7 @@ public sealed record ExpressionInspection
 
     /// <summary>The distinct functions the expression calls, in reading order.</summary>
     public required IReadOnlyList<ExpressionFunction> Functions { get; init; }
+
+    /// <summary>The distinct texts of the expression's string literals, in reading order.</summary>
+    public required IReadOnlyList<string> TextLiterals { get; init; }
 }

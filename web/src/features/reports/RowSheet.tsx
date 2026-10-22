@@ -1,12 +1,14 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
-import { FormFieldLayout, KeyField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { FormFieldLayout, KeyField, NumberField, SwitchField, TextField, VocabularyField } from '@/shared/form';
+import { keyItems } from '@/shared/keyItems';
 import { useLookup } from '@/shared/useLookup';
-import { isMemberRow, keyFromLabel, nextSortOrder, parentsFor } from './rowTree';
-import type { EditorView, ReportRowInput, ReportRowKind } from './types';
+import { useReportStyles } from './api';
+import { inheritedValue, isMemberRow, keyFromLabel, nextSortOrder, parentsFor, rowProblem } from './rowTree';
+import type { EditorView, ModelParameter, ReportRowInput, ReportRowKind, RowParameterValue } from './types';
 
-/** Values of the row sheet; a choice not made yet is null. */
+/** Values of the row sheet; a choice not made yet is null, and so is a parameter the row sets no value of. */
 interface RowValues {
   label: string;
   kind: string | null;
@@ -15,6 +17,8 @@ interface RowValues {
   showsValues: boolean;
   calculatedMeasureKey: string | null;
   valueColumnKey: string | null;
+  styleKey: string | null;
+  parameters: Record<string, RowParameterValue | null>;
 }
 
 export interface RowSheetProps {
@@ -34,11 +38,13 @@ export interface RowSheetProps {
  * Adds or edits a row of the report: a data row taking items from the bridge sources and a direct source's rows keyed like it,
  * which the rows under it add to, a group totalling the rows under it, a section heading them, or a formula row placing a
  * calculated measure of the report's model in one column. A new row's key is made from its label and is fixed once saved. A
- * stored member row stays a member row and an overlay row an overlay row, and a row with items stays a data row.
+ * stored member row stays a member row and an overlay row an overlay row, and a row with items stays a data row. A row names its
+ * style and sets its own values of the model's parameters; a parameter it leaves empty shows the value it inherits.
  */
 export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowSheetProps) {
   const measures = useLookup('calculated-measures', view.report.modelId);
   const columns = useLookup('report-columns', view.report.reportId);
+  const styles = useReportStyles(view.report.reportId);
   const form = useForm<RowValues>({
     defaultValues: {
       label: row?.label ?? '',
@@ -48,10 +54,13 @@ export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowShe
       showsValues: row?.showsValues ?? true,
       calculatedMeasureKey: row?.calculatedMeasureKey ?? null,
       valueColumnKey: row?.valueColumnKey ?? null,
+      styleKey: row?.styleKey ?? null,
+      parameters: Object.fromEntries(view.parameters.map(parameter => [parameter.parameterKey, row?.parameters?.[parameter.parameterKey] ?? null])),
     },
   });
-  const [label, kind] = useWatch({ control: form.control, name: ['label', 'kind'] });
+  const [label, kind, parentKey] = useWatch({ control: form.control, name: ['label', 'kind', 'parentKey'] });
   const key = row?.key ?? keyFromLabel(label, new Set(rows.map(stored => stored.key)));
+  const index = row === null ? rows.length : rows.findIndex(stored => stored.key === row.key);
 
   function submit(values: RowValues) {
     const isFormula = values.kind === 'formula';
@@ -66,6 +75,12 @@ export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowShe
       showsValues: values.kind === 'group' ? values.showsValues : true,
       calculatedMeasureKey: isFormula ? values.calculatedMeasureKey : null,
       valueColumnKey: isFormula ? values.valueColumnKey : null,
+      styleKey: values.styleKey,
+      parameters: Object.fromEntries(
+        Object.entries(values.parameters).filter((entry): entry is [string, RowParameterValue] => entry[1] !== null && entry[1] !== '')
+      ),
+    }).catch(error => {
+      throw rowProblem(error, index);
     });
   }
 
@@ -113,8 +128,48 @@ export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowShe
           />
         </>
       )}
+      <KeyField
+        name="styleKey"
+        label="Style"
+        items={styles.data?.map((style, position) => ({ id: position, key: style.styleKey, label: style.displayName })) ?? null}
+        allowEmpty
+        placeholder="Its role's default style"
+        description="How the report shows the row; a row without a style shows its role's default, if the report has one."
+      />
+      {view.parameters.length > 0 && (
+        <section data-slot="row-parameters" className="space-y-4 border-t pt-4">
+          <p className="text-sm text-muted-foreground">
+            The row's own values of the model's parameters. An empty one shows the value the row inherits: its nearest ancestor's,
+            or the total's for a formula row or a top-level section, else the model's default.
+          </p>
+          {view.parameters.map(parameter => (
+            <ParameterField
+              key={parameter.parameterKey}
+              parameter={parameter}
+              inherited={inheritedValue(rows, kind ?? '', parentKey, parameter)}
+            />
+          ))}
+        </section>
+      )}
     </EntityFormSheet>
   );
+}
+
+/** A row's own value of one parameter, picked from its allowed values when it has them, with the inherited value as placeholder. */
+function ParameterField({ parameter, inherited }: { parameter: ModelParameter; inherited: RowParameterValue }) {
+  const name = `parameters.${parameter.parameterKey}`;
+  const label = `${parameter.displayName} (@${parameter.parameterKey})`;
+  const placeholder = `${inherited} (inherited)`;
+  const description = parameter.description ?? undefined;
+  if (parameter.valueType === 'number') {
+    return <NumberField name={name} label={label} placeholder={placeholder} description={description} />;
+  }
+  if (parameter.allowedValues) {
+    return (
+      <KeyField name={name} label={label} items={keyItems(parameter.allowedValues)} allowEmpty placeholder={placeholder} description={description} />
+    );
+  }
+  return <TextField name={name} label={label} placeholder={placeholder} description={description} />;
 }
 
 /**

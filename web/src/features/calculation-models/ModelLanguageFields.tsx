@@ -8,7 +8,7 @@ export function ModelLanguageFields() {
         name="formulaLanguageVersion"
         label="Formula language"
         vocabulary="formula_language_version"
-        description="The grammar of the model's formulas and attribution expressions; 1.1 adds POWER(x, y). A model whose formulas call POWER stays on 1.1."
+        description="The grammar of the model's formulas and attribution expressions: 1.1 adds POWER(x, y), and 1.2 adds the model's parameters as @key, text compared by =, <> or IN, and YEARFRAC(day count). A model stays on the language its formulas need."
       />
       <VocabularyField
         name="attributionMethod"

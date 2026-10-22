@@ -19,7 +19,16 @@ public static class VarcharRuleExtensions
     public static IRuleBuilderOptions<T, string?> MustFitVarchar<T>(this IRuleBuilder<T, string?> rule, int length)
     {
         return rule
-            .Must(text => text is null || Encoding.UTF8.GetByteCount(text) <= length)
+            .Must(text => text is null || Fits(text, length))
             .WithMessage($"'{{PropertyName}}' must fit in {length} bytes of UTF-8 text; characters outside ASCII take 2 to 4 bytes each.");
+    }
+
+    /// <summary>Whether text fits a VARCHAR column of the given length, which StarRocks counts in UTF-8 bytes.</summary>
+    /// <param name="text">The text.</param>
+    /// <param name="length">The column's declared VARCHAR length.</param>
+    /// <returns>True when the text's UTF-8 bytes are at most the length.</returns>
+    public static bool Fits(string text, int length)
+    {
+        return Encoding.UTF8.GetByteCount(text) <= length;
     }
 }

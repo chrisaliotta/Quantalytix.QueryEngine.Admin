@@ -12,7 +12,8 @@ public static class ExpressionRuleExtensions
     /// message, which names the failing character. Metadata expressions read no request parameters: the query engine renders
     /// field expressions and row filters with none bound, and the catalog declares none that a request would know to send for
     /// a formula. Dimension member references belong to a query's <c>where</c> filter, which resolves members first. Every
-    /// dataset version's expressions are language 1.0, so they call no <c>POWER</c>, which only language 1.1 has.
+    /// dataset version's expressions are language 1.0, so they call no <c>POWER</c>, which only language 1.1 has, and no
+    /// <c>YEARFRAC</c>, which only model formulas of formula language 1.2 call.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for an expression property of the input.</param>
@@ -37,6 +38,8 @@ public static class ExpressionRuleExtensions
 
             if (inspection.Functions.Contains(ExpressionFunction.Power))
                 context.AddFailure($"Metadata expressions are expression language 1.0, which has no POWER, so '{context.DisplayName}' cannot call it.");
+            if (inspection.Functions.Contains(ExpressionFunction.YearFrac))
+                context.AddFailure($"Metadata expressions are expression language 1.0, which has no YEARFRAC, so '{context.DisplayName}' cannot call it.");
 
             if (inspection.ParameterNames.Count == 0) return;
             var parameters = string.Join(", ", inspection.ParameterNames.Select(name => $"'@{name}'"));
@@ -45,11 +48,11 @@ public static class ExpressionRuleExtensions
     }
 
     /// <summary>
-    /// Requires a model formula, a calculated measure's formula or a metric's attribution expression, to parse and to read only
-    /// <c>[m.KEY]</c> model keys and the <c>@periodDays</c> and <c>@yearDays</c> context parameters: a model formula is evaluated
-    /// over aligned report values, so it has no dataset fields or dimension members to read. Whether each key names a metric of the
-    /// model, whether the formulas are acyclic, and whether the model's formula language has the functions they call, are model
-    /// rules, because later edits to the model can change all three.
+    /// Requires a model formula, a calculated measure's formula or a metric's attribution expression, to parse and to read no
+    /// dataset fields or dimension members: a model formula is evaluated over aligned report values, so it reads <c>[m.KEY]</c>
+    /// model keys and <c>@name</c> parameters only. Whether each key names a metric of the model, whether each parameter is a context
+    /// parameter or one the model declares and is read where its type belongs, whether the formulas are acyclic, and whether the
+    /// model's formula language has what they use, are model rules, because later edits to the model can change every answer.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for the formula text.</param>
@@ -68,9 +71,6 @@ public static class ExpressionRuleExtensions
 
             if (inspection.FieldKeys.Count > 0 || inspection.DimensionKeys.Count > 0)
                 context.AddFailure("A model formula reads variables and calculated measures through [m.KEY], not dataset fields or dimension members.");
-            var unknown = inspection.ParameterNames.Where(name => !CalculatedMeasureParameters.Contains(name)).ToArray();
-            if (unknown.Length > 0)
-                context.AddFailure($"A model formula reads only @periodDays and @yearDays, not {string.Join(", ", unknown.Select(name => $"'@{name}'"))}.");
         });
     }
 
@@ -103,14 +103,11 @@ public static class ExpressionRuleExtensions
             {
                 if (readsParameters && operand.Type == "parameter")
                 {
-                    if (CalculatedMeasureParameters.Contains(operand.Id))
+                    if (FormulaContext.ParameterNames.Contains(operand.Id))
                         context.AddFailure($"'{context.DisplayName}' cannot compare @{operand.Id}, which calculated measures read for each period.");
                 }
                 else context.AddFailure($"'{context.DisplayName}' compares {reads} only, not the {operand.Type} '{operand.Id}'.");
             }
         });
     }
-
-    /// <summary>The context parameters every calculated measure may read, for annualization.</summary>
-    private static readonly string[] CalculatedMeasureParameters = ["periodDays", "yearDays"];
 }

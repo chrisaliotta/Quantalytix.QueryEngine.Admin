@@ -3,9 +3,11 @@
  * orders, so the sheet orders drivers by their place in the list and numbers them on save; an empty expression means the
  * calculated measure's own formula, which the API stores as null. The tables summarize each metric's attribution so an
  * administrator sees which metrics still need one: a variable has no formula, so without an attribution it has no drivers.
+ * The drivers must split exactly the inputs the API counts in the expression, so the sheet offers those: YEARFRAC reads the
+ * period, so it reads both days inputs, and a declared parameter is never an input.
  */
 import { describe, expect, it } from 'vitest';
-import { attributionSummary, toAttributionInput, toAttributionValues } from './attributionForm';
+import { attributionInputs, attributionSummary, toAttributionInput, toAttributionValues } from './attributionForm';
 import type { MetricAttribution } from './types';
 
 /** The seed's attribution of interest income: an identity expression with volume, rate and days drivers. */
@@ -35,6 +37,26 @@ describe('toAttributionInput', () => {
   it('sends an empty expression as null and keeps a stored one', () => {
     expect(toAttributionInput(toAttributionValues(undefined)).expressionText).toBeNull();
     expect(toAttributionInput(toAttributionValues(interestIncome)).expressionText).toBe(interestIncome.expressionText);
+  });
+});
+
+describe('attributionInputs', () => {
+  it('counts YEARFRAC as reading both days inputs, and never a declared parameter', () => {
+    expect(attributionInputs('[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] / YEARFRAC(@dayCount)')).toEqual([
+      'INTEREST_INCOME',
+      'AVERAGE_BALANCE',
+      '@periodDays',
+      '@yearDays',
+    ]);
+  });
+
+  it('reads both days inputs when the expression reads either, the ones it reads first', () => {
+    expect(attributionInputs('[m.V] * @yearDays / @periodDays')).toEqual(['V', '@yearDays', '@periodDays']);
+    expect(attributionInputs('[m.V] / @periodDays')).toEqual(['V', '@periodDays', '@yearDays']);
+  });
+
+  it('lists each metric once, and reads nothing inside string literals', () => {
+    expect(attributionInputs("CASE WHEN @basis = 'YEARFRAC(@periodDays) it''s [m.X]' THEN [m.V] ELSE [m.V] * 2 END")).toEqual(['V']);
   });
 });
 

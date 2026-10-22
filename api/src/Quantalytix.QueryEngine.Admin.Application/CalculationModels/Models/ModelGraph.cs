@@ -17,7 +17,21 @@ public sealed record ModelGraph
     /// <summary>The attributions of the model's metrics, with their drivers.</summary>
     public required IReadOnlyList<MetricAttribution> Attributions { get; init; }
 
+    /// <summary>The parameters the model declares for its formulas.</summary>
+    public required IReadOnlyList<ModelParameter> Parameters { get; init; }
+
     /// <summary>The keys every <c>[m.KEY]</c> of the model may name: its variables' and calculated measures'.</summary>
     public IReadOnlySet<string> MetricKeys =>
         Variables.Select(variable => variable.VariableKey).Concat(CalculatedMeasures.Select(measure => measure.MeasureKey)).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Every formula the engine evaluates for the model, with the subject rule messages name it by: each calculated measure's, and
+    /// each attribution expression; an attribution without one switches its drivers in the calculated measure's formula.
+    /// </summary>
+    public IEnumerable<(string Subject, string Expression)> Formulas =>
+        CalculatedMeasures
+            .Select(measure => (Subject: $"Calculated measure '{measure.MeasureKey}'", Expression: measure.ExpressionText))
+            .Concat(Attributions
+                .Where(attribution => attribution.ExpressionText is not null)
+                .Select(attribution => (Subject: $"The attribution of '{attribution.MetricKey}'", Expression: attribution.ExpressionText!)));
 }

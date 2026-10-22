@@ -71,6 +71,62 @@ public sealed class AttributionDriversRuleTests
         else Assert.Equal([$"The attribution of 'V1' has {defaultDrivers} default drivers, one per metric its expression reads and one for its days; a metric has 1 to 8."], violations);
     }
 
+    /// <summary>
+    /// YEARFRAC reads the period, so a formula that calls it reads both days inputs: the seed's YIELD and INTEREST_INCOME days drivers,
+    /// which switch @periodDays and @yearDays, stay valid once their formulas annualize by YEARFRAC(@dayCount).
+    /// </summary>
+    [Fact]
+    public void SeedDaysDrivers_StayValidOnYearFrac()
+    {
+        Assert.Equal(
+            ["INTEREST_INCOME", "AVERAGE_BALANCE", "@periodDays", "@yearDays"],
+            AttributionInputs.Of("[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] / YEARFRAC(@dayCount)"));
+        Assert.Empty(AttributionDriversRule.Evaluate(YearFracGraph()));
+        Assert.Empty(AttributionReferencesResolveRule.Evaluate(YearFracGraph()));
+    }
+
+    /// <summary>
+    /// The days are one input pair: reading either context parameter, or calling YEARFRAC, reads both, the ones read first in reading
+    /// order; a declared parameter is never an input, because a row's value is the same on both sides of a comparison.
+    /// </summary>
+    /// <param name="expressionText">An attribution expression.</param>
+    /// <param name="inputs">Its inputs.</param>
+    [Theory]
+    [InlineData("[m.V1] * @periodDays", new[] { "V1", "@periodDays", "@yearDays" })]
+    [InlineData("[m.V1] * @yearDays / @periodDays", new[] { "V1", "@yearDays", "@periodDays" })]
+    [InlineData("[m.V1] * YEARFRAC('actual_360')", new[] { "V1", "@periodDays", "@yearDays" })]
+    [InlineData("[m.V1] * @rate", new[] { "V1" })]
+    public void DaysInputs_ComeAsAPair(string expressionText, string[] inputs)
+    {
+        Assert.Equal(inputs, AttributionInputs.Of(expressionText));
+    }
+
+    /// <summary>A formula that annualizes by YEARFRAC alone has one default days driver besides one per metric it reads.</summary>
+    [Fact]
+    public void YearFrac_GivesADefaultDaysDriver()
+    {
+        Assert.Equal(3, AttributionInputs.DefaultDriverCount(AttributionInputs.Of("[m.A] / [m.B] / YEARFRAC(@dayCount)")));
+    }
+
+    /// <summary>
+    /// A driver that switches a declared parameter is reported by both attribution rules: the expression has no such input, and an
+    /// input is a metric or a context parameter.
+    /// </summary>
+    [Fact]
+    public void DriversOfDeclaredParameters_AreReported()
+    {
+        var model = YearFracGraph();
+        var yield = model.Attributions[0];
+        var withBasis = MetricAttributionService.Put(model, yield with { Drivers = [.. yield.Drivers, Driver("basis", 4, "@dayCount")] });
+
+        Assert.Equal(
+            ["The attribution of 'YIELD' has drivers that switch '@dayCount', which its expression does not read."],
+            AttributionDriversRule.Evaluate(withBasis).Select(violation => violation.Message));
+        Assert.Equal(
+            ["The attribution of 'YIELD' has driver 'basis' switch '@dayCount', which is no variable or calculated measure of the model, @periodDays or @yearDays."],
+            AttributionReferencesResolveRule.Evaluate(withBasis).Select(violation => violation.Message));
+    }
+
     /// <summary>Nine drivers of its own are too many, even when they split the expression exactly.</summary>
     [Fact]
     public void NineDrivers_AreReported()

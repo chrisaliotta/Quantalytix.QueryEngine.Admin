@@ -1,10 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Trash2 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { ApiErrorAlert } from './ApiErrorAlert';
-import { ConfirmDialog } from './ConfirmDialog';
-import { EntityTable } from './EntityTable';
+import type { ReactNode } from 'react';
+import { ContentTab } from './ContentTab';
 import { useDeleteOwnedContent, useOwnedContent, type ContentItem, type ContentKind } from './ownedContent';
 
 export interface OwnedContentTabProps<K extends ContentKind> {
@@ -23,12 +19,7 @@ export interface OwnedContentTabProps<K extends ContentKind> {
   renderSheet: (item: ContentItem<K> | null, onClose: () => void) => ReactNode;
 }
 
-/** What the tab's sheet was opened for: an existing row, or a new one. */
-interface SheetRequest<K extends ContentKind> {
-  item: ContentItem<K> | null;
-}
-
-/** One kind of a calculation model's or report's content in a table, whose rows a sheet adds and edits. */
+/** One kind of a calculation model's or report's content in a table, whose rows a sheet adds and edits, routed by row ID. */
 export function OwnedContentTab<K extends ContentKind>({
   kind,
   ownerId,
@@ -40,59 +31,16 @@ export function OwnedContentTab<K extends ContentKind>({
 }: OwnedContentTabProps<K>) {
   const rows = useOwnedContent(kind, ownerId);
   const deleteRow = useDeleteOwnedContent(kind, ownerId);
-  const [sheet, setSheet] = useState<SheetRequest<K> | null>(null);
-  const [deleting, setDeleting] = useState<ContentItem<K> | null>(null);
-  const deletingKey = deleting === null ? '' : identify(deleting).key;
-
-  const withActions: ColumnDef<ContentItem<K>>[] = [
-    ...columns,
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={`Delete ${identify(row.original).key}`}
-          onClick={event => {
-            event.stopPropagation();
-            setDeleting(row.original);
-          }}
-        >
-          <Trash2 />
-        </Button>
-      ),
-    },
-  ];
 
   return (
-    <div data-slot="owned-content-tab" className="space-y-3">
-      <EntityTable
-        columns={withActions}
-        data={rows.data}
-        isLoading={rows.isPending}
-        error={rows.error}
-        searchPlaceholder={`Search ${noun}s...`}
-        emptyMessage={`No ${noun}s yet.`}
-        onRowClick={item => setSheet({ item })}
-        toolbar={
-          <Button size="sm" className="ml-auto" onClick={() => setSheet({ item: null })}>
-            <Plus />
-            New {noun}
-          </Button>
-        }
-      />
-      <ApiErrorAlert error={deleteRow.error} />
-      {sheet && renderSheet(sheet.item, () => setSheet(null))}
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={open => !open && setDeleting(null)}
-        title={`Delete ${noun} ${deletingKey}?`}
-        description={deleteDescription}
-        confirmLabel={`Delete ${noun}`}
-        destructive
-        onConfirm={() => deleting && deleteRow.mutate(identify(deleting).id)}
-      />
-    </div>
+    <ContentTab
+      rows={rows}
+      columns={columns}
+      noun={noun}
+      keyOf={item => identify(item).key}
+      deleteDescription={deleteDescription}
+      deleteRow={{ mutate: item => deleteRow.mutate(identify(item).id), error: deleteRow.error }}
+      renderSheet={renderSheet}
+    />
   );
 }

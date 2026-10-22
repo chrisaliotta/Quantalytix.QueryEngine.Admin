@@ -1,6 +1,8 @@
 import type { TreeItems } from '@registry/components/Nestable';
+import { ApiProblem } from '@/api/problemDetails';
+import { parameterDefault } from '@/shared/modelParameters';
 import type { LookupItem } from '@/shared/types';
-import type { EditorRow, ReportRowInput } from './types';
+import type { EditorRow, ModelParameter, ReportRowInput, RowParameterValue } from './types';
 
 /** Compares keys by UTF-16 code unit, as the engine's ordinal comparison does. */
 function compareOrdinal(left: string, right: string) {
@@ -24,7 +26,7 @@ function bySiblingOrder(left: ReportRowInput, right: ReportRowInput) {
   );
 }
 
-/** A stored row as the rows body takes it back. */
+/** A stored row as the rows body takes it back, with its style and own parameter values, which every replace of the tree must keep. */
 export function toRowInput(row: EditorRow): ReportRowInput {
   return {
     key: row.key,
@@ -36,7 +38,46 @@ export function toRowInput(row: EditorRow): ReportRowInput {
     showsValues: row.showsValues,
     calculatedMeasureKey: row.calculatedMeasureKey ?? null,
     valueColumnKey: row.valueColumnKey ?? null,
+    styleKey: row.styleKey ?? null,
+    parameters: row.parameters,
   };
+}
+
+/**
+ * The value a row of a kind under a parent takes for a parameter it sets none of, as the engine resolves it: the own value of its
+ * nearest ancestor that sets one, through hidden rows and headers too, or else the model's default. The engine evaluates a formula
+ * row at the report's total wherever it sits, so a formula row takes the total's value, and a section at the top continues to it.
+ */
+export function inheritedValue(rows: ReportRowInput[], kind: string, parentKey: string | null, parameter: ModelParameter): RowParameterValue {
+  const byKey = new Map(rows.map(row => [row.key, row]));
+  const total = rows.find(row => isMemberRow(row.kind) && row.parentKey == null)?.key ?? null;
+  const above = (rowKind: string, rowParentKey: string | null) =>
+    rowKind === 'formula' ? total : (rowParentKey ?? (isMemberRow(rowKind) ? null : total));
+  let key = above(kind, parentKey);
+  while (key !== null) {
+    const ancestor = byKey.get(key)!;
+    const value = ancestor.parameters?.[parameter.parameterKey];
+    if (value !== undefined) {
+      return value;
+    }
+    key = above(ancestor.kind, ancestor.parentKey ?? null);
+  }
+  return parameterDefault(parameter);
+}
+
+/**
+ * A failed save of the tree as one row's sheet shows it: the validation errors of the row at `index` in the rows sent, keyed
+ * `rows[index].field`, are keyed by the sheet's own field names so they show on its fields; every other error stays in its alert.
+ */
+export function rowProblem(error: unknown, index: number): unknown {
+  if (!(error instanceof ApiProblem) || !error.errors) {
+    return error;
+  }
+  const prefix = `rows[${index}].`;
+  const errors = Object.fromEntries(
+    Object.entries(error.errors).map(([key, messages]) => [key.startsWith(prefix) ? key.slice(prefix.length) : key, messages])
+  );
+  return new ApiProblem(error.status, { title: error.title, detail: error.detail, errors, violations: error.violations });
 }
 
 /**

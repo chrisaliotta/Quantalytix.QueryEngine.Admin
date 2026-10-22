@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { EntityFormSheet } from '@/shared/EntityFormSheet';
@@ -7,8 +7,11 @@ import { ExpressionField, KeyField, MultiKeyField, TextField } from '@/shared/fo
 import type { LookupItem } from '@/shared/types';
 import { useLookup } from '@/shared/useLookup';
 import { useDeleteAttribution, useReplaceAttribution } from './api';
-import { CONTEXT_PARAMETERS, toAttributionInput, toAttributionValues, type AttributionValues } from './attributionForm';
+import { attributionInputs, toAttributionInput, toAttributionValues, type AttributionValues } from './attributionForm';
 import type { MetricAttribution } from './types';
+
+/** What the driver pickers call the days inputs. */
+const DAYS_LABELS: Record<string, string> = { '@periodDays': 'Days in the period', '@yearDays': 'Days in its year' };
 
 export interface AttributionSheetProps {
   modelId: number;
@@ -34,18 +37,19 @@ export function AttributionSheet({ modelId, metricKey, formula, attribution, onC
   const measures = useLookup('calculated-measures', modelId);
   const form = useForm<AttributionValues>({ defaultValues: toAttributionValues(attribution) });
   const drivers = useFieldArray({ control: form.control, name: 'drivers' });
+  const [expressionText, chosen] = useWatch({ control: form.control, name: ['expressionText', 'drivers'] });
   const metrics = variables.data && measures.data ? [...variables.data, ...measures.data] : null;
-  const inputs: LookupItem[] | null = metrics && [
-    ...metrics,
-    ...CONTEXT_PARAMETERS.map((key, index) => ({ id: -1 - index, key, label: key === '@periodDays' ? 'Days in the period' : 'Days in its year' })),
-  ];
+  const labels = new Map(metrics?.map(item => [item.key, item.label]));
+  const offered = new Set([...attributionInputs(expressionText.trim() || (formula ?? '')), ...chosen.flatMap(driver => driver.inputKeys)]);
+  const inputs: LookupItem[] | null =
+    metrics && [...offered].map((key, index) => ({ id: index, key, label: DAYS_LABELS[key] ?? labels.get(key) ?? key }));
 
   return (
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
       title={`Attribution of ${metricKey}`}
-      description="Without drivers of its own, each metric the expression reads is a driver, and @periodDays with @yearDays form one days driver. The residual is the change the drivers leave unexplained."
+      description="Without drivers of its own, each metric the expression reads is a driver, and @periodDays with @yearDays form one days driver, which YEARFRAC reads too. Parameters are never drivers. The residual is the change the drivers leave unexplained."
       form={form}
       onSubmit={values => replace.mutateAsync(toAttributionInput(values))}
       width="44rem"
@@ -106,7 +110,12 @@ export function AttributionSheet({ modelId, metricKey, formula, attribution, onC
               <TextField name={`drivers.${index}.driverKey`} label="Key" description="Names the driver's report column; never residual." />
               <TextField name={`drivers.${index}.displayName`} label="Name" />
             </div>
-            <MultiKeyField name={`drivers.${index}.inputKeys`} label="Inputs" items={inputs} description="The inputs that switch together." />
+            <MultiKeyField
+              name={`drivers.${index}.inputKeys`}
+              label="Inputs"
+              items={inputs}
+              description="The inputs of the expression that switch together: its metrics, and its days when it reads them or calls YEARFRAC."
+            />
           </div>
         ))}
         <Button type="button" variant="outline" size="sm" onClick={() => drivers.append({ driverKey: '', displayName: '', inputKeys: [] })}>

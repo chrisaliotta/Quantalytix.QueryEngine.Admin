@@ -2,6 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -155,6 +156,15 @@ internal sealed class ReportEditorFixture
     /// <summary>The member options; none at first.</summary>
     public InMemoryTableGateway<ReportMemberOptionRecord> MemberOptions { get; } = new();
 
+    /// <summary>The report's styles; none at first.</summary>
+    public InMemoryTableGateway<ReportStyleRecord> Styles { get; } = new();
+
+    /// <summary>The rows' parameter values; none at first.</summary>
+    public InMemoryTableGateway<ReportRowParameterRecord> RowParameters { get; } = new();
+
+    /// <summary>Model 40's parameters; none at first.</summary>
+    public InMemoryTableGateway<ModelParameterRecord> Parameters { get; } = new();
+
     /// <summary>The variable scopes; none at first.</summary>
     public InMemoryTableGateway<ReportVariableScopeRecord> Scopes { get; } = new();
 
@@ -228,7 +238,8 @@ internal sealed class ReportEditorFixture
     public ReportEditorReader Reader()
     {
         return new ReportEditorReader(
-            Reports, Members, MemberOptions, Lines, Columns, Sources, SourceVariables, BridgeMappings, Datasets, Roles, Owned(), PublishedDimensions());
+            Reports, Members, MemberOptions, Lines, RowParameters, Columns, Sources, SourceVariables, BridgeMappings, Datasets, Roles, ParameterService(),
+            Owned(), PublishedDimensions());
     }
 
     /// <summary>The row tree service.</summary>
@@ -236,14 +247,29 @@ internal sealed class ReportEditorFixture
     public ReportRowService Rows()
     {
         return new ReportRowService(
-            Reports, Members, Lines, MemberOptions, Scopes, Columns, Sources, Mappings(), Owned(), new ClosureBuilder(Members, Closure), Changes(), _ids);
+            Reports, Members, Lines, MemberOptions, RowParameters, Scopes, Columns, Sources, Mappings(), Owned(), new ClosureBuilder(Members, Closure), Changes(), _ids);
     }
 
     /// <summary>The row tree validator, for a request to report 60.</summary>
     /// <returns>The validator over these tables.</returns>
     public ReportRowsInputValidator RowsValidator()
     {
-        return new ReportRowsInputValidator(Reports, Owned(), Members, Lines, Sources, BridgeMappings, new FormulaRowReferences(Metrics(), Columns), Keys);
+        return new ReportRowsInputValidator(
+            Reports, Owned(), Members, Lines, Sources, BridgeMappings, Styles, ParameterService(), new FormulaRowReferences(Metrics(), Columns), Keys);
+    }
+
+    /// <summary>The style service.</summary>
+    /// <returns>The service over these tables.</returns>
+    public ReportStyleService StyleService()
+    {
+        return new ReportStyleService(Styles, MemberOptions, Lines);
+    }
+
+    /// <summary>The parameters of model 40.</summary>
+    /// <returns>The service over these tables.</returns>
+    public ModelParameterService ParameterService()
+    {
+        return new ModelParameterService(Parameters);
     }
 
     /// <summary>The source service.</summary>
@@ -320,8 +346,9 @@ internal sealed class ReportEditorFixture
         await Reports.UpdateAsync(report with { IsEnabled = isEnabled }, cancellationToken);
     }
 
-    /// <summary>The write gate.</summary>
-    private ReportChanges Changes()
+    /// <summary>The write gate of the report's content.</summary>
+    /// <returns>The gate over these tables.</returns>
+    public ReportChanges Changes()
     {
         return new ReportChanges(Reports, GraphReader(), Rules());
     }
@@ -333,7 +360,7 @@ internal sealed class ReportEditorFixture
         [
             new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
             new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
-            new ReportSourcesResolveRule(), new ReportFactorsApplyRule()
+            new ReportSourcesResolveRule(), new ReportFactorsApplyRule(), new ReportRowParametersResolveRule(), new ReportStylesResolveRule()
         ];
         return new ReportRules(rules, GraphReader());
     }
@@ -342,8 +369,8 @@ internal sealed class ReportEditorFixture
     private ReportGraphReader GraphReader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Scopes, Profiles, Picks, Sources, SourceVariables, BridgeMappings,
-            CalculationDimensions, Variables, CalculatedMeasures, Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Profiles, Picks, Sources, SourceVariables,
+            BridgeMappings, CalculationDimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
     /// <summary>The reader of the metric keys of the report's model.</summary>
@@ -373,7 +400,8 @@ internal sealed class ReportEditorFixture
     /// <summary>The report content remover.</summary>
     private ReportContentRemover Remover()
     {
-        return new ReportContentRemover(Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Columns, Lines, MemberOptions, Owned(), BridgeService(), Pins());
+        return new ReportContentRemover(
+            Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Columns, Lines, MemberOptions, RowParameters, Styles, Owned(), BridgeService(), Pins());
     }
 
     /// <summary>The assumption set pins.</summary>

@@ -9,15 +9,17 @@ namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
 /// Replaces a report's row tree. Member rows become members of the report dimension's one version, with member options for the
-/// hidden rows and headers, and overlay rows the report's overlay rows. A row the tree leaves out goes with what names it: the
-/// bridge entries that map items to it, its variable scopes and its member option. The rows are composed first, so a write to an
-/// enabled report is checked before anything is written, and the version's closure is rebuilt once the members are.
+/// hidden rows, headers and styled rows, and overlay rows the report's overlay rows, with their styles. The rows' parameter values
+/// replace the report's as a whole. A row the tree leaves out goes with what names it: the bridge entries that map items to it, its
+/// variable scopes, its member option and its parameter values. The rows are composed first, so a write to an enabled report is
+/// checked before anything is written, and the version's closure is rebuilt once the members are.
 /// </summary>
 public sealed class ReportRowService(
     ITableGateway<ReportRecord> reports,
     ITableGateway<DimensionMemberRecord> members,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
+    ITableGateway<ReportRowParameterRecord> rowParameters,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportSourceRecord> sources,
@@ -51,9 +53,13 @@ public sealed class ReportRowService(
             [.. input.Rows.Where(row => !ReportRowKinds.IsMember(row.Kind)).Select(row => Line(reportId, storedLines.GetValueOrDefault(row.Key), columnIds, row))];
         ReportMemberOptionRecord[] options =
         [
-            .. memberRows.Where(row => !row.IsVisible || !row.ShowsValues)
-                .Select(row => new ReportMemberOptionRecord { ReportId = reportId, MemberKey = row.Key, IsVisible = row.IsVisible, ShowsValues = row.ShowsValues })
+            .. memberRows.Where(row => !row.IsVisible || !row.ShowsValues || row.StyleKey is not null).Select(row => new ReportMemberOptionRecord
+            {
+                ReportId = reportId, MemberKey = row.Key, IsVisible = row.IsVisible, ShowsValues = row.ShowsValues, StyleKey = row.StyleKey
+            })
         ];
+        ReportRowParameterRecord[] values =
+            [.. input.Rows.SelectMany(row => row.Parameters.Select(value => RowParameterJson.Record(reportId, row.Key, value.Key, value.Value)))];
         var storedScopes = await scopes.ListAsync(owner, cancellationToken);
         ReportVariableScopeRecord[] keptScopes = [.. storedScopes.Where(scope => !removedKeys.Contains(scope.ScopeMemberKey))];
 
@@ -64,6 +70,7 @@ public sealed class ReportRowService(
                 Members = tree,
                 Lines = overlay,
                 MemberOptions = options,
+                RowParameters = values,
                 Scopes = keptScopes,
                 SourceItems = [.. graph.SourceItems.Where(item => !removedKeys.Contains(item.RowKey))]
             },
@@ -77,6 +84,8 @@ public sealed class ReportRowService(
                 }
                 await memberOptions.DeleteAsync(owner, cancellationToken);
                 await memberOptions.InsertManyAsync(options, cancellationToken);
+                await rowParameters.DeleteAsync(owner, cancellationToken);
+                await rowParameters.InsertManyAsync(values, cancellationToken);
                 long[] droppedLines = [.. storedLines.Values.Select(line => line.ReportLineId).Except(overlay.Select(line => line.ReportLineId))];
                 await lines.DeleteAsync(new { ReportLineId = droppedLines }, cancellationToken);
                 await lines.InsertManyAsync(overlay, cancellationToken);
@@ -101,7 +110,7 @@ public sealed class ReportRowService(
         }
     }
 
-    /// <summary>The overlay row a row of the tree describes, keeping a stored row's ID and pass-through payload, filter and settings.</summary>
+    /// <summary>The overlay row a row of the tree describes, with its style, keeping a stored row's ID and pass-through payload, filter and settings.</summary>
     private ReportLineRecord Line(long reportId, ReportLineRecord? stored, IReadOnlyDictionary<string, long> columnIds, ReportRowInput row)
     {
         return new ReportLineRecord
@@ -118,7 +127,8 @@ public sealed class ReportRowService(
             IsVisible = row.IsVisible,
             PayloadJson = stored?.PayloadJson,
             FilterJson = stored?.FilterJson,
-            SettingsJson = stored?.SettingsJson
+            SettingsJson = stored?.SettingsJson,
+            StyleKey = row.StyleKey
         };
     }
 

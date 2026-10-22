@@ -26,7 +26,7 @@ function member(memberId: number, memberKey: string, parentMemberId: number | nu
 }
 
 function row(key: string, items: EditorRow['items']): EditorRow {
-  return { key, label: key, kind: 'data', sortOrder: 0, isVisible: true, showsValues: true, items };
+  return { key, label: key, kind: 'data', sortOrder: 0, isVisible: true, showsValues: true, parameters: {}, items };
 }
 
 function rule(itemKey: string, factor: number, selection: SourceSelection = 'member', reportSourceId = 7): EditorRow['items'][number] {

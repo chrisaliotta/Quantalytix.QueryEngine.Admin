@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>One row of a report's complete row tree.</summary>
@@ -29,4 +31,13 @@ public sealed record ReportRowInput
 
     /// <summary>The key of the report's column a formula row places its value in; null for the other kinds.</summary>
     public string? ValueColumnKey { get; init; }
+
+    /// <summary>The key of the report's style the row shows; null for its role's default style.</summary>
+    public string? StyleKey { get; init; }
+
+    /// <summary>
+    /// The row's own values of the model's parameters, by parameter key: a JSON number for a number parameter and a JSON string for a
+    /// text parameter. A parameter the row leaves out takes its nearest ancestor's value, and else the model's default.
+    /// </summary>
+    public IReadOnlyDictionary<string, JsonElement> Parameters { get; init; } = new Dictionary<string, JsonElement>();
 }

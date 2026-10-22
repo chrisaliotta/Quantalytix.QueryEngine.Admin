@@ -29,6 +29,22 @@ public sealed class MetricAttributionInputValidatorTests
         _validator.TestValidate(new MetricAttributionInput { WeightVariableKey = "AVERAGE_BALANCE", Drivers = [] }).ShouldNotHaveAnyValidationErrors();
     }
 
+    /// <summary>
+    /// An expression that reads parameters passes, declared or not: a parameter can be declared after a formula reads it, so whether
+    /// each one resolves, and is read where its type belongs, is the model gate's <c>formula_parameters_resolve</c>.
+    /// </summary>
+    [Fact]
+    public void ParameterNames_PassAtInput()
+    {
+        var input = new MetricAttributionInput
+        {
+            ExpressionText = "[m.AVERAGE_BALANCE] * [m.YIELD] * YEARFRAC(@dayCount) * @notDeclaredYet",
+            Drivers = []
+        };
+
+        _validator.TestValidate(input).ShouldNotHaveAnyValidationErrors();
+    }
+
     /// <summary>An expression that reads a dataset field, a driver keyed residual and a driver that lists an input twice each fail on their path.</summary>
     [Fact]
     public void MalformedAttribution_FailsOnItsPaths()

@@ -17,4 +17,7 @@ public sealed record ReportMemberOptionRecord
 
     /// <summary>Whether the row shows the member's values; a row without values is a header.</summary>
     public required bool ShowsValues { get; init; }
+
+    /// <summary>The key of the report style the row shows; null for its role's default style.</summary>
+    public string? StyleKey { get; init; }
 }

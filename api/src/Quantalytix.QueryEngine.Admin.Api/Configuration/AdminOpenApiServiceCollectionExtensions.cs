@@ -4,9 +4,9 @@ namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
 public static class AdminOpenApiServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the OpenAPI document with the bearer security scheme, camelCase path and query parameter names, and no
-    /// guessed request body descriptions. XML comments supply summaries and descriptions; they are applied before these
-    /// transformers run.
+    /// Registers the OpenAPI document with the bearer security scheme, camelCase path and query parameter names, no guessed
+    /// request body descriptions, and number or string values for report rows' parameter values. XML comments supply summaries
+    /// and descriptions; they are applied before these transformers run.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -17,6 +17,7 @@ public static class AdminOpenApiServiceCollectionExtensions
             options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
             options.AddOperationTransformer<CamelCaseParameterNamesTransformer>();
             options.AddOperationTransformer<RequestBodyDescriptionTransformer>();
+            options.AddSchemaTransformer<ParameterValuesSchemaTransformer>();
         });
         return services;
     }

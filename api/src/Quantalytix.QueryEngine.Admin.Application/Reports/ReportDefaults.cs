@@ -23,7 +23,21 @@ public static class ReportDefaults
     /// <returns>The distinct dimension keys; none for no filter.</returns>
     public static IReadOnlyList<string> FilterDimensions(string? filterJson)
     {
+        return Operands(filterJson, "dimension");
+    }
+
+    /// <summary>The request parameters a well-formed default filter compares, which every request that takes the defaults supplies.</summary>
+    /// <param name="filterJson">A well-formed default filter, or null.</param>
+    /// <returns>The distinct parameter names, without their <c>@</c>; none for no filter.</returns>
+    public static IReadOnlyList<string> FilterParameters(string? filterJson)
+    {
+        return Operands(filterJson, "parameter");
+    }
+
+    /// <summary>The distinct ids of a well-formed filter's operands of one type.</summary>
+    private static IReadOnlyList<string> Operands(string? filterJson, string type)
+    {
         if (filterJson is null) return [];
-        return [.. FilterNodes.Inspect(filterJson).Operands.Select(operand => operand.Id).Distinct(StringComparer.Ordinal)];
+        return [.. FilterNodes.Inspect(filterJson).Operands.Where(operand => operand.Type == type).Select(operand => operand.Id).Distinct(StringComparer.Ordinal)];
     }
 }

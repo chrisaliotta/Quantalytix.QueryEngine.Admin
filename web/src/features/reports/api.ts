@@ -4,8 +4,16 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import { reportColumnsKey, reportEditorKey, reportKey, reportsKey, reportVariableScopesKey } from './queryKeys';
-import type { NewReportInput, Report, ReportColumnInput, ReportInput, ReportSettingsInput, ReportVariableScopeInput } from './types';
+import { reportColumnsKey, reportEditorKey, reportKey, reportsKey, reportStylesKey, reportVariableScopesKey } from './queryKeys';
+import type {
+  NewReportInput,
+  Report,
+  ReportColumnInput,
+  ReportInput,
+  ReportSettingsInput,
+  ReportStyleInput,
+  ReportVariableScopeInput,
+} from './types';
 
 /** The dimensions feature's key of a dimension version's members, so a member edit there refreshes what reads them here. */
 function dimensionMembersKey(tenantId: string, dimensionVersionId: number) {
@@ -169,6 +177,45 @@ export function useReplaceReportColumns(reportId: number) {
       queryClient.setQueryData(reportColumnsKey(tenantId, reportId), columns);
       return invalidate(lookupQueryKey(tenantId, 'report-columns'), reportEditorKey(tenantId, reportId));
     },
+  });
+}
+
+/** The styles of a report, by key, which its rows name. */
+export function useReportStyles(reportId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: reportStylesKey(tenantId, reportId),
+    queryFn: async () =>
+      unwrap(await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}/styles', { params: { path: { tenantId, reportId } } })),
+  });
+}
+
+/** Writes a style whole under its key, creating it or replacing the one stored; an enabled report refuses a second default of a role. */
+export function useSaveReportStyle(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async ({ styleKey, body }: { styleKey: string; body: ReportStyleInput }) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/styles/{styleKey}', {
+          params: { path: { tenantId, reportId, styleKey } },
+          body,
+        })
+      ),
+    onSuccess: () => invalidate(reportStylesKey(tenantId, reportId)),
+  });
+}
+
+/** Deletes a style; a 409, or a 422 for an enabled report, names the rows that show it. */
+export function useDeleteReportStyle(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (styleKey: string) =>
+      unwrap(
+        await apiClient.DELETE('/api/tenants/{tenantId}/reports/{reportId}/styles/{styleKey}', {
+          params: { path: { tenantId, reportId, styleKey } },
+        })
+      ),
+    onSuccess: () => invalidate(reportStylesKey(tenantId, reportId)),
   });
 }
 

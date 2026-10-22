@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
@@ -14,6 +15,8 @@ public sealed class ReportGraphReader(
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
+    ITableGateway<ReportStyleRecord> styles,
+    ITableGateway<ReportRowParameterRecord> rowParameters,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<SourceProfileRecord> profiles,
     ITableGateway<SourceProfileVariableRecord> picks,
@@ -23,12 +26,13 @@ public sealed class ReportGraphReader(
     ITableGateway<CalculationDimensionRecord> dimensions,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
+    ModelParameterService parameters,
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<DimensionRoleRecord> roles,
     ReleaseDatasets releaseDatasets,
     PublishedDimensionReader publishedDimensions)
 {
-    /// <summary>Reads a report as it stands, with its model's metrics.</summary>
+    /// <summary>Reads a report as it stands, with its model's metrics and parameters.</summary>
     /// <param name="report">The report.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The report graph.</returns>
@@ -45,6 +49,8 @@ public sealed class ReportGraphReader(
             Members = await members.ListAsync(new { structure.DimensionVersionId }, cancellationToken),
             Lines = await lines.ListAsync(owner, cancellationToken),
             MemberOptions = await memberOptions.ListAsync(owner, cancellationToken),
+            Styles = await styles.ListAsync(owner, cancellationToken),
+            RowParameters = await rowParameters.ListAsync(owner, cancellationToken),
             Scopes = await scopes.ListAsync(owner, cancellationToken),
             Columns = await columns.ListAsync(owner, cancellationToken),
             Profiles = reportProfiles,
@@ -54,7 +60,8 @@ public sealed class ReportGraphReader(
             SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
             Dimensions = await dimensions.ListAsync(owner, cancellationToken),
             Variables = await variables.ListAsync(metrics, cancellationToken),
-            CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken)
+            CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken),
+            Parameters = await parameters.ListAsync(report.ModelId, cancellationToken)
         };
     }
 

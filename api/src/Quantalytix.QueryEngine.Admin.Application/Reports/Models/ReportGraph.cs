@@ -1,10 +1,11 @@
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// A report's content with its model's metrics, which the report rules evaluate in memory: the report as it stands, or as a write to
-/// the report or its model would leave it.
+/// A report's content with its model's metrics and parameters, which the report rules evaluate in memory: the report as it stands, or
+/// as a write to the report or its model would leave it.
 /// </summary>
 public sealed record ReportGraph
 {
@@ -19,6 +20,12 @@ public sealed record ReportGraph
 
     /// <summary>The report's member options.</summary>
     public required IReadOnlyList<ReportMemberOptionRecord> MemberOptions { get; init; }
+
+    /// <summary>The report's styles.</summary>
+    public required IReadOnlyList<ReportStyleRecord> Styles { get; init; }
+
+    /// <summary>The parameter values the report's rows set.</summary>
+    public required IReadOnlyList<ReportRowParameterRecord> RowParameters { get; init; }
 
     /// <summary>The report's variable scopes.</summary>
     public required IReadOnlyList<ReportVariableScopeRecord> Scopes { get; init; }
@@ -49,6 +56,9 @@ public sealed record ReportGraph
 
     /// <summary>The model's calculated measures.</summary>
     public required IReadOnlyList<CalculatedMeasureRecord> CalculatedMeasures { get; init; }
+
+    /// <summary>The parameters the model declares, which the report's rows set.</summary>
+    public required IReadOnlyList<ModelParameter> Parameters { get; init; }
 
     /// <summary>The <c>report_key</c> of the report.</summary>
     public string ReportKey => Report.ReportKey;

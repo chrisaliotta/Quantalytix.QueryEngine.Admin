@@ -9,6 +9,7 @@ public sealed class CalculationModelService(
     ITableGateway<CalculatedMeasureRecord> calculatedMeasures,
     ITableGateway<MetricAttributionRecord> attributions,
     ITableGateway<MetricAttributionDriverRecord> attributionDrivers,
+    ITableGateway<ModelParameterRecord> parameters,
     ReportUses reports,
     IIdGenerator ids)
 {
@@ -80,7 +81,7 @@ public sealed class CalculationModelService(
         return models.UpdateAsync(model, cancellationToken);
     }
 
-    /// <summary>Deletes a model that no report reads, with its variables, calculated measures and attributions.</summary>
+    /// <summary>Deletes a model that no report reads, with its variables, calculated measures, attributions and parameters.</summary>
     /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the model was deleted; otherwise the detail naming the reports that read it, and nothing was deleted.</returns>
@@ -97,6 +98,7 @@ public sealed class CalculationModelService(
         await attributions.DeleteAsync(owner, cancellationToken);
         await variables.DeleteAsync(owner, cancellationToken);
         await calculatedMeasures.DeleteAsync(owner, cancellationToken);
+        await parameters.DeleteAsync(owner, cancellationToken);
         await models.DeleteAsync(owner, cancellationToken);
         return null;
     }

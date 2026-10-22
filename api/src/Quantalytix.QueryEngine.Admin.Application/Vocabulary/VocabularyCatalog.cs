@@ -52,12 +52,17 @@ public static class VocabularyCatalog
         VariableMissingBehaviors.Definition,
         FormulaLanguageVersions.Definition,
         AttributionMethods.Definition,
+        ParameterValueTypes.Definition,
+        DayCountConventions.Definition,
         ReportMappingMethods.Definition,
         ReportLineKinds.Definition,
         ReportRowKinds.Definition,
         ReportValueKinds.Definition,
         SubtotalPositions.Definition,
         ReportLayouts.Definition,
+        RowRoles.Definition,
+        FontWeights.Definition,
+        BorderStyles.Definition,
         VersionKinds.Definition,
         LookupKinds.Definition
     ];

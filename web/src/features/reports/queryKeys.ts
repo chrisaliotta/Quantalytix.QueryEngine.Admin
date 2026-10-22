@@ -24,3 +24,8 @@ export function reportVariableScopesKey(tenantId: string, reportId: number) {
 export function reportColumnsKey(tenantId: string, reportId: number) {
   return ['report-columns', tenantId, reportId] as const;
 }
+
+/** The key of a report's styles, which its rows name. */
+export function reportStylesKey(tenantId: string, reportId: number) {
+  return ['report-styles', tenantId, reportId] as const;
+}

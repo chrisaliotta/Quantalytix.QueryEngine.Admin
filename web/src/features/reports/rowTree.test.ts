@@ -5,12 +5,27 @@
  * sends (the dropped row's new parent and its sibling group renumbered as shown), which drops the tree refuses because the
  * API would (nothing under a formula row, member rows only under member rows, one member row at the top), that deleting a
  * row hands its children to its parent, that each kind is offered only the parents it can have, and that a new row's key is
- * a well-formed key unique in the report.
+ * a well-formed key unique in the report. Because every save replaces the whole tree, a stored row must carry its style and own
+ * parameter values back, or a drag would erase them. A row without a value of a parameter inherits as the engine resolves it, its
+ * nearest ancestor's, a formula row the total's, else the model's default, which the row sheet shows; and the sheet shows the API's
+ * errors about its row on its own fields.
  */
 import { describe, expect, it } from 'vitest';
 import type { TreeItems } from '@registry/components/Nestable';
-import { buildRowTree, canPlace, keyFromLabel, nextSortOrder, parentsFor, rowsAfterMove, withoutRow } from './rowTree';
-import type { ReportRowInput } from './types';
+import { ApiProblem } from '@/api/problemDetails';
+import {
+  buildRowTree,
+  canPlace,
+  inheritedValue,
+  keyFromLabel,
+  nextSortOrder,
+  parentsFor,
+  rowProblem,
+  rowsAfterMove,
+  toRowInput,
+  withoutRow,
+} from './rowTree';
+import type { ModelParameter, ReportRowInput } from './types';
 
 function row(key: string, kind: string, parentKey: string | null, sortOrder: number): ReportRowInput {
   return { key, label: key, kind, parentKey, sortOrder, isVisible: true, showsValues: true, calculatedMeasureKey: null, valueColumnKey: null };
@@ -97,6 +112,70 @@ describe('nextSortOrder', () => {
   it('places a new row after the rows already under its parent', () => {
     expect(nextSortOrder(rows, 'TOTAL')).toBe(3);
     expect(nextSortOrder(rows, 'AUTO')).toBe(0);
+  });
+});
+
+describe('toRowInput', () => {
+  it('carries a stored row\'s style and own parameter values back into the tree', () => {
+    const input = toRowInput({
+      key: 'LOANS',
+      label: 'Loans',
+      kind: 'group',
+      sortOrder: 2,
+      isVisible: true,
+      showsValues: false,
+      styleKey: 'subtotals',
+      parameters: { dayCount: 'actual_360', scale: 1000 },
+      items: [],
+    });
+
+    expect([input.styleKey, input.parameters]).toEqual(['subtotals', { dayCount: 'actual_360', scale: 1000 }]);
+  });
+});
+
+describe('inheritedValue', () => {
+  const dayCount: ModelParameter = { parameterKey: 'dayCount', displayName: 'Day count', valueType: 'text', defaultText: 'actual_actual' };
+  const tree = [
+    { ...row('TOTAL', 'group', null, 0), parameters: { dayCount: 'actual_365' } },
+    { ...row('LOANS', 'group', 'TOTAL', 0), showsValues: false, isVisible: false },
+    { ...row('MORTGAGE', 'data', 'LOANS', 0), parameters: { dayCount: 'thirty_360_us' } },
+    row('nim', 'formula', null, 1),
+  ];
+
+  it('takes the nearest ancestor\'s own value, through hidden rows and headers', () => {
+    expect(inheritedValue(tree, 'data', 'LOANS', dayCount)).toBe('actual_365');
+    expect(inheritedValue(tree, 'section', 'MORTGAGE', dayCount)).toBe('thirty_360_us');
+  });
+
+  // The engine evaluates a formula row at the report's total wherever it sits, so it reads the total's value, never its parent's.
+  it('takes the total\'s value for a formula row wherever it sits, and for a section at the top', () => {
+    expect(inheritedValue(tree, 'formula', 'MORTGAGE', dayCount)).toBe('actual_365');
+    expect(inheritedValue(tree, 'formula', null, dayCount)).toBe('actual_365');
+    expect(inheritedValue(tree, 'section', null, dayCount)).toBe('actual_365');
+  });
+
+  it('takes the model\'s default of the parameter\'s type when no ancestor sets a value, or for the total', () => {
+    const scale: ModelParameter = { parameterKey: 'scale', displayName: 'Scale', valueType: 'number', defaultNumber: 1000 };
+
+    expect(inheritedValue([row('TOTAL', 'group', null, 0)], 'data', 'TOTAL', dayCount)).toBe('actual_actual');
+    expect(inheritedValue(tree, 'group', null, dayCount)).toBe('actual_actual');
+    expect(inheritedValue(tree, 'data', 'MORTGAGE', scale)).toBe(1000);
+  });
+});
+
+describe('rowProblem', () => {
+  it('keys the errors of the sheet\'s row by its fields and keeps every other error as it is', () => {
+    const problem = new ApiProblem(400, {
+      title: 'One or more validation errors occurred.',
+      errors: { 'rows[2].styleKey': ['No such style.'], 'rows[2].parameters.dayCount': ['Not allowed.'], 'rows[0].label': ['Empty.'], rows: ['Two roots.'] },
+    });
+
+    expect((rowProblem(problem, 2) as ApiProblem).errors).toEqual({
+      styleKey: ['No such style.'],
+      'parameters.dayCount': ['Not allowed.'],
+      'rows[0].label': ['Empty.'],
+      rows: ['Two roots.'],
+    });
   });
 });
 

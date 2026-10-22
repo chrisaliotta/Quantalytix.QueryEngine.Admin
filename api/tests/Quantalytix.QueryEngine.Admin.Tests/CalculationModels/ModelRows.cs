@@ -52,11 +52,46 @@ internal static class ModelRows
         return MetricAttributionService.Put(MarginGraph(), attribution);
     }
 
+    /// <summary>
+    /// The seed's margin model after its move to formula language 1.2: <see cref="MarginGraph"/> with the day count parameter, and
+    /// YIELD and the INTEREST_INCOME identity annualized by <c>YEARFRAC(@dayCount)</c>, while their days drivers still switch
+    /// <c>@periodDays</c> and <c>@yearDays</c>.
+    /// </summary>
+    public static ModelGraph YearFracGraph()
+    {
+        var model = MarginGraph();
+        return model with
+        {
+            Model = model.Model with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
+            CalculatedMeasures = [Calculated(61, "YIELD", "[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] / YEARFRAC(@dayCount)")],
+            Attributions = [model.Attributions[0], model.Attributions[1] with { ExpressionText = "[m.AVERAGE_BALANCE] * [m.YIELD] * YEARFRAC(@dayCount)" }],
+            Parameters = [DayCount()]
+        };
+    }
+
+    /// <summary>The seed's day count parameter: text limited to the day count conventions, which defaults to actual/actual.</summary>
+    public static ModelParameter DayCount()
+    {
+        return TextParameter("dayCount", DayCountConventions.ActualActual) with { AllowedValues = [.. DayCountConventions.Definition.Values.Select(value => value.Value)] };
+    }
+
+    /// <summary>A text parameter that takes any text, named by its key.</summary>
+    public static ModelParameter TextParameter(string parameterKey, string defaultText)
+    {
+        return new ModelParameter { ParameterKey = parameterKey, DisplayName = parameterKey, ValueType = ParameterValueTypes.Text, DefaultText = defaultText };
+    }
+
+    /// <summary>A number parameter, named by its key.</summary>
+    public static ModelParameter NumberParameter(string parameterKey, decimal defaultNumber)
+    {
+        return new ModelParameter { ParameterKey = parameterKey, DisplayName = parameterKey, ValueType = ParameterValueTypes.Number, DefaultNumber = defaultNumber };
+    }
+
     /// <summary>The model's metrics as <see cref="ModelChanges"/> checks them: model 40 with the given rows.</summary>
     public static ModelGraph Graph(
         IReadOnlyList<VariableRecord> variables, IReadOnlyList<CalculatedMeasureRecord> measures, params IReadOnlyList<MetricAttribution> attributions)
     {
-        return new ModelGraph { Model = Model(), Variables = variables, CalculatedMeasures = measures, Attributions = attributions };
+        return new ModelGraph { Model = Model(), Variables = variables, CalculatedMeasures = measures, Attributions = attributions, Parameters = [] };
     }
 
     /// <summary>An attribution of a metric with an optional expression and the given drivers, without a weight variable.</summary>

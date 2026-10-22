@@ -31,3 +31,15 @@ export type AttributionDriver = Schemas['AttributionDriver'];
 
 /** Body of `PUT calculation-models/{modelId}/attributions/{metricKey}`. */
 export type MetricAttributionInput = Schemas['MetricAttributionInput'];
+
+/**
+ * A value the model declares for its formulas to read as `@key`, a number or text, which each report sets on its rows; a row
+ * without one inherits its nearest ancestor's, else the default (`qe_model_parameter`).
+ */
+export type ModelParameter = Schemas['ModelParameter'];
+
+/** Body of `PUT calculation-models/{modelId}/parameters/{parameterKey}`. */
+export type ModelParameterInput = Schemas['ModelParameterInput'];
+
+/** The `parameter_value_type` vocabulary. */
+export type ParameterValueType = 'number' | 'text';

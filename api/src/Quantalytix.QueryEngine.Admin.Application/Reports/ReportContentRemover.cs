@@ -18,6 +18,8 @@ public sealed class ReportContentRemover(
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
+    ITableGateway<ReportRowParameterRecord> rowParameters,
+    ITableGateway<ReportStyleRecord> styles,
     OwnedVersions owned,
     BridgeService bridges,
     AssumptionPins pins)
@@ -52,7 +54,10 @@ public sealed class ReportContentRemover(
         await profiles.DeleteAsync(new { SourceProfileId = profileIds }, cancellationToken);
     }
 
-    /// <summary>Deletes every content row of a report: profiles, sources with their bridges, calculation dimensions, scopes, rows and columns.</summary>
+    /// <summary>
+    /// Deletes every content row of a report: profiles, sources with their bridges, calculation dimensions, scopes, rows with their
+    /// parameter values, columns and styles.
+    /// </summary>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>A task that completes when the rows are deleted.</returns>
@@ -63,8 +68,10 @@ public sealed class ReportContentRemover(
         await RemoveSourcesAsync(await sources.ListAsync(owner, cancellationToken), cancellationToken);
         await dimensions.DeleteAsync(owner, cancellationToken);
         await scopes.DeleteAsync(owner, cancellationToken);
+        await rowParameters.DeleteAsync(owner, cancellationToken);
         await lines.DeleteAsync(owner, cancellationToken);
         await columns.DeleteAsync(owner, cancellationToken);
         await memberOptions.DeleteAsync(owner, cancellationToken);
+        await styles.DeleteAsync(owner, cancellationToken);
     }
 }

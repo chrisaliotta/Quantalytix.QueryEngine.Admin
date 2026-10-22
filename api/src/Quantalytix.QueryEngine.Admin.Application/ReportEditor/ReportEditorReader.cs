@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -6,21 +8,24 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
 /// <summary>
-/// Reads a report as its editor shows it: the members of its report dimension and its overlay rows, the rules each bridge source's
-/// bridge adds into each row, and the sources with their variables. A member row is a data row when its member is assignable, so it
-/// takes items and the rows under it add to its total, and a group otherwise.
+/// Reads a report as its editor shows it: the members of its report dimension and its overlay rows, each with its style and its own
+/// parameter values, the rules each bridge source's bridge adds into each row, the sources with their variables, and the parameters
+/// of the report's model. A member row is a data row when its member is assignable, so it takes items and the rows under it add to
+/// its total, and a group otherwise.
 /// </summary>
 public sealed class ReportEditorReader(
     ITableGateway<ReportRecord> reports,
     ITableGateway<DimensionMemberRecord> members,
     ITableGateway<ReportMemberOptionRecord> options,
     ITableGateway<ReportLineRecord> lines,
+    ITableGateway<ReportRowParameterRecord> rowParameters,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportSourceRecord> sources,
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
     ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<DatasetRecord> datasets,
     ITableGateway<DimensionRoleRecord> roles,
+    ModelParameterService parameters,
     OwnedVersions owned,
     PublishedDimensionReader publishedDimensions)
 {
@@ -50,25 +55,28 @@ public sealed class ReportEditorReader(
                     Factor = entry.Factor
                 },
                 StringComparer.Ordinal);
+        var values = (await rowParameters.ListAsync(owner, cancellationToken)).ToLookup(value => value.RowKey, StringComparer.Ordinal);
         IEnumerable<EditorRow> rows =
         [
-            .. await MemberRowsAsync(reportId, structure.DimensionVersionId, items, cancellationToken),
-            .. await OverlayRowsAsync(reportId, cancellationToken)
+            .. await MemberRowsAsync(reportId, structure.DimensionVersionId, items, values, cancellationToken),
+            .. await OverlayRowsAsync(reportId, values, cancellationToken)
         ];
         return new EditorView
         {
             Report = report,
             DimensionVersionId = structure.DimensionVersionId,
             Rows = [.. rows.OrderBy(row => row.SortOrder).ThenBy(row => row.Key, StringComparer.Ordinal)],
-            Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId), cancellationToken)
+            Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId), cancellationToken),
+            Parameters = await parameters.ListAsync(report.ModelId, cancellationToken)
         };
     }
 
-    /// <summary>The members of the report dimension's version as rows, with the member options that hide them or make them headers.</summary>
+    /// <summary>The members of the report dimension's version as rows, with the member options that hide them, make them headers or style them.</summary>
     private async Task<IEnumerable<EditorRow>> MemberRowsAsync(
         long reportId,
         long structureId,
         ILookup<string, EditorRowItem> items,
+        ILookup<string, ReportRowParameterRecord> values,
         CancellationToken cancellationToken)
     {
         var tree = await members.ListAsync(new { DimensionVersionId = structureId }, cancellationToken);
@@ -86,13 +94,15 @@ public sealed class ReportEditorReader(
                 SortOrder = member.SortOrder,
                 IsVisible = option?.IsVisible ?? true,
                 ShowsValues = option?.ShowsValues ?? true,
+                StyleKey = option?.StyleKey,
+                Parameters = Values(values[member.MemberKey]),
                 Items = [.. items[member.MemberKey]]
             };
         });
     }
 
     /// <summary>The report's overlay rows, with the key of the column a formula row fills.</summary>
-    private async Task<IEnumerable<EditorRow>> OverlayRowsAsync(long reportId, CancellationToken cancellationToken)
+    private async Task<IEnumerable<EditorRow>> OverlayRowsAsync(long reportId, ILookup<string, ReportRowParameterRecord> values, CancellationToken cancellationToken)
     {
         var owner = new { ReportId = reportId };
         var columnKeys = (await columns.ListAsync(owner, cancellationToken)).ToDictionary(column => column.ReportColumnId, column => column.ColumnKey);
@@ -107,8 +117,16 @@ public sealed class ReportEditorReader(
             ShowsValues = true,
             CalculatedMeasureKey = line.CalculatedMeasureKey,
             ValueColumnKey = line.ValueColumnId is { } columnId ? columnKeys[columnId] : null,
+            StyleKey = line.StyleKey,
+            Parameters = Values(values[line.LineKey]),
             Items = []
         });
+    }
+
+    /// <summary>A row's own parameter values, by parameter key.</summary>
+    private static Dictionary<string, JsonElement> Values(IEnumerable<ReportRowParameterRecord> values)
+    {
+        return values.OrderBy(value => value.ParameterKey, StringComparer.Ordinal).ToDictionary(value => value.ParameterKey, RowParameterJson.Of, StringComparer.Ordinal);
     }
 
     /// <summary>The report's sources with their datasets, item dimensions, bridge versions, unmapped counts and variables, by key.</summary>

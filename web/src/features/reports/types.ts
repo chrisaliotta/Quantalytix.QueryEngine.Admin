@@ -79,3 +79,15 @@ export type ReportMappingMethod = 'bridge' | 'direct';
 
 /** The `source_selection` vocabulary: a rule takes its member alone, or the member and every member under it. */
 export type SourceSelection = 'member' | 'descendants';
+
+/** How a report shows the rows that name a style, and every row of its default role that names none (`qe_report_style`). */
+export type ReportStyle = Schemas['ReportStyleRecord'];
+
+/** Body of `PUT reports/{reportId}/styles/{styleKey}`. */
+export type ReportStyleInput = Schemas['ReportStyleInput'];
+
+/** A parameter of the report's model, which the report's rows set or inherit. */
+export type ModelParameter = Schemas['ModelParameter'];
+
+/** A row's own value of a parameter: a number for a number parameter, text for a text parameter. */
+export type RowParameterValue = number | string;

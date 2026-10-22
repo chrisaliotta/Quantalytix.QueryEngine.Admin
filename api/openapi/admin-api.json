@@ -2594,6 +2594,256 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/reports/{reportId}/styles": {
+      "get": {
+        "tags": [
+          "ReportStyles"
+        ],
+        "summary": "Lists a report's styles.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the report.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "The report.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The styles by key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportStyleRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/reports/{reportId}/styles/{styleKey}": {
+      "put": {
+        "tags": [
+          "ReportStyles"
+        ],
+        "summary": "Sets a style of a report, creating it under the key or replacing the one stored.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the report.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "The report that owns the style.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "styleKey",
+            "in": "path",
+            "description": "The style's key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStyleInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStyleInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored style.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStyleRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The key or the input breaks a field rule, such as a color that is not #RRGGBB; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The report is enabled and the style would break its rules, such as a second default style of a role; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ReportStyles"
+        ],
+        "summary": "Deletes a style of a report, unless a row of the report shows it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the report.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "The report.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "styleKey",
+            "in": "path",
+            "description": "The style's key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The style is deleted, or the report had none by the key."
+          },
+          "409": {
+            "description": "Nothing was deleted: rows of the report show the style; the detail names them.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The report is enabled and losing the style would break its rules, such as a row that shows it; nothing was deleted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/reports/{reportId}/variable-scopes": {
       "get": {
         "tags": [
@@ -7131,6 +7381,41 @@
         }
       }
     },
+    "/development/token": {
+      "post": {
+        "tags": [
+          "DevelopmentToken"
+        ],
+        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The signed token, valid for eight hours or until the host restarts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/datasets": {
       "get": {
         "tags": [
@@ -9740,6 +10025,246 @@
           },
           "422": {
             "description": "The model breaks its rules without the attribution; nothing was deleted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters": {
+      "get": {
+        "tags": [
+          "ModelParameters"
+        ],
+        "summary": "Lists a model's parameters.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The calculation model.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The parameters by key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelParameter"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}": {
+      "put": {
+        "tags": [
+          "ModelParameters"
+        ],
+        "summary": "Sets a parameter of a calculation model, creating it under the key or replacing the one stored, unless the change breaks the\nmodel's formulas or a report's row values: a formula must read the parameter where its new type belongs, and YEARFRAC a text\nparameter whose allowed values are day count conventions, and every value a report's rows set must fit its new type and allowed\nvalues.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The model that declares the parameter.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "parameterKey",
+            "in": "path",
+            "description": "The parameter's key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelParameterInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelParameterInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The stored parameter.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelParameter"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The key or the input breaks a field rule, such as a number parameter with allowed values; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The change would break a formula of the model or a report's row values, such as a type a formula or row reads otherwise; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ModelParameters"
+        ],
+        "summary": "Deletes a parameter of a calculation model, unless a formula of the model reads it or a report's rows set it.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the model.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The calculation model.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "parameterKey",
+            "in": "path",
+            "description": "The parameter's key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The parameter is deleted, or the model had none by the key."
+          },
+          "422": {
+            "description": "A formula of the model reads the parameter or a report's rows set it; nothing was deleted.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -12984,6 +13509,52 @@
         },
         "description": "The editable settings of a draft dataset version."
       },
+      "DevelopmentTokenRequest": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries, such as `development`."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
+          }
+        },
+        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
+      },
+      "DevelopmentTokenResponse": {
+        "required": [
+          "accessToken",
+          "tenantId",
+          "systemAdmin",
+          "expiresUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The signed JWT to send as `Authorization: Bearer ...`."
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role."
+          },
+          "expiresUtc": {
+            "type": "string",
+            "description": "When the token expires.",
+            "format": "date-time"
+          }
+        },
+        "description": "A bearer token issued by a Development host."
+      },
       "DimensionBindingRecord": {
         "required": [
           "bindingId",
@@ -13442,6 +14013,7 @@
           "sortOrder",
           "isVisible",
           "showsValues",
+          "parameters",
           "items"
         ],
         "type": "object",
@@ -13491,6 +14063,23 @@
               "string"
             ],
             "description": "The key of the column a formula row places its value in; null for the other kinds."
+          },
+          "styleKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the report's style the row shows; null for its role's default style."
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "description": "The row's own parameter values by parameter key, a JSON number or string as the parameter's type says; inherited values are not listed."
           },
           "items": {
             "type": "array",
@@ -13602,7 +14191,8 @@
           "report",
           "dimensionVersionId",
           "rows",
-          "sources"
+          "sources",
+          "parameters"
         ],
         "type": "object",
         "properties": {
@@ -13628,9 +14218,16 @@
               "$ref": "#/components/schemas/EditorSource"
             },
             "description": "The report's sources, by key."
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelParameter"
+            },
+            "description": "The parameters the report's model declares, by key, which rows set or inherit."
           }
         },
-        "description": "A report as its editor shows it: the report, its rows with the items each bridge source maps to them, and its sources with the\nvariables they supply."
+        "description": "A report as its editor shows it: the report, its rows with the items each bridge source maps to them, its sources with the\nvariables they supply, and the parameters of its model, whose defaults the rows inherit."
       },
       "FieldInput": {
         "required": [
@@ -15158,6 +15755,111 @@
         },
         "description": "A metric's attribution with its drivers, as `PUT calculation-models/{modelId}/attributions/{metricKey}` takes it."
       },
+      "ModelParameter": {
+        "required": [
+          "parameterKey",
+          "displayName",
+          "valueType"
+        ],
+        "type": "object",
+        "properties": {
+          "parameterKey": {
+            "type": "string",
+            "description": "The key formulas read the parameter by, as `@key`; never `periodDays` or `yearDays`."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "valueType": {
+            "type": "string",
+            "description": "A `parameter_value_type` value: `number` or `text`."
+          },
+          "allowedValues": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The texts a text parameter may take; null when it may take any text, and for a number parameter."
+          },
+          "defaultNumber": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The value of a number parameter on the rows no row above sets; null for a text parameter.",
+            "format": "double"
+          },
+          "defaultText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The value of a text parameter on the rows no row above sets; null for a number parameter."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional description."
+          }
+        },
+        "description": "A value a calculation model declares for its formulas to read as `@key`, as the parameter endpoints return it. Each report\nsets values on its rows; a row without one of its own takes its nearest ancestor's, and else the default."
+      },
+      "ModelParameterInput": {
+        "required": [
+          "displayName",
+          "valueType"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "valueType": {
+            "type": "string",
+            "description": "A `parameter_value_type` value: `number` or `text`."
+          },
+          "allowedValues": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The texts a text parameter may take, each once; null for any text, and for a number parameter."
+          },
+          "defaultNumber": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "A number parameter's default, which fits `DECIMAL(38, 12)`; null for a text parameter.",
+            "format": "double"
+          },
+          "defaultText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A text parameter's default, one of its allowed values when it has them; null for a number parameter."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional description."
+          }
+        },
+        "description": "A parameter of a calculation model, as `PUT calculation-models/{modelId}/parameters/{parameterKey}` takes it."
+      },
       "NewBridgeInput": {
         "required": [
           "bridgeKey",
@@ -16331,6 +17033,23 @@
               "string"
             ],
             "description": "The key of the report's column a formula row places its value in; null for the other kinds."
+          },
+          "styleKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the report's style the row shows; null for its role's default style."
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "description": "The row's own values of the model's parameters, by parameter key: a JSON number for a number parameter and a JSON string for a\ntext parameter. A parameter the row leaves out takes its nearest ancestor's value, and else the model's default."
           }
         },
         "description": "One row of a report's complete row tree."
@@ -16529,6 +17248,183 @@
           }
         },
         "description": "Whether the engine offers a report, as `PUT reports/{reportId}/status` takes it."
+      },
+      "ReportStyleInput": {
+        "required": [
+          "displayName",
+          "isItalic"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "defaultRole": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `row_role` value whose rows show the style when they name none; null for none."
+          },
+          "fontFamily": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A CSS font family."
+          },
+          "fontSize": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The font size in points, from 6 to 72, with at most two decimals.",
+            "format": "double"
+          },
+          "fontWeight": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `font_weight` value."
+          },
+          "isItalic": {
+            "type": "boolean",
+            "description": "Whether the text is italic."
+          },
+          "textColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `#RRGGBB` text color."
+          },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `#RRGGBB` background color."
+          },
+          "borderTop": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `border_style` value for the rule above the row."
+          },
+          "borderBottom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `border_style` value for the rule below the row."
+          },
+          "indent": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Indent levels, from 0 to 10, added to the row's depth.",
+            "format": "int32"
+          }
+        },
+        "description": "A style of a report, as `PUT reports/{reportId}/styles/{styleKey}` takes it. A property left null keeps the client's own."
+      },
+      "ReportStyleRecord": {
+        "required": [
+          "reportId",
+          "styleKey",
+          "displayName",
+          "isItalic"
+        ],
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "integer",
+            "description": "The owning report; first part of the primary key.",
+            "format": "int64"
+          },
+          "styleKey": {
+            "type": "string",
+            "description": "The key rows name the style by; second part of the primary key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "defaultRole": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `row_role` value whose rows show the style when they name none; at most one style of a report per role."
+          },
+          "fontFamily": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A CSS font family."
+          },
+          "fontSize": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The font size in points, from 6 to 72.",
+            "format": "double"
+          },
+          "fontWeight": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `font_weight` value."
+          },
+          "isItalic": {
+            "type": "boolean",
+            "description": "Whether the text is italic."
+          },
+          "textColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `#RRGGBB` text color."
+          },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `#RRGGBB` background color."
+          },
+          "borderTop": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `border_style` value for the rule above the row."
+          },
+          "borderBottom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `border_style` value for the rule below the row."
+          },
+          "indent": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Indent levels, from 0 to 10, added to the row's depth.",
+            "format": "int32"
+          }
+        },
+        "description": "A `qe_report_style` row: how a report shows the rows that name it, or every row of its default role that names no style.\nStyles are presentation only; a property left null keeps the client's own."
       },
       "ReportVariableScopeInput": {
         "required": [
@@ -17648,6 +18544,9 @@
       "name": "ReportSources"
     },
     {
+      "name": "ReportStyles"
+    },
+    {
       "name": "ReportVariableScopes"
     },
     {
@@ -17693,6 +18592,9 @@
       "name": "RangeBands"
     },
     {
+      "name": "DevelopmentToken"
+    },
+    {
       "name": "Datasets"
     },
     {
@@ -17712,6 +18614,9 @@
     },
     {
       "name": "MetricAttributions"
+    },
+    {
+      "name": "ModelParameters"
     },
     {
       "name": "Variables"

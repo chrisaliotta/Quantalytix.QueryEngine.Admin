@@ -15,8 +15,9 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     /// Registers the slice's services and the report rules, all scoped. Each content kind is registered under
     /// <see cref="IOwnedContent{TItem, TInput}"/>, a model's also under <see cref="IModelContent{TItem, TInput}"/> and a report's
     /// under <see cref="IReportContent{TItem, TInput}"/>, with the validator of its item routes. The report rules run when a report
-    /// is enabled and on every write to an enabled report; <see cref="ModelChanges"/> runs the model's formula and attribution rules
-    /// and the report rules that read its metrics on every write to a model, its metrics or their attributions; and the report rules
+    /// is enabled and on every write to an enabled report; <see cref="ModelChanges"/> runs the model's formula, parameter and
+    /// attribution rules, the row parameter rule over every report of the model and the report rules that read its metrics over the
+    /// enabled ones on every write to a model, its metrics, their attributions or its parameters; and the report rules
     /// that read what a release gives reports also run, over the enabled reports, when a release is validated, after the release
     /// slice's own rules.
     /// </summary>
@@ -31,6 +32,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportUses>();
         services.AddScoped<ModelChanges>();
         services.AddScoped<MetricAttributionService>();
+        services.AddScoped<ModelParameterService>();
         services.AddModelContent<VariableService, VariableRecord, VariableInput>();
         services.AddModelContent<CalculatedMeasureService, CalculatedMeasureRecord, CalculatedMeasureInput>();
 
@@ -43,6 +45,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportContentRemover>();
         services.AddScoped<ReportColumnService>();
         services.AddScoped<ReportVariableScopeService>();
+        services.AddScoped<ReportStyleService>();
         services.AddScoped<ModelMetricsReader>();
         services.AddScoped<FormulaRowReferences>();
         services.AddScoped<ReportGraphReader>();
@@ -68,6 +71,8 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<IReportRule, ProfilesCompleteRule>();
         services.AddScoped<IReportRule, ReportSourcesResolveRule>();
         services.AddScoped<IReportRule, ReportFactorsApplyRule>();
+        services.AddScoped<IReportRule, ReportRowParametersResolveRule>();
+        services.AddScoped<IReportRule, ReportStylesResolveRule>();
         services.AddConsumerRule<ReportSourcesResolveRule>();
         services.AddConsumerRule<ReportFactorsApplyRule>();
         return services;

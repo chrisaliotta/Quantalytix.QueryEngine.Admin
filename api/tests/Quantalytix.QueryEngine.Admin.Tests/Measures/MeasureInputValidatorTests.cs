@@ -139,6 +139,19 @@ public sealed class MeasureInputValidatorTests
         _validator.TestValidate(rowFilter).ShouldHaveValidationErrorFor(measure => measure.RowFilterExpression);
     }
 
+    /// <summary>
+    /// YEARFRAC reads the period a report evaluates a model formula for, which a query has none of, so a dataset expression that calls
+    /// it fails, though the shared parser reads it.
+    /// </summary>
+    [Fact]
+    public void DatasetExpressions_CannotCallYearFrac()
+    {
+        var formula = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] / YEARFRAC('actual_360')" };
+
+        _validator.TestValidate(formula).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
+            .WithErrorMessage("Metadata expressions are expression language 1.0, which has no YEARFRAC, so 'Expression Text' cannot call it.");
+    }
+
     /// <summary>Only formulas have an expression.</summary>
     [Fact]
     public void ExpressionOnAnotherKind_IsRejected()

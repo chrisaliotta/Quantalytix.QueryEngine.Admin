@@ -84,6 +84,10 @@ public static class TableCatalog
             "qe_metric_attribution_driver",
             [nameof(MetricAttributionDriverRecord.ModelId), nameof(MetricAttributionDriverRecord.MetricKey), nameof(MetricAttributionDriverRecord.DriverKey)],
             [nameof(MetricAttributionDriverRecord.InputKeysJson)]),
+        [typeof(ModelParameterRecord)] = Tenant(
+            "qe_model_parameter",
+            [nameof(ModelParameterRecord.ModelId), nameof(ModelParameterRecord.ParameterKey)],
+            [nameof(ModelParameterRecord.AllowedValuesJson)]),
         [typeof(CalculationDimensionRecord)] = Tenant(
             "qe_calculation_dimension", [nameof(CalculationDimensionRecord.CalculationDimensionId)], []),
         [typeof(ReportRecord)] = Tenant(
@@ -99,7 +103,12 @@ public static class TableCatalog
         [typeof(ReportMemberOptionRecord)] = Tenant(
             "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportId), nameof(ReportMemberOptionRecord.MemberKey)], []),
         [typeof(ReportVariableScopeRecord)] = Tenant(
-            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportId), nameof(ReportVariableScopeRecord.VariableKey)], [])
+            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportId), nameof(ReportVariableScopeRecord.VariableKey)], []),
+        [typeof(ReportRowParameterRecord)] = Tenant(
+            "qe_report_row_parameter",
+            [nameof(ReportRowParameterRecord.ReportId), nameof(ReportRowParameterRecord.RowKey), nameof(ReportRowParameterRecord.ParameterKey)],
+            []),
+        [typeof(ReportStyleRecord)] = Tenant("qe_report_style", [nameof(ReportStyleRecord.ReportId), nameof(ReportStyleRecord.StyleKey)], [])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>
