@@ -18,15 +18,15 @@ public sealed class ReleaseNotActiveRule(ITableGateway<DatabaseInfoRecord> datab
     /// <summary>The rule applies to semantic releases.</summary>
     public string Kind { get; } = VersionKinds.SemanticRelease;
 
-    /// <summary>Reports a release that <c>active_release_id</c> points at.</summary>
+    /// <summary>Reports a release that <c>active_semantic_release_id</c> points at.</summary>
     /// <param name="versionId">The release being retired.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>One violation for the active release; none otherwise.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var info = await databaseInfo.GetAsync(new { SingletonId }, cancellationToken);
-        if (info.ActiveReleaseId != versionId) return [];
-        var release = await releases.GetAsync(new { ReleaseId = versionId }, cancellationToken);
+        if (info.ActiveSemanticReleaseId != versionId) return [];
+        var release = await releases.GetAsync(new { SemanticReleaseId = versionId }, cancellationToken);
         return
         [
             new RuleViolation

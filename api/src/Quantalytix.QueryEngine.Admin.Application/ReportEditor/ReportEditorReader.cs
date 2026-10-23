@@ -67,7 +67,7 @@ public sealed class ReportEditorReader(
             DimensionVersionId = structure.DimensionVersionId,
             Rows = [.. rows.OrderBy(row => row.SortOrder).ThenBy(row => row.Key, StringComparer.Ordinal)],
             Sources = await SourcesAsync(reportSources, bridgeVersions, entries.ToLookup(entry => entry.BridgeVersionId), cancellationToken),
-            Parameters = await parameters.ListAsync(report.ModelId, cancellationToken)
+            Parameters = await parameters.ListAsync(report.CalculationModelId, cancellationToken)
         };
     }
 
@@ -80,7 +80,7 @@ public sealed class ReportEditorReader(
         CancellationToken cancellationToken)
     {
         var tree = await members.ListAsync(new { DimensionVersionId = structureId }, cancellationToken);
-        var keyOf = tree.ToDictionary(member => member.MemberId, member => member.MemberKey);
+        var keyOf = tree.ToDictionary(member => member.DimensionMemberId, member => member.MemberKey);
         var optionOf = (await options.ListAsync(new { ReportId = reportId }, cancellationToken)).ToDictionary(option => option.MemberKey, StringComparer.Ordinal);
         return tree.Select(member =>
         {
@@ -90,7 +90,7 @@ public sealed class ReportEditorReader(
                 Key = member.MemberKey,
                 Label = option?.DisplayName ?? member.DisplayName,
                 Kind = member.IsAssignable ? ReportRowKinds.Data : ReportRowKinds.Group,
-                ParentKey = member.ParentMemberId is { } parentId ? keyOf[parentId] : null,
+                ParentKey = member.ParentDimensionMemberId is { } parentId ? keyOf[parentId] : null,
                 SortOrder = member.SortOrder,
                 IsVisible = option?.IsVisible ?? true,
                 ShowsValues = option?.ShowsValues ?? true,
@@ -116,7 +116,7 @@ public sealed class ReportEditorReader(
             IsVisible = line.IsVisible,
             ShowsValues = true,
             CalculatedMeasureKey = line.CalculatedMeasureKey,
-            ValueColumnKey = line.ValueColumnId is { } columnId ? columnKeys[columnId] : null,
+            ValueColumnKey = line.ValueReportColumnId is { } columnId ? columnKeys[columnId] : null,
             StyleKey = line.StyleKey,
             Parameters = Values(values[line.LineKey]),
             Items = []
@@ -138,21 +138,21 @@ public sealed class ReportEditorReader(
     {
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = reportSources.Select(source => source.DatasetId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
-        var rolesById = (await roles.ListAsync(new { RoleId = reportSources.Select(source => source.RoleId).OfType<long>().Distinct().ToArray() }, cancellationToken))
-            .ToDictionary(role => role.RoleId);
+        var rolesById = (await roles.ListAsync(new { DimensionRoleId = reportSources.Select(source => source.DimensionRoleId).OfType<long>().Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(role => role.DimensionRoleId);
         var variablesOf = (await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken))
             .ToLookup(variable => variable.ReportSourceId);
         var editorSources = new List<EditorSource>();
         foreach (var source in reportSources.OrderBy(source => source.SourceKey, StringComparer.OrdinalIgnoreCase))
         {
-            var role = source.RoleId is { } roleId ? rolesById[roleId] : null;
+            var role = source.DimensionRoleId is { } dimensionRoleId ? rolesById[dimensionRoleId] : null;
             var itemKeys = role is null ? null : await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken);
             var bridgeVersion = bridgeVersions.GetValueOrDefault(source.ReportSourceId);
             editorSources.Add(new EditorSource
             {
                 Source = source,
                 DatasetKey = datasetKeys[source.DatasetId],
-                RoleKey = role?.RoleKey,
+                DimensionRoleKey = role?.DimensionRoleKey,
                 ItemDimensionId = role?.DimensionId,
                 ItemDimensionVersionId = itemKeys?.Version.DimensionVersionId,
                 BridgeVersionId = bridgeVersion?.BridgeVersionId,

@@ -35,8 +35,8 @@ export function GrainSheet({ versionId, grain, isDraft, onClose }: GrainSheetPro
       const body = { grainKind: values.grainKind ?? '', fieldIds: values.fieldIds };
       if (grain) {
         return unwrap(
-          await apiClient.PUT('/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{grainId}', {
-            params: { path: { tenantId, versionId, grainId: grain.grainId } },
+          await apiClient.PUT('/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}', {
+            params: { path: { tenantId, versionId, datasetGrainId: grain.datasetGrainId } },
             body,
           })
         );

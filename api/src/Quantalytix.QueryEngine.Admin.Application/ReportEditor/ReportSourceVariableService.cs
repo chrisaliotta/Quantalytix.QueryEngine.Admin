@@ -42,17 +42,17 @@ public sealed class ReportSourceVariableService(
         ];
         var listed = supplied.Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal);
         var reportProfiles = await profiles.ListAsync(new { ReportId = reportId }, cancellationToken);
-        var storedPicks = await picks.ListAsync(new { SourceProfileId = reportProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken);
+        var storedPicks = await picks.ListAsync(new { CalculationSourceProfileId = reportProfiles.Select(profile => profile.CalculationSourceProfileId).ToArray() }, cancellationToken);
         var dropped = storedPicks.Where(pick => pick.ReportSourceId == sourceId && !listed.Contains(pick.VariableKey)).ToList();
-        var picked = storedPicks.Except(dropped).Select(pick => (pick.SourceProfileId, pick.VariableKey)).ToHashSet();
+        var picked = storedPicks.Except(dropped).Select(pick => (pick.CalculationSourceProfileId, pick.VariableKey)).ToHashSet();
         SourceProfileRecord? created = reportProfiles.Count == 0
-            ? new SourceProfileRecord { SourceProfileId = ids.NextId(), ReportId = reportId, ProfileKey = DefaultProfileKey, DisplayName = "Default", IsEnabled = true }
+            ? new SourceProfileRecord { CalculationSourceProfileId = ids.NextId(), ReportId = reportId, ProfileKey = DefaultProfileKey, DisplayName = "Default", IsEnabled = true }
             : null;
         SourceProfileVariableRecord[] added =
         [
             .. (created is null ? reportProfiles : [created]).SelectMany(profile => supplied
-                .Where(variable => !picked.Contains((profile.SourceProfileId, variable.VariableKey)))
-                .Select(variable => new SourceProfileVariableRecord { SourceProfileId = profile.SourceProfileId, VariableKey = variable.VariableKey, ReportSourceId = sourceId }))
+                .Where(variable => !picked.Contains((profile.CalculationSourceProfileId, variable.VariableKey)))
+                .Select(variable => new SourceProfileVariableRecord { CalculationSourceProfileId = profile.CalculationSourceProfileId, VariableKey = variable.VariableKey, ReportSourceId = sourceId }))
         ];
         var defaulted = created is null ? report : report with { DefaultProfileKey = created.ProfileKey };
 

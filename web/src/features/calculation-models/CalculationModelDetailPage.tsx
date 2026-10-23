@@ -18,8 +18,8 @@ import { VariablesTab } from './VariablesTab';
 
 /** One calculation model: identity, settings, and its metrics and parameters in tabs, edited live. */
 export function CalculationModelDetailPage() {
-  const modelId = Number(useParams().modelId);
-  const model = useCalculationModel(modelId);
+  const calculationModelId = Number(useParams().calculationModelId);
+  const model = useCalculationModel(calculationModelId);
 
   if (model.isPending) {
     return <Loading />;
@@ -76,13 +76,13 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
           <TabsTrigger value="parameters">Parameters</TabsTrigger>
         </TabsList>
         <TabsContent value="variables">
-          <VariablesTab modelId={model.modelId} />
+          <VariablesTab calculationModelId={model.calculationModelId} />
         </TabsContent>
         <TabsContent value="calculated-measures">
-          <CalculatedMeasuresTab modelId={model.modelId} />
+          <CalculatedMeasuresTab calculationModelId={model.calculationModelId} />
         </TabsContent>
         <TabsContent value="parameters">
-          <ParametersTab modelId={model.modelId} />
+          <ParametersTab calculationModelId={model.calculationModelId} />
         </TabsContent>
       </Tabs>
 
@@ -95,7 +95,7 @@ function CalculationModelDetail({ model }: { model: CalculationModel }) {
         confirmLabel="Delete model"
         destructive
         onConfirm={() =>
-          deleteModel.mutate(model.modelId, { onSuccess: () => navigate(`/t/${tenantId}/calculation-models`) })
+          deleteModel.mutate(model.calculationModelId, { onSuccess: () => navigate(`/t/${tenantId}/calculation-models`) })
         }
       />
     </div>

@@ -7,5 +7,5 @@ public sealed record LevelReference
     public required long DimensionVersionId { get; init; }
 
     /// <summary>The level.</summary>
-    public required long LevelId { get; init; }
+    public required long DimensionLevelId { get; init; }
 }

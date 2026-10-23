@@ -23,7 +23,7 @@ public sealed record ReportRecord
     public required long ReportDimensionId { get; init; }
 
     /// <summary>The calculation model whose metrics the report reads; fixed at creation.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>The key of the profile a request runs under when it names none; required to enable the report.</summary>
     public string? DefaultProfileKey { get; init; }

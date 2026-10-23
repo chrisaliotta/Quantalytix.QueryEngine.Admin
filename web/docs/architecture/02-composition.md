@@ -79,9 +79,9 @@ flowchart TB
 | `dimensions` | `dimensions`, `dimensions/:dimensionId` | `DimensionListPage`, `DimensionDetailPage` | `'Dimensions'`, `DimensionCrumb` |
 | `mappings` | `mappings`, `mappings/:mappingSetId` | `MappingSetListPage`, `MappingSetDetailPage` | `'Mappings'`, `MappingSetCrumb` |
 | `bridges` | `bridges`, `bridges/:bridgeId` | `BridgeListPage`, `BridgeDetailPage` | `'Bridges'`, `BridgeCrumb` |
-| `releases` | `releases`, `releases/:releaseId` | `ReleasesPage`, `ReleaseEditorPage` | `'Releases'`, `ReleaseCrumb` |
+| `releases` | `releases`, `releases/:semanticReleaseId` | `ReleasesPage`, `ReleaseEditorPage` | `'Releases'`, `ReleaseCrumb` |
 | `assumption-sets` | `assumption-sets`, `assumption-sets/:assumptionSetId` | `AssumptionSetsPage`, `AssumptionSetEditorPage` | `'Assumption sets'`, `AssumptionSetCrumb` |
-| `calculation-models` | `calculation-models`, `calculation-models/:modelId` | `CalculationModelListPage`, `CalculationModelDetailPage` | `'Calculation models'`, `CalculationModelCrumb` |
+| `calculation-models` | `calculation-models`, `calculation-models/:calculationModelId` | `CalculationModelListPage`, `CalculationModelDetailPage` | `'Calculation models'`, `CalculationModelCrumb` |
 | `reports` | `reports`, `reports/:reportId` | `ReportListPage`, `ReportDetailPage` | `'Reports'`, `ReportCrumb` |
 | `system` | `system/tenants` | `TenantsPage` | `'Tenants'` |
 
@@ -114,7 +114,7 @@ flowchart LR
 
 - `lazy: { Component }` imports the page module when its route first matches. The `routes.tsx` files and the crumb components they import load with the app; the page modules do not.
 - `RouteHandle` in `src/shared/routeHandle.ts` types `handle.crumb` as a string or a function of the match that returns a node. `AppBreadcrumbs` renders the last crumb as the current page and the others as links to their match's pathname.
-- Dataset, dimension, mapping set and bridge pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. A calculation model is not versioned: its page shows the model's settings and its metrics, always editable. A report is not versioned either: its page is the report editor, whose `?source=` parameter opens the Sources tab on one source, as a report bridge's page links to it. The release editor is a version itself, so its version picker navigates to `releases/:releaseId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui). An assumption set is not versioned: `assumption-sets/:assumptionSetId` shows one set, the active one or a historical capture with the release it reads, without a version picker.
+- Dataset, dimension, mapping set and bridge pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. A calculation model is not versioned: its page shows the model's settings and its metrics, always editable. A report is not versioned either: its page is the report editor, whose `?source=` parameter opens the Sources tab on one source, as a report bridge's page links to it. The release editor is a version itself, so its version picker navigates to `releases/:semanticReleaseId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui). An assumption set is not versioned: `assumption-sets/:assumptionSetId` shows one set, the active one or a historical capture with the release it reads, without a version picker.
 
 **Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [routeHandle.ts](../../src/shared/routeHandle.ts), [AppBreadcrumbs.tsx](../../src/app/AppBreadcrumbs.tsx), [DatasetCrumb.tsx](../../src/features/datasets/DatasetCrumb.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [versionSelection.ts](../../src/shared/versionSelection.ts).
 

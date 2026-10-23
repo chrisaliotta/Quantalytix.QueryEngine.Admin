@@ -17,13 +17,13 @@ public sealed class GrainService(
     public async Task<IReadOnlyList<GrainDetail>> ListAsync(long versionId, CancellationToken cancellationToken)
     {
         var versionGrains = await grains.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var components = await grainFields.ListAsync(new { GrainId = versionGrains.Select(grain => grain.GrainId).ToArray() }, cancellationToken);
-        var componentsByGrain = components.ToLookup(component => component.GrainId);
+        var components = await grainFields.ListAsync(new { DatasetGrainId = versionGrains.Select(grain => grain.DatasetGrainId).ToArray() }, cancellationToken);
+        var componentsByGrain = components.ToLookup(component => component.DatasetGrainId);
         return
         [
             .. versionGrains
                 .OrderBy(grain => grain.GrainKey, StringComparer.OrdinalIgnoreCase)
-                .Select(grain => Detail(grain, [.. componentsByGrain[grain.GrainId].OrderBy(component => component.Ordinal).Select(component => component.FieldId)]))
+                .Select(grain => Detail(grain, [.. componentsByGrain[grain.DatasetGrainId].OrderBy(component => component.Ordinal).Select(component => component.FieldId)]))
         ];
     }
 
@@ -36,13 +36,13 @@ public sealed class GrainService(
     {
         var grain = new DatasetGrainRecord
         {
-            GrainId = ids.NextId(),
+            DatasetGrainId = ids.NextId(),
             DatasetVersionId = versionId,
             GrainKey = input.GrainKey,
             GrainKind = input.GrainKind
         };
         await grains.InsertAsync(grain, cancellationToken);
-        await grainFields.InsertManyAsync(Components(grain.GrainId, input.FieldIds), cancellationToken);
+        await grainFields.InsertManyAsync(Components(grain.DatasetGrainId, input.FieldIds), cancellationToken);
         return Detail(grain, input.FieldIds);
     }
 
@@ -53,11 +53,11 @@ public sealed class GrainService(
     /// <returns>The updated grain.</returns>
     public async Task<GrainDetail> UpdateAsync(GrainReference reference, GrainUpdateInput input, CancellationToken cancellationToken)
     {
-        var current = await grains.GetAsync(new { reference.GrainId }, cancellationToken);
+        var current = await grains.GetAsync(new { reference.DatasetGrainId }, cancellationToken);
         var grain = current with { GrainKind = input.GrainKind };
         await grains.UpdateAsync(grain, cancellationToken);
-        await grainFields.DeleteAsync(new { reference.GrainId }, cancellationToken);
-        await grainFields.InsertManyAsync(Components(grain.GrainId, input.FieldIds), cancellationToken);
+        await grainFields.DeleteAsync(new { reference.DatasetGrainId }, cancellationToken);
+        await grainFields.InsertManyAsync(Components(grain.DatasetGrainId, input.FieldIds), cancellationToken);
         return Detail(grain, input.FieldIds);
     }
 
@@ -67,28 +67,28 @@ public sealed class GrainService(
     /// <returns>Null when the grain was deleted; otherwise the detail naming the measures whose time policies use it.</returns>
     public async Task<string?> DeleteAsync(GrainReference reference, CancellationToken cancellationToken)
     {
-        var grain = await grains.GetAsync(new { reference.GrainId }, cancellationToken);
-        var policies = await timePolicies.ListAsync(new { SelectionGrainId = reference.GrainId }, cancellationToken);
+        var grain = await grains.GetAsync(new { reference.DatasetGrainId }, cancellationToken);
+        var policies = await timePolicies.ListAsync(new { SelectionDatasetGrainId = reference.DatasetGrainId }, cancellationToken);
         var selecting = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
         var blockers = new DeleteBlockers($"Grain '{grain.GrainKey}'");
         blockers.AddNamed("it is the selection grain of the time policies of measures", selecting.Select(measure => $"'{measure.MeasureKey}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 
-        await grainFields.DeleteAsync(new { reference.GrainId }, cancellationToken);
-        await grains.DeleteAsync(new { reference.GrainId }, cancellationToken);
+        await grainFields.DeleteAsync(new { reference.DatasetGrainId }, cancellationToken);
+        await grains.DeleteAsync(new { reference.DatasetGrainId }, cancellationToken);
         return null;
     }
 
     /// <summary>The component rows of a grain, numbered from 1 in list order.</summary>
-    private static DatasetGrainFieldRecord[] Components(long grainId, IReadOnlyList<long> fieldIds)
+    private static DatasetGrainFieldRecord[] Components(long datasetGrainId, IReadOnlyList<long> fieldIds)
     {
-        return [.. fieldIds.Select((fieldId, index) => new DatasetGrainFieldRecord { GrainId = grainId, Ordinal = index + 1, FieldId = fieldId })];
+        return [.. fieldIds.Select((fieldId, index) => new DatasetGrainFieldRecord { DatasetGrainId = datasetGrainId, Ordinal = index + 1, FieldId = fieldId })];
     }
 
     /// <summary>A grain with its fields in ordinal order.</summary>
     private static GrainDetail Detail(DatasetGrainRecord grain, IReadOnlyList<long> fieldIds)
     {
-        return new GrainDetail { GrainId = grain.GrainId, GrainKey = grain.GrainKey, GrainKind = grain.GrainKind, FieldIds = fieldIds };
+        return new GrainDetail { DatasetGrainId = grain.DatasetGrainId, GrainKey = grain.GrainKey, GrainKind = grain.GrainKind, FieldIds = fieldIds };
     }
 }

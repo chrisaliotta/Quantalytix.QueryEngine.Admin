@@ -30,28 +30,28 @@ export function useReleases() {
 }
 
 /** One release. */
-export function useRelease(releaseId: number) {
+export function useRelease(semanticReleaseId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: [...releasesQueryKey(tenantId), releaseId],
+    queryKey: [...releasesQueryKey(tenantId), semanticReleaseId],
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/releases/{releaseId}', {
-          params: { path: { tenantId, releaseId } },
+        await apiClient.GET('/api/tenants/{tenantId}/releases/{semanticReleaseId}', {
+          params: { path: { tenantId, semanticReleaseId } },
         })
       ),
   });
 }
 
 /** The manifest rows of one release. */
-export function useReleaseDatasets(releaseId: number) {
+export function useReleaseDatasets(semanticReleaseId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: [...releasesQueryKey(tenantId), releaseId, 'datasets'],
+    queryKey: [...releasesQueryKey(tenantId), semanticReleaseId, 'datasets'],
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/releases/{releaseId}/datasets', {
-          params: { path: { tenantId, releaseId } },
+        await apiClient.GET('/api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets', {
+          params: { path: { tenantId, semanticReleaseId } },
         })
       ),
   });
@@ -71,10 +71,10 @@ export function useCreateRelease() {
 export function useDeleteRelease() {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (releaseId: number) =>
+    mutationFn: async (semanticReleaseId: number) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/releases/{releaseId}', {
-          params: { path: { tenantId, releaseId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/releases/{semanticReleaseId}', {
+          params: { path: { tenantId, semanticReleaseId } },
         })
       ),
     onSuccess: () => invalidateReleases(tenantId),
@@ -82,13 +82,13 @@ export function useDeleteRelease() {
 }
 
 /** Replaces the manifest of a draft release. */
-export function useSaveReleaseDatasets(releaseId: number) {
+export function useSaveReleaseDatasets(semanticReleaseId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (datasets: Pick<ReleaseDataset, 'datasetId' | 'datasetVersionId'>[]) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/releases/{releaseId}/datasets', {
-          params: { path: { tenantId, releaseId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets', {
+          params: { path: { tenantId, semanticReleaseId } },
           body: { datasets },
         })
       ),
@@ -103,10 +103,10 @@ export function useSaveReleaseDatasets(releaseId: number) {
 export function useActivateRelease() {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (releaseId: number) =>
+    mutationFn: async (semanticReleaseId: number) =>
       unwrap(
-        await apiClient.POST('/api/tenants/{tenantId}/releases/{releaseId}/activate', {
-          params: { path: { tenantId, releaseId } },
+        await apiClient.POST('/api/tenants/{tenantId}/releases/{semanticReleaseId}/activate', {
+          params: { path: { tenantId, semanticReleaseId } },
         })
       ),
     onSuccess: () => invalidateTenantQueries(tenantId),

@@ -24,7 +24,7 @@ public sealed class SourceCoverageReader(
     public async Task<IReadOnlyList<string>> UnmappedAsync(long sourceId, CancellationToken cancellationToken)
     {
         var source = await sources.GetAsync(new { ReportSourceId = sourceId }, cancellationToken);
-        var role = await roles.GetAsync(new { RoleId = source.RoleId!.Value }, cancellationToken);
+        var role = await roles.GetAsync(new { DimensionRoleId = source.DimensionRoleId!.Value }, cancellationToken);
         var bridgeVersion = (await owned.BridgesAsync([source], cancellationToken))[sourceId];
         var entries = await bridgeMappings.ListAsync(new { bridgeVersion.BridgeVersionId }, cancellationToken);
         return Unmapped((await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken))!, entries);

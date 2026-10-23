@@ -12,7 +12,7 @@ public sealed class MappingEntryReferenceValidator : AbstractValidator<MappingEn
     {
         RuleFor(reference => reference.EntryId)
             .MustAsync(async (reference, entryId, cancellationToken) =>
-                (await entries.ListAsync(new { MappingEntryId = entryId, MappingVersionId = reference.VersionId }, cancellationToken)).Count == 1)
+                (await entries.ListAsync(new { DimensionMappingId = entryId, MappingVersionId = reference.VersionId }, cancellationToken)).Count == 1)
             .WithMessage(reference => $"Entry {reference.EntryId} is not an entry of mapping version {reference.VersionId}.");
     }
 }

@@ -4,10 +4,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 public sealed record MemberPlacement
 {
     /// <summary>The member being placed.</summary>
-    public required long MemberId { get; init; }
+    public required long DimensionMemberId { get; init; }
 
     /// <summary>The member's new parent; null for a root.</summary>
-    public long? ParentMemberId { get; init; }
+    public long? ParentDimensionMemberId { get; init; }
 
     /// <summary>The member's new presentation order among its siblings.</summary>
     public required int SortOrder { get; init; }

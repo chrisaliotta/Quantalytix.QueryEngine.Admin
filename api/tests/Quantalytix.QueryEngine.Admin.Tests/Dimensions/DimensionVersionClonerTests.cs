@@ -31,9 +31,9 @@ public sealed class DimensionVersionClonerTests
 
     /// <summary>The members table: US over CA and NY in the source, plus a member of another version.</summary>
     private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new(
-        Member(200, SourceVersionId, "US", levelId: 100),
-        Member(201, SourceVersionId, "CA", parentId: 200, levelId: 101),
-        Member(202, SourceVersionId, "NY", parentId: 200, levelId: 101),
+        Member(200, SourceVersionId, "US", dimensionLevelId: 100),
+        Member(201, SourceVersionId, "CA", parentId: 200, dimensionLevelId: 101),
+        Member(202, SourceVersionId, "NY", parentId: 200, dimensionLevelId: 101),
         Member(999, 9, "TX"));
 
     /// <summary>The range bands table: two bands of the source.</summary>
@@ -55,13 +55,13 @@ public sealed class DimensionVersionClonerTests
         var members = _members.All.Where(member => member.DimensionVersionId == TargetVersionId).ToDictionary(member => member.MemberKey);
         Assert.Equal(["country", "state"], levels.Keys.Order());
         Assert.Equal(["CA", "NY", "US"], members.Keys.Order());
-        Assert.DoesNotContain(levels.Values, level => level.LevelId is 100 or 101);
-        Assert.DoesNotContain(members.Values, member => member.MemberId is 200 or 201 or 202);
-        Assert.Null(members["US"].ParentMemberId);
-        Assert.Equal(members["US"].MemberId, members["CA"].ParentMemberId);
-        Assert.Equal(members["US"].MemberId, members["NY"].ParentMemberId);
-        Assert.Equal(levels["country"].LevelId, members["US"].LevelId);
-        Assert.Equal(levels["state"].LevelId, members["CA"].LevelId);
+        Assert.DoesNotContain(levels.Values, level => level.DimensionLevelId is 100 or 101);
+        Assert.DoesNotContain(members.Values, member => member.DimensionMemberId is 200 or 201 or 202);
+        Assert.Null(members["US"].ParentDimensionMemberId);
+        Assert.Equal(members["US"].DimensionMemberId, members["CA"].ParentDimensionMemberId);
+        Assert.Equal(members["US"].DimensionMemberId, members["NY"].ParentDimensionMemberId);
+        Assert.Equal(levels["country"].DimensionLevelId, members["US"].DimensionLevelId);
+        Assert.Equal(levels["state"].DimensionLevelId, members["CA"].DimensionLevelId);
         Assert.Equal(3, _members.All.Count(member => member.DimensionVersionId == SourceVersionId));
     }
 
@@ -72,7 +72,7 @@ public sealed class DimensionVersionClonerTests
     {
         await CloneAsync();
 
-        var memberIds = _members.All.Where(member => member.DimensionVersionId == TargetVersionId).ToDictionary(member => member.MemberKey, member => member.MemberId);
+        var memberIds = _members.All.Where(member => member.DimensionVersionId == TargetVersionId).ToDictionary(member => member.MemberKey, member => member.DimensionMemberId);
         var bands = _bands.All.Where(band => band.DimensionVersionId == TargetVersionId).OrderBy(band => band.Ordinal).ToList();
         Assert.Equal(
             [DecimalBand(TargetVersionId, 1, memberIds["CA"], null, 10m), DecimalBand(TargetVersionId, 2, memberIds["NY"], 10m, null)],

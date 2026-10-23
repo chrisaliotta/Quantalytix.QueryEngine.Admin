@@ -85,7 +85,7 @@ public sealed class IntervalEstimatesForFinerPeriodsRuleTests
     [Fact]
     public async Task BindingWithoutFinerPeriodicities_Passes()
     {
-        var monthly = Assert.Single(_timeBindings.All, binding => binding.BindingId == PlanPeriodBindingId);
+        var monthly = Assert.Single(_timeBindings.All, binding => binding.DimensionBindingId == PlanPeriodBindingId);
         await _timeBindings.UpdateAsync(monthly with { AllowedPeriodicitiesJson = """["month","quarter","year"]""" }, TestContext.Current.CancellationToken);
 
         Assert.Empty(await EvaluateAsync(DatasetRows.Version(VersionId, PlanPeriodBindingId)));
@@ -99,7 +99,7 @@ public sealed class IntervalEstimatesForFinerPeriodsRuleTests
     [Fact]
     public async Task IntervalsWithoutANativePeriodicity_AreSkipped()
     {
-        var monthly = Assert.Single(_timeBindings.All, binding => binding.BindingId == PlanPeriodBindingId);
+        var monthly = Assert.Single(_timeBindings.All, binding => binding.DimensionBindingId == PlanPeriodBindingId);
         await _timeBindings.UpdateAsync(monthly with { NativePeriodicity = null, IntervalEndFieldId = 2 }, TestContext.Current.CancellationToken);
 
         Assert.Empty(await EvaluateAsync(DatasetRows.Version(VersionId, PlanPeriodBindingId)));

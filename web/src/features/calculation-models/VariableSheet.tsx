@@ -17,7 +17,7 @@ interface VariableValues {
 }
 
 export interface VariableSheetProps {
-  modelId: number;
+  calculationModelId: number;
   /** The variable to edit; null to create one. */
   variable: Variable | null;
   onClose: () => void;
@@ -27,8 +27,8 @@ export interface VariableSheetProps {
  * Creates or edits a variable: its key, role, how missing values count and how clients show it. Which rows it reads is each
  * report's choice, through the report's sources and targets.
  */
-export function VariableSheet({ modelId, variable, onClose }: VariableSheetProps) {
-  const save = useSaveOwnedContent('variables', modelId, variable?.variableId ?? null);
+export function VariableSheet({ calculationModelId, variable, onClose }: VariableSheetProps) {
+  const save = useSaveOwnedContent('variables', calculationModelId, variable?.variableId ?? null);
   const form = useForm<VariableValues>({
     defaultValues: {
       variableKey: variable?.variableKey ?? '',

@@ -21,7 +21,7 @@ interface CalculatedMeasureValues {
 }
 
 export interface CalculatedMeasureSheetProps {
-  modelId: number;
+  calculationModelId: number;
   /** The measure to edit; null to create one. */
   measure: CalculatedMeasure | null;
   onClose: () => void;
@@ -31,10 +31,10 @@ export interface CalculatedMeasureSheetProps {
  * Creates or edits a calculated measure. Its formula reads variables and calculated measures as `[m.KEY]`, and the
  * `@periodDays` and `@yearDays` of the period it is evaluated for.
  */
-export function CalculatedMeasureSheet({ modelId, measure, onClose }: CalculatedMeasureSheetProps) {
-  const save = useSaveOwnedContent('calculated-measures', modelId, measure?.calculatedMeasureId ?? null);
-  const variables = useLookup('variables', modelId);
-  const measures = useLookup('calculated-measures', modelId);
+export function CalculatedMeasureSheet({ calculationModelId, measure, onClose }: CalculatedMeasureSheetProps) {
+  const save = useSaveOwnedContent('calculated-measures', calculationModelId, measure?.calculatedMeasureId ?? null);
+  const variables = useLookup('variables', calculationModelId);
+  const measures = useLookup('calculated-measures', calculationModelId);
   const metricKeys = [...(variables.data ?? []), ...(measures.data ?? [])].map(item => item.key);
   const form = useForm<CalculatedMeasureValues>({
     defaultValues: {

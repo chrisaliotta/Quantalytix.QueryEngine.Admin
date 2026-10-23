@@ -21,7 +21,7 @@ public sealed class DimensionRoleService(
     public async Task<IReadOnlyList<DimensionRoleRecord>> ListAsync(long dimensionId, CancellationToken cancellationToken)
     {
         var rows = await roles.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
-        return [.. rows.OrderBy(row => row.RoleKey, StringComparer.OrdinalIgnoreCase)];
+        return [.. rows.OrderBy(row => row.DimensionRoleKey, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>Creates a role of a dimension. Nothing names a new role yet, so the query engine's caches stay valid.</summary>
@@ -33,9 +33,9 @@ public sealed class DimensionRoleService(
     {
         var role = new DimensionRoleRecord
         {
-            RoleId = ids.NextId(),
+            DimensionRoleId = ids.NextId(),
             DimensionId = dimensionId,
-            RoleKey = input.RoleKey,
+            DimensionRoleKey = input.DimensionRoleKey,
             DisplayName = input.DisplayName,
             Description = input.Description
         };
@@ -47,13 +47,13 @@ public sealed class DimensionRoleService(
     /// Edits a role's display name and description. A change advances the semantic revision, because the query engine's catalog
     /// shows both.
     /// </summary>
-    /// <param name="roleId">The role.</param>
+    /// <param name="dimensionRoleId">The role.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancels the read and the writes.</param>
     /// <returns>The stored role.</returns>
-    public async Task<DimensionRoleRecord> UpdateAsync(long roleId, DimensionRoleInput input, CancellationToken cancellationToken)
+    public async Task<DimensionRoleRecord> UpdateAsync(long dimensionRoleId, DimensionRoleInput input, CancellationToken cancellationToken)
     {
-        var current = await roles.GetAsync(new { RoleId = roleId }, cancellationToken);
+        var current = await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
         var updated = current with { DisplayName = input.DisplayName, Description = input.Description };
         await roles.UpdateAsync(updated, cancellationToken);
         if (updated != current) await semanticRevision.AdvanceAsync(cancellationToken);
@@ -61,15 +61,15 @@ public sealed class DimensionRoleService(
     }
 
     /// <summary>Deletes a role that no binding, calculation dimension, report source or report scenario names.</summary>
-    /// <param name="roleId">The role.</param>
+    /// <param name="dimensionRoleId">The role.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
     /// <returns>Null when the role was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long roleId, CancellationToken cancellationToken)
+    public async Task<string?> DeleteAsync(long dimensionRoleId, CancellationToken cancellationToken)
     {
-        var role = await roles.GetAsync(new { RoleId = roleId }, cancellationToken);
+        var role = await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
         var conflict = await deleteChecks.RoleAsync(role, cancellationToken);
         if (conflict is not null) return conflict;
-        await roles.DeleteAsync(new { RoleId = roleId }, cancellationToken);
+        await roles.DeleteAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
         return null;
     }
 }

@@ -10,9 +10,9 @@ public sealed class MemberReferenceValidator : AbstractValidator<MemberReference
     /// <param name="members">Reads the member.</param>
     public MemberReferenceValidator(ITableGateway<DimensionMemberRecord> members)
     {
-        RuleFor(reference => reference.MemberId)
-            .MustAsync(async (reference, memberId, cancellationToken) =>
-                (await members.ListAsync(new { MemberId = memberId, reference.DimensionVersionId }, cancellationToken)).Count == 1)
-            .WithMessage(reference => $"Member {reference.MemberId} is not a member of dimension version {reference.DimensionVersionId}.");
+        RuleFor(reference => reference.DimensionMemberId)
+            .MustAsync(async (reference, dimensionMemberId, cancellationToken) =>
+                (await members.ListAsync(new { DimensionMemberId = dimensionMemberId, reference.DimensionVersionId }, cancellationToken)).Count == 1)
+            .WithMessage(reference => $"Member {reference.DimensionMemberId} is not a member of dimension version {reference.DimensionVersionId}.");
     }
 }

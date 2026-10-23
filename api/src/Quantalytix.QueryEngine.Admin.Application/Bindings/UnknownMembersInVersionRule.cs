@@ -38,9 +38,9 @@ public sealed class UnknownMembersInVersionRule(
             published[dimensionId] = await dimensions.ReadAsync(dimensionId, cancellationToken);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in routing.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
+        foreach (var binding in routing.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
         {
-            var name = named[binding.BindingId];
+            var name = named[binding.DimensionBindingId];
             if (published[binding.DimensionId] is not { } keys)
                 violations.Add(Violation($"Binding '{name}' routes unmapped rows to a member of its dimension, which has no published version."));
             else if (!keys.MemberKeys.Contains(binding.UnknownMemberKey!))

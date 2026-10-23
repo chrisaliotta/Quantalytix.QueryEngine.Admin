@@ -31,7 +31,7 @@ public sealed class ReportScenariosInputValidatorTests
     {
         var result = await ValidateAsync(87, 88, 99, 87);
 
-        result.ShouldHaveValidationErrorFor("Scenarios[2].RoleId").WithErrorMessage("Role 99 does not exist.");
+        result.ShouldHaveValidationErrorFor("Scenarios[2].DimensionRoleId").WithErrorMessage("Role 99 does not exist.");
         result.ShouldHaveValidationErrorFor(input => input.Scenarios).WithErrorMessage("'Scenarios' must name each role once.");
         Assert.Equal(2, result.Errors.Count);
     }
@@ -43,7 +43,7 @@ public sealed class ReportScenariosInputValidatorTests
     {
         var result = await ValidateAsync(87, 89);
 
-        result.ShouldHaveValidationErrorFor("Scenarios[1].RoleId")
+        result.ShouldHaveValidationErrorFor("Scenarios[1].DimensionRoleId")
             .WithErrorMessage("Role 'strategy' shares its dimension with 'priorStrategy', and a scenario's dimension has exactly one role.");
         Assert.Single(result.Errors);
     }
@@ -51,7 +51,7 @@ public sealed class ReportScenariosInputValidatorTests
     /// <summary>Validates a scenario list naming the roles in order.</summary>
     private Task<TestValidationResult<ReportScenariosInput>> ValidateAsync(params long[] roleIds)
     {
-        var input = new ReportScenariosInput { Scenarios = [.. roleIds.Select(roleId => new ReportScenarioInput { RoleId = roleId })] };
+        var input = new ReportScenariosInput { Scenarios = [.. roleIds.Select(dimensionRoleId => new ReportScenarioInput { DimensionRoleId = dimensionRoleId })] };
         return _validator.TestValidateAsync(input, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

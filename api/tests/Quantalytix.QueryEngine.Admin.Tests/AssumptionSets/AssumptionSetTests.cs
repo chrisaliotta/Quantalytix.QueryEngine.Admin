@@ -35,7 +35,7 @@ public sealed class AssumptionSetTests
     private const long StartingRevision = 7;
 
     /// <summary>The release queries use while each test runs.</summary>
-    private const long ActiveReleaseId = 900;
+    private const long ActiveSemanticReleaseId = 900;
 
     /// <summary>The clock's time throughout each test.</summary>
     private static readonly DateTimeOffset Now = new(2026, 10, 14, 17, 30, 0, TimeSpan.Zero);
@@ -73,7 +73,7 @@ public sealed class AssumptionSetTests
         TenantKey = "sandbox",
         MetadataSchemaVersion = 12,
         SemanticRevision = StartingRevision,
-        ActiveReleaseId = ActiveReleaseId,
+        ActiveSemanticReleaseId = ActiveSemanticReleaseId,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
@@ -98,7 +98,7 @@ public sealed class AssumptionSetTests
 
         var set = await Service().CaptureAsync(input, TestContext.Current.CancellationToken);
 
-        Assert.Equal((AssumptionSetStatuses.Historical, Now.UtcDateTime, ActiveReleaseId), (set.Status, set.CapturedAt, set.ReleaseId));
+        Assert.Equal((AssumptionSetStatuses.Historical, Now.UtcDateTime, ActiveSemanticReleaseId), (set.Status, set.CapturedAt, set.SemanticReleaseId));
         Assert.Equal(
             await _pins.ListAsync(ActiveSetId, TestContext.Current.CancellationToken),
             await _pins.ListAsync(set.AssumptionSetId, TestContext.Current.CancellationToken));

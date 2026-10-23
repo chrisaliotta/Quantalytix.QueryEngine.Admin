@@ -23,16 +23,16 @@ public sealed class MemberParentInVersionRule(ITableGateway<DimensionMemberRecor
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var memberIds = rows.Select(member => member.MemberId).ToHashSet();
+        var memberIds = rows.Select(member => member.DimensionMemberId).ToHashSet();
         return
         [
             .. rows
-                .Where(member => member.ParentMemberId is { } parentId && !memberIds.Contains(parentId))
+                .Where(member => member.ParentDimensionMemberId is { } parentId && !memberIds.Contains(parentId))
                 .OrderBy(member => member.MemberKey, StringComparer.Ordinal)
                 .Select(member => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Member '{member.MemberKey}' has parent {member.ParentMemberId}, which is not a member of this version."
+                    Message = $"Member '{member.MemberKey}' has parent {member.ParentDimensionMemberId}, which is not a member of this version."
                 })
         ];
     }

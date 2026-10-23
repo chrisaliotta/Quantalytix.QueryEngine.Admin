@@ -29,7 +29,7 @@ public sealed record ReportSourceRecord
     public string? FieldKey { get; init; }
 
     /// <summary>The role whose dataset binding a bridge source starts from.</summary>
-    public long? RoleId { get; init; }
+    public long? DimensionRoleId { get; init; }
 
     /// <summary>The source's own bridge, from the role's dimension into the report's dimension, for a bridge source.</summary>
     public long? BridgeId { get; init; }

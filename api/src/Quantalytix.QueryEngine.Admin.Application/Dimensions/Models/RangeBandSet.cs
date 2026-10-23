@@ -19,7 +19,7 @@ public sealed record RangeBandSet
     /// <returns>The band's ordinal and member.</returns>
     public string Describe(RangeBandRecord band)
     {
-        if (MemberKeys.TryGetValue(band.MemberId, out var memberKey)) return $"Band {band.Ordinal} (member '{memberKey}')";
-        return $"Band {band.Ordinal} (member {band.MemberId})";
+        if (MemberKeys.TryGetValue(band.DimensionMemberId, out var memberKey)) return $"Band {band.Ordinal} (member '{memberKey}')";
+        return $"Band {band.Ordinal} (member {band.DimensionMemberId})";
     }
 }

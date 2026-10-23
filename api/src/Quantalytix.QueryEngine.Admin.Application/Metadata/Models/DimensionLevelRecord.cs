@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DimensionLevelRecord
 {
     /// <summary>Primary key.</summary>
-    public required long LevelId { get; init; }
+    public required long DimensionLevelId { get; init; }
 
     /// <summary>The owning dimension version.</summary>
     public required long DimensionVersionId { get; init; }

@@ -21,7 +21,7 @@ public sealed class ReportMetricsResolveRule : IReportRule
         var subject = $"Report '{report.ReportKey}'";
         var variables = report.Variables.Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal);
         var measures = report.CalculatedMeasures.Select(measure => measure.MeasureKey).ToHashSet(StringComparer.Ordinal);
-        var profileKeys = report.Profiles.ToDictionary(profile => profile.SourceProfileId, profile => profile.ProfileKey);
+        var profileKeys = report.Profiles.ToDictionary(profile => profile.CalculationSourceProfileId, profile => profile.ProfileKey);
         var sourceKeys = report.Sources.ToDictionary(source => source.ReportSourceId, source => source.SourceKey);
         foreach (var column in report.Columns.Where(column => !(column.ValueKind == ReportValueKinds.Variable ? variables : measures).Contains(column.MetricKey)))
             yield return Violation($"{subject} column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the model.");
@@ -32,7 +32,7 @@ public sealed class ReportMetricsResolveRule : IReportRule
         foreach (var supplied in report.SourceVariables.Where(supplied => !variables.Contains(supplied.VariableKey)))
             yield return Violation($"{subject} source '{sourceKeys[supplied.ReportSourceId]}' supplies '{supplied.VariableKey}', which is no variable of the model.");
         foreach (var pick in report.Picks.Where(pick => !variables.Contains(pick.VariableKey)))
-            yield return Violation($"{subject} profile '{profileKeys[pick.SourceProfileId]}' picks a source for '{pick.VariableKey}', which is no variable of the model.");
+            yield return Violation($"{subject} profile '{profileKeys[pick.CalculationSourceProfileId]}' picks a source for '{pick.VariableKey}', which is no variable of the model.");
     }
 
     /// <summary>A violation of this rule.</summary>

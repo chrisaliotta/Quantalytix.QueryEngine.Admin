@@ -40,7 +40,7 @@ public sealed class CalculatedMeasureService(ITableGateway<CalculatedMeasureReco
     /// <returns>Its model ID.</returns>
     protected override long OwnerOf(CalculatedMeasureRecord row)
     {
-        return row.ModelId;
+        return row.CalculationModelId;
     }
 
     /// <summary>The key a calculated measure is listed by.</summary>
@@ -61,7 +61,7 @@ public sealed class CalculatedMeasureService(ITableGateway<CalculatedMeasureReco
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = itemId,
-            ModelId = ownerId,
+            CalculationModelId = ownerId,
             MeasureKey = input.MeasureKey,
             DisplayName = input.DisplayName,
             ExpressionText = input.ExpressionText,

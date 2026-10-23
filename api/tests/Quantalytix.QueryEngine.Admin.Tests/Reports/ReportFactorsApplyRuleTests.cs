@@ -34,7 +34,7 @@ public sealed class ReportFactorsApplyRuleTests
             violation.Message);
         Assert.Equal(
             violation.Message,
-            Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportFactorsApplyRule(), ReleaseId)).Message);
+            Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportFactorsApplyRule(), SemanticReleaseId)).Message);
     }
 
     /// <summary>Whole rules pass whatever the measure does, and a factor passes once the measure applies bridge factors.</summary>
@@ -61,7 +61,7 @@ public sealed class ReportFactorsApplyRuleTests
             {
                 MappingMethod = ReportMappingMethods.Bridge,
                 FieldKey = null,
-                RoleId = AccountRoleId,
+                DimensionRoleId = AccountRoleId,
                 BridgeId = AccountBridgeId
             },
             cancellationToken);

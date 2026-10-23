@@ -31,7 +31,7 @@ public sealed class MeasureTimePolicyInputValidator : AbstractValidator<MeasureT
             .NotNull()
             .WithMessage(input => $"'{{PropertyName}}' is required for {input.BoundaryMatch} matching, because the lookback for a prior observation must be finite.")
             .When(input => PriorMatches.Contains(input.BoundaryMatch));
-        RuleFor(input => input.SelectionGrainId)
+        RuleFor(input => input.SelectionDatasetGrainId)
             .NotNull()
             .WithMessage(input => $"'{{PropertyName}}' is required for the {input.ObservationSelection} selection, which picks one observation per series of that grain.")
             .When(input => SingleObservationSelections.Contains(input.ObservationSelection));

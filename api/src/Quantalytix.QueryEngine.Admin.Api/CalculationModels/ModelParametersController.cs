@@ -11,7 +11,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 /// sets on its rows. Each is keyed by its key and written whole.
 /// </summary>
 [ApiController]
-[Route("api/tenants/{tenantId}/calculation-models/{modelId:long}/parameters")]
+[Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/parameters")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -19,7 +19,7 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
 {
     /// <summary>Lists a model's parameters.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The parameters by key.</returns>
     /// <response code="200">The parameters by key.</response>
@@ -27,9 +27,9 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ModelParameter>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ModelParameter>>> List(string tenantId, long modelId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ModelParameter>>> List(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
-        return Ok(await parameters.ListAsync(modelId, cancellationToken));
+        return Ok(await parameters.ListAsync(calculationModelId, cancellationToken));
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The change would break a formula of the model or a report's row values, such as a type a formula or row reads otherwise; nothing was written.</response>
     [HttpPut("{parameterKey}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<ModelParameter>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
@@ -61,17 +61,17 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     {
         var stored = ModelParameterService.Compose(parameter.ParameterKey, input);
         var violations = await changes.ApplyAsync(
-            parameter.ModelId,
+            parameter.CalculationModelId,
             model => ModelParameterService.Put(model, stored),
-            () => parameters.ReplaceAsync(parameter.ModelId, stored, cancellationToken),
+            () => parameters.ReplaceAsync(parameter.CalculationModelId, stored, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, parameter.ModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, parameter.CalculationModelId, violations);
         return Ok(stored);
     }
 
     /// <summary>Deletes a parameter of a calculation model, unless a formula of the model reads it or a report's rows set it.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="parameterKey">The parameter's key.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 422 when nothing was deleted.</returns>
@@ -80,17 +80,17 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">A formula of the model reads the parameter or a report's rows set it; nothing was deleted.</response>
     [HttpDelete("{parameterKey}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, long modelId, string parameterKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, long calculationModelId, string parameterKey, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
-            modelId,
+            calculationModelId,
             model => ModelParameterService.Without(model, parameterKey),
-            () => parameters.DeleteAsync(modelId, parameterKey, cancellationToken),
+            () => parameters.DeleteAsync(calculationModelId, parameterKey, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
         return NoContent();
     }
 }

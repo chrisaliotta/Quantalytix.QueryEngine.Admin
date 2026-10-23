@@ -36,7 +36,7 @@ public sealed class ReportModelRulesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await _fixture.Columns.InsertAsync(Column(2, "margin", ReportValueKinds.Calculated, "margin", 2), cancellationToken);
-        await _fixture.Lines.InsertAsync(Line(12, "spread", ReportLineKinds.Formula, null, 2) with { CalculatedMeasureKey = "spread", ValueColumnId = 2 }, cancellationToken);
+        await _fixture.Lines.InsertAsync(Line(12, "spread", ReportLineKinds.Formula, null, 2) with { CalculatedMeasureKey = "spread", ValueReportColumnId = 2 }, cancellationToken);
         await _fixture.Scopes.InsertAsync(Scope("income", "assets"), cancellationToken);
         await _fixture.SourceVariables.InsertAsync(SourceVariable(GlSourceId, "income", "income"), cancellationToken);
         await _fixture.Picks.InsertAsync(Pick(75, "income", GlSourceId), cancellationToken);

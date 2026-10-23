@@ -63,11 +63,11 @@ public sealed class AdvancesModelRevisionFilterTests
     private async Task WriteAsync(ReportRecord report, IActionResult result)
     {
         var routeData = new RouteData();
-        routeData.Values["modelId"] = ModelRows.ModelId.ToString(CultureInfo.InvariantCulture);
+        routeData.Values["calculationModelId"] = ModelRows.CalculationModelId.ToString(CultureInfo.InvariantCulture);
         var action = new ActionContext(new DefaultHttpContext(), routeData, new ActionDescriptor());
         var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), new object());
         var filter = new AdvancesModelRevisionFilter(
-            "modelId", new InMemoryTableGateway<ReportRecord>(report), new SemanticRevision(_databaseInfo, new FakeTimeProvider()));
+            "calculationModelId", new InMemoryTableGateway<ReportRecord>(report), new SemanticRevision(_databaseInfo, new FakeTimeProvider()));
         await filter.OnActionExecutionAsync(context, () => Task.FromResult(new ActionExecutedContext(action, [], new object()) { Result = result }));
     }
 

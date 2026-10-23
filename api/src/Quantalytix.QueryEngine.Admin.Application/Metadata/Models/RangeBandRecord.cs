@@ -10,7 +10,7 @@ public sealed record RangeBandRecord
     public required int Ordinal { get; init; }
 
     /// <summary>The member assigned to the band.</summary>
-    public required long MemberId { get; init; }
+    public required long DimensionMemberId { get; init; }
 
     /// <summary>Decimal lower boundary; null means unbounded.</summary>
     public decimal? LowerDecimal { get; init; }

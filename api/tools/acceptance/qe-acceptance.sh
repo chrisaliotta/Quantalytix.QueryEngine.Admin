@@ -93,7 +93,7 @@ author_dataset() {
   read -r F_LOAN F_DATE F_BRANCH F_RATE F_BALANCE <<< "$fields"
   call POST "$V/grains" 200 "{\"grainKey\":\"loanSeries\",\"grainKind\":\"series\",\"fieldIds\":[$F_LOAN]}"
   local series
-  series=$(py "r['grainId']")
+  series=$(py "r['datasetGrainId']")
   call POST "$V/grains" 200 "{\"grainKey\":\"rowIdentity\",\"grainKind\":\"row\",\"fieldIds\":[$F_LOAN,$F_DATE]}"
 
   # Seed objects are only referenced: the Calendar time dimension, the loan.branch mapping set onto Branch, and Branch's
@@ -109,15 +109,15 @@ author_dataset() {
   local branch_role
   branch_role=$(py "[d['id'] for d in r if d['key'] == 'branch'][0]")
   local common='"raggedBehavior":"null","defaultPeriodAlignment":"observation","unmappedBehavior":"null","isGroupable":true,"isFilterable":true,"isEnabled":true'
-  call POST "$V/bindings" 200 "{\"roleId\":$branch_role,\"bindingKind\":\"mapped\",\"sourceFieldId\":$F_BRANCH,\"mappingSetId\":$mapset,\"isRequired\":false,$common}"
+  call POST "$V/bindings" 200 "{\"dimensionRoleId\":$branch_role,\"bindingKind\":\"mapped\",\"sourceFieldId\":$F_BRANCH,\"mappingSetId\":$mapset,\"isRequired\":false,$common}"
   call POST "$V/bindings" 200 "{\"dimensionId\":$calendar,\"bindingKind\":\"time\",\"sourceFieldId\":$F_DATE,\"isRequired\":true,$common,\"timeBinding\":{\"timeValueType\":\"date\",\"observationKind\":\"snapshot\",\"sourceTimeZone\":null,\"nativePeriodicity\":\"day\",\"intervalEndFieldId\":null,\"allowedPeriodicities\":[\"day\",\"month\",\"quarter\",\"year\"],\"defaultQueryTimeZone\":\"UTC\",\"cumulativeOrigin\":\"output_range_start\",\"cumulativeFixedStart\":null}}"
   local time_binding
-  time_binding=$(py "r['binding']['bindingId']")
+  time_binding=$(py "r['binding']['dimensionBindingId']")
 
   call POST "$V/measures" 200 "$(measure balance aggregate "{\"aggregationFunction\":\"sum\",\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_BALANCE}]}")"
   call POST "$V/measures" 200 "$(measure avgRate weighted_average "{\"outputPrecision\":9,\"outputScale\":6,\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_RATE},{\"componentRole\":\"weight\",\"fieldId\":$F_BALANCE}]}")"
   call POST "$V/measures" 200 "$(measure balanceRate formula '{"outputPrecision":28,"outputScale":6,"expressionText":"[m.balance] * [m.avgRate]"}')"
-  call POST "$V/measures" 200 "$(measure endingBalance aggregate "{\"aggregationFunction\":\"sum\",\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_BALANCE}],\"timePolicy\":{\"requiredTimeBindingId\":$time_binding,\"selectionGrainId\":$series,\"observationSelection\":\"at_end\",\"valueTimeRole\":\"point\",\"boundaryMatch\":\"on_or_before\",\"maxLookbackSeconds\":86400,\"durationUnit\":\"calendar_day\",\"partialIntervalBehavior\":\"exact_only\",\"missingPeriodBehavior\":\"null\"}}")"
+  call POST "$V/measures" 200 "$(measure endingBalance aggregate "{\"aggregationFunction\":\"sum\",\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_BALANCE}],\"timePolicy\":{\"requiredTimeBindingId\":$time_binding,\"selectionDatasetGrainId\":$series,\"observationSelection\":\"at_end\",\"valueTimeRole\":\"point\",\"boundaryMatch\":\"on_or_before\",\"maxLookbackSeconds\":86400,\"durationUnit\":\"calendar_day\",\"partialIntervalBehavior\":\"exact_only\",\"missingPeriodBehavior\":\"null\"}}")"
   call PUT "$V" 200 "{\"sourceObjectKind\":\"table\",\"sourceObject\":\"loan_daily\",\"supportsAggregate\":true,\"supportsDetail\":true,\"defaultTimeBindingId\":$time_binding,\"expressionLanguageVersion\":\"1.0\",\"securityPolicyKey\":null,\"properties\":null}"
 
   call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"validated"}'
@@ -169,16 +169,16 @@ for row in view['rows']:
 EOF
 
   call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'currencyCode': 'USD', 'isEnabled': True, 'formulaLanguageVersion': '1.0', 'attributionMethod': 'shapley'}")"
-  MODEL=$(py "r['modelId']")
+  MODEL=$(py "r['calculationModelId']")
   local M=/calculation-models/$MODEL
   call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'variableRole': 'average_balance', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
   call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'variableRole': 'interest_income', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
   call POST "$M/calculated-measures" 200 "$(json "{'measureKey': 'YIELD', 'displayName': 'Yield', 'expressionText': '[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays', 'outputDataType': 'decimal', 'outputPrecision': 28, 'outputScale': 6, 'roundingMode': None, 'unitKey': None, 'displayFormat': 'percent'}")"
 
-  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'modelId': $MODEL, 'startFromDimensionId': $statement, 'payloadJson': None}")"
+  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'calculationModelId': $MODEL, 'startFromDimensionId': $statement, 'payloadJson': None}")"
   REPORT=$(py "r['reportId']")
   local R=/reports/$REPORT
-  local gl="'mappingMethod': 'bridge', 'roleId': $account_role, 'fieldKey': None, 'timeFieldKey': 'reportingPeriod'"
+  local gl="'mappingMethod': 'bridge', 'dimensionRoleId': $account_role, 'fieldKey': None, 'timeFieldKey': 'reportingPeriod'"
   call POST "$R/sources" 200 "$(json "{'sourceKey': 'gl_balance', 'displayName': 'GL monthly balances', 'datasetId': $balances, $gl, 'copyFromSourceId': None}")"
   local balance_source
   balance_source=$(py "[s['source']['reportSourceId'] for s in r['sources'] if s['source']['sourceKey'] == 'gl_balance'][0]")
@@ -191,7 +191,7 @@ EOF
   call PUT "$R/sources/$income_source/variables" 200 "$(json "{'variables': [{'variableKey': 'INTEREST_INCOME', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}})}]}")"
   call GET "$R/profiles" 200
   echo "Profile default picks $(py "sorted(p['variableKey'] for x in r if x['profile']['profileKey'] == 'default' for p in x['picks'])") (expected AVERAGE_BALANCE and INTEREST_INCOME)"
-  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'roleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
+  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'dimensionRoleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
   call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
   # The rows go back as a whole tree: ASSETS becomes a header, and formula row reportYield is added at the top.
   call GET "$R/editor" 200
@@ -244,12 +244,12 @@ author_report
 echo "Report $REPORT_KEY: enabled, over model $MODEL"
 
 call GET /overview 200
-ORIGINAL_ID=$(py "r['activeRelease']['releaseId']")
+ORIGINAL_ID=$(py "r['activeRelease']['semanticReleaseId']")
 ORIGINAL_KEY=$(py "r['activeRelease']['releaseKey']")
 call POST /assumption-sets 201 "{\"assumptionSetKey\":\"${PREFIX}backtest\",\"displayName\":\"${PREFIX}backtest\"}"
-echo "Captured ${PREFIX}backtest on release $(py "r['releaseId']") (expected $ORIGINAL_ID)"
-call POST /releases 201 "{\"releaseKey\":\"${PREFIX}acceptance\",\"copyFromReleaseId\":$ORIGINAL_ID}"
-RELEASE=$(py "r['releaseId']")
+echo "Captured ${PREFIX}backtest on release $(py "r['semanticReleaseId']") (expected $ORIGINAL_ID)"
+call POST /releases 201 "{\"releaseKey\":\"${PREFIX}acceptance\",\"copyFromSemanticReleaseId\":$ORIGINAL_ID}"
+RELEASE=$(py "r['semanticReleaseId']")
 call GET "/releases/$RELEASE/datasets" 200
 call PUT "/releases/$RELEASE/datasets" 200 "$(py "json.dumps({'datasets': [{'datasetId': x['datasetId'], 'datasetVersionId': x['datasetVersionId']} for x in r] + [{'datasetId': $DATASET, 'datasetVersionId': $VERSION}]})")"
 call PUT "/versions/semantic_release/$RELEASE/status" 200 '{"status":"validated"}'

@@ -21,7 +21,7 @@ public sealed class ReportScenarioTests
         var fixture = new ReportEditorFixture();
         await fixture.CalculationDimensions.InsertAsync(ReportRows.CalculationDimension(81, "account", AccountRoleId), cancellationToken);
         await fixture.SetEnabledAsync(true);
-        var input = new ReportScenariosInput { Scenarios = [new ReportScenarioInput { RoleId = AccountRoleId }] };
+        var input = new ReportScenariosInput { Scenarios = [new ReportScenarioInput { DimensionRoleId = AccountRoleId }] };
 
         var violation = Assert.Single(await fixture.ScenarioService().ReplaceAsync(ReportRows.ReportId, input, cancellationToken));
 
@@ -30,6 +30,6 @@ public sealed class ReportScenarioTests
 
         await fixture.SetEnabledAsync(false);
         Assert.Empty(await fixture.ScenarioService().ReplaceAsync(ReportRows.ReportId, input, cancellationToken));
-        Assert.Equal([AccountRoleId], fixture.Scenarios.All.Select(scenario => scenario.RoleId));
+        Assert.Equal([AccountRoleId], fixture.Scenarios.All.Select(scenario => scenario.DimensionRoleId));
     }
 }

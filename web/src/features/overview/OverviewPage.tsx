@@ -122,7 +122,7 @@ function ActiveRelease({ base, release }: { base: string; release: TenantOvervie
       <Stat
         label="Release"
         value={
-          <Link to={`${base}/releases/${release.releaseId}`} className="hover:underline">
+          <Link to={`${base}/releases/${release.semanticReleaseId}`} className="hover:underline">
             {release.releaseKey}
           </Link>
         }

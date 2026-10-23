@@ -42,10 +42,10 @@ public sealed class InMemoryTableGatewayTests
 
         Assert.Equal([California, NewYork], await members.ListAsync(new { DimensionVersionId = 7 }, token));
         Assert.Equal([California, LaterCalifornia], await members.ListAsync(new { MemberKey = "CA" }, token));
-        Assert.Equal([California, LaterCalifornia], await members.ListAsync(new { MemberId = new long[] { 1, 3 } }, token));
-        Assert.Empty(await members.ListAsync(new { MemberId = Array.Empty<long>() }, token));
-        Assert.Empty(await members.ListAsync(new { ParentMemberId = (long?)null }, token));
-        Assert.Equal(NewYork, await members.GetAsync(new { MemberId = 2L }, token));
+        Assert.Equal([California, LaterCalifornia], await members.ListAsync(new { DimensionMemberId = new long[] { 1, 3 } }, token));
+        Assert.Empty(await members.ListAsync(new { DimensionMemberId = Array.Empty<long>() }, token));
+        Assert.Empty(await members.ListAsync(new { ParentDimensionMemberId = (long?)null }, token));
+        Assert.Equal(NewYork, await members.GetAsync(new { DimensionMemberId = 2L }, token));
     }
 
     /// <summary>An update replaces the row with the record's key and changes nothing for a missing key; a delete removes the filtered rows.</summary>
@@ -59,34 +59,34 @@ public sealed class InMemoryTableGatewayTests
 
         await members.UpdateAsync(renamed, token);
         await members.UpdateAsync(Member(99, 7, "TX", null), token);
-        await members.DeleteAsync(new { MemberId = new long[] { 2, 3 } }, token);
+        await members.DeleteAsync(new { DimensionMemberId = new long[] { 2, 3 } }, token);
 
         Assert.Equal([renamed], members.All);
     }
 
     /// <summary>A member with its key as display name.</summary>
-    private static DimensionMemberRecord Member(long memberId, long dimensionVersionId, string memberKey, long? parentMemberId)
+    private static DimensionMemberRecord Member(long dimensionMemberId, long dimensionVersionId, string memberKey, long? parentDimensionMemberId)
     {
         return new DimensionMemberRecord
         {
-            MemberId = memberId,
+            DimensionMemberId = dimensionMemberId,
             DimensionVersionId = dimensionVersionId,
             MemberKey = memberKey,
             DisplayName = memberKey,
-            ParentMemberId = parentMemberId,
+            ParentDimensionMemberId = parentDimensionMemberId,
             IsAssignable = true,
             SortOrder = 0
         };
     }
 
     /// <summary>A closure row of dimension version 7.</summary>
-    private static DimensionClosureRecord Closure(long ancestorMemberId, long descendantMemberId, int depth)
+    private static DimensionClosureRecord Closure(long ancestorDimensionMemberId, long descendantDimensionMemberId, int depth)
     {
         return new DimensionClosureRecord
         {
             DimensionVersionId = 7,
-            AncestorMemberId = ancestorMemberId,
-            DescendantMemberId = descendantMemberId,
+            AncestorDimensionMemberId = ancestorDimensionMemberId,
+            DescendantDimensionMemberId = descendantDimensionMemberId,
             Depth = depth
         };
     }

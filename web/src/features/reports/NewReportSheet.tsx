@@ -14,7 +14,7 @@ import type { Report } from './types';
  */
 interface NewReportValues extends ReportValues {
   reportKey: string;
-  modelId: number | null;
+  calculationModelId: number | null;
   startFromDimensionId: number | null;
 }
 
@@ -33,11 +33,11 @@ export interface NewReportSheetProps {
 export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
   const create = useCreateReport();
   const form = useForm<NewReportValues>({
-    defaultValues: { reportKey: '', modelId: null, startFromDimensionId: null, displayName: '', reportType: '', payloadJson: '' },
+    defaultValues: { reportKey: '', calculationModelId: null, startFromDimensionId: null, displayName: '', reportType: '', payloadJson: '' },
   });
 
   async function submit(values: NewReportValues) {
-    onCreated(await create.mutateAsync({ ...values, modelId: values.modelId ?? 0, payloadJson: emptyToNull(values.payloadJson) }));
+    onCreated(await create.mutateAsync({ ...values, calculationModelId: values.calculationModelId ?? 0, payloadJson: emptyToNull(values.payloadJson) }));
   }
 
   return (
@@ -52,7 +52,7 @@ export function NewReportSheet({ onClose, onCreated }: NewReportSheetProps) {
     >
       <TextField name="reportKey" label="Key" description="A letter, then letters, digits or underscores, as report requests name it." />
       <EntityField
-        name="modelId"
+        name="calculationModelId"
         label="Calculation model"
         lookupKind="calculation-models"
         description="The model whose variables and calculated measures the report reads."

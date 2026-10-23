@@ -23,21 +23,21 @@ public sealed class ReleaseDatasets(
     private readonly Dictionary<long, PinnedDatasetVersion?> _active = [];
 
     /// <summary>Reads the versions a release pins of some datasets.</summary>
-    /// <param name="releaseId">The release; null for the active release.</param>
+    /// <param name="semanticReleaseId">The release; null for the active release.</param>
     /// <param name="datasetIds">The datasets.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The pinned versions by dataset ID; a dataset the release does not pin is missing.</returns>
-    public async Task<IReadOnlyDictionary<long, PinnedDatasetVersion>> ReadAsync(long? releaseId, IReadOnlyCollection<long> datasetIds, CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<long, PinnedDatasetVersion>> ReadAsync(long? semanticReleaseId, IReadOnlyCollection<long> datasetIds, CancellationToken cancellationToken)
     {
-        var release = releaseId ?? (await databaseInfo.GetAsync(new { SingletonId }, cancellationToken)).ActiveReleaseId;
-        var datasetVersions = (await manifest.ListAsync(new { ReleaseId = release, DatasetId = datasetIds.ToArray() }, cancellationToken))
+        var release = semanticReleaseId ?? (await databaseInfo.GetAsync(new { SingletonId }, cancellationToken)).ActiveSemanticReleaseId;
+        var datasetVersions = (await manifest.ListAsync(new { SemanticReleaseId = release, DatasetId = datasetIds.ToArray() }, cancellationToken))
             .ToDictionary(row => row.DatasetId, row => row.DatasetVersionId);
         long[] versionIds = [.. datasetVersions.Values];
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = datasetVersions.Keys.ToArray() }, cancellationToken))
             .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
         var versionBindings = await bindings.ListAsync(new { DatasetVersionId = versionIds }, cancellationToken);
-        var timeIds = (await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
-            .Select(extension => extension.BindingId).ToHashSet();
+        var timeIds = (await timeBindings.ListAsync(new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken))
+            .Select(extension => extension.DimensionBindingId).ToHashSet();
         var versionFields = (await fields.ListAsync(new { DatasetVersionId = versionIds }, cancellationToken)).ToLookup(field => field.DatasetVersionId);
         var versionMeasures = (await measures.ListAsync(new { DatasetVersionId = versionIds }, cancellationToken)).ToLookup(measure => measure.DatasetVersionId);
         var bindingsByVersion = versionBindings.ToLookup(binding => binding.DatasetVersionId);
@@ -46,8 +46,8 @@ public sealed class ReleaseDatasets(
             DatasetKey = datasetKeys[pair.Key],
             Fields = versionFields[pair.Value].ToDictionary(field => field.FieldKey, StringComparer.Ordinal),
             Bindings = [.. bindingsByVersion[pair.Value]],
-            TimeBindingIds = bindingsByVersion[pair.Value].Where(binding => binding.BindingKind == BindingKinds.Time && timeIds.Contains(binding.BindingId))
-                .Select(binding => binding.BindingId).ToHashSet(),
+            TimeBindingIds = bindingsByVersion[pair.Value].Where(binding => binding.BindingKind == BindingKinds.Time && timeIds.Contains(binding.DimensionBindingId))
+                .Select(binding => binding.DimensionBindingId).ToHashSet(),
             Measures = versionMeasures[pair.Value].ToDictionary(measure => measure.MeasureKey, StringComparer.Ordinal)
         });
     }

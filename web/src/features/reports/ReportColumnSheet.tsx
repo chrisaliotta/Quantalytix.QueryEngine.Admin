@@ -19,7 +19,7 @@ interface ReportColumnValues {
 
 export interface ReportColumnSheetProps {
   /** The calculation model whose metrics the column can return. */
-  modelId: number;
+  calculationModelId: number;
   /** The column to edit; null to add one. */
   column: ReportColumnInput | null;
   /** Keeps the column in the tab's list; saving the list sends it. */
@@ -31,9 +31,9 @@ export interface ReportColumnSheetProps {
  * Adds or edits a column of the list being edited: the variable or calculated measure it returns, and optionally the
  * name and format it shows instead of the metric's own.
  */
-export function ReportColumnSheet({ modelId, column, onSave, onClose }: ReportColumnSheetProps) {
-  const variables = useOwnedContent('variables', modelId);
-  const measures = useOwnedContent('calculated-measures', modelId);
+export function ReportColumnSheet({ calculationModelId, column, onSave, onClose }: ReportColumnSheetProps) {
+  const variables = useOwnedContent('variables', calculationModelId);
+  const measures = useOwnedContent('calculated-measures', calculationModelId);
   const form = useForm<ReportColumnValues>({
     defaultValues: {
       columnKey: column?.columnKey ?? '',

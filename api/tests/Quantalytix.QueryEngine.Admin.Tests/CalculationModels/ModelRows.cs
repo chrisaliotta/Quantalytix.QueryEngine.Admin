@@ -8,14 +8,14 @@ namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 internal static class ModelRows
 {
     /// <summary>The calculation model the rows belong to.</summary>
-    public const long ModelId = 40;
+    public const long CalculationModelId = 40;
 
     /// <summary>Model 40, in US dollars, on formula language 1.0 with Shapley attribution.</summary>
     public static CalculationModelRecord Model()
     {
         return new CalculationModelRecord
         {
-            ModelId = ModelId,
+            CalculationModelId = CalculationModelId,
             ModelKey = "margin",
             DisplayName = "Margin",
             CalendarKey = "gregorian",
@@ -112,7 +112,7 @@ internal static class ModelRows
         return new VariableRecord
         {
             VariableId = variableId,
-            ModelId = ModelId,
+            CalculationModelId = CalculationModelId,
             VariableKey = variableKey,
             DisplayName = variableKey,
             VariableRole = "input",
@@ -127,7 +127,7 @@ internal static class ModelRows
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = measureId,
-            ModelId = ModelId,
+            CalculationModelId = CalculationModelId,
             MeasureKey = measureKey,
             DisplayName = measureKey,
             ExpressionText = expressionText,

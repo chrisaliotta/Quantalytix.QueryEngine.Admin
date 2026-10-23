@@ -17,7 +17,7 @@ export type CalculatedMeasure = Schemas['CalculatedMeasureRecord'];
 /** Body of `POST calculation-models`. */
 export type NewCalculationModelInput = Schemas['NewCalculationModelInput'];
 
-/** Body of `PUT calculation-models/{modelId}`. */
+/** Body of `PUT calculation-models/{calculationModelId}`. */
 export type CalculationModelInput = Schemas['CalculationModelInput'];
 
 /**
@@ -29,7 +29,7 @@ export type MetricAttribution = Schemas['MetricAttribution'];
 /** One driver of an attribution: the expression's inputs that switch together. */
 export type AttributionDriver = Schemas['AttributionDriver'];
 
-/** Body of `PUT calculation-models/{modelId}/attributions/{metricKey}`. */
+/** Body of `PUT calculation-models/{calculationModelId}/attributions/{metricKey}`. */
 export type MetricAttributionInput = Schemas['MetricAttributionInput'];
 
 /**
@@ -38,7 +38,7 @@ export type MetricAttributionInput = Schemas['MetricAttributionInput'];
  */
 export type ModelParameter = Schemas['ModelParameter'];
 
-/** Body of `PUT calculation-models/{modelId}/parameters/{parameterKey}`. */
+/** Body of `PUT calculation-models/{calculationModelId}/parameters/{parameterKey}`. */
 export type ModelParameterInput = Schemas['ModelParameterInput'];
 
 /** The `parameter_value_type` vocabulary. */

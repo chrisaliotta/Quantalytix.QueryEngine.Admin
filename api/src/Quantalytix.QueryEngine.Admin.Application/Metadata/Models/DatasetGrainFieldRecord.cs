@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DatasetGrainFieldRecord
 {
     /// <summary>The owning grain; first part of the primary key.</summary>
-    public required long GrainId { get; init; }
+    public required long DatasetGrainId { get; init; }
 
     /// <summary>Component order within the grain; second part of the primary key.</summary>
     public required int Ordinal { get; init; }

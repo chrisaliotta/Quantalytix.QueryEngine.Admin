@@ -77,7 +77,7 @@ export function problemOnItem(error: unknown, list: string, index: number): unkn
   return withErrors(error, errors);
 }
 
-/** The list index an error key of the list's items names, such as 3 for `entries[3].memberId`; null for other keys. */
+/** The list index an error key of the list's items names, such as 3 for `entries[3].dimensionMemberId`; null for other keys. */
 function itemIndex(key: string, list: string): number | null {
   const match = /^(\w+)\[(\d+)\]/.exec(key);
   if (!match || match[1] !== list) {

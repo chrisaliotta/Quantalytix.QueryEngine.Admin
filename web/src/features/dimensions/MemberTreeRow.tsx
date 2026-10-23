@@ -41,9 +41,9 @@ export function MemberTreeRow({
   onDelete,
 }: MemberTreeRowProps) {
   const member = item.data as DimensionMember;
-  const level = member.levelId == null ? undefined : levelKeys.get(member.levelId);
+  const level = member.dimensionLevelId == null ? undefined : levelKeys.get(member.dimensionLevelId);
   const shownParentId = item.parentId === null ? null : Number(item.parentId);
-  const isDetached = (member.parentMemberId ?? null) !== shownParentId;
+  const isDetached = (member.parentDimensionMemberId ?? null) !== shownParentId;
 
   return (
     <div

@@ -14,12 +14,12 @@ function compareOrdinal(left: string, right: string) {
  * takes no source values can't be picked, so it is disabled.
  */
 export function memberTree(members: DimensionMember[]): TreeNode<DimensionMember>[] {
-  function under(parentMemberId: number | null): TreeNode<DimensionMember>[] {
+  function under(parentDimensionMemberId: number | null): TreeNode<DimensionMember>[] {
     return members
-      .filter(member => (member.parentMemberId ?? null) === parentMemberId)
+      .filter(member => (member.parentDimensionMemberId ?? null) === parentDimensionMemberId)
       .sort((left, right) => left.sortOrder - right.sortOrder || compareOrdinal(left.memberKey, right.memberKey))
       .map(member => {
-        const children = under(member.memberId);
+        const children = under(member.dimensionMemberId);
         return {
           id: member.memberKey,
           label: `${member.memberKey} — ${member.displayName}`,
@@ -39,21 +39,21 @@ function memberOf(members: DimensionMember[], key: string) {
 /** Whether a member has members under it: a folder, whose rule can take every item under it. */
 export function isFolder(members: DimensionMember[], key: string) {
   const folder = memberOf(members, key);
-  return members.some(member => member.parentMemberId === folder.memberId);
+  return members.some(member => member.parentDimensionMemberId === folder.dimensionMemberId);
 }
 
 /** The items of a member's branch: the member itself when it takes source values, and every such member under it. */
 export function branchItems(members: DimensionMember[], key: string): string[] {
   const member = memberOf(members, key);
-  const below = members.filter(child => child.parentMemberId === member.memberId).flatMap(child => branchItems(members, child.memberKey));
+  const below = members.filter(child => child.parentDimensionMemberId === member.dimensionMemberId).flatMap(child => branchItems(members, child.memberKey));
   return member.isAssignable ? [key, ...below] : below;
 }
 
 /** The keys of the members above a member, nearest first. */
 function ancestors(members: DimensionMember[], key: string): string[] {
-  const byId = new Map(members.map(member => [member.memberId, member]));
+  const byId = new Map(members.map(member => [member.dimensionMemberId, member]));
   const keys: string[] = [];
-  for (let parentId = memberOf(members, key).parentMemberId; parentId != null; parentId = byId.get(parentId)!.parentMemberId) {
+  for (let parentId = memberOf(members, key).parentDimensionMemberId; parentId != null; parentId = byId.get(parentId)!.parentDimensionMemberId) {
     keys.push(byId.get(parentId)!.memberKey);
   }
   return keys;

@@ -40,7 +40,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task RouteFromTheSourceDimensionToTheBindingDimension_Passes()
     {
-        Assert.Empty(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeId: 40)));
+        Assert.Empty(await EvaluateAsync(Source(), BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 40)));
     }
 
     /// <summary>A source binding that is not a binding of the version is reported.</summary>
@@ -50,7 +50,7 @@ public sealed class BridgeBindingRouteRuleTests
     {
         var otherVersionSource = Source() with { DatasetVersionId = 200 };
 
-        var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceBindingId: 21, bridgeId: 40)));
+        var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 40)));
 
         Assert.Equal(BridgeBindingRouteRule.Code, violation.Rule);
         Assert.Equal("Bridge binding 'region' remaps binding 21, which is not a binding of this version.", violation.Message);
@@ -61,7 +61,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeFromAnotherDimension_IsReported()
     {
-        var violation = Assert.Single(await EvaluateAsync(Source(), BridgeBinding(sourceBindingId: 21, bridgeId: 50)));
+        var violation = Assert.Single(await EvaluateAsync(Source(), BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 50)));
 
         Assert.Equal("Bridge binding 'region' uses bridge 'productToRegion', which starts at another dimension than its source binding 'branch'.", violation.Message);
     }
@@ -71,7 +71,7 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeToAnotherDimension_IsReported()
     {
-        var binding = BridgeBinding(sourceBindingId: 21, bridgeId: 40) with { DimensionId = 9999 };
+        var binding = BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 40) with { DimensionId = 9999 };
 
         var violation = Assert.Single(await EvaluateAsync(Source(), binding));
 
@@ -83,8 +83,8 @@ public sealed class BridgeBindingRouteRuleTests
     [Fact]
     public async Task BridgeBindingsRemappingEachOther_AreReported()
     {
-        var first = BridgeBinding(sourceBindingId: 23, bridgeId: 40);
-        var second = BridgeBinding(sourceBindingId: 22, bridgeId: 40) with { BindingId = 23, RoleId = 83 };
+        var first = BridgeBinding(sourceDimensionBindingId: 23, bridgeId: 40);
+        var second = BridgeBinding(sourceDimensionBindingId: 22, bridgeId: 40) with { DimensionBindingId = 23, DimensionRoleId = 83 };
 
         var cycles = (await EvaluateAsync(first, second)).Where(violation => violation.Message.EndsWith("leads back to itself through its source bindings.", StringComparison.Ordinal));
 
@@ -106,12 +106,12 @@ public sealed class BridgeBindingRouteRuleTests
     }
 
     /// <summary>The bridge binding 22, of the region role.</summary>
-    private static DimensionBindingRecord BridgeBinding(long sourceBindingId, long bridgeId)
+    private static DimensionBindingRecord BridgeBinding(long sourceDimensionBindingId, long bridgeId)
     {
         return DatasetRows.Binding(22, VersionId, 82, BindingKinds.Bridge, null) with
         {
             DimensionId = RegionDimension,
-            SourceBindingId = sourceBindingId,
+            SourceDimensionBindingId = sourceDimensionBindingId,
             BridgeId = bridgeId
         };
     }

@@ -15,7 +15,7 @@ public sealed class ModelMetricsReader(
     public async Task<ModelMetrics> ReadForReportAsync(long reportId, CancellationToken cancellationToken)
     {
         var report = await reports.GetAsync(new { ReportId = reportId }, cancellationToken);
-        var owner = new { report.ModelId };
+        var owner = new { report.CalculationModelId };
         return new ModelMetrics
         {
             VariableKeys = (await variables.ListAsync(owner, cancellationToken)).Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal),

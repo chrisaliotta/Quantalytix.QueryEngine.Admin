@@ -58,7 +58,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <summary>Edits a role's display name and description; a change advances the semantic revision. The key stays fixed.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
     /// <param name="dimensionId">The role's dimension.</param>
-    /// <param name="roleId">The role.</param>
+    /// <param name="dimensionRoleId">The role.</param>
     /// <param name="input">The new display name and description.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored role.</returns>
@@ -66,35 +66,35 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpPut("{roleId:long}")]
+    [HttpPut("{dimensionRoleId:long}")]
     [ProducesResponseType<DimensionRoleRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRoleRecord>> Update(
         string tenantId,
         long dimensionId,
-        long roleId,
+        long dimensionRoleId,
         DimensionRoleInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await roles.UpdateAsync(roleId, input, cancellationToken));
+        return Ok(await roles.UpdateAsync(dimensionRoleId, input, cancellationToken));
     }
 
     /// <summary>Deletes a role that no binding, calculation dimension, report source or report scenario names.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
     /// <param name="dimensionId">The role's dimension.</param>
-    /// <param name="roleId">The role.</param>
+    /// <param name="dimensionRoleId">The role.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something names the role.</returns>
     /// <response code="204">The role is deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions, report sources and report scenarios that name the role.</response>
-    [HttpDelete("{roleId:long}")]
+    [HttpDelete("{dimensionRoleId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, long dimensionId, long roleId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, long dimensionId, long dimensionRoleId, CancellationToken cancellationToken)
     {
-        var conflict = await roles.DeleteAsync(roleId, cancellationToken);
+        var conflict = await roles.DeleteAsync(dimensionRoleId, cancellationToken);
         if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }

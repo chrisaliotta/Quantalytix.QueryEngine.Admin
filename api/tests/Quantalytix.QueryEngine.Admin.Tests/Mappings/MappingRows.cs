@@ -31,11 +31,11 @@ internal static class MappingRows
     }
 
     /// <summary>A mapping entry from a source value to a member key.</summary>
-    public static DimensionMappingRecord Entry(long mappingEntryId, long mappingVersionId, string sourceKeyValue, string memberKey)
+    public static DimensionMappingRecord Entry(long dimensionMappingId, long mappingVersionId, string sourceKeyValue, string memberKey)
     {
         return new DimensionMappingRecord
         {
-            MappingEntryId = mappingEntryId,
+            DimensionMappingId = dimensionMappingId,
             MappingVersionId = mappingVersionId,
             SourceKeyValue = sourceKeyValue,
             MemberKey = memberKey

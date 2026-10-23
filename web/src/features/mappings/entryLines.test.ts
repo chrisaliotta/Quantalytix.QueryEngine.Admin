@@ -33,8 +33,8 @@ describe('readEntryLines', () => {
 describe('writeEntryLines', () => {
   it('writes the entries as lines that read back as the same entries', () => {
     const entries = [
-      { mappingEntryId: 1, mappingVersionId: 40, sourceKeyValue: '003000', memberKey: 'CA' },
-      { mappingEntryId: 2, mappingVersionId: 40, sourceKeyValue: '36', memberKey: 'NY' },
+      { dimensionMappingId: 1, mappingVersionId: 40, sourceKeyValue: '003000', memberKey: 'CA' },
+      { dimensionMappingId: 2, mappingVersionId: 40, sourceKeyValue: '36', memberKey: 'NY' },
     ];
 
     const text = writeEntryLines(entries);

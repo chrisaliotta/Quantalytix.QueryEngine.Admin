@@ -26,6 +26,6 @@ public sealed record PinnedDatasetVersion
     public bool IsTimeField(string fieldKey)
     {
         return Fields.GetValueOrDefault(fieldKey) is { } field
-            && Bindings.Any(binding => binding.SourceFieldId == field.FieldId && TimeBindingIds.Contains(binding.BindingId));
+            && Bindings.Any(binding => binding.SourceFieldId == field.FieldId && TimeBindingIds.Contains(binding.DimensionBindingId));
     }
 }

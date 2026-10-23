@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DimensionMappingRecord
 {
     /// <summary>Surrogate primary key allocated by the metadata service; no business meaning.</summary>
-    public required long MappingEntryId { get; init; }
+    public required long DimensionMappingId { get; init; }
 
     /// <summary>The mapping version that owns the assignment.</summary>
     public required long MappingVersionId { get; init; }

@@ -35,23 +35,23 @@ export interface BindingSheetProps {
 export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingSheetProps) {
   const tenantId = useTenantId();
   const form = useForm<BindingFormValues>({ defaultValues: bindingFormValues(detail) });
-  const [kind, roleId, timeDimensionId, sourceBindingId] = useWatch({
+  const [kind, dimensionRoleId, timeDimensionId, sourceDimensionBindingId] = useWatch({
     control: form.control,
-    name: ['bindingKind', 'roleId', 'dimensionId', 'sourceBindingId'],
+    name: ['bindingKind', 'dimensionRoleId', 'dimensionId', 'sourceDimensionBindingId'],
   });
   const roles = useLookup('dimension-roles');
   const dimensions = useLookup('dimensions');
   const bindings = useBindings(versionId);
-  const templateId = kind === 'time' ? timeDimensionId : (roles.data?.find(role => role.id === roleId)?.parentId ?? null);
-  const sourceDimensionId = bindings.data?.find(item => item.binding.bindingId === sourceBindingId)?.binding.dimensionId ?? null;
-  useStaleReferenceClearing(form, { kind, templateId, sourceBindingId }, roles.data, dimensions.data);
+  const templateId = kind === 'time' ? timeDimensionId : (roles.data?.find(role => role.id === dimensionRoleId)?.parentId ?? null);
+  const sourceDimensionId = bindings.data?.find(item => item.binding.dimensionBindingId === sourceDimensionBindingId)?.binding.dimensionId ?? null;
+  useStaleReferenceClearing(form, { kind, templateId, sourceDimensionBindingId }, roles.data, dimensions.data);
   const save = useMutation({
     mutationFn: async (values: BindingFormValues) => {
       const body = toBindingInput(values);
       if (detail) {
         return unwrap(
-          await apiClient.PUT('/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{bindingId}', {
-            params: { path: { tenantId, versionId, bindingId: detail.binding.bindingId } },
+          await apiClient.PUT('/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{dimensionBindingId}', {
+            params: { path: { tenantId, versionId, dimensionBindingId: detail.binding.dimensionBindingId } },
             body,
           })
         );
@@ -86,7 +86,7 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
         <EntityField name="dimensionId" label="Dimension" lookupKind="dimensions" filter={kindFilter('time')} />
       ) : (
         <EntityField
-          name="roleId"
+          name="dimensionRoleId"
           label="Role"
           lookupKind="dimension-roles"
           filter={kindFilter(kind)}
@@ -113,11 +113,11 @@ export function BindingSheet({ versionId, detail, isDraft, onClose }: BindingShe
       {kind === 'bridge' && (
         <>
           <EntityField
-            name="sourceBindingId"
+            name="sourceDimensionBindingId"
             label="Source binding"
             lookupKind="bindings"
             parentId={versionId}
-            filter={item => item.id !== detail?.binding.bindingId}
+            filter={item => item.id !== detail?.binding.dimensionBindingId}
             description="The binding of this version whose members the bridge remaps."
           />
           <EntityField
@@ -150,7 +150,7 @@ interface ReferenceChoices {
   kind: string | null;
   /** The binding's dimension: the role's template, or a time binding's own. */
   templateId: number | null;
-  sourceBindingId: number | null;
+  sourceDimensionBindingId: number | null;
 }
 
 /**
@@ -167,17 +167,17 @@ function useStaleReferenceClearing(
   roles: LookupItem[] | undefined,
   dimensions: LookupItem[] | undefined
 ) {
-  const { kind, templateId, sourceBindingId } = choices;
+  const { kind, templateId, sourceDimensionBindingId } = choices;
   const previous = useRef(choices);
   useEffect(() => {
     const before = previous.current;
-    previous.current = { kind, templateId, sourceBindingId };
+    previous.current = { kind, templateId, sourceDimensionBindingId };
     if (kind !== before.kind) {
       const fitsKind = kindFilter(kind);
-      const role = roles?.find(item => item.id === form.getValues('roleId'));
+      const role = roles?.find(item => item.id === form.getValues('dimensionRoleId'));
       const dimension = dimensions?.find(item => item.id === form.getValues('dimensionId'));
       if (kind === 'time' || (fitsKind && role && !fitsKind(role))) {
-        form.setValue('roleId', null);
+        form.setValue('dimensionRoleId', null);
       }
       if (kind !== 'time' || (fitsKind && dimension && !fitsKind(dimension))) {
         form.setValue('dimensionId', null);
@@ -187,10 +187,10 @@ function useStaleReferenceClearing(
       form.setValue('mappingSetId', null);
       form.setValue('unknownMemberKey', null);
     }
-    if (templateId !== before.templateId || sourceBindingId !== before.sourceBindingId) {
+    if (templateId !== before.templateId || sourceDimensionBindingId !== before.sourceDimensionBindingId) {
       form.setValue('bridgeId', null);
     }
-  }, [form, roles, dimensions, kind, templateId, sourceBindingId]);
+  }, [form, roles, dimensions, kind, templateId, sourceDimensionBindingId]);
 }
 
 /**

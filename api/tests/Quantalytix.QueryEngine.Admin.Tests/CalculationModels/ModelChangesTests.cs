@@ -126,7 +126,7 @@ public sealed class ModelChangesTests
 
         Assert.Equal([AttributionReferencesResolveRule.Code, AttributionDriversRule.Code], refused.Select(violation => violation.Rule));
         Assert.Empty(written);
-        var stored = Assert.Single(await _fixture.AttributionService().ListAsync(ModelId, TestContext.Current.CancellationToken));
+        var stored = Assert.Single(await _fixture.AttributionService().ListAsync(CalculationModelId, TestContext.Current.CancellationToken));
         Assert.Equal(("yield", "balance"), (stored.MetricKey, stored.WeightVariableKey));
         Assert.Equal(["balance"], Assert.Single(stored.Drivers).InputKeys);
     }
@@ -142,7 +142,7 @@ public sealed class ModelChangesTests
         Assert.Empty(await ReplaceAttributionAsync(Attribution("yield", null)));
 
         var violations = await _fixture.Changes().ApplyAsync(
-            ModelId, model => _measures.Without(model, 61), () => _measures.DeleteAsync(61, TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+            CalculationModelId, model => _measures.Without(model, 61), () => _measures.DeleteAsync(61, TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
 
         Assert.Equal(["The attribution of 'yield' names no variable or calculated measure of the model."], violations.Select(violation => violation.Message));
         Assert.Single(_fixture.CalculatedMeasures.All);
@@ -162,7 +162,7 @@ public sealed class ModelChangesTests
         var downgraded = Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version10 };
 
         var violations = await _fixture.Changes().ApplyAsync(
-            ModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
+            CalculationModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
 
         Assert.Equal([FormulasFitLanguageRule.Code], violations.Select(violation => violation.Rule));
         Assert.Equal(FormulaLanguageVersions.Version11, Assert.Single(_fixture.Models.All).FormulaLanguageVersion);
@@ -173,9 +173,9 @@ public sealed class ModelChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         return _fixture.Changes().ApplyAsync(
-            ModelId,
+            CalculationModelId,
             model => MetricAttributionService.Put(model, attribution),
-            () => _fixture.AttributionService().ReplaceAsync(ModelId, attribution, cancellationToken),
+            () => _fixture.AttributionService().ReplaceAsync(CalculationModelId, attribution, cancellationToken),
             cancellationToken);
     }
 
@@ -184,7 +184,7 @@ public sealed class ModelChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         return _fixture.Changes().ApplyAsync(
-            ModelId, model => _measures.Put(model, updated), () => _measures.UpdateAsync(updated, cancellationToken), cancellationToken);
+            CalculationModelId, model => _measures.Put(model, updated), () => _measures.UpdateAsync(updated, cancellationToken), cancellationToken);
     }
 
     /// <summary>Deletes a variable of model 40 through the gate, as the variables controller does.</summary>
@@ -192,6 +192,6 @@ public sealed class ModelChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         return _fixture.Changes().ApplyAsync(
-            ModelId, model => _variables.Without(model, variableId), () => _variables.DeleteAsync(variableId, cancellationToken), cancellationToken);
+            CalculationModelId, model => _variables.Without(model, variableId), () => _variables.DeleteAsync(variableId, cancellationToken), cancellationToken);
     }
 }

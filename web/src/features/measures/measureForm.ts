@@ -10,7 +10,7 @@ export interface ComponentFormValues {
 /** Values of the measure sheet's time policy section. */
 export interface TimePolicyFormValues {
   requiredTimeBindingId: number | null;
-  selectionGrainId: number | null;
+  selectionDatasetGrainId: number | null;
   observationSelection: string | null;
   valueTimeRole: string | null;
   boundaryMatch: string | null;
@@ -146,7 +146,7 @@ function componentsOf(detail?: MeasureDetail): ComponentFormValues[] {
 function timePolicyFormValues(policy?: MeasureTimePolicy | null): TimePolicyFormValues {
   return {
     requiredTimeBindingId: policy?.requiredTimeBindingId ?? null,
-    selectionGrainId: policy?.selectionGrainId ?? null,
+    selectionDatasetGrainId: policy?.selectionDatasetGrainId ?? null,
     observationSelection: policy?.observationSelection ?? 'all',
     valueTimeRole: policy?.valueTimeRole ?? 'point',
     boundaryMatch: policy?.boundaryMatch ?? 'exact',
@@ -204,7 +204,7 @@ export function toMeasureInput(values: MeasureFormValues): MeasureInput {
 function toTimePolicyInput(values: TimePolicyFormValues): MeasureTimePolicyInput {
   return {
     requiredTimeBindingId: values.requiredTimeBindingId,
-    selectionGrainId: values.selectionGrainId,
+    selectionDatasetGrainId: values.selectionDatasetGrainId,
     observationSelection: values.observationSelection ?? '',
     valueTimeRole: values.valueTimeRole ?? '',
     boundaryMatch: values.boundaryMatch ?? '',

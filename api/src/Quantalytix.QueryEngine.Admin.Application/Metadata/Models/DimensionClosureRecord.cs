@@ -7,10 +7,10 @@ public sealed record DimensionClosureRecord
     public required long DimensionVersionId { get; init; }
 
     /// <summary>The ancestor member; second part of the primary key.</summary>
-    public required long AncestorMemberId { get; init; }
+    public required long AncestorDimensionMemberId { get; init; }
 
     /// <summary>The descendant member; third part of the primary key.</summary>
-    public required long DescendantMemberId { get; init; }
+    public required long DescendantDimensionMemberId { get; init; }
 
     /// <summary>Edge distance; self rows use <c>0</c>.</summary>
     public required int Depth { get; init; }

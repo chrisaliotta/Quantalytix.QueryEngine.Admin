@@ -23,8 +23,8 @@ const columns: ColumnDef<CalculatedMeasure>[] = [
 ];
 
 /** The model's calculated measures: formulas over variables and other calculated measures, each with its attribution. */
-export function CalculatedMeasuresTab({ modelId }: { modelId: number }) {
-  const attributions = useAttributions(modelId);
+export function CalculatedMeasuresTab({ calculationModelId }: { calculationModelId: number }) {
+  const attributions = useAttributions(calculationModelId);
   const [attributing, setAttributing] = useState<CalculatedMeasure | null>(null);
   const withAttribution = [
     ...columns,
@@ -35,16 +35,16 @@ export function CalculatedMeasuresTab({ modelId }: { modelId: number }) {
     <>
       <OwnedContentTab
         kind="calculated-measures"
-        ownerId={modelId}
+        ownerId={calculationModelId}
         columns={withAttribution}
         noun="calculated measure"
         identify={measure => ({ id: measure.calculatedMeasureId, key: measure.measureKey })}
         deleteDescription="A calculated measure that another formula of the model, an attribution, or an enabled report's column or formula row reads is kept."
-        renderSheet={(measure, onClose) => <CalculatedMeasureSheet modelId={modelId} measure={measure} onClose={onClose} />}
+        renderSheet={(measure, onClose) => <CalculatedMeasureSheet calculationModelId={calculationModelId} measure={measure} onClose={onClose} />}
       />
       {attributing && attributions.data && (
         <AttributionSheet
-          modelId={modelId}
+          calculationModelId={calculationModelId}
           metricKey={attributing.measureKey}
           formula={attributing.expressionText}
           attribution={attributions.data.find(attribution => attribution.metricKey === attributing.measureKey)}

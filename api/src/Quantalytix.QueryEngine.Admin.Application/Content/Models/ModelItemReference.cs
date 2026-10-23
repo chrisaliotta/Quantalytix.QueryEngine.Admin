@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Content;
 public sealed record ModelItemReference<TItem> : IOwnedItemReference
 {
     /// <summary>The model that owns the row.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>The row.</summary>
     public required long ItemId { get; init; }
@@ -14,5 +14,5 @@ public sealed record ModelItemReference<TItem> : IOwnedItemReference
     string IOwnedItemReference.OwnerName => "model";
 
     /// <summary>The model.</summary>
-    long IOwnedItemReference.OwnerId => ModelId;
+    long IOwnedItemReference.OwnerId => CalculationModelId;
 }

@@ -15,7 +15,7 @@ public sealed class TenantDatabaseVerifier(IStarRocksConnectionFactory connectio
 {
     /// <summary>Reads the singleton database info row.</summary>
     private const string DatabaseInfoSql = """
-        SELECT singleton_id, tenant_key, metadata_schema_version, semantic_revision, active_release_id, updated_at
+        SELECT singleton_id, tenant_key, metadata_schema_version, semantic_revision, active_semantic_release_id, updated_at
         FROM qe_database_info
         WHERE singleton_id = 1
         """;

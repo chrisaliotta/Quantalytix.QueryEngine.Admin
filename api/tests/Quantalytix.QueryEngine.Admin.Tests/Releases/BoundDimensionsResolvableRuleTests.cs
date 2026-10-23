@@ -60,6 +60,6 @@ public sealed class BoundDimensionsResolvableRuleTests
     {
         var reader = Reader(_manifest, _datasets, bindings);
         var rule = new BoundDimensionsResolvableRule(reader, _dimensionVersions, _dimensions);
-        return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
+        return await rule.EvaluateAsync(SemanticReleaseId, TestContext.Current.CancellationToken);
     }
 }

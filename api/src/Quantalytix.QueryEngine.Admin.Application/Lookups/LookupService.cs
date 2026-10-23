@@ -116,14 +116,14 @@ public sealed class LookupService(
     {
         var feeding = (await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken))
             .Where(SourceBindings.FeedsBridges)
-            .DistinctBy(binding => binding.RoleId)
+            .DistinctBy(binding => binding.DimensionRoleId)
             .ToList();
-        var bound = (await roles.ListAsync(new { RoleId = feeding.Select(binding => binding.RoleId!.Value).ToArray() }, cancellationToken))
-            .ToDictionary(role => role.RoleId);
+        var bound = (await roles.ListAsync(new { DimensionRoleId = feeding.Select(binding => binding.DimensionRoleId!.Value).ToArray() }, cancellationToken))
+            .ToDictionary(role => role.DimensionRoleId);
         return SortByKey(feeding.Select(binding =>
         {
-            var role = bound[binding.RoleId!.Value];
-            return new LookupItem { Id = role.RoleId, Key = role.RoleKey, Label = role.DisplayName, ParentId = role.DimensionId, Classifier = binding.BindingKind };
+            var role = bound[binding.DimensionRoleId!.Value];
+            return new LookupItem { Id = role.DimensionRoleId, Key = role.DimensionRoleKey, Label = role.DisplayName, ParentId = role.DimensionId, Classifier = binding.BindingKind };
         }));
     }
 
@@ -133,7 +133,7 @@ public sealed class LookupService(
         var rows = await grains.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken);
         return SortByKey(rows.Select(row => new LookupItem
         {
-            Id = row.GrainId,
+            Id = row.DatasetGrainId,
             Key = row.GrainKey,
             Label = row.GrainKey,
             Classifier = row.GrainKind
@@ -150,9 +150,9 @@ public sealed class LookupService(
         var names = await bindingNames.OfAsync(rows, cancellationToken);
         return SortByKey(rows.Select(row => new LookupItem
         {
-            Id = row.BindingId,
-            Key = BindingKey(row.BindingId),
-            Label = names[row.BindingId],
+            Id = row.DimensionBindingId,
+            Key = BindingKey(row.DimensionBindingId),
+            Label = names[row.DimensionBindingId],
             Classifier = row.BindingKind
         }));
     }
@@ -161,16 +161,16 @@ public sealed class LookupService(
     private async Task<IReadOnlyList<LookupItem>> TimeBindingsAsync(long datasetVersionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = datasetVersionId }, cancellationToken);
-        var extensions = await timeBindings.ListAsync(new { BindingId = rows.Select(row => row.BindingId).ToArray() }, cancellationToken);
-        var timeValueTypes = extensions.ToDictionary(extension => extension.BindingId, extension => extension.TimeValueType);
-        var timed = rows.Where(row => timeValueTypes.ContainsKey(row.BindingId)).ToList();
+        var extensions = await timeBindings.ListAsync(new { DimensionBindingId = rows.Select(row => row.DimensionBindingId).ToArray() }, cancellationToken);
+        var timeValueTypes = extensions.ToDictionary(extension => extension.DimensionBindingId, extension => extension.TimeValueType);
+        var timed = rows.Where(row => timeValueTypes.ContainsKey(row.DimensionBindingId)).ToList();
         var names = await bindingNames.OfAsync(timed, cancellationToken);
         return SortByKey(timed.Select(row => new LookupItem
         {
-            Id = row.BindingId,
-            Key = BindingKey(row.BindingId),
-            Label = names[row.BindingId],
-            Classifier = timeValueTypes[row.BindingId]
+            Id = row.DimensionBindingId,
+            Key = BindingKey(row.DimensionBindingId),
+            Label = names[row.DimensionBindingId],
+            Classifier = timeValueTypes[row.DimensionBindingId]
         }));
     }
 
@@ -215,8 +215,8 @@ public sealed class LookupService(
             .ToDictionary(dimension => dimension.DimensionId);
         return SortByKey(rows.Select(row => new LookupItem
         {
-            Id = row.RoleId,
-            Key = row.RoleKey,
+            Id = row.DimensionRoleId,
+            Key = row.DimensionRoleKey,
             Label = $"{row.DisplayName} · {templates[row.DimensionId].DisplayName}",
             ParentId = row.DimensionId,
             Classifier = templates[row.DimensionId].DimensionKind
@@ -248,7 +248,7 @@ public sealed class LookupService(
         [
             .. rows.OrderBy(row => row.Ordinal).Select(row => new LookupItem
             {
-                Id = row.LevelId,
+                Id = row.DimensionLevelId,
                 Key = row.LevelKey,
                 Label = row.DisplayName,
                 Classifier = row.Periodicity
@@ -267,10 +267,10 @@ public sealed class LookupService(
                 .ThenBy(row => row.MemberKey, StringComparer.OrdinalIgnoreCase)
                 .Select(row => new LookupItem
                 {
-                    Id = row.MemberId,
+                    Id = row.DimensionMemberId,
                     Key = row.MemberKey,
                     Label = row.DisplayName,
-                    ParentId = row.ParentMemberId
+                    ParentId = row.ParentDimensionMemberId
                 })
         ];
     }
@@ -339,7 +339,7 @@ public sealed class LookupService(
         var rows = await releases.ListAsync(null, cancellationToken);
         return SortByKey(rows.Select(row => new LookupItem
         {
-            Id = row.ReleaseId,
+            Id = row.SemanticReleaseId,
             Key = row.ReleaseKey,
             Label = row.ReleaseKey,
             Status = row.Status
@@ -372,8 +372,8 @@ public sealed class LookupService(
     }
 
     /// <summary>The key of a binding, which has no key column: its ID as text.</summary>
-    private static string BindingKey(long bindingId)
+    private static string BindingKey(long dimensionBindingId)
     {
-        return bindingId.ToString(CultureInfo.InvariantCulture);
+        return dimensionBindingId.ToString(CultureInfo.InvariantCulture);
     }
 }

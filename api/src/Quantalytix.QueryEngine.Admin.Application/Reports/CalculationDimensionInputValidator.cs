@@ -29,9 +29,9 @@ public sealed class CalculationDimensionInputValidator : AbstractValidator<Calcu
                 dimension => dimension.CalculationDimensionId, cancellationToken))
             .WithMessage(input => $"The report already has a calculation dimension with key '{input.DimensionKey}'.");
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
-        RuleFor(input => input.RoleId)
-            .MustAsync(async (roleId, cancellationToken) => (await roles.ListAsync(new { RoleId = roleId }, cancellationToken)).Count == 1)
-            .WithMessage(input => $"Role {input.RoleId} does not exist.");
+        RuleFor(input => input.DimensionRoleId)
+            .MustAsync(async (dimensionRoleId, cancellationToken) => (await roles.ListAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken)).Count == 1)
+            .WithMessage(input => $"Role {input.DimensionRoleId} does not exist.");
         Include(new GroupingInputValidator<CalculationDimensionInput>(128));
     }
 }

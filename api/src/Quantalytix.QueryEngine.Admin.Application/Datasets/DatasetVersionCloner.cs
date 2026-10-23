@@ -45,12 +45,12 @@ public sealed class DatasetVersionCloner(
         return new DatasetVersionContent
         {
             Fields = [.. source.Fields.Select(field => field with { FieldId = remap.Map(field.FieldId), DatasetVersionId = versionId })],
-            Grains = [.. source.Grains.Select(grain => grain with { GrainId = remap.Map(grain.GrainId), DatasetVersionId = versionId })],
+            Grains = [.. source.Grains.Select(grain => grain with { DatasetGrainId = remap.Map(grain.DatasetGrainId), DatasetVersionId = versionId })],
             GrainFields =
             [
                 .. source.GrainFields.Select(component => component with
                 {
-                    GrainId = remap.Map(component.GrainId),
+                    DatasetGrainId = remap.Map(component.DatasetGrainId),
                     FieldId = remap.Map(component.FieldId)
                 })
             ],
@@ -58,17 +58,17 @@ public sealed class DatasetVersionCloner(
             [
                 .. source.Bindings.Select(binding => binding with
                 {
-                    BindingId = remap.Map(binding.BindingId),
+                    DimensionBindingId = remap.Map(binding.DimensionBindingId),
                     DatasetVersionId = versionId,
                     SourceFieldId = remap.MapOptional(binding.SourceFieldId),
-                    SourceBindingId = remap.MapOptional(binding.SourceBindingId)
+                    SourceDimensionBindingId = remap.MapOptional(binding.SourceDimensionBindingId)
                 })
             ],
             TimeBindings =
             [
                 .. source.TimeBindings.Select(timeBinding => timeBinding with
                 {
-                    BindingId = remap.Map(timeBinding.BindingId),
+                    DimensionBindingId = remap.Map(timeBinding.DimensionBindingId),
                     IntervalEndFieldId = remap.MapOptional(timeBinding.IntervalEndFieldId)
                 })
             ],
@@ -95,7 +95,7 @@ public sealed class DatasetVersionCloner(
                 {
                     MeasureId = remap.Map(policy.MeasureId),
                     RequiredTimeBindingId = remap.MapOptional(policy.RequiredTimeBindingId),
-                    SelectionGrainId = remap.MapOptional(policy.SelectionGrainId)
+                    SelectionDatasetGrainId = remap.MapOptional(policy.SelectionDatasetGrainId)
                 })
             ]
         };

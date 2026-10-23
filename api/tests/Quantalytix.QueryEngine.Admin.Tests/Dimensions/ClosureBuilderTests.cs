@@ -76,13 +76,13 @@ public sealed class ClosureBuilderTests
     {
         return closure.All
             .Where(row => row.DimensionVersionId == versionId)
-            .Select(row => (row.AncestorMemberId, row.DescendantMemberId, row.Depth))
+            .Select(row => (row.AncestorDimensionMemberId, row.DescendantDimensionMemberId, row.Depth))
             .Order();
     }
 
     /// <summary>One closure row.</summary>
     private static DimensionClosureRecord Row(long versionId, long ancestorId, long descendantId, int depth)
     {
-        return new DimensionClosureRecord { DimensionVersionId = versionId, AncestorMemberId = ancestorId, DescendantMemberId = descendantId, Depth = depth };
+        return new DimensionClosureRecord { DimensionVersionId = versionId, AncestorDimensionMemberId = ancestorId, DescendantDimensionMemberId = descendantId, Depth = depth };
     }
 }

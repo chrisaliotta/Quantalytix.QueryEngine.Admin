@@ -55,27 +55,27 @@ public sealed class NewReportSourceInputValidator : AbstractValidator<NewReportS
                     return bridgeKey.Length <= 128 && (await bridges.ListAsync(new { BridgeKey = bridgeKey }, cancellationToken)).Count == 0;
                 })
                 .WithMessage(input => $"The source's bridge takes the report's key and '{input.SourceKey}' as its key, which is longer than 128 characters or taken.");
-            RuleFor(input => input.RoleId)
+            RuleFor(input => input.DimensionRoleId)
                 .Cascade(CascadeMode.Stop)
                 .NotNull()
                 .WithMessage("A bridge source starts from a role the dataset binds, so '{PropertyName}' is required.")
-                .MustAsync(async (input, roleId, cancellationToken) =>
-                    await releaseDatasets.ActiveAsync(input.DatasetId, cancellationToken) is { } dataset && SourceBindings.BridgesFrom(dataset, roleId!.Value))
-                .WithMessage(input => $"The active release's version of dataset {input.DatasetId} binds role {input.RoleId} into no members with an enabled binding.");
+                .MustAsync(async (input, dimensionRoleId, cancellationToken) =>
+                    await releaseDatasets.ActiveAsync(input.DatasetId, cancellationToken) is { } dataset && SourceBindings.BridgesFrom(dataset, dimensionRoleId!.Value))
+                .WithMessage(input => $"The active release's version of dataset {input.DatasetId} binds role {input.DimensionRoleId} into no members with an enabled binding.");
             RuleFor(input => input.CopyFromSourceId)
                 .MustAsync(async (input, siblingId, cancellationToken) =>
                 {
                     var sibling = (await sources.ListAsync(new { ReportSourceId = siblingId, keys.ReportId }, cancellationToken)).SingleOrDefault();
-                    if (sibling?.RoleId is not { } siblingRole) return false;
-                    var compared = await roles.ListAsync(new { RoleId = new[] { siblingRole, input.RoleId!.Value } }, cancellationToken);
+                    if (sibling?.DimensionRoleId is not { } siblingRole) return false;
+                    var compared = await roles.ListAsync(new { DimensionRoleId = new[] { siblingRole, input.DimensionRoleId!.Value } }, cancellationToken);
                     return compared.Select(role => role.DimensionId).Distinct().Count() == 1;
                 })
-                .WithMessage(input => $"Source {input.CopyFromSourceId} is no bridge source of this report from the same dimension as role {input.RoleId}.")
-                .When(input => input.CopyFromSourceId is not null && input.RoleId is not null);
+                .WithMessage(input => $"Source {input.CopyFromSourceId} is no bridge source of this report from the same dimension as role {input.DimensionRoleId}.")
+                .When(input => input.CopyFromSourceId is not null && input.DimensionRoleId is not null);
         });
         When(input => input.MappingMethod == ReportMappingMethods.Direct, () =>
         {
-            RuleFor(input => input.RoleId).Null().WithMessage("A direct source reads row keys from a field, so '{PropertyName}' must be empty.");
+            RuleFor(input => input.DimensionRoleId).Null().WithMessage("A direct source reads row keys from a field, so '{PropertyName}' must be empty.");
             RuleFor(input => input.CopyFromSourceId).Null().WithMessage("A direct source has no bridge to copy entries into, so '{PropertyName}' must be empty.");
             RuleFor(input => input.FieldKey)
                 .Cascade(CascadeMode.Stop)

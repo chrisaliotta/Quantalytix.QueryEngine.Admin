@@ -10,7 +10,7 @@ interface NewDimensionValues {
   displayName: string;
   dimensionKind: string | null;
   rangeDataType: string | null;
-  roleKey: string;
+  dimensionRoleKey: string;
   roleDisplayName: string;
   isEnabled: boolean;
   isRemovable: boolean;
@@ -21,7 +21,7 @@ const EMPTY: NewDimensionValues = {
   displayName: '',
   dimensionKind: null,
   rangeDataType: null,
-  roleKey: '',
+  dimensionRoleKey: '',
   roleDisplayName: '',
   isEnabled: true,
   isRemovable: true,
@@ -43,12 +43,12 @@ export function NewDimensionSheet({ onClose, onCreated }: NewDimensionSheetProps
   useRoleFollowsDimension(form);
 
   async function submit(values: NewDimensionValues) {
-    const { roleKey, roleDisplayName, ...dimension } = values;
+    const { dimensionRoleKey, roleDisplayName, ...dimension } = values;
     const created = await create.mutateAsync({
       ...dimension,
       dimensionKind: values.dimensionKind ?? '',
       rangeDataType: values.dimensionKind === 'range' ? values.rangeDataType : null,
-      defaultRole: values.dimensionKind === 'time' ? null : { roleKey, displayName: roleDisplayName, description: null },
+      defaultRole: values.dimensionKind === 'time' ? null : { dimensionRoleKey, displayName: roleDisplayName, description: null },
     });
     onCreated(created);
   }
@@ -77,7 +77,7 @@ export function NewDimensionSheet({ onClose, onCreated }: NewDimensionSheetProps
       {kind !== 'time' && (
         <>
           <TextField
-            name="roleKey"
+            name="dimensionRoleKey"
             label="Role key"
             description="The first role, which bindings bind and requests name; unique among every dimension's roles."
           />
@@ -98,8 +98,8 @@ function useRoleFollowsDimension(form: UseFormReturn<NewDimensionValues>) {
   useEffect(() => {
     const before = previous.current;
     previous.current = { dimensionKey, displayName };
-    if (form.getValues('roleKey') === before.dimensionKey) {
-      form.setValue('roleKey', dimensionKey);
+    if (form.getValues('dimensionRoleKey') === before.dimensionKey) {
+      form.setValue('dimensionRoleKey', dimensionKey);
     }
     if (form.getValues('roleDisplayName') === before.displayName) {
       form.setValue('roleDisplayName', displayName);

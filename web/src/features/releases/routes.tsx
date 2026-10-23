@@ -13,10 +13,10 @@ export const releasesRoutes: RouteObject[] = [
     children: [
       { index: true, lazy: { Component: async () => (await import('./ReleasesPage')).ReleasesPage } },
       {
-        path: ':releaseId',
+        path: ':semanticReleaseId',
         lazy: { Component: async () => (await import('./ReleaseEditorPage')).ReleaseEditorPage },
         handle: {
-          crumb: match => <ReleaseCrumb releaseId={Number(match.params.releaseId)} />,
+          crumb: match => <ReleaseCrumb semanticReleaseId={Number(match.params.semanticReleaseId)} />,
         } satisfies RouteHandle,
       },
     ],

@@ -14,7 +14,7 @@ export interface ProfilePicksFieldProps extends FormFieldProps {
  */
 export function ProfilePicksField({ name, label, description, disabled, view }: ProfilePicksFieldProps) {
   const { field, id, error, isDisabled } = useFormField(name, disabled);
-  const variables = useLookup('variables', view.report.modelId);
+  const variables = useLookup('variables', view.report.calculationModelId);
   const picks: SourceProfilePick[] = field.value;
 
   function pick(variableKey: string, reportSourceId: number | null) {

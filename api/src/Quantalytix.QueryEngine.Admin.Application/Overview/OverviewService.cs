@@ -37,7 +37,7 @@ public sealed class OverviewService(
             TenantKey = info.TenantKey,
             MetadataSchemaVersion = info.MetadataSchemaVersion,
             SemanticRevision = info.SemanticRevision,
-            ActiveRelease = releaseRows.SingleOrDefault(release => release.ReleaseId == info.ActiveReleaseId),
+            ActiveRelease = releaseRows.SingleOrDefault(release => release.SemanticReleaseId == info.ActiveSemanticReleaseId),
             Counts = new OverviewCounts
             {
                 Datasets = (await datasets.ListAsync(null, cancellationToken)).Count,
@@ -48,7 +48,7 @@ public sealed class OverviewService(
                 AssumptionSets = (await assumptionSets.ListAsync(null, cancellationToken)).Count,
                 CalculationModels = (await models.ListAsync(null, cancellationToken)).Count,
                 Reports = (await reports.ListAsync(null, cancellationToken)).Count,
-                ActiveMeasures = await CountActiveMeasuresAsync(info.ActiveReleaseId, cancellationToken)
+                ActiveMeasures = await CountActiveMeasuresAsync(info.ActiveSemanticReleaseId, cancellationToken)
             },
             Drafts = new OverviewDrafts
             {
@@ -62,10 +62,10 @@ public sealed class OverviewService(
     }
 
     /// <summary>Counts the measures of the dataset versions the active release pins; a tenant without an active release has none.</summary>
-    private async Task<int> CountActiveMeasuresAsync(long? activeReleaseId, CancellationToken cancellationToken)
+    private async Task<int> CountActiveMeasuresAsync(long? activeSemanticReleaseId, CancellationToken cancellationToken)
     {
-        if (activeReleaseId is null) return 0;
-        var rows = await manifest.ListAsync(new { ReleaseId = activeReleaseId.Value }, cancellationToken);
+        if (activeSemanticReleaseId is null) return 0;
+        var rows = await manifest.ListAsync(new { SemanticReleaseId = activeSemanticReleaseId.Value }, cancellationToken);
         var activeMeasures = await measures.ListAsync(new { DatasetVersionId = rows.Select(row => row.DatasetVersionId).ToArray() }, cancellationToken);
         return activeMeasures.Count;
     }

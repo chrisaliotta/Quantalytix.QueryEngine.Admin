@@ -22,7 +22,7 @@ const roles = [
 
 describe('scenarioDimensionRoles', () => {
   it('offers each dimension whose one role is free, mapped to that role', () => {
-    const offered = scenarioDimensionRoles(roles, [{ roleId: 1 }], [{ roleId: 2 }]);
+    const offered = scenarioDimensionRoles(roles, [{ dimensionRoleId: 1 }], [{ dimensionRoleId: 2 }]);
 
     expect([...offered]).toEqual([[630, 3]]);
   });

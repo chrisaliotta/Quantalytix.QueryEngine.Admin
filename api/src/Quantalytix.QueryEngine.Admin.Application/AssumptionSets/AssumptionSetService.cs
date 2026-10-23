@@ -65,7 +65,7 @@ public sealed class AssumptionSetService(
             DisplayName = input.DisplayName,
             Description = input.Description,
             Status = AssumptionSetStatuses.Historical,
-            ReleaseId = info.ActiveReleaseId,
+            SemanticReleaseId = info.ActiveSemanticReleaseId,
             CapturedAt = now,
             CreatedAt = now
         };

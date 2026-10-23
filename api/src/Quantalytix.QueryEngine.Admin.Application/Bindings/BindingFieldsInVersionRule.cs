@@ -29,21 +29,21 @@ public sealed class BindingFieldsInVersionRule(
         var versionFilter = new { DatasetVersionId = versionId };
         var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
         var named = await names.OfAsync(versionBindings, cancellationToken);
-        var extensions = (await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
-            .ToDictionary(extension => extension.BindingId);
+        var extensions = (await timeBindings.ListAsync(new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken))
+            .ToDictionary(extension => extension.DimensionBindingId);
         var fieldIds = (await fields.ListAsync(versionFilter, cancellationToken)).Select(field => field.FieldId).ToHashSet();
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in versionBindings.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
+        foreach (var binding in versionBindings.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
         {
             if (binding.SourceFieldId is { } sourceFieldId && !fieldIds.Contains(sourceFieldId))
             {
-                violations.Add(Violation($"Binding '{named[binding.BindingId]}' reads field {sourceFieldId}, which is not a field of this version."));
+                violations.Add(Violation($"Binding '{named[binding.DimensionBindingId]}' reads field {sourceFieldId}, which is not a field of this version."));
             }
 
-            if (extensions.TryGetValue(binding.BindingId, out var extension) && extension.IntervalEndFieldId is { } endFieldId && !fieldIds.Contains(endFieldId))
+            if (extensions.TryGetValue(binding.DimensionBindingId, out var extension) && extension.IntervalEndFieldId is { } endFieldId && !fieldIds.Contains(endFieldId))
             {
-                violations.Add(Violation($"Time binding '{named[binding.BindingId]}' ends its intervals at field {endFieldId}, which is not a field of this version."));
+                violations.Add(Violation($"Time binding '{named[binding.DimensionBindingId]}' ends its intervals at field {endFieldId}, which is not a field of this version."));
             }
         }
 

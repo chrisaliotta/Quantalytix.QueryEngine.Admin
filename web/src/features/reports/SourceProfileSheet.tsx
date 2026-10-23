@@ -15,7 +15,7 @@ export interface SourceProfileSheetProps {
 
 /** Creates or edits a source profile and its picks, one source per variable. */
 export function SourceProfileSheet({ view, profile, onClose }: SourceProfileSheetProps) {
-  const save = useSaveOwnedContent('profiles', view.report.reportId, profile?.profile.sourceProfileId ?? null);
+  const save = useSaveOwnedContent('profiles', view.report.reportId, profile?.profile.calculationSourceProfileId ?? null);
   const form = useForm<ContentInput<'profiles'>>({
     defaultValues: {
       profileKey: profile?.profile.profileKey ?? '',

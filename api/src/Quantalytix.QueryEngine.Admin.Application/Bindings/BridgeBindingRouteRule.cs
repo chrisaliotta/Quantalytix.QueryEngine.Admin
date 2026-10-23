@@ -24,11 +24,11 @@ public sealed class BridgeBindingRouteRule(ITableGateway<DimensionBindingRecord>
     /// <returns>One violation per foreign source binding, missing bridge, mismatched bridge end and route cycle.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
-        var versionBindings = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken)).ToDictionary(binding => binding.BindingId);
+        var versionBindings = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken)).ToDictionary(binding => binding.DimensionBindingId);
         var named = await names.OfAsync(versionBindings.Values, cancellationToken);
         var bridged = versionBindings.Values
             .Where(binding => binding.BindingKind == BindingKinds.Bridge)
-            .OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal)
+            .OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal)
             .ToList();
         var bridgesById = (await bridges.ListAsync(new { BridgeId = bridged.Select(binding => binding.BridgeId!.Value).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(bridge => bridge.BridgeId);
@@ -36,11 +36,11 @@ public sealed class BridgeBindingRouteRule(ITableGateway<DimensionBindingRecord>
         var violations = new List<RuleViolation>();
         foreach (var binding in bridged)
         {
-            var name = named[binding.BindingId];
-            var source = versionBindings.GetValueOrDefault(binding.SourceBindingId!.Value);
+            var name = named[binding.DimensionBindingId];
+            var source = versionBindings.GetValueOrDefault(binding.SourceDimensionBindingId!.Value);
             if (source is null)
             {
-                violations.Add(Violation($"Bridge binding '{name}' remaps binding {binding.SourceBindingId}, which is not a binding of this version."));
+                violations.Add(Violation($"Bridge binding '{name}' remaps binding {binding.SourceDimensionBindingId}, which is not a binding of this version."));
             }
 
             if (!bridgesById.TryGetValue(binding.BridgeId!.Value, out var bridge))
@@ -51,7 +51,7 @@ public sealed class BridgeBindingRouteRule(ITableGateway<DimensionBindingRecord>
             {
                 if (source is not null && bridge.SourceDimensionId != source.DimensionId)
                 {
-                    violations.Add(Violation($"Bridge binding '{name}' uses bridge '{bridge.BridgeKey}', which starts at another dimension than its source binding '{named[source.BindingId]}'."));
+                    violations.Add(Violation($"Bridge binding '{name}' uses bridge '{bridge.BridgeKey}', which starts at another dimension than its source binding '{named[source.DimensionBindingId]}'."));
                 }
 
                 if (bridge.TargetDimensionId != binding.DimensionId)
@@ -73,11 +73,11 @@ public sealed class BridgeBindingRouteRule(ITableGateway<DimensionBindingRecord>
     private static bool ReachesItself(DimensionBindingRecord start, Dictionary<long, DimensionBindingRecord> versionBindings)
     {
         var visited = new HashSet<long>();
-        var current = start.SourceBindingId;
-        while (current is { } bindingId && versionBindings.TryGetValue(bindingId, out var next) && visited.Add(bindingId))
+        var current = start.SourceDimensionBindingId;
+        while (current is { } dimensionBindingId && versionBindings.TryGetValue(dimensionBindingId, out var next) && visited.Add(dimensionBindingId))
         {
-            if (bindingId == start.BindingId) return true;
-            current = next.SourceBindingId;
+            if (dimensionBindingId == start.DimensionBindingId) return true;
+            current = next.SourceDimensionBindingId;
         }
 
         return false;

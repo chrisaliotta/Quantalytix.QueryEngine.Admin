@@ -34,9 +34,9 @@ public sealed class NewReportInputValidator : AbstractValidator<NewReportInput>
             .WithMessage(input => $"A report with key '{input.ReportKey}' already exists.")
             .MustAsync(async (key, cancellationToken) => (await dimensions.ListAsync(new { DimensionKey = key }, cancellationToken)).Count == 0)
             .WithMessage(input => $"The report's own dimension takes its key, and a dimension with key '{input.ReportKey}' already exists.");
-        RuleFor(input => input.ModelId)
-            .MustAsync(async (modelId, cancellationToken) => (await models.ListAsync(new { ModelId = modelId }, cancellationToken)).Count == 1)
-            .WithMessage(input => $"Calculation model {input.ModelId} does not exist.");
+        RuleFor(input => input.CalculationModelId)
+            .MustAsync(async (calculationModelId, cancellationToken) => (await models.ListAsync(new { CalculationModelId = calculationModelId }, cancellationToken)).Count == 1)
+            .WithMessage(input => $"Calculation model {input.CalculationModelId} does not exist.");
         RuleFor(input => input.StartFromDimensionId)
             .Cascade(CascadeMode.Stop)
             .MustAsync(async (dimensionId, cancellationToken) =>

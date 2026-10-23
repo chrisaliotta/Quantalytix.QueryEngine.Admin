@@ -13,7 +13,7 @@ public sealed class TableSqlTests
 {
     /// <summary>The columns of <c>qe_dimension_member</c>, which has a JSON column, in DDL order.</summary>
     private const string MemberColumns =
-        "member_id, dimension_version_id, member_key, display_name, description, parent_member_id, level_id, is_assignable, sort_order, properties";
+        "dimension_member_id, dimension_version_id, member_key, display_name, description, parent_dimension_member_id, dimension_level_id, is_assignable, sort_order, properties";
 
     /// <summary>Without a filter, SELECT reads every column of every row.</summary>
     [Fact]
@@ -26,12 +26,12 @@ public sealed class TableSqlTests
     [Fact]
     public void Select_FiltersCollectionsWithIn()
     {
-        var filter = new { DimensionVersionId = 7L, MemberKey = "CA", MemberId = new long[] { 1, 2 } };
+        var filter = new { DimensionVersionId = 7L, MemberKey = "CA", DimensionMemberId = new long[] { 1, 2 } };
         Assert.Equal(
-            $"SELECT {MemberColumns} FROM qe_dimension_member WHERE dimension_version_id = @DimensionVersionId AND member_key = @MemberKey AND member_id IN @MemberId",
+            $"SELECT {MemberColumns} FROM qe_dimension_member WHERE dimension_version_id = @DimensionVersionId AND member_key = @MemberKey AND dimension_member_id IN @DimensionMemberId",
             TableSql<DimensionMemberRecord>.Select(filter));
         Assert.False(TableFilter.MatchesNothing(filter));
-        Assert.True(TableFilter.MatchesNothing(new { MemberId = Array.Empty<long>() }));
+        Assert.True(TableFilter.MatchesNothing(new { DimensionMemberId = Array.Empty<long>() }));
     }
 
     /// <summary>One INSERT writes every row, naming each row's parameters <c>p{row}_{Property}</c> and parsing JSON columns.</summary>
@@ -40,15 +40,15 @@ public sealed class TableSqlTests
     {
         Assert.Equal(
             $"INSERT INTO qe_dimension_member ({MemberColumns}) VALUES "
-            + "(@p0_MemberId, @p0_DimensionVersionId, @p0_MemberKey, @p0_DisplayName, @p0_Description, @p0_ParentMemberId, @p0_LevelId, "
+            + "(@p0_DimensionMemberId, @p0_DimensionVersionId, @p0_MemberKey, @p0_DisplayName, @p0_Description, @p0_ParentDimensionMemberId, @p0_DimensionLevelId, "
             + "@p0_IsAssignable, @p0_SortOrder, PARSE_JSON(@p0_Properties)), "
-            + "(@p1_MemberId, @p1_DimensionVersionId, @p1_MemberKey, @p1_DisplayName, @p1_Description, @p1_ParentMemberId, @p1_LevelId, "
+            + "(@p1_DimensionMemberId, @p1_DimensionVersionId, @p1_MemberKey, @p1_DisplayName, @p1_Description, @p1_ParentDimensionMemberId, @p1_DimensionLevelId, "
             + "@p1_IsAssignable, @p1_SortOrder, PARSE_JSON(@p1_Properties))",
             TableSql<DimensionMemberRecord>.Insert(2));
 
         var parameters = TableSql<DimensionMemberRecord>.InsertParameters([Member(11, "CA", """{"region":"west"}"""), Member(12, "NY", null)]);
         Assert.Equal(20, parameters.Count);
-        Assert.Equal(11L, parameters["p0_MemberId"]);
+        Assert.Equal(11L, parameters["p0_DimensionMemberId"]);
         Assert.Equal("""{"region":"west"}""", parameters["p0_Properties"]);
         Assert.Equal("NY", parameters["p1_MemberKey"]);
         Assert.Null(parameters["p1_Properties"]);
@@ -60,12 +60,12 @@ public sealed class TableSqlTests
     {
         Assert.Equal(
             "UPDATE qe_dimension_member SET dimension_version_id = @DimensionVersionId, member_key = @MemberKey, display_name = @DisplayName, "
-            + "description = @Description, parent_member_id = @ParentMemberId, level_id = @LevelId, is_assignable = @IsAssignable, "
-            + "sort_order = @SortOrder, properties = PARSE_JSON(@Properties) WHERE member_id = @MemberId",
+            + "description = @Description, parent_dimension_member_id = @ParentDimensionMemberId, dimension_level_id = @DimensionLevelId, is_assignable = @IsAssignable, "
+            + "sort_order = @SortOrder, properties = PARSE_JSON(@Properties) WHERE dimension_member_id = @DimensionMemberId",
             TableSql<DimensionMemberRecord>.Update);
         Assert.Equal(
             "UPDATE qe_dimension_closure SET depth = @Depth "
-            + "WHERE dimension_version_id = @DimensionVersionId AND ancestor_member_id = @AncestorMemberId AND descendant_member_id = @DescendantMemberId",
+            + "WHERE dimension_version_id = @DimensionVersionId AND ancestor_dimension_member_id = @AncestorDimensionMemberId AND descendant_dimension_member_id = @DescendantDimensionMemberId",
             TableSql<DimensionClosureRecord>.Update);
     }
 
@@ -74,16 +74,16 @@ public sealed class TableSqlTests
     public void Delete_RemovesTheFilteredRows()
     {
         Assert.Equal(
-            "DELETE FROM qe_dimension_member WHERE dimension_version_id = @DimensionVersionId AND member_id IN @MemberId",
-            TableSql<DimensionMemberRecord>.Delete(new { DimensionVersionId = 7L, MemberId = new long[] { 1, 2 } }));
+            "DELETE FROM qe_dimension_member WHERE dimension_version_id = @DimensionVersionId AND dimension_member_id IN @DimensionMemberId",
+            TableSql<DimensionMemberRecord>.Delete(new { DimensionVersionId = 7L, DimensionMemberId = new long[] { 1, 2 } }));
     }
 
     /// <summary>A member of dimension version 7.</summary>
-    private static DimensionMemberRecord Member(long memberId, string memberKey, string? properties)
+    private static DimensionMemberRecord Member(long dimensionMemberId, string memberKey, string? properties)
     {
         return new DimensionMemberRecord
         {
-            MemberId = memberId,
+            DimensionMemberId = dimensionMemberId,
             DimensionVersionId = 7,
             MemberKey = memberKey,
             DisplayName = memberKey,

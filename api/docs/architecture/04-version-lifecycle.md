@@ -220,7 +220,7 @@ The report rules also guard what enabled reports read. `ReportConsumerRule` adap
 
 ## The model gate
 
-The drawing shows a write to a calculation model's metrics, `PUT calculation-models/{modelId}/calculated-measures/{itemId}`. Models have no versions, so every write goes to the model the engine reads through each enabled report over it, and the gate checks the write itself. It matters because a model's formulas and attributions always evaluate, every report's row values fit the model's parameters, and an enabled report over it never breaks: a write that would is refused, and nothing is written.
+The drawing shows a write to a calculation model's metrics, `PUT calculation-models/{calculationModelId}/calculated-measures/{itemId}`. Models have no versions, so every write goes to the model the engine reads through each enabled report over it, and the gate checks the write itself. It matters because a model's formulas and attributions always evaluate, every report's row values fit the model's parameters, and an enabled report over it never breaks: a write that would is refused, and nothing is written.
 
 ```mermaid
 sequenceDiagram
@@ -236,16 +236,16 @@ sequenceDiagram
     participant Reader as ReportGraphReader
     participant Reports as ReportRecord gateway
     participant Rev as SemanticRevision
-    Client->>Filter: PUT calculation-models/{modelId}/calculated-measures/{itemId}
+    Client->>Filter: PUT calculation-models/{calculationModelId}/calculated-measures/{itemId}
     Note over Client,Filter: ValidationFilter has checked the fields, the formula's grammar and the measure's model, otherwise 400
     Filter->>Ctl: the action
-    Ctl->>Svc: Compose(modelId, itemId, input)
+    Ctl->>Svc: Compose(calculationModelId, itemId, input)
     Svc-->>Ctl: the row the write would store
-    Ctl->>Changes: ApplyAsync(modelId, Put(model, row), UpdateAsync(row))
-    Changes->>Metrics: GetAsync and ListAsync(ModelId)
-    Changes->>Attributions: ListAsync(modelId), the attributions and the parameters
+    Ctl->>Changes: ApplyAsync(calculationModelId, Put(model, row), UpdateAsync(row))
+    Changes->>Metrics: GetAsync and ListAsync(CalculationModelId)
+    Changes->>Attributions: ListAsync(calculationModelId), the attributions and the parameters
     Note over Changes: Applies the change to the model in memory, then runs the seven model rules, from formula_references_resolve to attribution_weight_variable
-    Changes->>Uses: OfModelAsync(modelId)
+    Changes->>Uses: OfModelAsync(calculationModelId)
     loop Each report of the model, enabled or not, by key
         Changes->>Reader: ReadAsync(report)
         Reader-->>Changes: its ReportGraph, given the changed metrics and parameters
@@ -261,7 +261,7 @@ sequenceDiagram
         Changes->>Svc: write(): UpdateAsync(row)
         Changes-->>Ctl: no violations
         Ctl-->>Filter: 200 CalculatedMeasureRecord
-        Filter->>Reports: ListAsync(ModelId)
+        Filter->>Reports: ListAsync(CalculationModelId)
         opt An enabled report reads the model
             Filter->>Rev: AdvanceAsync()
         end
@@ -281,13 +281,13 @@ sequenceDiagram
 
 Every report of the model, through `ReportUses`, is then read as a `ReportGraph` with the changed metrics and parameters in place of the stored ones. `report_row_parameters_resolve` runs over every one of them, enabled or not, because a disabled report's row values must still fit when it is enabled; `report_metrics_resolve` and `profiles_complete`, the two report rules that read metrics, run over the enabled ones, with `report_defaults_resolve`, so a parameter is never declared under a name an enabled report's default filter already compares. Creating, editing and deleting a calculated measure, editing and deleting a variable, replacing and deleting an attribution, writing and deleting a parameter, and editing the model, whose formula language the formulas must fit, go through the gate; creating a variable does not, because a new key breaks no formula, attribution or report.
 
-`AdvancesModelRevisionFilter` advances the semantic revision after a successful write to a model an enabled report reads, the metric, attribution and parameter writes and `PUT calculation-models/{modelId}`, whose currency, formula language and attribution method the engine reads, because the engine reads a model only through such reports; a write to a model that only disabled reports read, or a refused write, keeps it. A model that any report reads, enabled or not, cannot be deleted; deleting any other model deletes its variables, calculated measures, attributions and parameters with it.
+`AdvancesModelRevisionFilter` advances the semantic revision after a successful write to a model an enabled report reads, the metric, attribution and parameter writes and `PUT calculation-models/{calculationModelId}`, whose currency, formula language and attribution method the engine reads, because the engine reads a model only through such reports; a write to a model that only disabled reports read, or a refused write, keeps it. A model that any report reads, enabled or not, cannot be deleted; deleting any other model deletes its variables, calculated measures, attributions and parameters with it.
 
 **Sources:** [CalculatedMeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/CalculatedMeasuresController.cs), [VariablesController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/VariablesController.cs), [AdvancesModelRevisionFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/AdvancesModelRevisionFilter.cs), [ModelWriteResults.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/ModelWriteResults.cs), [ModelChanges.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelChanges.cs), [ModelGraph.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/Models/ModelGraph.cs), [IModelContent.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/IModelContent.cs), [FormulaReferencesResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulaReferencesResolveRule.cs), [FormulasAcyclicRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulasAcyclicRule.cs), [FormulasFitLanguageRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulasFitLanguageRule.cs), [AttributionReferencesResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionReferencesResolveRule.cs), [AttributionDriversRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionDriversRule.cs), [AttributionWeightVariableRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/AttributionWeightVariableRule.cs), [MetricAttributionService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/MetricAttributionService.cs), [MetricAttributionsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/MetricAttributionsController.cs), [ModelParametersController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/ModelParametersController.cs), [ModelParameterService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ModelParameterService.cs), [FormulaParametersResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/FormulaParametersResolveRule.cs), [ReportUses.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/ReportUses.cs), [ReportRowParametersResolveRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Reports/ReportRowParametersResolveRule.cs), [CalculationModelsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/CalculationModels/CalculationModelsController.cs), [CalculationModelService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/CalculationModels/CalculationModelService.cs), [ModelChangesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ModelChangesTests.cs), [ModelParameterChangesTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/ModelParameterChangesTests.cs), [AdvancesModelRevisionFilterTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/AdvancesModelRevisionFilterTests.cs), [CalculationModelServiceTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/CalculationModels/CalculationModelServiceTests.cs).
 
 ## Retiring
 
-The drawing shows published to retired of a strict kind. Retirement rules guard metadata that runtime queries still read; today the only one is `ReleaseNotActiveRule` (`release_not_active`) for `semantic_release`, which refuses to retire the release `qe_database_info.active_release_id` points at.
+The drawing shows published to retired of a strict kind. Retirement rules guard metadata that runtime queries still read; today the only one is `ReleaseNotActiveRule` (`release_not_active`) for `semantic_release`, which refuses to retire the release `qe_database_info.active_semantic_release_id` points at.
 
 ```mermaid
 sequenceDiagram
@@ -328,7 +328,7 @@ The engine keys its metadata cache by `qe_database_info.semantic_revision`, so t
 | Publishing a living kind | `VersionWorkflow`, for `VersionKinds.Living`, once per transition | The published version, which the active assumption set now pins, and its retired predecessor |
 | Editing the published version of a living kind | `RequireEditableFilter`, after a successful write | Content queries read now |
 | Capturing or deleting an assumption set | `AssumptionSetService.CaptureAsync` and `DeleteAsync` | The set keys requests can name |
-| Activating a release | `ReleaseActivator.ActivateAsync`, after it writes `active_release_id` | The release every query runs on |
+| Activating a release | `ReleaseActivator.ActivateAsync`, after it writes `active_semantic_release_id` | The release every query runs on |
 | Editing a dataset | `DatasetService.UpdateAsync`, always | `qe_dataset.display_name` and `is_enabled` |
 | Editing a dimension | `DimensionService.UpdateAsync`, when `display_name` or `is_enabled` changed | `qe_dimension` identity |
 | Editing a dimension role | `DimensionRoleService.UpdateAsync`, when the row changed | `qe_dimension_role.display_name` and `description` |

@@ -23,20 +23,20 @@ public sealed class GrainFieldsInVersionRule(
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var versionGrains = await grains.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var grainKeys = versionGrains.ToDictionary(grain => grain.GrainId, grain => grain.GrainKey);
-        var components = await grainFields.ListAsync(new { GrainId = grainKeys.Keys.ToArray() }, cancellationToken);
+        var grainKeys = versionGrains.ToDictionary(grain => grain.DatasetGrainId, grain => grain.GrainKey);
+        var components = await grainFields.ListAsync(new { DatasetGrainId = grainKeys.Keys.ToArray() }, cancellationToken);
         var versionFields = await fields.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
         var fieldIds = versionFields.Select(field => field.FieldId).ToHashSet();
         return
         [
             .. components
                 .Where(component => !fieldIds.Contains(component.FieldId))
-                .OrderBy(component => grainKeys[component.GrainId], StringComparer.Ordinal)
+                .OrderBy(component => grainKeys[component.DatasetGrainId], StringComparer.Ordinal)
                 .ThenBy(component => component.Ordinal)
                 .Select(component => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Grain '{grainKeys[component.GrainId]}' includes field {component.FieldId}, which is not a field of this version."
+                    Message = $"Grain '{grainKeys[component.DatasetGrainId]}' includes field {component.FieldId}, which is not a field of this version."
                 })
         ];
     }

@@ -7,7 +7,7 @@ public sealed record MeasureTimePolicyInput
     public long? RequiredTimeBindingId { get; init; }
 
     /// <summary>The <c>series</c> grain observations are selected per; required when the observation selection is not <c>all</c>.</summary>
-    public long? SelectionGrainId { get; init; }
+    public long? SelectionDatasetGrainId { get; init; }
 
     /// <summary>An <c>observation_selection</c> value.</summary>
     public required string ObservationSelection { get; init; }

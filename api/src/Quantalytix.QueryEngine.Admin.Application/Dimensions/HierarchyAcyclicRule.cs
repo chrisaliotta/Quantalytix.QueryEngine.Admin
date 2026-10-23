@@ -26,18 +26,18 @@ public sealed class HierarchyAcyclicRule(ITableGateway<DimensionMemberRecord> me
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var byId = rows.ToDictionary(member => member.MemberId);
+        var byId = rows.ToDictionary(member => member.DimensionMemberId);
         var finished = new HashSet<long>();
         var violations = new List<RuleViolation>();
         foreach (var start in rows.OrderBy(member => member.MemberKey, StringComparer.Ordinal))
         {
             var path = new List<long>();
             var onPath = new HashSet<long>();
-            long? current = start.MemberId;
-            while (current is { } memberId && byId.ContainsKey(memberId) && !finished.Contains(memberId) && onPath.Add(memberId))
+            long? current = start.DimensionMemberId;
+            while (current is { } dimensionMemberId && byId.ContainsKey(dimensionMemberId) && !finished.Contains(dimensionMemberId) && onPath.Add(dimensionMemberId))
             {
-                path.Add(memberId);
-                current = byId[memberId].ParentMemberId;
+                path.Add(dimensionMemberId);
+                current = byId[dimensionMemberId].ParentDimensionMemberId;
             }
 
             if (current is { } repeated && onPath.Contains(repeated)) violations.Add(Cycle(path[path.IndexOf(repeated)..], byId));
@@ -50,7 +50,7 @@ public sealed class HierarchyAcyclicRule(ITableGateway<DimensionMemberRecord> me
     /// <summary>A violation naming the members of a cycle in parent order, ending where it started.</summary>
     private static RuleViolation Cycle(List<long> cycle, Dictionary<long, DimensionMemberRecord> byId)
     {
-        var keys = cycle.Append(cycle[0]).Select(memberId => $"'{byId[memberId].MemberKey}'");
+        var keys = cycle.Append(cycle[0]).Select(dimensionMemberId => $"'{byId[dimensionMemberId].MemberKey}'");
         return new RuleViolation { Rule = Code, Message = $"Members {string.Join(" -> ", keys)} form a parent cycle." };
     }
 }

@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record MetricAttributionRecord
 {
     /// <summary>The owning model; first part of the primary key.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>The key of the variable or calculated measure attributed; second part of the primary key.</summary>
     public required string MetricKey { get; init; }

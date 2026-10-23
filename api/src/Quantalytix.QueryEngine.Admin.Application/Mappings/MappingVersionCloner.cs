@@ -17,7 +17,7 @@ public sealed class MappingVersionCloner(ITableGateway<DimensionMappingRecord> e
     {
         var sourceEntries = await entries.ListAsync(new { MappingVersionId = sourceVersionId }, cancellationToken);
         await entries.InsertManyAsync(
-            [.. sourceEntries.Select(entry => entry with { MappingEntryId = ids.NextId(), MappingVersionId = target.MappingVersionId })],
+            [.. sourceEntries.Select(entry => entry with { DimensionMappingId = ids.NextId(), MappingVersionId = target.MappingVersionId })],
             cancellationToken);
     }
 }

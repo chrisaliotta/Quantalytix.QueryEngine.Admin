@@ -12,7 +12,7 @@ public sealed record CalculationDimensionInput : IGroupingInput
     public required string DisplayName { get; init; }
 
     /// <summary>The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.</summary>
-    public required long RoleId { get; init; }
+    public required long DimensionRoleId { get; init; }
 
     /// <summary>A <c>grouping_mode</c> value: how runs group the role's members unless a report request names another grouping.</summary>
     public required string GroupingMode { get; init; }

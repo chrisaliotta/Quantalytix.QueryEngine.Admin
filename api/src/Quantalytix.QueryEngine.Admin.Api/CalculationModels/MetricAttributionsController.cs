@@ -11,7 +11,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 /// of its drivers, and which variable weighs its member contributions. Each is keyed by its metric and written whole, drivers included.
 /// </summary>
 [ApiController]
-[Route("api/tenants/{tenantId}/calculation-models/{modelId:long}/attributions")]
+[Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/attributions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -19,7 +19,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
 {
     /// <summary>Lists a model's attributions, each with its drivers.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The attributions by metric key.</returns>
     /// <response code="200">The attributions by metric key, their drivers by sort order.</response>
@@ -27,9 +27,9 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<MetricAttribution>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<MetricAttribution>>> List(string tenantId, long modelId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<MetricAttribution>>> List(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
-        return Ok(await attributions.ListAsync(modelId, cancellationToken));
+        return Ok(await attributions.ListAsync(calculationModelId, cancellationToken));
     }
 
     /// <summary>
@@ -38,7 +38,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     /// split the expression's inputs among them.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="metricKey">The key of the variable or calculated measure attributed.</param>
     /// <param name="input">The attribution and its drivers.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -49,24 +49,24 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The attribution breaks a model rule, such as a key the model lacks, an input no driver switches, or POWER in a model of formula language 1.0; nothing was written.</response>
     [HttpPut("{metricKey}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<MetricAttribution>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<MetricAttribution>> Replace(
         string tenantId,
-        long modelId,
+        long calculationModelId,
         string metricKey,
         MetricAttributionInput input,
         CancellationToken cancellationToken)
     {
         var attribution = MetricAttributionService.Compose(metricKey, input);
         var violations = await changes.ApplyAsync(
-            modelId,
+            calculationModelId,
             model => MetricAttributionService.Put(model, attribution),
-            () => attributions.ReplaceAsync(modelId, attribution, cancellationToken),
+            () => attributions.ReplaceAsync(calculationModelId, attribution, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
         return Ok(attribution);
     }
 
@@ -75,7 +75,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     /// formula, and no member contributions.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="metricKey">The key of the metric attributed.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 422 when nothing was deleted.</returns>
@@ -84,17 +84,17 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The model breaks its rules without the attribution; nothing was deleted.</response>
     [HttpDelete("{metricKey}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, long modelId, string metricKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, long calculationModelId, string metricKey, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
-            modelId,
+            calculationModelId,
             model => MetricAttributionService.Without(model, metricKey),
-            () => attributions.DeleteAsync(modelId, metricKey, cancellationToken),
+            () => attributions.DeleteAsync(calculationModelId, metricKey, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
         return NoContent();
     }
 }

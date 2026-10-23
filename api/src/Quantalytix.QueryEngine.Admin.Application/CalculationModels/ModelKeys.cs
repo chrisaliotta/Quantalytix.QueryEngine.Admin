@@ -18,8 +18,8 @@ public sealed class ModelKeys(
     /// <returns>True when the key is free.</returns>
     public async Task<bool> MetricKeyFreeAsync(string key, CancellationToken cancellationToken)
     {
-        var sameVariables = await variables.ListAsync(new { keys.ModelId, VariableKey = key }, cancellationToken);
-        var sameMeasures = await calculatedMeasures.ListAsync(new { keys.ModelId, MeasureKey = key }, cancellationToken);
+        var sameVariables = await variables.ListAsync(new { keys.CalculationModelId, VariableKey = key }, cancellationToken);
+        var sameMeasures = await calculatedMeasures.ListAsync(new { keys.CalculationModelId, MeasureKey = key }, cancellationToken);
         return sameVariables.All(variable => variable.VariableId == keys.ItemId) && sameMeasures.All(measure => measure.CalculatedMeasureId == keys.ItemId);
     }
 }

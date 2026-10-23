@@ -32,7 +32,7 @@ public sealed class BindingSourceFieldGroupableRule(ITableGateway<DimensionBindi
         [
             .. versionBindings
                 .Where(binding => binding.IsGroupable)
-                .Join(versionFields, binding => binding.SourceFieldId, field => (long?)field.FieldId, (binding, field) => (Name: named[binding.BindingId], Field: field))
+                .Join(versionFields, binding => binding.SourceFieldId, field => (long?)field.FieldId, (binding, field) => (Name: named[binding.DimensionBindingId], Field: field))
                 .Where(pair => !pair.Field.IsGroupable)
                 .OrderBy(pair => pair.Name, StringComparer.Ordinal)
                 .Select(pair => new RuleViolation

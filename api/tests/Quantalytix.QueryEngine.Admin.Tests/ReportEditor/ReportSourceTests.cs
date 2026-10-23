@@ -29,7 +29,7 @@ public sealed class ReportSourceTests
             DisplayName = "GL copy",
             DatasetId = GlDatasetId,
             MappingMethod = ReportMappingMethods.Bridge,
-            RoleId = AccountRoleId,
+            DimensionRoleId = AccountRoleId,
             TimeFieldKey = "as_of_date",
             CopyFromSourceId = SourceId
         };

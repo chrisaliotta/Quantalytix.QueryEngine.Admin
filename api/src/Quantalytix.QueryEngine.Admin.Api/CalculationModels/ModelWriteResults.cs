@@ -9,14 +9,14 @@ internal static class ModelWriteResults
 {
     /// <summary>The answer to a write that would break the model's formulas or attributions, or an enabled report that reads it; nothing was written.</summary>
     /// <param name="httpContext">The current request.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="violations">What the write would break.</param>
     /// <returns>The 422 result.</returns>
-    public static ObjectResult Rejected(HttpContext httpContext, long modelId, IReadOnlyList<RuleViolation> violations)
+    public static ObjectResult Rejected(HttpContext httpContext, long calculationModelId, IReadOnlyList<RuleViolation> violations)
     {
         return RuleViolationResults.Create(
             httpContext,
-            $"The change would break calculation model {modelId}'s formulas or attributions, or an enabled report that reads it; nothing was written.",
+            $"The change would break calculation model {calculationModelId}'s formulas or attributions, or an enabled report that reads it; nothing was written.",
             violations);
     }
 }

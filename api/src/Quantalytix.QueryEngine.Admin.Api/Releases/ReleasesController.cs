@@ -33,7 +33,7 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
         return Ok(await releases.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a draft release, copying the manifest of <c>copyFromReleaseId</c> when it is given.</summary>
+    /// <summary>Creates a draft release, copying the manifest of <c>copyFromSemanticReleaseId</c> when it is given.</summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
     /// <param name="input">The release key and the optional release to copy.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -48,60 +48,60 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     public async Task<ActionResult<SemanticReleaseRecord>> Create(string tenantId, ReleaseCreateInput input, CancellationToken cancellationToken)
     {
         var release = await releases.CreateAsync(input, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { tenantId, releaseId = release.ReleaseId }, release);
+        return CreatedAtAction(nameof(Get), new { tenantId, semanticReleaseId = release.SemanticReleaseId }, release);
     }
 
     /// <summary>Reads one release.</summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The release.</param>
+    /// <param name="semanticReleaseId">The release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The release.</returns>
     /// <response code="200">The release.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet("{releaseId:long}")]
+    [HttpGet("{semanticReleaseId:long}")]
     [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<SemanticReleaseRecord>> Get(string tenantId, long releaseId, CancellationToken cancellationToken)
+    public async Task<ActionResult<SemanticReleaseRecord>> Get(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
     {
-        return Ok(await releases.GetAsync(releaseId, cancellationToken));
+        return Ok(await releases.GetAsync(semanticReleaseId, cancellationToken));
     }
 
     /// <summary>Deletes a draft release and its manifest.</summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The draft release.</param>
+    /// <param name="semanticReleaseId">The draft release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
     /// <response code="204">The release and its manifest are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not a draft.</response>
-    [HttpDelete("{releaseId:long}")]
-    [RequireDraft(VersionKinds.SemanticRelease, "releaseId")]
+    [HttpDelete("{semanticReleaseId:long}")]
+    [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Delete(string tenantId, long releaseId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
     {
-        await releases.DeleteAsync(releaseId, cancellationToken);
+        await releases.DeleteAsync(semanticReleaseId, cancellationToken);
         return NoContent();
     }
 
     /// <summary>Lists a release's manifest: the dataset version it pins for each dataset.</summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The release.</param>
+    /// <param name="semanticReleaseId">The release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The manifest rows, ordered by dataset.</returns>
     /// <response code="200">The manifest rows, ordered by dataset.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet("{releaseId:long}/datasets")]
+    [HttpGet("{semanticReleaseId:long}/datasets")]
     [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ListDatasets(string tenantId, long releaseId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ListDatasets(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
     {
-        return Ok(await releases.ListDatasetsAsync(releaseId, cancellationToken));
+        return Ok(await releases.ListDatasetsAsync(semanticReleaseId, cancellationToken));
     }
 
     /// <summary>Replaces a draft release's manifest.</summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The draft release.</param>
+    /// <param name="semanticReleaseId">The draft release.</param>
     /// <param name="input">The complete manifest, one row per dataset.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored manifest rows.</returns>
@@ -110,40 +110,40 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not a draft.</response>
-    [HttpPut("{releaseId:long}/datasets")]
-    [RequireDraft(VersionKinds.SemanticRelease, "releaseId")]
+    [HttpPut("{semanticReleaseId:long}/datasets")]
+    [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
     [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ReplaceDatasets(
         string tenantId,
-        long releaseId,
+        long semanticReleaseId,
         ReleaseManifestInput input,
         CancellationToken cancellationToken)
     {
-        return Ok(await releases.ReplaceDatasetsAsync(releaseId, input, cancellationToken));
+        return Ok(await releases.ReplaceDatasetsAsync(semanticReleaseId, input, cancellationToken));
     }
 
     /// <summary>
-    /// Makes a published release the one runtime queries use: sets <c>qe_database_info.active_release_id</c> and
+    /// Makes a published release the one runtime queries use: sets <c>qe_database_info.active_semantic_release_id</c> and
     /// <c>updated_at</c>, and advances the semantic revision.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="releaseId">The published release.</param>
+    /// <param name="semanticReleaseId">The published release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The tenant's database info after the activation.</returns>
     /// <response code="200">The release is active; the body is the updated database info.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not published, so nothing changed; the detail names its status.</response>
-    [HttpPost("{releaseId:long}/activate")]
+    [HttpPost("{semanticReleaseId:long}/activate")]
     [ProducesResponseType<DatabaseInfoRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<ActionResult<DatabaseInfoRecord>> Activate(string tenantId, long releaseId, CancellationToken cancellationToken)
+    public async Task<ActionResult<DatabaseInfoRecord>> Activate(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
     {
-        var result = await activator.ActivateAsync(releaseId, cancellationToken);
+        var result = await activator.ActivateAsync(semanticReleaseId, cancellationToken);
         if (!result.Activated)
         {
-            var detail = $"{VersionKinds.SemanticRelease} {releaseId} is {result.Release.Status}; only published releases can be activated.";
+            var detail = $"{VersionKinds.SemanticRelease} {semanticReleaseId} is {result.Release.Status}; only published releases can be activated.";
             return Problem(detail, statusCode: StatusCodes.Status409Conflict, title: "Release is not published");
         }
 

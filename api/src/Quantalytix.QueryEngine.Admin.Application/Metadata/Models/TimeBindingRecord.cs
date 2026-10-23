@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record TimeBindingRecord
 {
     /// <summary>Primary key; also the extended dimension binding.</summary>
-    public required long BindingId { get; init; }
+    public required long DimensionBindingId { get; init; }
 
     /// <summary>A <c>time_value_type</c> value.</summary>
     public required string TimeValueType { get; init; }

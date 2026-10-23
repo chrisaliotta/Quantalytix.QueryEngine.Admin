@@ -12,7 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Releases;
 internal static class ReleaseRows
 {
     /// <summary>The draft release every rule test validates.</summary>
-    public const long ReleaseId = 900;
+    public const long SemanticReleaseId = 900;
 
     /// <summary>The branch role of dimension 100, which <see cref="Reader"/> names bindings by.</summary>
     public const long BranchRoleId = 41;
@@ -71,29 +71,29 @@ internal static class ReleaseRows
         };
     }
 
-    /// <summary>A manifest row of <see cref="ReleaseId"/>.</summary>
+    /// <summary>A manifest row of <see cref="SemanticReleaseId"/>.</summary>
     /// <param name="datasetId">The pinned dataset.</param>
     /// <param name="datasetVersionId">The dataset version the row pins.</param>
     /// <returns>The manifest row.</returns>
     public static ReleaseDatasetRecord Pin(long datasetId, long datasetVersionId)
     {
-        return new ReleaseDatasetRecord { ReleaseId = ReleaseId, DatasetId = datasetId, DatasetVersionId = datasetVersionId };
+        return new ReleaseDatasetRecord { SemanticReleaseId = SemanticReleaseId, DatasetId = datasetId, DatasetVersionId = datasetVersionId };
     }
 
     /// <summary>An unpinned, enabled binding; set kind-specific references with <c>with</c>.</summary>
-    /// <param name="bindingId">The binding's ID.</param>
+    /// <param name="dimensionBindingId">The binding's ID.</param>
     /// <param name="datasetVersionId">The dataset version that owns the binding.</param>
-    /// <param name="roleId">The bound role, whose key rule messages name; null for a time binding.</param>
+    /// <param name="dimensionRoleId">The bound role, whose key rule messages name; null for a time binding.</param>
     /// <param name="dimensionId">The bound dimension, the role's template.</param>
     /// <param name="bindingKind">A <c>binding_kind</c> value.</param>
     /// <returns>The binding row.</returns>
-    public static DimensionBindingRecord Binding(long bindingId, long datasetVersionId, long? roleId, long dimensionId, string bindingKind)
+    public static DimensionBindingRecord Binding(long dimensionBindingId, long datasetVersionId, long? dimensionRoleId, long dimensionId, string bindingKind)
     {
         return new DimensionBindingRecord
         {
-            BindingId = bindingId,
+            DimensionBindingId = dimensionBindingId,
             DatasetVersionId = datasetVersionId,
-            RoleId = roleId,
+            DimensionRoleId = dimensionRoleId,
             DimensionId = dimensionId,
             BindingKind = bindingKind,
             RaggedBehavior = RaggedBehaviors.Null,

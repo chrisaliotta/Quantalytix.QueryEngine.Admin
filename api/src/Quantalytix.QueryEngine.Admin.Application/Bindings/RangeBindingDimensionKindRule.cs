@@ -33,16 +33,16 @@ public sealed class RangeBindingDimensionKindRule(
             .ToDictionary(dimension => dimension.DimensionId);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in ranged.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
+        foreach (var binding in ranged.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
         {
             if (!bound.TryGetValue(binding.DimensionId, out var dimension))
             {
-                violations.Add(Violation($"Range binding '{named[binding.BindingId]}' binds dimension {binding.DimensionId}, which does not exist."));
+                violations.Add(Violation($"Range binding '{named[binding.DimensionBindingId]}' binds dimension {binding.DimensionId}, which does not exist."));
             }
             else if (dimension.DimensionKind != DimensionKinds.Range)
             {
                 violations.Add(Violation(
-                    $"Range binding '{named[binding.BindingId]}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension."));
+                    $"Range binding '{named[binding.DimensionBindingId]}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension."));
             }
         }
 

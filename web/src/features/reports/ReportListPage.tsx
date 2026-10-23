@@ -29,7 +29,7 @@ export function ReportListPage() {
       header: 'Report dimension',
       accessorFn: report => dimensionKeys.get(report.reportDimensionId) ?? report.reportDimensionId,
     },
-    { id: 'model', header: 'Calculation model', accessorFn: report => modelKeys.get(report.modelId) ?? report.modelId },
+    { id: 'model', header: 'Calculation model', accessorFn: report => modelKeys.get(report.calculationModelId) ?? report.calculationModelId },
     {
       accessorKey: 'isEnabled',
       header: 'Enabled',

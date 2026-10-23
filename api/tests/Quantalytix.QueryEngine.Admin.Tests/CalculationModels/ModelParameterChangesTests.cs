@@ -90,7 +90,7 @@ public sealed class ModelParameterChangesTests
         var violations = await PutAsync(DayCount() with { AllowedValues = allowedValues });
 
         Assert.Equal([rule], violations.Select(violation => violation.Rule));
-        Assert.Equal(DayCount().AllowedValues, Assert.Single(await _fixture.ParameterService().ListAsync(ModelId, TestContext.Current.CancellationToken)).AllowedValues);
+        Assert.Equal(DayCount().AllowedValues, Assert.Single(await _fixture.ParameterService().ListAsync(CalculationModelId, TestContext.Current.CancellationToken)).AllowedValues);
     }
 
     /// <summary>
@@ -120,11 +120,11 @@ public sealed class ModelParameterChangesTests
         await UseDayCountAsync(yieldReadsIt: false, assetsSets: null);
 
         Assert.Empty(await PutAsync(NumberParameter("scale", 1000m)));
-        Assert.Equal(1000m, (await _fixture.ParameterService().ListAsync(ModelId, cancellationToken)).Single(parameter => parameter.ParameterKey == "scale").DefaultNumber);
+        Assert.Equal(1000m, (await _fixture.ParameterService().ListAsync(CalculationModelId, cancellationToken)).Single(parameter => parameter.ParameterKey == "scale").DefaultNumber);
         Assert.Empty(await PutAsync(TextParameter("scale", "thousands") with { AllowedValues = ["units", "thousands"] }));
-        Assert.Equal(["units", "thousands"], (await _fixture.ParameterService().ListAsync(ModelId, cancellationToken)).Single(parameter => parameter.ParameterKey == "scale").AllowedValues);
+        Assert.Equal(["units", "thousands"], (await _fixture.ParameterService().ListAsync(CalculationModelId, cancellationToken)).Single(parameter => parameter.ParameterKey == "scale").AllowedValues);
         Assert.Empty(await DeleteAsync("scale"));
-        Assert.Equal(["dayCount"], (await _fixture.ParameterService().ListAsync(ModelId, cancellationToken)).Select(parameter => parameter.ParameterKey));
+        Assert.Equal(["dayCount"], (await _fixture.ParameterService().ListAsync(CalculationModelId, cancellationToken)).Select(parameter => parameter.ParameterKey));
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public sealed class ModelParameterChangesTests
         var downgraded = Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version11 };
 
         var violations = await _fixture.Changes().ApplyAsync(
-            ModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
+            CalculationModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
 
         Assert.Equal([FormulasFitLanguageRule.Code, FormulasFitLanguageRule.Code], violations.Select(violation => violation.Rule));
         Assert.Equal(FormulaLanguageVersions.Version12, Assert.Single(_fixture.Models.All).FormulaLanguageVersion);
@@ -154,7 +154,7 @@ public sealed class ModelParameterChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await _fixture.Models.UpdateAsync(Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 }, cancellationToken);
-        await _fixture.ParameterService().ReplaceAsync(ModelId, DayCount(), cancellationToken);
+        await _fixture.ParameterService().ReplaceAsync(CalculationModelId, DayCount(), cancellationToken);
         if (yieldReadsIt) await _fixture.CalculatedMeasures.UpdateAsync(Calculated(61, "yield", "[m.balance] / YEARFRAC(@dayCount)"), cancellationToken);
         if (assetsSets is not null)
         {
@@ -168,7 +168,7 @@ public sealed class ModelParameterChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         return _fixture.Changes().ApplyAsync(
-            ModelId, model => ModelParameterService.Put(model, parameter), () => _fixture.ParameterService().ReplaceAsync(ModelId, parameter, cancellationToken), cancellationToken);
+            CalculationModelId, model => ModelParameterService.Put(model, parameter), () => _fixture.ParameterService().ReplaceAsync(CalculationModelId, parameter, cancellationToken), cancellationToken);
     }
 
     /// <summary>Deletes a parameter of model 40 through the gate, as the parameters controller does.</summary>
@@ -176,6 +176,6 @@ public sealed class ModelParameterChangesTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         return _fixture.Changes().ApplyAsync(
-            ModelId, model => ModelParameterService.Without(model, parameterKey), () => _fixture.ParameterService().DeleteAsync(ModelId, parameterKey, cancellationToken), cancellationToken);
+            CalculationModelId, model => ModelParameterService.Without(model, parameterKey), () => _fixture.ParameterService().DeleteAsync(CalculationModelId, parameterKey, cancellationToken), cancellationToken);
     }
 }

@@ -30,26 +30,26 @@ public sealed class SeriesGrainExcludesTimeFieldRule(
     {
         var versionFilter = new { DatasetVersionId = versionId };
         var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
-        var extensions = await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken);
-        var timeBindingIds = extensions.Select(extension => extension.BindingId).ToHashSet();
+        var extensions = await timeBindings.ListAsync(new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken);
+        var timeBindingIds = extensions.Select(extension => extension.DimensionBindingId).ToHashSet();
         var timeFieldIds = versionBindings
-            .Where(binding => timeBindingIds.Contains(binding.BindingId) && binding.SourceFieldId is not null)
+            .Where(binding => timeBindingIds.Contains(binding.DimensionBindingId) && binding.SourceFieldId is not null)
             .Select(binding => binding.SourceFieldId!.Value)
             .ToHashSet();
         var seriesGrains = (await grains.ListAsync(versionFilter, cancellationToken)).Where(grain => grain.GrainKind == GrainKinds.Series).ToList();
-        var grainKeys = seriesGrains.ToDictionary(grain => grain.GrainId, grain => grain.GrainKey);
-        var components = await grainFields.ListAsync(new { GrainId = grainKeys.Keys.ToArray() }, cancellationToken);
+        var grainKeys = seriesGrains.ToDictionary(grain => grain.DatasetGrainId, grain => grain.GrainKey);
+        var components = await grainFields.ListAsync(new { DatasetGrainId = grainKeys.Keys.ToArray() }, cancellationToken);
         var fieldKeys = (await fields.ListAsync(versionFilter, cancellationToken)).ToDictionary(field => field.FieldId, field => field.FieldKey);
         return
         [
             .. components
                 .Where(component => timeFieldIds.Contains(component.FieldId))
-                .OrderBy(component => grainKeys[component.GrainId], StringComparer.Ordinal)
+                .OrderBy(component => grainKeys[component.DatasetGrainId], StringComparer.Ordinal)
                 .ThenBy(component => component.Ordinal)
                 .Select(component => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Series grain '{grainKeys[component.GrainId]}' includes '{FieldName(fieldKeys, component.FieldId)}', " +
+                    Message = $"Series grain '{grainKeys[component.DatasetGrainId]}' includes '{FieldName(fieldKeys, component.FieldId)}', " +
                         "the observation-time field of a time binding; a series grain leaves it out."
                 })
         ];

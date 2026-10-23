@@ -38,17 +38,17 @@ public sealed class PublishedDimensionReader(
     {
         var owner = new { version.DimensionVersionId };
         var versionMembers = await members.ListAsync(owner, cancellationToken);
-        var keyOf = versionMembers.ToDictionary(member => member.MemberId, member => member.MemberKey);
+        var keyOf = versionMembers.ToDictionary(member => member.DimensionMemberId, member => member.MemberKey);
         return new DimensionKeys
         {
             Version = version,
             LevelKeys = (await levels.ListAsync(owner, cancellationToken)).Select(level => level.LevelKey).ToHashSet(StringComparer.Ordinal),
             MemberKeys = versionMembers.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal),
             UnassignableMemberKeys = versionMembers.Where(member => !member.IsAssignable).Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal),
-            RootCount = versionMembers.Count(member => member.ParentMemberId is null),
+            RootCount = versionMembers.Count(member => member.ParentDimensionMemberId is null),
             ParentKeys = versionMembers
-                .Where(member => member.ParentMemberId is not null)
-                .ToDictionary(member => member.MemberKey, member => keyOf[member.ParentMemberId!.Value], StringComparer.Ordinal)
+                .Where(member => member.ParentDimensionMemberId is not null)
+                .ToDictionary(member => member.MemberKey, member => keyOf[member.ParentDimensionMemberId!.Value], StringComparer.Ordinal)
         };
     }
 }

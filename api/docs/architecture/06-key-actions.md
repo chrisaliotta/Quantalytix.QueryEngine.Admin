@@ -302,7 +302,7 @@ Bridge bindings name the bridge itself, so they need no change to follow the new
 
 ## Activating a release
 
-The drawing shows `POST .../releases/{releaseId}/activate`, the only way a dataset version reaches queries. The pointer is written before the revision advances, so the engine never caches the previous release under the new revision.
+The drawing shows `POST .../releases/{semanticReleaseId}/activate`, the only way a dataset version reaches queries. The pointer is written before the revision advances, so the engine never caches the previous release under the new revision.
 
 ```mermaid
 sequenceDiagram
@@ -314,15 +314,15 @@ sequenceDiagram
     participant Info as DatabaseInfoRecord gateway
     participant Rev as SemanticRevision
     participant Engine as Query engine
-    Client->>Ctl: POST releases/{releaseId}/activate
-    Ctl->>Act: ActivateAsync(releaseId)
-    Act->>Releases: GetAsync(ReleaseId)
+    Client->>Ctl: POST releases/{semanticReleaseId}/activate
+    Ctl->>Act: ActivateAsync(semanticReleaseId)
+    Act->>Releases: GetAsync(SemanticReleaseId)
     Act->>Info: GetAsync(SingletonId 1)
     alt The release is not published
         Act-->>Ctl: Activated false, nothing written
         Ctl-->>Client: 409 Release is not published
     else Published
-        Act->>Info: UpdateAsync with ActiveReleaseId and UpdatedAt
+        Act->>Info: UpdateAsync with ActiveSemanticReleaseId and UpdatedAt
         Act->>Rev: AdvanceAsync()
         Rev->>Info: GetAsync, then UpdateAsync with SemanticRevision plus one and UpdatedAt
         Act->>Info: GetAsync(SingletonId 1)
@@ -358,7 +358,7 @@ sequenceDiagram
     Ctl->>Svc: CaptureAsync(input)
     Svc->>Pins: ActiveAsync()
     Svc->>Info: GetAsync(singleton)
-    Svc->>Sets: InsertAsync(historical set with release_id the active release and captured_at now)
+    Svc->>Sets: InsertAsync(historical set with semantic_release_id the active release and captured_at now)
     Svc->>Own: OwnedIdsAsync()
     Own-->>Svc: the report dimensions and the bridges into them
     Svc->>Pins: ListAsync(active set)
@@ -527,7 +527,7 @@ sequenceDiagram
     Svc->>Datasets: GetAsync(DatasetId)
     Svc->>Versions: ListAsync(DatasetId)
     Svc->>Manifest: ListAsync(DatasetId)
-    Svc->>Releases: ListAsync(ReleaseId in the listing releases)
+    Svc->>Releases: ListAsync(SemanticReleaseId in the listing releases)
     Svc->>Blockers: new DeleteBlockers(Dataset and its key)
     Svc->>Blockers: AddNamed(it has non-draft versions)
     Svc->>Blockers: AddNamed(listed by releases)

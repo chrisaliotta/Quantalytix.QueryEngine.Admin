@@ -18,12 +18,12 @@ public sealed class SourceProfileService(
     public async Task<IReadOnlyList<SourceProfile>> ListAsync(long ownerId, CancellationToken cancellationToken)
     {
         var rows = await profiles.ListAsync(new { ReportId = ownerId }, cancellationToken);
-        var picked = (await picks.ListAsync(new { SourceProfileId = rows.Select(row => row.SourceProfileId).ToArray() }, cancellationToken))
-            .ToLookup(pick => pick.SourceProfileId);
+        var picked = (await picks.ListAsync(new { CalculationSourceProfileId = rows.Select(row => row.CalculationSourceProfileId).ToArray() }, cancellationToken))
+            .ToLookup(pick => pick.CalculationSourceProfileId);
         return
         [
             .. rows.OrderBy(row => row.ProfileKey, StringComparer.OrdinalIgnoreCase)
-                .Select(row => new SourceProfile { Profile = row, Picks = [.. picked[row.SourceProfileId].OrderBy(pick => pick.VariableKey, StringComparer.Ordinal)] })
+                .Select(row => new SourceProfile { Profile = row, Picks = [.. picked[row.CalculationSourceProfileId].OrderBy(pick => pick.VariableKey, StringComparer.Ordinal)] })
         ];
     }
 
@@ -34,7 +34,7 @@ public sealed class SourceProfileService(
     /// <returns>True when the profile is one of the report's.</returns>
     public async Task<bool> BelongsAsync(long ownerId, long itemId, CancellationToken cancellationToken)
     {
-        return (await profiles.ListAsync(new { SourceProfileId = itemId, ReportId = ownerId }, cancellationToken)).Count == 1;
+        return (await profiles.ListAsync(new { CalculationSourceProfileId = itemId, ReportId = ownerId }, cancellationToken)).Count == 1;
     }
 
     /// <summary>The profile and picks an input describes, under a new ID or the edited profile's own.</summary>
@@ -49,7 +49,7 @@ public sealed class SourceProfileService(
         {
             Profile = new SourceProfileRecord
             {
-                SourceProfileId = profileId,
+                CalculationSourceProfileId = profileId,
                 ReportId = ownerId,
                 ProfileKey = input.ProfileKey,
                 DisplayName = input.DisplayName,
@@ -59,7 +59,7 @@ public sealed class SourceProfileService(
             [
                 .. input.Picks.OrderBy(pick => pick.VariableKey, StringComparer.Ordinal).Select(pick => new SourceProfileVariableRecord
                 {
-                    SourceProfileId = profileId, VariableKey = pick.VariableKey, ReportSourceId = pick.ReportSourceId
+                    CalculationSourceProfileId = profileId, VariableKey = pick.VariableKey, ReportSourceId = pick.ReportSourceId
                 })
             ]
         };
@@ -81,7 +81,7 @@ public sealed class SourceProfileService(
     /// <returns>A task that completes when the profile is stored.</returns>
     public async Task UpdateAsync(SourceProfile item, CancellationToken cancellationToken)
     {
-        await picks.DeleteAsync(new { item.Profile.SourceProfileId }, cancellationToken);
+        await picks.DeleteAsync(new { item.Profile.CalculationSourceProfileId }, cancellationToken);
         await InsertAsync(item, cancellationToken);
     }
 
@@ -91,7 +91,7 @@ public sealed class SourceProfileService(
     /// <returns>Null when the profile was deleted; otherwise the detail naming the default it is.</returns>
     public async Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken)
     {
-        var profile = await profiles.GetAsync(new { SourceProfileId = itemId }, cancellationToken);
+        var profile = await profiles.GetAsync(new { CalculationSourceProfileId = itemId }, cancellationToken);
         var report = await reports.GetAsync(new { profile.ReportId }, cancellationToken);
         var blockers = new DeleteBlockers($"Source profile '{profile.ProfileKey}'");
         if (report.DefaultProfileKey == profile.ProfileKey) blockers.Add("it is the default profile of its report");
@@ -107,7 +107,7 @@ public sealed class SourceProfileService(
     /// <returns>The report as the write leaves it.</returns>
     public ReportGraph Put(ReportGraph report, SourceProfile item)
     {
-        var without = Without(report, item.Profile.SourceProfileId);
+        var without = Without(report, item.Profile.CalculationSourceProfileId);
         return without with { Profiles = [.. without.Profiles, item.Profile], Picks = [.. without.Picks, .. item.Picks] };
     }
 
@@ -119,8 +119,8 @@ public sealed class SourceProfileService(
     {
         return report with
         {
-            Profiles = [.. report.Profiles.Where(profile => profile.SourceProfileId != itemId)],
-            Picks = [.. report.Picks.Where(pick => pick.SourceProfileId != itemId)]
+            Profiles = [.. report.Profiles.Where(profile => profile.CalculationSourceProfileId != itemId)],
+            Picks = [.. report.Picks.Where(pick => pick.CalculationSourceProfileId != itemId)]
         };
     }
 }

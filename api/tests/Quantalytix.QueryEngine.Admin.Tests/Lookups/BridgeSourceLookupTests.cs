@@ -25,7 +25,7 @@ public sealed class BridgeSourceLookupTests
     private readonly LookupService _lookups = Lookups(
         new InMemoryTableGateway<DimensionBindingRecord>(
             ReleaseRows.Binding(31, 11, 85, 800, BindingKinds.Mapped) with { SourceFieldId = 1 },
-            ReleaseRows.Binding(32, 11, 86, 600, BindingKinds.Bridge) with { SourceBindingId = 31, BridgeId = 97 },
+            ReleaseRows.Binding(32, 11, 86, 600, BindingKinds.Bridge) with { SourceDimensionBindingId = 31, BridgeId = 97 },
             ReleaseRows.Binding(33, 11, 87, 700, BindingKinds.Direct) with { SourceFieldId = 3, IsEnabled = false },
             ReleaseRows.Binding(34, 11, null, 900, BindingKinds.Time) with { SourceFieldId = 4 }),
         new InMemoryTableGateway<BridgeRecord>(BridgeRows.Bridge(95, 800, 500), BridgeRows.Bridge(96, 600, 500)));

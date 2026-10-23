@@ -17,8 +17,8 @@ const columns: ColumnDef<Variable>[] = [
 ];
 
 /** The model's variables: the logical inputs each report's profiles fill from the report's own sources, each with its attribution. */
-export function VariablesTab({ modelId }: { modelId: number }) {
-  const attributions = useAttributions(modelId);
+export function VariablesTab({ calculationModelId }: { calculationModelId: number }) {
+  const attributions = useAttributions(calculationModelId);
   const [attributing, setAttributing] = useState<Variable | null>(null);
   const withAttribution = [...columns, attributionColumn<Variable>(attributions.data, variable => variable.variableKey, true, setAttributing)];
 
@@ -26,16 +26,16 @@ export function VariablesTab({ modelId }: { modelId: number }) {
     <>
       <OwnedContentTab
         kind="variables"
-        ownerId={modelId}
+        ownerId={calculationModelId}
         columns={withAttribution}
         noun="variable"
         identify={variable => ({ id: variable.variableId, key: variable.variableKey })}
         deleteDescription="A variable that a formula or attribution of the model, or an enabled report through a column, scope, source or pick, reads is kept."
-        renderSheet={(variable, onClose) => <VariableSheet modelId={modelId} variable={variable} onClose={onClose} />}
+        renderSheet={(variable, onClose) => <VariableSheet calculationModelId={calculationModelId} variable={variable} onClose={onClose} />}
       />
       {attributing && attributions.data && (
         <AttributionSheet
-          modelId={modelId}
+          calculationModelId={calculationModelId}
           metricKey={attributing.variableKey}
           formula={null}
           attribution={attributions.data.find(attribution => attribution.metricKey === attributing.variableKey)}

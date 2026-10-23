@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 public sealed record GrainDetail
 {
     /// <summary>The grain's surrogate key.</summary>
-    public required long GrainId { get; init; }
+    public required long DatasetGrainId { get; init; }
 
     /// <summary>Stable metadata name of the grain.</summary>
     public required string GrainKey { get; init; }

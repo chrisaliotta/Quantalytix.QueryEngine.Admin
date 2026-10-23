@@ -151,8 +151,8 @@ public sealed class RangeBandRuleTests
     }
 
     /// <summary>A date band; the lower bound is inclusive and the upper one exclusive.</summary>
-    private static RangeBandRecord DateBand(int ordinal, long memberId, DateTime? lower, DateTime? upper)
+    private static RangeBandRecord DateBand(int ordinal, long dimensionMemberId, DateTime? lower, DateTime? upper)
     {
-        return DecimalBand(VersionId, ordinal, memberId, null, null) with { LowerDate = lower, UpperDate = upper };
+        return DecimalBand(VersionId, ordinal, dimensionMemberId, null, null) with { LowerDate = lower, UpperDate = upper };
     }
 }

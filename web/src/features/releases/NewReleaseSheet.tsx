@@ -21,7 +21,7 @@ export function NewReleaseSheet({ form, open, onOpenChange }: NewReleaseSheetPro
 
   async function submit(values: ReleaseCreateInput) {
     const release = await create.mutateAsync(values);
-    navigate(`/t/${tenantId}/releases/${release.releaseId}`);
+    navigate(`/t/${tenantId}/releases/${release.semanticReleaseId}`);
   }
 
   return (
@@ -36,7 +36,7 @@ export function NewReleaseSheet({ form, open, onOpenChange }: NewReleaseSheetPro
     >
       <TextField name="releaseKey" label="Key" description="A stable label such as development/2026-q4." />
       <EntityField
-        name="copyFromReleaseId"
+        name="copyFromSemanticReleaseId"
         label="Copy manifest from"
         lookupKind="releases"
         allowEmpty

@@ -7,5 +7,5 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 public sealed record NewDimensionRoleInput : DimensionRoleInput
 {
     /// <summary>The dimension ID requests use, such as <c>servicingBranch</c>; unique in the tenant and fixed once created.</summary>
-    public required string RoleKey { get; init; }
+    public required string DimensionRoleKey { get; init; }
 }

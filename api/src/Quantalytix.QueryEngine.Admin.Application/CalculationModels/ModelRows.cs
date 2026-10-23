@@ -4,7 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
-/// Model content stored in one table: rows owned by <c>model_id</c>. <see cref="ModelChanges"/> checks every write, deletes included,
+/// Model content stored in one table: rows owned by <c>calculation_model_id</c>. <see cref="ModelChanges"/> checks every write, deletes included,
 /// against the model's formulas and the enabled reports that read the model, so a delete has no blockers of its own.
 /// </summary>
 /// <typeparam name="TRecord">The content row.</typeparam>
@@ -42,6 +42,6 @@ public abstract class ModelRows<TRecord, TInput>(ITableGateway<TRecord> rows, II
     /// <returns>The filter object.</returns>
     protected sealed override object Owner(long ownerId)
     {
-        return new { ModelId = ownerId };
+        return new { CalculationModelId = ownerId };
     }
 }

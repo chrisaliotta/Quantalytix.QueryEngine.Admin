@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 public sealed record ModelParameterReference
 {
     /// <summary>The model that declares the parameter.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>The parameter's key.</summary>
     public required string ParameterKey { get; init; }

@@ -17,7 +17,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Releases;
 public sealed class ReleaseActivationTests
 {
     /// <summary>The release that is active before each test.</summary>
-    private const long ActiveReleaseId = 500;
+    private const long ActiveSemanticReleaseId = 500;
 
     /// <summary>A published release that is not active.</summary>
     private const long PublishedReleaseId = 501;
@@ -39,7 +39,7 @@ public sealed class ReleaseActivationTests
 
     /// <summary>The release table.</summary>
     private readonly InMemoryTableGateway<SemanticReleaseRecord> _releases = new(
-        Release(ActiveReleaseId, "development/baseline", PublicationStatuses.Published),
+        Release(ActiveSemanticReleaseId, "development/baseline", PublicationStatuses.Published),
         Release(PublishedReleaseId, "zz_rel_next", PublicationStatuses.Published),
         Release(DraftReleaseId, "zz_rel_draft", PublicationStatuses.Draft));
 
@@ -50,7 +50,7 @@ public sealed class ReleaseActivationTests
         TenantKey = "sandbox",
         MetadataSchemaVersion = 4,
         SemanticRevision = StartingRevision,
-        ActiveReleaseId = ActiveReleaseId,
+        ActiveSemanticReleaseId = ActiveSemanticReleaseId,
         UpdatedAt = Earlier
     });
 
@@ -63,7 +63,7 @@ public sealed class ReleaseActivationTests
 
         Assert.True(result.Activated);
         var info = Assert.Single(_databaseInfo.All);
-        Assert.Equal(PublishedReleaseId, info.ActiveReleaseId);
+        Assert.Equal(PublishedReleaseId, info.ActiveSemanticReleaseId);
         Assert.Equal(StartingRevision + 1, info.SemanticRevision);
         Assert.Equal(Now.UtcDateTime, info.UpdatedAt);
         Assert.Equal(info, result.DatabaseInfo);
@@ -79,7 +79,7 @@ public sealed class ReleaseActivationTests
         Assert.False(result.Activated);
         Assert.Equal(PublicationStatuses.Draft, result.Release.Status);
         var info = Assert.Single(_databaseInfo.All);
-        Assert.Equal(ActiveReleaseId, info.ActiveReleaseId);
+        Assert.Equal(ActiveSemanticReleaseId, info.ActiveSemanticReleaseId);
         Assert.Equal(StartingRevision, info.SemanticRevision);
         Assert.Equal(Earlier, info.UpdatedAt);
     }
@@ -91,8 +91,8 @@ public sealed class ReleaseActivationTests
     }
 
     /// <summary>A release created at the start of 2026.</summary>
-    private static SemanticReleaseRecord Release(long releaseId, string releaseKey, string status)
+    private static SemanticReleaseRecord Release(long semanticReleaseId, string releaseKey, string status)
     {
-        return new SemanticReleaseRecord { ReleaseId = releaseId, ReleaseKey = releaseKey, Status = status, CreatedAt = Earlier };
+        return new SemanticReleaseRecord { SemanticReleaseId = semanticReleaseId, ReleaseKey = releaseKey, Status = status, CreatedAt = Earlier };
     }
 }

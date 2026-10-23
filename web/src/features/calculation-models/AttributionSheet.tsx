@@ -14,7 +14,7 @@ import type { MetricAttribution } from './types';
 const DAYS_LABELS: Record<string, string> = { '@periodDays': 'Days in the period', '@yearDays': 'Days in its year' };
 
 export interface AttributionSheetProps {
-  modelId: number;
+  calculationModelId: number;
   /** The variable or calculated measure attributed. */
   metricKey: string;
   /** The calculated measure's formula, which an empty expression switches the drivers in; null for a variable, which has none. */
@@ -30,11 +30,11 @@ export interface AttributionSheetProps {
  * the variable that weighs member contributions. Saving replaces the metric's attribution whole; the model's rules are checked
  * before anything is written.
  */
-export function AttributionSheet({ modelId, metricKey, formula, attribution, onClose }: AttributionSheetProps) {
-  const replace = useReplaceAttribution(modelId, metricKey);
-  const remove = useDeleteAttribution(modelId, metricKey);
-  const variables = useLookup('variables', modelId);
-  const measures = useLookup('calculated-measures', modelId);
+export function AttributionSheet({ calculationModelId, metricKey, formula, attribution, onClose }: AttributionSheetProps) {
+  const replace = useReplaceAttribution(calculationModelId, metricKey);
+  const remove = useDeleteAttribution(calculationModelId, metricKey);
+  const variables = useLookup('variables', calculationModelId);
+  const measures = useLookup('calculated-measures', calculationModelId);
   const form = useForm<AttributionValues>({ defaultValues: toAttributionValues(attribution) });
   const drivers = useFieldArray({ control: form.control, name: 'drivers' });
   const [expressionText, chosen] = useWatch({ control: form.control, name: ['expressionText', 'drivers'] });

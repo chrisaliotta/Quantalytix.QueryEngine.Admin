@@ -10,10 +10,10 @@ import type { CalculationDimension, ReportScenario } from './types';
  */
 export function scenarioDimensionRoles(
   roles: LookupItem[],
-  scenarios: Pick<ReportScenario, 'roleId'>[],
-  dimensions: Pick<CalculationDimension, 'roleId'>[]
+  scenarios: Pick<ReportScenario, 'dimensionRoleId'>[],
+  dimensions: Pick<CalculationDimension, 'dimensionRoleId'>[]
 ): Map<number, number> {
-  const taken = new Set([...scenarios, ...dimensions].map(item => item.roleId));
+  const taken = new Set([...scenarios, ...dimensions].map(item => item.dimensionRoleId));
   const rolesOf = new Map<number, LookupItem[]>();
   for (const role of roles) rolesOf.set(role.parentId!, [...(rolesOf.get(role.parentId!) ?? []), role]);
   return new Map(

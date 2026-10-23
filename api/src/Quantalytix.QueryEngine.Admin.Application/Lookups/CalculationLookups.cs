@@ -25,14 +25,14 @@ public sealed class CalculationLookups(
         return kind switch
         {
             LookupKinds.CalculationModels => Sorted((await models.ListAsync(null, cancellationToken))
-                .Select(row => new LookupItem { Id = row.ModelId, Key = row.ModelKey, Label = row.DisplayName, Classifier = row.CurrencyCode })),
-            LookupKinds.Variables => Sorted((await variables.ListAsync(new { ModelId = parentId }, cancellationToken))
+                .Select(row => new LookupItem { Id = row.CalculationModelId, Key = row.ModelKey, Label = row.DisplayName, Classifier = row.CurrencyCode })),
+            LookupKinds.Variables => Sorted((await variables.ListAsync(new { CalculationModelId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.VariableId, Key = row.VariableKey, Label = row.DisplayName, Classifier = row.VariableRole })),
             LookupKinds.ReportSources => Sorted((await sources.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.ReportSourceId, Key = row.SourceKey, Label = row.DisplayName, Classifier = row.MappingMethod })),
             LookupKinds.SourceProfiles => Sorted((await profiles.ListAsync(new { ReportId = parentId }, cancellationToken))
-                .Select(row => new LookupItem { Id = row.SourceProfileId, Key = row.ProfileKey, Label = row.DisplayName })),
-            LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { ModelId = parentId }, cancellationToken))
+                .Select(row => new LookupItem { Id = row.CalculationSourceProfileId, Key = row.ProfileKey, Label = row.DisplayName })),
+            LookupKinds.CalculatedMeasures => Sorted((await calculatedMeasures.ListAsync(new { CalculationModelId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculatedMeasureId, Key = row.MeasureKey, Label = row.DisplayName, Classifier = row.DisplayFormat })),
             LookupKinds.CalculationDimensions => Sorted((await calculationDimensions.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculationDimensionId, Key = row.DimensionKey, Label = row.DisplayName, Classifier = row.GroupingMode })),

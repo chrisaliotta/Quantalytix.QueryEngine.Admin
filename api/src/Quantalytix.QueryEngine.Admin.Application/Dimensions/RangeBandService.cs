@@ -28,7 +28,7 @@ public sealed class RangeBandService(ITableGateway<RangeBandRecord> bands)
             {
                 DimensionVersionId = reference.DimensionVersionId,
                 Ordinal = index + 1,
-                MemberId = band.MemberId,
+                DimensionMemberId = band.DimensionMemberId,
                 LowerDecimal = band.LowerDecimal,
                 UpperDecimal = band.UpperDecimal,
                 LowerDate = band.LowerDate,

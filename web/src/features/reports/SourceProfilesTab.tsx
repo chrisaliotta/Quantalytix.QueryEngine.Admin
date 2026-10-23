@@ -24,7 +24,7 @@ export function SourceProfilesTab({ view }: { view: EditorView }) {
       ownerId={view.report.reportId}
       columns={columns}
       noun="profile"
-      identify={profile => ({ id: profile.profile.sourceProfileId, key: profile.profile.profileKey })}
+      identify={profile => ({ id: profile.profile.calculationSourceProfileId, key: profile.profile.profileKey })}
       deleteDescription="Its picks are deleted too. The report's default profile is kept."
       renderSheet={(profile, onClose) => <SourceProfileSheet view={view} profile={profile} onClose={onClose} />}
     />

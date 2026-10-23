@@ -32,9 +32,9 @@ public sealed class TimePolicyTimeBindingInVersionRule(
             .Where(policy => policy.RequiredTimeBindingId is not null)
             .OrderBy(policy => measureKeys[policy.MeasureId], StringComparer.Ordinal)
             .ToList();
-        var versionBindingIds = (await bindings.ListAsync(versionFilter, cancellationToken)).Select(binding => binding.BindingId).ToArray();
-        var timeBindingIds = (await timeBindings.ListAsync(new { BindingId = versionBindingIds }, cancellationToken))
-            .Select(extension => extension.BindingId)
+        var versionBindingIds = (await bindings.ListAsync(versionFilter, cancellationToken)).Select(binding => binding.DimensionBindingId).ToArray();
+        var timeBindingIds = (await timeBindings.ListAsync(new { DimensionBindingId = versionBindingIds }, cancellationToken))
+            .Select(extension => extension.DimensionBindingId)
             .ToHashSet();
         return
         [

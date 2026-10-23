@@ -15,22 +15,22 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Overview;
 public sealed class OverviewTests
 {
     /// <summary>The active release.</summary>
-    private const long ActiveReleaseId = 500;
+    private const long ActiveSemanticReleaseId = 500;
 
     /// <summary>When every seeded row was created.</summary>
     private static readonly DateTime Created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>A published, a draft and a retired release.</summary>
     private readonly InMemoryTableGateway<SemanticReleaseRecord> _releases = new(
-        Release(ActiveReleaseId, PublicationStatuses.Published),
+        Release(ActiveSemanticReleaseId, PublicationStatuses.Published),
         Release(501, PublicationStatuses.Draft),
         Release(502, PublicationStatuses.Retired));
 
     /// <summary>The active release pins loans v1 and deposits v1; the draft release pins loans v2.</summary>
     private readonly InMemoryTableGateway<ReleaseDatasetRecord> _manifest = new(
-        new ReleaseDatasetRecord { ReleaseId = ActiveReleaseId, DatasetId = 1, DatasetVersionId = 11 },
-        new ReleaseDatasetRecord { ReleaseId = ActiveReleaseId, DatasetId = 2, DatasetVersionId = 21 },
-        new ReleaseDatasetRecord { ReleaseId = 501, DatasetId = 1, DatasetVersionId = 12 });
+        new ReleaseDatasetRecord { SemanticReleaseId = ActiveSemanticReleaseId, DatasetId = 1, DatasetVersionId = 11 },
+        new ReleaseDatasetRecord { SemanticReleaseId = ActiveSemanticReleaseId, DatasetId = 2, DatasetVersionId = 21 },
+        new ReleaseDatasetRecord { SemanticReleaseId = 501, DatasetId = 1, DatasetVersionId = 12 });
 
     /// <summary>Two datasets.</summary>
     private readonly InMemoryTableGateway<DatasetRecord> _datasets = new(
@@ -106,7 +106,7 @@ public sealed class OverviewTests
     /// <summary>One calculation model.</summary>
     private readonly InMemoryTableGateway<CalculationModelRecord> _models = new(new CalculationModelRecord
     {
-        ModelId = 401,
+        CalculationModelId = 401,
         ModelKey = "yield",
         DisplayName = "Yield",
         CalendarKey = "gregorian",
@@ -124,12 +124,12 @@ public sealed class OverviewTests
     [Fact]
     public async Task CountsRowsAndDrafts()
     {
-        var overview = await Service(DatabaseInfo(ActiveReleaseId)).GetAsync(TestContext.Current.CancellationToken);
+        var overview = await Service(DatabaseInfo(ActiveSemanticReleaseId)).GetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("sandbox", overview.TenantKey);
         Assert.Equal(12, overview.MetadataSchemaVersion);
         Assert.Equal(12, overview.SemanticRevision);
-        Assert.Equal(ActiveReleaseId, overview.ActiveRelease?.ReleaseId);
+        Assert.Equal(ActiveSemanticReleaseId, overview.ActiveRelease?.SemanticReleaseId);
         Assert.Equal(
             new OverviewCounts
             {
@@ -189,7 +189,7 @@ public sealed class OverviewTests
     }
 
     /// <summary>The sandbox tenant's database info, pointing at the given active release.</summary>
-    private static DatabaseInfoRecord DatabaseInfo(long? activeReleaseId)
+    private static DatabaseInfoRecord DatabaseInfo(long? activeSemanticReleaseId)
     {
         return new DatabaseInfoRecord
         {
@@ -197,7 +197,7 @@ public sealed class OverviewTests
             TenantKey = "sandbox",
             MetadataSchemaVersion = 12,
             SemanticRevision = 12,
-            ActiveReleaseId = activeReleaseId,
+            ActiveSemanticReleaseId = activeSemanticReleaseId,
             UpdatedAt = Created
         };
     }
@@ -207,15 +207,15 @@ public sealed class OverviewTests
     {
         return new ReportRecord
         {
-            ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", ReportDimensionId = 300, ModelId = 401,
+            ReportId = reportId, ReportKey = $"report_{reportId}", DisplayName = $"Report {reportId}", ReportType = "financial", ReportDimensionId = 300, CalculationModelId = 401,
             SubtotalPosition = SubtotalPositions.Above, IsEnabled = true
         };
     }
 
     /// <summary>A release.</summary>
-    private static SemanticReleaseRecord Release(long releaseId, string status)
+    private static SemanticReleaseRecord Release(long semanticReleaseId, string status)
     {
-        return new SemanticReleaseRecord { ReleaseId = releaseId, ReleaseKey = $"release_{releaseId}", Status = status, CreatedAt = Created };
+        return new SemanticReleaseRecord { SemanticReleaseId = semanticReleaseId, ReleaseKey = $"release_{semanticReleaseId}", Status = status, CreatedAt = Created };
     }
 
     /// <summary>A dataset version over a table.</summary>

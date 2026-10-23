@@ -68,7 +68,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is not a draft.</response>
-    [HttpPut("{bindingId:long}")]
+    [HttpPut("{dimensionBindingId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -94,7 +94,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: the version is not a draft, or the detail names what blocks the delete.</response>
-    [HttpDelete("{bindingId:long}")]
+    [HttpDelete("{dimensionBindingId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

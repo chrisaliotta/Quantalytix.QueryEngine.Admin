@@ -22,7 +22,7 @@ export function TimePolicyFields({ versionId }: { versionId: number }) {
         description="Empty uses the query's time axis or the version's default time binding."
       />
       <EntityField
-        name="timePolicy.selectionGrainId"
+        name="timePolicy.selectionDatasetGrainId"
         label="Selection grain"
         lookupKind="grains"
         parentId={versionId}

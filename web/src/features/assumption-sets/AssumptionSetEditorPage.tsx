@@ -45,7 +45,7 @@ function AssumptionSetDetailView({ assumptionSet, pins }: { assumptionSet: Assum
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const releases = useLookup('releases');
   const isActive = assumptionSet.status === 'active';
-  const release = releases.data?.find(item => item.id === assumptionSet.releaseId);
+  const release = releases.data?.find(item => item.id === assumptionSet.semanticReleaseId);
 
   return (
     <div data-slot="assumption-set-editor" className="space-y-6">
@@ -93,11 +93,11 @@ function AssumptionSetDetailView({ assumptionSet, pins }: { assumptionSet: Assum
             <Setting label="Display name">{assumptionSet.displayName}</Setting>
             <Setting label="Description">{assumptionSet.description || '—'}</Setting>
             <Setting label="Release">
-              {assumptionSet.releaseId == null ? (
+              {assumptionSet.semanticReleaseId == null ? (
                 'The active release, whichever is active'
               ) : (
                 <span className="inline-flex items-center gap-2">
-                  <Link className="font-medium hover:underline" to={`/t/${tenantId}/releases/${assumptionSet.releaseId}`}>
+                  <Link className="font-medium hover:underline" to={`/t/${tenantId}/releases/${assumptionSet.semanticReleaseId}`}>
                     {release?.key}
                   </Link>
                   {release?.status && <StatusBadge status={release.status} />}

@@ -43,7 +43,7 @@ public sealed class ReportGraphReader(
         var structure = await owned.StructureAsync(report, cancellationToken);
         var reportProfiles = await profiles.ListAsync(owner, cancellationToken);
         var reportSources = await sources.ListAsync(owner, cancellationToken);
-        var metrics = new { report.ModelId };
+        var metrics = new { report.CalculationModelId };
         return new ReportGraph
         {
             Report = report,
@@ -56,14 +56,14 @@ public sealed class ReportGraphReader(
             Scenarios = await scenarios.ListAsync(owner, cancellationToken),
             Columns = await columns.ListAsync(owner, cancellationToken),
             Profiles = reportProfiles,
-            Picks = await picks.ListAsync(new { SourceProfileId = reportProfiles.Select(profile => profile.SourceProfileId).ToArray() }, cancellationToken),
+            Picks = await picks.ListAsync(new { CalculationSourceProfileId = reportProfiles.Select(profile => profile.CalculationSourceProfileId).ToArray() }, cancellationToken),
             Sources = reportSources,
             SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken),
             SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
             Dimensions = await dimensions.ListAsync(owner, cancellationToken),
             Variables = await variables.ListAsync(metrics, cancellationToken),
             CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken),
-            Parameters = await parameters.ListAsync(report.ModelId, cancellationToken)
+            Parameters = await parameters.ListAsync(report.CalculationModelId, cancellationToken)
         };
     }
 
@@ -80,23 +80,23 @@ public sealed class ReportGraphReader(
 
     /// <summary>Reads what reports are checked against besides their content.</summary>
     /// <param name="graphs">The reports.</param>
-    /// <param name="releaseId">The release being validated; null for the active release.</param>
+    /// <param name="semanticReleaseId">The release being validated; null for the active release.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The release's versions of the datasets the reports read, and the templates of their calculation dimensions.</returns>
-    public async Task<ReportScope> ScopeAsync(IReadOnlyList<ReportGraph> graphs, long? releaseId, CancellationToken cancellationToken)
+    public async Task<ReportScope> ScopeAsync(IReadOnlyList<ReportGraph> graphs, long? semanticReleaseId, CancellationToken cancellationToken)
     {
         long[] sourceDatasets = [.. graphs.SelectMany(report => report.Sources.Select(source => source.DatasetId)).Distinct()];
-        long[] calculationRoles = [.. graphs.SelectMany(report => report.Dimensions.Select(dimension => dimension.RoleId)).Distinct()];
-        long[] namedRoles = [.. graphs.SelectMany(report => report.Sources.Select(source => source.RoleId)).OfType<long>().Concat(calculationRoles).Distinct()];
-        var rolesById = (await roles.ListAsync(new { RoleId = namedRoles }, cancellationToken)).ToDictionary(role => role.RoleId);
+        long[] calculationRoles = [.. graphs.SelectMany(report => report.Dimensions.Select(dimension => dimension.DimensionRoleId)).Distinct()];
+        long[] namedRoles = [.. graphs.SelectMany(report => report.Sources.Select(source => source.DimensionRoleId)).OfType<long>().Concat(calculationRoles).Distinct()];
+        var rolesById = (await roles.ListAsync(new { DimensionRoleId = namedRoles }, cancellationToken)).ToDictionary(role => role.DimensionRoleId);
         var templates = new Dictionary<long, DimensionKeys?>();
-        foreach (var roleId in calculationRoles)
-            templates[roleId] = await publishedDimensions.ReadAsync(rolesById[roleId].DimensionId, cancellationToken);
+        foreach (var dimensionRoleId in calculationRoles)
+            templates[dimensionRoleId] = await publishedDimensions.ReadAsync(rolesById[dimensionRoleId].DimensionId, cancellationToken);
         return new ReportScope
         {
-            Datasets = await releaseDatasets.ReadAsync(releaseId, sourceDatasets, cancellationToken),
+            Datasets = await releaseDatasets.ReadAsync(semanticReleaseId, sourceDatasets, cancellationToken),
             DatasetKeys = (await datasets.ListAsync(new { DatasetId = sourceDatasets }, cancellationToken)).ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey),
-            RoleKeys = rolesById.ToDictionary(pair => pair.Key, pair => pair.Value.RoleKey),
+            RoleKeys = rolesById.ToDictionary(pair => pair.Key, pair => pair.Value.DimensionRoleKey),
             Templates = templates
         };
     }

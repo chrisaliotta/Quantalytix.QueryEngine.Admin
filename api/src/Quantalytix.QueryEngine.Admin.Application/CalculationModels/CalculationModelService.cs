@@ -26,12 +26,12 @@ public sealed class CalculationModelService(
     }
 
     /// <summary>Reads one calculation model.</summary>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The model.</returns>
-    public Task<CalculationModelRecord> GetAsync(long modelId, CancellationToken cancellationToken)
+    public Task<CalculationModelRecord> GetAsync(long calculationModelId, CancellationToken cancellationToken)
     {
-        return models.GetAsync(new { ModelId = modelId }, cancellationToken);
+        return models.GetAsync(new { CalculationModelId = calculationModelId }, cancellationToken);
     }
 
     /// <summary>Creates a calculation model without variables or calculated measures.</summary>
@@ -42,7 +42,7 @@ public sealed class CalculationModelService(
     {
         var model = new CalculationModelRecord
         {
-            ModelId = ids.NextId(),
+            CalculationModelId = ids.NextId(),
             ModelKey = input.ModelKey,
             DisplayName = input.DisplayName,
             CalendarKey = Gregorian,
@@ -56,13 +56,13 @@ public sealed class CalculationModelService(
     }
 
     /// <summary>The model as an edit of its attributes would leave it, for <see cref="ModelChanges"/> to check.</summary>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="input">The new attributes, already validated.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The model to store.</returns>
-    public async Task<CalculationModelRecord> ComposeAsync(long modelId, CalculationModelInput input, CancellationToken cancellationToken)
+    public async Task<CalculationModelRecord> ComposeAsync(long calculationModelId, CalculationModelInput input, CancellationToken cancellationToken)
     {
-        return await GetAsync(modelId, cancellationToken) with
+        return await GetAsync(calculationModelId, cancellationToken) with
         {
             DisplayName = input.DisplayName,
             CurrencyCode = input.CurrencyCode,
@@ -82,18 +82,18 @@ public sealed class CalculationModelService(
     }
 
     /// <summary>Deletes a model that no report reads, with its variables, calculated measures, attributions and parameters.</summary>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when the model was deleted; otherwise the detail naming the reports that read it, and nothing was deleted.</returns>
-    public async Task<string?> DeleteAsync(long modelId, CancellationToken cancellationToken)
+    public async Task<string?> DeleteAsync(long calculationModelId, CancellationToken cancellationToken)
     {
-        var model = await GetAsync(modelId, cancellationToken);
+        var model = await GetAsync(calculationModelId, cancellationToken);
         var blockers = new DeleteBlockers($"Calculation model '{model.ModelKey}'");
-        blockers.AddNamed("read by", await reports.ModelReadersAsync(modelId, cancellationToken));
+        blockers.AddNamed("read by", await reports.ModelReadersAsync(calculationModelId, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 
-        var owner = new { ModelId = modelId };
+        var owner = new { CalculationModelId = calculationModelId };
         await attributionDrivers.DeleteAsync(owner, cancellationToken);
         await attributions.DeleteAsync(owner, cancellationToken);
         await variables.DeleteAsync(owner, cancellationToken);

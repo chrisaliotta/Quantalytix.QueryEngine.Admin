@@ -7,5 +7,5 @@ public sealed record GrainReference
     public required long VersionId { get; init; }
 
     /// <summary>The grain.</summary>
-    public required long GrainId { get; init; }
+    public required long DatasetGrainId { get; init; }
 }

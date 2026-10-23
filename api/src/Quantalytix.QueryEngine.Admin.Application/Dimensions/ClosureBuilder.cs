@@ -55,17 +55,17 @@ public sealed class ClosureBuilder(
     /// </summary>
     private static List<DimensionClosureRecord> ClosureOf(long versionId, IReadOnlyList<DimensionMemberRecord> tree)
     {
-        var children = tree.Where(member => member.ParentMemberId is not null).ToLookup(member => member.ParentMemberId!.Value, member => member.MemberId);
-        var pending = new Queue<(long MemberId, long[] Ancestors)>(
-            tree.Where(member => member.ParentMemberId is null).Select(member => (member.MemberId, Array.Empty<long>())));
+        var children = tree.Where(member => member.ParentDimensionMemberId is not null).ToLookup(member => member.ParentDimensionMemberId!.Value, member => member.DimensionMemberId);
+        var pending = new Queue<(long DimensionMemberId, long[] Ancestors)>(
+            tree.Where(member => member.ParentDimensionMemberId is null).Select(member => (member.DimensionMemberId, Array.Empty<long>())));
         var rows = new List<DimensionClosureRecord>();
         while (pending.TryDequeue(out var node))
         {
-            rows.Add(Row(versionId, node.MemberId, node.MemberId, 0));
+            rows.Add(Row(versionId, node.DimensionMemberId, node.DimensionMemberId, 0));
             for (var index = 0; index < node.Ancestors.Length; index++)
-                rows.Add(Row(versionId, node.Ancestors[index], node.MemberId, node.Ancestors.Length - index));
-            long[] path = [.. node.Ancestors, node.MemberId];
-            foreach (var child in children[node.MemberId]) pending.Enqueue((child, path));
+                rows.Add(Row(versionId, node.Ancestors[index], node.DimensionMemberId, node.Ancestors.Length - index));
+            long[] path = [.. node.Ancestors, node.DimensionMemberId];
+            foreach (var child in children[node.DimensionMemberId]) pending.Enqueue((child, path));
         }
 
         return rows;
@@ -77,8 +77,8 @@ public sealed class ClosureBuilder(
         return new DimensionClosureRecord
         {
             DimensionVersionId = versionId,
-            AncestorMemberId = ancestorId,
-            DescendantMemberId = descendantId,
+            AncestorDimensionMemberId = ancestorId,
+            DescendantDimensionMemberId = descendantId,
             Depth = depth
         };
     }

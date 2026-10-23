@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record ReleaseDatasetRecord
 {
     /// <summary>The semantic release; first part of the primary key.</summary>
-    public required long ReleaseId { get; init; }
+    public required long SemanticReleaseId { get; init; }
 
     /// <summary>The logical dataset; second part of the primary key.</summary>
     public required long DatasetId { get; init; }

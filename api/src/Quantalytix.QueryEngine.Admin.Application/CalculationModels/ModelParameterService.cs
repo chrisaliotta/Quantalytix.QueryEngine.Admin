@@ -10,12 +10,12 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 public sealed class ModelParameterService(ITableGateway<ModelParameterRecord> parameters)
 {
     /// <summary>Lists a model's parameters.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The parameters by key.</returns>
-    public async Task<IReadOnlyList<ModelParameter>> ListAsync(long modelId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ModelParameter>> ListAsync(long calculationModelId, CancellationToken cancellationToken)
     {
-        var rows = await parameters.ListAsync(new { ModelId = modelId }, cancellationToken);
+        var rows = await parameters.ListAsync(new { CalculationModelId = calculationModelId }, cancellationToken);
         return
         [
             .. rows.OrderBy(row => row.ParameterKey, StringComparer.Ordinal).Select(row => new ModelParameter
@@ -68,15 +68,15 @@ public sealed class ModelParameterService(ITableGateway<ModelParameterRecord> pa
     }
 
     /// <summary>Stores a parameter in place of the one with its key; a primary key insert replaces the stored row.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="parameter">A parameter the model gate let through.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the parameter is stored.</returns>
-    public Task ReplaceAsync(long modelId, ModelParameter parameter, CancellationToken cancellationToken)
+    public Task ReplaceAsync(long calculationModelId, ModelParameter parameter, CancellationToken cancellationToken)
     {
         return parameters.InsertAsync(new ModelParameterRecord
         {
-            ModelId = modelId,
+            CalculationModelId = calculationModelId,
             ParameterKey = parameter.ParameterKey,
             DisplayName = parameter.DisplayName,
             ValueType = parameter.ValueType,
@@ -88,12 +88,12 @@ public sealed class ModelParameterService(ITableGateway<ModelParameterRecord> pa
     }
 
     /// <summary>Deletes a parameter.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="parameterKey">The parameter.</param>
     /// <param name="cancellationToken">Cancels the delete.</param>
     /// <returns>A task that completes when the parameter is gone.</returns>
-    public Task DeleteAsync(long modelId, string parameterKey, CancellationToken cancellationToken)
+    public Task DeleteAsync(long calculationModelId, string parameterKey, CancellationToken cancellationToken)
     {
-        return parameters.DeleteAsync(new { ModelId = modelId, ParameterKey = parameterKey }, cancellationToken);
+        return parameters.DeleteAsync(new { CalculationModelId = calculationModelId, ParameterKey = parameterKey }, cancellationToken);
     }
 }

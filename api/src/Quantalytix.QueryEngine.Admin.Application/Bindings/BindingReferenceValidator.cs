@@ -10,9 +10,9 @@ public sealed class BindingReferenceValidator : AbstractValidator<BindingReferen
     /// <param name="bindings">The tenant's dimension bindings.</param>
     public BindingReferenceValidator(ITableGateway<DimensionBindingRecord> bindings)
     {
-        RuleFor(reference => reference.BindingId)
-            .MustAsync(async (reference, bindingId, cancellationToken) =>
-                (await bindings.ListAsync(new { BindingId = bindingId, DatasetVersionId = reference.VersionId }, cancellationToken)).Count == 1)
-            .WithMessage(reference => $"Binding {reference.BindingId} is not a binding of dataset version {reference.VersionId}.");
+        RuleFor(reference => reference.DimensionBindingId)
+            .MustAsync(async (reference, dimensionBindingId, cancellationToken) =>
+                (await bindings.ListAsync(new { DimensionBindingId = dimensionBindingId, DatasetVersionId = reference.VersionId }, cancellationToken)).Count == 1)
+            .WithMessage(reference => $"Binding {reference.DimensionBindingId} is not a binding of dataset version {reference.VersionId}.");
     }
 }

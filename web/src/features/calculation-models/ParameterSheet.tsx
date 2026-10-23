@@ -10,7 +10,7 @@ import { allowedValueLines, toParameterInput, toParameterValues, type ParameterV
 import type { ModelParameter } from './types';
 
 export interface ParameterSheetProps {
-  modelId: number;
+  calculationModelId: number;
   /** The parameter to edit; null to declare one. */
   parameter: ModelParameter | null;
   onClose: () => void;
@@ -21,8 +21,8 @@ export interface ParameterSheetProps {
  * and its default, which every report row takes that neither sets a value nor sits under a row that does. The model's formulas and
  * every report's row values are checked against the change before it is written.
  */
-export function ParameterSheet({ modelId, parameter, onClose }: ParameterSheetProps) {
-  const save = useSaveModelParameter(modelId);
+export function ParameterSheet({ calculationModelId, parameter, onClose }: ParameterSheetProps) {
+  const save = useSaveModelParameter(calculationModelId);
   const conventions = useVocabulary('day_count_convention');
   const form = useForm<ParameterValues>({ defaultValues: toParameterValues(parameter) });
   const [valueType, allowedValues] = useWatch({ control: form.control, name: ['valueType', 'allowedValues'] });

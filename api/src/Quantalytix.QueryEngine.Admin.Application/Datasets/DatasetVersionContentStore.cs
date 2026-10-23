@@ -28,8 +28,8 @@ public sealed class DatasetVersionContentStore(
         var versionGrains = await grains.ListAsync(versionFilter, cancellationToken);
         var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
         var versionMeasures = await measures.ListAsync(versionFilter, cancellationToken);
-        var grainFilter = new { GrainId = versionGrains.Select(grain => grain.GrainId).ToArray() };
-        var bindingFilter = new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() };
+        var grainFilter = new { DatasetGrainId = versionGrains.Select(grain => grain.DatasetGrainId).ToArray() };
+        var bindingFilter = new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() };
         var measureFilter = new { MeasureId = versionMeasures.Select(measure => measure.MeasureId).ToArray() };
         return new DatasetVersionContent
         {
@@ -71,13 +71,13 @@ public sealed class DatasetVersionContentStore(
         var content = await LoadAsync(versionIds, cancellationToken);
         var versionFilter = new { DatasetVersionId = versionIds };
         var measureFilter = new { MeasureId = content.Measures.Select(measure => measure.MeasureId).ToArray() };
-        await grainFields.DeleteAsync(new { GrainId = content.Grains.Select(grain => grain.GrainId).ToArray() }, cancellationToken);
+        await grainFields.DeleteAsync(new { DatasetGrainId = content.Grains.Select(grain => grain.DatasetGrainId).ToArray() }, cancellationToken);
         await grains.DeleteAsync(versionFilter, cancellationToken);
         await timePolicies.DeleteAsync(measureFilter, cancellationToken);
         await dependencies.DeleteAsync(measureFilter, cancellationToken);
         await components.DeleteAsync(measureFilter, cancellationToken);
         await measures.DeleteAsync(versionFilter, cancellationToken);
-        await timeBindings.DeleteAsync(new { BindingId = content.Bindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken);
+        await timeBindings.DeleteAsync(new { DimensionBindingId = content.Bindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken);
         await bindings.DeleteAsync(versionFilter, cancellationToken);
         await fields.DeleteAsync(versionFilter, cancellationToken);
     }

@@ -20,11 +20,11 @@ export interface TimeBindingFormValues {
  */
 export interface BindingFormValues {
   bindingKind: string | null;
-  roleId: number | null;
+  dimensionRoleId: number | null;
   dimensionId: number | null;
   sourceFieldId: number | null;
   mappingSetId: number | null;
-  sourceBindingId: number | null;
+  sourceDimensionBindingId: number | null;
   bridgeId: number | null;
   raggedBehavior: string | null;
   defaultPeriodAlignment: string | null;
@@ -48,11 +48,11 @@ export function bindingFormValues(detail?: BindingDetail): BindingFormValues {
   const binding = detail?.binding;
   return {
     bindingKind: binding?.bindingKind ?? 'direct',
-    roleId: binding?.roleId ?? null,
+    dimensionRoleId: binding?.dimensionRoleId ?? null,
     dimensionId: binding?.bindingKind === 'time' ? binding.dimensionId : null,
     sourceFieldId: binding?.sourceFieldId ?? null,
     mappingSetId: binding?.mappingSetId ?? null,
-    sourceBindingId: binding?.sourceBindingId ?? null,
+    sourceDimensionBindingId: binding?.sourceDimensionBindingId ?? null,
     bridgeId: binding?.bridgeId ?? null,
     raggedBehavior: binding?.raggedBehavior ?? 'null',
     defaultPeriodAlignment: binding?.defaultPeriodAlignment ?? 'observation',
@@ -97,12 +97,12 @@ function allowedPeriodicities(timeBinding?: TimeBinding | null): string[] {
 export function toBindingInput(values: BindingFormValues): BindingInput {
   const kind = values.bindingKind;
   return {
-    roleId: kind === 'time' ? null : values.roleId,
+    dimensionRoleId: kind === 'time' ? null : values.dimensionRoleId,
     dimensionId: kind === 'time' ? values.dimensionId : null,
     bindingKind: kind ?? '',
     sourceFieldId: values.sourceFieldId,
     mappingSetId: kind === 'mapped' ? values.mappingSetId : null,
-    sourceBindingId: kind === 'bridge' ? values.sourceBindingId : null,
+    sourceDimensionBindingId: kind === 'bridge' ? values.sourceDimensionBindingId : null,
     bridgeId: kind === 'bridge' ? values.bridgeId : null,
     raggedBehavior: values.raggedBehavior ?? '',
     defaultPeriodAlignment: values.defaultPeriodAlignment ?? '',

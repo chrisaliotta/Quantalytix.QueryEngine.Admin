@@ -8,7 +8,7 @@ public sealed record ReleaseSummary
     /// <summary>The release row.</summary>
     public required SemanticReleaseRecord Release { get; init; }
 
-    /// <summary>Whether <c>qe_database_info.active_release_id</c> points at the release, so runtime queries use it.</summary>
+    /// <summary>Whether <c>qe_database_info.active_semantic_release_id</c> points at the release, so runtime queries use it.</summary>
     public required bool IsActive { get; init; }
 
     /// <summary>The number of datasets the release's manifest pins.</summary>

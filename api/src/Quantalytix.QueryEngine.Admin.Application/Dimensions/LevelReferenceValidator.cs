@@ -10,9 +10,9 @@ public sealed class LevelReferenceValidator : AbstractValidator<LevelReference>
     /// <param name="levels">Reads the level.</param>
     public LevelReferenceValidator(ITableGateway<DimensionLevelRecord> levels)
     {
-        RuleFor(reference => reference.LevelId)
-            .MustAsync(async (reference, levelId, cancellationToken) =>
-                (await levels.ListAsync(new { LevelId = levelId, reference.DimensionVersionId }, cancellationToken)).Count == 1)
-            .WithMessage(reference => $"Level {reference.LevelId} is not a level of dimension version {reference.DimensionVersionId}.");
+        RuleFor(reference => reference.DimensionLevelId)
+            .MustAsync(async (reference, dimensionLevelId, cancellationToken) =>
+                (await levels.ListAsync(new { DimensionLevelId = dimensionLevelId, reference.DimensionVersionId }, cancellationToken)).Count == 1)
+            .WithMessage(reference => $"Level {reference.DimensionLevelId} is not a level of dimension version {reference.DimensionVersionId}.");
     }
 }

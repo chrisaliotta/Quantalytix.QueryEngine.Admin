@@ -44,7 +44,7 @@ export function LevelSheet({ versionId, level, nextOrdinal, readOnly, onClose }:
       isLeafLevel: values.isLeafLevel,
     };
     if (level) {
-      await update.mutateAsync({ levelId: level.levelId, body });
+      await update.mutateAsync({ dimensionLevelId: level.dimensionLevelId, body });
       return;
     }
     await create.mutateAsync({ ...body, levelKey: values.levelKey });

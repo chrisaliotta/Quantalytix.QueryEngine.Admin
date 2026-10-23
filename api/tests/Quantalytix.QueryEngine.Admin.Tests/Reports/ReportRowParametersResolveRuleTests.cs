@@ -61,8 +61,8 @@ public sealed class ReportRowParametersResolveRuleTests
     private async Task DeclareAsync()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        await _fixture.ParameterService().ReplaceAsync(ModelId, DayCount(), cancellationToken);
-        await _fixture.ParameterService().ReplaceAsync(ModelId, NumberParameter("scale", 1m), cancellationToken);
+        await _fixture.ParameterService().ReplaceAsync(CalculationModelId, DayCount(), cancellationToken);
+        await _fixture.ParameterService().ReplaceAsync(CalculationModelId, NumberParameter("scale", 1m), cancellationToken);
     }
 
     /// <summary>Stores row values of report 60.</summary>

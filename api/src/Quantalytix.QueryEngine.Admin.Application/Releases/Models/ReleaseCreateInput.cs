@@ -7,5 +7,5 @@ public sealed record ReleaseCreateInput
     public required string ReleaseKey { get; init; }
 
     /// <summary>The release whose manifest rows the new draft copies; null starts with an empty manifest.</summary>
-    public long? CopyFromReleaseId { get; init; }
+    public long? CopyFromSemanticReleaseId { get; init; }
 }

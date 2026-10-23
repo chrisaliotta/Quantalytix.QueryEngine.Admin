@@ -31,13 +31,13 @@ public sealed class DimensionMemberService(
     {
         var member = new DimensionMemberRecord
         {
-            MemberId = ids.NextId(),
+            DimensionMemberId = ids.NextId(),
             DimensionVersionId = dimensionVersionId,
             MemberKey = input.MemberKey,
             DisplayName = input.DisplayName,
             Description = input.Description,
-            ParentMemberId = input.ParentMemberId,
-            LevelId = input.LevelId,
+            ParentDimensionMemberId = input.ParentDimensionMemberId,
+            DimensionLevelId = input.DimensionLevelId,
             IsAssignable = input.IsAssignable,
             SortOrder = input.SortOrder,
             Properties = input.Properties
@@ -54,13 +54,13 @@ public sealed class DimensionMemberService(
     /// <returns>The stored member.</returns>
     public async Task<DimensionMemberRecord> UpdateAsync(MemberReference reference, MemberInput input, CancellationToken cancellationToken)
     {
-        var current = await members.GetAsync(new { reference.MemberId }, cancellationToken);
+        var current = await members.GetAsync(new { reference.DimensionMemberId }, cancellationToken);
         var updated = current with
         {
             DisplayName = input.DisplayName,
             Description = input.Description,
-            ParentMemberId = input.ParentMemberId,
-            LevelId = input.LevelId,
+            ParentDimensionMemberId = input.ParentDimensionMemberId,
+            DimensionLevelId = input.DimensionLevelId,
             IsAssignable = input.IsAssignable,
             SortOrder = input.SortOrder,
             Properties = input.Properties
@@ -80,10 +80,10 @@ public sealed class DimensionMemberService(
     /// <returns>The version's members after the change, by sort order, then key.</returns>
     public async Task<IReadOnlyList<DimensionMemberRecord>> ReorderAsync(long dimensionVersionId, MemberOrderInput input, CancellationToken cancellationToken)
     {
-        var stored = (await members.ListAsync(new { DimensionVersionId = dimensionVersionId }, cancellationToken)).ToDictionary(member => member.MemberId);
+        var stored = (await members.ListAsync(new { DimensionVersionId = dimensionVersionId }, cancellationToken)).ToDictionary(member => member.DimensionMemberId);
         var changed = input.Items
-            .Select(item => stored[item.MemberId] with { ParentMemberId = item.ParentMemberId, SortOrder = item.SortOrder })
-            .Where(member => member != stored[member.MemberId])
+            .Select(item => stored[item.DimensionMemberId] with { ParentDimensionMemberId = item.ParentDimensionMemberId, SortOrder = item.SortOrder })
+            .Where(member => member != stored[member.DimensionMemberId])
             .ToList();
         foreach (var member in changed) await members.UpdateAsync(member, cancellationToken);
         await closure.RebuildAsync(dimensionVersionId, cancellationToken);
@@ -96,10 +96,10 @@ public sealed class DimensionMemberService(
     /// <returns>Null when the member was deleted; otherwise the detail naming what blocks the delete.</returns>
     public async Task<string?> DeleteAsync(MemberReference reference, CancellationToken cancellationToken)
     {
-        var member = await members.GetAsync(new { reference.MemberId }, cancellationToken);
+        var member = await members.GetAsync(new { reference.DimensionMemberId }, cancellationToken);
         var conflict = await deleteChecks.MemberAsync(member, cancellationToken);
         if (conflict is not null) return conflict;
-        await members.DeleteAsync(new { reference.MemberId }, cancellationToken);
+        await members.DeleteAsync(new { reference.DimensionMemberId }, cancellationToken);
         await closure.RebuildAsync(reference.DimensionVersionId, cancellationToken);
         return null;
     }

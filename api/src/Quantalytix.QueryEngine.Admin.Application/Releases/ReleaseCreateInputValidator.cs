@@ -21,9 +21,9 @@ public sealed class ReleaseCreateInputValidator : AbstractValidator<ReleaseCreat
             .WithMessage("'releaseKey' must start with a letter or digit and contain only letters, digits, '_', '.', '-' and '/'.")
             .MustAsync(async (key, cancellationToken) => (await releases.ListAsync(new { ReleaseKey = key }, cancellationToken)).Count == 0)
             .WithMessage(input => $"A release with key '{input.ReleaseKey}' already exists.");
-        RuleFor(input => input.CopyFromReleaseId)
-            .MustAsync(async (id, cancellationToken) => (await releases.ListAsync(new { ReleaseId = id }, cancellationToken)).Count == 1)
-            .WithMessage(input => $"Release {input.CopyFromReleaseId} does not exist.")
-            .When(input => input.CopyFromReleaseId is not null);
+        RuleFor(input => input.CopyFromSemanticReleaseId)
+            .MustAsync(async (id, cancellationToken) => (await releases.ListAsync(new { SemanticReleaseId = id }, cancellationToken)).Count == 1)
+            .WithMessage(input => $"Release {input.CopyFromSemanticReleaseId} does not exist.")
+            .When(input => input.CopyFromSemanticReleaseId is not null);
     }
 }

@@ -25,7 +25,7 @@ public sealed class SourceProfileInputValidator : AbstractValidator<SourceProfil
             .Cascade(CascadeMode.Stop)
             .MustBeKey(128)
             .MustAsync((key, cancellationToken) => keys.KeyFreeAsync(profiles, new { keys.ReportId, ProfileKey = key },
-                profile => profile.SourceProfileId, cancellationToken))
+                profile => profile.CalculationSourceProfileId, cancellationToken))
             .WithMessage(input => $"The report already has a profile with key '{input.ProfileKey}'.");
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.Picks)

@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record SemanticReleaseRecord
 {
     /// <summary>Surrogate primary key.</summary>
-    public required long ReleaseId { get; init; }
+    public required long SemanticReleaseId { get; init; }
 
     /// <summary>Stable release label.</summary>
     public required string ReleaseKey { get; init; }

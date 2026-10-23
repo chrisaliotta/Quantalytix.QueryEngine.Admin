@@ -17,16 +17,16 @@ public sealed class ScenarioRolesDistinctRule : IReportRule
     /// <returns>One violation per calculation dimension on a scenario's role.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        var scenarioRoles = report.Scenarios.Select(scenario => scenario.RoleId).ToHashSet();
+        var scenarioRoles = report.Scenarios.Select(scenario => scenario.DimensionRoleId).ToHashSet();
         var reading = report.EnabledDimensions
-            .Where(dimension => scenarioRoles.Contains(dimension.RoleId))
+            .Where(dimension => scenarioRoles.Contains(dimension.DimensionRoleId))
             .OrderBy(dimension => dimension.DimensionKey, StringComparer.Ordinal);
         foreach (var dimension in reading)
         {
             yield return new RuleViolation
             {
                 Rule = Code,
-                Message = $"Report '{report.ReportKey}' reads role '{scope.RoleKeys[dimension.RoleId]}' as a scenario and through calculation dimension " +
+                Message = $"Report '{report.ReportKey}' reads role '{scope.RoleKeys[dimension.DimensionRoleId]}' as a scenario and through calculation dimension " +
                     $"'{dimension.DimensionKey}'; a scenario's member is chosen per run, never broken out or filtered by."
             };
         }

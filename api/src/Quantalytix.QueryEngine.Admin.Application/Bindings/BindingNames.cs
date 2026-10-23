@@ -14,10 +14,10 @@ public sealed class BindingNames(ITableGateway<DimensionRoleRecord> roles, ITabl
     /// <returns>Each binding's name by binding ID.</returns>
     public async Task<IReadOnlyDictionary<long, string>> OfAsync(IReadOnlyCollection<DimensionBindingRecord> bindings, CancellationToken cancellationToken)
     {
-        long[] roleIds = [.. bindings.Select(binding => binding.RoleId).OfType<long>().Distinct()];
-        long[] fieldIds = [.. bindings.Where(binding => binding.RoleId is null).Select(binding => binding.SourceFieldId).OfType<long>().Distinct()];
-        var roleKeys = (await roles.ListAsync(new { RoleId = roleIds }, cancellationToken)).ToDictionary(role => role.RoleId, role => role.RoleKey);
+        long[] roleIds = [.. bindings.Select(binding => binding.DimensionRoleId).OfType<long>().Distinct()];
+        long[] fieldIds = [.. bindings.Where(binding => binding.DimensionRoleId is null).Select(binding => binding.SourceFieldId).OfType<long>().Distinct()];
+        var roleKeys = (await roles.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken)).ToDictionary(role => role.DimensionRoleId, role => role.DimensionRoleKey);
         var fieldKeys = (await fields.ListAsync(new { FieldId = fieldIds }, cancellationToken)).ToDictionary(field => field.FieldId, field => field.FieldKey);
-        return bindings.ToDictionary(binding => binding.BindingId, binding => binding.RoleId is { } roleId ? roleKeys[roleId] : fieldKeys[binding.SourceFieldId!.Value]);
+        return bindings.ToDictionary(binding => binding.DimensionBindingId, binding => binding.DimensionRoleId is { } dimensionRoleId ? roleKeys[dimensionRoleId] : fieldKeys[binding.SourceFieldId!.Value]);
     }
 }

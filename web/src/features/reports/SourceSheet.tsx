@@ -13,7 +13,7 @@ interface SourceValues {
   displayName: string;
   datasetId: number | null;
   mappingMethod: string | null;
-  roleId: number | null;
+  dimensionRoleId: number | null;
   fieldKey: string | null;
   timeFieldKey: string | null;
   copyFromSourceId: number | null;
@@ -42,17 +42,17 @@ export function SourceSheet({ view, source, onClose }: SourceSheetProps) {
       displayName: source?.source.displayName ?? '',
       datasetId: source?.source.datasetId ?? null,
       mappingMethod: source?.source.mappingMethod ?? 'bridge',
-      roleId: source?.source.roleId ?? null,
+      dimensionRoleId: source?.source.dimensionRoleId ?? null,
       fieldKey: source?.source.fieldKey ?? null,
       timeFieldKey: source?.source.timeFieldKey ?? null,
       copyFromSourceId: null,
     },
   });
-  const [datasetId, mappingMethod, roleId] = useWatch({ control: form.control, name: ['datasetId', 'mappingMethod', 'roleId'] });
+  const [datasetId, mappingMethod, dimensionRoleId] = useWatch({ control: form.control, name: ['datasetId', 'mappingMethod', 'dimensionRoleId'] });
   const datasetVersions = useLookup('dataset-versions', datasetId);
   const fields = useLatestVersionItems('dataset-versions', datasetId, 'fields');
   const boundRoles = useLatestVersionItems('dataset-versions', datasetId, 'bound-roles');
-  const roleDimensionId = boundRoles?.find(role => role.id === roleId)?.parentId ?? null;
+  const roleDimensionId = boundRoles?.find(role => role.id === dimensionRoleId)?.parentId ?? null;
   const siblings = new Set(
     view.sources
       .filter(sibling => sibling.source.mappingMethod === 'bridge' && sibling.itemDimensionId === roleDimensionId)
@@ -73,7 +73,7 @@ export function SourceSheet({ view, source, onClose }: SourceSheetProps) {
       displayName: values.displayName,
       datasetId: values.datasetId ?? 0,
       mappingMethod: values.mappingMethod ?? '',
-      roleId: isBridge ? values.roleId : null,
+      dimensionRoleId: isBridge ? values.dimensionRoleId : null,
       fieldKey: isBridge ? null : values.fieldKey,
       timeFieldKey: values.timeFieldKey ?? '',
       copyFromSourceId: isBridge ? values.copyFromSourceId : null,
@@ -114,7 +114,7 @@ export function SourceSheet({ view, source, onClose }: SourceSheetProps) {
       />
       {mappingMethod === 'bridge' ? (
         <EntityField
-          name="roleId"
+          name="dimensionRoleId"
           label="Bridge from role"
           lookupKind="bound-roles"
           parentId={datasetVersions.data?.at(-1)?.id ?? null}

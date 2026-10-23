@@ -83,7 +83,7 @@ public sealed class CalculationDimensionService(ITableGateway<CalculationDimensi
             ReportId = ownerId,
             DimensionKey = input.DimensionKey,
             DisplayName = input.DisplayName,
-            RoleId = input.RoleId,
+            DimensionRoleId = input.DimensionRoleId,
             GroupingMode = input.GroupingMode,
             GroupingLevelKey = input.GroupingLevelKey,
             GroupingAncestorMemberKey = input.GroupingAncestorMemberKey,

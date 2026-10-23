@@ -22,10 +22,10 @@ public sealed record AssumptionSetRecord
     public required string Status { get; init; }
 
     /// <summary>
-    /// The <c>qe_semantic_release.release_id</c> a historical set reads dataset versions from: the release that was active when it
+    /// The <c>qe_semantic_release.semantic_release_id</c> a historical set reads dataset versions from: the release that was active when it
     /// was captured. Null for the active set, which reads the active release.
     /// </summary>
-    public long? ReleaseId { get; init; }
+    public long? SemanticReleaseId { get; init; }
 
     /// <summary>When a historical set was captured (UTC); null for the active set.</summary>
     public DateTime? CapturedAt { get; init; }

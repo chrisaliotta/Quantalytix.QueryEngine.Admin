@@ -25,7 +25,7 @@ public sealed record ReportLineRecord
     public string? CalculatedMeasureKey { get; init; }
 
     /// <summary>The column a <c>formula</c> row places its value in.</summary>
-    public long? ValueColumnId { get; init; }
+    public long? ValueReportColumnId { get; init; }
 
     /// <summary>Order among the row's siblings, members and overlay rows alike.</summary>
     public required int SortOrder { get; init; }

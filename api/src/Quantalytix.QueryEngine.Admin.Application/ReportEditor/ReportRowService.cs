@@ -42,7 +42,7 @@ public sealed class ReportRowService(
         var stored = (await members.ListAsync(new { DimensionVersionId = structureId }, cancellationToken)).ToDictionary(member => member.MemberKey, StringComparer.Ordinal);
         var memberRows = input.Rows.Where(row => ReportRowKinds.IsMember(row.Kind)).ToList();
         var memberIds = memberRows.ToDictionary(
-            row => row.Key, row => stored.TryGetValue(row.Key, out var member) ? member.MemberId : ids.NextId(), StringComparer.Ordinal);
+            row => row.Key, row => stored.TryGetValue(row.Key, out var member) ? member.DimensionMemberId : ids.NextId(), StringComparer.Ordinal);
         DimensionMemberRecord[] tree = [.. memberRows.Select(row => Member(structureId, stored.GetValueOrDefault(row.Key), memberIds, row))];
         var removed = stored.Values.Where(member => !memberIds.ContainsKey(member.MemberKey)).ToList();
         var removedKeys = removed.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal);
@@ -90,7 +90,7 @@ public sealed class ReportRowService(
                 await lines.DeleteAsync(new { ReportLineId = droppedLines }, cancellationToken);
                 await lines.InsertManyAsync(overlay, cancellationToken);
                 await members.InsertManyAsync([.. tree.Where(member => member != stored.GetValueOrDefault(member.MemberKey))], cancellationToken);
-                await members.DeleteAsync(new { MemberId = removed.Select(member => member.MemberId).ToArray() }, cancellationToken);
+                await members.DeleteAsync(new { DimensionMemberId = removed.Select(member => member.DimensionMemberId).ToArray() }, cancellationToken);
                 await closure.RebuildAsync(structureId, cancellationToken);
             },
             cancellationToken);
@@ -122,7 +122,7 @@ public sealed class ReportRowService(
             LineKind = row.Kind,
             ParentKey = row.ParentKey,
             CalculatedMeasureKey = row.CalculatedMeasureKey,
-            ValueColumnId = row.ValueColumnKey is { } column ? columnIds[column] : null,
+            ValueReportColumnId = row.ValueColumnKey is { } column ? columnIds[column] : null,
             SortOrder = row.SortOrder,
             IsVisible = row.IsVisible,
             PayloadJson = stored?.PayloadJson,
@@ -143,14 +143,14 @@ public sealed class ReportRowService(
         return stored is null
             ? new DimensionMemberRecord
             {
-                MemberId = memberIds[row.Key],
+                DimensionMemberId = memberIds[row.Key],
                 DimensionVersionId = structureId,
                 MemberKey = row.Key,
                 DisplayName = row.Label,
-                ParentMemberId = parentId,
+                ParentDimensionMemberId = parentId,
                 IsAssignable = isAssignable,
                 SortOrder = row.SortOrder
             }
-            : stored with { DisplayName = row.Label, ParentMemberId = parentId, IsAssignable = isAssignable, SortOrder = row.SortOrder };
+            : stored with { DisplayName = row.Label, ParentDimensionMemberId = parentId, IsAssignable = isAssignable, SortOrder = row.SortOrder };
     }
 }

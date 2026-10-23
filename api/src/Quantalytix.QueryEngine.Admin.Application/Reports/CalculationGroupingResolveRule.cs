@@ -27,7 +27,7 @@ public sealed class CalculationGroupingResolveRule : IReportRule
         foreach (var dimension in grouping)
         {
             var subject = $"Report '{report.ReportKey}' calculation dimension '{dimension.DimensionKey}'";
-            if (scope.Templates[dimension.RoleId] is not { } keys)
+            if (scope.Templates[dimension.DimensionRoleId] is not { } keys)
             {
                 yield return Violation($"{subject} names levels or members of its role's dimension, which has no published version.");
                 continue;

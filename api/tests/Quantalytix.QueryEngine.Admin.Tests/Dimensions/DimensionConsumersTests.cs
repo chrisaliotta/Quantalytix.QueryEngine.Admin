@@ -84,8 +84,8 @@ public sealed class DimensionConsumersTests
         var checks = Checks();
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var published = await checks.MemberAsync(_members.All.Single(member => member.MemberId == 12), cancellationToken);
-        var draft = await checks.MemberAsync(_members.All.Single(member => member.MemberId == 22), cancellationToken);
+        var published = await checks.MemberAsync(_members.All.Single(member => member.DimensionMemberId == 12), cancellationToken);
+        var draft = await checks.MemberAsync(_members.All.Single(member => member.DimensionMemberId == 22), cancellationToken);
 
         Assert.Equal("Member 'BR01' cannot be deleted: named by Source key '06' of mapping set 'zz_map_codes_60'.", published);
         Assert.Null(draft);

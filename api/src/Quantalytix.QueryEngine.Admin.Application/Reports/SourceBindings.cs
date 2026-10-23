@@ -19,10 +19,10 @@ public static class SourceBindings
 
     /// <summary>Whether a bridge source can start from a role: the dataset version has a binding of it that feeds bridges.</summary>
     /// <param name="dataset">The dataset version a release pins.</param>
-    /// <param name="roleId">The source's role.</param>
+    /// <param name="dimensionRoleId">The source's role.</param>
     /// <returns>True when the role's binding feeds the source's bridge.</returns>
-    public static bool BridgesFrom(PinnedDatasetVersion dataset, long roleId)
+    public static bool BridgesFrom(PinnedDatasetVersion dataset, long dimensionRoleId)
     {
-        return dataset.Bindings.Any(binding => binding.RoleId == roleId && FeedsBridges(binding));
+        return dataset.Bindings.Any(binding => binding.DimensionRoleId == dimensionRoleId && FeedsBridges(binding));
     }
 }

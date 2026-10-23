@@ -12,12 +12,12 @@ public sealed class MetricAttributionService(
     ITableGateway<MetricAttributionDriverRecord> drivers)
 {
     /// <summary>Lists a model's attributions, each with its drivers.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The attributions by metric key, their drivers by sort order.</returns>
-    public async Task<IReadOnlyList<MetricAttribution>> ListAsync(long modelId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MetricAttribution>> ListAsync(long calculationModelId, CancellationToken cancellationToken)
     {
-        var owner = new { ModelId = modelId };
+        var owner = new { CalculationModelId = calculationModelId };
         var driversOf = (await drivers.ListAsync(owner, cancellationToken)).ToLookup(driver => driver.MetricKey, StringComparer.Ordinal);
         return
         [
@@ -73,16 +73,16 @@ public sealed class MetricAttributionService(
     }
 
     /// <summary>Stores a metric's attribution with its drivers in place of the ones stored.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="attribution">An attribution the model gate let through.</param>
     /// <param name="cancellationToken">Cancels the writes.</param>
     /// <returns>A task that completes when the attribution is stored.</returns>
-    public async Task ReplaceAsync(long modelId, MetricAttribution attribution, CancellationToken cancellationToken)
+    public async Task ReplaceAsync(long calculationModelId, MetricAttribution attribution, CancellationToken cancellationToken)
     {
-        await DeleteAsync(modelId, attribution.MetricKey, cancellationToken);
+        await DeleteAsync(calculationModelId, attribution.MetricKey, cancellationToken);
         await attributions.InsertAsync(new MetricAttributionRecord
         {
-            ModelId = modelId,
+            CalculationModelId = calculationModelId,
             MetricKey = attribution.MetricKey,
             ExpressionText = attribution.ExpressionText,
             WeightVariableKey = attribution.WeightVariableKey
@@ -91,7 +91,7 @@ public sealed class MetricAttributionService(
         [
             .. attribution.Drivers.Select(driver => new MetricAttributionDriverRecord
             {
-                ModelId = modelId,
+                CalculationModelId = calculationModelId,
                 MetricKey = attribution.MetricKey,
                 DriverKey = driver.DriverKey,
                 DisplayName = driver.DisplayName,
@@ -102,13 +102,13 @@ public sealed class MetricAttributionService(
     }
 
     /// <summary>Deletes a metric's attribution with its drivers; the metric then has the default drivers, and no member contributions.</summary>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="metricKey">The metric.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the attribution is gone.</returns>
-    public async Task DeleteAsync(long modelId, string metricKey, CancellationToken cancellationToken)
+    public async Task DeleteAsync(long calculationModelId, string metricKey, CancellationToken cancellationToken)
     {
-        var metric = new { ModelId = modelId, MetricKey = metricKey };
+        var metric = new { CalculationModelId = calculationModelId, MetricKey = metricKey };
         await drivers.DeleteAsync(metric, cancellationToken);
         await attributions.DeleteAsync(metric, cancellationToken);
     }

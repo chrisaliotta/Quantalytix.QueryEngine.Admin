@@ -9,8 +9,8 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 /// as it stands, so a successful write to a model an enabled report reads advances the semantic revision and the query engine
 /// reloads.
 /// </summary>
-/// <example><c>[AdvancesModelRevision("modelId")]</c> on <c>PUT .../calculation-models/{modelId:long}/variables/{itemId:long}</c>.</example>
-/// <param name="routeKey">The route value that holds the model's ID, such as <c>modelId</c>.</param>
+/// <example><c>[AdvancesModelRevision("calculationModelId")]</c> on <c>PUT .../calculation-models/{calculationModelId:long}/variables/{itemId:long}</c>.</example>
+/// <param name="routeKey">The route value that holds the model's ID, such as <c>calculationModelId</c>.</param>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class AdvancesModelRevisionAttribute(string routeKey) : Attribute, IFilterFactory
 {

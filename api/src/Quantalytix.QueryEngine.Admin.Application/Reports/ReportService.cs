@@ -65,7 +65,7 @@ public sealed class ReportService(
             DisplayName = input.DisplayName,
             ReportType = input.ReportType,
             ReportDimensionId = structure.DimensionId,
-            ModelId = input.ModelId,
+            CalculationModelId = input.CalculationModelId,
             SubtotalPosition = SubtotalPositions.Above,
             IsEnabled = false,
             PayloadJson = input.PayloadJson,

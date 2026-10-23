@@ -10,9 +10,9 @@ public sealed class GrainReferenceValidator : AbstractValidator<GrainReference>
     /// <param name="grains">The tenant's dataset grains.</param>
     public GrainReferenceValidator(ITableGateway<DatasetGrainRecord> grains)
     {
-        RuleFor(reference => reference.GrainId)
-            .MustAsync(async (reference, grainId, cancellationToken) =>
-                (await grains.ListAsync(new { GrainId = grainId, DatasetVersionId = reference.VersionId }, cancellationToken)).Count == 1)
-            .WithMessage(reference => $"Grain {reference.GrainId} is not a grain of dataset version {reference.VersionId}.");
+        RuleFor(reference => reference.DatasetGrainId)
+            .MustAsync(async (reference, datasetGrainId, cancellationToken) =>
+                (await grains.ListAsync(new { DatasetGrainId = datasetGrainId, DatasetVersionId = reference.VersionId }, cancellationToken)).Count == 1)
+            .WithMessage(reference => $"Grain {reference.DatasetGrainId} is not a grain of dataset version {reference.VersionId}.");
     }
 }

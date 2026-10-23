@@ -63,8 +63,8 @@ public sealed class DimensionRoleTests
         var region = await service.CreateAsync(NewDimension("region", DimensionKinds.Categorical) with { DefaultRole = NewRole("servicingRegion") }, cancellationToken);
         await service.CreateAsync(NewDimension("fiscal", DimensionKinds.Time), cancellationToken);
 
-        var role = Assert.Single(_roles.All, row => row.RoleId != BranchRoleId);
-        Assert.Equal(("servicingRegion", region.DimensionId), (role.RoleKey, role.DimensionId));
+        var role = Assert.Single(_roles.All, row => row.DimensionRoleId != BranchRoleId);
+        Assert.Equal(("servicingRegion", region.DimensionId), (role.DimensionRoleKey, role.DimensionId));
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ public sealed class DimensionRoleTests
         Assert.Equal(1, Assert.Single(_databaseInfo.All).SemanticRevision);
 
         var renamed = await service.UpdateAsync(BranchRoleId, new DimensionRoleInput { DisplayName = "Servicing branch", Description = "The branch that services the loan." }, cancellationToken);
-        Assert.Equal(("branch", "Servicing branch"), (renamed.RoleKey, renamed.DisplayName));
+        Assert.Equal(("branch", "Servicing branch"), (renamed.DimensionRoleKey, renamed.DisplayName));
         Assert.Equal(2, Assert.Single(_databaseInfo.All).SemanticRevision);
     }
 
@@ -160,9 +160,9 @@ public sealed class DimensionRoleTests
     }
 
     /// <summary>A new role whose key is also its display name.</summary>
-    private static NewDimensionRoleInput NewRole(string roleKey)
+    private static NewDimensionRoleInput NewRole(string dimensionRoleKey)
     {
-        return new NewDimensionRoleInput { RoleKey = roleKey, DisplayName = roleKey };
+        return new NewDimensionRoleInput { DimensionRoleKey = dimensionRoleKey, DisplayName = dimensionRoleKey };
     }
 
     /// <summary>The route of a request to a dimension's roles.</summary>
@@ -250,7 +250,7 @@ public sealed class DimensionRoleTests
             {
                 MappingMethod = ReportMappingMethods.Bridge,
                 FieldKey = null,
-                RoleId = BranchRoleId,
+                DimensionRoleId = BranchRoleId,
                 BridgeId = 95
             }),
             Scenarios(),

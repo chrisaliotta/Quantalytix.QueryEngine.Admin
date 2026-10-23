@@ -176,7 +176,7 @@ public sealed class MeasureService(
         {
             MeasureId = measureId,
             RequiredTimeBindingId = input.RequiredTimeBindingId,
-            SelectionGrainId = input.SelectionGrainId,
+            SelectionDatasetGrainId = input.SelectionDatasetGrainId,
             ObservationSelection = input.ObservationSelection,
             ValueTimeRole = input.ValueTimeRole,
             BoundaryMatch = input.BoundaryMatch,

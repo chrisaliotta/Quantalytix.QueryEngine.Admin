@@ -76,7 +76,7 @@ export function SourcesTab({ view, highlightedSourceId }: SourcesTabProps) {
                 Reads <span className="font-medium text-foreground">{editorSource.datasetKey}</span> by {source.timeFieldKey};{' '}
                 {isBridge ? (
                   <>
-                    its rows classify by role <span className="font-medium text-foreground">{editorSource.roleKey}</span>, whose members
+                    its rows classify by role <span className="font-medium text-foreground">{editorSource.dimensionRoleKey}</span>, whose members
                     the rows pick as items through{' '}
                     <Link className="inline-flex items-center gap-1 hover:underline" to={`/t/${tenantId}/bridges/${source.bridgeId}`}>
                       its bridge

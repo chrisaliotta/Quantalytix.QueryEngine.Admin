@@ -15,8 +15,8 @@ public sealed record DatabaseInfoRecord
     /// <summary>Monotonic revision the query engine uses to invalidate cached metadata.</summary>
     public required long SemanticRevision { get; init; }
 
-    /// <summary>The runtime-active <c>qe_semantic_release.release_id</c>.</summary>
-    public long? ActiveReleaseId { get; init; }
+    /// <summary>The runtime-active <c>qe_semantic_release.semantic_release_id</c>.</summary>
+    public long? ActiveSemanticReleaseId { get; init; }
 
     /// <summary>Last publication metadata change (UTC).</summary>
     public required DateTime UpdatedAt { get; init; }

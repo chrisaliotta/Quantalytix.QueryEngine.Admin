@@ -14,10 +14,10 @@ function byPresentationOrder(left: DimensionMember, right: DimensionMember) {
  * version, or that sits in a parent cycle, is shown at the root so it stays visible and editable.
  */
 export function buildMemberTree(members: DimensionMember[]): TreeItems<DimensionMember> {
-  const ids = new Set(members.map(member => member.memberId));
+  const ids = new Set(members.map(member => member.dimensionMemberId));
   const children = new Map<number, DimensionMember[]>();
   for (const member of members) {
-    const parentId = member.parentMemberId;
+    const parentId = member.parentDimensionMemberId;
     if (parentId != null && ids.has(parentId)) {
       children.set(parentId, [...(children.get(parentId) ?? []), member]);
     }
@@ -25,17 +25,17 @@ export function buildMemberTree(members: DimensionMember[]): TreeItems<Dimension
 
   const placed = new Set<number>();
   function toItem(member: DimensionMember): TreeItem<DimensionMember> {
-    placed.add(member.memberId);
-    const unplaced = (children.get(member.memberId) ?? []).filter(child => !placed.has(child.memberId));
-    return { id: member.memberId, data: member, children: unplaced.sort(byPresentationOrder).map(toItem) };
+    placed.add(member.dimensionMemberId);
+    const unplaced = (children.get(member.dimensionMemberId) ?? []).filter(child => !placed.has(child.dimensionMemberId));
+    return { id: member.dimensionMemberId, data: member, children: unplaced.sort(byPresentationOrder).map(toItem) };
   }
 
   const roots = members
-    .filter(member => member.parentMemberId == null || !ids.has(member.parentMemberId))
+    .filter(member => member.parentDimensionMemberId == null || !ids.has(member.parentDimensionMemberId))
     .sort(byPresentationOrder)
     .map(toItem);
   for (const member of [...members].sort(byPresentationOrder)) {
-    if (!placed.has(member.memberId)) {
+    if (!placed.has(member.dimensionMemberId)) {
       roots.push(toItem(member));
     }
   }
@@ -57,14 +57,14 @@ export function applyCollapsed(
 /** The moved item's parent and siblings in a tree, or null when the tree does not hold it. */
 function siblingsOf(
   items: TreeItems<DimensionMember>,
-  memberId: number,
+  dimensionMemberId: number,
   parentId: number | null
 ): { parentId: number | null; siblings: TreeItems<DimensionMember> } | null {
-  if (items.some(item => Number(item.id) === memberId)) {
+  if (items.some(item => Number(item.id) === dimensionMemberId)) {
     return { parentId, siblings: items };
   }
   for (const item of items) {
-    const found = siblingsOf(item.children, memberId, Number(item.id));
+    const found = siblingsOf(item.children, dimensionMemberId, Number(item.id));
     if (found) {
       return found;
     }
@@ -86,12 +86,12 @@ export function placementsAfterMove(
   if (!group) {
     return [];
   }
-  const stored = new Map(members.map(member => [member.memberId, member]));
+  const stored = new Map(members.map(member => [member.dimensionMemberId, member]));
   return group.siblings
-    .map((item, index) => ({ memberId: Number(item.id), parentMemberId: group.parentId, sortOrder: index }))
+    .map((item, index) => ({ dimensionMemberId: Number(item.id), parentDimensionMemberId: group.parentId, sortOrder: index }))
     .filter(placement => {
-      const member = stored.get(placement.memberId);
-      return (member?.parentMemberId ?? null) !== placement.parentMemberId || member?.sortOrder !== placement.sortOrder;
+      const member = stored.get(placement.dimensionMemberId);
+      return (member?.parentDimensionMemberId ?? null) !== placement.parentDimensionMemberId || member?.sortOrder !== placement.sortOrder;
     });
 }
 
@@ -118,19 +118,19 @@ export function filterMemberTree(tree: TreeItems<DimensionMember>, term: string)
 
 /** The sort order that puts a new member after its future siblings. */
 export function nextSortOrder(members: DimensionMember[], parentId: number | null) {
-  const siblings = members.filter(member => (member.parentMemberId ?? null) === parentId);
+  const siblings = members.filter(member => (member.parentDimensionMemberId ?? null) === parentId);
   return Math.max(-1, ...siblings.map(member => member.sortOrder)) + 1;
 }
 
 /** A member and every member below it, which cannot become its parent without a cycle. */
-export function selfAndDescendants(members: DimensionMember[], memberId: number): Set<number> {
-  const found = new Set([memberId]);
+export function selfAndDescendants(members: DimensionMember[], dimensionMemberId: number): Set<number> {
+  const found = new Set([dimensionMemberId]);
   let grew = true;
   while (grew) {
     grew = false;
     for (const member of members) {
-      if (member.parentMemberId != null && found.has(member.parentMemberId) && !found.has(member.memberId)) {
-        found.add(member.memberId);
+      if (member.parentDimensionMemberId != null && found.has(member.parentDimensionMemberId) && !found.has(member.dimensionMemberId)) {
+        found.add(member.dimensionMemberId);
         grew = true;
       }
     }

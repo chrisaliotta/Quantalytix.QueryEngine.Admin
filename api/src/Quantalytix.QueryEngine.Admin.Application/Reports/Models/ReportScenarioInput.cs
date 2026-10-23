@@ -4,5 +4,5 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 public sealed record ReportScenarioInput
 {
     /// <summary>The role; requests name the scenario by its key.</summary>
-    public required long RoleId { get; init; }
+    public required long DimensionRoleId { get; init; }
 }

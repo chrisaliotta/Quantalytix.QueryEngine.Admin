@@ -15,8 +15,8 @@ public sealed record EditorSource
     /// <summary>The <c>dataset_key</c> of the source's dataset.</summary>
     public required string DatasetKey { get; init; }
 
-    /// <summary>The <c>role_key</c> of a bridge source's role; null for a direct source.</summary>
-    public string? RoleKey { get; init; }
+    /// <summary>The <c>dimension_role_key</c> of a bridge source's role; null for a direct source.</summary>
+    public string? DimensionRoleKey { get; init; }
 
     /// <summary>The dimension of a bridge source's role, whose members are its items; null for a direct source.</summary>
     public long? ItemDimensionId { get; init; }

@@ -73,7 +73,7 @@ public sealed class DatasetVersionClonerTests
             UnmappedBehavior = UnmappedBehaviors.Unknown,
             UnknownMemberKey = UnknownMemberKey
         },
-        DatasetRows.Binding(23, SourceVersionId, RegionRoleId, BindingKinds.Bridge, null) with { SourceBindingId = 22, BridgeId = BridgeId });
+        DatasetRows.Binding(23, SourceVersionId, RegionRoleId, BindingKinds.Bridge, null) with { SourceDimensionBindingId = 22, BridgeId = BridgeId });
 
     /// <summary>The time extension of the time binding, whose intervals end at periodEnd.</summary>
     private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(DatasetRows.TimeBinding(21, intervalEndFieldId: 4));
@@ -96,7 +96,7 @@ public sealed class DatasetVersionClonerTests
         new MeasureDependencyRecord { MeasureId = 33, DependencyMeasureId = 32 });
 
     /// <summary>The aggregate's time policy, on the time binding and the temporalSeries grain.</summary>
-    private readonly InMemoryTableGateway<MeasureTimePolicyRecord> _timePolicies = new(DatasetRows.TimePolicy(31, requiredTimeBindingId: 21, selectionGrainId: 12));
+    private readonly InMemoryTableGateway<MeasureTimePolicyRecord> _timePolicies = new(DatasetRows.TimePolicy(31, requiredTimeBindingId: 21, selectionDatasetGrainId: 12));
 
     /// <summary>The clone is a new draft with the given number and no publication time; the source version and its rows are untouched.</summary>
     /// <returns>A task that completes when the clone is checked.</returns>
@@ -130,9 +130,9 @@ public sealed class DatasetVersionClonerTests
     {
         var clone = await CloneAsync();
         var fieldKeys = _fields.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.FieldId, row => row.FieldKey);
-        var grainKeys = _grains.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.GrainId, row => row.GrainKey);
+        var grainKeys = _grains.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.DatasetGrainId, row => row.GrainKey);
         var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.BindingKind);
-        var bindingKinds = bindings.Values.ToDictionary(row => row.BindingId, row => row.BindingKind);
+        var bindingKinds = bindings.Values.ToDictionary(row => row.DimensionBindingId, row => row.BindingKind);
         var measureKeys = _measures.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.MeasureId, row => row.MeasureKey);
 
         Assert.All(fieldKeys.Keys.Concat(grainKeys.Keys).Concat(bindingKinds.Keys).Concat(measureKeys.Keys), id => Assert.True(id >= FirstNewId));
@@ -140,14 +140,14 @@ public sealed class DatasetVersionClonerTests
         Assert.Equal(
             [("rowIdentity", 1, "loanId"), ("rowIdentity", 2, "asOfDate"), ("temporalSeries", 1, "loanId")],
             _grainFields.All
-                .Where(row => grainKeys.ContainsKey(row.GrainId))
-                .Select(row => (grainKeys[row.GrainId], row.Ordinal, fieldKeys[row.FieldId]))
+                .Where(row => grainKeys.ContainsKey(row.DatasetGrainId))
+                .Select(row => (grainKeys[row.DatasetGrainId], row.Ordinal, fieldKeys[row.FieldId]))
                 .Order());
         Assert.Equal("asOfDate", fieldKeys[bindings[BindingKinds.Time].SourceFieldId!.Value]);
         Assert.Equal("loanId", fieldKeys[bindings[BindingKinds.Mapped].SourceFieldId!.Value]);
-        Assert.Equal(BindingKinds.Mapped, bindingKinds[bindings[BindingKinds.Bridge].SourceBindingId!.Value]);
-        var timeBinding = Assert.Single(_timeBindings.All, row => bindingKinds.ContainsKey(row.BindingId));
-        Assert.Equal(BindingKinds.Time, bindingKinds[timeBinding.BindingId]);
+        Assert.Equal(BindingKinds.Mapped, bindingKinds[bindings[BindingKinds.Bridge].SourceDimensionBindingId!.Value]);
+        var timeBinding = Assert.Single(_timeBindings.All, row => bindingKinds.ContainsKey(row.DimensionBindingId));
+        Assert.Equal(BindingKinds.Time, bindingKinds[timeBinding.DimensionBindingId]);
         Assert.Equal("periodEnd", fieldKeys[timeBinding.IntervalEndFieldId!.Value]);
         Assert.Equal(
             [("averageRate", ComponentRoles.Value, "interestRate"), ("averageRate", ComponentRoles.Weight, "endingBalance"), ("endingBalance", ComponentRoles.Value, "endingBalance")],
@@ -164,7 +164,7 @@ public sealed class DatasetVersionClonerTests
         var policy = Assert.Single(_timePolicies.All, row => measureKeys.ContainsKey(row.MeasureId));
         Assert.Equal("endingBalance", measureKeys[policy.MeasureId]);
         Assert.Equal(BindingKinds.Time, bindingKinds[policy.RequiredTimeBindingId!.Value]);
-        Assert.Equal("temporalSeries", grainKeys[policy.SelectionGrainId!.Value]);
+        Assert.Equal("temporalSeries", grainKeys[policy.SelectionDatasetGrainId!.Value]);
     }
 
     /// <summary>References to the roles, the dimension, the mapping set and the bridge keep their IDs, and member keys stay as they are.</summary>
@@ -176,11 +176,11 @@ public sealed class DatasetVersionClonerTests
         var bindings = _bindings.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.BindingKind);
 
         Assert.All(bindings.Values, binding => Assert.Equal(7000, binding.DimensionId));
-        Assert.Null(bindings[BindingKinds.Time].RoleId);
-        Assert.Equal(BranchRoleId, bindings[BindingKinds.Mapped].RoleId);
+        Assert.Null(bindings[BindingKinds.Time].DimensionRoleId);
+        Assert.Equal(BranchRoleId, bindings[BindingKinds.Mapped].DimensionRoleId);
         Assert.Equal(MappingSetId, bindings[BindingKinds.Mapped].MappingSetId);
         Assert.Equal(UnknownMemberKey, bindings[BindingKinds.Mapped].UnknownMemberKey);
-        Assert.Equal(RegionRoleId, bindings[BindingKinds.Bridge].RoleId);
+        Assert.Equal(RegionRoleId, bindings[BindingKinds.Bridge].DimensionRoleId);
         Assert.Equal(BridgeId, bindings[BindingKinds.Bridge].BridgeId);
     }
 

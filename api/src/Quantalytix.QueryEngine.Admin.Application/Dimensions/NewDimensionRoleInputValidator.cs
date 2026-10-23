@@ -20,11 +20,11 @@ public sealed class NewDimensionRoleInputValidator : AbstractValidator<NewDimens
     public NewDimensionRoleInputValidator(ITableGateway<DimensionRoleRecord> roles)
     {
         Include(new DimensionRoleInputValidator());
-        RuleFor(input => input.RoleKey)
+        RuleFor(input => input.DimensionRoleKey)
             .Cascade(CascadeMode.Stop)
             .MustBeKey(128)
-            .MustAsync(async (key, cancellationToken) => (await roles.ListAsync(new { RoleKey = key }, cancellationToken)).Count == 0)
-            .WithMessage(input => $"A role with key '{input.RoleKey}' already exists.");
+            .MustAsync(async (key, cancellationToken) => (await roles.ListAsync(new { DimensionRoleKey = key }, cancellationToken)).Count == 0)
+            .WithMessage(input => $"A role with key '{input.DimensionRoleKey}' already exists.");
     }
 
     /// <summary>
@@ -44,18 +44,18 @@ public sealed class NewDimensionRoleInputValidator : AbstractValidator<NewDimens
         IRequestRoute route)
         : this(roles)
     {
-        RuleFor(input => input.RoleKey)
+        RuleFor(input => input.DimensionRoleKey)
             .MustAsync(async (_, cancellationToken) =>
                 (await dimensions.GetAsync(new { DimensionId = route.Id("dimensionId") }, cancellationToken)).DimensionPurpose == DimensionPurposes.Analytical)
             .WithMessage("The dimension holds a report's rows, and a report dimension has no roles.");
-        RuleFor(input => input.RoleKey).CustomAsync(async (_, context, cancellationToken) =>
+        RuleFor(input => input.DimensionRoleKey).CustomAsync(async (_, context, cancellationToken) =>
         {
             var existing = await roles.ListAsync(new { DimensionId = route.Id("dimensionId") }, cancellationToken);
-            var naming = await scenarios.ListAsync(new { RoleId = existing.Select(role => role.RoleId).ToArray() }, cancellationToken);
+            var naming = await scenarios.ListAsync(new { DimensionRoleId = existing.Select(role => role.DimensionRoleId).ToArray() }, cancellationToken);
             if (naming.Count == 0) return;
             var names = await reportNames.OfIdsAsync(naming.Select(scenario => scenario.ReportId), cancellationToken);
             context.AddFailure(
-                $"Role '{existing.Single().RoleKey}' of the dimension is a scenario of {string.Join(", ", names.Values.Order(StringComparer.Ordinal))}, " +
+                $"Role '{existing.Single().DimensionRoleKey}' of the dimension is a scenario of {string.Join(", ", names.Values.Order(StringComparer.Ordinal))}, " +
                 "and a scenario's dimension has exactly one role.");
         });
     }

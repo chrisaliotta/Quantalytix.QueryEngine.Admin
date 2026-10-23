@@ -20,7 +20,7 @@ public sealed record CalculationDimensionRecord
     public required string DisplayName { get; init; }
 
     /// <summary>The role every source reads; queries use the version of its dimension their assumption set pins.</summary>
-    public required long RoleId { get; init; }
+    public required long DimensionRoleId { get; init; }
 
     /// <summary>A <c>grouping_mode</c> value: how the role's members group by default.</summary>
     public required string GroupingMode { get; init; }

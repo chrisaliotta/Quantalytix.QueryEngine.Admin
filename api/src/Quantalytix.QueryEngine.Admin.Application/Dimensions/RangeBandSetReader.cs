@@ -27,7 +27,7 @@ public sealed class RangeBandSetReader(
         {
             RangeDataType = version.RangeDataType,
             Bands = [.. rows.OrderBy(row => row.Ordinal)],
-            MemberKeys = versionMembers.ToDictionary(member => member.MemberId, member => member.MemberKey)
+            MemberKeys = versionMembers.ToDictionary(member => member.DimensionMemberId, member => member.MemberKey)
         };
     }
 }

@@ -23,9 +23,9 @@ internal static class DimensionRows
     }
 
     /// <summary>A role of a dimension, whose key is also its display name.</summary>
-    public static DimensionRoleRecord Role(long roleId, string roleKey, long dimensionId)
+    public static DimensionRoleRecord Role(long dimensionRoleId, string dimensionRoleKey, long dimensionId)
     {
-        return new DimensionRoleRecord { RoleId = roleId, DimensionId = dimensionId, RoleKey = roleKey, DisplayName = roleKey };
+        return new DimensionRoleRecord { DimensionRoleId = dimensionRoleId, DimensionId = dimensionId, DimensionRoleKey = dimensionRoleKey, DisplayName = dimensionRoleKey };
     }
 
     /// <summary>A version of a dimension with a status and an optional range data type.</summary>
@@ -42,11 +42,11 @@ internal static class DimensionRows
     }
 
     /// <summary>A level of a version.</summary>
-    public static DimensionLevelRecord Level(long levelId, long versionId, string levelKey, int ordinal)
+    public static DimensionLevelRecord Level(long dimensionLevelId, long versionId, string levelKey, int ordinal)
     {
         return new DimensionLevelRecord
         {
-            LevelId = levelId,
+            DimensionLevelId = dimensionLevelId,
             DimensionVersionId = versionId,
             LevelKey = levelKey,
             DisplayName = levelKey,
@@ -56,16 +56,16 @@ internal static class DimensionRows
     }
 
     /// <summary>A member of a version, optionally under a parent and on a level.</summary>
-    public static DimensionMemberRecord Member(long memberId, long versionId, string memberKey, long? parentId = null, long? levelId = null)
+    public static DimensionMemberRecord Member(long dimensionMemberId, long versionId, string memberKey, long? parentId = null, long? dimensionLevelId = null)
     {
         return new DimensionMemberRecord
         {
-            MemberId = memberId,
+            DimensionMemberId = dimensionMemberId,
             DimensionVersionId = versionId,
             MemberKey = memberKey,
             DisplayName = memberKey,
-            ParentMemberId = parentId,
-            LevelId = levelId,
+            ParentDimensionMemberId = parentId,
+            DimensionLevelId = dimensionLevelId,
             IsAssignable = true,
             SortOrder = 0
         };
@@ -75,7 +75,7 @@ internal static class DimensionRows
     public static RangeBandRecord DecimalBand(
         long versionId,
         int ordinal,
-        long memberId,
+        long dimensionMemberId,
         decimal? lower,
         decimal? upper,
         bool lowerInclusive = true,
@@ -85,7 +85,7 @@ internal static class DimensionRows
         {
             DimensionVersionId = versionId,
             Ordinal = ordinal,
-            MemberId = memberId,
+            DimensionMemberId = dimensionMemberId,
             LowerDecimal = lower,
             UpperDecimal = upper,
             LowerInclusive = lowerInclusive,

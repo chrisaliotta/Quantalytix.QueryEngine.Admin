@@ -76,6 +76,6 @@ public sealed class MappedBindingsResolvableRuleTests
     {
         var reader = Reader(_manifest, _datasets, bindings);
         var rule = new MappedBindingsResolvableRule(reader, new InMemoryTableGateway<MappingVersionRecord>(mappingVersions), _mappingSets);
-        return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
+        return await rule.EvaluateAsync(SemanticReleaseId, TestContext.Current.CancellationToken);
     }
 }

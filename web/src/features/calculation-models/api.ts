@@ -11,12 +11,12 @@ function modelsKey(tenantId: string) {
   return ['calculation-models', tenantId] as const;
 }
 
-function attributionsKey(tenantId: string, modelId: number) {
-  return [...modelsKey(tenantId), modelId, 'attributions'] as const;
+function attributionsKey(tenantId: string, calculationModelId: number) {
+  return [...modelsKey(tenantId), calculationModelId, 'attributions'] as const;
 }
 
-function parametersKey(tenantId: string, modelId: number) {
-  return [...modelsKey(tenantId), modelId, 'parameters'] as const;
+function parametersKey(tenantId: string, calculationModelId: number) {
+  return [...modelsKey(tenantId), calculationModelId, 'parameters'] as const;
 }
 
 /** The reports feature's key of every report's editor view, which shows the parameters of the report's model. */
@@ -40,14 +40,14 @@ export function useCalculationModels() {
 }
 
 /** One calculation model, with its settings. */
-export function useCalculationModel(modelId: number) {
+export function useCalculationModel(calculationModelId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: [...modelsKey(tenantId), modelId],
+    queryKey: [...modelsKey(tenantId), calculationModelId],
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{modelId}', {
-          params: { path: { tenantId, modelId } },
+        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{calculationModelId}', {
+          params: { path: { tenantId, calculationModelId } },
         })
       ),
   });
@@ -64,13 +64,13 @@ export function useCreateCalculationModel() {
 }
 
 /** Edits a calculation model's name, currency, availability, formula language and attribution method; a 422 names the formulas a language lacks a function for. */
-export function useUpdateCalculationModel(modelId: number) {
+export function useUpdateCalculationModel(calculationModelId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (body: CalculationModelInput) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{modelId}', {
-          params: { path: { tenantId, modelId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{calculationModelId}', {
+          params: { path: { tenantId, calculationModelId } },
           body,
         })
       ),
@@ -79,57 +79,57 @@ export function useUpdateCalculationModel(modelId: number) {
 }
 
 /** Every attribution of a model's metrics, by metric key, with its drivers by sort order. */
-export function useAttributions(modelId: number) {
+export function useAttributions(calculationModelId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: attributionsKey(tenantId, modelId),
+    queryKey: attributionsKey(tenantId, calculationModelId),
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions', {
-          params: { path: { tenantId, modelId } },
+        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions', {
+          params: { path: { tenantId, calculationModelId } },
         })
       ),
   });
 }
 
 /** Replaces a metric's attribution with its drivers; a 422 names the model rules it breaks. */
-export function useReplaceAttribution(modelId: number, metricKey: string) {
+export function useReplaceAttribution(calculationModelId: number, metricKey: string) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (body: MetricAttributionInput) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}', {
-          params: { path: { tenantId, modelId, metricKey } },
+        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}', {
+          params: { path: { tenantId, calculationModelId, metricKey } },
           body,
         })
       ),
-    onSuccess: () => invalidate(attributionsKey(tenantId, modelId)),
+    onSuccess: () => invalidate(attributionsKey(tenantId, calculationModelId)),
   });
 }
 
 /** Deletes a metric's attribution with its drivers, which leaves a calculated measure the default drivers of its formula. */
-export function useDeleteAttribution(modelId: number, metricKey: string) {
+export function useDeleteAttribution(calculationModelId: number, metricKey: string) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async () =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}', {
-          params: { path: { tenantId, modelId, metricKey } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}', {
+          params: { path: { tenantId, calculationModelId, metricKey } },
         })
       ),
-    onSuccess: () => invalidate(attributionsKey(tenantId, modelId)),
+    onSuccess: () => invalidate(attributionsKey(tenantId, calculationModelId)),
   });
 }
 
 /** Every parameter a model declares, by key. */
-export function useModelParameters(modelId: number) {
+export function useModelParameters(calculationModelId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: parametersKey(tenantId, modelId),
+    queryKey: parametersKey(tenantId, calculationModelId),
     queryFn: async () =>
       unwrap(
-        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters', {
-          params: { path: { tenantId, modelId } },
+        await apiClient.GET('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters', {
+          params: { path: { tenantId, calculationModelId } },
         })
       ),
   });
@@ -139,31 +139,31 @@ export function useModelParameters(modelId: number) {
  * Writes a parameter whole under its key, creating it or replacing the one stored; a 422 names the formulas or report rows the
  * change would break, such as a new type a formula reads otherwise.
  */
-export function useSaveModelParameter(modelId: number) {
+export function useSaveModelParameter(calculationModelId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async ({ parameterKey, body }: { parameterKey: string; body: ModelParameterInput }) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}', {
-          params: { path: { tenantId, modelId, parameterKey } },
+        await apiClient.PUT('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}', {
+          params: { path: { tenantId, calculationModelId, parameterKey } },
           body,
         })
       ),
-    onSuccess: () => invalidate(parametersKey(tenantId, modelId), reportEditorsKey(tenantId)),
+    onSuccess: () => invalidate(parametersKey(tenantId, calculationModelId), reportEditorsKey(tenantId)),
   });
 }
 
 /** Deletes a parameter; a 422 names the formulas that read it and the report rows that set it. */
-export function useDeleteModelParameter(modelId: number) {
+export function useDeleteModelParameter(calculationModelId: number) {
   const tenantId = useTenantId();
   return useMutation({
     mutationFn: async (parameterKey: string) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}', {
-          params: { path: { tenantId, modelId, parameterKey } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}', {
+          params: { path: { tenantId, calculationModelId, parameterKey } },
         })
       ),
-    onSuccess: () => invalidate(parametersKey(tenantId, modelId), reportEditorsKey(tenantId)),
+    onSuccess: () => invalidate(parametersKey(tenantId, calculationModelId), reportEditorsKey(tenantId)),
   });
 }
 
@@ -171,10 +171,10 @@ export function useDeleteModelParameter(modelId: number) {
 export function useDeleteCalculationModel() {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (modelId: number) =>
+    mutationFn: async (calculationModelId: number) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{modelId}', {
-          params: { path: { tenantId, modelId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/calculation-models/{calculationModelId}', {
+          params: { path: { tenantId, calculationModelId } },
         })
       ),
     onSuccess: () => invalidate(modelsKey(tenantId), lookupQueryKey(tenantId, 'calculation-models')),

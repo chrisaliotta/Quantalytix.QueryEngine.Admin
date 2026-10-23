@@ -10,7 +10,7 @@ import { RoleSheet } from './RoleSheet';
 import type { DimensionRole } from './types';
 
 const baseColumns: ColumnDef<DimensionRole>[] = [
-  { accessorKey: 'roleKey', header: 'Key' },
+  { accessorKey: 'dimensionRoleKey', header: 'Key' },
   { accessorKey: 'displayName', header: 'Name' },
   { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.original.description ?? '—' },
 ];
@@ -39,7 +39,7 @@ export function RolesTab({ dimensionId }: { dimensionId: number }) {
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Delete ${row.original.roleKey}`}
+          aria-label={`Delete ${row.original.dimensionRoleKey}`}
           onClick={event => {
             event.stopPropagation();
             setDeleting(row.original);
@@ -76,11 +76,11 @@ export function RolesTab({ dimensionId }: { dimensionId: number }) {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={open => !open && setDeleting(null)}
-        title={`Delete role ${deleting?.roleKey ?? ''}?`}
+        title={`Delete role ${deleting?.dimensionRoleKey ?? ''}?`}
         description="A role that bindings, calculation dimensions or variable sources name cannot be deleted."
         confirmLabel="Delete role"
         destructive
-        onConfirm={() => deleting && deleteRole.mutate(deleting.roleId)}
+        onConfirm={() => deleting && deleteRole.mutate(deleting.dimensionRoleId)}
       />
     </div>
   );

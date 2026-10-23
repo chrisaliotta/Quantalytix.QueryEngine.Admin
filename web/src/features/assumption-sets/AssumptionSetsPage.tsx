@@ -39,7 +39,7 @@ export function AssumptionSetsPage() {
   const releaseKeys = new Map((releases.data ?? []).map(release => [release.id, release.key]));
   const rows = sets.data?.map(set => ({
     ...set,
-    releaseKey: set.releaseId == null ? 'Active release' : (releaseKeys.get(set.releaseId) ?? ''),
+    releaseKey: set.semanticReleaseId == null ? 'Active release' : (releaseKeys.get(set.semanticReleaseId) ?? ''),
   }));
 
   return (

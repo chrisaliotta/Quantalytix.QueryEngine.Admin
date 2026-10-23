@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record ModelParameterRecord
 {
     /// <summary>The owning model; first part of the primary key.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>The key formulas read the parameter by, as <c>@key</c>; second part of the primary key.</summary>
     public required string ParameterKey { get; init; }

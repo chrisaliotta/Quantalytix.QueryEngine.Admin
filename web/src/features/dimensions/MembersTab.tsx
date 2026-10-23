@@ -41,7 +41,7 @@ export function MembersTab({ dimension, versionId, isEditable }: MembersTabProps
   const [deleting, setDeleting] = useState<DimensionMember | null>(null);
 
   const rows = members.data ?? [];
-  const levelKeys = new Map((levels.data ?? []).map(level => [level.levelId, level.levelKey]));
+  const levelKeys = new Map((levels.data ?? []).map(level => [level.dimensionLevelId, level.levelKey]));
   const tree = pendingTree ?? applyCollapsed(buildMemberTree(rows), collapsedIds);
   const visible = filterMemberTree(tree, search);
   const canDrag = isEditable && search.trim() === '' && !reorder.isPending;
@@ -100,7 +100,7 @@ export function MembersTab({ dimension, versionId, isEditable }: MembersTabProps
               isEditable={isEditable}
               canDrag={canDrag}
               onOpen={member => setSheet({ member, parentId: null })}
-              onAddChild={member => setSheet({ member: null, parentId: member.memberId })}
+              onAddChild={member => setSheet({ member: null, parentId: member.dimensionMemberId })}
               onDelete={setDeleting}
             />
           )}
@@ -125,7 +125,7 @@ export function MembersTab({ dimension, versionId, isEditable }: MembersTabProps
         description="Members with children, mapping entries, range bands or bridge mappings cannot be deleted."
         confirmLabel="Delete member"
         destructive
-        onConfirm={() => deleting && deleteMember.mutate(deleting.memberId)}
+        onConfirm={() => deleting && deleteMember.mutate(deleting.dimensionMemberId)}
       />
     </div>
   );

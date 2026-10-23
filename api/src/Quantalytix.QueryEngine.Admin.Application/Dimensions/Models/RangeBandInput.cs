@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 public sealed record RangeBandInput
 {
     /// <summary>The member the band assigns source values to.</summary>
-    public required long MemberId { get; init; }
+    public required long DimensionMemberId { get; init; }
 
     /// <summary>Decimal lower bound, for <c>range_data_type</c> decimal.</summary>
     public decimal? LowerDecimal { get; init; }

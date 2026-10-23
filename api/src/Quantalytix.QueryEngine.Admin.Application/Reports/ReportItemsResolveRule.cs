@@ -20,7 +20,7 @@ public sealed class ReportItemsResolveRule : IReportRule
     {
         var subject = $"Report '{report.ReportKey}'";
         var memberKeys = report.Members.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal);
-        var roots = report.Members.Count(member => member.ParentMemberId is null);
+        var roots = report.Members.Count(member => member.ParentDimensionMemberId is null);
         if (roots != 1) yield return Violation($"{subject} has {roots} top-level member rows; it needs one, the report's total.");
         var overlayKeys = report.Lines.Select(line => line.LineKey).ToHashSet(StringComparer.Ordinal);
         foreach (var option in report.MemberOptions.Where(option => !memberKeys.Contains(option.MemberKey)))

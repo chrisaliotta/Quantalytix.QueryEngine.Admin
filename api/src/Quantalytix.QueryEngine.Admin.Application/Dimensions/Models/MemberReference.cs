@@ -7,5 +7,5 @@ public sealed record MemberReference
     public required long DimensionVersionId { get; init; }
 
     /// <summary>The member.</summary>
-    public required long MemberId { get; init; }
+    public required long DimensionMemberId { get; init; }
 }

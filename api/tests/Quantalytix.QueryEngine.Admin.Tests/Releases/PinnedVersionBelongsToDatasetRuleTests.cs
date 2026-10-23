@@ -59,6 +59,6 @@ public sealed class PinnedVersionBelongsToDatasetRuleTests
     {
         var reader = Reader(new InMemoryTableGateway<ReleaseDatasetRecord>(manifest), _datasets);
         var rule = new PinnedVersionBelongsToDatasetRule(reader, _datasetVersions);
-        return await rule.EvaluateAsync(ReleaseId, TestContext.Current.CancellationToken);
+        return await rule.EvaluateAsync(SemanticReleaseId, TestContext.Current.CancellationToken);
     }
 }

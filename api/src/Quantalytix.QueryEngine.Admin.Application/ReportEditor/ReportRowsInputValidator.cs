@@ -92,7 +92,7 @@ public sealed class ReportRowsInputValidator : AbstractValidator<ReportRowsInput
             foreach (var problem in await formulaReferences.ProblemsAsync(keys.ReportId, formulas, cancellationToken)) context.AddFailure(problem);
 
             var styleKeys = (await styles.ListAsync(owner, cancellationToken)).Select(style => style.StyleKey).ToHashSet(StringComparer.Ordinal);
-            var declared = (await parameters.ListAsync(report.ModelId, cancellationToken)).ToDictionary(parameter => parameter.ParameterKey, StringComparer.Ordinal);
+            var declared = (await parameters.ListAsync(report.CalculationModelId, cancellationToken)).ToDictionary(parameter => parameter.ParameterKey, StringComparer.Ordinal);
             for (var index = 0; index < rows.Count; index++)
             {
                 var row = rows[index];

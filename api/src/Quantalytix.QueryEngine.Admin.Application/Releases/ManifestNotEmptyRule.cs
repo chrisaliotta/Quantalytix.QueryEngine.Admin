@@ -16,7 +16,7 @@ public sealed class ManifestNotEmptyRule(ITableGateway<ReleaseDatasetRecord> man
     /// <returns>One violation for an empty manifest; none otherwise.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
-        var rows = await manifest.ListAsync(new { ReleaseId = versionId }, cancellationToken);
+        var rows = await manifest.ListAsync(new { SemanticReleaseId = versionId }, cancellationToken);
         if (rows.Count > 0) return [];
         return [new RuleViolation { Rule = "manifest_not_empty", Message = "The release pins no dataset versions." }];
     }

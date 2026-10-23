@@ -31,7 +31,7 @@ export function EntrySheet({ versionId, members, entry, readOnly, onClose }: Ent
   async function submit(values: EntryValues) {
     const body = { sourceKeyValue: values.sourceKeyValue, memberKey: values.memberKey ?? '' };
     if (entry) {
-      await update.mutateAsync({ entryId: entry.mappingEntryId, body });
+      await update.mutateAsync({ entryId: entry.dimensionMappingId, body });
       return;
     }
     await create.mutateAsync(body);

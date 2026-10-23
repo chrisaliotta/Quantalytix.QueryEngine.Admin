@@ -25,7 +25,7 @@ public sealed class ReportColumnsInputValidatorTests
 
     /// <summary>The formula row that places the yield measure in the yield column.</summary>
     private readonly InMemoryTableGateway<ReportLineRecord> _lines = new(
-        Line(11, "loan_yield", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureKey = "yield", ValueColumnId = 2 });
+        Line(11, "loan_yield", ReportLineKinds.Formula, null, 1) with { CalculatedMeasureKey = "yield", ValueReportColumnId = 2 });
 
     /// <summary>A reserved key fails on its column, and a repeated key fails the list once.</summary>
     /// <returns>A task that completes when the validation is checked.</returns>

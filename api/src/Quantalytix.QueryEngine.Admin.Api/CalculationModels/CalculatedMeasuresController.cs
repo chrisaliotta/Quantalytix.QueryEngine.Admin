@@ -10,7 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
 
 /// <summary>Lists and edits the calculated measures of calculation models: formulas over variables and other calculated measures.</summary>
 [ApiController]
-[Route("api/tenants/{tenantId}/calculation-models/{modelId:long}/calculated-measures")]
+[Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/calculated-measures")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -19,7 +19,7 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
 {
     /// <summary>Lists a model's calculated measures.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The calculated measures by key.</returns>
     /// <response code="200">The calculated measures by key, ignoring case.</response>
@@ -27,14 +27,14 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<CalculatedMeasureRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<CalculatedMeasureRecord>>> List(string tenantId, long modelId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<CalculatedMeasureRecord>>> List(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
-        return Ok(await calculatedMeasures.ListAsync(modelId, cancellationToken));
+        return Ok(await calculatedMeasures.ListAsync(calculationModelId, cancellationToken));
     }
 
     /// <summary>Adds a calculated measure to a calculation model, unless its formula reads a key the model lacks or reads itself.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The calculation model.</param>
+    /// <param name="calculationModelId">The calculation model.</param>
     /// <param name="input">The new calculated measure.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created calculated measure.</returns>
@@ -44,16 +44,16 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The formula reads a variable or calculated measure the model lacks, or reads itself; nothing was written.</response>
     [HttpPost]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
-    public async Task<ActionResult<CalculatedMeasureRecord>> Create(string tenantId, long modelId, CalculatedMeasureInput input, CancellationToken cancellationToken)
+    public async Task<ActionResult<CalculatedMeasureRecord>> Create(string tenantId, long calculationModelId, CalculatedMeasureInput input, CancellationToken cancellationToken)
     {
-        var created = calculatedMeasures.Compose(modelId, null, input);
+        var created = calculatedMeasures.Compose(calculationModelId, null, input);
         var violations = await changes.ApplyAsync(
-            modelId, model => calculatedMeasures.Put(model, created), () => calculatedMeasures.InsertAsync(created, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+            calculationModelId, model => calculatedMeasures.Put(model, created), () => calculatedMeasures.InsertAsync(created, cancellationToken), cancellationToken);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
         return Ok(created);
     }
 
@@ -69,7 +69,7 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The change would break the model's formulas or an enabled report that reads the model, such as a formula that now reads a variable no profile picks a source for; nothing was written.</response>
     [HttpPut("{itemId:long}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
@@ -79,10 +79,10 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
         CalculatedMeasureInput input,
         CancellationToken cancellationToken)
     {
-        var updated = calculatedMeasures.Compose(measure.ModelId, measure.ItemId, input);
+        var updated = calculatedMeasures.Compose(measure.CalculationModelId, measure.ItemId, input);
         var violations = await changes.ApplyAsync(
-            measure.ModelId, model => calculatedMeasures.Put(model, updated), () => calculatedMeasures.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.ModelId, violations);
+            measure.CalculationModelId, model => calculatedMeasures.Put(model, updated), () => calculatedMeasures.UpdateAsync(updated, cancellationToken), cancellationToken);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.CalculationModelId, violations);
         return Ok(updated);
     }
 
@@ -97,18 +97,18 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">Another formula of the model, or a column or formula row of an enabled report that reads the model, reads the measure; nothing was deleted.</response>
     [HttpDelete("{itemId:long}")]
-    [AdvancesModelRevision("modelId")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
-            measure.ModelId,
+            measure.CalculationModelId,
             model => calculatedMeasures.Without(model, measure.ItemId),
             () => calculatedMeasures.DeleteAsync(measure.ItemId, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.ModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.CalculationModelId, violations);
         return NoContent();
     }
 }

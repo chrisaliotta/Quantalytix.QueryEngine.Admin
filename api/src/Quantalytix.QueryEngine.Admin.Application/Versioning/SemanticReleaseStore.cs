@@ -12,7 +12,7 @@ public sealed class SemanticReleaseStore(ITableGateway<SemanticReleaseRecord> ga
     /// <returns>The key object.</returns>
     protected override object Key(long id)
     {
-        return new { ReleaseId = id };
+        return new { SemanticReleaseId = id };
     }
 
     /// <summary>The state a semantic release row describes.</summary>
@@ -20,7 +20,7 @@ public sealed class SemanticReleaseStore(ITableGateway<SemanticReleaseRecord> ga
     /// <returns>The release's state.</returns>
     protected override VersionState ToState(SemanticReleaseRecord record)
     {
-        return new VersionState { Kind = Kind, Id = record.ReleaseId, Status = record.Status, PublishedAt = record.PublishedAt };
+        return new VersionState { Kind = Kind, Id = record.SemanticReleaseId, Status = record.Status, PublishedAt = record.PublishedAt };
     }
 
     /// <summary>A copy of a semantic release row with a new status and publication time.</summary>

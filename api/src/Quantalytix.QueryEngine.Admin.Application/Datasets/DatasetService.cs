@@ -80,7 +80,7 @@ public sealed class DatasetService(
         var dataset = await GetAsync(datasetId, cancellationToken);
         var datasetVersions = await versions.ListAsync(new { DatasetId = datasetId }, cancellationToken);
         var memberships = await releaseDatasets.ListAsync(new { DatasetId = datasetId }, cancellationToken);
-        var listing = await releases.ListAsync(new { ReleaseId = memberships.Select(row => row.ReleaseId).ToArray() }, cancellationToken);
+        var listing = await releases.ListAsync(new { SemanticReleaseId = memberships.Select(row => row.SemanticReleaseId).ToArray() }, cancellationToken);
         var blockers = new DeleteBlockers($"Dataset '{dataset.DatasetKey}'");
         blockers.AddNamed(
             "it has non-draft versions",

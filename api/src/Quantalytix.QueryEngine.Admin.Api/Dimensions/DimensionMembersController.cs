@@ -72,7 +72,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
-    [HttpPut("{memberId:long}")]
+    [HttpPut("{dimensionMemberId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
@@ -117,11 +117,11 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when the version is neither a draft nor published or something references the member.</returns>
     /// <response code="204">The member is deleted.</response>
-    /// <response code="400">The member is not in the version; the error is keyed <c>memberId</c>.</response>
+    /// <response code="400">The member is not in the version; the error is keyed <c>dimensionMemberId</c>.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: the version is neither a draft nor published, or the detail names what references the member.</response>
-    [HttpDelete("{memberId:long}")]
+    [HttpDelete("{dimensionMemberId:long}")]
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -26,7 +26,7 @@ export interface ReportVariableScopeSheetProps {
  * come from the report's model, and rows from the report dimension's one version.
  */
 export function ReportVariableScopeSheet({ view, scope, onSave, onClose }: ReportVariableScopeSheetProps) {
-  const variables = useLookup('variables', view.report.modelId);
+  const variables = useLookup('variables', view.report.calculationModelId);
   const members = useLookup('members', view.dimensionVersionId);
   const form = useForm<ReportVariableScopeValues>({
     defaultValues: {

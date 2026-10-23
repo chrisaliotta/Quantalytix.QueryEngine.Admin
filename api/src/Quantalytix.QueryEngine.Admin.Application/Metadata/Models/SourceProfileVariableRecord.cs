@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record SourceProfileVariableRecord
 {
     /// <summary>The profile; first part of the primary key.</summary>
-    public required long SourceProfileId { get; init; }
+    public required long CalculationSourceProfileId { get; init; }
 
     /// <summary>The key of the model variable; second part of the primary key.</summary>
     public required string VariableKey { get; init; }

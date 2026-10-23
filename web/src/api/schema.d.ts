@@ -3077,7 +3077,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Creates a draft release, copying the manifest of `copyFromReleaseId` when it is given. */
+        /** Creates a draft release, copying the manifest of `copyFromSemanticReleaseId` when it is given. */
         post: {
             parameters: {
                 query?: never;
@@ -3139,7 +3139,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/releases/{releaseId}": {
+    "/api/tenants/{tenantId}/releases/{semanticReleaseId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3155,7 +3155,7 @@ export interface paths {
                     /** @description The tenant that owns the release. */
                     tenantId: string;
                     /** @description The release. */
-                    releaseId: number;
+                    semanticReleaseId: number;
                 };
                 cookie?: never;
             };
@@ -3201,7 +3201,7 @@ export interface paths {
                     /** @description The tenant that owns the release. */
                     tenantId: string;
                     /** @description The draft release. */
-                    releaseId: number;
+                    semanticReleaseId: number;
                 };
                 cookie?: never;
             };
@@ -3248,7 +3248,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/releases/{releaseId}/datasets": {
+    "/api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets": {
         parameters: {
             query?: never;
             header?: never;
@@ -3264,7 +3264,7 @@ export interface paths {
                     /** @description The tenant that owns the release. */
                     tenantId: string;
                     /** @description The release. */
-                    releaseId: number;
+                    semanticReleaseId: number;
                 };
                 cookie?: never;
             };
@@ -3308,7 +3308,7 @@ export interface paths {
                     /** @description The tenant that owns the release. */
                     tenantId: string;
                     /** @description The draft release. */
-                    releaseId: number;
+                    semanticReleaseId: number;
                 };
                 cookie?: never;
             };
@@ -3373,7 +3373,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/releases/{releaseId}/activate": {
+    "/api/tenants/{tenantId}/releases/{semanticReleaseId}/activate": {
         parameters: {
             query?: never;
             header?: never;
@@ -3383,7 +3383,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Makes a published release the one runtime queries use: sets `qe_database_info.active_release_id` and
+         * Makes a published release the one runtime queries use: sets `qe_database_info.active_semantic_release_id` and
          *     `updated_at`, and advances the semantic revision.
          */
         post: {
@@ -3394,7 +3394,7 @@ export interface paths {
                     /** @description The tenant that owns the release. */
                     tenantId: string;
                     /** @description The published release. */
-                    releaseId: number;
+                    semanticReleaseId: number;
                 };
                 cookie?: never;
             };
@@ -4814,7 +4814,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}": {
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4833,7 +4833,7 @@ export interface paths {
                     /** @description The dimension version that owns the level. */
                     dimensionVersionId: number;
                     /** @description The level. */
-                    levelId: number;
+                    dimensionLevelId: number;
                 };
                 cookie?: never;
             };
@@ -4903,7 +4903,7 @@ export interface paths {
                     /** @description The dimension version that owns the level. */
                     dimensionVersionId: number;
                     /** @description The level. */
-                    levelId: number;
+                    dimensionLevelId: number;
                 };
                 cookie?: never;
             };
@@ -4916,7 +4916,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description The level is not in the version; the error is keyed `levelId`. */
+                /** @description The level is not in the version; the error is keyed `dimensionLevelId`. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5084,7 +5084,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}": {
+    "/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5103,7 +5103,7 @@ export interface paths {
                     /** @description The dimension version that owns the member. */
                     dimensionVersionId: number;
                     /** @description The member. */
-                    memberId: number;
+                    dimensionMemberId: number;
                 };
                 cookie?: never;
             };
@@ -5173,7 +5173,7 @@ export interface paths {
                     /** @description The dimension version that owns the member. */
                     dimensionVersionId: number;
                     /** @description The member. */
-                    memberId: number;
+                    dimensionMemberId: number;
                 };
                 cookie?: never;
             };
@@ -5186,7 +5186,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description The member is not in the version; the error is keyed `memberId`. */
+                /** @description The member is not in the version; the error is keyed `dimensionMemberId`. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5427,7 +5427,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}": {
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{dimensionRoleId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -5446,7 +5446,7 @@ export interface paths {
                     /** @description The role's dimension. */
                     dimensionId: number;
                     /** @description The role. */
-                    roleId: number;
+                    dimensionRoleId: number;
                 };
                 cookie?: never;
             };
@@ -5507,7 +5507,7 @@ export interface paths {
                     /** @description The role's dimension. */
                     dimensionId: number;
                     /** @description The role. */
-                    roleId: number;
+                    dimensionRoleId: number;
                 };
                 cookie?: never;
             };
@@ -7509,7 +7509,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{grainId}": {
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -7528,7 +7528,7 @@ export interface paths {
                     /** @description The dataset version that owns the grain. */
                     versionId: number;
                     /** @description The grain. */
-                    grainId: number;
+                    datasetGrainId: number;
                 };
                 cookie?: never;
             };
@@ -7598,7 +7598,7 @@ export interface paths {
                     /** @description The dataset version that owns the grain. */
                     versionId: number;
                     /** @description The grain. */
-                    grainId: number;
+                    datasetGrainId: number;
                 };
                 cookie?: never;
             };
@@ -7654,7 +7654,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures": {
         parameters: {
             query?: never;
             header?: never;
@@ -7670,7 +7670,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -7715,7 +7715,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -7779,7 +7779,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/calculated-measures/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures/{itemId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -7796,7 +7796,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model that owns the row. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -7866,7 +7866,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model that owns the row. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -8036,7 +8036,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -8052,7 +8052,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8100,7 +8100,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8168,7 +8168,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8215,7 +8215,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions": {
         parameters: {
             query?: never;
             header?: never;
@@ -8231,7 +8231,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8274,7 +8274,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/attributions/{metricKey}": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}": {
         parameters: {
             query?: never;
             header?: never;
@@ -8295,7 +8295,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The key of the variable or calculated measure attributed. */
                     metricKey: string;
                 };
@@ -8368,7 +8368,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The key of the metric attributed. */
                     metricKey: string;
                 };
@@ -8417,7 +8417,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters": {
         parameters: {
             query?: never;
             header?: never;
@@ -8433,7 +8433,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8476,7 +8476,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/parameters/{parameterKey}": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}": {
         parameters: {
             query?: never;
             header?: never;
@@ -8498,7 +8498,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model that declares the parameter. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The parameter's key. */
                     parameterKey: string;
                 };
@@ -8568,7 +8568,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The parameter's key. */
                     parameterKey: string;
                 };
@@ -8617,7 +8617,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables": {
         parameters: {
             query?: never;
             header?: never;
@@ -8633,7 +8633,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8678,7 +8678,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The calculation model. */
-                    modelId: number;
+                    calculationModelId: number;
                 };
                 cookie?: never;
             };
@@ -8733,7 +8733,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/calculation-models/{modelId}/variables/{itemId}": {
+    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables/{itemId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -8750,7 +8750,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model that owns the row. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -8820,7 +8820,7 @@ export interface paths {
                     /** @description The tenant that owns the model. */
                     tenantId: string;
                     /** @description The model that owns the row. */
-                    modelId: number;
+                    calculationModelId: number;
                     /** @description The row. */
                     itemId: number;
                 };
@@ -9730,7 +9730,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{bindingId}": {
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{dimensionBindingId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -9752,7 +9752,7 @@ export interface paths {
                     /** @description The dataset version that owns the binding. */
                     versionId: number;
                     /** @description The binding. */
-                    bindingId: number;
+                    dimensionBindingId: number;
                 };
                 cookie?: never;
             };
@@ -9825,7 +9825,7 @@ export interface paths {
                     /** @description The dataset version that owns the binding. */
                     versionId: number;
                     /** @description The binding. */
-                    bindingId: number;
+                    dimensionBindingId: number;
                 };
                 cookie?: never;
             };
@@ -10230,10 +10230,10 @@ export interface components {
             status: string;
             /**
              * Format: int64
-             * @description The `qe_semantic_release.release_id` a historical set reads dataset versions from: the release that was active when it
+             * @description The `qe_semantic_release.semantic_release_id` a historical set reads dataset versions from: the release that was active when it
              *     was captured. Null for the active set, which reads the active release.
              */
-            releaseId?: null | number;
+            semanticReleaseId?: null | number;
             /**
              * Format: date-time
              * @description When a historical set was captured (UTC); null for the active set.
@@ -10289,7 +10289,7 @@ export interface components {
              * Format: int64
              * @description The role a direct, mapped, range or bridge binding binds its field to; null for a `time` binding.
              */
-            roleId?: null | number;
+            dimensionRoleId?: null | number;
             /**
              * Format: int64
              * @description The time dimension of a `time` binding; null for every other kind, which classifies into its role's dimension.
@@ -10312,7 +10312,7 @@ export interface components {
              * Format: int64
              * @description The binding of the same version that a `bridge` binding remaps; null for every other kind.
              */
-            sourceBindingId?: null | number;
+            sourceDimensionBindingId?: null | number;
             /**
              * Format: int64
              * @description The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins.
@@ -10529,7 +10529,7 @@ export interface components {
              * Format: int64
              * @description The owning model.
              */
-            modelId: number;
+            calculationModelId: number;
             /** @description Key, unique among the model's variables and calculated measures. */
             measureKey: string;
             /** @description Human-readable name. */
@@ -10565,7 +10565,7 @@ export interface components {
              * Format: int64
              * @description The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.
              */
-            roleId: number;
+            dimensionRoleId: number;
             /** @description A `grouping_mode` value: how runs group the role's members unless a report request names another grouping. */
             groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
@@ -10608,7 +10608,7 @@ export interface components {
              * Format: int64
              * @description The role every source reads; queries use the version of its dimension their assumption set pins.
              */
-            roleId: number;
+            dimensionRoleId: number;
             /** @description A `grouping_mode` value: how the role's members group by default. */
             groupingMode: string;
             /** @description The key of the level to group at when the grouping mode is `level`. */
@@ -10627,7 +10627,7 @@ export interface components {
             /** @description Administrative availability flag. */
             isEnabled: boolean;
         };
-        /** @description The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
+        /** @description The editable attributes of a calculation model, as `PUT calculation-models/{calculationModelId}` takes them. */
         CalculationModelInput: {
             /** @description Human-readable name. */
             displayName: string;
@@ -10646,7 +10646,7 @@ export interface components {
              * Format: int64
              * @description Primary key.
              */
-            modelId: number;
+            calculationModelId: number;
             /** @description Stable logical model identity. */
             modelKey: string;
             /** @description Human-readable name. */
@@ -10683,9 +10683,9 @@ export interface components {
             semanticRevision: number;
             /**
              * Format: int64
-             * @description The runtime-active `qe_semantic_release.release_id`.
+             * @description The runtime-active `qe_semantic_release.semantic_release_id`.
              */
-            activeReleaseId?: null | number;
+            activeSemanticReleaseId?: null | number;
             /**
              * Format: date-time
              * @description Last publication metadata change (UTC).
@@ -10813,7 +10813,7 @@ export interface components {
              * Format: int64
              * @description Primary key.
              */
-            bindingId: number;
+            dimensionBindingId: number;
             /**
              * Format: int64
              * @description The dataset version exposing the dimension.
@@ -10823,7 +10823,7 @@ export interface components {
              * Format: int64
              * @description The role the field is bound to, whose key requests name the binding by; null for a time binding.
              */
-            roleId?: null | number;
+            dimensionRoleId?: null | number;
             /**
              * Format: int64
              * @description The canonical dimension: the role's dimension, or the time binding's.
@@ -10845,7 +10845,7 @@ export interface components {
              * Format: int64
              * @description The existing source binding when the binding kind is `bridge`.
              */
-            sourceBindingId?: null | number;
+            sourceDimensionBindingId?: null | number;
             /**
              * Format: int64
              * @description The bridge when the binding kind is `bridge`; queries use the version their assumption set pins.
@@ -10883,7 +10883,7 @@ export interface components {
              * Format: int64
              * @description Primary key.
              */
-            levelId: number;
+            dimensionLevelId: number;
             /**
              * Format: int64
              * @description The owning dimension version.
@@ -10909,7 +10909,7 @@ export interface components {
              * Format: int64
              * @description Surrogate primary key allocated by the metadata service; no business meaning.
              */
-            mappingEntryId: number;
+            dimensionMappingId: number;
             /**
              * Format: int64
              * @description The mapping version that owns the assignment.
@@ -10926,7 +10926,7 @@ export interface components {
              * Format: int64
              * @description Surrogate primary key, unique across all dimension versions.
              */
-            memberId: number;
+            dimensionMemberId: number;
             /**
              * Format: int64
              * @description The owning dimension version.
@@ -10942,12 +10942,12 @@ export interface components {
              * Format: int64
              * @description Parent member in the authoritative tree, from the same dimension version.
              */
-            parentMemberId?: null | number;
+            parentDimensionMemberId?: null | number;
             /**
              * Format: int64
              * @description Optional business level.
              */
-            levelId?: null | number;
+            dimensionLevelId?: null | number;
             /** @description Whether source values may map directly to this member. */
             isAssignable: boolean;
             /**
@@ -10980,7 +10980,7 @@ export interface components {
             /** @description A `dimension_purpose` value: `report` for the dimension whose members are one report's rows. */
             dimensionPurpose: string;
         };
-        /** @description The editable attributes of a dimension role, as `PUT dimensions/{dimensionId}/roles/{roleId}` takes them. */
+        /** @description The editable attributes of a dimension role, as `PUT dimensions/{dimensionId}/roles/{dimensionRoleId}` takes them. */
         DimensionRoleInput: {
             /** @description Human-readable name the catalog shows, such as `Servicing branch`; at most 256 bytes of UTF-8 text. */
             displayName: string;
@@ -10996,14 +10996,14 @@ export interface components {
              * Format: int64
              * @description Primary key.
              */
-            roleId: number;
+            dimensionRoleId: number;
             /**
              * Format: int64
              * @description The template dimension, fixed once created.
              */
             dimensionId: number;
             /** @description The dimension ID requests use, unique in the tenant and fixed once created. */
-            roleKey: string;
+            dimensionRoleKey: string;
             /** @description Human-readable name the catalog shows. */
             displayName: string;
             /** @description Optional description the catalog shows. */
@@ -11100,8 +11100,8 @@ export interface components {
             source: components["schemas"]["ReportSourceRecord"];
             /** @description The `dataset_key` of the source's dataset. */
             datasetKey: string;
-            /** @description The `role_key` of a bridge source's role; null for a direct source. */
-            roleKey?: null | string;
+            /** @description The `dimension_role_key` of a bridge source's role; null for a direct source. */
+            dimensionRoleKey?: null | string;
             /**
              * Format: int64
              * @description The dimension of a bridge source's role, whose members are its items; null for a direct source.
@@ -11291,7 +11291,7 @@ export interface components {
              * Format: int64
              * @description The grain's surrogate key.
              */
-            grainId: number;
+            datasetGrainId: number;
             /** @description Stable metadata name of the grain. */
             grainKey: string;
             /** @description A `grain_kind` value. */
@@ -11315,7 +11315,7 @@ export interface components {
             /** @description The grain's fields in component order; stored with ordinals 1 to n. */
             fieldIds: number[];
         };
-        /** @description The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{levelId}` takes them. */
+        /** @description The editable attributes of a level, as `PUT dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}` takes them. */
         LevelInput: {
             /** @description Human-readable label, at most 256 bytes of UTF-8 text. */
             displayName: string;
@@ -11613,7 +11613,7 @@ export interface components {
              * Format: int64
              * @description The `series` grain observations are selected per; required when the observation selection is not `all`.
              */
-            selectionGrainId?: null | number;
+            selectionDatasetGrainId?: null | number;
             /** @description An `observation_selection` value. */
             observationSelection: string;
             /** @description A `value_time_role` value. */
@@ -11649,7 +11649,7 @@ export interface components {
              * Format: int64
              * @description The `series` grain selection runs over before dimensional aggregation.
              */
-            selectionGrainId?: null | number;
+            selectionDatasetGrainId?: null | number;
             /** @description An `observation_selection` value. */
             observationSelection: string;
             /** @description A `value_time_role` value. */
@@ -11736,7 +11736,7 @@ export interface components {
             components: components["schemas"]["MeasureComponentInput"][];
             timePolicy?: null | components["schemas"]["MeasureTimePolicyInput"];
         };
-        /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{memberId}` takes them. */
+        /** @description The editable attributes of a member, as `PUT dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}` takes them. */
         MemberInput: {
             /** @description Human-readable label, at most 512 bytes of UTF-8 text. */
             displayName: string;
@@ -11746,12 +11746,12 @@ export interface components {
              * Format: int64
              * @description The parent member; null for a root. It must belong to the same version, which publication checks.
              */
-            parentMemberId?: null | number;
+            parentDimensionMemberId?: null | number;
             /**
              * Format: int64
              * @description The business level; null for none. It must belong to the same version, which publication checks.
              */
-            levelId?: null | number;
+            dimensionLevelId?: null | number;
             /** @description Whether source values may map directly to the member; false for folder-only nodes. */
             isAssignable: boolean;
             /**
@@ -11773,12 +11773,12 @@ export interface components {
              * Format: int64
              * @description The member being placed.
              */
-            memberId: number;
+            dimensionMemberId: number;
             /**
              * Format: int64
              * @description The member's new parent; null for a root.
              */
-            parentMemberId?: null | number;
+            parentDimensionMemberId?: null | number;
             /**
              * Format: int32
              * @description The member's new presentation order among its siblings.
@@ -11800,7 +11800,7 @@ export interface components {
             /** @description The drivers, by sort order; none for the default drivers. */
             drivers: components["schemas"]["AttributionDriver"][];
         };
-        /** @description A metric's attribution with its drivers, as `PUT calculation-models/{modelId}/attributions/{metricKey}` takes it. */
+        /** @description A metric's attribution with its drivers, as `PUT calculation-models/{calculationModelId}/attributions/{metricKey}` takes it. */
         MetricAttributionInput: {
             /**
              * @description The expression the drivers are switched in, over `[m.KEY]` references and `@periodDays` and `@yearDays`;
@@ -11835,7 +11835,7 @@ export interface components {
             /** @description Optional description. */
             description?: null | string;
         };
-        /** @description A parameter of a calculation model, as `PUT calculation-models/{modelId}/parameters/{parameterKey}` takes it. */
+        /** @description A parameter of a calculation model, as `PUT calculation-models/{calculationModelId}/parameters/{parameterKey}` takes it. */
         ModelParameterInput: {
             /** @description Human-readable name. */
             displayName: string;
@@ -11927,7 +11927,7 @@ export interface components {
          */
         NewDimensionRoleInput: {
             /** @description The dimension ID requests use, such as `servicingBranch`; unique in the tenant and fixed once created. */
-            roleKey: string;
+            dimensionRoleKey: string;
             /** @description Human-readable name the catalog shows, such as `Servicing branch`; at most 256 bytes of UTF-8 text. */
             displayName: string;
             /** @description Optional description the catalog shows; at most 1024 bytes of UTF-8 text. */
@@ -12003,12 +12003,12 @@ export interface components {
              * Format: int64
              * @description The parent member; null for a root. It must belong to the same version, which publication checks.
              */
-            parentMemberId?: null | number;
+            parentDimensionMemberId?: null | number;
             /**
              * Format: int64
              * @description The business level; null for none. It must belong to the same version, which publication checks.
              */
-            levelId?: null | number;
+            dimensionLevelId?: null | number;
             /** @description Whether source values may map directly to the member; false for folder-only nodes. */
             isAssignable: boolean;
             /**
@@ -12030,7 +12030,7 @@ export interface components {
              * Format: int64
              * @description The calculation model whose metrics the report reads; it never changes.
              */
-            modelId: number;
+            calculationModelId: number;
             /**
              * Format: int64
              * @description A categorical or hierarchical dimension with one root, whose published members and levels the report dimension copies;
@@ -12063,7 +12063,7 @@ export interface components {
              * @description For a bridge source, a role of an analytical dimension that the dataset binds into members: the source's items are that
              *     dimension's members. Null for a direct source.
              */
-            roleId?: null | number;
+            dimensionRoleId?: null | number;
             /** @description For a direct source, the enabled dataset field whose values are row keys. Null for a bridge source. */
             fieldKey?: null | string;
             /**
@@ -12170,7 +12170,7 @@ export interface components {
              * Format: int64
              * @description The member the band assigns source values to.
              */
-            memberId: number;
+            dimensionMemberId: number;
             /**
              * Format: double
              * @description Decimal lower bound, for `range_data_type` decimal.
@@ -12222,7 +12222,7 @@ export interface components {
              * Format: int64
              * @description The member assigned to the band.
              */
-            memberId: number;
+            dimensionMemberId: number;
             /**
              * Format: double
              * @description Decimal lower boundary; null means unbounded.
@@ -12271,7 +12271,7 @@ export interface components {
              * Format: int64
              * @description The release whose manifest rows the new draft copies; null starts with an empty manifest.
              */
-            copyFromReleaseId?: null | number;
+            copyFromSemanticReleaseId?: null | number;
         };
         /** @description One manifest row: the dataset version a release pins for a dataset. */
         ReleaseDatasetInput: {
@@ -12292,7 +12292,7 @@ export interface components {
              * Format: int64
              * @description The semantic release; first part of the primary key.
              */
-            releaseId: number;
+            semanticReleaseId: number;
             /**
              * Format: int64
              * @description The logical dataset; second part of the primary key.
@@ -12313,7 +12313,7 @@ export interface components {
         ReleaseSummary: {
             /** @description The release row. */
             release: components["schemas"]["SemanticReleaseRecord"];
-            /** @description Whether `qe_database_info.active_release_id` points at the release, so runtime queries use it. */
+            /** @description Whether `qe_database_info.active_semantic_release_id` points at the release, so runtime queries use it. */
             isActive: boolean;
             /**
              * Format: int32
@@ -12420,7 +12420,7 @@ export interface components {
              * Format: int64
              * @description The calculation model whose metrics the report reads; fixed at creation.
              */
-            modelId: number;
+            calculationModelId: number;
             /** @description The key of the profile a request runs under when it names none; required to enable the report. */
             defaultProfileKey?: null | string;
             /** @description A `subtotal_position` value: whether a member row that shows values precedes or follows its descendants. */
@@ -12480,7 +12480,7 @@ export interface components {
              * Format: int64
              * @description The role; requests name the scenario by its key.
              */
-            roleId: number;
+            dimensionRoleId: number;
         };
         /**
          * @description The complete scenarios of a report, as `PUT reports/{reportId}/scenarios` takes them; a run or comparison names one member
@@ -12543,7 +12543,7 @@ export interface components {
              * Format: int64
              * @description The role whose dataset binding a bridge source starts from.
              */
-            roleId?: null | number;
+            dimensionRoleId?: null | number;
             /**
              * Format: int64
              * @description The source's own bridge, from the role's dimension into the report's dimension, for a bridge source.
@@ -12703,7 +12703,7 @@ export interface components {
              * Format: int64
              * @description Surrogate primary key.
              */
-            releaseId: number;
+            semanticReleaseId: number;
             /** @description Stable release label. */
             releaseKey: string;
             /** @description A `publication_status` value. */
@@ -12819,7 +12819,7 @@ export interface components {
              * Format: int64
              * @description Primary key.
              */
-            sourceProfileId: number;
+            calculationSourceProfileId: number;
             /**
              * Format: int64
              * @description The owning report.
@@ -12838,7 +12838,7 @@ export interface components {
              * Format: int64
              * @description The profile; first part of the primary key.
              */
-            sourceProfileId: number;
+            calculationSourceProfileId: number;
             /** @description The key of the model variable; second part of the primary key. */
             variableKey: string;
             /**
@@ -12992,7 +12992,7 @@ export interface components {
              * Format: int64
              * @description Primary key; also the extended dimension binding.
              */
-            bindingId: number;
+            dimensionBindingId: number;
             /** @description A `time_value_type` value. */
             timeValueType: string;
             /** @description An `observation_kind` value. */
@@ -13055,7 +13055,7 @@ export interface components {
              * Format: int64
              * @description The owning model.
              */
-            modelId: number;
+            calculationModelId: number;
             /** @description Key, unique among the model's variables and calculated measures; reports name the variable by it. */
             variableKey: string;
             /** @description Human-readable name. */

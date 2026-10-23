@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record CalculationModelRecord
 {
     /// <summary>Primary key.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>Stable logical model identity.</summary>
     public required string ModelKey { get; init; }

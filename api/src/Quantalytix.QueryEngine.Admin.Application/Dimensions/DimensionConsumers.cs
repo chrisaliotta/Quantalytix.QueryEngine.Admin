@@ -53,7 +53,7 @@ public sealed class DimensionConsumers(
             .ToList();
         var named = await names.OfAsync(routing, cancellationToken);
         return routing.Select(binding =>
-            KeyReference.Member(binding.UnknownMemberKey!, $"Binding '{named[binding.BindingId]}' of dataset '{datasetOf[binding.DatasetVersionId]}'"));
+            KeyReference.Member(binding.UnknownMemberKey!, $"Binding '{named[binding.DimensionBindingId]}' of dataset '{datasetOf[binding.DatasetVersionId]}'"));
     }
 
     /// <summary>The member keys of the entries of the published versions of the dimension's mapping sets.</summary>
@@ -95,8 +95,8 @@ public sealed class DimensionConsumers(
     private async Task<IEnumerable<KeyReference>> ReportsAsync(long dimensionId, CancellationToken cancellationToken)
     {
         var enabled = (await reports.ListAsync(null, cancellationToken)).Where(report => report.IsEnabled).ToDictionary(report => report.ReportId, report => report.ReportKey);
-        var roleIds = (await roles.ListAsync(new { DimensionId = dimensionId }, cancellationToken)).Select(role => role.RoleId).ToArray();
-        var grouping = (await calculationDimensions.ListAsync(new { ReportId = enabled.Keys.ToArray(), RoleId = roleIds }, cancellationToken))
+        var roleIds = (await roles.ListAsync(new { DimensionId = dimensionId }, cancellationToken)).Select(role => role.DimensionRoleId).ToArray();
+        var grouping = (await calculationDimensions.ListAsync(new { ReportId = enabled.Keys.ToArray(), DimensionRoleId = roleIds }, cancellationToken))
             .Where(dimension => dimension.IsEnabled);
         return grouping.SelectMany(dimension =>
         {

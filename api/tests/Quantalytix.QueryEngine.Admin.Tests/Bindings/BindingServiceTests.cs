@@ -26,7 +26,7 @@ public sealed class BindingServiceTests
     /// <summary>The version's bindings: the asOf time binding, and a bridge binding of the fiscalPeriod role that remaps it.</summary>
     private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
         DatasetRows.Binding(TimeBindingId, VersionId, null, BindingKinds.Time, 2),
-        DatasetRows.Binding(22, VersionId, 82, BindingKinds.Bridge, null) with { SourceBindingId = TimeBindingId, BridgeId = 40 });
+        DatasetRows.Binding(22, VersionId, 82, BindingKinds.Bridge, null) with { SourceDimensionBindingId = TimeBindingId, BridgeId = 40 });
 
     /// <summary>The time binding's field, which names it.</summary>
     private readonly InMemoryTableGateway<FieldRecord> _fields = new(DatasetRows.ColumnField(2, VersionId, "asOf", "as_of", DataTypes.Date));
@@ -53,7 +53,7 @@ public sealed class BindingServiceTests
     {
         await _bindings.UpdateAsync(_bindings.All[0] with { IsRequired = true }, TestContext.Current.CancellationToken);
 
-        var detail = await Service().DeleteAsync(new BindingReference { VersionId = VersionId, BindingId = TimeBindingId }, TestContext.Current.CancellationToken);
+        var detail = await Service().DeleteAsync(new BindingReference { VersionId = VersionId, DimensionBindingId = TimeBindingId }, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             "Binding 'asOf' cannot be deleted: it is a required binding of the dataset; it is the source binding of bridge bindings 'fiscalPeriod'; " +
@@ -73,7 +73,7 @@ public sealed class BindingServiceTests
     {
         var input = new BindingInput
         {
-            RoleId = 81,
+            DimensionRoleId = 81,
             BindingKind = BindingKinds.Direct,
             SourceFieldId = 2,
             RaggedBehavior = RaggedBehaviors.Null,
@@ -85,12 +85,12 @@ public sealed class BindingServiceTests
             IsEnabled = true
         };
 
-        var detail = await Service().UpdateAsync(new BindingReference { VersionId = VersionId, BindingId = TimeBindingId }, input, TestContext.Current.CancellationToken);
+        var detail = await Service().UpdateAsync(new BindingReference { VersionId = VersionId, DimensionBindingId = TimeBindingId }, input, TestContext.Current.CancellationToken);
 
         Assert.Null(detail.TimeBinding);
-        Assert.Equal("branch", detail.Role?.RoleKey);
-        var stored = _bindings.All.Single(binding => binding.BindingId == TimeBindingId);
-        Assert.Equal((BindingKinds.Direct, 81L, 7100L), (stored.BindingKind, stored.RoleId!.Value, stored.DimensionId));
+        Assert.Equal("branch", detail.Role?.DimensionRoleKey);
+        var stored = _bindings.All.Single(binding => binding.DimensionBindingId == TimeBindingId);
+        Assert.Equal((BindingKinds.Direct, 81L, 7100L), (stored.BindingKind, stored.DimensionRoleId!.Value, stored.DimensionId));
         Assert.Empty(_timeBindings.All);
     }
 

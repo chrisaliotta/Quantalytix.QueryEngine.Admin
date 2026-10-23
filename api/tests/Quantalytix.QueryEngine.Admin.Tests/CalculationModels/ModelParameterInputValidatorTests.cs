@@ -97,7 +97,7 @@ public sealed class ModelParameterInputValidatorTests
     [InlineData("yearDays", false)]
     public void Keys_AreStableAndNotContextParameters(string parameterKey, bool passes)
     {
-        var result = _keys.TestValidate(new ModelParameterReference { ModelId = ModelRows.ModelId, ParameterKey = parameterKey });
+        var result = _keys.TestValidate(new ModelParameterReference { CalculationModelId = ModelRows.CalculationModelId, ParameterKey = parameterKey });
 
         if (passes) result.ShouldNotHaveAnyValidationErrors();
         else result.ShouldHaveValidationErrorFor(reference => reference.ParameterKey);

@@ -57,7 +57,7 @@ public sealed class MappingEntryService(ITableGateway<DimensionMappingRecord> en
     /// <returns>A task that completes when the entry is deleted.</returns>
     public Task DeleteAsync(MappingEntryReference reference, CancellationToken cancellationToken)
     {
-        return entries.DeleteAsync(new { MappingEntryId = reference.EntryId }, cancellationToken);
+        return entries.DeleteAsync(new { DimensionMappingId = reference.EntryId }, cancellationToken);
     }
 
     /// <summary>The row of an entry of a version.</summary>
@@ -65,7 +65,7 @@ public sealed class MappingEntryService(ITableGateway<DimensionMappingRecord> en
     {
         return new DimensionMappingRecord
         {
-            MappingEntryId = entryId,
+            DimensionMappingId = entryId,
             MappingVersionId = versionId,
             SourceKeyValue = input.SourceKeyValue,
             MemberKey = input.MemberKey

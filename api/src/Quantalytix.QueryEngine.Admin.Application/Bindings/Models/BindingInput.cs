@@ -8,7 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 public sealed record BindingInput
 {
     /// <summary>The role a direct, mapped, range or bridge binding binds its field to; null for a <c>time</c> binding.</summary>
-    public long? RoleId { get; init; }
+    public long? DimensionRoleId { get; init; }
 
     /// <summary>The time dimension of a <c>time</c> binding; null for every other kind, which classifies into its role's dimension.</summary>
     public long? DimensionId { get; init; }
@@ -26,7 +26,7 @@ public sealed record BindingInput
     public long? MappingSetId { get; init; }
 
     /// <summary>The binding of the same version that a <c>bridge</c> binding remaps; null for every other kind.</summary>
-    public long? SourceBindingId { get; init; }
+    public long? SourceDimensionBindingId { get; init; }
 
     /// <summary>The bridge a <c>bridge</c> binding remaps through; null for every other kind. Queries use the version their assumption set pins.</summary>
     public long? BridgeId { get; init; }

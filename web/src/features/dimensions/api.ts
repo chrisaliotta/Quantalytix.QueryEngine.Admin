@@ -175,10 +175,10 @@ export function useCreateRole(dimensionId: number) {
 export function useUpdateRole(dimensionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async ({ roleId, body }: { roleId: number; body: DimensionRoleInput }) =>
+    mutationFn: async ({ dimensionRoleId, body }: { dimensionRoleId: number; body: DimensionRoleInput }) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}', {
-          params: { path: { tenantId, dimensionId, roleId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{dimensionRoleId}', {
+          params: { path: { tenantId, dimensionId, dimensionRoleId } },
           body,
         })
       ),
@@ -190,10 +190,10 @@ export function useUpdateRole(dimensionId: number) {
 export function useDeleteRole(dimensionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (roleId: number) =>
+    mutationFn: async (dimensionRoleId: number) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{roleId}', {
-          params: { path: { tenantId, dimensionId, roleId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{dimensionRoleId}', {
+          params: { path: { tenantId, dimensionId, dimensionRoleId } },
         })
       ),
     onSuccess: () => refresh(tenantId, [rolesKey(tenantId, dimensionId)], ['dimension-roles']),
@@ -292,10 +292,10 @@ export function useCreateLevel(versionId: number) {
 export function useUpdateLevel(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async ({ levelId, body }: { levelId: number; body: LevelInput }) =>
+    mutationFn: async ({ dimensionLevelId, body }: { dimensionLevelId: number; body: LevelInput }) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}', {
-          params: { path: { tenantId, dimensionVersionId: versionId, levelId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}', {
+          params: { path: { tenantId, dimensionVersionId: versionId, dimensionLevelId } },
           body,
         })
       ),
@@ -307,10 +307,10 @@ export function useUpdateLevel(versionId: number) {
 export function useDeleteLevel(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (levelId: number) =>
+    mutationFn: async (dimensionLevelId: number) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{levelId}', {
-          params: { path: { tenantId, dimensionVersionId: versionId, levelId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}', {
+          params: { path: { tenantId, dimensionVersionId: versionId, dimensionLevelId } },
         })
       ),
     onSuccess: () => refresh(tenantId, [levelsKey(tenantId, versionId)], ['levels']),
@@ -336,10 +336,10 @@ export function useCreateMember(versionId: number) {
 export function useUpdateMember(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async ({ memberId, body }: { memberId: number; body: MemberInput }) =>
+    mutationFn: async ({ dimensionMemberId, body }: { dimensionMemberId: number; body: MemberInput }) =>
       unwrap(
-        await apiClient.PUT('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}', {
-          params: { path: { tenantId, dimensionVersionId: versionId, memberId } },
+        await apiClient.PUT('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}', {
+          params: { path: { tenantId, dimensionVersionId: versionId, dimensionMemberId } },
           body,
         })
       ),
@@ -351,10 +351,10 @@ export function useUpdateMember(versionId: number) {
 export function useDeleteMember(versionId: number) {
   const tenantId = useTenantId();
   return useMutation({
-    mutationFn: async (memberId: number) =>
+    mutationFn: async (dimensionMemberId: number) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{memberId}', {
-          params: { path: { tenantId, dimensionVersionId: versionId, memberId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}', {
+          params: { path: { tenantId, dimensionVersionId: versionId, dimensionMemberId } },
         })
       ),
     onSuccess: () => refresh(tenantId, [membersKey(tenantId, versionId)], ['members']),

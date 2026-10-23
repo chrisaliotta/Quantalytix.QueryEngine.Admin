@@ -9,8 +9,8 @@ interface MemberValues {
   memberKey: string;
   displayName: string;
   description: string;
-  parentMemberId: number | null;
-  levelId: number | null;
+  parentDimensionMemberId: number | null;
+  dimensionLevelId: number | null;
   isAssignable: boolean;
   sortOrder: number | null;
   properties: string;
@@ -32,20 +32,20 @@ export function MemberSheet({ versionId, members, member, parentId, readOnly, on
   const create = useCreateMember(versionId);
   const update = useUpdateMember(versionId);
   const form = useForm<MemberValues>({ defaultValues: initialValues(members, member, parentId) });
-  const excluded = member ? selfAndDescendants(members, member.memberId) : new Set<number>();
+  const excluded = member ? selfAndDescendants(members, member.dimensionMemberId) : new Set<number>();
 
   async function submit(values: MemberValues) {
     const body: MemberInput = {
       displayName: values.displayName,
       description: values.description || null,
-      parentMemberId: values.parentMemberId,
-      levelId: values.levelId,
+      parentDimensionMemberId: values.parentDimensionMemberId,
+      dimensionLevelId: values.dimensionLevelId,
       isAssignable: values.isAssignable,
       sortOrder: values.sortOrder ?? 0,
       properties: values.properties.trim() || null,
     };
     if (member) {
-      await update.mutateAsync({ memberId: member.memberId, body });
+      await update.mutateAsync({ dimensionMemberId: member.dimensionMemberId, body });
       return;
     }
     await create.mutateAsync({ ...body, memberKey: values.memberKey });
@@ -70,7 +70,7 @@ export function MemberSheet({ versionId, members, member, parentId, readOnly, on
       <TextField name="displayName" label="Name" />
       <TextAreaField name="description" label="Description" />
       <EntityField
-        name="parentMemberId"
+        name="parentDimensionMemberId"
         label="Parent"
         lookupKind="members"
         parentId={versionId}
@@ -78,7 +78,7 @@ export function MemberSheet({ versionId, members, member, parentId, readOnly, on
         filter={item => !excluded.has(item.id)}
         description="Empty for a root member."
       />
-      <EntityField name="levelId" label="Level" lookupKind="levels" parentId={versionId} allowEmpty />
+      <EntityField name="dimensionLevelId" label="Level" lookupKind="levels" parentId={versionId} allowEmpty />
       <SwitchField
         name="isAssignable"
         label="Assignable"
@@ -96,8 +96,8 @@ function initialValues(members: DimensionMember[], member: DimensionMember | nul
       memberKey: member.memberKey,
       displayName: member.displayName,
       description: member.description ?? '',
-      parentMemberId: member.parentMemberId ?? null,
-      levelId: member.levelId ?? null,
+      parentDimensionMemberId: member.parentDimensionMemberId ?? null,
+      dimensionLevelId: member.dimensionLevelId ?? null,
       isAssignable: member.isAssignable,
       sortOrder: member.sortOrder,
       properties: member.properties ?? '',
@@ -107,8 +107,8 @@ function initialValues(members: DimensionMember[], member: DimensionMember | nul
     memberKey: '',
     displayName: '',
     description: '',
-    parentMemberId: parentId,
-    levelId: null,
+    parentDimensionMemberId: parentId,
+    dimensionLevelId: null,
     isAssignable: true,
     sortOrder: nextSortOrder(members, parentId),
     properties: '',

@@ -5,7 +5,7 @@ import { useCreateRole, useUpdateRole } from './api';
 import type { DimensionRole } from './types';
 
 interface RoleValues {
-  roleKey: string;
+  dimensionRoleKey: string;
   displayName: string;
   description: string;
 }
@@ -22,29 +22,29 @@ export function RoleSheet({ dimensionId, role, onClose }: RoleSheetProps) {
   const create = useCreateRole(dimensionId);
   const update = useUpdateRole(dimensionId);
   const form = useForm<RoleValues>({
-    defaultValues: { roleKey: role?.roleKey ?? '', displayName: role?.displayName ?? '', description: role?.description ?? '' },
+    defaultValues: { dimensionRoleKey: role?.dimensionRoleKey ?? '', displayName: role?.displayName ?? '', description: role?.description ?? '' },
   });
 
   async function submit(values: RoleValues) {
     const body = { displayName: values.displayName, description: values.description || null };
     if (role) {
-      await update.mutateAsync({ roleId: role.roleId, body });
+      await update.mutateAsync({ dimensionRoleId: role.dimensionRoleId, body });
       return;
     }
-    await create.mutateAsync({ ...body, roleKey: values.roleKey });
+    await create.mutateAsync({ ...body, dimensionRoleKey: values.dimensionRoleKey });
   }
 
   return (
     <EntityFormSheet
       open
       onOpenChange={open => !open && onClose()}
-      title={role ? `Edit ${role.roleKey}` : 'New role'}
+      title={role ? `Edit ${role.dimensionRoleKey}` : 'New role'}
       description="A named use of the dimension, such as the servicing branch of a loan. The catalog shows its name and description."
       form={form}
       onSubmit={submit}
     >
       <TextField
-        name="roleKey"
+        name="dimensionRoleKey"
         label="Key"
         description="A letter, then letters, digits or underscores; unique among every dimension's roles and fixed once created."
         disabled={role !== null}

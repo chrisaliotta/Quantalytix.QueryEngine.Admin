@@ -25,21 +25,21 @@ public sealed class BindingService(
     public async Task<IReadOnlyList<BindingDetail>> ListAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var extensions = (await timeBindings.ListAsync(new { BindingId = rows.Select(row => row.BindingId).ToArray() }, cancellationToken))
-            .ToDictionary(extension => extension.BindingId);
-        var bound = (await roles.ListAsync(new { RoleId = rows.Select(row => row.RoleId).OfType<long>().Distinct().ToArray() }, cancellationToken))
-            .ToDictionary(role => role.RoleId);
+        var extensions = (await timeBindings.ListAsync(new { DimensionBindingId = rows.Select(row => row.DimensionBindingId).ToArray() }, cancellationToken))
+            .ToDictionary(extension => extension.DimensionBindingId);
+        var bound = (await roles.ListAsync(new { DimensionRoleId = rows.Select(row => row.DimensionRoleId).OfType<long>().Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(role => role.DimensionRoleId);
         return
         [
             .. rows
                 .Select(row => new BindingDetail
                 {
                     Binding = row,
-                    Role = row.RoleId is { } roleId ? bound[roleId] : null,
-                    TimeBinding = extensions.GetValueOrDefault(row.BindingId)
+                    Role = row.DimensionRoleId is { } dimensionRoleId ? bound[dimensionRoleId] : null,
+                    TimeBinding = extensions.GetValueOrDefault(row.DimensionBindingId)
                 })
-                .OrderBy(detail => detail.Role?.RoleKey ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(detail => detail.Binding.BindingId)
+                .OrderBy(detail => detail.Role?.DimensionRoleKey ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(detail => detail.Binding.DimensionBindingId)
         ];
     }
 
@@ -65,7 +65,7 @@ public sealed class BindingService(
     /// <returns>The updated binding.</returns>
     public async Task<BindingDetail> UpdateAsync(BindingReference reference, BindingInput input, CancellationToken cancellationToken)
     {
-        var (binding, role) = await ToRecordAsync(reference.BindingId, reference.VersionId, input, cancellationToken);
+        var (binding, role) = await ToRecordAsync(reference.DimensionBindingId, reference.VersionId, input, cancellationToken);
         await bindings.UpdateAsync(binding, cancellationToken);
         return await SaveExtensionAsync(binding, role, input, cancellationToken);
     }
@@ -79,22 +79,22 @@ public sealed class BindingService(
     /// <returns>Null when the binding was deleted; otherwise the detail naming everything that blocks the delete.</returns>
     public async Task<string?> DeleteAsync(BindingReference reference, CancellationToken cancellationToken)
     {
-        var binding = await bindings.GetAsync(new { reference.BindingId }, cancellationToken);
+        var binding = await bindings.GetAsync(new { reference.DimensionBindingId }, cancellationToken);
         var version = await versions.GetAsync(new { DatasetVersionId = reference.VersionId }, cancellationToken);
-        var bridged = await bindings.ListAsync(new { SourceBindingId = reference.BindingId }, cancellationToken);
-        var policies = await timePolicies.ListAsync(new { RequiredTimeBindingId = reference.BindingId }, cancellationToken);
+        var bridged = await bindings.ListAsync(new { SourceDimensionBindingId = reference.DimensionBindingId }, cancellationToken);
+        var policies = await timePolicies.ListAsync(new { RequiredTimeBindingId = reference.DimensionBindingId }, cancellationToken);
         var requiring = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
         var named = await names.OfAsync([binding, .. bridged], cancellationToken);
 
-        var blockers = new DeleteBlockers($"Binding '{named[binding.BindingId]}'");
+        var blockers = new DeleteBlockers($"Binding '{named[binding.DimensionBindingId]}'");
         if (binding.IsRequired) blockers.Add("it is a required binding of the dataset");
-        blockers.AddNamed("it is the source binding of bridge bindings", bridged.Select(row => $"'{named[row.BindingId]}'"));
+        blockers.AddNamed("it is the source binding of bridge bindings", bridged.Select(row => $"'{named[row.DimensionBindingId]}'"));
         blockers.AddNamed("it is the required time binding of measures", requiring.Select(measure => $"'{measure.MeasureKey}'"));
-        if (version.DefaultTimeBindingId == reference.BindingId) blockers.Add("it is the version's default time binding");
+        if (version.DefaultTimeBindingId == reference.DimensionBindingId) blockers.Add("it is the version's default time binding");
         if (blockers.Detail() is { } detail) return detail;
 
-        await timeBindings.DeleteAsync(new { reference.BindingId }, cancellationToken);
-        await bindings.DeleteAsync(new { reference.BindingId }, cancellationToken);
+        await timeBindings.DeleteAsync(new { reference.DimensionBindingId }, cancellationToken);
+        await bindings.DeleteAsync(new { reference.DimensionBindingId }, cancellationToken);
         return null;
     }
 
@@ -105,12 +105,12 @@ public sealed class BindingService(
         TimeBindingRecord? extension = null;
         if (input.TimeBinding is { } timeBinding)
         {
-            extension = ToRecord(binding.BindingId, timeBinding);
+            extension = ToRecord(binding.DimensionBindingId, timeBinding);
             await timeBindings.InsertAsync(extension, cancellationToken);
         }
         else
         {
-            await timeBindings.DeleteAsync(new { binding.BindingId }, cancellationToken);
+            await timeBindings.DeleteAsync(new { binding.DimensionBindingId }, cancellationToken);
         }
 
         return new BindingDetail { Binding = binding, Role = role, TimeBinding = extension };
@@ -118,19 +118,19 @@ public sealed class BindingService(
 
     /// <summary>A binding row holding the input's attributes and the dimension of its role, or of a time binding its own.</summary>
     private async Task<(DimensionBindingRecord Binding, DimensionRoleRecord? Role)> ToRecordAsync(
-        long bindingId, long versionId, BindingInput input, CancellationToken cancellationToken)
+        long dimensionBindingId, long versionId, BindingInput input, CancellationToken cancellationToken)
     {
-        var role = input.RoleId is { } roleId ? await roles.GetAsync(new { RoleId = roleId }, cancellationToken) : null;
+        var role = input.DimensionRoleId is { } dimensionRoleId ? await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken) : null;
         var binding = new DimensionBindingRecord
         {
-            BindingId = bindingId,
+            DimensionBindingId = dimensionBindingId,
             DatasetVersionId = versionId,
-            RoleId = input.RoleId,
+            DimensionRoleId = input.DimensionRoleId,
             DimensionId = role?.DimensionId ?? input.DimensionId!.Value,
             BindingKind = input.BindingKind,
             SourceFieldId = input.SourceFieldId,
             MappingSetId = input.MappingSetId,
-            SourceBindingId = input.SourceBindingId,
+            SourceDimensionBindingId = input.SourceDimensionBindingId,
             BridgeId = input.BridgeId,
             RaggedBehavior = input.RaggedBehavior,
             DefaultPeriodAlignment = input.DefaultPeriodAlignment,
@@ -145,11 +145,11 @@ public sealed class BindingService(
     }
 
     /// <summary>A time extension row holding the input's attributes; the allowed periodicities become a JSON array.</summary>
-    private static TimeBindingRecord ToRecord(long bindingId, TimeBindingInput input)
+    private static TimeBindingRecord ToRecord(long dimensionBindingId, TimeBindingInput input)
     {
         return new TimeBindingRecord
         {
-            BindingId = bindingId,
+            DimensionBindingId = dimensionBindingId,
             TimeValueType = input.TimeValueType,
             ObservationKind = input.ObservationKind,
             SourceTimeZone = input.SourceTimeZone,

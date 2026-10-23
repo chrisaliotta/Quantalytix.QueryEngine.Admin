@@ -7,13 +7,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DimensionBindingRecord
 {
     /// <summary>Primary key.</summary>
-    public required long BindingId { get; init; }
+    public required long DimensionBindingId { get; init; }
 
     /// <summary>The dataset version exposing the dimension.</summary>
     public required long DatasetVersionId { get; init; }
 
     /// <summary>The role the field is bound to, whose key requests name the binding by; null for a time binding.</summary>
-    public long? RoleId { get; init; }
+    public long? DimensionRoleId { get; init; }
 
     /// <summary>The canonical dimension: the role's dimension, or the time binding's.</summary>
     public required long DimensionId { get; init; }
@@ -28,7 +28,7 @@ public sealed record DimensionBindingRecord
     public long? MappingSetId { get; init; }
 
     /// <summary>The existing source binding when the binding kind is <c>bridge</c>.</summary>
-    public long? SourceBindingId { get; init; }
+    public long? SourceDimensionBindingId { get; init; }
 
     /// <summary>The bridge when the binding kind is <c>bridge</c>; queries use the version their assumption set pins.</summary>
     public long? BridgeId { get; init; }

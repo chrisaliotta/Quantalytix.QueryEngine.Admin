@@ -85,7 +85,7 @@ public sealed class MappingSetService(
             setVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
         var bound = await bindingNames.OfAsync(boundBy, cancellationToken);
-        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{bound[binding.BindingId]}'"));
+        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{bound[binding.DimensionBindingId]}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

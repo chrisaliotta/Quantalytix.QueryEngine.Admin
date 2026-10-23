@@ -42,8 +42,8 @@ export function BindingsTab(props: { tenantId: string; datasetVersionId: number;
   const remove = useMutation({
     mutationFn: async (row: BindingRow) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{bindingId}', {
-          params: { path: { tenantId, versionId, bindingId: row.detail.binding.bindingId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{dimensionBindingId}', {
+          params: { path: { tenantId, versionId, dimensionBindingId: row.detail.binding.dimensionBindingId } },
         })
       ),
     onSuccess: (_, row) => {
@@ -130,8 +130,8 @@ export function BindingsTab(props: { tenantId: string; datasetVersionId: number;
 function toRows(details: BindingDetail[], dimensions: LookupItem[], fields: LookupItem[]): BindingRow[] {
   const dimensionKeys = new Map(dimensions.map(item => [item.id, item.key]));
   const fieldKeys = new Map(fields.map(item => [item.id, item.key]));
-  const keyOf = (detail: BindingDetail) => detail.role?.roleKey ?? nameOf(fieldKeys, detail.binding.sourceFieldId) ?? '—';
-  const bindingKeys = new Map(details.map(detail => [detail.binding.bindingId, keyOf(detail)]));
+  const keyOf = (detail: BindingDetail) => detail.role?.dimensionRoleKey ?? nameOf(fieldKeys, detail.binding.sourceFieldId) ?? '—';
+  const bindingKeys = new Map(details.map(detail => [detail.binding.dimensionBindingId, keyOf(detail)]));
   return details.map(detail => ({
     detail,
     key: keyOf(detail),
@@ -148,7 +148,7 @@ function sourceText(binding: DimensionBinding, fieldKeys: Map<number, string>, b
   if (binding.bindingKind !== 'bridge') {
     return field ?? '—';
   }
-  const via = `via ${nameOf(bindingKeys, binding.sourceBindingId)}`;
+  const via = `via ${nameOf(bindingKeys, binding.sourceDimensionBindingId)}`;
   if (field) {
     return `${field} (${via})`;
   }

@@ -11,7 +11,7 @@ export type DimensionRole = Schemas['DimensionRoleRecord'];
 /** Body of `POST dimensions/{dimensionId}/roles`, and the first role of `POST dimensions`. */
 export type NewDimensionRoleInput = Schemas['NewDimensionRoleInput'];
 
-/** Body of `PUT dimensions/{dimensionId}/roles/{roleId}`. */
+/** Body of `PUT dimensions/{dimensionId}/roles/{dimensionRoleId}`. */
 export type DimensionRoleInput = Schemas['DimensionRoleInput'];
 
 /** A dimension version with its status and validity window (`qe_dimension_version`). */
@@ -41,13 +41,13 @@ export type DimensionVersionInput = Schemas['DimensionVersionInput'];
 /** Body of `POST .../levels`. */
 export type NewLevelInput = Schemas['NewLevelInput'];
 
-/** Body of `PUT .../levels/{levelId}`. */
+/** Body of `PUT .../levels/{dimensionLevelId}`. */
 export type LevelInput = Schemas['LevelInput'];
 
 /** Body of `POST .../members`. */
 export type NewMemberInput = Schemas['NewMemberInput'];
 
-/** Body of `PUT .../members/{memberId}`. */
+/** Body of `PUT .../members/{dimensionMemberId}`. */
 export type MemberInput = Schemas['MemberInput'];
 
 /** One item of `PUT .../members/order`. */

@@ -11,7 +11,7 @@ import type { CalculationDimension } from './types';
 interface CalculationDimensionValues extends GroupingValues {
   dimensionKey: string;
   displayName: string;
-  roleId: number | null;
+  dimensionRoleId: number | null;
   isGroupable: boolean;
   isFilterable: boolean;
   isEnabled: boolean;
@@ -35,7 +35,7 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
     defaultValues: {
       dimensionKey: dimension?.dimensionKey ?? '',
       displayName: dimension?.displayName ?? '',
-      roleId: dimension?.roleId ?? null,
+      dimensionRoleId: dimension?.dimensionRoleId ?? null,
       groupingMode: dimension?.groupingMode ?? 'member',
       groupingLevelKey: dimension?.groupingLevelKey ?? null,
       groupingAncestorMemberKey: dimension?.groupingAncestorMemberKey ?? null,
@@ -45,15 +45,15 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
       isEnabled: dimension?.isEnabled ?? true,
     },
   });
-  const roleId = useWatch({ control: form.control, name: 'roleId' });
-  const templateId = roles.data?.find(role => role.id === roleId)?.parentId ?? null;
+  const dimensionRoleId = useWatch({ control: form.control, name: 'dimensionRoleId' });
+  const templateId = roles.data?.find(role => role.id === dimensionRoleId)?.parentId ?? null;
   useGroupingKeysClearing(form, templateId);
 
   function submit(values: CalculationDimensionValues) {
     return save({
       dimensionKey: values.dimensionKey,
       displayName: values.displayName,
-      roleId: values.roleId ?? 0,
+      dimensionRoleId: values.dimensionRoleId ?? 0,
       groupingMode: values.groupingMode ?? '',
       ...toGroupingReferences(values),
       isGroupable: values.isGroupable,
@@ -73,7 +73,7 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
       <TextField name="dimensionKey" label="Key" description="The key report requests and defaults use; it cannot be a column key." />
       <TextField name="displayName" label="Name" />
       <EntityField
-        name="roleId"
+        name="dimensionRoleId"
         label="Role"
         lookupKind="dimension-roles"
         description="Each source reaches the dimension through its dataset's binding of the role; a column breaks out by it only when every source it reads does."

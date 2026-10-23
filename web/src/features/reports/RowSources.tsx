@@ -64,7 +64,7 @@ function SourceSectionCard({ view, row, section }: SourceSectionCardProps) {
       <div className="flex items-center gap-2">
         <span className="font-medium">{source.source.displayName}</span>
         <span className="font-mono text-xs text-muted-foreground">{source.datasetKey}</span>
-        <Badge variant="outline">{section.method === 'bridge' ? `Bridge from ${source.roleKey}` : 'Direct'}</Badge>
+        <Badge variant="outline">{section.method === 'bridge' ? `Bridge from ${source.dimensionRoleKey}` : 'Direct'}</Badge>
       </div>
       {section.method === 'bridge' ? (
         <BridgeItems view={view} row={row} section={section} />

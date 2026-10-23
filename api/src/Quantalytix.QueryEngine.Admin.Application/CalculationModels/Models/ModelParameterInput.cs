@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>A parameter of a calculation model, as <c>PUT calculation-models/{modelId}/parameters/{parameterKey}</c> takes it.</summary>
+/// <summary>A parameter of a calculation model, as <c>PUT calculation-models/{calculationModelId}/parameters/{parameterKey}</c> takes it.</summary>
 public sealed record ModelParameterInput
 {
     /// <summary>Human-readable name.</summary>

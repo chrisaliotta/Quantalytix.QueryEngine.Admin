@@ -17,19 +17,19 @@ public sealed class DatasetVersionDeleteTests
     private const long PinnedVersionId = 100;
 
     /// <summary>The draft release that pins it.</summary>
-    private const long ReleaseId = 500;
+    private const long SemanticReleaseId = 500;
 
     /// <summary>The dataset version table.</summary>
     private readonly InMemoryTableGateway<DatasetVersionRecord> _versions = new(DatasetRows.Version(PinnedVersionId));
 
     /// <summary>The release manifest rows.</summary>
     private readonly InMemoryTableGateway<ReleaseDatasetRecord> _manifest = new(
-        new ReleaseDatasetRecord { ReleaseId = ReleaseId, DatasetId = 10, DatasetVersionId = PinnedVersionId });
+        new ReleaseDatasetRecord { SemanticReleaseId = SemanticReleaseId, DatasetId = 10, DatasetVersionId = PinnedVersionId });
 
     /// <summary>The release table.</summary>
     private readonly InMemoryTableGateway<SemanticReleaseRecord> _releases = new(new SemanticReleaseRecord
     {
-        ReleaseId = ReleaseId,
+        SemanticReleaseId = SemanticReleaseId,
         ReleaseKey = "zz_rel_next",
         Status = PublicationStatuses.Draft,
         CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)

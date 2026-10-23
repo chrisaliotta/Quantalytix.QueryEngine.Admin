@@ -153,8 +153,8 @@ classDiagram
     }
     class DimensionRoleService {
         +CreateAsync(dimensionId, input, cancellationToken)
-        +UpdateAsync(roleId, input, cancellationToken)
-        +DeleteAsync(roleId, cancellationToken) Task~string~
+        +UpdateAsync(dimensionRoleId, input, cancellationToken)
+        +DeleteAsync(dimensionRoleId, cancellationToken) Task~string~
     }
     class DimensionVersionService {
         +CreateAsync(dimensionId, input, cancellationToken)
@@ -234,7 +234,7 @@ classDiagram
     BandMemberInVersionRule --> RangeBandSetReader
 ```
 
-- **Routes:** `api/tenants/{tenantId}/dimensions` (`DimensionsController`); `api/tenants/{tenantId}/dimensions/{dimensionId:long}/roles` (`DimensionRolesController`, including `{roleId:long}`); under `api/tenants/{tenantId}`, `dimensions/{dimensionId:long}/versions` and `dimension-versions/{dimensionVersionId:long}` (`DimensionVersionsController`); `api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/levels` (`DimensionLevelsController`), `.../members` (`DimensionMembersController`, including `order`) and `.../range-bands` (`RangeBandsController`). Content writes take a draft or the published version (`[RequireEditable]`); deleting a version takes a draft (`[RequireDraft]`).
+- **Routes:** `api/tenants/{tenantId}/dimensions` (`DimensionsController`); `api/tenants/{tenantId}/dimensions/{dimensionId:long}/roles` (`DimensionRolesController`, including `{dimensionRoleId:long}`); under `api/tenants/{tenantId}`, `dimensions/{dimensionId:long}/versions` and `dimension-versions/{dimensionVersionId:long}` (`DimensionVersionsController`); `api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/levels` (`DimensionLevelsController`), `.../members` (`DimensionMembersController`, including `order`) and `.../range-bands` (`RangeBandsController`). Content writes take a draft or the published version (`[RequireEditable]`); deleting a version takes a draft (`[RequireDraft]`).
 - **Publication rules** (`dimension_version`): `range_data_type_matches_kind` (`RangeDataTypeMatchesKindRule`), `level_key_unique` (`LevelKeyUniqueRule`), `member_key_unique` (`MemberKeyUniqueRule`), `member_parent_in_version` (`MemberParentInVersionRule`), `member_level_in_version` (`MemberLevelInVersionRule`), `hierarchy_acyclic` (`HierarchyAcyclicRule`), `band_boundary_family` (`BandBoundaryFamilyRule`), `band_bounds_ordered` (`BandBoundsOrderedRule`), `bands_non_overlapping` (`BandsNonOverlappingRule`), `band_member_in_version` (`BandMemberInVersionRule`), `dimension_consumers_resolve` (`DimensionConsumersResolveRule`).
 - **Retirement rules:** none. **Lifecycle handlers:** `ClosureBuilder` (`OnValidatingAsync`); `PredecessorRetirer` and `ActiveSetPinner` serve every living kind.
 - **Registration:** `AddDimensionsFeature` in [DimensionsFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/DimensionsFeatureServiceCollectionExtensions.cs).
@@ -563,12 +563,12 @@ classDiagram
     class ReleaseService {
         +ListAsync(cancellationToken)
         +CreateAsync(input, cancellationToken)
-        +DeleteAsync(releaseId, cancellationToken)
-        +ListDatasetsAsync(releaseId, cancellationToken)
-        +ReplaceDatasetsAsync(releaseId, input, cancellationToken)
+        +DeleteAsync(semanticReleaseId, cancellationToken)
+        +ListDatasetsAsync(semanticReleaseId, cancellationToken)
+        +ReplaceDatasetsAsync(semanticReleaseId, input, cancellationToken)
     }
     class ReleaseActivator {
-        +ActivateAsync(releaseId, cancellationToken) Task~ReleaseActivationResult~
+        +ActivateAsync(semanticReleaseId, cancellationToken) Task~ReleaseActivationResult~
     }
     class ReleaseActivationResult {
         <<record>>
@@ -577,15 +577,15 @@ classDiagram
         +DatabaseInfoRecord DatabaseInfo
     }
     class ReleaseManifestReader {
-        +ListDatasetsAsync(releaseId, cancellationToken)
-        +ListBindingsAsync(releaseId, cancellationToken)
+        +ListDatasetsAsync(semanticReleaseId, cancellationToken)
+        +ListBindingsAsync(semanticReleaseId, cancellationToken)
     }
     class ReportConsumerRule {
         +EvaluateAsync(versionId, cancellationToken)
     }
     class ReportGraphReader {
         +EnabledAsync(cancellationToken) Task~IReadOnlyList~ReportGraph~~
-        +ScopeAsync(graphs, releaseId, cancellationToken) Task~ReportScope~
+        +ScopeAsync(graphs, semanticReleaseId, cancellationToken) Task~ReportScope~
     }
     class OverviewService {
         +GetAsync(cancellationToken) Task~TenantOverview~
@@ -625,7 +625,7 @@ classDiagram
     ReleaseManifestReader --> BindingNames : binding names
 ```
 
-- **Routes:** `api/tenants/{tenantId}/releases` (`ReleasesController`, including `{releaseId:long}/datasets` and `{releaseId:long}/activate`), `api/tenants/{tenantId}/overview` (`OverviewController`).
+- **Routes:** `api/tenants/{tenantId}/releases` (`ReleasesController`, including `{semanticReleaseId:long}/datasets` and `{semanticReleaseId:long}/activate`), `api/tenants/{tenantId}/overview` (`OverviewController`).
 - **Publication rules** (`semantic_release`): `manifest_not_empty` (`ManifestNotEmptyRule`), `pinned_version_belongs_to_dataset` (`PinnedVersionBelongsToDatasetRule`), `pinned_version_published` (`PinnedDatasetVersionPublishedRule`), `bound_dimensions_resolvable` (`BoundDimensionsResolvableRule`), `mapped_bindings_resolvable` (`MappedBindingsResolvableRule`), `bridge_bindings_resolvable` (`BridgeBindingsResolvableRule`), then the report rules the Calculation models and Reports slice registers for this kind: `report_sources_resolve` (`ReportSourcesResolveRule`) and `report_factors_apply` (`ReportFactorsApplyRule`), each through `ReportConsumerRule`.
 - **Retirement rules:** `release_not_active` (`ReleaseNotActiveRule`). **Lifecycle handlers:** none.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
@@ -692,7 +692,7 @@ classDiagram
 - **Publication and retirement rules:** none; assumption sets are not a versioned kind. **Lifecycle handlers:** `ActiveSetPinner`, one per living kind.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
-The tenant database holds the active set, with status `active` and key `active`, from the moment it is created; tenant verification refuses a database without exactly one, and the API never creates or deletes it. `ActiveSetPinner` upserts the active set's pin of the identity whose version was just published, so the active set always pins every published version. `CaptureAsync` copies the active set's pins into a new set with status `historical`, a key of its own, `captured_at` and the active release as `release_id`, whose dataset versions the engine reads for the set. Reports always run on the active set, so it leaves out the pins of report dimensions and of the bridges into them, which `ReportOwnership.OwnedIdsAsync` lists; deleting a report or a source unpins its dimension or bridge from every set (`UnpinDimensionAsync`, `UnpinBridgeAsync`). The copy keeps pinning those versions after later publishes retire them, and retired versions never change, so a historical set reproduces the content of its time. Capturing and deleting advance the semantic revision, because the engine caches the set keys requests can name by revision; relabelling does not. `AssumptionPinReader` labels each pin with its identity key, version number and status for the web SPA.
+The tenant database holds the active set, with status `active` and key `active`, from the moment it is created; tenant verification refuses a database without exactly one, and the API never creates or deletes it. `ActiveSetPinner` upserts the active set's pin of the identity whose version was just published, so the active set always pins every published version. `CaptureAsync` copies the active set's pins into a new set with status `historical`, a key of its own, `captured_at` and the active release as `semantic_release_id`, whose dataset versions the engine reads for the set. Reports always run on the active set, so it leaves out the pins of report dimensions and of the bridges into them, which `ReportOwnership.OwnedIdsAsync` lists; deleting a report or a source unpins its dimension or bridge from every set (`UnpinDimensionAsync`, `UnpinBridgeAsync`). The copy keeps pinning those versions after later publishes retire them, and retired versions never change, so a historical set reproduces the content of its time. Capturing and deleting advance the semantic revision, because the engine caches the set keys requests can name by revision; relabelling does not. `AssumptionPinReader` labels each pin with its identity key, version number and status for the web SPA.
 
 | Class | Records |
 | --- | --- |
@@ -770,7 +770,7 @@ classDiagram
 - **Publication rules, retirement rules and lifecycle handlers:** none; tenant directory rows are not versioned.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), which also maps `ITenantDatabaseVerifier` to `TenantDatabaseVerifier` and `IConnectionStringMasker` to `ConnectionStringMasker`.
 
-A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 15, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
+A connection string is external input, so it is verified whenever one is supplied: `POST verify` reports the outcome as a `TenantConnectionCheck`, while create and update run the same check through `MustRouteToTenant` as a validation error on `connectionString`. The check passes when the string opens, its database's `qe_database_info` names the tenant and has metadata schema version 16, and `qe_assumption_set` holds exactly one active set, which every publish repoints. Connection strings are write-only: every response masks the password through MySqlConnector's own parser. Tenants are never deleted.
 
 | Class | Records |
 | --- | --- |
@@ -826,32 +826,32 @@ classDiagram
     class OwnedItemReferenceValidator~TReference, TItem, TInput~
     class CalculationModelService {
         +CreateAsync(input, cancellationToken)
-        +ComposeAsync(modelId, input, cancellationToken) Task~CalculationModelRecord~
+        +ComposeAsync(calculationModelId, input, cancellationToken) Task~CalculationModelRecord~
         +UpdateAsync(model, cancellationToken)
-        +DeleteAsync(modelId, cancellationToken) Task~string~
+        +DeleteAsync(calculationModelId, cancellationToken) Task~string~
     }
     class MetricAttributionService {
-        +ListAsync(modelId, cancellationToken) Task~IReadOnlyList~MetricAttribution~~
+        +ListAsync(calculationModelId, cancellationToken) Task~IReadOnlyList~MetricAttribution~~
         +Compose(metricKey, input)$ MetricAttribution
         +Put(model, attribution)$ ModelGraph
         +Without(model, metricKey)$ ModelGraph
-        +ReplaceAsync(modelId, attribution, cancellationToken)
-        +DeleteAsync(modelId, metricKey, cancellationToken)
+        +ReplaceAsync(calculationModelId, attribution, cancellationToken)
+        +DeleteAsync(calculationModelId, metricKey, cancellationToken)
     }
     class ModelParameterService {
-        +ListAsync(modelId, cancellationToken) Task~IReadOnlyList~ModelParameter~~
+        +ListAsync(calculationModelId, cancellationToken) Task~IReadOnlyList~ModelParameter~~
         +Compose(parameterKey, input)$ ModelParameter
         +Put(model, parameter)$ ModelGraph
         +Without(model, parameterKey)$ ModelGraph
-        +ReplaceAsync(modelId, parameter, cancellationToken)
-        +DeleteAsync(modelId, parameterKey, cancellationToken)
+        +ReplaceAsync(calculationModelId, parameter, cancellationToken)
+        +DeleteAsync(calculationModelId, parameterKey, cancellationToken)
     }
     class ParameterValues {
         <<static>>
         +Problem(parameter, number, text) string
     }
     class ModelChanges {
-        +ApplyAsync(modelId, change, write, cancellationToken) Task~IReadOnlyList~RuleViolation~~
+        +ApplyAsync(calculationModelId, change, write, cancellationToken) Task~IReadOnlyList~RuleViolation~~
     }
     class FormulaReferencesResolveRule {
         <<static>>
@@ -888,8 +888,8 @@ classDiagram
         +Evaluate(model) IEnumerable~RuleViolation~
     }
     class ReportUses {
-        +OfModelAsync(modelId, cancellationToken) Task~IReadOnlyList~ReportRecord~~
-        +ModelReadersAsync(modelId, cancellationToken)
+        +OfModelAsync(calculationModelId, cancellationToken) Task~IReadOnlyList~ReportRecord~~
+        +ModelReadersAsync(calculationModelId, cancellationToken)
     }
     class ModelKeys
     class FormulaGraph
@@ -914,15 +914,15 @@ classDiagram
         +Evaluate(report, scope) IEnumerable~RuleViolation~
     }
     class ReportConsumerRule {
-        +EvaluateAsync(releaseId, cancellationToken)
+        +EvaluateAsync(semanticReleaseId, cancellationToken)
     }
     class ReportGraphReader {
         +ReadAsync(report, cancellationToken) Task~ReportGraph~
         +EnabledAsync(cancellationToken) Task~IReadOnlyList~ReportGraph~~
-        +ScopeAsync(graphs, releaseId, cancellationToken) Task~ReportScope~
+        +ScopeAsync(graphs, semanticReleaseId, cancellationToken) Task~ReportScope~
     }
     class ReleaseDatasets {
-        +ReadAsync(releaseId, datasetIds, cancellationToken)
+        +ReadAsync(semanticReleaseId, datasetIds, cancellationToken)
         +ActiveAsync(datasetId, cancellationToken)
     }
     class OwnedVersions {
@@ -1042,7 +1042,7 @@ classDiagram
     IReportRule <|.. ReportStylesResolveRule
 ```
 
-- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`), with `{modelId:long}`; under `api/tenants/{tenantId}/calculation-models/{modelId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), each with `{itemId:long}` for an edit or delete, and `attributions` (`MetricAttributionsController`) and `parameters` (`ModelParametersController`), each listed whole, with `{metricKey}` or `{parameterKey}` for a `PUT` that writes one whole or a `DELETE`. The metric, attribution and parameter writes and `PUT calculation-models/{modelId:long}` are `[AdvancesModelRevision]`. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, `scenarios` (`ReportScenariosController`), `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`, and `styles` (`ReportStylesController`), listed whole, with `{styleKey}` for a `PUT` that writes one whole or a `DELETE`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
+- **Routes:** `api/tenants/{tenantId}/calculation-models` (`CalculationModelsController`), with `{calculationModelId:long}`; under `api/tenants/{tenantId}/calculation-models/{calculationModelId:long}`, `variables` (`VariablesController`) and `calculated-measures` (`CalculatedMeasuresController`), each with `{itemId:long}` for an edit or delete, and `attributions` (`MetricAttributionsController`) and `parameters` (`ModelParametersController`), each listed whole, with `{metricKey}` or `{parameterKey}` for a `PUT` that writes one whole or a `DELETE`. The metric, attribution and parameter writes and `PUT calculation-models/{calculationModelId:long}` are `[AdvancesModelRevision]`. `api/tenants/{tenantId}/reports` (`ReportsController`), with `{reportId:long}`, `settings`, `status` and `validation`; under `api/tenants/{tenantId}/reports/{reportId:long}`, `profiles` (`SourceProfilesController`) and `calculation-dimensions` (`CalculationDimensionsController`), each with `{itemId:long}` for an edit or delete, `scenarios` (`ReportScenariosController`), `variable-scopes` (`ReportVariableScopesController`) and `columns` (`ReportColumnsController`), each replaced whole by a `PUT`, and `styles` (`ReportStylesController`), listed whole, with `{styleKey}` for a `PUT` that writes one whole or a `DELETE`. Every report write is `[AdvancesReportRevision]`; the rows and sources are the [report editor](#report-editor)'s.
 - **Publication rules** (`semantic_release`): `report_sources_resolve` and `report_factors_apply` through `ReportConsumerRule`, over every enabled report, against the release's dataset versions.
 - **Model rules** (run by `ModelChanges` on every write to a model, its metrics, their attributions or its parameters; see [The model gate](04-version-lifecycle.md#the-model-gate)): `formula_references_resolve` (`FormulaReferencesResolveRule`), `formulas_acyclic` (`FormulasAcyclicRule`), `formulas_fit_language` (`FormulasFitLanguageRule`), `formula_parameters_resolve` (`FormulaParametersResolveRule`), `attribution_references_resolve` (`AttributionReferencesResolveRule`), `attribution_drivers` (`AttributionDriversRule`) and `attribution_weight_variable` (`AttributionWeightVariableRule`) on the model, then `report_row_parameters_resolve` over every report of the model, enabled or not, and `report_metrics_resolve` and `profiles_complete` over every enabled one.
 - **Report rules** (`IReportRule`, run by `ReportRules` on enabling a report, on every write to an enabled report and on `POST validation`): `report_items_resolve` (`ReportItemsResolveRule`), `calculation_grouping_resolve` (`CalculationGroupingResolveRule`), `scenario_roles_distinct` (`ScenarioRolesDistinctRule`), `default_profile_enabled` (`DefaultProfileEnabledRule`), `report_defaults_resolve` (`ReportDefaultsResolveRule`), `column_keys_distinct` (`ColumnKeysDistinctRule`), `report_metrics_resolve` (`ReportMetricsResolveRule`), `profiles_complete` (`ProfilesCompleteRule`), `report_sources_resolve` (`ReportSourcesResolveRule`), `report_factors_apply` (`ReportFactorsApplyRule`), `report_row_parameters_resolve` (`ReportRowParametersResolveRule`) and `report_styles_resolve` (`ReportStylesResolveRule`).
@@ -1055,7 +1055,7 @@ An attribution says how a metric's change between two values, such as a month an
 
 A parameter is a value a model declares for its formulas to read as `@key`, typed `number` or `text` (`parameter_value_type`); a text parameter may be limited to allowed values, and a parameter's default is the value of every report row that no row above sets. `ModelParametersController` writes a parameter whole under its key, and `ModelParameterReferenceValidator` and `ModelParameterInputValidator` check its key, which is neither `periodDays` nor `yearDays`, and its fields: a number parameter has a number default and nothing else, and a text parameter a text default of at most 256 bytes, among its allowed values, which are distinct and non-empty, when it has them. `MustBeModelFormula` does not refuse a formula's parameter names, because a parameter can be declared after a formula reads it. Whether every name resolves and is read where its type belongs, and whether every report's row values still fit, are the model gate's concern: `formula_parameters_resolve` admits text only compared with text by `=`, `<>` or `IN`, or as the argument of `YEARFRAC`, which takes a `day_count_convention` value in quotes or a text parameter whose allowed values are all conventions, and `report_row_parameters_resolve` runs over every report of the model through `ReportUses`, so deleting, retyping or narrowing a parameter that a formula or a row reads is refused. The day count of the seed's margin model is such a parameter, `dayCount`, which its formulas pass to `YEARFRAC`.
 
-A model holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key. Report content names metrics by key too: source variables, scopes and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the report's model through `ModelMetricsReader`, so one model serves several reports, each with its own data. `IOwnedContent<TItem, TInput>` serves both owners: `ContentKeys` reads the owner from the route, a model's `modelId` or a report's `reportId`, and `Compose` builds the row a write would store, so `IModelContent.Put` and `Without` can show the model gate the model, and `IReportContent.Put` and `Without` the report rules the report, as the write would leave it before `InsertAsync`, `UpdateAsync` or `DeleteAsync` runs. Variable scopes and columns are replaced whole, columns as an ordered list. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources reach.
+A model holds only metrics: variables and calculated measures share one key namespace, which `ModelKeys` checks, because a formula names either as `[m.KEY]`, and they reference each other by key. Report content names metrics by key too: source variables, scopes and profile picks name variables, columns variables or calculated measures, and formula rows calculated measures. The input checks resolve those keys in the report's model through `ModelMetricsReader`, so one model serves several reports, each with its own data. `IOwnedContent<TItem, TInput>` serves both owners: `ContentKeys` reads the owner from the route, a model's `calculationModelId` or a report's `reportId`, and `Compose` builds the row a write would store, so `IModelContent.Put` and `Without` can show the model gate the model, and `IReportContent.Put` and `Without` the report rules the report, as the write would leave it before `InsertAsync`, `UpdateAsync` or `DeleteAsync` runs. Variable scopes and columns are replaced whole, columns as an ordered list. A variable scope names a member of the report dimension and a selection, `exact` or `descendants`: rows inside the member's branch read their own value, rows above it read the member's value, and other rows read nothing; a variable without a scope reads every row its sources reach.
 
 A calculation dimension is a role plus a default grouping of its template's members, which a report request can replace for its own run, and which `GroupingInputValidator<T>` checks and `calculation_grouping_resolve` resolves in the template's published version; a source reaches it through its dataset's enabled binding of the role, and the engine lets a column break out or filter by it only when every source the column reads reaches it. `ReportSettingsInputValidator` checks the default settings, whose `periodicity`, `timeZone` and `layout` (the `report_layout` vocabulary: `statement`, whose lines keep their order, or `list`, whose table a request filters, orders and pages as a whole) affect execution, and the default filter, which compares calculation dimensions and may compare `parameter` operands that every request then supplies, though not `periodDays` or `yearDays`, which calculated measures read, nor, as `report_defaults_resolve` checks, a parameter the report's model declares, whose values the report's rows set and which the engine therefore refuses from a request.
 

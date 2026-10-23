@@ -34,19 +34,19 @@ const ACTIVE_RELEASE_RETIREMENT =
  * report against its dataset versions.
  */
 export function ReleaseEditorPage() {
-  const releaseId = Number(useParams().releaseId);
+  const semanticReleaseId = Number(useParams().semanticReleaseId);
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const versions = useLookup('releases');
   const summaries = useReleases();
-  const release = useRelease(releaseId);
+  const release = useRelease(semanticReleaseId);
   const activate = useActivateRelease();
   const deleteRelease = useDeleteRelease();
-  const newRelease = useSheetForm<ReleaseCreateInput>({ releaseKey: '', copyFromReleaseId: null });
-  const isActive = summaries.data?.some(summary => summary.isActive && summary.release.releaseId === releaseId) ?? false;
+  const newRelease = useSheetForm<ReleaseCreateInput>({ releaseKey: '', copyFromSemanticReleaseId: null });
+  const isActive = summaries.data?.some(summary => summary.isActive && summary.release.semanticReleaseId === semanticReleaseId) ?? false;
 
   function activateRelease(selected: SemanticRelease) {
-    activate.mutate(selected.releaseId, {
+    activate.mutate(selected.semanticReleaseId, {
       onSuccess: () => toast.success(`${selected.releaseKey} is now the active release.`),
     });
   }
@@ -70,9 +70,9 @@ export function ReleaseEditorPage() {
       <VersionHeader
         kind="semantic_release"
         versions={versions.data ?? []}
-        selectedVersionId={releaseId}
+        selectedVersionId={semanticReleaseId}
         onSelectVersion={id => navigate(`/t/${tenantId}/releases/${id}`)}
-        onCloneVersion={sourceId => newRelease.open({ releaseKey: '', copyFromReleaseId: sourceId })}
+        onCloneVersion={sourceId => newRelease.open({ releaseKey: '', copyFromSemanticReleaseId: sourceId })}
         onDeleteVersion={id => deleteRelease.mutate(id, { onSuccess: () => navigate(`/t/${tenantId}/releases`) })}
         confirmDescriptions={isActive ? { retired: ACTIVE_RELEASE_RETIREMENT } : undefined}
       />
@@ -117,15 +117,15 @@ function ManifestCard({ release }: { release: SemanticRelease }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ManifestTable releaseId={release.releaseId} isDraft={isDraft} />
+        <ManifestTable semanticReleaseId={release.semanticReleaseId} isDraft={isDraft} />
       </CardContent>
     </Card>
   );
 }
 
-function ManifestTable({ releaseId, isDraft }: { releaseId: number; isDraft: boolean }) {
-  const manifest = useReleaseDatasets(releaseId);
-  const save = useSaveReleaseDatasets(releaseId);
+function ManifestTable({ semanticReleaseId, isDraft }: { semanticReleaseId: number; isDraft: boolean }) {
+  const manifest = useReleaseDatasets(semanticReleaseId);
+  const save = useSaveReleaseDatasets(semanticReleaseId);
 
   if (manifest.isPending) {
     return <Loading size="sm" />;
@@ -135,7 +135,7 @@ function ManifestTable({ releaseId, isDraft }: { releaseId: number; isDraft: boo
   }
   return (
     <PinnedVersionsTable
-      key={`${releaseId}:${manifest.dataUpdatedAt}`}
+      key={`${semanticReleaseId}:${manifest.dataUpdatedAt}`}
       identityLookup="datasets"
       versionLookup="dataset-versions"
       identityLabel="Dataset"

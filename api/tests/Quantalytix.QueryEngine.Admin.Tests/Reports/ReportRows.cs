@@ -26,7 +26,7 @@ internal static class ReportRows
             DisplayName = "Balance sheet",
             ReportType = "financial",
             ReportDimensionId = ReportDimensionId,
-            ModelId = ModelRows.ModelId,
+            CalculationModelId = ModelRows.CalculationModelId,
             SubtotalPosition = SubtotalPositions.Above,
             IsEnabled = true
         };
@@ -104,17 +104,17 @@ internal static class ReportRows
     /// <summary>An enabled source profile.</summary>
     public static SourceProfileRecord Profile(long profileId, string profileKey)
     {
-        return new SourceProfileRecord { SourceProfileId = profileId, ReportId = ReportId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
+        return new SourceProfileRecord { CalculationSourceProfileId = profileId, ReportId = ReportId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
     }
 
     /// <summary>A profile's pick of a source for a variable.</summary>
     public static SourceProfileVariableRecord Pick(long profileId, string variableKey, long sourceId)
     {
-        return new SourceProfileVariableRecord { SourceProfileId = profileId, VariableKey = variableKey, ReportSourceId = sourceId };
+        return new SourceProfileVariableRecord { CalculationSourceProfileId = profileId, VariableKey = variableKey, ReportSourceId = sourceId };
     }
 
     /// <summary>An enabled, groupable and filterable calculation dimension that groups a role's members by member.</summary>
-    public static CalculationDimensionRecord CalculationDimension(long calculationDimensionId, string dimensionKey, long roleId)
+    public static CalculationDimensionRecord CalculationDimension(long calculationDimensionId, string dimensionKey, long dimensionRoleId)
     {
         return new CalculationDimensionRecord
         {
@@ -122,7 +122,7 @@ internal static class ReportRows
             ReportId = ReportId,
             DimensionKey = dimensionKey,
             DisplayName = dimensionKey,
-            RoleId = roleId,
+            DimensionRoleId = dimensionRoleId,
             GroupingMode = GroupingModes.Member,
             IsGroupable = true,
             IsFilterable = true,
@@ -131,8 +131,8 @@ internal static class ReportRows
     }
 
     /// <summary>A scenario of the report on a role.</summary>
-    public static ReportScenarioRecord Scenario(long roleId)
+    public static ReportScenarioRecord Scenario(long dimensionRoleId)
     {
-        return new ReportScenarioRecord { ReportId = ReportId, RoleId = roleId };
+        return new ReportScenarioRecord { ReportId = ReportId, DimensionRoleId = dimensionRoleId };
     }
 }

@@ -25,16 +25,16 @@ public sealed class MemberLevelInVersionRule(
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var rows = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var levelIds = (await levels.ListAsync(new { DimensionVersionId = versionId }, cancellationToken)).Select(level => level.LevelId).ToHashSet();
+        var levelIds = (await levels.ListAsync(new { DimensionVersionId = versionId }, cancellationToken)).Select(level => level.DimensionLevelId).ToHashSet();
         return
         [
             .. rows
-                .Where(member => member.LevelId is { } levelId && !levelIds.Contains(levelId))
+                .Where(member => member.DimensionLevelId is { } dimensionLevelId && !levelIds.Contains(dimensionLevelId))
                 .OrderBy(member => member.MemberKey, StringComparer.Ordinal)
                 .Select(member => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Member '{member.MemberKey}' has level {member.LevelId}, which is not a level of this version."
+                    Message = $"Member '{member.MemberKey}' has level {member.DimensionLevelId}, which is not a level of this version."
                 })
         ];
     }

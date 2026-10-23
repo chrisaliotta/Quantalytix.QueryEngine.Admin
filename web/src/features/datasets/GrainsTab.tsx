@@ -27,8 +27,8 @@ export function GrainsTab({ versionId, isDraft }: { versionId: number; isDraft: 
   const remove = useMutation({
     mutationFn: async (grain: Grain) =>
       unwrap(
-        await apiClient.DELETE('/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{grainId}', {
-          params: { path: { tenantId, versionId, grainId: grain.grainId } },
+        await apiClient.DELETE('/api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}', {
+          params: { path: { tenantId, versionId, datasetGrainId: grain.datasetGrainId } },
         })
       ),
     onSuccess: (_, grain) => {

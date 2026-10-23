@@ -24,14 +24,14 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
         When(input => input.BindingKind == BindingKinds.Time, () =>
         {
             RuleFor(input => input.DimensionId).NotNull().WithMessage(KindRequires(BindingKinds.Time));
-            RuleFor(input => input.RoleId).Null().WithMessage("A time binding names its time dimension, so '{PropertyName}' must be empty.");
+            RuleFor(input => input.DimensionRoleId).Null().WithMessage("A time binding names its time dimension, so '{PropertyName}' must be empty.");
         }).Otherwise(() =>
         {
-            RuleFor(input => input.RoleId)
+            RuleFor(input => input.DimensionRoleId)
                 .Cascade(CascadeMode.Stop)
                 .NotNull()
                 .WithMessage(input => KindRequires(input.BindingKind))
-                .MustAsync(async (roleId, cancellationToken) => (await roles.ListAsync(new { RoleId = roleId }, cancellationToken)).Count == 1)
+                .MustAsync(async (dimensionRoleId, cancellationToken) => (await roles.ListAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken)).Count == 1)
                 .WithMessage("Role {PropertyValue} does not exist.");
             RuleFor(input => input.DimensionId).Null().WithMessage("The binding classifies into its role's dimension, so '{PropertyName}' must be empty.");
         });
@@ -52,11 +52,11 @@ public sealed class BindingInputValidator : AbstractValidator<BindingInput>
         });
         When(input => input.BindingKind == BindingKinds.Bridge, () =>
         {
-            RuleFor(input => input.SourceBindingId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
+            RuleFor(input => input.SourceDimensionBindingId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
             RuleFor(input => input.BridgeId).NotNull().WithMessage(KindRequires(BindingKinds.Bridge));
         }).Otherwise(() =>
         {
-            RuleFor(input => input.SourceBindingId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
+            RuleFor(input => input.SourceDimensionBindingId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
             RuleFor(input => input.BridgeId).Null().WithMessage(OnlyKindUses(BindingKinds.Bridge));
         });
         When(input => input.BindingKind == BindingKinds.Time, () =>

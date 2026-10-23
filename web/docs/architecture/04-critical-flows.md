@@ -323,7 +323,7 @@ sequenceDiagram
 ```
 
 - A clone copies the source's rows as they are. Entries, bridge mappings and bindings' unknown members name members by key, and bindings name roles, which are not versioned, so nothing is dropped; the publication rules check that the keys resolve in the published versions requests read them in.
-- Dimensions clone through `NewVersionSheet`, which copies levels, members and range bands. Bridges clone through `NewBridgeVersionDialog`, which copies the mappings. Calculation models and reports are not versioned and have nothing to clone; see [flow 11](#11-editable-and-read-only-versions) and [flow 12](#12-building-a-report). The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromReleaseId`, then opens the new release. Assumption sets are not versioned; "Capture" snapshots the active set and the active release under a new key.
+- Dimensions clone through `NewVersionSheet`, which copies levels, members and range bands. Bridges clone through `NewBridgeVersionDialog`, which copies the mappings. Calculation models and reports are not versioned and have nothing to clone; see [flow 11](#11-editable-and-read-only-versions) and [flow 12](#12-building-a-report). The release editor's "Clone selected" opens `NewReleaseSheet` with `copyFromSemanticReleaseId`, then opens the new release. Assumption sets are not versioned; "Capture" snapshots the active set and the active release under a new key.
 - What the API does for a clone is drawn in [the API's key actions](../../../api/docs/architecture/06-key-actions.md).
 
 **Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [NewMappingVersionDialog.tsx](../../src/features/mappings/NewMappingVersionDialog.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [NewVersionSheet.tsx](../../src/features/dimensions/NewVersionSheet.tsx), [dimensions/api.ts](../../src/features/dimensions/api.ts), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [NewBridgeVersionDialog.tsx](../../src/features/bridges/NewBridgeVersionDialog.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [NewReleaseSheet.tsx](../../src/features/releases/NewReleaseSheet.tsx), [CaptureSheet.tsx](../../src/features/assumption-sets/CaptureSheet.tsx).
@@ -397,8 +397,8 @@ sequenceDiagram
     User->>Confirm: confirm
     Confirm->>Button: onConfirm
     Button->>Editor: onActivate, which runs activateRelease(release)
-    Editor->>ActivateHook: mutate(releaseId)
-    ActivateHook->>Api: POST /api/tenants/{tenantId}/releases/{releaseId}/activate
+    Editor->>ActivateHook: mutate(semanticReleaseId)
+    ActivateHook->>Api: POST /api/tenants/{tenantId}/releases/{semanticReleaseId}/activate
     alt accepted
         Api-->>ActivateHook: success
         ActivateHook->>Cache: invalidateTenantQueries(tenantId)

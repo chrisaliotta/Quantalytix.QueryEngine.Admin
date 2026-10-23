@@ -42,7 +42,7 @@ export interface RowSheetProps {
  * style and sets its own values of the model's parameters; a parameter it leaves empty shows the value it inherits.
  */
 export function RowSheet({ view, rows, row, placement, onSave, onClose }: RowSheetProps) {
-  const measures = useLookup('calculated-measures', view.report.modelId);
+  const measures = useLookup('calculated-measures', view.report.calculationModelId);
   const columns = useLookup('report-columns', view.report.reportId);
   const styles = useReportStyles(view.report.reportId);
   const form = useForm<RowValues>({

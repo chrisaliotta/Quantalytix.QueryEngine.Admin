@@ -20,9 +20,9 @@ const columns: ColumnDef<ModelParameter>[] = [
 ];
 
 /** The model's parameters: the values its formulas read as `@key`, which each report sets on its rows. */
-export function ParametersTab({ modelId }: { modelId: number }) {
-  const parameters = useModelParameters(modelId);
-  const deleteParameter = useDeleteModelParameter(modelId);
+export function ParametersTab({ calculationModelId }: { calculationModelId: number }) {
+  const parameters = useModelParameters(calculationModelId);
+  const deleteParameter = useDeleteModelParameter(calculationModelId);
 
   return (
     <ContentTab
@@ -32,7 +32,7 @@ export function ParametersTab({ modelId }: { modelId: number }) {
       keyOf={parameter => parameter.parameterKey}
       deleteDescription="A parameter a formula of the model reads, or a report's row sets, is kept."
       deleteRow={{ mutate: parameter => deleteParameter.mutate(parameter.parameterKey), error: deleteParameter.error }}
-      renderSheet={(parameter, onClose) => <ParameterSheet modelId={modelId} parameter={parameter} onClose={onClose} />}
+      renderSheet={(parameter, onClose) => <ParameterSheet calculationModelId={calculationModelId} parameter={parameter} onClose={onClose} />}
     />
   );
 }

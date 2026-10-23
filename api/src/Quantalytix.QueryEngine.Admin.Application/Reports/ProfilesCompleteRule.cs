@@ -27,13 +27,13 @@ public sealed class ProfilesCompleteRule : IReportRule
             .Order(StringComparer.Ordinal)
             .ToArray();
         var supplied = report.SourceVariables.Select(variable => (variable.ReportSourceId, variable.VariableKey)).ToHashSet();
-        var picked = report.Picks.ToDictionary(pick => (pick.SourceProfileId, pick.VariableKey), pick => pick.ReportSourceId);
+        var picked = report.Picks.ToDictionary(pick => (pick.CalculationSourceProfileId, pick.VariableKey), pick => pick.ReportSourceId);
         foreach (var profile in report.Profiles.Where(profile => profile.IsEnabled).OrderBy(profile => profile.ProfileKey, StringComparer.Ordinal))
         {
             var subject = $"Report '{report.ReportKey}' profile '{profile.ProfileKey}'";
             foreach (var variable in read)
             {
-                if (!picked.TryGetValue((profile.SourceProfileId, variable), out var sourceId))
+                if (!picked.TryGetValue((profile.CalculationSourceProfileId, variable), out var sourceId))
                     yield return Violation($"{subject} picks no source for variable '{variable}'.");
                 else if (!supplied.Contains((sourceId, variable)))
                     yield return Violation($"{subject} picks a source that does not supply variable '{variable}'.");

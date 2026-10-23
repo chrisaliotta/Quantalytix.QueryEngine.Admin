@@ -10,7 +10,7 @@ public sealed record MeasureTimePolicyRecord
     public long? RequiredTimeBindingId { get; init; }
 
     /// <summary>The <c>series</c> grain selection runs over before dimensional aggregation.</summary>
-    public long? SelectionGrainId { get; init; }
+    public long? SelectionDatasetGrainId { get; init; }
 
     /// <summary>An <c>observation_selection</c> value.</summary>
     public required string ObservationSelection { get; init; }

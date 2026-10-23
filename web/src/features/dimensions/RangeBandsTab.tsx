@@ -121,7 +121,7 @@ function RangeBandEditor({ versionId, bands, rangeDataType, isEditable }: RangeB
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
-                          <EntityField name={`bands.${index}.memberId`} label="Member" lookupKind="members" parentId={versionId} />
+                          <EntityField name={`bands.${index}.dimensionMemberId`} label="Member" lookupKind="members" parentId={versionId} />
                         </div>
                         <BoundField index={index} side="lower" rangeDataType={rangeDataType} />
                         <BoundField index={index} side="upper" rangeDataType={rangeDataType} />
@@ -188,7 +188,7 @@ function BoundField({ index, side, rangeDataType }: BoundFieldProps) {
 /** A stored band as the editor holds it: the record without its version and ordinal, with dates cut to `yyyy-MM-dd`. */
 function toBandInput(band: RangeBand): RangeBandInput {
   return {
-    memberId: band.memberId,
+    dimensionMemberId: band.dimensionMemberId,
     lowerDecimal: band.lowerDecimal ?? null,
     upperDecimal: band.upperDecimal ?? null,
     lowerDate: band.lowerDate?.slice(0, 10) ?? null,
@@ -219,10 +219,10 @@ function withFamilyBounds(band: RangeBandInput, rangeDataType: string): RangeBan
 /** A new last band: it starts where the previous one ends and assigns the first member without a band. */
 function nextBand(bands: RangeBandInput[], members: LookupItem[]): RangeBandInput {
   const previous = bands.at(-1);
-  const assigned = new Set(bands.map(band => band.memberId));
+  const assigned = new Set(bands.map(band => band.dimensionMemberId));
   const member = members.find(item => !assigned.has(item.id)) ?? members[0];
   return {
-    memberId: member.id,
+    dimensionMemberId: member.id,
     lowerDecimal: previous?.upperDecimal ?? null,
     upperDecimal: null,
     lowerDate: previous?.upperDate ?? null,

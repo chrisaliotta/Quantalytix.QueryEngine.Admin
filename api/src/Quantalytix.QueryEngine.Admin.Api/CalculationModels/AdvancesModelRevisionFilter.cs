@@ -18,7 +18,7 @@ internal sealed class AdvancesModelRevisionFilter(string routeKey, ITableGateway
     /// <returns>A task that completes when the action ran and the revision was advanced, if it was.</returns>
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var model = new { ModelId = long.Parse((string)context.RouteData.Values[routeKey]!, CultureInfo.InvariantCulture) };
+        var model = new { CalculationModelId = long.Parse((string)context.RouteData.Values[routeKey]!, CultureInfo.InvariantCulture) };
         var cancellationToken = context.HttpContext.RequestAborted;
         var executed = await next();
         if (!ExecutedActions.Succeeded(executed)) return;

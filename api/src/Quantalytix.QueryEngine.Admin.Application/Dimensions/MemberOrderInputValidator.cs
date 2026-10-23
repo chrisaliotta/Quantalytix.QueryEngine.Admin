@@ -12,10 +12,10 @@ public sealed class MemberOrderInputValidator : AbstractValidator<MemberOrderInp
     public MemberOrderInputValidator()
     {
         RuleFor(input => input.Items)
-            .Must(items => items.DistinctBy(item => item.MemberId).Count() == items.Count)
+            .Must(items => items.DistinctBy(item => item.DimensionMemberId).Count() == items.Count)
             .WithMessage("'{PropertyName}' must place each member once.");
         RuleForEach(input => input.Items)
-            .Must(item => item.ParentMemberId != item.MemberId)
-            .WithMessage((_, item) => $"Member {item.MemberId} cannot be its own parent.");
+            .Must(item => item.ParentDimensionMemberId != item.DimensionMemberId)
+            .WithMessage((_, item) => $"Member {item.DimensionMemberId} cannot be its own parent.");
     }
 }

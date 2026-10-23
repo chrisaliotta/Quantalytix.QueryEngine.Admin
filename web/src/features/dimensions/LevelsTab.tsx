@@ -88,7 +88,7 @@ export function LevelsTab({ versionId, isEditable }: { versionId: number; isEdit
         description="Levels that members use cannot be deleted."
         confirmLabel="Delete level"
         destructive
-        onConfirm={() => deleting && deleteLevel.mutate(deleting.levelId)}
+        onConfirm={() => deleting && deleteLevel.mutate(deleting.dimensionLevelId)}
       />
     </div>
   );

@@ -21,8 +21,8 @@ import {
 } from './itemMappings';
 import type { DimensionMember, EditorRow, EditorSource, EditorView, SourceSelection } from './types';
 
-function member(memberId: number, memberKey: string, parentMemberId: number | null, isAssignable: boolean): DimensionMember {
-  return { memberId, dimensionVersionId: 3, memberKey, displayName: memberKey, parentMemberId, isAssignable, sortOrder: memberId };
+function member(dimensionMemberId: number, memberKey: string, parentDimensionMemberId: number | null, isAssignable: boolean): DimensionMember {
+  return { dimensionMemberId, dimensionVersionId: 3, memberKey, displayName: memberKey, parentDimensionMemberId, isAssignable, sortOrder: dimensionMemberId };
 }
 
 function row(key: string, items: EditorRow['items']): EditorRow {

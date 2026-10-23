@@ -42,13 +42,13 @@ public sealed class ReportSourceService(
             DatasetId = input.DatasetId,
             MappingMethod = input.MappingMethod,
             FieldKey = input.FieldKey,
-            RoleId = input.RoleId,
+            DimensionRoleId = input.DimensionRoleId,
             TimeFieldKey = input.TimeFieldKey
         };
         return await changes.ApplyAsync(reportId, report => report with { Sources = [.. report.Sources, source] }, async () =>
         {
-            var stored = source.RoleId is { } roleId
-                ? source with { BridgeId = await CreateBridgeAsync(source, roleId, input.CopyFromSourceId, cancellationToken) }
+            var stored = source.DimensionRoleId is { } dimensionRoleId
+                ? source with { BridgeId = await CreateBridgeAsync(source, dimensionRoleId, input.CopyFromSourceId, cancellationToken) }
                 : source;
             await sources.InsertAsync(stored, cancellationToken);
         }, cancellationToken);
@@ -101,10 +101,10 @@ public sealed class ReportSourceService(
     /// Creates a bridge source's bridge from its role's dimension into the report dimension, with a version that replicates each
     /// item into every row its rules name, starting from a copy of a sibling's rules, and publishes the version.
     /// </summary>
-    private async Task<long> CreateBridgeAsync(ReportSourceRecord source, long roleId, long? copyFromSourceId, CancellationToken cancellationToken)
+    private async Task<long> CreateBridgeAsync(ReportSourceRecord source, long dimensionRoleId, long? copyFromSourceId, CancellationToken cancellationToken)
     {
         var report = await reports.GetAsync(new { source.ReportId }, cancellationToken);
-        var role = await roles.GetAsync(new { RoleId = roleId }, cancellationToken);
+        var role = await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
         var bridge = await bridges.CreateAsync(
             new NewBridgeInput
             {

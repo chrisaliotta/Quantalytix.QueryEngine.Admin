@@ -46,7 +46,7 @@ export function ItemPickerSheet({ view, source, row, onClose }: ItemPickerSheetP
             {source.source.displayName} rules of {row.label}
           </SheetTitle>
           <SheetDescription>
-            Pick the members of {source.roleKey}'s dimension whose values the row adds up. A folder rule takes every item under the
+            Pick the members of {source.dimensionRoleKey}'s dimension whose values the row adds up. A folder rule takes every item under the
             folder, including items added to it later.
           </SheetDescription>
         </SheetHeader>

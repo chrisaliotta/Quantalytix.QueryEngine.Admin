@@ -7,7 +7,7 @@ public sealed record CalculatedMeasureRecord
     public required long CalculatedMeasureId { get; init; }
 
     /// <summary>The owning model.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>Key, unique among the model's variables and calculated measures.</summary>
     public required string MeasureKey { get; init; }

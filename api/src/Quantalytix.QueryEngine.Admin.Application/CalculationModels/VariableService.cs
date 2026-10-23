@@ -37,7 +37,7 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, IIdGene
     /// <returns>Its model ID.</returns>
     protected override long OwnerOf(VariableRecord row)
     {
-        return row.ModelId;
+        return row.CalculationModelId;
     }
 
     /// <summary>The key a variable is listed by.</summary>
@@ -58,7 +58,7 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, IIdGene
         return new VariableRecord
         {
             VariableId = itemId,
-            ModelId = ownerId,
+            CalculationModelId = ownerId,
             VariableKey = input.VariableKey,
             DisplayName = input.DisplayName,
             VariableRole = input.VariableRole,

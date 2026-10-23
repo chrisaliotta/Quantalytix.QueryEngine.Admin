@@ -42,8 +42,8 @@ public sealed class BindingInputValidatorTests
     [Fact]
     public async Task BreakoutBinding_BindsAnExistingRoleAndNoDimension()
     {
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { RoleId = null })).ShouldHaveValidationErrorFor(binding => binding.RoleId);
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { RoleId = 99 })).ShouldHaveValidationErrorFor(binding => binding.RoleId);
+        (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionRoleId = null })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
+        (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionRoleId = 99 })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
         (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionId = 7000 })).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
     }
 
@@ -53,7 +53,7 @@ public sealed class BindingInputValidatorTests
     public async Task TimeBinding_NamesItsDimensionAndNoRole()
     {
         (await ValidateAsync(Binding(BindingKinds.Time) with { DimensionId = null })).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
-        (await ValidateAsync(Binding(BindingKinds.Time) with { RoleId = 81 })).ShouldHaveValidationErrorFor(binding => binding.RoleId);
+        (await ValidateAsync(Binding(BindingKinds.Time) with { DimensionRoleId = 81 })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
     }
 
     /// <summary>Every kind but bridge classifies a source field's value, so it needs the field; a bridge binding may omit it.</summary>
@@ -87,12 +87,12 @@ public sealed class BindingInputValidatorTests
     [Fact]
     public async Task BridgeReferences_AreRequiredForBridgeAndForbiddenOtherwise()
     {
-        var missing = await ValidateAsync(Binding(BindingKinds.Bridge) with { SourceBindingId = null, BridgeId = null });
-        var foreign = await ValidateAsync(Binding(BindingKinds.Mapped) with { SourceBindingId = 21, BridgeId = 40 });
+        var missing = await ValidateAsync(Binding(BindingKinds.Bridge) with { SourceDimensionBindingId = null, BridgeId = null });
+        var foreign = await ValidateAsync(Binding(BindingKinds.Mapped) with { SourceDimensionBindingId = 21, BridgeId = 40 });
 
-        missing.ShouldHaveValidationErrorFor(binding => binding.SourceBindingId);
+        missing.ShouldHaveValidationErrorFor(binding => binding.SourceDimensionBindingId);
         missing.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
-        foreign.ShouldHaveValidationErrorFor(binding => binding.SourceBindingId);
+        foreign.ShouldHaveValidationErrorFor(binding => binding.SourceDimensionBindingId);
         foreign.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
     }
 
@@ -227,7 +227,7 @@ public sealed class BindingInputValidatorTests
     {
         var binding = new BindingInput
         {
-            RoleId = 81,
+            DimensionRoleId = 81,
             BindingKind = kind,
             SourceFieldId = 1,
             RaggedBehavior = RaggedBehaviors.Null,
@@ -241,8 +241,8 @@ public sealed class BindingInputValidatorTests
         return kind switch
         {
             BindingKinds.Mapped => binding with { MappingSetId = 30 },
-            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceBindingId = 21, BridgeId = 40 },
-            BindingKinds.Time => binding with { RoleId = null, DimensionId = 7000, TimeBinding = TimeBinding() },
+            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceDimensionBindingId = 21, BridgeId = 40 },
+            BindingKinds.Time => binding with { DimensionRoleId = null, DimensionId = 7000, TimeBinding = TimeBinding() },
             _ => binding
         };
     }

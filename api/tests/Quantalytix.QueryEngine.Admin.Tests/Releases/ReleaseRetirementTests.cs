@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Releases;
 public sealed class ReleaseRetirementTests
 {
     /// <summary>The release that is active.</summary>
-    private const long ActiveReleaseId = 500;
+    private const long ActiveSemanticReleaseId = 500;
 
     /// <summary>A published release that is not active.</summary>
     private const long InactiveReleaseId = 501;
@@ -32,7 +32,7 @@ public sealed class ReleaseRetirementTests
 
     /// <summary>The release table.</summary>
     private readonly InMemoryTableGateway<SemanticReleaseRecord> _releases = new(
-        Release(ActiveReleaseId, "development/baseline"),
+        Release(ActiveSemanticReleaseId, "development/baseline"),
         Release(InactiveReleaseId, "zz_rel_previous"));
 
     /// <summary>The tenant's singleton database info row, pointing at the active release.</summary>
@@ -42,7 +42,7 @@ public sealed class ReleaseRetirementTests
         TenantKey = "sandbox",
         MetadataSchemaVersion = 4,
         SemanticRevision = 7,
-        ActiveReleaseId = ActiveReleaseId,
+        ActiveSemanticReleaseId = ActiveSemanticReleaseId,
         UpdatedAt = Earlier
     });
 
@@ -52,11 +52,11 @@ public sealed class ReleaseRetirementTests
     public async Task ActiveRelease_CannotBeRetired()
     {
         var result = await Workflow().TransitionAsync(
-            VersionKinds.SemanticRelease, ActiveReleaseId, PublicationStatuses.Retired, TestContext.Current.CancellationToken);
+            VersionKinds.SemanticRelease, ActiveSemanticReleaseId, PublicationStatuses.Retired, TestContext.Current.CancellationToken);
 
         Assert.Equal(TransitionOutcome.Rejected, result.Outcome);
         Assert.Equal("release_not_active", Assert.Single(result.Violations).Rule);
-        Assert.Equal(PublicationStatuses.Published, _releases.All.Single(row => row.ReleaseId == ActiveReleaseId).Status);
+        Assert.Equal(PublicationStatuses.Published, _releases.All.Single(row => row.SemanticReleaseId == ActiveSemanticReleaseId).Status);
     }
 
     /// <summary>A published release that queries no longer run on retires.</summary>
@@ -68,7 +68,7 @@ public sealed class ReleaseRetirementTests
             VersionKinds.SemanticRelease, InactiveReleaseId, PublicationStatuses.Retired, TestContext.Current.CancellationToken);
 
         Assert.Equal(TransitionOutcome.Applied, result.Outcome);
-        Assert.Equal(PublicationStatuses.Retired, _releases.All.Single(row => row.ReleaseId == InactiveReleaseId).Status);
+        Assert.Equal(PublicationStatuses.Retired, _releases.All.Single(row => row.SemanticReleaseId == InactiveReleaseId).Status);
     }
 
     /// <summary>The workflow over this test's tables and clock, with the releases' retirement rule.</summary>
@@ -85,11 +85,11 @@ public sealed class ReleaseRetirementTests
     }
 
     /// <summary>A published release.</summary>
-    private static SemanticReleaseRecord Release(long releaseId, string releaseKey)
+    private static SemanticReleaseRecord Release(long semanticReleaseId, string releaseKey)
     {
         return new SemanticReleaseRecord
         {
-            ReleaseId = releaseId,
+            SemanticReleaseId = semanticReleaseId,
             ReleaseKey = releaseKey,
             Status = PublicationStatuses.Published,
             CreatedAt = Earlier,

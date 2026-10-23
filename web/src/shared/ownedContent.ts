@@ -42,7 +42,7 @@ export type ContentInput<K extends ContentKind> = OwnedContentTypes[K]['input'];
 type ContentScope = OwnedContentTypes[ContentKind]['scope'];
 
 /** The route parameter each owner resource's routes name it by. */
-const OWNER_PARAMS = { 'calculation-models': 'modelId', reports: 'reportId' } as const satisfies Record<ContentScope, string>;
+const OWNER_PARAMS = { 'calculation-models': 'calculationModelId', reports: 'reportId' } as const satisfies Record<ContentScope, string>;
 
 /** The list paths of the content kinds. */
 type ContentListPath = {
@@ -53,7 +53,7 @@ type ContentListPath = {
 type ContentItemPath = `${ContentListPath}/{itemId}`;
 
 /** The path parameters of a content route; each route names its owner by one of the two, so the union of routes takes both. */
-type ContentPathParams = { tenantId: string; modelId: number; reportId: number; itemId: number };
+type ContentPathParams = { tenantId: string; calculationModelId: number; reportId: number; itemId: number };
 
 /** The owner resource each kind's routes start with. */
 const SCOPES: { [K in ContentKind]: OwnedContentTypes[K]['scope'] } = {

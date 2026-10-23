@@ -278,10 +278,10 @@ public sealed class MeasureInputValidatorTests
     [Fact]
     public void SelectingObservations_RequiresASelectionGrain()
     {
-        var policy = TimePolicy() with { ObservationSelection = ObservationSelections.AtEnd, SelectionGrainId = null };
+        var policy = TimePolicy() with { ObservationSelection = ObservationSelections.AtEnd, SelectionDatasetGrainId = null };
 
         _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { TimePolicy = policy })
-            .ShouldHaveValidationErrorFor(measure => measure.TimePolicy!.SelectionGrainId);
+            .ShouldHaveValidationErrorFor(measure => measure.TimePolicy!.SelectionDatasetGrainId);
     }
 
     /// <summary>A measure key starts with a letter and holds only letters, digits and underscores.</summary>

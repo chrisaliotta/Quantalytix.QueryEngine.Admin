@@ -41,7 +41,7 @@ public sealed class UtcRuleExtensionsTests
     /// <summary>A band list of one band whose lower datetime bound is the given JSON time.</summary>
     private static RangeBandsInput Bands(string time)
     {
-        var json = $$"""{"bands":[{"memberId":1,"lowerDatetime":"{{time}}","lowerInclusive":true,"upperInclusive":false}]}""";
+        var json = $$"""{"bands":[{"dimensionMemberId":1,"lowerDatetime":"{{time}}","lowerInclusive":true,"upperInclusive":false}]}""";
         return JsonSerializer.Deserialize<RangeBandsInput>(json, JsonSerializerOptions.Web)!;
     }
 }

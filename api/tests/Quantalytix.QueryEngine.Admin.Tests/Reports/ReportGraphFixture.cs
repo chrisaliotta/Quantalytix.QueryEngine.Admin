@@ -64,7 +64,7 @@ internal sealed class ReportGraphFixture
         TenantKey = "bank",
         MetadataSchemaVersion = 12,
         SemanticRevision = 1,
-        ActiveReleaseId = ReleaseId,
+        ActiveSemanticReleaseId = SemanticReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
@@ -268,10 +268,10 @@ internal sealed class ReportGraphFixture
 
     /// <summary>Checks the enabled reports a release being validated serves against one rule.</summary>
     /// <param name="rule">The rule.</param>
-    /// <param name="releaseId">The release being validated.</param>
+    /// <param name="semanticReleaseId">The release being validated.</param>
     /// <returns>The rule's violations.</returns>
-    public Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long releaseId)
+    public Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long semanticReleaseId)
     {
-        return new ReportConsumerRule(rule, Reader()).EvaluateAsync(releaseId, Xunit.TestContext.Current.CancellationToken);
+        return new ReportConsumerRule(rule, Reader()).EvaluateAsync(semanticReleaseId, Xunit.TestContext.Current.CancellationToken);
     }
 }

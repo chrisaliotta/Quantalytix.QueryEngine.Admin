@@ -48,29 +48,29 @@ public sealed class ModelChanges(
     private static readonly IReportRule[] EnabledReportRules = [new ReportMetricsResolveRule(), new ProfilesCompleteRule(), new ReportDefaultsResolveRule()];
 
     /// <summary>Checks a write against the model's rules and the reports that read the model, and makes it when it passes.</summary>
-    /// <param name="modelId">The model written to.</param>
+    /// <param name="calculationModelId">The model written to.</param>
     /// <param name="change">The write's effect on the model.</param>
     /// <param name="write">Makes the write.</param>
     /// <param name="cancellationToken">Cancels the reads and the write.</param>
     /// <returns>The violations the write would cause, in which case nothing was written; none when it was made.</returns>
     public async Task<IReadOnlyList<RuleViolation>> ApplyAsync(
-        long modelId,
+        long calculationModelId,
         Func<ModelGraph, ModelGraph> change,
         Func<Task> write,
         CancellationToken cancellationToken)
     {
-        var owner = new { ModelId = modelId };
+        var owner = new { CalculationModelId = calculationModelId };
         var model = change(new ModelGraph
         {
             Model = await models.GetAsync(owner, cancellationToken),
             Variables = await variables.ListAsync(owner, cancellationToken),
             CalculatedMeasures = await calculatedMeasures.ListAsync(owner, cancellationToken),
-            Attributions = await attributions.ListAsync(modelId, cancellationToken),
-            Parameters = await parameters.ListAsync(modelId, cancellationToken)
+            Attributions = await attributions.ListAsync(calculationModelId, cancellationToken),
+            Parameters = await parameters.ListAsync(calculationModelId, cancellationToken)
         });
         List<RuleViolation> violations = [.. ModelRules.SelectMany(rule => rule(model))];
         var graphs = new List<ReportGraph>();
-        foreach (var report in await reports.OfModelAsync(modelId, cancellationToken))
+        foreach (var report in await reports.OfModelAsync(calculationModelId, cancellationToken))
         {
             var graph = await reader.ReadAsync(report, cancellationToken);
             graphs.Add(graph with { Variables = model.Variables, CalculatedMeasures = model.CalculatedMeasures, Parameters = model.Parameters });

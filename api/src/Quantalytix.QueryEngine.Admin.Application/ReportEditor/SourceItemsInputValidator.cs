@@ -54,13 +54,13 @@ public sealed class SourceItemsInputValidator : AbstractValidator<SourceItemsInp
         RuleFor(input => input.Items).CustomAsync(async (items, context, cancellationToken) =>
         {
             var source = await sources.GetAsync(new { ReportSourceId = keys.SourceId }, cancellationToken);
-            if (source.RoleId is not { } roleId)
+            if (source.DimensionRoleId is not { } dimensionRoleId)
             {
                 context.AddFailure($"Source '{source.SourceKey}' is a direct source; its field's values name its rows.");
                 return;
             }
 
-            var role = await roles.GetAsync(new { RoleId = roleId }, cancellationToken);
+            var role = await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
             var itemKeys = (await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken))!;
             foreach (var item in items.Where(item => !itemKeys.MemberKeys.Contains(item.ItemKey)))
                 context.AddFailure($"Item '{item.ItemKey}' is no member of the published version of the dimension source '{source.SourceKey}' maps from.");

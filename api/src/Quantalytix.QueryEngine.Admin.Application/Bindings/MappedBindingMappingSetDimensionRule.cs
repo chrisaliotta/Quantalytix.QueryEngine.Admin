@@ -34,16 +34,16 @@ public sealed class MappedBindingMappingSetDimensionRule(
             .ToDictionary(mappingSet => mappingSet.MappingSetId);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in mapped.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
+        foreach (var binding in mapped.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
         {
             var mappingSetId = binding.MappingSetId!.Value;
             if (!sets.TryGetValue(mappingSetId, out var mappingSet))
             {
-                violations.Add(Violation($"Mapped binding '{named[binding.BindingId]}' maps through mapping set {mappingSetId}, which does not exist."));
+                violations.Add(Violation($"Mapped binding '{named[binding.DimensionBindingId]}' maps through mapping set {mappingSetId}, which does not exist."));
             }
             else if (mappingSet.DimensionId != binding.DimensionId)
             {
-                violations.Add(Violation($"Mapped binding '{named[binding.BindingId]}' maps through mapping set '{mappingSet.MappingSetKey}', which targets another dimension than the binding."));
+                violations.Add(Violation($"Mapped binding '{named[binding.DimensionBindingId]}' maps through mapping set '{mappingSet.MappingSetKey}', which targets another dimension than the binding."));
             }
         }
 

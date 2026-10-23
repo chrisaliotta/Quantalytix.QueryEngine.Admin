@@ -68,7 +68,7 @@ public abstract class OwnedRows<TRecord, TInput>(ITableGateway<TRecord> rows, II
     /// <returns>Null when the row was deleted; otherwise the detail naming what blocks the delete.</returns>
     public abstract Task<string?> DeleteAsync(long itemId, CancellationToken cancellationToken);
 
-    /// <summary>The gateway filter of an owner's rows, such as <c>new { ModelId = id }</c>.</summary>
+    /// <summary>The gateway filter of an owner's rows, such as <c>new { CalculationModelId = id }</c>.</summary>
     /// <param name="ownerId">The owner's ID.</param>
     /// <returns>An anonymous object holding the owner property.</returns>
     protected abstract object Owner(long ownerId);

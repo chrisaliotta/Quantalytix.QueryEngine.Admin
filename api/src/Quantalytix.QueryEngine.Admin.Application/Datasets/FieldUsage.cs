@@ -23,10 +23,10 @@ public sealed class FieldUsage(
     public async Task<IReadOnlyList<string>> ListAsync(long fieldId, CancellationToken cancellationToken)
     {
         var grainComponents = await grainFields.ListAsync(new { FieldId = fieldId }, cancellationToken);
-        var usingGrains = await grains.ListAsync(new { GrainId = grainComponents.Select(row => row.GrainId).Distinct().ToArray() }, cancellationToken);
+        var usingGrains = await grains.ListAsync(new { DatasetGrainId = grainComponents.Select(row => row.DatasetGrainId).Distinct().ToArray() }, cancellationToken);
         var readingBindings = await bindings.ListAsync(new { SourceFieldId = fieldId }, cancellationToken);
         var endingTimeBindings = await timeBindings.ListAsync(new { IntervalEndFieldId = fieldId }, cancellationToken);
-        var endingBindings = await bindings.ListAsync(new { BindingId = endingTimeBindings.Select(row => row.BindingId).ToArray() }, cancellationToken);
+        var endingBindings = await bindings.ListAsync(new { DimensionBindingId = endingTimeBindings.Select(row => row.DimensionBindingId).ToArray() }, cancellationToken);
         var measureComponents = await components.ListAsync(new { FieldId = fieldId }, cancellationToken);
         var componentMeasures = await measures.ListAsync(new { MeasureId = measureComponents.Select(row => row.MeasureId).Distinct().ToArray() }, cancellationToken);
         var measureKeys = componentMeasures.ToDictionary(measure => measure.MeasureId, measure => measure.MeasureKey);
@@ -34,8 +34,8 @@ public sealed class FieldUsage(
         return
         [
             .. usingGrains.Select(grain => $"grain '{grain.GrainKey}'"),
-            .. readingBindings.Select(binding => $"binding '{named[binding.BindingId]}'"),
-            .. endingBindings.Select(binding => $"the interval end of time binding '{named[binding.BindingId]}'"),
+            .. readingBindings.Select(binding => $"binding '{named[binding.DimensionBindingId]}'"),
+            .. endingBindings.Select(binding => $"the interval end of time binding '{named[binding.DimensionBindingId]}'"),
             .. measureComponents.Select(component => $"the {component.ComponentRole} component of measure '{measureKeys[component.MeasureId]}'")
         ];
     }

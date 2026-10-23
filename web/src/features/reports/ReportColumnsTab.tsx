@@ -142,7 +142,7 @@ function ColumnEditor({ report, saved }: ColumnEditorProps) {
       </SortableRoot>
       {sheet && (
         <ReportColumnSheet
-          modelId={report.modelId}
+          calculationModelId={report.calculationModelId}
           column={sheet.row?.column ?? null}
           onSave={column => saveRow(sheet.row, column)}
           onClose={() => setSheet(null)}

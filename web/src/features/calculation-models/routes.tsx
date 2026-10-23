@@ -16,10 +16,10 @@ export const calculationModelsRoutes: RouteObject[] = [
         lazy: { Component: async () => (await import('./CalculationModelListPage')).CalculationModelListPage },
       },
       {
-        path: ':modelId',
+        path: ':calculationModelId',
         lazy: { Component: async () => (await import('./CalculationModelDetailPage')).CalculationModelDetailPage },
         handle: {
-          crumb: match => <CalculationModelCrumb modelId={Number(match.params.modelId)} />,
+          crumb: match => <CalculationModelCrumb calculationModelId={Number(match.params.calculationModelId)} />,
         } satisfies RouteHandle,
       },
     ],

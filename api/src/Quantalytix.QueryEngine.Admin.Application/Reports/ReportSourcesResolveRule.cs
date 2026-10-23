@@ -30,10 +30,10 @@ public sealed class ReportSourcesResolveRule : IReportRule
                 continue;
             }
 
-            if (source.RoleId is { } roleId)
+            if (source.DimensionRoleId is { } dimensionRoleId)
             {
-                if (!SourceBindings.BridgesFrom(dataset, roleId))
-                    yield return Violation($"{subject} bridges from role '{scope.RoleKeys[roleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding.");
+                if (!SourceBindings.BridgesFrom(dataset, dimensionRoleId))
+                    yield return Violation($"{subject} bridges from role '{scope.RoleKeys[dimensionRoleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding.");
             }
             else if (dataset.Fields.GetValueOrDefault(source.FieldKey!) is not { IsEnabled: true })
             {

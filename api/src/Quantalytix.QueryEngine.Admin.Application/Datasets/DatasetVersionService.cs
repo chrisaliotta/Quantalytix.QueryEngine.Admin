@@ -100,7 +100,7 @@ public sealed class DatasetVersionService(
     {
         var version = await GetAsync(versionId, cancellationToken);
         var pins = await releaseDatasets.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var pinning = await releases.ListAsync(new { ReleaseId = pins.Select(pin => pin.ReleaseId).ToArray() }, cancellationToken);
+        var pinning = await releases.ListAsync(new { SemanticReleaseId = pins.Select(pin => pin.SemanticReleaseId).ToArray() }, cancellationToken);
         var blockers = new DeleteBlockers($"Dataset version v{version.VersionNumber}");
         blockers.AddNamed("pinned by releases", pinning.Select(release => $"'{release.ReleaseKey}'"));
         var conflict = blockers.Detail();

@@ -322,7 +322,7 @@ flowchart TB
 | `DimensionDetailPage` | `?version=` | `NewVersionSheet` | `NewVersionSheet` with the source | `useDeleteDimensionVersion` |
 | `MappingSetDetailPage` | `?version=` | `NewMappingVersionDialog` | `NewMappingVersionDialog` with the source | `useDeleteMappingVersion` |
 | `BridgeDetailPage` | `?version=` | `NewBridgeVersionDialog` | `NewBridgeVersionDialog` with the source's values | `useDeleteBridgeVersion` |
-| `ReleaseEditorPage` | Route `releases/:releaseId` | None | `NewReleaseSheet` with `copyFromReleaseId` | `useDeleteRelease` |
+| `ReleaseEditorPage` | Route `releases/:semanticReleaseId` | None | `NewReleaseSheet` with `copyFromSemanticReleaseId` | `useDeleteRelease` |
 
 **Sources:** [VersionHeader.tsx](../../src/shared/VersionHeader.tsx), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [versionSelection.ts](../../src/shared/versionSelection.ts), [versionSelection.test.ts](../../src/shared/versionSelection.test.ts), [versionTransitions.ts](../../src/shared/versionTransitions.ts), [StatusBadge.tsx](../../src/shared/StatusBadge.tsx), [ConfirmDialog.tsx](../../src/shared/ConfirmDialog.tsx), [lookupItemText.ts](../../src/shared/lookupItemText.ts), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [DimensionDetailPage.tsx](../../src/features/dimensions/DimensionDetailPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [BridgeDetailPage.tsx](../../src/features/bridges/BridgeDetailPage.tsx), [ReportDetailPage.tsx](../../src/features/reports/ReportDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [useVersionCheck.ts](../../src/shared/useVersionCheck.ts).
 

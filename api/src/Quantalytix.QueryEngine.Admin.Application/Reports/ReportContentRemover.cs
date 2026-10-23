@@ -51,8 +51,8 @@ public sealed class ReportContentRemover(
     /// <returns>A task that completes when the rows are deleted.</returns>
     public async Task RemoveProfilesAsync(IReadOnlyCollection<long> profileIds, CancellationToken cancellationToken)
     {
-        await picks.DeleteAsync(new { SourceProfileId = profileIds }, cancellationToken);
-        await profiles.DeleteAsync(new { SourceProfileId = profileIds }, cancellationToken);
+        await picks.DeleteAsync(new { CalculationSourceProfileId = profileIds }, cancellationToken);
+        await profiles.DeleteAsync(new { CalculationSourceProfileId = profileIds }, cancellationToken);
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public sealed class ReportContentRemover(
     public async Task RemoveContentAsync(long reportId, CancellationToken cancellationToken)
     {
         var owner = new { ReportId = reportId };
-        await RemoveProfilesAsync([.. (await profiles.ListAsync(owner, cancellationToken)).Select(profile => profile.SourceProfileId)], cancellationToken);
+        await RemoveProfilesAsync([.. (await profiles.ListAsync(owner, cancellationToken)).Select(profile => profile.CalculationSourceProfileId)], cancellationToken);
         await RemoveSourcesAsync(await sources.ListAsync(owner, cancellationToken), cancellationToken);
         await dimensions.DeleteAsync(owner, cancellationToken);
         await scopes.DeleteAsync(owner, cancellationToken);

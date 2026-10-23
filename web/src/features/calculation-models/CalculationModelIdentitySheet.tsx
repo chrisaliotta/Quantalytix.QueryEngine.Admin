@@ -12,7 +12,7 @@ export interface CalculationModelIdentitySheetProps {
 
 /** Edits a calculation model's name, currency, availability, formula language and attribution method; its key is fixed. */
 export function CalculationModelIdentitySheet({ model, onClose }: CalculationModelIdentitySheetProps) {
-  const update = useUpdateCalculationModel(model.modelId);
+  const update = useUpdateCalculationModel(model.calculationModelId);
   const form = useForm<CalculationModelInput>({
     defaultValues: {
       displayName: model.displayName,

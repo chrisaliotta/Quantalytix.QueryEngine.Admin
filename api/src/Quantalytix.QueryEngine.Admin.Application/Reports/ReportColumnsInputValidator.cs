@@ -51,8 +51,8 @@ public sealed class ReportColumnsInputValidator : AbstractValidator<ReportColumn
             foreach (var column in list.Where(column => column.ReportColumnId is { } id && !stored.ContainsKey(id)))
                 context.AddFailure($"Column {column.ReportColumnId} is not a column of this report.");
             var removed = stored.Keys.Except(list.Where(column => column.ReportColumnId is not null).Select(column => column.ReportColumnId!.Value)).ToHashSet();
-            foreach (var line in (await lines.ListAsync(owner, cancellationToken)).Where(line => line.ValueColumnId is { } id && removed.Contains(id)))
-                context.AddFailure($"Formula row '{line.LineKey}' places its value in column '{stored[line.ValueColumnId!.Value].ColumnKey}', so the column must stay.");
+            foreach (var line in (await lines.ListAsync(owner, cancellationToken)).Where(line => line.ValueReportColumnId is { } id && removed.Contains(id)))
+                context.AddFailure($"Formula row '{line.LineKey}' places its value in column '{stored[line.ValueReportColumnId!.Value].ColumnKey}', so the column must stay.");
         });
     }
 }

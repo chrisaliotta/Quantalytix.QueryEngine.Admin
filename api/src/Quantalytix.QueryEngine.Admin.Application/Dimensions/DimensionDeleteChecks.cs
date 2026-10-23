@@ -54,7 +54,7 @@ public sealed class DimensionDeleteChecks(
         blockers.AddNamed("referenced by bridges", bridgesFrom.Concat(bridgesTo).Select(bridge => $"'{bridge.BridgeKey}'"));
         var reportsOn = await reports.ListAsync(new { ReportDimensionId = dimension.DimensionId }, cancellationToken);
         blockers.AddNamed("the report dimension of reports", reportsOn.Select(report => $"'{report.ReportKey}'"));
-        var roleIds = (await roles.ListAsync(new { dimension.DimensionId }, cancellationToken)).Select(role => role.RoleId).ToArray();
+        var roleIds = (await roles.ListAsync(new { dimension.DimensionId }, cancellationToken)).Select(role => role.DimensionRoleId).ToArray();
         await AddReportUsesAsync(blockers, roleIds, cancellationToken);
         return blockers.Detail();
     }
@@ -65,10 +65,10 @@ public sealed class DimensionDeleteChecks(
     /// <returns>The 409 detail naming the blockers, or null when the role can be deleted.</returns>
     public async Task<string?> RoleAsync(DimensionRoleRecord role, CancellationToken cancellationToken)
     {
-        var blockers = new DeleteBlockers($"Role '{role.RoleKey}'");
-        var boundBy = await bindings.ListAsync(new { role.RoleId }, cancellationToken);
+        var blockers = new DeleteBlockers($"Role '{role.DimensionRoleKey}'");
+        var boundBy = await bindings.ListAsync(new { role.DimensionRoleId }, cancellationToken);
         blockers.AddNamed("bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
-        await AddReportUsesAsync(blockers, [role.RoleId], cancellationToken);
+        await AddReportUsesAsync(blockers, [role.DimensionRoleId], cancellationToken);
         return blockers.Detail();
     }
 
@@ -78,9 +78,9 @@ public sealed class DimensionDeleteChecks(
     /// </summary>
     private async Task AddReportUsesAsync(DeleteBlockers blockers, long[] roleIds, CancellationToken cancellationToken)
     {
-        var reading = await calculationDimensions.ListAsync(new { RoleId = roleIds }, cancellationToken);
-        var bridging = await sources.ListAsync(new { RoleId = roleIds }, cancellationToken);
-        var naming = await scenarios.ListAsync(new { RoleId = roleIds }, cancellationToken);
+        var reading = await calculationDimensions.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken);
+        var bridging = await sources.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken);
+        var naming = await scenarios.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken);
         long[] reportIds =
         [
             .. reading.Select(dimension => dimension.ReportId),
@@ -110,7 +110,7 @@ public sealed class DimensionDeleteChecks(
     public async Task<string?> LevelAsync(DimensionLevelRecord level, CancellationToken cancellationToken)
     {
         var blockers = new DeleteBlockers($"Level '{level.LevelKey}'");
-        var users = await members.ListAsync(new { level.LevelId }, cancellationToken);
+        var users = await members.ListAsync(new { level.DimensionLevelId }, cancellationToken);
         blockers.AddNamed("used by members", users.Select(member => $"'{member.MemberKey}'"));
         blockers.AddNamed("named by", await LiveConsumersAsync(level.DimensionVersionId, isLevel: true, level.LevelKey, cancellationToken));
         return blockers.Detail();
@@ -126,9 +126,9 @@ public sealed class DimensionDeleteChecks(
     public async Task<string?> MemberAsync(DimensionMemberRecord member, CancellationToken cancellationToken)
     {
         var blockers = new DeleteBlockers($"Member '{member.MemberKey}'");
-        var children = await members.ListAsync(new { ParentMemberId = member.MemberId }, cancellationToken);
+        var children = await members.ListAsync(new { ParentDimensionMemberId = member.DimensionMemberId }, cancellationToken);
         blockers.AddNamed("it has child members", children.Select(child => $"'{child.MemberKey}'"));
-        var bandsOfMember = await bands.ListAsync(new { member.MemberId }, cancellationToken);
+        var bandsOfMember = await bands.ListAsync(new { member.DimensionMemberId }, cancellationToken);
         blockers.AddNamed("used by range bands", bandsOfMember.Select(band => $"#{band.Ordinal}"));
         blockers.AddNamed("named by", await LiveConsumersAsync(member.DimensionVersionId, isLevel: false, member.MemberKey, cancellationToken));
         return blockers.Detail();

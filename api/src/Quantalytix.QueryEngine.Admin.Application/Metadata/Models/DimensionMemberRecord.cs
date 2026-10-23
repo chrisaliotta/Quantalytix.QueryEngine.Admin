@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DimensionMemberRecord
 {
     /// <summary>Surrogate primary key, unique across all dimension versions.</summary>
-    public required long MemberId { get; init; }
+    public required long DimensionMemberId { get; init; }
 
     /// <summary>The owning dimension version.</summary>
     public required long DimensionVersionId { get; init; }
@@ -19,10 +19,10 @@ public sealed record DimensionMemberRecord
     public string? Description { get; init; }
 
     /// <summary>Parent member in the authoritative tree, from the same dimension version.</summary>
-    public long? ParentMemberId { get; init; }
+    public long? ParentDimensionMemberId { get; init; }
 
     /// <summary>Optional business level.</summary>
-    public long? LevelId { get; init; }
+    public long? DimensionLevelId { get; init; }
 
     /// <summary>Whether source values may map directly to this member.</summary>
     public required bool IsAssignable { get; init; }

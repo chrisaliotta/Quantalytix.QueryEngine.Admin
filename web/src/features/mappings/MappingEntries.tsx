@@ -120,7 +120,7 @@ export function MappingEntries({ versionId, dimensionId, isEditable }: MappingEn
         description="The source value no longer maps to a member in this version."
         confirmLabel="Delete entry"
         destructive
-        onConfirm={() => deleting && deleteEntry.mutate(deleting.mappingEntryId)}
+        onConfirm={() => deleting && deleteEntry.mutate(deleting.dimensionMappingId)}
       />
     </div>
   );

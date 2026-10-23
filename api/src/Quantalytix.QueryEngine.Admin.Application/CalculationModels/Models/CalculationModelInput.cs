@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The editable attributes of a calculation model, as <c>PUT calculation-models/{modelId}</c> takes them.</summary>
+/// <summary>The editable attributes of a calculation model, as <c>PUT calculation-models/{calculationModelId}</c> takes them.</summary>
 public record CalculationModelInput
 {
     /// <summary>Human-readable name.</summary>

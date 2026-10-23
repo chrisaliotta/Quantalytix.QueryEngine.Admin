@@ -67,6 +67,6 @@ public sealed class ReportLifecycleTests
     /// <summary>A cash flow report over model 40.</summary>
     private static NewReportInput NewReport()
     {
-        return new NewReportInput { ReportKey = "cash_flow", DisplayName = "Cash flow", ReportType = "financial", ModelId = ModelRows.ModelId };
+        return new NewReportInput { ReportKey = "cash_flow", DisplayName = "Cash flow", ReportType = "financial", CalculationModelId = ModelRows.CalculationModelId };
     }
 }

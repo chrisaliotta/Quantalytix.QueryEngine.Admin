@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>A metric's attribution with its drivers, as <c>PUT calculation-models/{modelId}/attributions/{metricKey}</c> takes it.</summary>
+/// <summary>A metric's attribution with its drivers, as <c>PUT calculation-models/{calculationModelId}/attributions/{metricKey}</c> takes it.</summary>
 public sealed record MetricAttributionInput
 {
     /// <summary>

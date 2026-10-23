@@ -43,25 +43,25 @@ internal static class DatasetRows
     }
 
     /// <summary>A grain of a version.</summary>
-    public static DatasetGrainRecord Grain(long grainId, long versionId, string grainKey, string grainKind)
+    public static DatasetGrainRecord Grain(long datasetGrainId, long versionId, string grainKey, string grainKind)
     {
-        return new DatasetGrainRecord { GrainId = grainId, DatasetVersionId = versionId, GrainKey = grainKey, GrainKind = grainKind };
+        return new DatasetGrainRecord { DatasetGrainId = datasetGrainId, DatasetVersionId = versionId, GrainKey = grainKey, GrainKind = grainKind };
     }
 
     /// <summary>A component field of a grain.</summary>
-    public static DatasetGrainFieldRecord GrainField(long grainId, int ordinal, long fieldId)
+    public static DatasetGrainFieldRecord GrainField(long datasetGrainId, int ordinal, long fieldId)
     {
-        return new DatasetGrainFieldRecord { GrainId = grainId, Ordinal = ordinal, FieldId = fieldId };
+        return new DatasetGrainFieldRecord { DatasetGrainId = datasetGrainId, Ordinal = ordinal, FieldId = fieldId };
     }
 
     /// <summary>A binding of a version to dimension 7000: of a role of it, or with no role for a time binding.</summary>
-    public static DimensionBindingRecord Binding(long bindingId, long versionId, long? roleId, string bindingKind, long? sourceFieldId)
+    public static DimensionBindingRecord Binding(long dimensionBindingId, long versionId, long? dimensionRoleId, string bindingKind, long? sourceFieldId)
     {
         return new DimensionBindingRecord
         {
-            BindingId = bindingId,
+            DimensionBindingId = dimensionBindingId,
             DatasetVersionId = versionId,
-            RoleId = roleId,
+            DimensionRoleId = dimensionRoleId,
             DimensionId = 7000,
             BindingKind = bindingKind,
             SourceFieldId = sourceFieldId,
@@ -76,11 +76,11 @@ internal static class DatasetRows
     }
 
     /// <summary>The time extension of a binding: daily snapshots of a date.</summary>
-    public static TimeBindingRecord TimeBinding(long bindingId, long? intervalEndFieldId = null)
+    public static TimeBindingRecord TimeBinding(long dimensionBindingId, long? intervalEndFieldId = null)
     {
         return new TimeBindingRecord
         {
-            BindingId = bindingId,
+            DimensionBindingId = dimensionBindingId,
             TimeValueType = TimeValueTypes.Date,
             ObservationKind = ObservationKinds.Snapshot,
             NativePeriodicity = Periodicities.Day,
@@ -115,13 +115,13 @@ internal static class DatasetRows
     }
 
     /// <summary>A time policy that selects each series' observation at the period end.</summary>
-    public static MeasureTimePolicyRecord TimePolicy(long measureId, long? requiredTimeBindingId, long? selectionGrainId)
+    public static MeasureTimePolicyRecord TimePolicy(long measureId, long? requiredTimeBindingId, long? selectionDatasetGrainId)
     {
         return new MeasureTimePolicyRecord
         {
             MeasureId = measureId,
             RequiredTimeBindingId = requiredTimeBindingId,
-            SelectionGrainId = selectionGrainId,
+            SelectionDatasetGrainId = selectionDatasetGrainId,
             ObservationSelection = ObservationSelections.AtEnd,
             ValueTimeRole = ValueTimeRoles.Point,
             BoundaryMatch = BoundaryMatches.OnOrBefore,

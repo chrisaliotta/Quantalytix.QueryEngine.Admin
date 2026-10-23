@@ -27,7 +27,7 @@ public sealed class DimensionLevelService(
     {
         var level = new DimensionLevelRecord
         {
-            LevelId = ids.NextId(),
+            DimensionLevelId = ids.NextId(),
             DimensionVersionId = dimensionVersionId,
             LevelKey = input.LevelKey,
             DisplayName = input.DisplayName,
@@ -46,7 +46,7 @@ public sealed class DimensionLevelService(
     /// <returns>The stored level.</returns>
     public async Task<DimensionLevelRecord> UpdateAsync(LevelReference reference, LevelInput input, CancellationToken cancellationToken)
     {
-        var current = await levels.GetAsync(new { reference.LevelId }, cancellationToken);
+        var current = await levels.GetAsync(new { reference.DimensionLevelId }, cancellationToken);
         var updated = current with
         {
             DisplayName = input.DisplayName,
@@ -64,10 +64,10 @@ public sealed class DimensionLevelService(
     /// <returns>Null when the level was deleted; otherwise the detail naming the members that use it.</returns>
     public async Task<string?> DeleteAsync(LevelReference reference, CancellationToken cancellationToken)
     {
-        var level = await levels.GetAsync(new { reference.LevelId }, cancellationToken);
+        var level = await levels.GetAsync(new { reference.DimensionLevelId }, cancellationToken);
         var conflict = await deleteChecks.LevelAsync(level, cancellationToken);
         if (conflict is not null) return conflict;
-        await levels.DeleteAsync(new { reference.LevelId }, cancellationToken);
+        await levels.DeleteAsync(new { reference.DimensionLevelId }, cancellationToken);
         return null;
     }
 }

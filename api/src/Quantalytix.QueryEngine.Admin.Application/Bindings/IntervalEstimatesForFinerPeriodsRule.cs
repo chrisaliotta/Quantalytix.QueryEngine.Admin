@@ -38,13 +38,13 @@ public sealed class IntervalEstimatesForFinerPeriodsRule(
         var versionFilter = new { DatasetVersionId = versionId };
         var version = await versions.GetAsync(versionFilter, cancellationToken);
         var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
-        var estimating = (await timeBindings.ListAsync(new { BindingId = versionBindings.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
+        var estimating = (await timeBindings.ListAsync(new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken))
             .Where(AllowsFinerPeriods)
-            .Select(binding => binding.BindingId)
+            .Select(binding => binding.DimensionBindingId)
             .ToHashSet();
         if (estimating.Count == 0) return [];
 
-        var named = await names.OfAsync([.. versionBindings.Where(binding => estimating.Contains(binding.BindingId))], cancellationToken);
+        var named = await names.OfAsync([.. versionBindings.Where(binding => estimating.Contains(binding.DimensionBindingId))], cancellationToken);
         var enabled = (await measures.ListAsync(versionFilter, cancellationToken)).Where(measure => measure.IsEnabled).ToList();
         var policies = (await timePolicies.ListAsync(new { MeasureId = enabled.Select(measure => measure.MeasureId).ToArray() }, cancellationToken))
             .ToDictionary(policy => policy.MeasureId);
@@ -52,14 +52,14 @@ public sealed class IntervalEstimatesForFinerPeriodsRule(
         [
             .. enabled
                 .Select(measure => (Measure: measure, Policy: policies.GetValueOrDefault(measure.MeasureId)))
-                .Select(pair => (pair.Measure, pair.Policy, BindingId: pair.Policy?.RequiredTimeBindingId ?? version.DefaultTimeBindingId))
-                .Where(use => use.BindingId is { } bindingId && estimating.Contains(bindingId)
+                .Select(pair => (pair.Measure, pair.Policy, DimensionBindingId: pair.Policy?.RequiredTimeBindingId ?? version.DefaultTimeBindingId))
+                .Where(use => use.DimensionBindingId is { } dimensionBindingId && estimating.Contains(dimensionBindingId)
                     && use.Policy?.PartialIntervalBehavior != PartialIntervalBehaviors.UniformEstimate)
                 .OrderBy(use => use.Measure.MeasureKey, StringComparer.Ordinal)
                 .Select(use => new RuleViolation
                 {
                     Rule = Code,
-                    Message = $"Measure '{use.Measure.MeasureKey}' aggregates on time binding '{named[use.BindingId!.Value]}', whose interval rows " +
+                    Message = $"Measure '{use.Measure.MeasureKey}' aggregates on time binding '{named[use.DimensionBindingId!.Value]}', whose interval rows " +
                         "may be read at a periodicity finer than their native one, so its time policy must set partial_interval_behavior to uniform_estimate."
                 })
         ];

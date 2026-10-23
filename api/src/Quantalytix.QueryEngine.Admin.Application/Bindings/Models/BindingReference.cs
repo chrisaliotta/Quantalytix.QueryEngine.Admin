@@ -7,5 +7,5 @@ public sealed record BindingReference
     public required long VersionId { get; init; }
 
     /// <summary>The binding.</summary>
-    public required long BindingId { get; init; }
+    public required long DimensionBindingId { get; init; }
 }

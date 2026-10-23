@@ -28,21 +28,21 @@ public sealed class DimensionVersionCloner(
         var sourceBands = await bands.ListAsync(new { DimensionVersionId = sourceVersionId }, cancellationToken);
 
         await levels.InsertManyAsync(
-            [.. sourceLevels.Select(level => level with { LevelId = remap.Map(level.LevelId), DimensionVersionId = target.DimensionVersionId })],
+            [.. sourceLevels.Select(level => level with { DimensionLevelId = remap.Map(level.DimensionLevelId), DimensionVersionId = target.DimensionVersionId })],
             cancellationToken);
         await members.InsertManyAsync(
             [
                 .. sourceMembers.Select(member => member with
                 {
-                    MemberId = remap.Map(member.MemberId),
+                    DimensionMemberId = remap.Map(member.DimensionMemberId),
                     DimensionVersionId = target.DimensionVersionId,
-                    ParentMemberId = remap.MapOptional(member.ParentMemberId),
-                    LevelId = remap.MapOptional(member.LevelId)
+                    ParentDimensionMemberId = remap.MapOptional(member.ParentDimensionMemberId),
+                    DimensionLevelId = remap.MapOptional(member.DimensionLevelId)
                 })
             ],
             cancellationToken);
         await bands.InsertManyAsync(
-            [.. sourceBands.Select(band => band with { DimensionVersionId = target.DimensionVersionId, MemberId = remap.Map(band.MemberId) })],
+            [.. sourceBands.Select(band => band with { DimensionVersionId = target.DimensionVersionId, DimensionMemberId = remap.Map(band.DimensionMemberId) })],
             cancellationToken);
     }
 }

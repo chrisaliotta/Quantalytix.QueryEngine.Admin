@@ -10,7 +10,7 @@ public sealed record NewReportInput : ReportInput
     public required string ReportKey { get; init; }
 
     /// <summary>The calculation model whose metrics the report reads; it never changes.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>
     /// A categorical or hierarchical dimension with one root, whose published members and levels the report dimension copies;

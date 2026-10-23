@@ -24,7 +24,7 @@ public sealed class ReportSourcesResolveRuleTests
     public async Task ResolvingSource_Passes()
     {
         Assert.Empty(await _fixture.EvaluateAsync(new ReportSourcesResolveRule()));
-        Assert.Empty(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), ReleaseId));
+        Assert.Empty(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), SemanticReleaseId));
     }
 
     /// <summary>A source of the loans dataset, which the release does not pin, is reported for the release and for the report itself.</summary>
@@ -34,7 +34,7 @@ public sealed class ReportSourcesResolveRuleTests
     {
         await _fixture.Sources.InsertAsync(Source(72, "loans", LoansDatasetId), TestContext.Current.CancellationToken);
 
-        var violation = Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), ReleaseId));
+        var violation = Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), SemanticReleaseId));
 
         Assert.Equal(ReportSourcesResolveRule.Code, violation.Rule);
         Assert.Equal("Report 'balance_sheet' source 'loans' reads dataset 'loans', which the release does not pin.", violation.Message);
@@ -63,11 +63,11 @@ public sealed class ReportSourcesResolveRuleTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await _fixture.Sources.InsertAsync(
-            Source(72, "gl_bridged", GlDatasetId) with { MappingMethod = ReportMappingMethods.Bridge, FieldKey = null, RoleId = AccountRoleId, BridgeId = AccountBridgeId },
+            Source(72, "gl_bridged", GlDatasetId) with { MappingMethod = ReportMappingMethods.Bridge, FieldKey = null, DimensionRoleId = AccountRoleId, BridgeId = AccountBridgeId },
             cancellationToken);
         Assert.Empty(await _fixture.EvaluateAsync(new ReportSourcesResolveRule()));
 
-        var binding = await _fixture.Bindings.GetAsync(new { BindingId = 31L }, cancellationToken);
+        var binding = await _fixture.Bindings.GetAsync(new { DimensionBindingId = 31L }, cancellationToken);
         await _fixture.Bindings.UpdateAsync(binding with { IsEnabled = false }, cancellationToken);
         var violation = Assert.Single(await _fixture.EvaluateAsync(new ReportSourcesResolveRule()));
 

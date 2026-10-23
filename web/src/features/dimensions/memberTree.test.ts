@@ -9,13 +9,13 @@ import type { TreeItems } from '@registry/components/Nestable';
 import { buildMemberTree, filterMemberTree, placementsAfterMove, selfAndDescendants } from './memberTree';
 import type { DimensionMember } from './types';
 
-function member(memberId: number, memberKey: string, parentMemberId: number | null, sortOrder = 0): DimensionMember {
+function member(dimensionMemberId: number, memberKey: string, parentDimensionMemberId: number | null, sortOrder = 0): DimensionMember {
   return {
-    memberId,
+    dimensionMemberId,
     dimensionVersionId: 10,
     memberKey,
     displayName: `Member ${memberKey}`,
-    parentMemberId,
+    parentDimensionMemberId,
     isAssignable: true,
     sortOrder,
   };
@@ -56,9 +56,9 @@ describe('buildMemberTree', () => {
 describe('placementsAfterMove', () => {
   // Dropping NY under CA, after LA: only NY changes parent; LA keeps sort order 0.
   it('returns only the members of the new sibling group that changed', () => {
-    const next = buildMemberTree([...members.filter(m => m.memberId !== 2), member(2, 'NY', 3, 1)]);
+    const next = buildMemberTree([...members.filter(m => m.dimensionMemberId !== 2), member(2, 'NY', 3, 1)]);
 
-    expect(placementsAfterMove(members, next, 2)).toEqual([{ memberId: 2, parentMemberId: 3, sortOrder: 1 }]);
+    expect(placementsAfterMove(members, next, 2)).toEqual([{ dimensionMemberId: 2, parentDimensionMemberId: 3, sortOrder: 1 }]);
   });
 
   // Reordering roots renumbers the group by position.
@@ -67,8 +67,8 @@ describe('placementsAfterMove', () => {
     const reordered = [next[1], next[0]];
 
     expect(placementsAfterMove(members, reordered, 5)).toEqual([
-      { memberId: 5, parentMemberId: null, sortOrder: 0 },
-      { memberId: 1, parentMemberId: null, sortOrder: 1 },
+      { dimensionMemberId: 5, parentDimensionMemberId: null, sortOrder: 0 },
+      { dimensionMemberId: 1, parentDimensionMemberId: null, sortOrder: 1 },
     ]);
   });
 });

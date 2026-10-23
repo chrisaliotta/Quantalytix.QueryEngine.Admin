@@ -62,7 +62,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is not a draft.</response>
-    [HttpPut("{grainId:long}")]
+    [HttpPut("{datasetGrainId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -85,7 +85,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is not a draft, or a measure time policy's selection grain is this grain; the detail names the measures.</response>
-    [HttpDelete("{grainId:long}")]
+    [HttpDelete("{datasetGrainId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

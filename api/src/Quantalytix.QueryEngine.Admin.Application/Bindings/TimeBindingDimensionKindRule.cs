@@ -31,16 +31,16 @@ public sealed class TimeBindingDimensionKindRule(
             .Where(binding => binding.BindingKind == BindingKinds.Time)
             .ToList();
         var named = await names.OfAsync(timed, cancellationToken);
-        var extended = (await timeBindings.ListAsync(new { BindingId = timed.Select(binding => binding.BindingId).ToArray() }, cancellationToken))
-            .Select(extension => extension.BindingId)
+        var extended = (await timeBindings.ListAsync(new { DimensionBindingId = timed.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken))
+            .Select(extension => extension.DimensionBindingId)
             .ToHashSet();
         var bound = (await dimensions.ListAsync(new { DimensionId = timed.Select(binding => binding.DimensionId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(dimension => dimension.DimensionId);
 
         var violations = new List<RuleViolation>();
-        foreach (var binding in timed.OrderBy(binding => named[binding.BindingId], StringComparer.Ordinal))
+        foreach (var binding in timed.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
         {
-            var name = named[binding.BindingId];
+            var name = named[binding.DimensionBindingId];
             if (!bound.TryGetValue(binding.DimensionId, out var dimension))
             {
                 violations.Add(Violation($"Time binding '{name}' binds dimension {binding.DimensionId}, which does not exist."));
@@ -51,7 +51,7 @@ public sealed class TimeBindingDimensionKindRule(
                     $"Time binding '{name}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; time bindings bind a time dimension."));
             }
 
-            if (!extended.Contains(binding.BindingId))
+            if (!extended.Contains(binding.DimensionBindingId))
             {
                 violations.Add(Violation($"Time binding '{name}' has no time extension."));
             }

@@ -7,7 +7,7 @@ public sealed record VariableRecord
     public required long VariableId { get; init; }
 
     /// <summary>The owning model.</summary>
-    public required long ModelId { get; init; }
+    public required long CalculationModelId { get; init; }
 
     /// <summary>Key, unique among the model's variables and calculated measures; reports name the variable by it.</summary>
     public required string VariableKey { get; init; }

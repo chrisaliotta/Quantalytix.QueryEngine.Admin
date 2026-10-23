@@ -19,7 +19,7 @@ public sealed record NewReportSourceInput : ReportSourceInput
     /// For a bridge source, a role of an analytical dimension that the dataset binds into members: the source's items are that
     /// dimension's members. Null for a direct source.
     /// </summary>
-    public long? RoleId { get; init; }
+    public long? DimensionRoleId { get; init; }
 
     /// <summary>For a direct source, the enabled dataset field whose values are row keys. Null for a bridge source.</summary>
     public string? FieldKey { get; init; }

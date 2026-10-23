@@ -29,18 +29,18 @@ public sealed class TimePolicySeriesGrainRule(
         var versionFilter = new { DatasetVersionId = versionId };
         var measureKeys = (await measures.ListAsync(versionFilter, cancellationToken)).ToDictionary(measure => measure.MeasureId, measure => measure.MeasureKey);
         var selecting = (await timePolicies.ListAsync(new { MeasureId = measureKeys.Keys.ToArray() }, cancellationToken))
-            .Where(policy => policy.SelectionGrainId is not null)
+            .Where(policy => policy.SelectionDatasetGrainId is not null)
             .OrderBy(policy => measureKeys[policy.MeasureId], StringComparer.Ordinal)
             .ToList();
-        var versionGrains = (await grains.ListAsync(versionFilter, cancellationToken)).ToDictionary(grain => grain.GrainId);
+        var versionGrains = (await grains.ListAsync(versionFilter, cancellationToken)).ToDictionary(grain => grain.DatasetGrainId);
 
         var violations = new List<RuleViolation>();
         foreach (var policy in selecting)
         {
             var subject = $"The time policy of measure '{measureKeys[policy.MeasureId]}'";
-            if (!versionGrains.TryGetValue(policy.SelectionGrainId!.Value, out var grain))
+            if (!versionGrains.TryGetValue(policy.SelectionDatasetGrainId!.Value, out var grain))
             {
-                violations.Add(Violation($"{subject} selects by grain {policy.SelectionGrainId}, which is not a grain of this version."));
+                violations.Add(Violation($"{subject} selects by grain {policy.SelectionDatasetGrainId}, which is not a grain of this version."));
             }
             else if (grain.GrainKind != GrainKinds.Series)
             {

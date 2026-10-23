@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
-/// <summary>The editable attributes of a level, as <c>PUT dimension-versions/{dimensionVersionId}/levels/{levelId}</c> takes them.</summary>
+/// <summary>The editable attributes of a level, as <c>PUT dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}</c> takes them.</summary>
 public record LevelInput
 {
     /// <summary>Human-readable label, at most 256 bytes of UTF-8 text.</summary>

@@ -60,7 +60,7 @@ function ReportEditor({ view }: { view: EditorView }) {
   const check = useReportCheck(report.reportId);
   const deleteReport = useDeleteReport();
   const models = useLookup('calculation-models');
-  const model = models.data?.find(item => item.id === report.modelId);
+  const model = models.data?.find(item => item.id === report.calculationModelId);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [editingSettings, setEditingSettings] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -117,7 +117,7 @@ function ReportEditor({ view }: { view: EditorView }) {
       />
       <div className="flex flex-wrap items-start gap-x-8 gap-y-3 rounded-md border p-3 text-sm">
         <Setting label="Calculation model">
-          <Link className="font-medium hover:underline" to={`/t/${tenantId}/calculation-models/${report.modelId}`}>
+          <Link className="font-medium hover:underline" to={`/t/${tenantId}/calculation-models/${report.calculationModelId}`}>
             {model?.key} ({model?.classifier})
           </Link>
         </Setting>

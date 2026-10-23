@@ -107,7 +107,7 @@ public sealed class BridgeService(
             bridgeVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { BridgeId = bridgeId }, cancellationToken);
         var bound = await bindingNames.OfAsync(boundBy, cancellationToken);
-        blockers.AddNamed("used by bindings", boundBy.Select(binding => $"'{bound[binding.BindingId]}'"));
+        blockers.AddNamed("used by bindings", boundBy.Select(binding => $"'{bound[binding.DimensionBindingId]}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

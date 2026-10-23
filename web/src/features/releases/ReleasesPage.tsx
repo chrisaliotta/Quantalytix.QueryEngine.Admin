@@ -14,7 +14,7 @@ import { useReleases } from './useReleases';
 
 /** A release summary flattened for the table, so its search and sorting see every column. */
 interface ReleaseRow {
-  releaseId: number;
+  semanticReleaseId: number;
   releaseKey: string;
   status: string;
   isActive: boolean;
@@ -37,8 +37,8 @@ export function ReleasesPage() {
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const releases = useReleases();
-  const newRelease = useSheetForm<ReleaseCreateInput>({ releaseKey: '', copyFromReleaseId: null });
-  const activeReleaseId = releases.data?.find(summary => summary.isActive)?.release.releaseId ?? null;
+  const newRelease = useSheetForm<ReleaseCreateInput>({ releaseKey: '', copyFromSemanticReleaseId: null });
+  const activeSemanticReleaseId = releases.data?.find(summary => summary.isActive)?.release.semanticReleaseId ?? null;
 
   return (
     <>
@@ -46,7 +46,7 @@ export function ReleasesPage() {
         title="Releases"
         description="A release pins one dataset version per dataset. Queries and reports use the active release."
         actions={
-          <Button onClick={() => newRelease.open({ releaseKey: '', copyFromReleaseId: activeReleaseId })}>
+          <Button onClick={() => newRelease.open({ releaseKey: '', copyFromSemanticReleaseId: activeSemanticReleaseId })}>
             <Plus />
             New release
           </Button>
@@ -56,7 +56,7 @@ export function ReleasesPage() {
         isLoading={releases.isPending}
         error={releases.error}
         searchPlaceholder="Search releases..."
-        onRowClick={row => navigate(`/t/${tenantId}/releases/${row.releaseId}`)}
+        onRowClick={row => navigate(`/t/${tenantId}/releases/${row.semanticReleaseId}`)}
       />
       <NewReleaseSheet {...newRelease.sheetProps} />
     </>
@@ -65,7 +65,7 @@ export function ReleasesPage() {
 
 function toRow(summary: ReleaseSummary): ReleaseRow {
   return {
-    releaseId: summary.release.releaseId,
+    semanticReleaseId: summary.release.semanticReleaseId,
     releaseKey: summary.release.releaseKey,
     status: summary.release.status,
     isActive: summary.isActive,

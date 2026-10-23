@@ -12,32 +12,32 @@ import type { BindingDetail } from './types';
 describe('toBindingInput', () => {
   const values: BindingFormValues = {
     ...bindingFormValues(),
-    roleId: 81,
+    dimensionRoleId: 81,
     dimensionId: 7000,
     sourceFieldId: 1,
     mappingSetId: 30,
-    sourceBindingId: 21,
+    sourceDimensionBindingId: 21,
     bridgeId: 40,
   };
 
   it('sends only the references of the chosen kind', () => {
     expect(toBindingInput({ ...values, bindingKind: 'mapped' })).toMatchObject({
       mappingSetId: 30,
-      sourceBindingId: null,
+      sourceDimensionBindingId: null,
       bridgeId: null,
       timeBinding: null,
     });
     expect(toBindingInput({ ...values, bindingKind: 'bridge' })).toMatchObject({
       mappingSetId: null,
-      sourceBindingId: 21,
+      sourceDimensionBindingId: 21,
       bridgeId: 40,
     });
     expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ mappingSetId: null, bridgeId: null });
   });
 
   it('sends the role of a breakout binding and the dimension of a time binding', () => {
-    expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ roleId: 81, dimensionId: null });
-    expect(toBindingInput({ ...values, bindingKind: 'time' })).toMatchObject({ roleId: null, dimensionId: 7000 });
+    expect(toBindingInput({ ...values, bindingKind: 'direct' })).toMatchObject({ dimensionRoleId: 81, dimensionId: null });
+    expect(toBindingInput({ ...values, bindingKind: 'time' })).toMatchObject({ dimensionRoleId: null, dimensionId: 7000 });
   });
 
   it('sends the unknown member only when unmapped rows route to it', () => {
@@ -67,7 +67,7 @@ describe('toBindingInput', () => {
 
 describe('bindingFormValues', () => {
   const binding: BindingDetail['binding'] = {
-    bindingId: 21,
+    dimensionBindingId: 21,
     datasetVersionId: 100,
     dimensionId: 7000,
     bindingKind: 'time',
@@ -85,7 +85,7 @@ describe('bindingFormValues', () => {
     const detail: BindingDetail = {
       binding,
       timeBinding: {
-        bindingId: 21,
+        dimensionBindingId: 21,
         timeValueType: 'timestamp',
         observationKind: 'instant',
         sourceTimeZone: 'Europe/London',
@@ -98,12 +98,12 @@ describe('bindingFormValues', () => {
     const loaded = bindingFormValues(detail);
 
     expect(loaded.timeBinding).toMatchObject({ timeValueType: 'timestamp', sourceTimeZone: 'Europe/London', allowedPeriodicities: ['day', 'month'] });
-    expect(loaded).toMatchObject({ isRequired: true, bridgeId: null, roleId: null, dimensionId: 7000 });
+    expect(loaded).toMatchObject({ isRequired: true, bridgeId: null, dimensionRoleId: null, dimensionId: 7000 });
   });
 
   it("loads a role binding by its role, leaving the template out of the time dimension", () => {
-    const loaded = bindingFormValues({ binding: { ...binding, bindingKind: 'direct', roleId: 81 } });
+    const loaded = bindingFormValues({ binding: { ...binding, bindingKind: 'direct', dimensionRoleId: 81 } });
 
-    expect(loaded).toMatchObject({ roleId: 81, dimensionId: null });
+    expect(loaded).toMatchObject({ dimensionRoleId: 81, dimensionId: null });
   });
 });

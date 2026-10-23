@@ -20,26 +20,26 @@ public sealed class CalculationModelServiceTests
     private readonly InMemoryTableGateway<CalculationModelRecord> _models = new(Model());
 
     /// <summary>Model 40's balance variable and model 41's rate variable.</summary>
-    private readonly InMemoryTableGateway<VariableRecord> _variables = new(Variable(51, "balance"), Variable(52, "rate") with { ModelId = 41 });
+    private readonly InMemoryTableGateway<VariableRecord> _variables = new(Variable(51, "balance"), Variable(52, "rate") with { CalculationModelId = 41 });
 
     /// <summary>Model 40's yield measure.</summary>
     private readonly InMemoryTableGateway<CalculatedMeasureRecord> _measures = new(Calculated(61, "yield", "[m.balance] / 2"));
 
     /// <summary>The attributions of model 40's yield and model 41's rate.</summary>
     private readonly InMemoryTableGateway<MetricAttributionRecord> _attributions = new(
-        new MetricAttributionRecord { ModelId = ModelId, MetricKey = "yield" },
-        new MetricAttributionRecord { ModelId = 41, MetricKey = "rate", ExpressionText = "[m.rate]" });
+        new MetricAttributionRecord { CalculationModelId = CalculationModelId, MetricKey = "yield" },
+        new MetricAttributionRecord { CalculationModelId = 41, MetricKey = "rate", ExpressionText = "[m.rate]" });
 
     /// <summary>The one driver of model 40's yield.</summary>
     private readonly InMemoryTableGateway<MetricAttributionDriverRecord> _drivers = new(new MetricAttributionDriverRecord
     {
-        ModelId = ModelId, MetricKey = "yield", DriverKey = "balance", DisplayName = "Balance", SortOrder = 1, InputKeysJson = """["balance"]"""
+        CalculationModelId = CalculationModelId, MetricKey = "yield", DriverKey = "balance", DisplayName = "Balance", SortOrder = 1, InputKeysJson = """["balance"]"""
     });
 
     /// <summary>Model 40's day count parameter and model 41's scale parameter.</summary>
     private readonly InMemoryTableGateway<ModelParameterRecord> _parameters = new(
-        new ModelParameterRecord { ModelId = ModelId, ParameterKey = "dayCount", DisplayName = "Day count", ValueType = "text", DefaultText = "actual_actual" },
-        new ModelParameterRecord { ModelId = 41, ParameterKey = "scale", DisplayName = "Scale", ValueType = "number", DefaultNumber = 1m });
+        new ModelParameterRecord { CalculationModelId = CalculationModelId, ParameterKey = "dayCount", DisplayName = "Day count", ValueType = "text", DefaultText = "actual_actual" },
+        new ModelParameterRecord { CalculationModelId = 41, ParameterKey = "scale", DisplayName = "Scale", ValueType = "number", DefaultNumber = 1m });
 
     /// <summary>
     /// A model no report reads is deleted with its own metrics, attributions and parameters; model 41's variable, attribution and
@@ -49,7 +49,7 @@ public sealed class CalculationModelServiceTests
     [Fact]
     public async Task ModelNoReportReads_IsDeletedWithItsMetrics()
     {
-        var conflict = await Service(new InMemoryTableGateway<ReportRecord>()).DeleteAsync(ModelId, TestContext.Current.CancellationToken);
+        var conflict = await Service(new InMemoryTableGateway<ReportRecord>()).DeleteAsync(CalculationModelId, TestContext.Current.CancellationToken);
 
         Assert.Null(conflict);
         Assert.Empty(_models.All);
@@ -67,7 +67,7 @@ public sealed class CalculationModelServiceTests
     {
         var reports = new InMemoryTableGateway<ReportRecord>(Report() with { IsEnabled = false });
 
-        var conflict = await Service(reports).DeleteAsync(ModelId, TestContext.Current.CancellationToken);
+        var conflict = await Service(reports).DeleteAsync(CalculationModelId, TestContext.Current.CancellationToken);
 
         Assert.Equal("Calculation model 'margin' cannot be deleted: read by report 'balance_sheet'.", conflict);
         Assert.Single(_models.All);

@@ -79,7 +79,7 @@ public sealed class ReportLiveTests
             ReportKey = $"zz_live_{DateTime.UtcNow:yyyyMMddHHmmss}",
             DisplayName = "Live round trip",
             ReportType = "test",
-            ModelId = margin.ModelId
+            CalculationModelId = margin.CalculationModelId
         };
 
         var report = await reports.CreateAsync(input, cancellationToken);
@@ -156,7 +156,7 @@ public sealed class ReportLiveTests
             DisplayName = sourceKey,
             DatasetId = template.Source.DatasetId,
             MappingMethod = mappingMethod,
-            RoleId = template.Source.RoleId,
+            DimensionRoleId = template.Source.DimensionRoleId,
             FieldKey = template.Source.FieldKey,
             TimeFieldKey = template.Source.TimeFieldKey
         };

@@ -78,7 +78,7 @@ internal sealed class ReportEditorFixture
         TenantKey = "bank",
         MetadataSchemaVersion = 12,
         SemanticRevision = StartingRevision,
-        ActiveReleaseId = ReleaseId,
+        ActiveSemanticReleaseId = SemanticReleaseId,
         UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
@@ -134,7 +134,7 @@ internal sealed class ReportEditorFixture
     {
         MappingMethod = ReportMappingMethods.Bridge,
         FieldKey = null,
-        RoleId = AccountRoleId,
+        DimensionRoleId = AccountRoleId,
         BridgeId = BridgeId
     });
 

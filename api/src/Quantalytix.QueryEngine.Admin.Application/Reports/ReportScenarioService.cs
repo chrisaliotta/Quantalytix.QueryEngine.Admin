@@ -16,8 +16,8 @@ public sealed class ReportScenarioService(
     public async Task<IReadOnlyList<DimensionRoleRecord>> ListAsync(long reportId, CancellationToken cancellationToken)
     {
         var rows = await scenarios.ListAsync(new { ReportId = reportId }, cancellationToken);
-        var named = await roles.ListAsync(new { RoleId = rows.Select(row => row.RoleId).ToArray() }, cancellationToken);
-        return [.. named.OrderBy(role => role.RoleKey, StringComparer.OrdinalIgnoreCase)];
+        var named = await roles.ListAsync(new { DimensionRoleId = rows.Select(row => row.DimensionRoleId).ToArray() }, cancellationToken);
+        return [.. named.OrderBy(role => role.DimensionRoleKey, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>Replaces a report's scenarios with the given list.</summary>
@@ -27,7 +27,7 @@ public sealed class ReportScenarioService(
     /// <returns>The violations that kept an enabled report from taking the list, in which case nothing was written.</returns>
     public async Task<IReadOnlyList<RuleViolation>> ReplaceAsync(long reportId, ReportScenariosInput input, CancellationToken cancellationToken)
     {
-        ReportScenarioRecord[] rows = [.. input.Scenarios.Select(scenario => new ReportScenarioRecord { ReportId = reportId, RoleId = scenario.RoleId })];
+        ReportScenarioRecord[] rows = [.. input.Scenarios.Select(scenario => new ReportScenarioRecord { ReportId = reportId, DimensionRoleId = scenario.DimensionRoleId })];
         return await changes.ApplyAsync(reportId, report => report with { Scenarios = rows }, async () =>
         {
             await scenarios.DeleteAsync(new { ReportId = reportId }, cancellationToken);

@@ -28,13 +28,13 @@ public sealed class BoundRolesDistinctRule(
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var versionFilter = new { DatasetVersionId = versionId };
-        var bound = (await bindings.ListAsync(versionFilter, cancellationToken)).Where(binding => binding.RoleId is not null).ToList();
-        var roleKeys = (await roles.ListAsync(new { RoleId = bound.Select(binding => binding.RoleId!.Value).Distinct().ToArray() }, cancellationToken))
-            .ToDictionary(role => role.RoleId, role => role.RoleKey);
+        var bound = (await bindings.ListAsync(versionFilter, cancellationToken)).Where(binding => binding.DimensionRoleId is not null).ToList();
+        var roleKeys = (await roles.ListAsync(new { DimensionRoleId = bound.Select(binding => binding.DimensionRoleId!.Value).Distinct().ToArray() }, cancellationToken))
+            .ToDictionary(role => role.DimensionRoleId, role => role.DimensionRoleKey);
         var fieldIds = (await fields.ListAsync(versionFilter, cancellationToken)).ToLookup(field => field.FieldKey, field => field.FieldId, StringComparer.Ordinal);
 
         var violations = new List<RuleViolation>();
-        foreach (var role in bound.GroupBy(binding => roleKeys[binding.RoleId!.Value]).OrderBy(role => role.Key, StringComparer.Ordinal))
+        foreach (var role in bound.GroupBy(binding => roleKeys[binding.DimensionRoleId!.Value]).OrderBy(role => role.Key, StringComparer.Ordinal))
         {
             if (role.Count() > 1)
                 violations.Add(Violation($"Role '{role.Key}' is bound {role.Count()} times; a version binds each role at most once, so its key names one binding."));

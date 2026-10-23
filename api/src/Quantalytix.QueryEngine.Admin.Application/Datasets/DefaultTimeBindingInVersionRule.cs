@@ -26,10 +26,10 @@ public sealed class DefaultTimeBindingInVersionRule(
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
     {
         var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        if (version.DefaultTimeBindingId is not { } bindingId) return [];
-        var inVersion = await bindings.ListAsync(new { BindingId = bindingId, DatasetVersionId = versionId }, cancellationToken);
-        var extensions = await timeBindings.ListAsync(new { BindingId = bindingId }, cancellationToken);
+        if (version.DefaultTimeBindingId is not { } dimensionBindingId) return [];
+        var inVersion = await bindings.ListAsync(new { DimensionBindingId = dimensionBindingId, DatasetVersionId = versionId }, cancellationToken);
+        var extensions = await timeBindings.ListAsync(new { DimensionBindingId = dimensionBindingId }, cancellationToken);
         if (inVersion.Count == 1 && extensions.Count == 1) return [];
-        return [new RuleViolation { Rule = Code, Message = $"Default time binding {bindingId} is not a time binding of this version." }];
+        return [new RuleViolation { Rule = Code, Message = $"Default time binding {dimensionBindingId} is not a time binding of this version." }];
     }
 }

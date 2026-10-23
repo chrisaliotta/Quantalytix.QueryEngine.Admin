@@ -22,22 +22,22 @@ export function ReportScenariosTab({ reportId }: { reportId: number }) {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<ReportScenario | null>(null);
   const dimensionNames = new Map(dimensions.data?.map(item => [item.id, item.label]));
-  const saved: ReportScenarioInput[] = (scenarios.data ?? []).map(({ roleId }) => ({ roleId }));
+  const saved: ReportScenarioInput[] = (scenarios.data ?? []).map(({ dimensionRoleId }) => ({ dimensionRoleId }));
 
-  function without(roleId: number) {
-    return saved.filter(other => other.roleId !== roleId);
+  function without(dimensionRoleId: number) {
+    return saved.filter(other => other.dimensionRoleId !== dimensionRoleId);
   }
 
   function dimensionName(scenario: ReportScenario) {
-    return dimensionNames.get(scenario.dimensionId) ?? scenario.roleKey;
+    return dimensionNames.get(scenario.dimensionId) ?? scenario.dimensionRoleKey;
   }
 
   const columns: ColumnDef<ReportScenario>[] = [
     { id: 'dimension', header: 'Dimension', accessorFn: dimensionName },
     {
-      accessorKey: 'roleKey',
+      accessorKey: 'dimensionRoleKey',
       header: 'Request key',
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.roleKey}</span>,
+      cell: ({ row }) => <span className="font-mono text-xs">{row.original.dimensionRoleKey}</span>,
     },
     {
       id: 'actions',
@@ -81,7 +81,7 @@ export function ReportScenariosTab({ reportId }: { reportId: number }) {
         <ReportScenarioSheet
           reportId={reportId}
           scenarios={scenarios.data ?? []}
-          onSave={roleId => save.mutateAsync([...saved, { roleId }])}
+          onSave={dimensionRoleId => save.mutateAsync([...saved, { dimensionRoleId }])}
           onClose={() => setAdding(false)}
         />
       )}
@@ -92,7 +92,7 @@ export function ReportScenariosTab({ reportId }: { reportId: number }) {
         description="Runs then name no member of the dimension, so the sources whose data carries it read all of its members together."
         confirmLabel="Delete scenario"
         destructive
-        onConfirm={() => deleting && remove.mutate(without(deleting.roleId))}
+        onConfirm={() => deleting && remove.mutate(without(deleting.dimensionRoleId))}
       />
     </div>
   );

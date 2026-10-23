@@ -10,5 +10,5 @@ public sealed record ReportScenarioRecord
     public required long ReportId { get; init; }
 
     /// <summary>The role; second part of the primary key. Requests name the scenario by its key.</summary>
-    public required long RoleId { get; init; }
+    public required long DimensionRoleId { get; init; }
 }

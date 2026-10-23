@@ -48,17 +48,17 @@ public sealed class CalculationModelsController(CalculationModelService models, 
 
     /// <summary>Reads one calculation model.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The model.</returns>
     /// <response code="200">The model.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet("{modelId:long}")]
+    [HttpGet("{calculationModelId:long}")]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<CalculationModelRecord>> Get(string tenantId, long modelId, CancellationToken cancellationToken)
+    public async Task<ActionResult<CalculationModelRecord>> Get(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
-        return Ok(await models.GetAsync(modelId, cancellationToken));
+        return Ok(await models.GetAsync(calculationModelId, cancellationToken));
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ public sealed class CalculationModelsController(CalculationModelService models, 
     /// model's formulas call is refused.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="input">The new attributes.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored model.</returns>
@@ -76,39 +76,39 @@ public sealed class CalculationModelsController(CalculationModelService models, 
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written.</response>
-    [HttpPut("{modelId:long}")]
-    [AdvancesModelRevision("modelId")]
+    [HttpPut("{calculationModelId:long}")]
+    [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculationModelRecord>> Update(
         string tenantId,
-        long modelId,
+        long calculationModelId,
         CalculationModelInput input,
         CancellationToken cancellationToken)
     {
-        var updated = await models.ComposeAsync(modelId, input, cancellationToken);
+        var updated = await models.ComposeAsync(calculationModelId, input, cancellationToken);
         var violations = await changes.ApplyAsync(
-            modelId, model => model with { Model = updated }, () => models.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, modelId, violations);
+            calculationModelId, model => model with { Model = updated }, () => models.UpdateAsync(updated, cancellationToken), cancellationToken);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
         return Ok(updated);
     }
 
     /// <summary>Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions.</summary>
     /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="modelId">The model.</param>
+    /// <param name="calculationModelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
     /// <response code="204">The model, its metrics and their attributions are deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the reports that read the model.</response>
-    [HttpDelete("{modelId:long}")]
+    [HttpDelete("{calculationModelId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, long modelId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
-        var conflict = await models.DeleteAsync(modelId, cancellationToken);
+        var conflict = await models.DeleteAsync(calculationModelId, cancellationToken);
         if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
         return NoContent();
     }

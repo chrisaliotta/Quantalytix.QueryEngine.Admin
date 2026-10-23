@@ -19,7 +19,7 @@ export function CalculationDimensionsTab({ reportId }: { reportId: number }) {
   const columns: ColumnDef<CalculationDimension>[] = [
     { accessorKey: 'dimensionKey', header: 'Key' },
     { accessorKey: 'displayName', header: 'Name' },
-    { id: 'role', header: 'Role', accessorFn: dimension => roleLabels.get(dimension.roleId) ?? dimension.roleId },
+    { id: 'role', header: 'Role', accessorFn: dimension => roleLabels.get(dimension.dimensionRoleId) ?? dimension.dimensionRoleId },
     { id: 'grouping', header: 'Default grouping', accessorFn: grouping },
     { accessorKey: 'isGroupable', header: 'Groupable', cell: ({ row }) => (row.original.isGroupable ? 'Yes' : '') },
     { accessorKey: 'isFilterable', header: 'Filterable', cell: ({ row }) => (row.original.isFilterable ? 'Yes' : '') },

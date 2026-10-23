@@ -42,10 +42,10 @@ export function CalculationModelListPage() {
         error={models.error}
         searchPlaceholder="Search models..."
         emptyMessage="No calculation models yet."
-        onRowClick={model => navigate(String(model.modelId))}
+        onRowClick={model => navigate(String(model.calculationModelId))}
       />
       {creating && (
-        <NewCalculationModelSheet onClose={() => setCreating(false)} onCreated={model => navigate(String(model.modelId))} />
+        <NewCalculationModelSheet onClose={() => setCreating(false)} onCreated={model => navigate(String(model.calculationModelId))} />
       )}
     </>
   );

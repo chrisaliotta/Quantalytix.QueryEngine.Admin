@@ -7,13 +7,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 public sealed record DimensionRoleRecord
 {
     /// <summary>Primary key.</summary>
-    public required long RoleId { get; init; }
+    public required long DimensionRoleId { get; init; }
 
     /// <summary>The template dimension, fixed once created.</summary>
     public required long DimensionId { get; init; }
 
     /// <summary>The dimension ID requests use, unique in the tenant and fixed once created.</summary>
-    public required string RoleKey { get; init; }
+    public required string DimensionRoleKey { get; init; }
 
     /// <summary>Human-readable name the catalog shows.</summary>
     public required string DisplayName { get; init; }

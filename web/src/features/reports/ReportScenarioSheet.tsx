@@ -17,7 +17,7 @@ export interface ReportScenarioSheetProps {
   /** The report's scenarios, whose dimensions the picker leaves out. */
   scenarios: ReportScenario[];
   /** Saves the chosen dimension's role into the report's list. */
-  onSave: (roleId: number) => Promise<unknown>;
+  onSave: (dimensionRoleId: number) => Promise<unknown>;
   onClose: () => void;
 }
 

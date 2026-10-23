@@ -18,26 +18,26 @@ public sealed class ReportScenariosInputValidator : AbstractValidator<ReportScen
     {
         RuleForEach(input => input.Scenarios).ChildRules(scenario =>
         {
-            scenario.RuleFor(input => input.RoleId).CustomAsync(async (roleId, context, cancellationToken) =>
+            scenario.RuleFor(input => input.DimensionRoleId).CustomAsync(async (dimensionRoleId, context, cancellationToken) =>
             {
-                if ((await roles.ListAsync(new { RoleId = roleId }, cancellationToken)).SingleOrDefault() is not { } role)
+                if ((await roles.ListAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken)).SingleOrDefault() is not { } role)
                 {
-                    context.AddFailure($"Role {roleId} does not exist.");
+                    context.AddFailure($"Role {dimensionRoleId} does not exist.");
                     return;
                 }
                 string[] others =
                 [
                     .. (await roles.ListAsync(new { role.DimensionId }, cancellationToken))
-                        .Where(other => other.RoleId != roleId)
-                        .Select(other => $"'{other.RoleKey}'")
+                        .Where(other => other.DimensionRoleId != dimensionRoleId)
+                        .Select(other => $"'{other.DimensionRoleKey}'")
                         .Order(StringComparer.Ordinal)
                 ];
                 if (others.Length > 0)
-                    context.AddFailure($"Role '{role.RoleKey}' shares its dimension with {string.Join(", ", others)}, and a scenario's dimension has exactly one role.");
+                    context.AddFailure($"Role '{role.DimensionRoleKey}' shares its dimension with {string.Join(", ", others)}, and a scenario's dimension has exactly one role.");
             });
         });
         RuleFor(input => input.Scenarios)
-            .Must(list => list.DistinctBy(scenario => scenario.RoleId).Count() == list.Count)
+            .Must(list => list.DistinctBy(scenario => scenario.DimensionRoleId).Count() == list.Count)
             .WithMessage("'{PropertyName}' must name each role once.");
     }
 }
