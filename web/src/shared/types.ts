@@ -59,7 +59,7 @@ export type LookupKind =
   | 'releases'
   | 'assumption-sets'
   | 'calculation-models' // classifier = currency
-  | 'variables' // calculation model; classifier = role
+  | 'variables' // calculation model; classifier = display format
   | 'report-sources' // report; classifier = mapping method
   | 'source-profiles' // report
   | 'calculated-measures' // calculation model; classifier = display format

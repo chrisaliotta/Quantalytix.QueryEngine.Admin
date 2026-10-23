@@ -10,7 +10,6 @@ import { VariableSheet } from './VariableSheet';
 const columns: ColumnDef<Variable>[] = [
   { accessorKey: 'variableKey', header: 'Key' },
   { accessorKey: 'displayName', header: 'Name' },
-  { accessorKey: 'variableRole', header: 'Role' },
   { accessorKey: 'displayFormat', header: 'Format' },
   { accessorKey: 'unitKey', header: 'Unit' },
   { accessorKey: 'missingBehavior', header: 'Missing' },

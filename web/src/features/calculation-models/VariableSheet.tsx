@@ -10,7 +10,6 @@ import type { Variable } from './types';
 interface VariableValues {
   variableKey: string;
   displayName: string;
-  variableRole: string;
   missingBehavior: string | null;
   displayFormat: string;
   unitKey: string;
@@ -24,7 +23,7 @@ export interface VariableSheetProps {
 }
 
 /**
- * Creates or edits a variable: its key, role, how missing values count and how clients show it. Which rows it reads is each
+ * Creates or edits a variable: its key, name, how missing values count and how clients show it. Which rows it reads is each
  * report's choice, through the report's sources and targets.
  */
 export function VariableSheet({ calculationModelId, variable, onClose }: VariableSheetProps) {
@@ -33,7 +32,6 @@ export function VariableSheet({ calculationModelId, variable, onClose }: Variabl
     defaultValues: {
       variableKey: variable?.variableKey ?? '',
       displayName: variable?.displayName ?? '',
-      variableRole: variable?.variableRole ?? '',
       missingBehavior: variable?.missingBehavior ?? 'null',
       displayFormat: variable?.displayFormat ?? 'number',
       unitKey: variable?.unitKey ?? '',
@@ -55,7 +53,6 @@ export function VariableSheet({ calculationModelId, variable, onClose }: Variabl
     >
       <TextField name="variableKey" label="Key" description="A letter, then letters, digits or underscores." />
       <TextField name="displayName" label="Name" description="The label a report column shows unless it names its own." />
-      <TextField name="variableRole" label="Role" description="What the variable means to the model, such as average_balance." />
       <VocabularyField
         name="missingBehavior"
         label="Missing values"

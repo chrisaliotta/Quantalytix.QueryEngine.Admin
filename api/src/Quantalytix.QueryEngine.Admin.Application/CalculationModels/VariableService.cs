@@ -61,7 +61,6 @@ public sealed class VariableService(ITableGateway<VariableRecord> table, IIdGene
             CalculationModelId = ownerId,
             VariableKey = input.VariableKey,
             DisplayName = input.DisplayName,
-            VariableRole = input.VariableRole,
             MissingBehavior = input.MissingBehavior,
             DisplayFormat = input.DisplayFormat,
             UnitKey = input.UnitKey

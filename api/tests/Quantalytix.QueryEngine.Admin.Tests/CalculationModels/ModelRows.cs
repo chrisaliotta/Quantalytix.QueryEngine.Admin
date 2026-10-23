@@ -115,7 +115,6 @@ internal static class ModelRows
             CalculationModelId = CalculationModelId,
             VariableKey = variableKey,
             DisplayName = variableKey,
-            VariableRole = "input",
             MissingBehavior = VariableMissingBehaviors.Zero,
             DisplayFormat = "currency"
         };

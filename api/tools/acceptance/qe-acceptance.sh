@@ -171,8 +171,8 @@ EOF
   call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'currencyCode': 'USD', 'isEnabled': True, 'formulaLanguageVersion': '1.0', 'attributionMethod': 'shapley'}")"
   MODEL=$(py "r['calculationModelId']")
   local M=/calculation-models/$MODEL
-  call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'variableRole': 'average_balance', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
-  call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'variableRole': 'interest_income', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
+  call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
+  call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
   call POST "$M/calculated-measures" 200 "$(json "{'measureKey': 'YIELD', 'displayName': 'Yield', 'expressionText': '[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays', 'outputDataType': 'decimal', 'outputPrecision': 28, 'outputScale': 6, 'roundingMode': None, 'unitKey': None, 'displayFormat': 'percent'}")"
 
   call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'calculationModelId': $MODEL, 'startFromDimensionId': $statement, 'payloadJson': None}")"

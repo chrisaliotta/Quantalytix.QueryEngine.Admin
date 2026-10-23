@@ -13035,8 +13035,6 @@ export interface components {
             variableKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /** @description Free-form classification such as `average_balance`. */
-            variableRole: string;
             /** @description A `variable_missing_behavior` value. */
             missingBehavior: string;
             /** @description Presentation hint such as `number`, `percent` or `currency`, which report columns show by default. */
@@ -13060,8 +13058,6 @@ export interface components {
             variableKey: string;
             /** @description Human-readable name. */
             displayName: string;
-            /** @description Free-form classification such as `average_balance`. */
-            variableRole: string;
             /** @description A `variable_missing_behavior` value. */
             missingBehavior: string;
             /** @description Presentation hint such as `currency`, which a report column shows unless it overrides it. */

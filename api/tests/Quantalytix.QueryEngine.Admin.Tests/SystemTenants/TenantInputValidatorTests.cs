@@ -41,7 +41,7 @@ public sealed class TenantInputValidatorTests
     {
         var result = await ValidateCreateAsync(Reached(TenantId, 3));
 
-        Assert.Equal("The database has metadata schema version 3; this API requires version 16.", ConnectionStringError(result));
+        Assert.Equal("The database has metadata schema version 3; this API requires version 17.", ConnectionStringError(result));
     }
 
     /// <summary>A database without an active assumption set, or with two, fails.</summary>

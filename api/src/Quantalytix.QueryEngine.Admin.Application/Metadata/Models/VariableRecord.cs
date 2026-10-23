@@ -15,9 +15,6 @@ public sealed record VariableRecord
     /// <summary>Human-readable name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Free-form classification such as <c>average_balance</c>.</summary>
-    public required string VariableRole { get; init; }
-
     /// <summary>A <c>variable_missing_behavior</c> value.</summary>
     public required string MissingBehavior { get; init; }
 

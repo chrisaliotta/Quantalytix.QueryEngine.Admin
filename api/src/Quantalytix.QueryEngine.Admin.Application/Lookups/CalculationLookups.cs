@@ -27,7 +27,7 @@ public sealed class CalculationLookups(
             LookupKinds.CalculationModels => Sorted((await models.ListAsync(null, cancellationToken))
                 .Select(row => new LookupItem { Id = row.CalculationModelId, Key = row.ModelKey, Label = row.DisplayName, Classifier = row.CurrencyCode })),
             LookupKinds.Variables => Sorted((await variables.ListAsync(new { CalculationModelId = parentId }, cancellationToken))
-                .Select(row => new LookupItem { Id = row.VariableId, Key = row.VariableKey, Label = row.DisplayName, Classifier = row.VariableRole })),
+                .Select(row => new LookupItem { Id = row.VariableId, Key = row.VariableKey, Label = row.DisplayName, Classifier = row.DisplayFormat })),
             LookupKinds.ReportSources => Sorted((await sources.ListAsync(new { ReportId = parentId }, cancellationToken))
                 .Select(row => new LookupItem { Id = row.ReportSourceId, Key = row.SourceKey, Label = row.DisplayName, Classifier = row.MappingMethod })),
             LookupKinds.SourceProfiles => Sorted((await profiles.ListAsync(new { ReportId = parentId }, cancellationToken))
