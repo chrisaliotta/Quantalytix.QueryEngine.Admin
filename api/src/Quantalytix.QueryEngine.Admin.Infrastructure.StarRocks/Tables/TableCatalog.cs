@@ -104,6 +104,8 @@ public static class TableCatalog
             "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportId), nameof(ReportMemberOptionRecord.MemberKey)], []),
         [typeof(ReportVariableScopeRecord)] = Tenant(
             "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportId), nameof(ReportVariableScopeRecord.VariableKey)], []),
+        [typeof(ReportScenarioRecord)] = Tenant(
+            "qe_report_scenario", [nameof(ReportScenarioRecord.ReportId), nameof(ReportScenarioRecord.RoleId)], []),
         [typeof(ReportRowParameterRecord)] = Tenant(
             "qe_report_row_parameter",
             [nameof(ReportRowParameterRecord.ReportId), nameof(ReportRowParameterRecord.RowKey), nameof(ReportRowParameterRecord.ParameterKey)],

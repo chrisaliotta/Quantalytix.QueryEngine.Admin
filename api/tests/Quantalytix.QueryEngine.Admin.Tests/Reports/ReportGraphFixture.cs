@@ -92,6 +92,9 @@ internal sealed class ReportGraphFixture
     /// <summary>The balance variable's scope, assets.</summary>
     public InMemoryTableGateway<ReportVariableScopeRecord> Scopes { get; } = new(Scope("balance", "assets"));
 
+    /// <summary>No scenarios.</summary>
+    public InMemoryTableGateway<ReportScenarioRecord> Scenarios { get; } = new();
+
     /// <summary>The base profile.</summary>
     public InMemoryTableGateway<SourceProfileRecord> Profiles { get; } = new(Profile(75, "base"));
 
@@ -193,7 +196,7 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Profiles, Picks, Sources, SourceVariables,
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables,
             BridgeMappings, Dimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
@@ -245,7 +248,7 @@ internal sealed class ReportGraphFixture
     {
         IReportRule[] rules =
         [
-            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
+            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioRolesDistinctRule(), new DefaultProfileEnabledRule(),
             new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
             new ReportSourcesResolveRule(), new ReportFactorsApplyRule(), new ReportRowParametersResolveRule(), new ReportStylesResolveRule()
         ];

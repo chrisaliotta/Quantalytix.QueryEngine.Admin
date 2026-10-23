@@ -45,6 +45,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportContentRemover>();
         services.AddScoped<ReportColumnService>();
         services.AddScoped<ReportVariableScopeService>();
+        services.AddScoped<ReportScenarioService>();
         services.AddScoped<ReportStyleService>();
         services.AddScoped<ModelMetricsReader>();
         services.AddScoped<FormulaRowReferences>();
@@ -63,7 +64,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
 
         services.AddScoped<IReportRule, ReportItemsResolveRule>();
         services.AddScoped<IReportRule, CalculationGroupingResolveRule>();
-        services.AddScoped<IReportRule, ScenarioDimensionRule>();
+        services.AddScoped<IReportRule, ScenarioRolesDistinctRule>();
         services.AddScoped<IReportRule, DefaultProfileEnabledRule>();
         services.AddScoped<IReportRule, ReportDefaultsResolveRule>();
         services.AddScoped<IReportRule, ColumnKeysDistinctRule>();

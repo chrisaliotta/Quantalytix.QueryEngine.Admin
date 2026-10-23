@@ -399,7 +399,7 @@ sequenceDiagram
     Verifier->>Candidate: SELECT from qe_database_info WHERE singleton_id = 1
     Candidate-->>Verifier: the row, or an error caught as the failure reason
     Verifier-->>Verify: TenantDatabaseProbe
-    Note over Verify: Valid when TenantKey equals tenantId and MetadataSchemaVersion is 4
+    Note over Verify: Valid when TenantKey equals tenantId and MetadataSchemaVersion is 15
     Verify-->>Ctl: TenantConnectionCheck with IsValid and Message
     Ctl-->>Admin: 200 TenantConnectionCheck
     Admin->>Filter: POST api/system/tenants with TenantCreateInput

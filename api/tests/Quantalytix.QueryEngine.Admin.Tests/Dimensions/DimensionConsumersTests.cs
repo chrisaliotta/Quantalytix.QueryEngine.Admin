@@ -125,6 +125,7 @@ public sealed class DimensionConsumersTests
             Reports(),
             CalculationDimensions(),
             new InMemoryTableGateway<ReportSourceRecord>(),
+            new InMemoryTableGateway<ReportScenarioRecord>(),
             new ReportNames(Reports()),
             Consumers());
     }

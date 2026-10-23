@@ -14,7 +14,10 @@ write to an enabled report, or to a model, its metrics, their attributions or it
 made. A model's attributions say how each metric's change between two values, such as actuals and a budget, splits into
 the effects of its drivers. A model declares number and text parameters, such as the day count convention its formulas
 pass to `YEARFRAC` on formula language 1.2; a report sets their values on its rows, which the rows under them inherit,
-and names the styles its rows show.
+and names the styles its rows show. A report's scenarios are roles whose members are alternatives a run reads one at a
+time, such as plan versions or interest rate shocks: a run or comparison names one member of each by the role's key, so
+alternatives are never added together. A scenario's dimension has exactly one role, a business rule the API keeps on both
+the scenario list and new roles, so a scenario and its dimension are one.
 
 | Project | Holds |
 |---|---|
@@ -34,9 +37,9 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`, at design revision 2.23.0. The tests read its generated schema build script,
-  `ddl_srdb_bi_v2_23.sql`.
-- A tenant database at metadata schema version 14 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`, at design revision 2.24.0. The tests read its generated schema build script,
+  `ddl_srdb_bi_v2_24.sql`.
+- A tenant database at metadata schema version 15 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 

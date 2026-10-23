@@ -42,10 +42,4 @@ public sealed record CalculationDimensionRecord
 
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
-
-    /// <summary>
-    /// Whether its members are plan versions, such as budgets and forecasts: a report has at most one such dimension, which is
-    /// neither groupable nor filterable, and a run names one of its members whenever one of its sources reaches it.
-    /// </summary>
-    public required bool IsScenario { get; init; }
 }

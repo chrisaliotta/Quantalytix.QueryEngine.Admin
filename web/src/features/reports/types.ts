@@ -23,6 +23,9 @@ export type SourceProfilePick = Schemas['SourceProfilePick'];
 /** A dimension the report can break out or filter by: a role with a grouping of its template's members (`qe_calculation_dimension`). */
 export type CalculationDimension = Schemas['CalculationDimensionRecord'];
 
+/** A scenario of a report, as the role whose members are alternatives a run reads one at a time (`qe_report_scenario`). */
+export type ReportScenario = Schemas['DimensionRoleRecord'];
+
 /** Body of `POST reports`. */
 export type NewReportInput = Schemas['NewReportInput'];
 
@@ -37,6 +40,9 @@ export type ReportColumnInput = Schemas['ReportColumnInput'];
 
 /** One scope of `PUT reports/{reportId}/variable-scopes`. */
 export type ReportVariableScopeInput = Schemas['ReportVariableScopeInput'];
+
+/** One scenario of `PUT reports/{reportId}/scenarios`, naming its role by ID. */
+export type ReportScenarioInput = Schemas['ReportScenarioInput'];
 
 /** A report as its editor shows it: its rows with the items each bridge source maps to them, and its sources. */
 export type EditorView = Schemas['EditorView'];

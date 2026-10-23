@@ -4,12 +4,21 @@ import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
-import { reportColumnsKey, reportEditorKey, reportKey, reportsKey, reportStylesKey, reportVariableScopesKey } from './queryKeys';
+import {
+  reportColumnsKey,
+  reportEditorKey,
+  reportKey,
+  reportScenariosKey,
+  reportsKey,
+  reportStylesKey,
+  reportVariableScopesKey,
+} from './queryKeys';
 import type {
   NewReportInput,
   Report,
   ReportColumnInput,
   ReportInput,
+  ReportScenarioInput,
   ReportSettingsInput,
   ReportStyleInput,
   ReportVariableScopeInput,
@@ -69,6 +78,16 @@ export function useReportVariableScopes(reportId: number) {
       unwrap(
         await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}/variable-scopes', { params: { path: { tenantId, reportId } } })
       ),
+  });
+}
+
+/** The scenarios of a report, as the roles whose members a run chooses one of, by key. */
+export function useReportScenarios(reportId: number) {
+  const tenantId = useTenantId();
+  return useQuery({
+    queryKey: reportScenariosKey(tenantId, reportId),
+    queryFn: async () =>
+      unwrap(await apiClient.GET('/api/tenants/{tenantId}/reports/{reportId}/scenarios', { params: { path: { tenantId, reportId } } })),
   });
 }
 
@@ -232,6 +251,23 @@ export function useReplaceReportVariableScopes(reportId: number) {
       ),
     onSuccess: scopes => {
       queryClient.setQueryData(reportVariableScopesKey(tenantId, reportId), scopes);
+    },
+  });
+}
+
+/** Replaces a report's scenarios; an enabled report refuses a scenario on a role its calculation dimensions read. */
+export function useReplaceReportScenarios(reportId: number) {
+  const tenantId = useTenantId();
+  return useMutation({
+    mutationFn: async (scenarios: ReportScenarioInput[]) =>
+      unwrap(
+        await apiClient.PUT('/api/tenants/{tenantId}/reports/{reportId}/scenarios', {
+          params: { path: { tenantId, reportId } },
+          body: { scenarios },
+        })
+      ),
+    onSuccess: scenarios => {
+      queryClient.setQueryData(reportScenariosKey(tenantId, reportId), scenarios);
     },
   });
 }

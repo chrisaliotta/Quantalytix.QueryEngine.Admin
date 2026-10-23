@@ -15,6 +15,7 @@ public sealed class ReportContentRemover(
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<CalculationDimensionRecord> dimensions,
     ITableGateway<ReportVariableScopeRecord> scopes,
+    ITableGateway<ReportScenarioRecord> scenarios,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportLineRecord> lines,
     ITableGateway<ReportMemberOptionRecord> memberOptions,
@@ -55,8 +56,8 @@ public sealed class ReportContentRemover(
     }
 
     /// <summary>
-    /// Deletes every content row of a report: profiles, sources with their bridges, calculation dimensions, scopes, rows with their
-    /// parameter values, columns and styles.
+    /// Deletes every content row of a report: profiles, sources with their bridges, calculation dimensions, scopes, scenarios, rows
+    /// with their parameter values, columns and styles.
     /// </summary>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
@@ -68,6 +69,7 @@ public sealed class ReportContentRemover(
         await RemoveSourcesAsync(await sources.ListAsync(owner, cancellationToken), cancellationToken);
         await dimensions.DeleteAsync(owner, cancellationToken);
         await scopes.DeleteAsync(owner, cancellationToken);
+        await scenarios.DeleteAsync(owner, cancellationToken);
         await rowParameters.DeleteAsync(owner, cancellationToken);
         await lines.DeleteAsync(owner, cancellationToken);
         await columns.DeleteAsync(owner, cancellationToken);

@@ -168,6 +168,9 @@ internal sealed class ReportEditorFixture
     /// <summary>The variable scopes; none at first.</summary>
     public InMemoryTableGateway<ReportVariableScopeRecord> Scopes { get; } = new();
 
+    /// <summary>The scenarios; none at first.</summary>
+    public InMemoryTableGateway<ReportScenarioRecord> Scenarios { get; } = new();
+
     /// <summary>The calculation dimensions; none.</summary>
     public InMemoryTableGateway<CalculationDimensionRecord> CalculationDimensions { get; } = new();
 
@@ -328,6 +331,13 @@ internal sealed class ReportEditorFixture
         return new ReportColumnService(Columns, Changes(), _ids);
     }
 
+    /// <summary>The scenario service.</summary>
+    /// <returns>The service over these tables.</returns>
+    public ReportScenarioService ScenarioService()
+    {
+        return new ReportScenarioService(Scenarios, Roles, Changes());
+    }
+
     /// <summary>The bridge service.</summary>
     /// <returns>The service over these tables.</returns>
     public BridgeService BridgeService()
@@ -358,7 +368,7 @@ internal sealed class ReportEditorFixture
     {
         IReportRule[] rules =
         [
-            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioDimensionRule(), new DefaultProfileEnabledRule(),
+            new ReportItemsResolveRule(), new CalculationGroupingResolveRule(), new ScenarioRolesDistinctRule(), new DefaultProfileEnabledRule(),
             new ReportDefaultsResolveRule(), new ColumnKeysDistinctRule(), new ReportMetricsResolveRule(), new ProfilesCompleteRule(),
             new ReportSourcesResolveRule(), new ReportFactorsApplyRule(), new ReportRowParametersResolveRule(), new ReportStylesResolveRule()
         ];
@@ -369,7 +379,7 @@ internal sealed class ReportEditorFixture
     private ReportGraphReader GraphReader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Profiles, Picks, Sources, SourceVariables,
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables,
             BridgeMappings, CalculationDimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
@@ -401,7 +411,8 @@ internal sealed class ReportEditorFixture
     private ReportContentRemover Remover()
     {
         return new ReportContentRemover(
-            Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Columns, Lines, MemberOptions, RowParameters, Styles, Owned(), BridgeService(), Pins());
+            Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Scenarios, Columns, Lines, MemberOptions, RowParameters, Styles, Owned(),
+            BridgeService(), Pins());
     }
 
     /// <summary>The assumption set pins.</summary>
@@ -460,7 +471,7 @@ internal sealed class ReportEditorFixture
             Datasets, datasetVersions, Bindings, Roles, mappingSets, new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
             Bridges, BridgeVersions, BridgeMappings, Reports, CalculationDimensions, names);
         return new DimensionDeleteChecks(
-            DimensionVersions, Members, bands, Roles, mappingSets, Bridges, Bindings, Datasets, datasetVersions, Reports, CalculationDimensions, Sources,
+            DimensionVersions, Members, bands, Roles, mappingSets, Bridges, Bindings, Datasets, datasetVersions, Reports, CalculationDimensions, Sources, Scenarios,
             new ReportNames(Reports), consumers);
     }
 

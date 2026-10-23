@@ -18,6 +18,7 @@ import { CalculationDimensionsTab } from './CalculationDimensionsTab';
 import { useReportEditor } from './editorApi';
 import { ReportColumnsTab } from './ReportColumnsTab';
 import { ReportIdentitySheet } from './ReportIdentitySheet';
+import { ReportScenariosTab } from './ReportScenariosTab';
 import { ReportSettingsSheet } from './ReportSettingsSheet';
 import { ReportVariableScopesTab } from './ReportVariableScopesTab';
 import { RowsAndMappingsTab } from './RowsAndMappingsTab';
@@ -44,8 +45,8 @@ export function ReportDetailPage() {
 /**
  * A report's editor: its header, with the switch that enables it once it passes every report rule, and its tabs, in the order a
  * report is built: rows and what each source gives them, the sources, the variables each source supplies, the profiles that pick
- * between them, the calculation dimensions, scopes and columns, and the styles its rows show. While the report is enabled, a
- * write that would break a rule is refused and names it.
+ * between them, the calculation dimensions, scenarios, scopes and columns, and the styles its rows show. While the report is
+ * enabled, a write that would break a rule is refused and names it.
  */
 function ReportEditor({ view }: { view: EditorView }) {
   const report = view.report;
@@ -147,6 +148,7 @@ function ReportEditor({ view }: { view: EditorView }) {
           <TabsTrigger value="variables">Variables</TabsTrigger>
           <TabsTrigger value="profiles">Profiles</TabsTrigger>
           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+          <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
           <TabsTrigger value="scopes">Scope</TabsTrigger>
           <TabsTrigger value="columns">Columns</TabsTrigger>
           <TabsTrigger value="styles">Styles</TabsTrigger>
@@ -165,6 +167,9 @@ function ReportEditor({ view }: { view: EditorView }) {
         </TabsContent>
         <TabsContent value="dimensions">
           <CalculationDimensionsTab reportId={report.reportId} />
+        </TabsContent>
+        <TabsContent value="scenarios">
+          <ReportScenariosTab reportId={report.reportId} />
         </TabsContent>
         <TabsContent value="scopes">
           <ReportVariableScopesTab view={view} />

@@ -20,6 +20,11 @@ export function reportVariableScopesKey(tenantId: string, reportId: number) {
   return ['report-variable-scopes', tenantId, reportId] as const;
 }
 
+/** The key of a report's scenarios. */
+export function reportScenariosKey(tenantId: string, reportId: number) {
+  return ['report-scenarios', tenantId, reportId] as const;
+}
+
 /** The key of a report's columns. */
 export function reportColumnsKey(tenantId: string, reportId: number) {
   return ['report-columns', tenantId, reportId] as const;

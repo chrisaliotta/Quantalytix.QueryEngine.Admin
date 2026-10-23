@@ -10,8 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
 /// <summary>
 /// Confirms how a report starts and ends. A new report is disabled, because nothing about it has been checked, and its report
 /// dimension's one version is published and pinned in the active set from the start, because the editor edits it in place and every
-/// run reads the active set. Deleting a report removes everything it owns, with the pins of its dimension and bridges, so the active
-/// set reads nothing that is gone.
+/// run reads the active set. Deleting a report removes everything it owns, its scenarios included, with the pins of its dimension and
+/// bridges, so the active set reads nothing that is gone and no scenario keeps a role from being deleted.
 /// </summary>
 public sealed class ReportLifecycleTests
 {
@@ -34,16 +34,23 @@ public sealed class ReportLifecycleTests
         Assert.Equal(["total"], fixture.Members.All.Where(member => member.DimensionVersionId == version.DimensionVersionId).Select(member => member.MemberKey));
     }
 
-    /// <summary>Deleting the report removes its content, its source with its bridge, its report dimension, and their pins; the account dimension stays.</summary>
+    /// <summary>
+    /// Deleting the report removes its content, its scenario on the account role, its source with its bridge, its report dimension,
+    /// and their pins; the account dimension and its role stay.
+    /// </summary>
     /// <returns>A task that completes when the delete is checked.</returns>
     [Fact]
     public async Task DeletedReport_TakesWhatItOwnsWithIt()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var fixture = new ReportEditorFixture();
+        await fixture.Scenarios.InsertAsync(ReportRows.Scenario(AccountRoleId), cancellationToken);
 
-        await fixture.ReportService().DeleteAsync(ReportRows.ReportId, TestContext.Current.CancellationToken);
+        await fixture.ReportService().DeleteAsync(ReportRows.ReportId, cancellationToken);
 
         Assert.Empty(fixture.Reports.All);
+        Assert.Empty(fixture.Scenarios.All);
+        Assert.Single(fixture.Roles.All);
         Assert.Empty(fixture.Sources.All);
         Assert.Empty(fixture.SourceVariables.All);
         Assert.Empty(fixture.Profiles.All);

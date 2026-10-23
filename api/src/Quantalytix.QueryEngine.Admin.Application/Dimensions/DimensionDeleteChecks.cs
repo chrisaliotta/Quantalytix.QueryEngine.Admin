@@ -22,13 +22,14 @@ public sealed class DimensionDeleteChecks(
     ITableGateway<ReportRecord> reports,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
     ITableGateway<ReportSourceRecord> sources,
+    ITableGateway<ReportScenarioRecord> scenarios,
     ReportNames reportNames,
     DimensionConsumers consumers)
 {
     /// <summary>
     /// What blocks deleting a dimension: it is not removable, a version is not a draft, or a binding, mapping set, bridge (either
-    /// end) or report references it, or a calculation dimension or report source names one of its roles. The roles themselves
-    /// go with the dimension.
+    /// end) or report references it, or a calculation dimension, report source or report scenario names one of its roles. The
+    /// roles themselves go with the dimension.
     /// </summary>
     /// <param name="dimension">The dimension.</param>
     /// <param name="dimensionVersions">Every version of the dimension.</param>
@@ -58,7 +59,7 @@ public sealed class DimensionDeleteChecks(
         return blockers.Detail();
     }
 
-    /// <summary>What blocks deleting a role: a binding, calculation dimension or report source names it.</summary>
+    /// <summary>What blocks deleting a role: a binding, calculation dimension, report source or report scenario names it.</summary>
     /// <param name="role">The role.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The 409 detail naming the blockers, or null when the role can be deleted.</returns>
@@ -71,14 +72,25 @@ public sealed class DimensionDeleteChecks(
         return blockers.Detail();
     }
 
-    /// <summary>Adds the calculation dimensions that read the roles and the report sources that bridge from them, in reports enabled or not.</summary>
+    /// <summary>
+    /// Adds the calculation dimensions that read the roles, the report sources that bridge from them and the report scenarios that
+    /// name them, in reports enabled or not.
+    /// </summary>
     private async Task AddReportUsesAsync(DeleteBlockers blockers, long[] roleIds, CancellationToken cancellationToken)
     {
         var reading = await calculationDimensions.ListAsync(new { RoleId = roleIds }, cancellationToken);
         var bridging = await sources.ListAsync(new { RoleId = roleIds }, cancellationToken);
-        var names = await reportNames.OfIdsAsync(reading.Select(dimension => dimension.ReportId).Concat(bridging.Select(source => source.ReportId)), cancellationToken);
+        var naming = await scenarios.ListAsync(new { RoleId = roleIds }, cancellationToken);
+        long[] reportIds =
+        [
+            .. reading.Select(dimension => dimension.ReportId),
+            .. bridging.Select(source => source.ReportId),
+            .. naming.Select(scenario => scenario.ReportId)
+        ];
+        var names = await reportNames.OfIdsAsync(reportIds, cancellationToken);
         blockers.AddNamed("read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportId]}"));
         blockers.AddNamed("bridged from by report sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportId]}"));
+        blockers.AddNamed("named as a scenario by", naming.Select(scenario => names[scenario.ReportId]));
     }
 
     /// <summary>Names the dataset versions that hold bindings, like <c>'loans.details' v2</c>.</summary>

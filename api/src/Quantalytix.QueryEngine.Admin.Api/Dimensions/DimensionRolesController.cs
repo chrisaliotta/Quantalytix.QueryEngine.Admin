@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Api.Dimensions;
 
 /// <summary>
 /// Lists, creates, edits and deletes the roles of a dimension: the named uses of the dimension that bindings, calculation
-/// dimensions and bridge sources name, and whose keys requests use. A time dimension has no roles.
+/// dimensions, bridge sources and report scenarios name, and whose keys requests use. A time dimension has no roles.
 /// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/dimensions/{dimensionId:long}/roles")]
@@ -40,7 +40,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The created role.</returns>
     /// <response code="200">The created role.</response>
-    /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
+    /// <response code="400">The input breaks a field rule, such as a taken key, or the dimension's role is a report's scenario, whose dimension has exactly one role; errors are keyed by camelCase JSON path.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
@@ -79,7 +79,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
         return Ok(await roles.UpdateAsync(roleId, input, cancellationToken));
     }
 
-    /// <summary>Deletes a role that no binding, calculation dimension or report source names.</summary>
+    /// <summary>Deletes a role that no binding, calculation dimension, report source or report scenario names.</summary>
     /// <param name="tenantId">The tenant that owns the dimension.</param>
     /// <param name="dimensionId">The role's dimension.</param>
     /// <param name="roleId">The role.</param>
@@ -88,7 +88,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="204">The role is deleted.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions and report sources that name the role.</response>
+    /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions, report sources and report scenarios that name the role.</response>
     [HttpDelete("{roleId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

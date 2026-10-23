@@ -191,7 +191,7 @@ EOF
   call PUT "$R/sources/$income_source/variables" 200 "$(json "{'variables': [{'variableKey': 'INTEREST_INCOME', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}})}]}")"
   call GET "$R/profiles" 200
   echo "Profile default picks $(py "sorted(p['variableKey'] for x in r if x['profile']['profileKey'] == 'default' for p in x['picks'])") (expected AVERAGE_BALANCE and INTEREST_INCOME)"
-  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'roleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True, 'isScenario': False}")"
+  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'roleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
   call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
   # The rows go back as a whole tree: ASSETS becomes a header, and formula row reportYield is added at the top.
   call GET "$R/editor" 200

@@ -126,8 +126,13 @@ internal static class ReportRows
             GroupingMode = GroupingModes.Member,
             IsGroupable = true,
             IsFilterable = true,
-            IsEnabled = true,
-            IsScenario = false
+            IsEnabled = true
         };
+    }
+
+    /// <summary>A scenario of the report on a role.</summary>
+    public static ReportScenarioRecord Scenario(long roleId)
+    {
+        return new ReportScenarioRecord { ReportId = ReportId, RoleId = roleId };
     }
 }

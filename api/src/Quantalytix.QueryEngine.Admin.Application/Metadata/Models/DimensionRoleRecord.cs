@@ -2,7 +2,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
 /// A <c>qe_dimension_role</c> row: a named use of a dimension, its template, such as Servicing branch of Branch. Bindings,
-/// calculation dimensions and bridge sources name it, and requests name its key.
+/// calculation dimensions, bridge sources and report scenarios name it, and requests name its key.
 /// </summary>
 public sealed record DimensionRoleRecord
 {

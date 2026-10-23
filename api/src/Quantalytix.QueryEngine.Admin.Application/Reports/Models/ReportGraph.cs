@@ -30,6 +30,9 @@ public sealed record ReportGraph
     /// <summary>The report's variable scopes.</summary>
     public required IReadOnlyList<ReportVariableScopeRecord> Scopes { get; init; }
 
+    /// <summary>The report's scenarios.</summary>
+    public required IReadOnlyList<ReportScenarioRecord> Scenarios { get; init; }
+
     /// <summary>The report's columns.</summary>
     public required IReadOnlyList<ReportColumnRecord> Columns { get; init; }
 

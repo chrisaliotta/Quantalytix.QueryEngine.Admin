@@ -4,8 +4,9 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// Reads, creates, edits and deletes the roles of dimensions: the named uses of a dimension that bindings, calculation dimensions
-/// and bridge sources name, and whose keys requests use. Roles are not versioned, and a role's key and dimension never change.
+/// Reads, creates, edits and deletes the roles of dimensions: the named uses of a dimension that bindings, calculation dimensions,
+/// bridge sources and report scenarios name, and whose keys requests use. Roles are not versioned, and a role's key and dimension
+/// never change.
 /// </summary>
 public sealed class DimensionRoleService(
     ITableGateway<DimensionRoleRecord> roles,
@@ -59,7 +60,7 @@ public sealed class DimensionRoleService(
         return updated;
     }
 
-    /// <summary>Deletes a role that no binding, calculation dimension or report source names.</summary>
+    /// <summary>Deletes a role that no binding, calculation dimension, report source or report scenario names.</summary>
     /// <param name="roleId">The role.</param>
     /// <param name="cancellationToken">Cancels the reads and the delete.</param>
     /// <returns>Null when the role was deleted; otherwise the detail naming what blocks the delete, and nothing was deleted.</returns>

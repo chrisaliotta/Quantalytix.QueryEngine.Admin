@@ -34,10 +34,4 @@ public sealed record CalculationDimensionInput : IGroupingInput
 
     /// <summary>Administrative availability flag.</summary>
     public required bool IsEnabled { get; init; }
-
-    /// <summary>
-    /// Whether its members are plan versions, such as budgets and forecasts, which runs never add together: a report has at most
-    /// one such dimension, and it is neither groupable nor filterable.
-    /// </summary>
-    public required bool IsScenario { get; init; }
 }

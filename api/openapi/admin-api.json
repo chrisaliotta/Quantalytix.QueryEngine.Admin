@@ -1439,6 +1439,167 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/reports/{reportId}/scenarios": {
+      "get": {
+        "tags": [
+          "ReportScenarios"
+        ],
+        "summary": "Lists the roles that are a report's scenarios.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the report.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "The report.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The scenario roles by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionRoleRecord"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ReportScenarios"
+        ],
+        "summary": "Replaces a report's scenarios; whether a calculation dimension of the report reads a scenario's role is checked by the report\nrules, when the report is enabled and on every write to it while it is.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant that owns the report.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "The report.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportScenariosInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportScenariosInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The scenario roles by key, ignoring case.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DimensionRoleRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A role does not exist, is named twice, or shares its dimension with another role, since a scenario's dimension has exactly one role; errors are keyed by camelCase JSON path.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The report is enabled and the scenarios would break its rules, such as a scenario on the role of a calculation dimension; nothing was written.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleViolationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants/{tenantId}/reports": {
       "get": {
         "tags": [
@@ -6310,7 +6471,7 @@
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "description": "The input breaks a field rule, such as a taken key, or the dimension's role is a report's scenario, whose dimension has exactly one role; errors are keyed by camelCase JSON path.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6421,7 +6582,7 @@
         "tags": [
           "DimensionRoles"
         ],
-        "summary": "Deletes a role that no binding, calculation dimension or report source names.",
+        "summary": "Deletes a role that no binding, calculation dimension, report source or report scenario names.",
         "parameters": [
           {
             "name": "tenantId",
@@ -6478,7 +6639,7 @@
             "description": "The role is deleted."
           },
           "409": {
-            "description": "Nothing was deleted; the detail names the bindings, calculation dimensions and report sources that name the role.",
+            "description": "Nothing was deleted; the detail names the bindings, calculation dimensions, report sources and report scenarios that name the role.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7374,41 +7535,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
                 }
               }
             }
@@ -12987,8 +13113,7 @@
           "groupingMode",
           "isGroupable",
           "isFilterable",
-          "isEnabled",
-          "isScenario"
+          "isEnabled"
         ],
         "type": "object",
         "properties": {
@@ -13042,10 +13167,6 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
-          },
-          "isScenario": {
-            "type": "boolean",
-            "description": "Whether its members are plan versions, such as budgets and forecasts, which runs never add together: a report has at most\none such dimension, and it is neither groupable nor filterable."
           }
         },
         "description": "A calculation dimension of a report, as its create and edit endpoints take it."
@@ -13060,8 +13181,7 @@
           "groupingMode",
           "isGroupable",
           "isFilterable",
-          "isEnabled",
-          "isScenario"
+          "isEnabled"
         ],
         "type": "object",
         "properties": {
@@ -13125,10 +13245,6 @@
           "isEnabled": {
             "type": "boolean",
             "description": "Administrative availability flag."
-          },
-          "isScenario": {
-            "type": "boolean",
-            "description": "Whether its members are plan versions, such as budgets and forecasts: a report has at most one such dimension, which is\nneither groupable nor filterable, and a run names one of its members whenever one of its sources reaches it."
           }
         },
         "description": "A `qe_calculation_dimension` row: a dimension shared by a report's datasets, which runs break out and filter by.\nIt reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its\ndataset binds the role."
@@ -13508,52 +13624,6 @@
           }
         },
         "description": "The editable settings of a draft dataset version."
-      },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
       },
       "DimensionBindingRecord": {
         "required": [
@@ -13944,7 +14014,7 @@
             "description": "Optional description the catalog shows."
           }
         },
-        "description": "A `qe_dimension_role` row: a named use of a dimension, its template, such as Servicing branch of Branch. Bindings,\ncalculation dimensions and bridge sources name it, and requests name its key."
+        "description": "A `qe_dimension_role` row: a named use of a dimension, its template, such as Servicing branch of Branch. Bindings,\ncalculation dimensions, bridge sources and report scenarios name it, and requests name its key."
       },
       "DimensionVersionInput": {
         "type": "object",
@@ -17070,6 +17140,36 @@
         },
         "description": "A report's complete row tree, as `PUT reports/{reportId}/rows` takes it."
       },
+      "ReportScenarioInput": {
+        "required": [
+          "roleId"
+        ],
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "type": "integer",
+            "description": "The role; requests name the scenario by its key.",
+            "format": "int64"
+          }
+        },
+        "description": "A role whose members are alternatives a run of the report reads one at a time."
+      },
+      "ReportScenariosInput": {
+        "required": [
+          "scenarios"
+        ],
+        "type": "object",
+        "properties": {
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportScenarioInput"
+            },
+            "description": "One entry per scenario role."
+          }
+        },
+        "description": "The complete scenarios of a report, as `PUT reports/{reportId}/scenarios` takes them; a run or comparison names one member\nof each scenario its sources read."
+      },
       "ReportSettingsInput": {
         "required": [
           "subtotalPosition"
@@ -18538,6 +18638,9 @@
       "name": "ReportEditor"
     },
     {
+      "name": "ReportScenarios"
+    },
+    {
       "name": "Reports"
     },
     {
@@ -18590,9 +18693,6 @@
     },
     {
       "name": "RangeBands"
-    },
-    {
-      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"

@@ -15,7 +15,6 @@ interface CalculationDimensionValues extends GroupingValues {
   isGroupable: boolean;
   isFilterable: boolean;
   isEnabled: boolean;
-  isScenario: boolean;
 }
 
 export interface CalculationDimensionSheetProps {
@@ -28,7 +27,6 @@ export interface CalculationDimensionSheetProps {
 /**
  * Creates or edits a calculation dimension: a role, whose binding each source's dataset classifies rows by, with its
  * template's members grouped by member, level, ancestor or depth. Levels and members come from the template's published version.
- * The scenario dimension's members are plan versions, which runs name one at a time instead of breaking out or filtering by them.
  */
 export function CalculationDimensionSheet({ reportId, dimension, onClose }: CalculationDimensionSheetProps) {
   const save = useSaveOwnedContent('calculation-dimensions', reportId, dimension?.calculationDimensionId ?? null);
@@ -45,7 +43,6 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
       isGroupable: dimension?.isGroupable ?? true,
       isFilterable: dimension?.isFilterable ?? true,
       isEnabled: dimension?.isEnabled ?? true,
-      isScenario: dimension?.isScenario ?? false,
     },
   });
   const roleId = useWatch({ control: form.control, name: 'roleId' });
@@ -62,7 +59,6 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
       isGroupable: values.isGroupable,
       isFilterable: values.isFilterable,
       isEnabled: values.isEnabled,
-      isScenario: values.isScenario,
     });
   }
 
@@ -85,11 +81,6 @@ export function CalculationDimensionSheet({ reportId, dimension, onClose }: Calc
       <GroupingModeFields dimensionId={templateId} />
       <SwitchField name="isGroupable" label="Groupable" description="Whether reports may break out by it." />
       <SwitchField name="isFilterable" label="Filterable" description="Whether report filters may compare it." />
-      <SwitchField
-        name="isScenario"
-        label="Scenario"
-        description="Whether its members are plan versions, such as budgets and forecasts, which a run names one at a time and never adds together. A report has at most one, neither groupable nor filterable."
-      />
       <SwitchField name="isEnabled" label="Enabled" />
     </EntityFormSheet>
   );

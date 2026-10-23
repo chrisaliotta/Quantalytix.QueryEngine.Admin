@@ -1318,6 +1318,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/reports/{reportId}/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the roles that are a report's scenarios. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The scenario roles by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRoleRecord"][];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Replaces a report's scenarios; whether a calculation dimension of the report reads a scenario's role is checked by the report
+         *     rules, when the report is enabled and on every write to it while it is.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The tenant that owns the report. */
+                    tenantId: string;
+                    /** @description The report. */
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReportScenariosInput"];
+                    "application/*+json": components["schemas"]["ReportScenariosInput"];
+                };
+            };
+            responses: {
+                /** @description The scenario roles by key, ignoring case. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DimensionRoleRecord"][];
+                    };
+                };
+                /** @description A role does not exist, is named twice, or shares its dimension with another role, since a scenario's dimension has exactly one role; errors are keyed by camelCase JSON path. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description The request has no valid bearer token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The caller's token names another tenant and lacks the SystemAdmin role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description The report is enabled and the scenarios would break its rules, such as a scenario on the role of a calculation dimension; nothing was written. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["RuleViolationProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/reports": {
         parameters: {
             query?: never;
@@ -5264,7 +5392,7 @@ export interface paths {
                         "application/json": components["schemas"]["DimensionRoleRecord"];
                     };
                 };
-                /** @description The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path. */
+                /** @description The input breaks a field rule, such as a taken key, or the dimension's role is a report's scenario, whose dimension has exactly one role; errors are keyed by camelCase JSON path. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5368,7 +5496,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Deletes a role that no binding, calculation dimension or report source names. */
+        /** Deletes a role that no binding, calculation dimension, report source or report scenario names. */
         delete: {
             parameters: {
                 query?: never;
@@ -5410,7 +5538,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Nothing was deleted; the detail names the bindings, calculation dimensions and report sources that name the role. */
+                /** @description Nothing was deleted; the detail names the bindings, calculation dimensions, report sources and report scenarios that name the role. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -10455,11 +10583,6 @@ export interface components {
             isFilterable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
-            /**
-             * @description Whether its members are plan versions, such as budgets and forecasts, which runs never add together: a report has at most
-             *     one such dimension, and it is neither groupable nor filterable.
-             */
-            isScenario: boolean;
         };
         /**
          * @description A `qe_calculation_dimension` row: a dimension shared by a report's datasets, which runs break out and filter by.
@@ -10503,11 +10626,6 @@ export interface components {
             isFilterable: boolean;
             /** @description Administrative availability flag. */
             isEnabled: boolean;
-            /**
-             * @description Whether its members are plan versions, such as budgets and forecasts: a report has at most one such dimension, which is
-             *     neither groupable nor filterable, and a run names one of its members whenever one of its sources reaches it.
-             */
-            isScenario: boolean;
         };
         /** @description The editable attributes of a calculation model, as `PUT calculation-models/{modelId}` takes them. */
         CalculationModelInput: {
@@ -10871,7 +10989,7 @@ export interface components {
         };
         /**
          * @description A `qe_dimension_role` row: a named use of a dimension, its template, such as Servicing branch of Branch. Bindings,
-         *     calculation dimensions and bridge sources name it, and requests name its key.
+         *     calculation dimensions, bridge sources and report scenarios name it, and requests name its key.
          */
         DimensionRoleRecord: {
             /**
@@ -12355,6 +12473,22 @@ export interface components {
         ReportRowsInput: {
             /** @description Every row; a stored row the list leaves out is deleted, and a key the report does not hold yet is a new row. */
             rows: components["schemas"]["ReportRowInput"][];
+        };
+        /** @description A role whose members are alternatives a run of the report reads one at a time. */
+        ReportScenarioInput: {
+            /**
+             * Format: int64
+             * @description The role; requests name the scenario by its key.
+             */
+            roleId: number;
+        };
+        /**
+         * @description The complete scenarios of a report, as `PUT reports/{reportId}/scenarios` takes them; a run or comparison names one member
+         *     of each scenario its sources read.
+         */
+        ReportScenariosInput: {
+            /** @description One entry per scenario role. */
+            scenarios: components["schemas"]["ReportScenarioInput"][];
         };
         /** @description The settings of a report, as `PUT reports/{reportId}/settings` takes them. */
         ReportSettingsInput: {

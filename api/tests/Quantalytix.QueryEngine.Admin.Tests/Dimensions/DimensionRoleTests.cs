@@ -17,9 +17,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// <summary>
 /// Confirms the role lifecycle: a new dimension other than a time dimension comes with its first role, so bindings can bind it at
 /// once, and a time dimension, whose bindings name the dimension, has none; a role key is unique in the tenant, because requests
-/// name a binding by it; a report dimension gets no role, because no dataset binds a report's rows; a role that a binding, a
-/// calculation dimension or a report source names is not deleted, naming each; and renaming a role advances the semantic
-/// revision, because the query engine's catalog shows the name.
+/// name a binding by it; a report dimension gets no role, because no dataset binds a report's rows; a dimension whose role is a
+/// scenario of a report gets no other role, because a scenario's dimension has exactly one role; a role that a binding, a
+/// calculation dimension, a report source or a report scenario names is not deleted, naming each; and renaming a role advances
+/// the semantic revision, because the query engine's catalog shows the name.
 /// </summary>
 public sealed class DimensionRoleTests
 {
@@ -28,6 +29,9 @@ public sealed class DimensionRoleTests
 
     /// <summary>The branch dimension's branch role.</summary>
     private const long BranchRoleId = 91;
+
+    /// <summary>Report 62, the branch plan, which names the branch role as a scenario.</summary>
+    private const long BranchPlanId = 62;
 
     /// <summary>The dimensions: branch.</summary>
     private readonly InMemoryTableGateway<DimensionRecord> _dimensions = new(ReleaseRows.Dimension(BranchId, "branch"));
@@ -94,16 +98,32 @@ public sealed class DimensionRoleTests
             ReleaseRows.Dimension(StatementId, "margin_statement") with { DimensionPurpose = DimensionPurposes.Report });
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var onBranch = await new NewDimensionRoleInputValidator(_roles, dimensions, Route(BranchId))
+        var onBranch = await RoleValidator(dimensions, new InMemoryTableGateway<ReportScenarioRecord>(), BranchId)
             .TestValidateAsync(NewRole("servicingBranch"), cancellationToken: cancellationToken);
-        var onStatement = await new NewDimensionRoleInputValidator(_roles, dimensions, Route(StatementId))
+        var onStatement = await RoleValidator(dimensions, new InMemoryTableGateway<ReportScenarioRecord>(), StatementId)
             .TestValidateAsync(NewRole("marginLine"), cancellationToken: cancellationToken);
 
         onBranch.ShouldNotHaveAnyValidationErrors();
         Assert.Equal("The dimension holds a report's rows, and a report dimension has no roles.", Assert.Single(onStatement.Errors).ErrorMessage);
     }
 
-    /// <summary>A role a binding, a calculation dimension and a bridge source name is kept, and the detail names each.</summary>
+    /// <summary>
+    /// Once the branch plan names the branch role as a scenario, the branch dimension takes no other role: a scenario's dimension has
+    /// exactly one role, so the scenario is its dimension, and requests and datasets reach its members through that one role.
+    /// </summary>
+    /// <returns>A task that completes when the input is validated.</returns>
+    [Fact]
+    public async Task DimensionOfAScenario_TakesNoOtherRole()
+    {
+        var result = await RoleValidator(_dimensions, Scenarios(), BranchId)
+            .TestValidateAsync(NewRole("servicingBranch"), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            "Role 'branch' of the dimension is a scenario of report 'branch_plan', and a scenario's dimension has exactly one role.",
+            Assert.Single(result.Errors).ErrorMessage);
+    }
+
+    /// <summary>A role a binding, a calculation dimension, a bridge source and a report scenario name is kept, and the detail names each.</summary>
     /// <returns>A task that completes when the delete is checked.</returns>
     [Fact]
     public async Task RoleInUse_IsNotDeleted()
@@ -112,7 +132,7 @@ public sealed class DimensionRoleTests
 
         Assert.Equal(
             "Role 'branch' cannot be deleted: bound by dataset versions 'loans' v1; read by calculation dimensions 'branch' of report 'balance_sheet'; " +
-            "bridged from by report sources 'gl_bridged' of report 'balance_sheet'.",
+            "bridged from by report sources 'gl_bridged' of report 'balance_sheet'; named as a scenario by report 'branch_plan'.",
             detail);
         Assert.Single(_roles.All);
     }
@@ -151,6 +171,25 @@ public sealed class DimensionRoleTests
         return new FixedRequestRoute(new Dictionary<string, long> { ["dimensionId"] = dimensionId });
     }
 
+    /// <summary>The validator of a new role of a dimension, over the test roles and the given dimensions and scenarios.</summary>
+    private NewDimensionRoleInputValidator RoleValidator(
+        InMemoryTableGateway<DimensionRecord> dimensions, InMemoryTableGateway<ReportScenarioRecord> scenarios, long dimensionId)
+    {
+        return new NewDimensionRoleInputValidator(_roles, dimensions, scenarios, new ReportNames(Reports()), Route(dimensionId));
+    }
+
+    /// <summary>The balance sheet and the branch plan.</summary>
+    private static InMemoryTableGateway<ReportRecord> Reports()
+    {
+        return new InMemoryTableGateway<ReportRecord>(ReportRows.Report(), ReportRows.Report() with { ReportId = BranchPlanId, ReportKey = "branch_plan" });
+    }
+
+    /// <summary>The branch plan's scenario on the branch role.</summary>
+    private static InMemoryTableGateway<ReportScenarioRecord> Scenarios()
+    {
+        return new InMemoryTableGateway<ReportScenarioRecord>(ReportRows.Scenario(BranchRoleId) with { ReportId = BranchPlanId });
+    }
+
     /// <summary>The dimension service over the test tables.</summary>
     private DimensionService DimensionService()
     {
@@ -182,11 +221,11 @@ public sealed class DimensionRoleTests
 
     /// <summary>
     /// The delete checks over the test tables: the balance sheet reads the branch role through calculation dimension
-    /// <c>branch</c> and bridges from it in source <c>gl_bridged</c>.
+    /// <c>branch</c> and bridges from it in source <c>gl_bridged</c>, and the branch plan names it as a scenario.
     /// </summary>
     private DimensionDeleteChecks Checks()
     {
-        var reports = new InMemoryTableGateway<ReportRecord>(ReportRows.Report());
+        var reports = Reports();
         var datasets = new InMemoryTableGateway<DatasetRecord>(ReleaseRows.Dataset(1, "loans"));
         var datasetVersions = new InMemoryTableGateway<DatasetVersionRecord>(ReleaseRows.DatasetVersion(11, 1, 1, PublicationStatuses.Published));
         var calculationDimensions = new InMemoryTableGateway<CalculationDimensionRecord>(ReportRows.CalculationDimension(81, "branch", BranchRoleId));
@@ -214,6 +253,7 @@ public sealed class DimensionRoleTests
                 RoleId = BranchRoleId,
                 BridgeId = 95
             }),
+            Scenarios(),
             new ReportNames(reports),
             consumers);
     }
