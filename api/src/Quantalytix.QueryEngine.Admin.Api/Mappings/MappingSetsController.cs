@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
@@ -15,18 +16,22 @@ namespace Quantalytix.QueryEngine.Admin.Api.Mappings;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingSetsController(MappingSetService mappingSets) : ControllerBase
 {
-    /// <summary>Lists every mapping set of the tenant.</summary>
+    /// <summary>Lists the mapping sets of one dimension, which the dimension's page shows.</summary>
     /// <param name="tenantId">The tenant that owns the mapping sets.</param>
+    /// <param name="dimensionId">The dimension whose codes the sets map onto.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The mapping sets by key.</returns>
-    /// <response code="200">The mapping sets by key, ignoring case.</response>
+    /// <response code="200">The dimension's mapping sets by key, ignoring case.</response>
+    /// <response code="400">The request names no dimension.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<MappingSetRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<MappingSetRecord>>> List(string tenantId, CancellationToken cancellationToken)
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    public async Task<ActionResult<IReadOnlyList<MappingSetRecord>>> List(
+        string tenantId, [FromQuery, BindRequired] long dimensionId, CancellationToken cancellationToken)
     {
-        return Ok(await mappingSets.ListAsync(cancellationToken));
+        return Ok(await mappingSets.ListAsync(dimensionId, cancellationToken));
     }
 
     /// <summary>Creates a mapping set onto a dimension; it has no versions until one is created.</summary>

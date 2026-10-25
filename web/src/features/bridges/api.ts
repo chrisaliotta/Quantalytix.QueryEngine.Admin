@@ -2,7 +2,6 @@ import { useMutation, useQuery, type QueryKey } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { unwrap } from '@/api/problemDetails';
 import { queryClient } from '@/api/queryClient';
-import type { DimensionPurpose } from '@/shared/types';
 import { lookupQueryKey } from '@/shared/useLookup';
 import { useTenantId } from '@/shared/useTenantId';
 import type {
@@ -31,13 +30,15 @@ function invalidate(...queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey })));
 }
 
-/** The bridges of the current tenant with their purposes, by key; `purpose` narrows them to analytical or report bridges. */
-export function useBridges(purpose?: DimensionPurpose) {
+/** The bridges into and out of one dimension with their purposes, by key. */
+export function useBridges(dimensionId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: [...bridgesKey(tenantId), 'list', purpose],
+    queryKey: [...bridgesKey(tenantId), 'list', dimensionId],
     queryFn: async () =>
-      unwrap(await apiClient.GET('/api/tenants/{tenantId}/bridges', { params: { path: { tenantId }, query: { purpose } } })),
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/bridges', { params: { path: { tenantId }, query: { dimensionId } } })
+      ),
   });
 }
 

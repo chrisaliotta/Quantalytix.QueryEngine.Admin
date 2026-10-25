@@ -54,7 +54,7 @@ flowchart TB
     TenantRoute["t/:tenantId: AppShell"]
     Boundary["pathless: errorElement RouteErrorPage"]
     TenantIndex["index: Navigate to overview, replace"]
-    FeatureRoutes["spread: overviewRoutes, datasetsRoutes, dimensionsRoutes, mappingsRoutes, bridgesRoutes, releasesRoutes, assumptionSetsRoutes, calculationModelsRoutes, reportsRoutes, systemRoutes"]
+    FeatureRoutes["spread: overviewRoutes, datasetsRoutes, dimensionsRoutes with mappingSetRoutes and bridgeRoutes nested, releasesRoutes, assumptionSetsRoutes, calculationModelsRoutes, reportsRoutes, systemRoutes"]
     ShellNotFound["*: NotFoundPage inside the shell"]
     OuterNotFound["*: NotFoundPage"]
     BrowserRouter --> LoginRoute
@@ -71,21 +71,22 @@ flowchart TB
 - The pathless child of `AppShell` carries a second `RouteErrorPage`, so an error thrown while a feature page renders shows inside the shell, with the sidebar and header in place. `RouteErrorPage` shows the status of a route error response, or 500 with the error's message.
 - `TenantRedirect` sends `/` to the overview of the token's tenant. For a token without a tenant it loads `GET /api/tenants` and opens the first tenant, or shows a 404 page when there is none.
 - `/t/:tenantId` has no breadcrumb of its own, so the breadcrumbs start at the feature.
+- Mapping sets and analytical bridges have no list pages: they are organized under dimensions. `dimensions/routes.tsx` nests `mappingSetRoutes` and `bridgeRoutes` as children of the `:dimensionId` route, beside the index route that renders `DimensionDetailPage`, so the `:dimensionId` route's `DimensionCrumb` heads their breadcrumbs: Dimensions › {dimension key} › {mapping set or bridge key}. A mapping set sits under its one dimension and a bridge under the dimension it leads into, its target. `dimensions/paths.ts` builds these links: `dimensionPath(tenantId, dimensionId, tab?)`, whose tab is `mappings` or `bridges`, `mappingSetPath(tenantId, dimensionId, mappingSetId)` and `bridgePath(tenantId, targetDimensionId, bridgeId)`.
 
 | Feature folder | Paths under `/t/:tenantId` | Lazy pages | `handle.crumb` |
 | --- | --- | --- | --- |
 | `overview` | `overview` | `OverviewPage` | `'Overview'` |
 | `datasets` | `datasets`, `datasets/:datasetId` | `DatasetListPage`, `DatasetDetailPage` | `'Datasets'`, `DatasetCrumb` |
 | `dimensions` | `dimensions`, `dimensions/:dimensionId` | `DimensionListPage`, `DimensionDetailPage` | `'Dimensions'`, `DimensionCrumb` |
-| `mappings` | `mappings`, `mappings/:mappingSetId` | `MappingSetListPage`, `MappingSetDetailPage` | `'Mappings'`, `MappingSetCrumb` |
-| `bridges` | `bridges`, `bridges/:bridgeId` | `BridgeListPage`, `BridgeDetailPage` | `'Bridges'`, `BridgeCrumb` |
+| `mappings` | `dimensions/:dimensionId/mapping-sets/:mappingSetId` | `MappingSetDetailPage` | `MappingSetCrumb` |
+| `bridges` | `dimensions/:dimensionId/bridges/:bridgeId` | `BridgeDetailPage` | `BridgeCrumb` |
 | `releases` | `releases`, `releases/:semanticReleaseId` | `ReleasesPage`, `ReleaseEditorPage` | `'Releases'`, `ReleaseCrumb` |
 | `assumption-sets` | `assumption-sets`, `assumption-sets/:assumptionSetId` | `AssumptionSetsPage`, `AssumptionSetEditorPage` | `'Assumption sets'`, `AssumptionSetCrumb` |
 | `calculation-models` | `calculation-models`, `calculation-models/:calculationModelId` | `CalculationModelListPage`, `CalculationModelDetailPage` | `'Calculation models'`, `CalculationModelCrumb` |
 | `reports` | `reports`, `reports/:reportId` | `ReportListPage`, `ReportDetailPage` | `'Reports'`, `ReportCrumb` |
 | `system` | `system/tenants` | `TenantsPage` | `'Tenants'` |
 
-**Sources:** [router.tsx](../../src/app/router.tsx), [errorPages.tsx](../../src/app/errorPages.tsx), [RequireSession.tsx](../../src/auth/RequireSession.tsx), [TenantRedirect.tsx](../../src/app/TenantRedirect.tsx), [overview/routes.tsx](../../src/features/overview/routes.tsx), [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [dimensions/routes.tsx](../../src/features/dimensions/routes.tsx), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [bridges/routes.tsx](../../src/features/bridges/routes.tsx), [releases/routes.tsx](../../src/features/releases/routes.tsx), [assumption-sets/routes.tsx](../../src/features/assumption-sets/routes.tsx), [calculation-models/routes.tsx](../../src/features/calculation-models/routes.tsx), [reports/routes.tsx](../../src/features/reports/routes.tsx), [system/routes.tsx](../../src/features/system/routes.tsx).
+**Sources:** [router.tsx](../../src/app/router.tsx), [errorPages.tsx](../../src/app/errorPages.tsx), [RequireSession.tsx](../../src/auth/RequireSession.tsx), [TenantRedirect.tsx](../../src/app/TenantRedirect.tsx), [overview/routes.tsx](../../src/features/overview/routes.tsx), [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [dimensions/routes.tsx](../../src/features/dimensions/routes.tsx), [dimensions/paths.ts](../../src/features/dimensions/paths.ts), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [bridges/routes.tsx](../../src/features/bridges/routes.tsx), [releases/routes.tsx](../../src/features/releases/routes.tsx), [assumption-sets/routes.tsx](../../src/features/assumption-sets/routes.tsx), [calculation-models/routes.tsx](../../src/features/calculation-models/routes.tsx), [reports/routes.tsx](../../src/features/reports/routes.tsx), [system/routes.tsx](../../src/features/system/routes.tsx).
 
 ## A feature's routes and breadcrumbs
 
@@ -114,7 +115,7 @@ flowchart LR
 
 - `lazy: { Component }` imports the page module when its route first matches. The `routes.tsx` files and the crumb components they import load with the app; the page modules do not.
 - `RouteHandle` in `src/shared/routeHandle.ts` types `handle.crumb` as a string or a function of the match that returns a node. `AppBreadcrumbs` renders the last crumb as the current page and the others as links to their match's pathname.
-- Dataset, dimension, mapping set and bridge pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`. A calculation model is not versioned: its page shows the model's settings and its metrics, always editable. A report is not versioned either: its page is the report editor, whose `?source=` parameter opens the Sources tab on one source, as a report bridge's page links to it. The release editor is a version itself, so its version picker navigates to `releases/:semanticReleaseId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui). An assumption set is not versioned: `assumption-sets/:assumptionSetId` shows one set, the active one or a historical capture with the release it reads, without a version picker.
+- Dataset, dimension, mapping set and bridge pages keep the selected version in the `?version=` search parameter, read through `selectedVersion`; the dimension page also keeps its tab in `?tab=`. A calculation model is not versioned: its page shows the model's settings and its metrics, always editable. A report is not versioned either: its page is the report editor, whose `?source=` parameter opens the Sources tab on one source, as a report bridge's row on its source dimension's Bridges tab links to it. The release editor is a version itself, so its version picker navigates to `releases/:semanticReleaseId` instead; see [the versioning UI](03-how-it-works.md#versioning-ui). An assumption set is not versioned: `assumption-sets/:assumptionSetId` shows one set, the active one or a historical capture with the release it reads, without a version picker.
 
 **Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [routeHandle.ts](../../src/shared/routeHandle.ts), [AppBreadcrumbs.tsx](../../src/app/AppBreadcrumbs.tsx), [DatasetCrumb.tsx](../../src/features/datasets/DatasetCrumb.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [ReleaseEditorPage.tsx](../../src/features/releases/ReleaseEditorPage.tsx), [AssumptionSetEditorPage.tsx](../../src/features/assumption-sets/AssumptionSetEditorPage.tsx), [versionSelection.ts](../../src/shared/versionSelection.ts).
 
@@ -156,7 +157,7 @@ Hiding the System group only changes the navigation: `system/tenants` is registe
 | Part | What it shows |
 | --- | --- |
 | `AppSidebar` | A header link to `/t/{tenantId}/overview` and one group per `NavGroup` from `getNavigation`. Each item links to `/t/{tenantId}/{path}` and is active while the pathname starts with that link |
-| `navigation.ts` | Semantic model: Overview, Datasets, Dimensions, Mappings, Bridges, Releases, Assumption sets. Reporting: Calculation models, Reports. System (`systemAdminOnly`): Tenants at `system/tenants` |
+| `navigation.ts` | Semantic model: Overview, Datasets, Dimensions, Releases, Assumption sets. Reporting: Calculation models, Reports. System (`systemAdminOnly`): Tenants at `system/tenants` |
 | `AppBreadcrumbs` | One crumb per matched route that has `handle.crumb` |
 | `TenantSwitcher` | A tenant `Combobox` for SystemAdmins; a badge with the route's tenant for everyone else |
 | `ThemeToggle` | Switches `setTheme` between `dark` and `light` |
@@ -178,8 +179,8 @@ flowchart LR
         InlineMutations["useMutation declared in each component"]
     end
     subgraph mappingsFeature ["src/features/mappings"]
-        MappingsRoutes["routes.tsx: mappingsRoutes"]
-        MappingList["MappingSetListPage"]
+        MappingsRoutes["routes.tsx: mappingSetRoutes, nested under a dimension's route"]
+        MappingList["MappingSetsTab, the dimension page's Mappings tab"]
         MappingDetail["MappingSetDetailPage, MappingEntries, sheets and dialogs"]
         MappingApi["api.ts: useMappingSets, useMappingSet, useMappingEntries and the create, update, delete and replace mutations"]
     end
@@ -199,7 +200,6 @@ flowchart LR
     DatasetList --> DatasetQueries
     DatasetDetail --> DatasetQueries
     DatasetDetail --> InlineMutations
-    MappingsRoutes -->|"lazy"| MappingList
     MappingsRoutes -->|"lazy"| MappingDetail
     MappingList --> MappingApi
     MappingDetail --> MappingApi
@@ -230,15 +230,15 @@ flowchart LR
 | `bindings` | `queries.ts` (`useBindings`); writes in the components | `invalidateTenantQueries` |
 | `measures` | `queries.ts` (`useMeasures`); writes in the components | `invalidateTenantQueries` |
 | `dimensions` | `api.ts`, including a dimension's roles | `refresh` of its query keys and lookup kinds, `dimension-roles` after a role write; `setQueryData` after a member reorder and a range-band replace |
-| `mappings` | `api.ts` | Its keys and lookups; `setQueryData` after a bulk entry replace |
-| `bridges` | `api.ts`, whose list takes the `?purpose=` filter | Its keys and lookups; `setQueryData` after a bulk mapping replace |
+| `mappings` | `api.ts`, whose list takes the required `?dimensionId=`: one dimension's mapping sets | Its keys and lookups; `setQueryData` after a bulk entry replace |
+| `bridges` | `api.ts`, whose list takes the required `?dimensionId=`: the bridges into and out of one dimension | Its keys and lookups; `setQueryData` after a bulk mapping replace |
 | `calculation-models` | `api.ts`, which also lists, replaces and deletes the attributions of a model's metrics, keyed by metric; variables and calculated measures through the shared `useOwnedContent` and its writes, typed by `OwnedContentTypes` | Its keys and lookups; an attribution write refreshes the model's attributions; a content write refreshes every content kind of the model and the metric lookups |
 | `reports` | `api.ts`; `editorApi.ts` for the report editor's rows and sources; profiles and calculation dimensions through the shared `useOwnedContent`, owned by the report | Its keys and lookups; a content write refreshes every content kind of the report and the content lookups, because deletes cascade; `setQueryData` after a column, scenario or variable scope replace, and with the editor view every editor write answers |
 | `releases` | `useReleases.ts` | `invalidateReleases` (`['releases', tenantId]` and the `releases` lookup) or the release keys; activation calls `invalidateTenantQueries` |
 | `assumption-sets` | `useAssumptionSets.ts` | `['assumption-sets', tenantId]` after a capture, relabel or delete; a publish repoints the active set and refreshes it through `invalidateTenantQueries` |
 | `system` | `useSystemTenants.ts` | `invalidateTenantDirectory`: `['system-tenants']` and `['tenants']` |
 
-**Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [DatasetListPage.tsx](../../src/features/datasets/DatasetListPage.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [datasets/queries.ts](../../src/features/datasets/queries.ts), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [MappingSetListPage.tsx](../../src/features/mappings/MappingSetListPage.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [bindings/queries.ts](../../src/features/bindings/queries.ts), [measures/queries.ts](../../src/features/measures/queries.ts), [dimensions/api.ts](../../src/features/dimensions/api.ts), [bridges/api.ts](../../src/features/bridges/api.ts), [useReleases.ts](../../src/features/releases/useReleases.ts), [useAssumptionSets.ts](../../src/features/assumption-sets/useAssumptionSets.ts), [useSystemTenants.ts](../../src/features/system/useSystemTenants.ts), [useOverview.ts](../../src/features/overview/useOverview.ts), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [useLookup.ts](../../src/shared/useLookup.ts), [queryClient.ts](../../src/api/queryClient.ts).
+**Sources:** [datasets/routes.tsx](../../src/features/datasets/routes.tsx), [DatasetListPage.tsx](../../src/features/datasets/DatasetListPage.tsx), [DatasetDetailPage.tsx](../../src/features/datasets/DatasetDetailPage.tsx), [FieldSheet.tsx](../../src/features/datasets/FieldSheet.tsx), [datasets/queries.ts](../../src/features/datasets/queries.ts), [mappings/routes.tsx](../../src/features/mappings/routes.tsx), [MappingSetsTab.tsx](../../src/features/mappings/MappingSetsTab.tsx), [MappingSetDetailPage.tsx](../../src/features/mappings/MappingSetDetailPage.tsx), [MappingEntries.tsx](../../src/features/mappings/MappingEntries.tsx), [mappings/api.ts](../../src/features/mappings/api.ts), [bindings/queries.ts](../../src/features/bindings/queries.ts), [measures/queries.ts](../../src/features/measures/queries.ts), [dimensions/api.ts](../../src/features/dimensions/api.ts), [bridges/api.ts](../../src/features/bridges/api.ts), [useReleases.ts](../../src/features/releases/useReleases.ts), [useAssumptionSets.ts](../../src/features/assumption-sets/useAssumptionSets.ts), [useSystemTenants.ts](../../src/features/system/useSystemTenants.ts), [useOverview.ts](../../src/features/overview/useOverview.ts), [useVersionTransition.ts](../../src/shared/useVersionTransition.ts), [useLookup.ts](../../src/shared/useLookup.ts), [queryClient.ts](../../src/api/queryClient.ts).
 
 ## Deep example: the dataset page
 

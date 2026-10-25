@@ -1,5 +1,4 @@
 import {
-  ArrowLeftRight,
   Boxes,
   Building2,
   Calculator,
@@ -8,7 +7,6 @@ import {
   LayoutDashboard,
   Rocket,
   SlidersHorizontal,
-  Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -33,8 +31,6 @@ const NAVIGATION: NavGroup[] = [
       { title: 'Overview', path: 'overview', icon: LayoutDashboard },
       { title: 'Datasets', path: 'datasets', icon: Database },
       { title: 'Dimensions', path: 'dimensions', icon: Boxes },
-      { title: 'Mappings', path: 'mappings', icon: ArrowLeftRight },
-      { title: 'Bridges', path: 'bridges', icon: Waypoints },
       { title: 'Releases', path: 'releases', icon: Rocket },
       { title: 'Assumption sets', path: 'assumption-sets', icon: SlidersHorizontal },
     ],

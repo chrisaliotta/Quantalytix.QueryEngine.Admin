@@ -1,10 +1,10 @@
-import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Loading } from '@registry/components/Loading';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { dimensionPath } from '@/features/dimensions/paths';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { EnabledBadge } from '@/shared/EnabledBadge';
@@ -20,11 +20,11 @@ import { BridgeIdentitySheet } from './BridgeIdentitySheet';
 import { BridgeVersionPanel } from './BridgeVersionPanel';
 import { bridgeVersionValues } from './bridgeVersionForm';
 import { NewBridgeVersionDialog, type NewBridgeVersionValues } from './NewBridgeVersionDialog';
-import type { BridgeSummary, BridgeVersion } from './types';
+import type { Bridge, BridgeVersion } from './types';
 
 /**
- * One bridge: identity, version picker with lifecycle actions, and the selected version's settings and mappings. A report
- * bridge shows read-only and links to the report editor, the only place its items change.
+ * One analytical bridge, under the dimension it leads into: identity, version picker with lifecycle actions, and the selected
+ * version's settings and mappings. A report bridge has no page; its report's editor edits it.
  */
 export function BridgeDetailPage() {
   const bridgeId = Number(useParams().bridgeId);
@@ -36,12 +36,10 @@ export function BridgeDetailPage() {
   if (summary.error) {
     return <ApiErrorAlert error={summary.error} />;
   }
-  return <BridgeDetail summary={summary.data} />;
+  return <BridgeDetail bridge={summary.data.bridge} />;
 }
 
-function BridgeDetail({ summary }: { summary: BridgeSummary }) {
-  const { bridge, owner } = summary;
-  const isAnalytical = owner == null;
+function BridgeDetail({ bridge }: { bridge: Bridge }) {
   const tenantId = useTenantId();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,31 +84,17 @@ function BridgeDetail({ summary }: { summary: BridgeSummary }) {
         title={bridge.displayName}
         description={`${bridge.bridgeKey} · ${sourceKey} → ${targetKey}`}
         actions={
-          isAnalytical ? (
-            <>
-              <EnabledBadge enabled={bridge.isEnabled} />
-              <Button variant="outline" onClick={() => setEditingIdentity(true)}>
-                <Pencil />
-                Edit
-              </Button>
-              <Button variant="outline" className="text-destructive" onClick={() => setConfirmingDelete(true)}>
-                <Trash2 />
-                Delete
-              </Button>
-            </>
-          ) : (
-            <>
-              <Badge variant="secondary">
-                Report bridge of {owner.reportKey} · {owner.sourceKey}
-              </Badge>
-              <Button variant="outline" asChild>
-                <Link to={`/t/${tenantId}/reports/${owner.reportId}?source=${owner.reportSourceId}`}>
-                  <ExternalLink />
-                  Open in report editor
-                </Link>
-              </Button>
-            </>
-          )
+          <>
+            <EnabledBadge enabled={bridge.isEnabled} />
+            <Button variant="outline" onClick={() => setEditingIdentity(true)}>
+              <Pencil />
+              Edit
+            </Button>
+            <Button variant="outline" className="text-destructive" onClick={() => setConfirmingDelete(true)}>
+              <Trash2 />
+              Delete
+            </Button>
+          </>
         }
       />
       <ApiErrorAlert error={deleteBridge.error} />
@@ -120,13 +104,9 @@ function BridgeDetail({ summary }: { summary: BridgeSummary }) {
         versions={versionItems.map(item => ({ ...item, label: item.classifier ?? item.label }))}
         selectedVersionId={versionId}
         onSelectVersion={selectVersion}
-        onCreateVersion={isAnalytical ? openNew : undefined}
-        onCloneVersion={isAnalytical ? openClone : undefined}
-        onDeleteVersion={
-          isAnalytical
-            ? draftId => deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })
-            : undefined
-        }
+        onCreateVersion={openNew}
+        onCloneVersion={openClone}
+        onDeleteVersion={draftId => deleteVersion.mutate(draftId, { onSuccess: () => setSearchParams({}, { replace: true }) })}
       />
       <ApiErrorAlert error={versions.error ?? version.error ?? deleteVersion.error} />
       {versions.isSuccess && versionItems.length === 0 && (
@@ -141,7 +121,7 @@ function BridgeDetail({ summary }: { summary: BridgeSummary }) {
           key={version.data.bridgeVersionId}
           bridge={bridge}
           version={version.data}
-          isEditable={isAnalytical && isEditable('bridge_version', selected.status as VersionStatus)}
+          isEditable={isEditable('bridge_version', selected.status as VersionStatus)}
         />
       )}
 
@@ -161,7 +141,11 @@ function BridgeDetail({ summary }: { summary: BridgeSummary }) {
         description="The bridge and its draft versions are deleted. A bridge with validated, published or retired versions, or one a binding uses, is kept."
         confirmLabel="Delete bridge"
         destructive
-        onConfirm={() => deleteBridge.mutate(bridge.bridgeId, { onSuccess: () => navigate(`/t/${tenantId}/bridges`) })}
+        onConfirm={() =>
+          deleteBridge.mutate(bridge.bridgeId, {
+            onSuccess: () => navigate(dimensionPath(tenantId, bridge.targetDimensionId, 'bridges')),
+          })
+        }
       />
     </div>
   );

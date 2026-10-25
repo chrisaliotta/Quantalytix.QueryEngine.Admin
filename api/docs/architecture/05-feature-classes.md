@@ -276,6 +276,7 @@ classDiagram
     class MappingVersionsController
     class MappingEntriesController
     class MappingSetService {
+        +ListAsync(dimensionId, cancellationToken) Task~IReadOnlyList~MappingSetRecord~~
         +CreateAsync(input, cancellationToken)
         +UpdateAsync(mappingSetId, input, cancellationToken)
         +DeleteAsync(mappingSetId, cancellationToken) Task~string~
@@ -315,12 +316,12 @@ classDiagram
     EntryMemberAssignableRule --> MappingEntrySetReader
 ```
 
-- **Routes:** `api/tenants/{tenantId}/mapping-sets` (`MappingSetsController`); under `api/tenants/{tenantId}`, `mapping-sets/{mappingSetId:long}/versions` and `mapping-versions/{versionId:long}` (`MappingVersionsController`); `api/tenants/{tenantId}/mapping-versions/{versionId:long}/entries` (`MappingEntriesController`). Entry writes take a draft or the published version.
+- **Routes:** `api/tenants/{tenantId}/mapping-sets` (`MappingSetsController`, whose list takes a required `dimensionId`); under `api/tenants/{tenantId}`, `mapping-sets/{mappingSetId:long}/versions` and `mapping-versions/{versionId:long}` (`MappingVersionsController`); `api/tenants/{tenantId}/mapping-versions/{versionId:long}/entries` (`MappingEntriesController`). Entry writes take a draft or the published version.
 - **Publication rules** (`mapping_version`): `dimension_version_published` (`DimensionVersionPublishedRule`), `source_key_unique` (`SourceKeyUniqueRule`), `entry_member_in_version` (`EntryMemberInVersionRule`), `entry_member_assignable` (`EntryMemberAssignableRule`).
 - **Retirement rules:** none. **Lifecycle handlers:** `PredecessorRetirer` and `ActiveSetPinner`, as for every living kind.
 - **Registration:** the first half of `AddMappingsAndBridgesFeature` in [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs).
 
-A mapping set is created without versions, because its entries belong to versions. `NewMappingSetInputValidator` refuses a report dimension: a report's sources reach its rows by bridge or by field, never through a mapping set. A clone copies the source's entries as they are under new entry IDs. `MappingEntrySetReader` reads a version's entries with the keys of the published version of the set's dimension; while the dimension has none, `dimension_version_published` reports it once and the member rules stay silent.
+A mapping set is created without versions, because its entries belong to versions. `NewMappingSetInputValidator` refuses a report dimension: a report's sources reach its rows by bridge or by field, never through a mapping set. A mapping set has exactly one dimension, so `GET mapping-sets?dimensionId=` lists the sets of one dimension by key, as the dimension's page shows them, and answers 400 without the dimension (`[FromQuery, BindRequired]`). A clone copies the source's entries as they are under new entry IDs. `MappingEntrySetReader` reads a version's entries with the keys of the published version of the set's dimension; while the dimension has none, `dimension_version_published` reports it once and the member rules stay silent.
 
 | Class | Records |
 | --- | --- |
@@ -343,7 +344,7 @@ classDiagram
     class BridgeVersionsController
     class BridgeMappingsController
     class BridgeService {
-        +ListAsync(query, cancellationToken) Task~IReadOnlyList~BridgeSummary~~
+        +ListAsync(dimensionId, cancellationToken) Task~IReadOnlyList~BridgeSummary~~
         +SummaryAsync(bridgeId, cancellationToken) Task~BridgeSummary~
         +CreateAsync(input, cancellationToken)
         +UpdateAsync(bridgeId, input, cancellationToken)
@@ -398,14 +399,14 @@ classDiagram
     AllocationReplicateRule --> BridgeMappingSetReader
 ```
 
-- **Routes:** `api/tenants/{tenantId}/bridges` (`BridgesController`, whose list takes an optional `purpose`); under `api/tenants/{tenantId}`, `bridges/{bridgeId:long}/versions` and `bridge-versions/{versionId:long}` (`BridgeVersionsController`); `api/tenants/{tenantId}/bridge-versions/{versionId:long}/mappings` (`BridgeMappingsController`). Version and mapping writes take a draft or the published version, and every write refuses a report's bridge (`[RequireAnalytical]`).
+- **Routes:** `api/tenants/{tenantId}/bridges` (`BridgesController`, whose list takes a required `dimensionId`); under `api/tenants/{tenantId}`, `bridges/{bridgeId:long}/versions` and `bridge-versions/{versionId:long}` (`BridgeVersionsController`); `api/tenants/{tenantId}/bridge-versions/{versionId:long}/mappings` (`BridgeMappingsController`). Version and mapping writes take a draft or the published version, and every write refuses a report's bridge (`[RequireAnalytical]`).
 - **Publication rules** (`bridge_version`): `endpoint_versions_published` (`EndpointVersionsPublishedRule`), `mapping_members_in_endpoint_versions` (`MappingMembersInEndpointVersionsRule`), `cardinality_many_to_one` (`CardinalityManyToOneRule`), `allocation_none` (`AllocationNoneRule`), `allocation_partition` (`AllocationPartitionRule`), `allocation_replicate` (`AllocationReplicateRule`).
 - **Retirement rules:** none. **Lifecycle handlers:** `PredecessorRetirer` and `ActiveSetPinner`, as for every living kind.
 - **Registration:** the second half of `AddMappingsAndBridgesFeature` in [MappingsAndBridgesFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/MappingsAndBridgesFeatureServiceCollectionExtensions.cs).
 
 A bridge is created without versions, because its mappings belong to versions. A version holds its cardinality, allocation mode and mappings; a clone copies the mappings with their factors, weights and source selections under new mapping IDs. An analytical bridge maps each source member alone: `BridgeMappingsInputValidator` refuses the `descendants` selection, which only a report source's bridge takes. Bindings name the bridge itself, so deleting a draft version has no blockers, and deleting the bridge is blocked by the bindings that use it.
 
-`POST bridges` connects analytical dimensions only: `NewBridgeInputValidator` refuses a `report` source or target. A bridge into a report dimension belongs to the report source that created it, which alone edits and deletes it (see [Report editor](#report-editor)); every generic bridge, version, mapping and status write answers 409 "Owned by a report" for one. `GET bridges` lists each bridge as a `BridgeSummary`: its purpose, the `dimension_purpose` of its target, so `analytical` or `report`, and for a report bridge its `BridgeOwner`, the report and source that own it. `?purpose=analytical` lists the analytical bridges alone. The `bridges` lookup lists every bridge; the binding editor narrows it to bridges into the role's template, which a report dimension never is.
+`POST bridges` connects analytical dimensions only: `NewBridgeInputValidator` refuses a `report` source or target. A bridge into a report dimension belongs to the report source that created it, which alone edits and deletes it (see [Report editor](#report-editor)); every generic bridge, version, mapping and status write answers 409 "Owned by a report" for one. `GET bridges?dimensionId=` lists the bridges that lead into or start from one dimension, by key, and answers 400 without the dimension (`[FromQuery, BindRequired]`). Each is a `BridgeSummary`: its purpose, the `dimension_purpose` of its target, so `analytical` or `report`, and for a report bridge its `BridgeOwner`, the report and source that own it. The web SPA shows the bridges into a dimension as the dimension's own, because a dataset reaches the target's role through them, and the bridges from it read-only, report bridges included, so whoever edits its members sees which bridges read them. The `bridges` lookup lists every bridge; the binding editor narrows it to bridges into the role's template, which a report dimension never is.
 
 | Class | Records |
 | --- | --- |
@@ -692,13 +693,13 @@ classDiagram
 - **Publication and retirement rules:** none; assumption sets are not a versioned kind. **Lifecycle handlers:** `ActiveSetPinner`, one per living kind.
 - **Registration:** `AddReleasesAndSystemFeature` in [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs).
 
-The tenant database holds the active set, with status `active` and key `active`, from the moment it is created; tenant verification refuses a database without exactly one, and the API never creates or deletes it. `ActiveSetPinner` upserts the active set's pin of the identity whose version was just published, so the active set always pins every published version. `CaptureAsync` copies the active set's pins into a new set with status `historical`, a key of its own, `captured_at` and the active release as `semantic_release_id`, whose dataset versions the engine reads for the set. Reports always run on the active set, so it leaves out the pins of report dimensions and of the bridges into them, which `ReportOwnership.OwnedIdsAsync` lists; deleting a report or a source unpins its dimension or bridge from every set (`UnpinDimensionAsync`, `UnpinBridgeAsync`). The copy keeps pinning those versions after later publishes retire them, and retired versions never change, so a historical set reproduces the content of its time. Capturing and deleting advance the semantic revision, because the engine caches the set keys requests can name by revision; relabelling does not. `AssumptionPinReader` labels each pin with its identity key, version number and status for the web SPA.
+The tenant database holds the active set, with status `active` and key `active`, from the moment it is created; tenant verification refuses a database without exactly one, and the API never creates or deletes it. `ActiveSetPinner` upserts the active set's pin of the identity whose version was just published, so the active set always pins every published version. `CaptureAsync` copies the active set's pins into a new set with status `historical`, a key of its own, `captured_at` and the active release as `semantic_release_id`, whose dataset versions the engine reads for the set. Reports always run on the active set, so it leaves out the pins of report dimensions and of the bridges into them, which `ReportOwnership.OwnedIdsAsync` lists; deleting a report or a source unpins its dimension or bridge from every set (`UnpinDimensionAsync`, `UnpinBridgeAsync`). The copy keeps pinning those versions after later publishes retire them, and retired versions never change, so a historical set reproduces the content of its time. Capturing and deleting advance the semantic revision, because the engine caches the set keys requests can name by revision; relabelling does not. `AssumptionPinReader` labels each pin for the web SPA with its identity key, version number and status, the `dimensionId` the identity belongs under (a dimension itself, a mapping set's dimension, or a bridge's target) and, for a report dimension or a bridge into one, the `reportId` of the report whose rows that dimension holds, so the SPA links each pin to the page where its identity changes.
 
 | Class | Records |
 | --- | --- |
 | `AssumptionSetService` | `AssumptionSetRecord`, `DatabaseInfoRecord`; through `ReportOwnership`, `DimensionRecord`, `BridgeRecord` |
 | `AssumptionPins` | `AssumptionSetRecord`, `AssumptionSetDimensionRecord`, `AssumptionSetMappingRecord`, `AssumptionSetBridgeRecord` |
-| `AssumptionPinReader` | `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord` |
+| `AssumptionPinReader` | `DimensionRecord`, `DimensionVersionRecord`, `MappingSetRecord`, `MappingVersionRecord`, `BridgeRecord`, `BridgeVersionRecord`, `ReportRecord` |
 
 **Sources:** [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.Api/AssumptionSets/AssumptionSetsController.cs), [AssumptionSetService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionSetService.cs), [AssumptionPins.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPins.cs), [AssumptionPinReader.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/AssumptionPinReader.cs), [ActiveSetPinner.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/ActiveSetPinner.cs), [ReleasesAndSystemFeatureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Configuration/ReleasesAndSystemFeatureServiceCollectionExtensions.cs), [AssumptionSetTests.cs](../../tests/Quantalytix.QueryEngine.Admin.Tests/AssumptionSets/AssumptionSetTests.cs).
 

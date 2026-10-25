@@ -8,6 +8,7 @@ using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Releases;
+using Quantalytix.QueryEngine.Admin.Tests.Reports;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
@@ -60,6 +61,12 @@ public sealed class AssumptionSetTests
 
     /// <summary>Bridge 95 of a source of report 60, from branches into its report dimension.</summary>
     private readonly InMemoryTableGateway<BridgeRecord> _bridges = new(BridgeRows.Bridge(95, BranchId, 500));
+
+    /// <summary>No bridge versions at first.</summary>
+    private readonly InMemoryTableGateway<BridgeVersionRecord> _bridgeVersions = new();
+
+    /// <summary>Report 60, whose rows dimension 500 holds.</summary>
+    private readonly InMemoryTableGateway<ReportRecord> _reports = new(ReportRows.Report());
 
     /// <summary>The branch dimension's published v1 and v2.</summary>
     private readonly InMemoryTableGateway<DimensionVersionRecord> _dimensionVersions = new(
@@ -122,6 +129,29 @@ public sealed class AssumptionSetTests
         Assert.Equal([new PinnedVersion(VersionKinds.DimensionVersion, BranchId, 101)], await _pins.ListAsync(set.AssumptionSetId, cancellationToken));
     }
 
+    /// <summary>
+    /// Each pin names the dimension its identity belongs under and, for what a report owns, that report, because the client opens a
+    /// pin where its identity lives: an analytical dimension, mapping set or bridge on the dimension's page, and a report's dimension
+    /// and the bridges into it in the report's editor.
+    /// </summary>
+    /// <returns>A task that completes when the pins are checked.</returns>
+    [Fact]
+    public async Task Pins_NameWhereTheirIdentityLives()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await _dimensionPins.InsertAsync(new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = 500, DimensionVersionId = 501 }, cancellationToken);
+        await _dimensionVersions.InsertAsync(DimensionRows.Version(501, 500, 1, PublicationStatuses.Published), cancellationToken);
+        await _bridgePins.InsertAsync(new AssumptionSetBridgeRecord { AssumptionSetId = ActiveSetId, BridgeId = 95, BridgeVersionId = 96 }, cancellationToken);
+        await _bridgeVersions.InsertAsync(
+            BridgeRows.BridgeVersion(96, 95, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published), cancellationToken);
+
+        var pins = (await Service().GetAsync(ActiveSetId, cancellationToken)).Pins;
+
+        Assert.Equal(
+            [("balance_sheet", 500L, (long?)ReportRows.ReportId), ("branch", BranchId, null), ("zz_map_bridge_95", 500L, ReportRows.ReportId)],
+            pins.Select(pin => (pin.IdentityKey, pin.DimensionId, pin.ReportId)));
+    }
+
     /// <summary>Publishing v2 of the branch dimension repoints the active set and leaves the historical set on v1.</summary>
     /// <returns>A task that completes when the pins are checked.</returns>
     [Fact]
@@ -164,7 +194,6 @@ public sealed class AssumptionSetTests
     private AssumptionSetService Service()
     {
         var time = new FakeTimeProvider(Now);
-        var bridgeVersions = new InMemoryTableGateway<BridgeVersionRecord>();
         var reader = new AssumptionPinReader(
             _pins,
             _dimensions,
@@ -172,8 +201,9 @@ public sealed class AssumptionSetTests
             new InMemoryTableGateway<MappingSetRecord>(),
             new InMemoryTableGateway<MappingVersionRecord>(),
             _bridges,
-            bridgeVersions);
-        var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, bridgeVersions, new InMemoryTableGateway<ReportRecord>());
+            _bridgeVersions,
+            _reports);
+        var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, _bridgeVersions, _reports);
         return new AssumptionSetService(
             _sets, _pins, reader, ownership, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
     }

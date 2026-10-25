@@ -12,6 +12,15 @@ public sealed record AssumptionPin
     /// <summary>The identity's key, such as its <c>dimension_key</c>.</summary>
     public required string IdentityKey { get; init; }
 
+    /// <summary>The dimension the identity belongs under: a dimension itself, a mapping set's dimension, or a bridge's target.</summary>
+    public required long DimensionId { get; init; }
+
+    /// <summary>
+    /// The report whose rows that dimension holds, for a report dimension or a bridge into one: its editor is where the identity
+    /// changes. Null for every other identity.
+    /// </summary>
+    public long? ReportId { get; init; }
+
     /// <summary>The pinned version.</summary>
     public required long VersionId { get; init; }
 

@@ -1,19 +1,17 @@
-import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
-import { useTenantId } from '@/shared/useTenantId';
 import { useDeleteReportSource } from './editorApi';
 import { SourceSheet } from './SourceSheet';
 import type { EditorSource, EditorView } from './types';
 
 export interface SourcesTabProps {
   view: EditorView;
-  /** The source to highlight, such as the one a report bridge's page links to. */
+  /** The source to highlight, such as the one a dimension's Bridges tab links to. */
   highlightedSourceId: number | null;
 }
 
@@ -28,7 +26,6 @@ interface SourceSheetRequest {
  * source, how many items no row takes yet.
  */
 export function SourcesTab({ view, highlightedSourceId }: SourcesTabProps) {
-  const tenantId = useTenantId();
   const remove = useDeleteReportSource(view.report.reportId);
   const [sheet, setSheet] = useState<SourceSheetRequest | null>(null);
   const [deleting, setDeleting] = useState<EditorSource | null>(null);
@@ -77,12 +74,7 @@ export function SourcesTab({ view, highlightedSourceId }: SourcesTabProps) {
                 {isBridge ? (
                   <>
                     its rows classify by role <span className="font-medium text-foreground">{editorSource.dimensionRoleKey}</span>, whose members
-                    the rows pick as items through{' '}
-                    <Link className="inline-flex items-center gap-1 hover:underline" to={`/t/${tenantId}/bridges/${source.bridgeId}`}>
-                      its bridge
-                      <ExternalLink className="size-3" />
-                    </Link>
-                    .
+                    the rows pick as items through its bridge, on the Rows &amp; mappings tab.
                   </>
                 ) : (
                   <>

@@ -2,11 +2,9 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { LoginPage } from '@/auth/LoginPage';
 import { RequireSession } from '@/auth/RequireSession';
 import { assumptionSetsRoutes } from '@/features/assumption-sets/routes';
-import { bridgesRoutes } from '@/features/bridges/routes';
 import { calculationModelsRoutes } from '@/features/calculation-models/routes';
 import { datasetsRoutes } from '@/features/datasets/routes';
 import { dimensionsRoutes } from '@/features/dimensions/routes';
-import { mappingsRoutes } from '@/features/mappings/routes';
 import { overviewRoutes } from '@/features/overview/routes';
 import { releasesRoutes } from '@/features/releases/routes';
 import { reportsRoutes } from '@/features/reports/routes';
@@ -37,8 +35,6 @@ export const router = createBrowserRouter([
               ...overviewRoutes,
               ...datasetsRoutes,
               ...dimensionsRoutes,
-              ...mappingsRoutes,
-              ...bridgesRoutes,
               ...releasesRoutes,
               ...assumptionSetsRoutes,
               ...calculationModelsRoutes,

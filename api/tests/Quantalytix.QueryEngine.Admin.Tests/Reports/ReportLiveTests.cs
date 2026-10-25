@@ -44,8 +44,9 @@ public sealed class ReportLiveTests
             Assert.NotEmpty(view.Sources);
         }
 
+        var marginStatement = enabled.Single(report => report.ReportKey == "bank.margin_statement");
         var reportBridges = await scope.ServiceProvider.GetRequiredService<BridgeService>()
-            .ListAsync(new BridgeListQuery { Purpose = DimensionPurposes.Report }, cancellationToken);
+            .ListAsync(marginStatement.ReportDimensionId, cancellationToken);
         Assert.All(reportBridges, bridge => Assert.NotNull(bridge.Owner));
         Assert.Contains(reportBridges, bridge => bridge.Owner!.SourceKey == "gl_daily");
     }
@@ -128,10 +129,10 @@ public sealed class ReportLiveTests
             await reports.DeleteAsync(report.ReportId, cancellationToken);
         }
 
-        var bridges = await provider.GetRequiredService<BridgeService>().ListAsync(new BridgeListQuery { Purpose = DimensionPurposes.Report }, cancellationToken);
+        var bridges = await provider.GetRequiredService<BridgeService>().ListAsync(report.ReportDimensionId, cancellationToken);
         Assert.DoesNotContain(await reports.ListAsync(cancellationToken), other => other.ReportId == report.ReportId);
         Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken));
-        Assert.DoesNotContain(bridges, bridge => bridge.Bridge.TargetDimensionId == report.ReportDimensionId);
+        Assert.Empty(bridges);
         Assert.DoesNotContain(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == report.ReportDimensionId);
     }
 

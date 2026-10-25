@@ -3,22 +3,15 @@ import type { RouteHandle } from '@/shared/routeHandle';
 import { BridgeCrumb } from './BridgeCrumb';
 
 /**
- * Bridges routes, mounted under `/t/:tenantId`: the list and one bridge (`?version=` selects the version). Each page
- * loads on its first visit, as its own chunk.
+ * The bridge route, mounted under the route of the dimension a bridge leads into: one analytical bridge (`?version=` selects the
+ * version). A report bridge has no page; its report's editor edits it. The page loads on its first visit, as its own chunk.
  */
-export const bridgesRoutes: RouteObject[] = [
+export const bridgeRoutes: RouteObject[] = [
   {
-    path: 'bridges',
-    handle: { crumb: 'Bridges' } satisfies RouteHandle,
-    children: [
-      { index: true, lazy: { Component: async () => (await import('./BridgeListPage')).BridgeListPage } },
-      {
-        path: ':bridgeId',
-        lazy: { Component: async () => (await import('./BridgeDetailPage')).BridgeDetailPage },
-        handle: {
-          crumb: match => <BridgeCrumb bridgeId={Number(match.params.bridgeId)} />,
-        } satisfies RouteHandle,
-      },
-    ],
+    path: 'bridges/:bridgeId',
+    lazy: { Component: async () => (await import('./BridgeDetailPage')).BridgeDetailPage },
+    handle: {
+      crumb: match => <BridgeCrumb bridgeId={Number(match.params.bridgeId)} />,
+    } satisfies RouteHandle,
   },
 ];

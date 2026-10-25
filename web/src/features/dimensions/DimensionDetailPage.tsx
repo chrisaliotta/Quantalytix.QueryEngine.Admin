@@ -5,6 +5,8 @@ import { Loading } from '@registry/components/Loading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BridgesTab } from '@/features/bridges/BridgesTab';
+import { MappingSetsTab } from '@/features/mappings/MappingSetsTab';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { PageHeader } from '@/shared/PageHeader';
@@ -30,8 +32,9 @@ interface NewVersionRequest {
 }
 
 /**
- * One dimension: identity, version picker with lifecycle actions, and tabs: the roles, which apply to every version and which a
- * time dimension has none of, then the selected version's content.
+ * One dimension: identity, version picker with lifecycle actions, and tabs (`?tab=` selects one): the roles, which apply to every
+ * version and which a time dimension has none of, then the selected version's content, then the mapping sets and bridges, which
+ * have versions of their own.
  */
 export function DimensionDetailPage() {
   const dimensionId = Number(useParams().dimensionId);
@@ -62,9 +65,24 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
   const isRange = dimension.dimensionKind === 'range';
   const hasRoles = dimension.dimensionKind !== 'time';
   const isEditable = isEditableVersion('dimension_version', selected?.status as VersionStatus | undefined);
+  const tab = searchParams.get('tab') ?? (hasRoles ? 'roles' : 'members');
+
+  function setParam(name: string, value: string | null) {
+    setSearchParams(
+      params => {
+        if (value === null) {
+          params.delete(name);
+        } else {
+          params.set(name, value);
+        }
+        return params;
+      },
+      { replace: true }
+    );
+  }
 
   function selectVersion(versionId: number) {
-    setSearchParams({ version: String(versionId) }, { replace: true });
+    setParam('version', String(versionId));
   }
 
   return (
@@ -96,19 +114,21 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
         onCreateVersion={() => setNewVersion({ source: null })}
         onCloneVersion={sourceId => setNewVersion({ source: versionList.find(version => version.id === sourceId) ?? null })}
         onDeleteVersion={versionId =>
-          deleteVersion.mutate(versionId, { onSuccess: () => setSearchParams({}, { replace: true }) })
+          deleteVersion.mutate(versionId, { onSuccess: () => setParam('version', null) })
         }
       />
       <ApiErrorAlert error={deleteVersion.error} />
 
       {selected && (
-        <Tabs defaultValue={hasRoles ? 'roles' : 'members'}>
+        <Tabs value={tab} onValueChange={value => setParam('tab', value)}>
           <TabsList>
             {hasRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="levels">Levels</TabsTrigger>
             {isRange && <TabsTrigger value="range-bands">Range bands</TabsTrigger>}
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="mappings">Mappings</TabsTrigger>
+            <TabsTrigger value="bridges">Bridges</TabsTrigger>
           </TabsList>
           {hasRoles && (
             <TabsContent value="roles">
@@ -128,6 +148,12 @@ function DimensionDetail({ dimension }: { dimension: Dimension }) {
           )}
           <TabsContent value="settings">
             <SettingsTab key={selected.id} versionId={selected.id} isRange={isRange} isEditable={isEditable} />
+          </TabsContent>
+          <TabsContent value="mappings">
+            <MappingSetsTab dimensionId={dimension.dimensionId} />
+          </TabsContent>
+          <TabsContent value="bridges">
+            <BridgesTab dimensionId={dimension.dimensionId} dimensionKey={dimension.dimensionKey} />
           </TabsContent>
         </Tabs>
       )}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Quantalytix.QueryEngine.Admin.Api.Authorization;
 using Quantalytix.QueryEngine.Admin.Api.Errors;
 using Quantalytix.QueryEngine.Admin.Api.Reports;
@@ -17,23 +18,24 @@ namespace Quantalytix.QueryEngine.Admin.Api.Bridges;
 public sealed class BridgesController(BridgeService bridges) : ControllerBase
 {
     /// <summary>
-    /// Lists the bridges of the tenant with their purpose: <c>analytical</c>, or <c>report</c> for a bridge a report source owns,
-    /// with that source and its report.
+    /// Lists the bridges into and out of one dimension, which the dimension's page shows, with their purpose: <c>analytical</c>, or
+    /// <c>report</c> for a bridge a report source owns, with that source and its report.
     /// </summary>
     /// <param name="tenantId">The tenant that owns the bridges.</param>
-    /// <param name="query">The purpose to narrow the list to; omitted for every bridge.</param>
+    /// <param name="dimensionId">The dimension the bridges lead into or start from.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The bridges by key.</returns>
-    /// <response code="200">The bridges of the purpose by key, ignoring case.</response>
-    /// <response code="400">The purpose is no <c>dimension_purpose</c> value.</response>
+    /// <response code="200">The dimension's bridges by key, ignoring case.</response>
+    /// <response code="400">The request names no dimension.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<BridgeSummary>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<IReadOnlyList<BridgeSummary>>> List(string tenantId, [FromQuery] BridgeListQuery query, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<BridgeSummary>>> List(
+        string tenantId, [FromQuery, BindRequired] long dimensionId, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.ListAsync(query, cancellationToken));
+        return Ok(await bridges.ListAsync(dimensionId, cancellationToken));
     }
 
     /// <summary>Creates a bridge between two dimensions; it has no versions until one is created.</summary>

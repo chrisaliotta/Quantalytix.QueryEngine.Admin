@@ -20,13 +20,17 @@ function invalidate(...queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey })));
 }
 
-/** Every mapping set of the current tenant, by key. */
-export function useMappingSets() {
+/** The mapping sets of one dimension, by key. */
+export function useMappingSets(dimensionId: number) {
   const tenantId = useTenantId();
   return useQuery({
-    queryKey: mappingSetsKey(tenantId),
+    queryKey: [...mappingSetsKey(tenantId), 'list', dimensionId],
     queryFn: async () =>
-      unwrap(await apiClient.GET('/api/tenants/{tenantId}/mapping-sets', { params: { path: { tenantId } } })),
+      unwrap(
+        await apiClient.GET('/api/tenants/{tenantId}/mapping-sets', {
+          params: { path: { tenantId }, query: { dimensionId } },
+        })
+      ),
   });
 }
 

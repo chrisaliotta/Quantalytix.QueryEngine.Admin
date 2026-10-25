@@ -15,12 +15,13 @@ public sealed class MappingSetService(
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
-    /// <summary>Lists every mapping set.</summary>
+    /// <summary>Lists the mapping sets of one dimension.</summary>
+    /// <param name="dimensionId">The dimension whose codes the sets map onto.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The mapping sets by key, ignoring case.</returns>
-    public async Task<IReadOnlyList<MappingSetRecord>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MappingSetRecord>> ListAsync(long dimensionId, CancellationToken cancellationToken)
     {
-        var rows = await mappingSets.ListAsync(null, cancellationToken);
+        var rows = await mappingSets.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
         return [.. rows.OrderBy(row => row.MappingSetKey, StringComparer.OrdinalIgnoreCase)];
     }
 

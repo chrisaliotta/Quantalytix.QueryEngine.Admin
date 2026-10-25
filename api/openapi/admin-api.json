@@ -4850,7 +4850,7 @@
         "tags": [
           "MappingSets"
         ],
-        "summary": "Lists every mapping set of the tenant.",
+        "summary": "Lists the mapping sets of one dimension, which the dimension's page shows.",
         "parameters": [
           {
             "name": "tenantId",
@@ -4859,6 +4859,16 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "query",
+            "description": "The dimension whose codes the sets map onto.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -4884,7 +4894,7 @@
             }
           },
           "200": {
-            "description": "The mapping sets by key, ignoring case.",
+            "description": "The dimension's mapping sets by key, ignoring case.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4892,6 +4902,16 @@
                   "items": {
                     "$ref": "#/components/schemas/MappingSetRecord"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request names no dimension.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -7535,6 +7555,41 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/development/token": {
+      "post": {
+        "tags": [
+          "DevelopmentToken"
+        ],
+        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The signed token, valid for eight hours or until the host restarts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
                 }
               }
             }
@@ -10904,7 +10959,7 @@
         "tags": [
           "Bridges"
         ],
-        "summary": "Lists the bridges of the tenant with their purpose: `analytical`, or `report` for a bridge a report source owns,\nwith that source and its report.",
+        "summary": "Lists the bridges into and out of one dimension, which the dimension's page shows, with their purpose: `analytical`, or\n`report` for a bridge a report source owns, with that source and its report.",
         "parameters": [
           {
             "name": "tenantId",
@@ -10916,11 +10971,13 @@
             }
           },
           {
-            "name": "purpose",
+            "name": "dimensionId",
             "in": "query",
-            "description": "A `dimension_purpose` value that narrows the list to bridges of that purpose; null lists every bridge.",
+            "description": "The dimension the bridges lead into or start from.",
+            "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -10946,7 +11003,7 @@
             }
           },
           "200": {
-            "description": "The bridges of the purpose by key, ignoring case.",
+            "description": "The dimension's bridges by key, ignoring case.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10959,7 +11016,7 @@
             }
           },
           "400": {
-            "description": "The purpose is no `dimension_purpose` value.",
+            "description": "The request names no dimension.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -12369,6 +12426,7 @@
           "kind",
           "identityId",
           "identityKey",
+          "dimensionId",
           "versionId",
           "versionNumber",
           "status"
@@ -12387,6 +12445,19 @@
           "identityKey": {
             "type": "string",
             "description": "The identity's key, such as its `dimension_key`."
+          },
+          "dimensionId": {
+            "type": "integer",
+            "description": "The dimension the identity belongs under: a dimension itself, a mapping set's dimension, or a bridge's target.",
+            "format": "int64"
+          },
+          "reportId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The report whose rows that dimension holds, for a report dimension or a bridge into one: its editor is where the identity\nchanges. Null for every other identity.",
+            "format": "int64"
           },
           "versionId": {
             "type": "integer",
@@ -13624,6 +13695,52 @@
           }
         },
         "description": "The editable settings of a draft dataset version."
+      },
+      "DevelopmentTokenRequest": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries, such as `development`."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
+          }
+        },
+        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
+      },
+      "DevelopmentTokenResponse": {
+        "required": [
+          "accessToken",
+          "tenantId",
+          "systemAdmin",
+          "expiresUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The signed JWT to send as `Authorization: Bearer ...`."
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant claim the token carries."
+          },
+          "systemAdmin": {
+            "type": "boolean",
+            "description": "Whether the token carries the SystemAdmin role."
+          },
+          "expiresUtc": {
+            "type": "string",
+            "description": "When the token expires.",
+            "format": "date-time"
+          }
+        },
+        "description": "A bearer token issued by a Development host."
       },
       "DimensionBindingRecord": {
         "required": [
@@ -18683,6 +18800,9 @@
     },
     {
       "name": "RangeBands"
+    },
+    {
+      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"

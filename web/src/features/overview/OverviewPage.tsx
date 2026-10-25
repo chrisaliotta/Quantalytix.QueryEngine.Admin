@@ -45,8 +45,8 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
         <StatList>
           <Stat label="Datasets" value={counts.datasets} to={`${base}/datasets`} />
           <Stat label="Dimensions" value={counts.dimensions} to={`${base}/dimensions`} />
-          <Stat label="Mapping sets" value={counts.mappingSets} to={`${base}/mappings`} />
-          <Stat label="Bridges" value={counts.bridges} to={`${base}/bridges`} />
+          <Stat label="Mapping sets" value={counts.mappingSets} to={`${base}/dimensions`} />
+          <Stat label="Bridges" value={counts.bridges} to={`${base}/dimensions`} />
           <Stat label="Releases" value={counts.releases} to={`${base}/releases`} />
           <Stat label="Assumption sets" value={counts.assumptionSets} to={`${base}/assumption-sets`} />
           <Stat label="Calculation models" value={counts.calculationModels} to={`${base}/calculation-models`} />
@@ -58,8 +58,8 @@ function OverviewCards({ overview }: { overview: TenantOverview }) {
         <StatList>
           <Stat label="Dataset versions" value={drafts.datasetVersions} to={`${base}/datasets`} />
           <Stat label="Dimension versions" value={drafts.dimensionVersions} to={`${base}/dimensions`} />
-          <Stat label="Mapping versions" value={drafts.mappingVersions} to={`${base}/mappings`} />
-          <Stat label="Bridge versions" value={drafts.bridgeVersions} to={`${base}/bridges`} />
+          <Stat label="Mapping versions" value={drafts.mappingVersions} to={`${base}/dimensions`} />
+          <Stat label="Bridge versions" value={drafts.bridgeVersions} to={`${base}/dimensions`} />
           <Stat label="Releases" value={drafts.releases} to={`${base}/releases`} />
         </StatList>
       </OverviewCard>

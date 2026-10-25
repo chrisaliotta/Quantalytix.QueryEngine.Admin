@@ -21,18 +21,17 @@ public sealed class BridgeService(
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
-    /// <summary>Lists bridges with their purpose and owner.</summary>
-    /// <param name="query">The purpose to narrow the list to, if any.</param>
+    /// <summary>Lists the bridges into and out of one dimension with their purpose and owner.</summary>
+    /// <param name="dimensionId">The dimension the bridges lead into or start from.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The bridges by key, ignoring case.</returns>
-    public async Task<IReadOnlyList<BridgeSummary>> ListAsync(BridgeListQuery query, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<BridgeSummary>> ListAsync(long dimensionId, CancellationToken cancellationToken)
     {
-        var summaries = await SummariesAsync(await bridges.ListAsync(null, cancellationToken), cancellationToken);
-        return
-        [
-            .. summaries.Where(summary => query.Purpose is null || summary.Purpose == query.Purpose)
-                .OrderBy(summary => summary.Bridge.BridgeKey, StringComparer.OrdinalIgnoreCase)
-        ];
+        var rows = (await bridges.ListAsync(null, cancellationToken))
+            .Where(row => row.TargetDimensionId == dimensionId || row.SourceDimensionId == dimensionId)
+            .ToList();
+        var summaries = await SummariesAsync(rows, cancellationToken);
+        return [.. summaries.OrderBy(summary => summary.Bridge.BridgeKey, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>Reads one bridge.</summary>

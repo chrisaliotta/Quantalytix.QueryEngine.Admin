@@ -4117,10 +4117,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists every mapping set of the tenant. */
+        /** Lists the mapping sets of one dimension, which the dimension's page shows. */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    /** @description The dimension whose codes the sets map onto. */
+                    dimensionId: number;
+                };
                 header?: never;
                 path: {
                     /** @description The tenant that owns the mapping sets. */
@@ -4130,13 +4133,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The mapping sets by key, ignoring case. */
+                /** @description The dimension's mapping sets by key, ignoring case. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["MappingSetRecord"][];
+                    };
+                };
+                /** @description The request names no dimension. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
                 /** @description The request has no valid bearer token. */
@@ -9011,14 +9023,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Lists the bridges of the tenant with their purpose: `analytical`, or `report` for a bridge a report source owns,
-         *     with that source and its report.
+         * Lists the bridges into and out of one dimension, which the dimension's page shows, with their purpose: `analytical`, or
+         *     `report` for a bridge a report source owns, with that source and its report.
          */
         get: {
             parameters: {
-                query?: {
-                    /** @description A `dimension_purpose` value that narrows the list to bridges of that purpose; null lists every bridge. */
-                    purpose?: string;
+                query: {
+                    /** @description The dimension the bridges lead into or start from. */
+                    dimensionId: number;
                 };
                 header?: never;
                 path: {
@@ -9029,7 +9041,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description The bridges of the purpose by key, ignoring case. */
+                /** @description The dimension's bridges by key, ignoring case. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -9038,7 +9050,7 @@ export interface paths {
                         "application/json": components["schemas"]["BridgeSummary"][];
                     };
                 };
-                /** @description The purpose is no `dimension_purpose` value. */
+                /** @description The request names no dimension. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10190,6 +10202,17 @@ export interface components {
             identityId: number;
             /** @description The identity's key, such as its `dimension_key`. */
             identityKey: string;
+            /**
+             * Format: int64
+             * @description The dimension the identity belongs under: a dimension itself, a mapping set's dimension, or a bridge's target.
+             */
+            dimensionId: number;
+            /**
+             * Format: int64
+             * @description The report whose rows that dimension holds, for a report dimension or a bridge into one: its editor is where the identity
+             *     changes. Null for every other identity.
+             */
+            reportId?: null | number;
             /**
              * Format: int64
              * @description The pinned version.

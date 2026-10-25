@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Loading } from '@registry/components/Loading';
 import { Button } from '@/components/ui/button';
+import { dimensionPath } from '@/features/dimensions/paths';
 import { ApiErrorAlert } from '@/shared/ApiErrorAlert';
 import { ConfirmDialog } from '@/shared/ConfirmDialog';
 import { PageHeader } from '@/shared/PageHeader';
@@ -25,7 +26,7 @@ interface NewVersionRequest {
   source: LookupItem | null;
 }
 
-/** One mapping set: identity, version picker with lifecycle actions, and the selected version's entries. */
+/** One mapping set, under its dimension: identity, version picker with lifecycle actions, and the selected version's entries. */
 export function MappingSetDetailPage() {
   const mappingSetId = Number(useParams().mappingSetId);
   const mappingSet = useMappingSet(mappingSetId);
@@ -138,7 +139,9 @@ function MappingSetDetail({ mappingSet }: { mappingSet: MappingSet }) {
         confirmLabel="Delete mapping set"
         destructive
         onConfirm={() =>
-          deleteMappingSet.mutate(mappingSet.mappingSetId, { onSuccess: () => navigate(`/t/${tenantId}/mappings`) })
+          deleteMappingSet.mutate(mappingSet.mappingSetId, {
+            onSuccess: () => navigate(dimensionPath(tenantId, mappingSet.dimensionId, 'mappings')),
+          })
         }
       />
     </div>
