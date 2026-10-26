@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>
 /// Answers MVC's automatic 400 for a request that failed to bind, keyed the way <see cref="ValidationFilter"/> keys its

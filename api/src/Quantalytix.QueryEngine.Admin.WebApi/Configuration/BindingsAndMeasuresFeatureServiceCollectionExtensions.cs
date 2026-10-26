@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Measures;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Bindings and Measures slice (dimension and time bindings, measures and their policies).</summary>
 public static class BindingsAndMeasuresFeatureServiceCollectionExtensions

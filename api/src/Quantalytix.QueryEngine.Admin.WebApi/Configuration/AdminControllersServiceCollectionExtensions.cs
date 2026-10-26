@@ -2,10 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc.Formatters;
-using Quantalytix.QueryEngine.Admin.Api.Development;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Development;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registers MVC controllers with the API's validation and JSON conventions.</summary>
 public static class AdminControllersServiceCollectionExtensions

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
 /// <summary>Tells the filters that act after a write whether the write happened.</summary>
 internal static class ExecutedActions

@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Mappings;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 
 /// <summary>Lists and edits the entries of mapping versions, one at a time or as a complete list.</summary>
 [ApiController]

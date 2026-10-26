@@ -21,7 +21,7 @@ the scenario list and new roles, so a scenario and its dimension are one.
 
 | Project | Holds |
 |---|---|
-| `src/Quantalytix.QueryEngine.Admin.Api` | Controllers, authentication and authorization, the validation filter, OpenAPI |
+| `src/Quantalytix.QueryEngine.Admin.WebApi` | Controllers, authentication and authorization, the validation filter, OpenAPI |
 | `src/Quantalytix.QueryEngine.Admin.Application` | Feature services, input validators, publication and retirement rules, the version workflow |
 | `src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks` | Table gateways (Dapper), source-object introspection, schema changes, tenant connection checks |
 | `tests/Quantalytix.QueryEngine.Admin.Tests` | xUnit v3 tests on Microsoft.Testing.Platform |
@@ -54,7 +54,7 @@ lifecycle, and the sequence of each key write.
   to its own database. Keep it in user secrets, never in `appsettings*.json`:
 
   ```bash
-  dotnet user-secrets set ConnectionStrings:ControlPlane "<connection string>" --project src/Quantalytix.QueryEngine.Admin.Api
+  dotnet user-secrets set ConnectionStrings:ControlPlane "<connection string>" --project src/Quantalytix.QueryEngine.Admin.WebApi
   ```
 
 - **`Cors:AllowedOrigins`:** the browser origins that may call the API; none by default. `appsettings.Development.json`
@@ -96,7 +96,7 @@ dotnet test --solution Quantalytix.QueryEngine.Admin.slnx --no-build
 ## Run
 
 ```bash
-dotnet run --project src/Quantalytix.QueryEngine.Admin.Api --launch-profile http
+dotnet run --project src/Quantalytix.QueryEngine.Admin.WebApi --launch-profile http
 ```
 
 The `http` profile listens on `http://localhost:5180` in Development; add `-- --urls http://localhost:<port>` for
@@ -157,7 +157,7 @@ Before you run it:
   release.
 
 ```bash
-dotnet run --project src/Quantalytix.QueryEngine.Admin.Api --launch-profile http -- --urls http://localhost:5186 &
+dotnet run --project src/Quantalytix.QueryEngine.Admin.WebApi --launch-profile http -- --urls http://localhost:5186 &
 PREFIX=zz_try_ tools/acceptance/qe-acceptance.sh
 ```
 

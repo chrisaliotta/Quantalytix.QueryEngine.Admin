@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Quantalytix.QueryEngine.Admin.Api.Authentication;
+using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Authorization;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 
 /// <summary>Describes the authenticated caller from the claims of its validated bearer token.</summary>
 public sealed class CallerFactory(IOptions<AdminAuthenticationOptions> options)

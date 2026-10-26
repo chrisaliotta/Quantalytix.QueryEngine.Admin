@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>
 /// Put on every generic write to a dimension, a bridge or one of their versions: a report owns its report dimension and the

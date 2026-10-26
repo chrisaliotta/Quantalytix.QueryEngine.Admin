@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-namespace Quantalytix.QueryEngine.Admin.Api.AssumptionSets;
+namespace Quantalytix.QueryEngine.Admin.WebApi.AssumptionSets;
 
 /// <summary>
 /// Lists and shows assumption sets, captures historical sets from the active set, relabels sets and deletes historical ones. The

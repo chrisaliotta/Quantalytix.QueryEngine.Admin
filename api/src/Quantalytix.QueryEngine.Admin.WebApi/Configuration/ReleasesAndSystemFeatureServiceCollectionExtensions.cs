@@ -6,7 +6,7 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.TenantVerification;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Releases and System slice (semantic releases, assumption sets, tenant directory and database info).</summary>
 public static class ReleasesAndSystemFeatureServiceCollectionExtensions

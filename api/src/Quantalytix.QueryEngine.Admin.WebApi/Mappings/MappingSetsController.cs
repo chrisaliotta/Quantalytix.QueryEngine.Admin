@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Mappings;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 
 /// <summary>Lists, creates, edits and deletes mapping sets: the source code systems that map onto canonical dimensions.</summary>
 [ApiController]

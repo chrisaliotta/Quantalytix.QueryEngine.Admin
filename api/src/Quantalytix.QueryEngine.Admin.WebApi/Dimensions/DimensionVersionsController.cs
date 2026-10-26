@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Reports;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Reports;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Dimensions;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 
 /// <summary>Lists, creates, clones, edits and deletes dimension versions. Status changes go through the versions status endpoint.</summary>
 [ApiController]

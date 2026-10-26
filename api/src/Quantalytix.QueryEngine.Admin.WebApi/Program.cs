@@ -1,8 +1,8 @@
 using FluentValidation;
-using Quantalytix.QueryEngine.Admin.Api.Authentication;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Configuration;
-using Quantalytix.QueryEngine.Admin.Api.Development;
+using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Configuration;
+using Quantalytix.QueryEngine.Admin.WebApi.Development;
 using Quantalytix.QueryEngine.Admin.Application.Configuration;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Configuration;
 

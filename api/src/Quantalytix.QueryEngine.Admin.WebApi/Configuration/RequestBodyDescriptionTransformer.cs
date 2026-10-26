@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>
 /// Removes the request body description that the XML-comment generator guesses: it writes every <c>&lt;param&gt;</c> that

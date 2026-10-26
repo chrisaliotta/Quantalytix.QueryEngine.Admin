@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>Registers development tokens; Program.cs calls it only in the Development environment.</summary>
 public static class DevelopmentTokenExtensions

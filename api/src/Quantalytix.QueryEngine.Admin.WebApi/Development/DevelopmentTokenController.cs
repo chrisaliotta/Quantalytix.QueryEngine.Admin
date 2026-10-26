@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>Issues development bearer tokens. Exists only on a Development host.</summary>
 [ApiController]

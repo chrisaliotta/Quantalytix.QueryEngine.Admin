@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Quantalytix.QueryEngine.Admin.Api/Quantalytix.QueryEngine.Admin.Api.csproj" />
+    <ProjectReference Include="../../src/Quantalytix.QueryEngine.Admin.WebApi/Quantalytix.QueryEngine.Admin.WebApi.csproj" />
     <ProjectReference Include="../../src/Quantalytix.QueryEngine.Admin.Application/Quantalytix.QueryEngine.Admin.Application.csproj" />
     <ProjectReference Include="../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.csproj" />
   </ItemGroup>

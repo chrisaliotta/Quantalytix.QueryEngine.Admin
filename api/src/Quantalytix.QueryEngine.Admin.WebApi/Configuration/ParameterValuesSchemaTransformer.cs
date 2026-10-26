@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>
 /// Describes the parameter values of report rows, a map from parameter key to a JSON number or string, as such. The schema

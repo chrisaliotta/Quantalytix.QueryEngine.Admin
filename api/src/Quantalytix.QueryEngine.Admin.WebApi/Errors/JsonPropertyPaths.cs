@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using FluentValidation.Internal;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>
 /// Names validated properties by their camelCase JSON path, so FluentValidation reports <c>components[0].fieldId</c> and

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>Reads a report as its editor shows it, and replaces its row tree.</summary>
 [ApiController]

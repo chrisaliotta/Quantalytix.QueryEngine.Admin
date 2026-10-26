@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
-using Quantalytix.QueryEngine.Admin.Api.Reports;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
 /// <summary>Moves versions of every kind through their lifecycle, and checks a version against its publication rules.</summary>
 [ApiController]

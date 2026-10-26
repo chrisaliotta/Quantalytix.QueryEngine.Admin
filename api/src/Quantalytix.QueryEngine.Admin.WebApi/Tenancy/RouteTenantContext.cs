@@ -1,6 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Tenancy;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
 /// <summary>
 /// The request's tenant, taken from the <c>tenantId</c> route value of tenant-scoped routes. The TenantAccess policy has

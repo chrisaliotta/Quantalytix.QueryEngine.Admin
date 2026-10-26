@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Quantalytix.QueryEngine.Admin.Api/Quantalytix.QueryEngine.Admin.Api.csproj" />
+    <Project Path="src/Quantalytix.QueryEngine.Admin.WebApi/Quantalytix.QueryEngine.Admin.WebApi.csproj" />
     <Project Path="src/Quantalytix.QueryEngine.Admin.Application/Quantalytix.QueryEngine.Admin.Application.csproj" />
     <Project Path="src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.csproj" />
   </Folder>

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Binding;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Binding;
 using Quantalytix.QueryEngine.Admin.Application.Lookups;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Lookups;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Lookups;
 
 /// <summary>Serves the picker lists of the web app, one <c>lookup_kind</c> at a time.</summary>
 [ApiController]

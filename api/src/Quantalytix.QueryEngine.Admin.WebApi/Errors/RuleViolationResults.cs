@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>Builds the 422 response every controller returns when metadata rules reject a change.</summary>
 public static class RuleViolationResults

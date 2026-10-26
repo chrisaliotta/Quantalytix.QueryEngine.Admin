@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
+namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
 /// <summary>Lists and edits the calculated measures of calculation models: formulas over variables and other calculated measures.</summary>
 [ApiController]

@@ -1,10 +1,10 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>
 /// Advances the semantic revision after a successful write to a report the engine sees: one enabled before or after the write.

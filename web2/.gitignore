@@ -1,0 +1,9 @@
+# Logs
+*.log
+
+# Environment variables
+.env*.local
+
+node_modules
+dist
+.DS_Store

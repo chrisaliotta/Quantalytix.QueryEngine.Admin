@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>The 409 problem a delete answers when other rows still reference what it would delete; its detail names them.</summary>
 internal static class DeleteBlockedProblem

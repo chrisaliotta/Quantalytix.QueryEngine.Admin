@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Session;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Session;
 
 /// <summary>Describes the signed-in caller.</summary>
 [ApiController]

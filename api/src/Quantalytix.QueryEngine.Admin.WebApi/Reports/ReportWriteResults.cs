@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>Builds the 422 answers of report writes that the report rules refuse.</summary>
 internal static class ReportWriteResults

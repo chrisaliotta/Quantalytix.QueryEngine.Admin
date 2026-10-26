@@ -15,7 +15,7 @@ Describes `main` as of 2026-10-20, after eef70ae. The drawings describe implemen
 
 Endpoint-by-endpoint detail, with request and response schemas and status codes, is in the [OpenAPI document](../../openapi/admin-api.json), which every build regenerates. Building, configuring, testing and running the API are in the [API README](../../README.md). The query engine documents its side in its own [architecture diagrams](../../../../Quantalytix.QueryEngine/docs/architecture/README.md); links into the query engine assume its checkout sits beside this repository, at the default `QueryEngineRoot`.
 
-**Sources:** [API README](../../README.md), [OpenAPI document](../../openapi/admin-api.json), [Program.cs](../../src/Quantalytix.QueryEngine.Admin.Api/Program.cs), [Directory.Build.props](../../Directory.Build.props), [VersionKinds.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/Values/VersionKinds.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [ITableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/ITableGateway.cs).
+**Sources:** [API README](../../README.md), [OpenAPI document](../../openapi/admin-api.json), [Program.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Program.cs), [Directory.Build.props](../../Directory.Build.props), [VersionKinds.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/Values/VersionKinds.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [ITableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/ITableGateway.cs).
 
 ## Reading the diagrams
 

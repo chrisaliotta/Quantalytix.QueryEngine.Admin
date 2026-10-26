@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>
 /// Validates every action argument that has a registered FluentValidation validator before the action runs. Failures

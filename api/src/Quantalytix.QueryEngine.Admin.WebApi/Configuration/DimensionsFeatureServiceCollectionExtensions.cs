@@ -1,7 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Dimensions slice (dimensions, roles, versions, levels, members, closure and range bands).</summary>
 public static class DimensionsFeatureServiceCollectionExtensions

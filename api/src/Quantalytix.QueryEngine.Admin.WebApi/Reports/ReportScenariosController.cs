@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>
 /// Lists and replaces the scenarios of reports: the roles whose members are alternatives a run reads one at a time, such as plan

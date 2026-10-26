@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Tenancy;
+using Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Authorization;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 
 /// <summary>
 /// Admits a SystemAdmin to every tenant, and anyone else to the one tenant their token names. The tenant comes from the

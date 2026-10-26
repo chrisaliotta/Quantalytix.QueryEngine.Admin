@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Authentication;
+using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Authorization;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 
 /// <summary>The API's authorization: every endpoint needs an authenticated caller unless it opts out.</summary>
 public static class AdminAuthorization

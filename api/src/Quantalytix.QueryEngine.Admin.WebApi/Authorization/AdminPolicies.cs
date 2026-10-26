@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Authorization;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 
 /// <summary>The authorization policy names controllers use.</summary>
 public static class AdminPolicies

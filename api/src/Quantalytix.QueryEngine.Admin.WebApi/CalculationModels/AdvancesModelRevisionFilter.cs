@@ -1,10 +1,10 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
+namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
 /// <summary>Advances the semantic revision after a successful write to a model the engine reads: one an enabled report reads.</summary>
 /// <param name="routeKey">The route value holding the model's ID.</param>

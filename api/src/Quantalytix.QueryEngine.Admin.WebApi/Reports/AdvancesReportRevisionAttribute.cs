@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>
 /// Put on every action that writes a report or its content: the engine reads enabled reports as they stand, so a successful write

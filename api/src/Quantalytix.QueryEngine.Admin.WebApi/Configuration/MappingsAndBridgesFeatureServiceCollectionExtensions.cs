@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Mappings and Bridges slice (mapping sets, mapping versions, bridges and bridge versions).</summary>
 public static class MappingsAndBridgesFeatureServiceCollectionExtensions

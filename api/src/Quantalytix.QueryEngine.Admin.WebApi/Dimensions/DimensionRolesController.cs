@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Dimensions;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 
 /// <summary>
 /// Lists, creates, edits and deletes the roles of a dimension: the named uses of the dimension that bindings, calculation

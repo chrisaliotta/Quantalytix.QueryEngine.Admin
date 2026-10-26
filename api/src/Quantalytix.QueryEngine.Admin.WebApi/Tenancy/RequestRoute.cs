@@ -1,7 +1,7 @@
 using System.Globalization;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Tenancy;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
 /// <summary>The IDs of the current request's route values; the routes' <c>:long</c> constraints guarantee they parse.</summary>
 public sealed class RequestRoute(IHttpContextAccessor httpContextAccessor) : IRequestRoute

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 
-namespace Quantalytix.QueryEngine.Admin.Api.SystemTenants;
+namespace Quantalytix.QueryEngine.Admin.WebApi.SystemTenants;
 
 /// <summary>
 /// Administers the control plane's tenant directory for SystemAdmins. Connection strings are write-only: every response

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
 /// <summary>Answers 409 instead of running the action when the version named by a route value is not a draft.</summary>
 /// <param name="kind">The <c>version_kind</c> of the version.</param>

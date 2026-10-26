@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Authentication;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 
 /// <summary>JWT bearer authentication, configured like the query engine's so the same tokens work against both.</summary>
 public static class AdminAuthentication

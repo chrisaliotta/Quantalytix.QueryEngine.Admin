@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Content;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
+namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
 /// <summary>Lists and edits the variables of calculation models: the logical inputs each report fills from one of its own sources.</summary>
 [ApiController]

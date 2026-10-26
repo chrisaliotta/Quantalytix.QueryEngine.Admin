@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Measures;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Measures;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Measures;
 
 /// <summary>
 /// Edits the measures of dataset versions with their components and time policies; formula dependencies are derived from

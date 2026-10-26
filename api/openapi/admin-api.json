@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Quantalytix.QueryEngine.Admin.Api | v1",
+    "title": "Quantalytix.QueryEngine.Admin.WebApi | v1",
     "version": "1.0.0"
   },
   "paths": {

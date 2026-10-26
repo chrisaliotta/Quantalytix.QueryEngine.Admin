@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Errors;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 /// <summary>A 422 problem whose <c>violations</c> list every rule that rejected the change.</summary>
 public sealed class RuleViolationProblemDetails : ProblemDetails

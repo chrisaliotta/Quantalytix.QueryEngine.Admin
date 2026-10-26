@@ -1,7 +1,7 @@
-using Quantalytix.QueryEngine.Admin.Api.Tenancy;
+using Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registers how a request names the tenant it administers and the rows its route points at.</summary>
 public static class AdminTenancyServiceCollectionExtensions

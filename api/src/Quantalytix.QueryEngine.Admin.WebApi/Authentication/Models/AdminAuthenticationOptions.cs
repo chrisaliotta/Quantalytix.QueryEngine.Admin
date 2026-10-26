@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Authentication;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 
 /// <summary>Which claim of a validated bearer token names the caller's tenant, bound from the <c>AdminAuthentication</c> section.</summary>
 public sealed record AdminAuthenticationOptions

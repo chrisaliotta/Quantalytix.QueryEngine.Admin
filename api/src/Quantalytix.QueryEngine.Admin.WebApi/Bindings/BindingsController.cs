@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
-using Quantalytix.QueryEngine.Admin.Api.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Bindings;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Bindings;
 
 /// <summary>
 /// Edits the dimension bindings of dataset versions: the semantic routes from fields to canonical dimensions, with the time

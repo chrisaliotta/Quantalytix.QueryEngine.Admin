@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>
 /// Removes every controller in the Development feature namespace. Registered outside the Development environment, so those

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
+namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
 /// <summary>Builds the 422 answers of model writes that the model's rules refuse.</summary>
 internal static class ModelWriteResults

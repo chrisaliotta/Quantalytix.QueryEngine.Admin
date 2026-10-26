@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Binding;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Binding;
 
 /// <summary>
 /// Binds a complex action parameter from route values and the query string together, such as a lookup's kind (route) and

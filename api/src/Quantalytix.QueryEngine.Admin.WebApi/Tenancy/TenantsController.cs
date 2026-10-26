@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Tenancy;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
 /// <summary>Lists the tenants the caller may administer.</summary>
 [ApiController]

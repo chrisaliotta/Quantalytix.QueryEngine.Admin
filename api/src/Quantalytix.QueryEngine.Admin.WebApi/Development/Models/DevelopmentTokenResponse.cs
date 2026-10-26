@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>A bearer token issued by a Development host.</summary>
 public sealed record DevelopmentTokenResponse

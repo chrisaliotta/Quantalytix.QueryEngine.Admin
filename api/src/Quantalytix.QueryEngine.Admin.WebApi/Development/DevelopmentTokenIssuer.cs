@@ -2,9 +2,9 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Quantalytix.QueryEngine.Admin.Api.Authentication;
+using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>
 /// Issues bearer tokens on a Development host so the web app works without an identity provider. The signing key exists

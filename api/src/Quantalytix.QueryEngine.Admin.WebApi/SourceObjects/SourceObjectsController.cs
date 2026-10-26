@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 
-namespace Quantalytix.QueryEngine.Admin.Api.SourceObjects;
+namespace Quantalytix.QueryEngine.Admin.WebApi.SourceObjects;
 
 /// <summary>Lists the tables and views of the tenant database that datasets can query, and their columns.</summary>
 [ApiController]

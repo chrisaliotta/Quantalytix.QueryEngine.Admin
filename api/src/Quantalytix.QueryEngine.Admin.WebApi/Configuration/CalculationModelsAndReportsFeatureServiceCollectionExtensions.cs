@@ -6,7 +6,7 @@ using Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Calculation models and Reports slice (models and their metrics, reports, their editor and their content).</summary>
 public static class CalculationModelsAndReportsFeatureServiceCollectionExtensions

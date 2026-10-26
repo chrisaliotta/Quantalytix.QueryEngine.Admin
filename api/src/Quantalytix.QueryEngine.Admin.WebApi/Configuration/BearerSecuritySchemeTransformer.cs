@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Declares the bearer token scheme in the OpenAPI document and requires it document-wide.</summary>
 internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer

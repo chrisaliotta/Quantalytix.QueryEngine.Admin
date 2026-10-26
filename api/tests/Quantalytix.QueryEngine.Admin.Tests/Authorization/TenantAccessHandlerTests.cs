@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Quantalytix.QueryEngine.Admin.Api.Authentication;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Tenancy;
+using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Authorization;

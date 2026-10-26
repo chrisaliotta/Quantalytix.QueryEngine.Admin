@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registers the OpenAPI document the build writes to <c>api/openapi/admin-api.json</c> for the web client.</summary>
 public static class AdminOpenApiServiceCollectionExtensions

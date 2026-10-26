@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
 /// <summary>What the route value a <see cref="RequireAnalyticalAttribute"/> reads names.</summary>
 public enum AnalyticalTarget

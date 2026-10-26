@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Session;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Session;
 
 /// <summary>Who the caller is, as the API sees its bearer token.</summary>
 public sealed record SessionInfo

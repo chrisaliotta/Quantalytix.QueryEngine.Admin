@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
 /// <summary>
 /// Put on every action that writes the content or settings of a living kind's version: the action runs while the version is a

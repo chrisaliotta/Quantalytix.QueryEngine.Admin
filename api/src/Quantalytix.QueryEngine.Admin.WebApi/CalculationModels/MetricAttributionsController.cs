@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
-using Quantalytix.QueryEngine.Admin.Api.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-namespace Quantalytix.QueryEngine.Admin.Api.CalculationModels;
+namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
 /// <summary>
 /// Lists, replaces and deletes the attributions of a calculation model's metrics: how each metric's change splits into the effects

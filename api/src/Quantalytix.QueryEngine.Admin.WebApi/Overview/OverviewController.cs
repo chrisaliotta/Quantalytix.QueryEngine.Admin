@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.Api.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.Overview;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Overview;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Overview;
 
 /// <summary>Summarizes a tenant's metadata for the overview page.</summary>
 [ApiController]

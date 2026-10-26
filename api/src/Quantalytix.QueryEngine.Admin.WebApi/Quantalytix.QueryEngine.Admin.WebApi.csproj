@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <RootNamespace>Quantalytix.QueryEngine.Admin.Api</RootNamespace>
-    <UserSecretsId>Quantalytix.QueryEngine.Admin.Api.Development</UserSecretsId>
+    <RootNamespace>Quantalytix.QueryEngine.Admin.WebApi</RootNamespace>
+    <UserSecretsId>Quantalytix.QueryEngine.Admin.WebApi.Development</UserSecretsId>
     <!-- The OpenAPI document is written at build time; the web project generates its client types from it. -->
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../openapi</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name admin-api</OpenApiGenerateDocumentsOptions>

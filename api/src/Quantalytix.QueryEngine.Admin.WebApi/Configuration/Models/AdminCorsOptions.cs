@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>The browser origins allowed to call the API, bound from the <c>Cors</c> configuration section.</summary>
 public sealed record AdminCorsOptions

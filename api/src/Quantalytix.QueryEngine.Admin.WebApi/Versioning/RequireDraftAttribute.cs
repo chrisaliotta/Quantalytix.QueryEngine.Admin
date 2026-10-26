@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Versioning;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
 /// <summary>
 /// Put on every action that writes the content of a strict kind's version, a dataset version or a semantic release, and on every

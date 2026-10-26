@@ -4,7 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SchemaChanges;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SourceObjects;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Configuration;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>Registration hook owned by the Datasets slice (datasets, dataset versions, fields and grains).</summary>
 public static class DatasetsFeatureServiceCollectionExtensions

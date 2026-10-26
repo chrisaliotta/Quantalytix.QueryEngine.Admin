@@ -36,7 +36,7 @@ flowchart LR
 | API calls | Same origin, forwarded by `server.proxy` | Cross-origin, allowed by the API's `Cors:AllowedOrigins` |
 | Deep links such as `/t/sandbox/datasets/3` | Vite's SPA fallback serves `index.html` | `navigationFallback` in `staticwebapp.config.json` rewrites them to `/index.html`, except `/assets/*` and static file extensions |
 
-**Sources:** [vite.config.ts](../../vite.config.ts), [.env.development](../../.env.development), [.env.example](../../.env.example), [env.d.ts](../../src/env.d.ts), [staticwebapp.config.json](../../public/staticwebapp.config.json), [client.ts](../../src/api/client.ts), [AuthClient.ts](../../src/auth/AuthClient.ts), [README.md](../../README.md), [AdminCorsServiceCollectionExtensions.cs](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Configuration/AdminCorsServiceCollectionExtensions.cs), [appsettings.Development.json](../../../api/src/Quantalytix.QueryEngine.Admin.Api/appsettings.Development.json), [launchSettings.json](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Properties/launchSettings.json), [DevelopmentTokenController.cs](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Development/DevelopmentTokenController.cs), [DevelopmentControllerFeatureProvider.cs](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Development/DevelopmentControllerFeatureProvider.cs).
+**Sources:** [vite.config.ts](../../vite.config.ts), [.env.development](../../.env.development), [.env.example](../../.env.example), [env.d.ts](../../src/env.d.ts), [staticwebapp.config.json](../../public/staticwebapp.config.json), [client.ts](../../src/api/client.ts), [AuthClient.ts](../../src/auth/AuthClient.ts), [README.md](../../README.md), [AdminCorsServiceCollectionExtensions.cs](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminCorsServiceCollectionExtensions.cs), [appsettings.Development.json](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/appsettings.Development.json), [launchSettings.json](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/Properties/launchSettings.json), [DevelopmentTokenController.cs](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/Development/DevelopmentTokenController.cs), [DevelopmentControllerFeatureProvider.cs](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/Development/DevelopmentControllerFeatureProvider.cs).
 
 ## Source layers
 
@@ -106,7 +106,7 @@ Request and response types come from the API's OpenAPI document, so a call that 
 
 ```mermaid
 flowchart LR
-    ApiProject["Quantalytix.QueryEngine.Admin.Api controllers"]
+    ApiProject["Quantalytix.QueryEngine.Admin.WebApi controllers"]
     DotnetBuild["dotnet build with Microsoft.Extensions.ApiDescription.Server"]
     Document["api/openapi/admin-api.json"]
     Generator["pnpm api:types runs openapi-typescript"]
@@ -139,7 +139,7 @@ flowchart LR
 | `paths` | `apiClient` in `client.ts`, and through it every `GET`, `POST`, `PUT` and `DELETE` call |
 | `components['schemas']` | `src/shared/types.ts` (`LookupItem`, `Vocabulary`, `VocabularyValue`, `RuleViolation`, `VersionStatusResult`, `Me`, `Tenant`), the `types.ts` of every feature except overview, `OverviewPage` (`TenantOverview`) and `problemDetails.ts` (`RuleViolation`) |
 
-**Sources:** [package.json](../../package.json), [client.ts](../../src/api/client.ts), [schema.d.ts](../../src/api/schema.d.ts), [problemDetails.ts](../../src/api/problemDetails.ts), [types.ts](../../src/shared/types.ts), [datasets/types.ts](../../src/features/datasets/types.ts), [OverviewPage.tsx](../../src/features/overview/OverviewPage.tsx), [AuthClient.ts](../../src/auth/AuthClient.ts), [README.md](../../README.md), [Quantalytix.QueryEngine.Admin.Api.csproj](../../../api/src/Quantalytix.QueryEngine.Admin.Api/Quantalytix.QueryEngine.Admin.Api.csproj), [admin-api.json](../../../api/openapi/admin-api.json).
+**Sources:** [package.json](../../package.json), [client.ts](../../src/api/client.ts), [schema.d.ts](../../src/api/schema.d.ts), [problemDetails.ts](../../src/api/problemDetails.ts), [types.ts](../../src/shared/types.ts), [datasets/types.ts](../../src/features/datasets/types.ts), [OverviewPage.tsx](../../src/features/overview/OverviewPage.tsx), [AuthClient.ts](../../src/auth/AuthClient.ts), [README.md](../../README.md), [Quantalytix.QueryEngine.Admin.WebApi.csproj](../../../api/src/Quantalytix.QueryEngine.Admin.WebApi/Quantalytix.QueryEngine.Admin.WebApi.csproj), [admin-api.json](../../../api/openapi/admin-api.json).
 
 ## Configuration
 

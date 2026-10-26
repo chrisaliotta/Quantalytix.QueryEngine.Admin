@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using VocabularyDefinition = Quantalytix.QueryEngine.Admin.Application.Vocabulary.Vocabulary;
 
-namespace Quantalytix.QueryEngine.Admin.Api.Vocabulary;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Vocabulary;
 
 /// <summary>Serves the controlled vocabularies every select list and validator uses.</summary>
 [ApiController]

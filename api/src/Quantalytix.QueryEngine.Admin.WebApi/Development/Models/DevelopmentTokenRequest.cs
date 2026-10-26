@@ -1,4 +1,4 @@
-namespace Quantalytix.QueryEngine.Admin.Api.Development;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Development;
 
 /// <summary>The tenant a development token names, and whether it carries the SystemAdmin role.</summary>
 public sealed record DevelopmentTokenRequest
