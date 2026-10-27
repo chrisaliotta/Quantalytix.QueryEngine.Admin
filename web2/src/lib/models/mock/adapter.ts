@@ -7,15 +7,14 @@ import type {
   Id,
   ModelDocument,
   ModelFormulaCheck,
-  ModelFormulaError,
   ModelFormulaLanguage,
   ModelListItem,
-  ModelRuleCode,
   ModelsApi,
   Problem,
-  Violation,
 } from '../contract'
 import { createSeed, type Db, type StoredModel } from './data'
+import { formulaFindings, violationsOf } from './rules'
+import { attributionOf, defaultDrivers, metricsOf, paramRefsOf, readsOf } from '../metrics'
 
 const wait = () => new Promise((r) => setTimeout(r, 90))
 const clone = <T,>(v: T): T => structuredClone(v)
@@ -28,80 +27,21 @@ const fail = (status: Problem['status'], code: string, title: string, extra: Par
 const notFound = () => fail(404, 'not-found', 'Calculation model not found')
 const invalid = (path: string, message: string) => fail(400, 'invalid-input', 'The input is invalid.', { errors: { [path]: [message] } })
 
-const METRIC_REF = /\[m\.([A-Za-z0-9_]+)\]/g
-const PARAM_REF = /@([A-Za-z][A-Za-z0-9_]*)/g
-const DAY_PARAMS = ['periodDays', 'yearDays']
 const LANGUAGE_RANK: Record<ModelFormulaLanguage, number> = { '1.0': 0, '1.1': 1, '1.2': 2 }
-
-interface Finding extends ModelFormulaError {
-  code: ModelRuleCode
-}
-
-const metricKeys = (model: StoredModel) => [...model.variables, ...model.measures].map((m) => m.key)
-const unique = (values: string[]) => [...new Set(values)]
 
 function requiredLanguage(formula: string, parameters: string[]): ModelFormulaLanguage {
   if (parameters.length || /\bYEARFRAC\s*\(/i.test(formula) || /'[^']*'/.test(formula)) return '1.2'
   return /\bPOWER\s*\(/i.test(formula) ? '1.1' : '1.0'
 }
 
-/** A simplified stand-in for the server's ExpressionParser-based check: references, self-reads and language only. */
-function analyze(model: StoredModel, formula: string, selfKey: string | null) {
-  const metrics = metricKeys(model)
-  const declared = model.parameters.map((p) => p.key)
-  const findings: Finding[] = []
-  const metricRefs = [...formula.matchAll(METRIC_REF)]
-  const paramRefs = [...formula.matchAll(PARAM_REF)].filter((m) => !DAY_PARAMS.includes(m[1]))
-  for (const m of metricRefs) {
-    const at = { start: m.index, end: m.index + m[0].length }
-    if (m[1] === selfKey) findings.push({ code: 'formulas_acyclic', message: 'A metric cannot read itself.', ...at })
-    else if (!metrics.includes(m[1])) findings.push({ code: 'formula_references_resolve', message: `[m.${m[1]}] is no variable or calculated measure of the model.`, ...at })
-  }
-  for (const m of paramRefs) {
-    if (!declared.includes(m[1])) findings.push({ code: 'formula_parameters_resolve', message: `@${m[1]} is no declared parameter of the model.`, start: m.index, end: m.index + m[0].length })
-  }
-  const reads = unique(metricRefs.map((m) => m[1]))
-  const parameters = unique(paramRefs.map((m) => m[1]))
-  const requiresLanguage = requiredLanguage(formula, parameters)
-  if (LANGUAGE_RANK[requiresLanguage] > LANGUAGE_RANK[model.formulaLanguage]) {
-    findings.push({ code: 'formulas_fit_language', message: `The formula needs formula language ${requiresLanguage}.`, start: 0, end: formula.length })
-  }
-  return { findings, reads, parameters, requiresLanguage }
-}
-
-function defaultDrivers(model: StoredModel, expression: string): AttributionDriver[] {
-  const metrics = [...model.variables, ...model.measures]
-  const drivers = analyze(model, expression, null).reads.map((key) => ({ key: key.toLowerCase(), displayName: metrics.find((m) => m.key === key)?.displayName ?? key, inputs: [key] }))
-  const days = /\bYEARFRAC\s*\(/i.test(expression) ? DAY_PARAMS : DAY_PARAMS.filter((p) => expression.includes(`@${p}`))
-  if (days.length) drivers.push({ key: 'days', displayName: 'Days', inputs: days.map((p) => `@${p}`) })
-  return drivers
-}
-
+/** The drivers in effect per metric, as the server computes them: explicit, else the defaults of the expression in effect. */
 function effectiveDrivers(model: StoredModel): Record<string, AttributionDriver[]> {
   const out: Record<string, AttributionDriver[]> = {}
-  for (const metric of [...model.variables, ...model.measures]) {
-    const explicit = model.attributions.find((a) => a.metricKey === metric.key)
-    const expression = explicit?.expression ?? ('formula' in metric ? metric.formula : null)
+  for (const metric of metricsOf(model)) {
+    const explicit = attributionOf(model, metric.key)
+    const expression = explicit?.expression ?? (metric.type === 'measure' ? metric.formula : null)
     if (explicit?.drivers.length) out[metric.key] = explicit.drivers
     else if (expression) out[metric.key] = defaultDrivers(model, expression)
-  }
-  return out
-}
-
-/** The model rules the mock gate enforces; the server also re-runs every enabled report's rules. */
-function violationsOf(model: StoredModel): Violation[] {
-  const variables = model.variables.map((v) => v.key)
-  const out: Violation[] = model.measures.flatMap((m) =>
-    analyze(model, m.formula, m.key).findings.map((f) => ({ code: f.code, message: `Calculated measure '${m.key}': ${f.message}`, target: { area: 'measures', itemKey: m.key } })),
-  )
-  for (const a of model.attributions) {
-    const target = { area: 'attributions', itemKey: a.metricKey }
-    if (!metricKeys(model).includes(a.metricKey)) out.push({ code: 'attribution_references_resolve', message: `'${a.metricKey}' is no metric of the model.`, target })
-    if (a.weightVariableKey && !variables.includes(a.weightVariableKey))
-      out.push({ code: 'attribution_weight_variable', message: `The attribution of '${a.metricKey}' weighs by '${a.weightVariableKey}', which is no variable of the model.`, target })
-    if (a.expression)
-      for (const f of analyze(model, a.expression, a.metricKey).findings)
-        out.push({ code: f.code === 'formula_references_resolve' ? 'attribution_references_resolve' : f.code, message: `The attribution of '${a.metricKey}': ${f.message}`, target })
   }
   return out
 }
@@ -117,18 +57,33 @@ const settingsOf = ({ id, key, displayName, currencyCode, calendarKey, formulaLa
   isEnabled,
 })
 
-/** Saves `input` into `list`: an edit (with `originalKey`) keeps its key; a new item needs a key free in `namespace`. */
-function saveKeyed<T extends { key: string }>(list: T[], input: T & { originalKey?: string }, namespace: string[]): ApiResult<T> {
+/** Saves `input` into `list`: an edit (with `originalKey`) names a stored item and keeps its key; a new item needs a key free in `namespace`. */
+function saveKeyed<T extends { key: string }>(list: T[], input: T & { originalKey?: string }, namespace: string[], noun: string): ApiResult<T> {
   const { originalKey, ...item } = input
-  const row = item as T
+  const row = item as unknown as T
   if (originalKey === undefined) {
-    if (namespace.includes(row.key)) return invalid('key', `'${row.key}' is already used in this model.`)
+    if (namespace.includes(row.key)) return invalid('key', `The model already has a ${noun} with key '${row.key}'.`)
     list.push(row)
     return ok(row)
   }
-  if (row.key !== originalKey) return invalid('key', 'Keys are fixed once saved.')
-  list[list.findIndex((x) => x.key === originalKey)] = row
+  const index = list.findIndex((x) => x.key === originalKey)
+  if (index < 0) return invalid('originalKey', `The model has no ${noun} '${originalKey}'.`)
+  if (row.key !== originalKey) return invalid('key', `'${originalKey}' keeps its key; keys are fixed once saved.`)
+  list[index] = row
   return ok(row)
+}
+
+/** Removes the item with `key` from `list`, or refuses a key the model lacks. */
+function removeKeyed<T>(list: T[], keyOf: (item: T) => string, key: string, path: string, noun: string): ApiResult<null> {
+  const index = list.findIndex((x) => keyOf(x) === key)
+  if (index < 0) return invalid(path, `The model has no ${noun} '${key}'.`)
+  list.splice(index, 1)
+  return ok(null)
+}
+
+const metricKeys = (model: StoredModel) => metricsOf(model).map((m) => m.key)
+const withoutAttribution = (model: StoredModel, metricKey: string) => {
+  model.attributions = model.attributions.filter((a) => a.metricKey !== metricKey)
 }
 
 export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
@@ -157,8 +112,8 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
     if (!uses.length) return { allowed: true, message: null, reasons: [] }
     return {
       allowed: false,
-      message: `Calculation model '${find(id)!.displayName}' cannot be deleted: ${uses.length} report(s) read it.`,
-      reasons: uses.map((r) => ({ code: 'referenced_by_report' as const, message: `Report '${r.displayName}' reads this model.`, target: { area: 'usedBy', itemId: r.reportId, itemKey: r.reportKey } })),
+      message: `Calculation model '${find(id)!.key}' cannot be deleted: ${uses.map((r) => `report '${r.reportKey}' reads it`).join('; ')}.`,
+      reasons: uses.map((r) => ({ code: 'referenced_by_report' as const, message: `report '${r.reportKey}' reads it` })),
     }
   }
 
@@ -181,8 +136,14 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
     },
     async checkFormula(id, formula, selfKey): Promise<ModelFormulaCheck> {
       await wait()
-      const { findings, reads, parameters, requiresLanguage } = analyze(find(id)!, formula, selfKey)
-      return { errors: findings.map(({ message, start, end }) => ({ message, start, end })), reads, parameters, requiresLanguage }
+      const model = find(id)!
+      const declared = model.parameters.map((p) => p.key)
+      const parameters = paramRefsOf(formula).filter((key) => declared.includes(key))
+      const requiresLanguage = requiredLanguage(formula, parameters)
+      const errors = formulaFindings(model, formula, selfKey).map(({ message, start, end }) => ({ message, start, end }))
+      if (LANGUAGE_RANK[requiresLanguage] > LANGUAGE_RANK[model.formulaLanguage])
+        errors.push({ message: `The formula needs formula language ${requiresLanguage}.`, start: 0, end: formula.length })
+      return { errors, reads: readsOf(formula), parameters, requiresLanguage }
     },
     async checkDeleteModel(id) {
       await wait()
@@ -194,48 +155,39 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
         Object.assign(m, patch)
         return ok(settingsOf(m))
       }),
-    saveVariable: (id, input) => edit(id, (m) => saveKeyed(m.variables, input, metricKeys(m))),
-    saveMeasure: (id, input) => edit(id, (m) => saveKeyed(m.measures, input, metricKeys(m))),
-    saveParameter: (id, input) => edit(id, (m) => saveKeyed(m.parameters, input, m.parameters.map((p) => p.key))),
+    saveVariable: (id, input) => edit(id, (m) => saveKeyed(m.variables, input, metricKeys(m), 'variable or calculated measure')),
+    saveMeasure: (id, input) => edit(id, (m) => saveKeyed(m.measures, input, metricKeys(m), 'variable or calculated measure')),
+    saveParameter: (id, input) => edit(id, (m) => saveKeyed(m.parameters, input, m.parameters.map((p) => p.key), 'parameter')),
     deleteVariable: (id, key) =>
       edit(id, (m) => {
-        m.variables = m.variables.filter((v) => v.key !== key)
-        m.attributions = m.attributions.filter((a) => a.metricKey !== key)
-        return ok(null)
+        withoutAttribution(m, key)
+        return removeKeyed(m.variables, (v) => v.key, key, 'key', 'variable')
       }),
     deleteMeasure: (id, key) =>
       edit(id, (m) => {
-        m.measures = m.measures.filter((x) => x.key !== key)
-        m.attributions = m.attributions.filter((a) => a.metricKey !== key)
-        return ok(null)
+        withoutAttribution(m, key)
+        return removeKeyed(m.measures, (x) => x.key, key, 'key', 'calculated measure')
       }),
-    deleteParameter: (id, key) =>
-      edit(id, (m) => {
-        m.parameters = m.parameters.filter((p) => p.key !== key)
-        return ok(null)
-      }),
+    deleteParameter: (id, key) => edit(id, (m) => removeKeyed(m.parameters, (p) => p.key, key, 'key', 'parameter')),
     setAttribution: (id, input) =>
       edit(id, (m) => {
-        m.attributions = [...m.attributions.filter((a) => a.metricKey !== input.metricKey), input]
+        withoutAttribution(m, input.metricKey)
+        m.attributions.push(input)
         return ok(input)
       }),
-    clearAttribution: (id, metricKey) =>
-      edit(id, (m) => {
-        m.attributions = m.attributions.filter((a) => a.metricKey !== metricKey)
-        return ok(null)
-      }),
+    clearAttribution: (id, metricKey) => edit(id, (m) => removeKeyed(m.attributions, (a) => a.metricKey, metricKey, 'metricKey', 'attribution of a metric')),
 
     async createModel(input) {
       await wait()
-      if (db.models.some((m) => m.key === input.key)) return fail(409, 'conflict', 'The model key is taken.', { detail: `A model '${input.key}' already exists.` })
-      const model: StoredModel = { ...input, id: `model-${Date.now().toString(36)}`, calendarKey: 'gregorian', isEnabled: false, variables: [], measures: [], parameters: [], attributions: [] }
+      if (db.models.some((m) => m.key === input.key)) return fail(409, 'conflict', 'Key taken', { detail: `A calculation model with key '${input.key}' already exists.` })
+      const model: StoredModel = { ...input, id: `model-${crypto.randomUUID()}`, calendarKey: 'gregorian', isEnabled: false, variables: [], measures: [], parameters: [], attributions: [] }
       db.models.push(model)
       return ok(settingsOf(model))
     },
     async deleteModel(id) {
       await wait()
       const check = checkDelete(id)
-      if (!check.allowed) return fail(409, 'delete-blocked', check.message!, { violations: check.reasons })
+      if (!check.allowed) return fail(409, 'delete-blocked', 'Delete blocked', { detail: check.message!, violations: check.reasons })
       db.models = db.models.filter((m) => m.id !== id)
       return ok(null)
     },
