@@ -19,6 +19,7 @@ builder.Services.AddAdminCors();
 builder.Services.AddHealthChecks();
 builder.Services.AddAdminApplication();
 builder.Services.AddStarRocksInfrastructure(builder.Configuration);
+builder.Services.AddTenantFeature();
 builder.Services.AddDatasetsFeature();
 builder.Services.AddDimensionsFeature();
 builder.Services.AddMappingsAndBridgesFeature();
