@@ -1,4 +1,4 @@
-import type { ChangeSetPort } from '@/lib/changes'
+import type { ChangeSetPort } from '@/lib/api/changes'
 
 /**
  * Business contract for the dimension manager. Screens depend only on these types and the `DimensionsApi` port;
@@ -279,7 +279,7 @@ export interface ImportResult {
 
 /* ───────────────────────── the port ───────────────────────── */
 
-/** Edits stage into the change set and apply on `commitChanges`; see lib/changes.ts. */
+/** Edits stage into the change set and apply on `commitChanges`; see lib/api/changes.ts. */
 export interface DimensionsApi extends ChangeSetPort {
   listDimensions(origin: Origin): Promise<DimensionListItem[]>
   /** Every dimension of any purpose (analytical and report-owned), for cross-module resolution such as bridges. Not for the list screen. */

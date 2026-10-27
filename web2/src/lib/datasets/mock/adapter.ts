@@ -25,7 +25,7 @@ import type {
   ValidationReport,
   Vocabularies,
 } from '../contract'
-import { createSnapshotChangeSet, refill } from '@/lib/changes'
+import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
 import { catalog as seedCatalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
 import { dependentsOf, FIELD_REF, MEASURE_REF, publicationViolations, refsOf } from './rules'
 

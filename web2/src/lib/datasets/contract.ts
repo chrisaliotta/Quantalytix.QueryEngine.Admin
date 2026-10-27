@@ -1,4 +1,4 @@
-import type { ChangeSetPort } from '@/lib/changes'
+import type { ChangeSetPort } from '@/lib/api/changes'
 
 /**
  * Business contract for the dataset manager.
@@ -441,7 +441,7 @@ export interface SettingsSaveResult {
 
 /* ───────────────────────── Port ───────────────────��───── */
 
-/** Draft edits stage into the change set and apply on `commitChanges`; see lib/changes.ts. */
+/** Draft edits stage into the change set and apply on `commitChanges`; see lib/api/changes.ts. */
 export interface DatasetsApi extends ChangeSetPort {
   getVocabularies(): Promise<Vocabularies>
   getTenantCatalog(): Promise<TenantCatalog>

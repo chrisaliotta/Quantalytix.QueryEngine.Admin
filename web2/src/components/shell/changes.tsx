@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { ChangeSetPort } from '@/lib/changes'
+import type { ChangeSetPort } from '@/lib/api/changes'
 
 /** One editor's pending batch. `count` is 0 when everything is saved. */
 export interface ChangeScope {

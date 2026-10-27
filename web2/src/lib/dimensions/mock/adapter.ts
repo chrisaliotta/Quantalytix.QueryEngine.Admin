@@ -1,5 +1,5 @@
 import { getViewer } from '@/lib/session/viewer'
-import { createSnapshotChangeSet } from '@/lib/changes'
+import { createSnapshotChangeSet } from '@/lib/api/changes'
 import {
   KEY_PATTERN,
   type ApiResult,
