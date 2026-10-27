@@ -1,117 +1,83 @@
 /**
- * Business contract for semantic releases and assumption sets. The UI talks only to `ReleasesApi`;
- * the mock adapter in ./mock implements it in memory. Swap the adapter for the real API.
+ * Business contract for semantic releases and assumption sets (blueprint 14). Every type mirrors the schema of the
+ * same name in api/openapi/contract/releases.yaml. The UI talks only to `ReleasesApi`; ./mock implements it in memory.
  */
+import type { ChangeSetPort } from '@/lib/api/changes'
+import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
 
-export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
+export type { ApiResult, Id, VersionStatus } from '@/lib/api/contract'
+
 export type PinKind = 'dimension' | 'mapping_set' | 'bridge'
-export type BindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
+export type ManifestBindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 
-export interface TenantInfo {
-  tenantKey: string
-  activeReleaseId: string
-  semanticRevision: number
-}
-
-export interface Dataset {
-  id: string
-  key: string
-  displayName: string
-  isEnabled: boolean
-}
-
-export interface Binding {
-  name: string
-  kind: BindingKind
-  dimensionId: string
-  mappingSetId?: string
-  bridgeId?: string
-}
-
-export interface DatasetVersion {
-  id: string
-  datasetId: string
-  versionNumber: number
-  status: VersionStatus
-  publishedAt: string | null
-  bindings: Binding[]
-  /** Measures and whether each applies bridge factors. */
-  measures: { key: string; appliesBridgeFactors: boolean }[]
-}
+/* ───────────────────────── Releases ───────────────────────── */
 
 export interface Release {
-  id: string
+  id: Id
   key: string
   status: VersionStatus
   createdAt: string
   publishedAt: string | null
+  /** Hash of the sorted manifest, computed on publish. */
+  contentHash: string | null
 }
 
-export interface ReleaseDataset {
-  releaseId: string
-  datasetId: string
-  datasetVersionId: string
+export interface ReleaseActivation {
+  releaseId: Id
+  /** Null for the tenant's first activation. */
+  previousReleaseId: Id | null
+  activatedAt: string
+  /** The token subject of the caller. */
+  activatedBy: string
 }
 
-export interface AssumptionSet {
-  id: string
-  key: string
-  displayName: string
-  description: string | null
-  status: 'active' | 'historical'
-  /** Null for the active set, which reads the active release. */
-  releaseId: string | null
-  capturedAt: string | null
-  createdAt: string
+export interface ManifestEntry {
+  datasetId: Id
+  datasetVersionId: Id
 }
 
-export interface Pin {
-  setId: string
-  kind: PinKind
-  identityId: string
-  versionId: string
+export interface ReleaseDiffEntry {
+  datasetId: Id
+  versionId: Id
 }
 
-export interface IdentityVersion {
-  id: string
-  versionNumber: number
-  status: VersionStatus
-  publishedAt: string | null
+export interface ReleaseDiffRemoval extends ReleaseDiffEntry {
+  /** Keys of the enabled reports with a source on the dataset. */
+  readBy: string[]
 }
 
-/** Read-only slices of the dimension, mapping and bridge prototypes' data. */
-export interface Identity {
-  kind: PinKind
-  id: string
-  key: string
-  displayName: string
-  /** A dimension itself, a mapping set's dimension, or a bridge's target. */
-  dimensionId: string
-  /** Set for a report dimension or a bridge into one. */
-  reportId: string | null
-  createdAt: string
-  versions: IdentityVersion[]
+export interface ReleaseDiffChange {
+  datasetId: Id
+  fromVersionId: Id
+  toVersionId: Id
 }
 
-export interface ReportRef {
-  id: string
-  key: string
-  displayName: string
-  isEnabled: boolean
-  sources: { key: string; datasetId: string; usesFactors: boolean; measureKeys: string[]; variable?: string }[]
-  reads: { kind: PinKind; identityId: string }[]
+export interface ReleaseDiff {
+  fromReleaseId: Id
+  toReleaseId: Id
+  added: ReleaseDiffEntry[]
+  removed: ReleaseDiffRemoval[]
+  changed: ReleaseDiffChange[]
+  unchanged: number
 }
 
-/* ───────────────────────── Results ───────────────────────── */
-
-export interface ProblemDetails {
-  title: string
-  detail?: string
-  /** Field path → messages; '' for form-level messages. */
-  errors: Record<string, string[]>
+export interface ReleaseListItem extends Release {
+  isActive: boolean
+  datasetCount: number
+  /** Null for the active release itself. */
+  diffVsActive: ReleaseDiff | null
+  /** Set for the active release only. */
+  activatedAt: string | null
+  activatedBy: string | null
 }
 
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: ProblemDetails }
+export interface ReleaseDetail {
+  release: Release
+  isActive: boolean
+  manifest: ManifestEntry[]
+  /** Newest first. */
+  activations: ReleaseActivation[]
+}
 
 /* ───────────────────────── Release checks ───────────────────────── */
 
@@ -125,9 +91,9 @@ export const RELEASE_RULES = [
   'report_sources_resolve',
   'report_factors_apply',
 ] as const
-export type ReleaseRule = (typeof RELEASE_RULES)[number]
+export type ReleaseRuleCode = (typeof RELEASE_RULES)[number]
 
-export const RULE_LABEL: Record<ReleaseRule, string> = {
+export const RULE_LABEL: Record<ReleaseRuleCode, string> = {
   manifest_not_empty: 'Manifest is not empty',
   pinned_version_belongs_to_dataset: 'Pinned versions belong to their datasets',
   pinned_version_published: 'Pinned versions are published',
@@ -138,71 +104,137 @@ export const RULE_LABEL: Record<ReleaseRule, string> = {
   report_factors_apply: 'Report factors apply',
 }
 
-export type CheckTarget =
-  | { type: 'dataset'; datasetId: string }
-  | { type: 'identity'; kind: PinKind; identityId: string }
-  | { type: 'report'; reportId: string; sourceKey: string }
+export type ReleaseTargetArea = 'dataset' | PinKind | 'report'
 
-export interface ReleaseViolation {
-  rule: ReleaseRule
-  message: string
+/** A dataset, an identity (`area` is its kind) or a report source (`itemId` the report, `itemKey` the source key). */
+export interface ReleaseViolationTarget extends ViolationTarget {
+  area: ReleaseTargetArea
+  itemId: Id
+}
+
+export interface ReleaseViolation extends Violation {
+  code: ReleaseRuleCode
   /** The manifest row the violation belongs to, for inline issue icons. */
-  datasetId: string | null
-  target: CheckTarget | null
+  datasetId: Id | null
+  target?: ReleaseViolationTarget
 }
 
-export interface CheckReport {
-  releaseId: string
-  /** True when the report ran over unsaved draft edits. */
+export interface ReleaseCheckReport {
+  releaseId: Id
+  /** True when the report ran over staged, unsaved manifest edits. */
   unsaved: boolean
+  checkedAt: string
   violations: ReleaseViolation[]
-  ranAt: string
 }
 
-/* ───────────────────────── Release read models ───────────────────────── */
-
-export interface ReleaseDiff {
-  fromReleaseId: string
-  toReleaseId: string
-  added: { datasetId: string; versionId: string }[]
-  removed: { datasetId: string; versionId: string; readBy: string[] }[]
-  changed: { datasetId: string; fromVersionId: string; toVersionId: string }[]
-  unchanged: number
+export interface ReleaseTransitionResult {
+  release: Release
+  report: ReleaseCheckReport
 }
 
-export interface ReleaseListItem extends Release {
-  isActive: boolean
-  datasetCount: number
-  /** Null for the active release itself. */
+/* ───────────────────────── Release change set ───────────────────────── */
+
+export type ReleaseOperation = { op: 'saveManifest'; manifest: ManifestEntry[] }
+export type ReleaseChangeSetRequest = ChangeSetRequest<ReleaseOperation>
+export interface ReleaseChangeSetPreview extends ChangeSetPreview<ReleaseDetail> {
+  violations: ReleaseViolation[]
+  report: ReleaseCheckReport
   diffVsActive: ReleaseDiff | null
 }
+export type ReleaseChangeSetCommit = ChangeSetCommit<ReleaseDetail>
 
-export interface ReleaseDetail {
-  release: Release
-  isActive: boolean
-  manifest: ReleaseDataset[]
+/* ───────────────────────── Projections the screens render ───────────────────────── */
+
+export interface ManifestBinding {
+  displayName: string
+  kind: ManifestBindingKind
+  dimensionId: Id
+  mappingSetId: Id | null
+  bridgeId: Id | null
 }
 
-/** Everything the screens need to render names, versions and links without extra calls. */
-export interface Catalog {
-  tenant: TenantInfo
-  datasets: Dataset[]
-  versions: DatasetVersion[]
-  identities: Identity[]
-  reports: ReportRef[]
-  releases: Release[]
+export interface ManifestMeasure {
+  key: string
+  appliesBridgeFactors: boolean
 }
 
-/* ───────────────────────── Assumption set read models ───────────────────────── */
+export interface ManifestDatasetVersion {
+  id: Id
+  versionNumber: number
+  status: VersionStatus
+  publishedAt: string | null
+  bindings: ManifestBinding[]
+  measures: ManifestMeasure[]
+}
 
-export type PinState = 'live' | 'frozen' | 'report_owned' | 'unpublished'
+export interface ManifestDataset {
+  id: Id
+  key: string
+  displayName: string
+  isEnabled: boolean
+  /** Newest first. */
+  versions: ManifestDatasetVersion[]
+}
 
-export interface PinRow {
+/** Living kinds have no drafts (OI-14): a version is live (published) or frozen (retired). */
+export interface PinIdentityVersion {
+  id: Id
+  versionNumber: number
+  status: Extract<VersionStatus, 'published' | 'retired'>
+  publishedAt: string
+}
+
+export interface PinIdentity {
   kind: PinKind
-  identityId: string
-  versionId: string
-  publishedVersionId: string | null
-  state: PinState
+  id: Id
+  key: string
+  displayName: string
+  /** A dimension itself, a mapping set's dimension, or a bridge's target. */
+  dimensionId: Id
+  /** Set for a report dimension or a bridge into one. */
+  reportId: Id | null
+  createdAt: string
+  versions: PinIdentityVersion[]
+}
+
+/** Kept for `lib/navigation.ts`, which imports `Identity`. */
+export type Identity = PinIdentity
+
+export interface ReleaseReportSource {
+  key: string
+  datasetId: Id
+  usesFactors: boolean
+  measureKeys: string[]
+}
+
+export interface ReleaseReportRead {
+  kind: PinKind
+  identityId: Id
+}
+
+export interface ReleaseReportRef {
+  id: Id
+  key: string
+  displayName: string
+  isEnabled: boolean
+  sources: ReleaseReportSource[]
+  reads: ReleaseReportRead[]
+}
+
+/* ───────────────────────── Assumption sets ───────────────────────── */
+
+export type AssumptionSetStatus = 'active' | 'historical'
+
+export interface AssumptionSet {
+  id: Id
+  key: string
+  displayName: string
+  description: string | null
+  status: AssumptionSetStatus
+  /** Null for the active set, which reads the active release. */
+  releaseId: Id | null
+  capturedAt: string | null
+  createdAt: string
 }
 
 export interface SetListItem extends AssumptionSet {
@@ -211,51 +243,80 @@ export interface SetListItem extends AssumptionSet {
   changedSinceCapture: number
 }
 
-export interface Readiness {
-  reportId: string
+export interface AssumptionSetList {
+  active: SetListItem
+  historical: SetListItem[]
+}
+
+export type PinState = 'live' | 'frozen' | 'report_owned'
+
+export interface PinRow {
+  kind: PinKind
+  identityId: Id
+  versionId: Id
+  publishedVersionId: Id | null
+  state: PinState
+}
+
+export interface SetReadinessReason {
+  message: string
+  target: ReleaseViolationTarget
+}
+
+export interface SetReadiness {
+  reportId: Id
   ready: boolean
-  reasons: { message: string; target: CheckTarget | null }[]
+  reasons: SetReadinessReason[]
 }
 
 export interface SetDetail {
   set: AssumptionSet
   /** The release it reads: its own, or the active release for the active set. */
-  readsReleaseId: string
+  readsReleaseId: Id
   pins: PinRow[]
-  readiness: Readiness[] | null
+  /** Null for the active set. */
+  readiness: SetReadiness[] | null
+}
+
+export interface SetPinEntry {
+  kind: PinKind
+  identityId: Id
+  versionId: Id
+}
+
+export interface SetPinChange {
+  kind: PinKind
+  identityId: Id
+  fromVersionId: Id
+  toVersionId: Id
 }
 
 /** What `toSetId` pins differently from `fromSetId`. Report-owned identities are left out (captures never pin them). */
 export interface SetComparison {
-  fromSetId: string
-  toSetId: string
-  added: { kind: PinKind; identityId: string; versionId: string }[]
-  removed: { kind: PinKind; identityId: string; versionId: string }[]
-  changed: { kind: PinKind; identityId: string; fromVersionId: string; toVersionId: string }[]
+  fromSetId: Id
+  toSetId: Id
+  added: SetPinEntry[]
+  removed: SetPinEntry[]
+  changed: SetPinChange[]
   unchanged: number
   /** Null when both sets read the same release. */
   release: ReleaseDiff | null
 }
 
-export interface CapturePreview {
+export interface SetCapturePreview {
   dimensions: number
   mappingSets: number
   bridges: number
   leftOutDimensions: number
   leftOutBridges: number
-  releaseId: string
+  releaseId: Id
 }
 
 /* ───────────────────────── Inputs ───────────────────────── */
 
 export interface CreateReleaseInput {
   key: string
-  copyFromReleaseId: string | null
-}
-
-export interface ManifestEntry {
-  datasetId: string
-  datasetVersionId: string
+  copyFromReleaseId: Id | null
 }
 
 export interface CaptureSetInput {
@@ -274,32 +335,52 @@ export const SET_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,127}$/
 
 /* ───────────────────────── Port ───────────────────────── */
 
-export interface ReleasesApi {
-  getCatalog(): Promise<Catalog>
+/** One change set per draft release: its manifest. */
+export interface ReleasesApi extends ChangeSetPort {
+  // reads
   listReleases(): Promise<ReleaseListItem[]>
-  getRelease(id: string): Promise<ApiResult<ReleaseDetail>>
-  diffReleases(fromId: string, toId: string, toManifest?: ManifestEntry[]): Promise<ReleaseDiff>
-  /** Runs the release rules; a draft's unsaved manifest may be passed in. */
-  checkRelease(id: string, manifest?: ManifestEntry[]): Promise<CheckReport>
+  getRelease(id: Id): Promise<ApiResult<ReleaseDetail>>
+  diffReleases(fromId: Id, toId: Id): Promise<ReleaseDiff>
+  /** The saved manifest's report; while a manifest change set is open, the pending manifest's (`unsaved`). */
+  checkRelease(id: Id): Promise<ReleaseCheckReport>
+  listManifestDatasets(): Promise<ManifestDataset[]>
+  listIdentities(): Promise<PinIdentity[]>
+  listReportReads(): Promise<ReleaseReportRef[]>
+  listSets(): Promise<AssumptionSetList>
+  getSet(id: Id): Promise<ApiResult<SetDetail>>
+  compareSets(fromSetId: Id, toSetId: Id): Promise<SetComparison>
+  capturePreview(): Promise<SetCapturePreview>
 
+  // edits (staged per draft release)
+  saveManifest(id: Id, manifest: ManifestEntry[]): Promise<ApiResult<ReleaseDetail>>
+
+  // commands
   createRelease(input: CreateReleaseInput): Promise<ApiResult<Release>>
-  saveManifest(id: string, manifest: ManifestEntry[]): Promise<ApiResult<Release>>
-  /** Validate and Publish return the check report as data when it fails. */
-  validateRelease(id: string): Promise<ApiResult<{ release: Release; report: CheckReport }>>
-  publishRelease(id: string): Promise<ApiResult<{ release: Release; report: CheckReport }>>
-  backToDraft(id: string): Promise<ApiResult<Release>>
-  retireRelease(id: string): Promise<ApiResult<Release>>
-  activateRelease(id: string): Promise<ApiResult<TenantInfo>>
-  deleteRelease(id: string): Promise<ApiResult<null>>
-
-  listSets(): Promise<{ active: SetListItem; historical: SetListItem[] }>
-  getSet(id: string): Promise<ApiResult<SetDetail>>
-  compareSets(fromSetId: string, toSetId: string): Promise<SetComparison>
-  capturePreview(): Promise<CapturePreview>
+  /** Validate and Publish return a failed rule run as data (the HTTP adapter converts the 422). */
+  validateRelease(id: Id): Promise<ApiResult<ReleaseTransitionResult>>
+  publishRelease(id: Id): Promise<ApiResult<ReleaseTransitionResult>>
+  backToDraft(id: Id): Promise<ApiResult<Release>>
+  retireRelease(id: Id): Promise<ApiResult<Release>>
+  activateRelease(id: Id): Promise<ApiResult<ReleaseActivation>>
+  deleteRelease(id: Id): Promise<ApiResult<null>>
   captureSet(input: CaptureSetInput): Promise<ApiResult<AssumptionSet>>
-  relabelSet(id: string, input: RelabelSetInput): Promise<ApiResult<AssumptionSet>>
-  deleteSet(id: string): Promise<ApiResult<null>>
+  relabelSet(id: Id, input: RelabelSetInput): Promise<ApiResult<AssumptionSet>>
+  deleteSet(id: Id): Promise<ApiResult<null>>
 }
+
+export const RELEASE_EDITS = ['saveManifest'] as const satisfies readonly (keyof ReleasesApi)[]
+export const RELEASE_COMMANDS = [
+  'createRelease',
+  'validateRelease',
+  'publishRelease',
+  'backToDraft',
+  'retireRelease',
+  'activateRelease',
+  'deleteRelease',
+  'captureSet',
+  'relabelSet',
+  'deleteSet',
+] as const satisfies readonly (keyof ReleasesApi)[]
 
 export const RELEASE_TABS = ['manifest', 'changes', 'checks'] as const
 export type ReleaseTab = (typeof RELEASE_TABS)[number]

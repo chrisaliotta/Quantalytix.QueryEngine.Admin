@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
-import type { ApiResult, Catalog, ManifestEntry, ProblemDetails, ReleasesApi } from './contract'
+import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
+import { unwrap, type Problem } from '@/lib/api/contract'
+import { RELEASE_COMMANDS, RELEASE_EDITS, type ApiResult, type ManifestDataset, type PinIdentity, type ReleaseListItem, type ReleaseReportRef, type ReleasesApi } from './contract'
 import { createMockReleasesApi } from './mock/adapter'
 
 /** One in-memory store for the whole session, so the header chip, lists and pages agree. */
@@ -21,36 +23,46 @@ export function useReleasesApi() {
   return api
 }
 
-export class ReleaseProblemError extends Error {
-  constructor(public problem: ProblemDetails) {
-    super(problem.title)
-  }
-}
-
-async function unwrap<T>(p: Promise<ApiResult<T>>): Promise<T> {
-  const r = await p
-  if (!r.ok) throw new ReleaseProblemError(r.problem)
-  return r.data
+/**
+ * Batches manifest edits of one draft release until Save. Children keep calling `useReleasesApi()`; they receive the
+ * staged port.
+ */
+export function ReleaseEditScope({ releaseId, label, children }: { releaseId: string; label: string; children: ReactNode }) {
+  const base = useReleasesApi()
+  const refresh = useRefreshReleases()
+  const { api, scope } = useStagedApi(base, { id: `release:${releaseId}`, label, edits: RELEASE_EDITS, commands: RELEASE_COMMANDS, onSettled: refresh })
+  return (
+    <ApiContext.Provider value={api}>
+      <ChangeScopeProvider scope={scope}>{children}</ChangeScopeProvider>
+    </ApiContext.Provider>
+  )
 }
 
 const OPTS = { revalidateOnFocus: false }
 
-export function useCatalog() {
-  const api = useReleasesApi()
-  return useSWR(['rel', 'catalog'], () => api.getCatalog(), OPTS)
-}
 export function useReleaseList() {
   const api = useReleasesApi()
   return useSWR(['rel', 'list'], () => api.listReleases(), OPTS)
 }
 export function useRelease(id: string | null) {
   const api = useReleasesApi()
-  return useSWR(id ? ['rel', 'release', id] : null, () => unwrap(api.getRelease(id as string)), { ...OPTS, shouldRetryOnError: false })
+  return useSWR(id ? ['rel', 'release', id] : null, () => unwrap(api.getRelease(id!)), { ...OPTS, shouldRetryOnError: false })
 }
-export function useReleaseDiff(fromId: string | null, toId: string | null, toManifest?: ManifestEntry[]) {
+export function useReleaseDiff(fromId: string | null, toId: string | null) {
   const api = useReleasesApi()
-  const sig = toManifest ? JSON.stringify(toManifest) : ''
-  return useSWR(fromId && toId ? ['rel', 'diff', fromId, toId, sig] : null, () => api.diffReleases(fromId as string, toId as string, toManifest), OPTS)
+  return useSWR(fromId && toId ? ['rel', 'diff', fromId, toId] : null, () => api.diffReleases(fromId!, toId!), OPTS)
+}
+export function useManifestDatasets() {
+  const api = useReleasesApi()
+  return useSWR(['rel', 'manifestDatasets'], () => api.listManifestDatasets(), OPTS)
+}
+export function useIdentities() {
+  const api = useReleasesApi()
+  return useSWR(['rel', 'identities'], () => api.listIdentities(), OPTS)
+}
+export function useReportReads() {
+  const api = useReleasesApi()
+  return useSWR(['rel', 'reportReads'], () => api.listReportReads(), OPTS)
 }
 export function useSetList() {
   const api = useReleasesApi()
@@ -58,11 +70,11 @@ export function useSetList() {
 }
 export function useSet(id: string | null) {
   const api = useReleasesApi()
-  return useSWR(id ? ['rel', 'set', id] : null, () => unwrap(api.getSet(id as string)), { ...OPTS, shouldRetryOnError: false })
+  return useSWR(id ? ['rel', 'set', id] : null, () => unwrap(api.getSet(id!)), { ...OPTS, shouldRetryOnError: false })
 }
 export function useSetComparison(fromSetId: string | null, toSetId: string | null) {
   const api = useReleasesApi()
-  return useSWR(fromSetId && toSetId ? ['rel', 'setCompare', fromSetId, toSetId] : null, () => api.compareSets(fromSetId as string, toSetId as string), OPTS)
+  return useSWR(fromSetId && toSetId ? ['rel', 'setCompare', fromSetId, toSetId] : null, () => api.compareSets(fromSetId!, toSetId!), OPTS)
 }
 export function useCapturePreview(enabled: boolean) {
   const api = useReleasesApi()
@@ -78,7 +90,7 @@ export function useRefreshReleases() {
 export function useRelCall() {
   const refresh = useRefreshReleases()
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<ProblemDetails | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
   const run = useCallback(
     async <T,>(call: () => Promise<ApiResult<T>>, success?: string | ((data: T) => string | null)): Promise<{ ok: true; data: T } | { ok: false }> => {
       setSaving(true)
@@ -101,31 +113,42 @@ export function useRelCall() {
   return { run, saving, problem, setProblem, errorsFor }
 }
 
-/** Name lookups over the catalog. */
-export function useLookup() {
-  const { data } = useCatalog()
-  return useMemo(() => makeLookup(data), [data])
+interface LookupSources {
+  releases?: ReleaseListItem[]
+  datasets?: ManifestDataset[]
+  identities?: PinIdentity[]
+  reports?: ReleaseReportRef[]
 }
 
-export function makeLookup(c: Catalog | undefined) {
-  const datasets = new Map(c?.datasets.map((d) => [d.id, d]))
-  const versions = new Map(c?.versions.map((v) => [v.id, v]))
-  const identities = new Map(c?.identities.map((i) => [i.id, i]))
-  const identityVersions = new Map(c?.identities.flatMap((i) => i.versions.map((v) => [v.id, { ...v, identityId: i.id }] as const)))
-  const releases = new Map(c?.releases.map((r) => [r.id, r]))
-  const reports = new Map(c?.reports.map((r) => [r.id, r]))
+function makeLookup({ releases = [], datasets = [], identities = [], reports = [] }: LookupSources) {
+  const datasetById = new Map(datasets.map((d) => [d.id, d]))
+  const versions = new Map(datasets.flatMap((d) => d.versions.map((v) => [v.id, { ...v, datasetId: d.id }] as const)))
+  const identityById = new Map(identities.map((i) => [i.id, i]))
+  const identityVersions = new Map(identities.flatMap((i) => i.versions.map((v) => [v.id, { ...v, identityId: i.id }] as const)))
+  const releaseById = new Map(releases.map((r) => [r.id, r]))
+  const reportById = new Map(reports.map((r) => [r.id, r]))
+  const versionsOf = (datasetId: string) => datasetById.get(datasetId)?.versions ?? []
   return {
-    ready: !!c,
-    catalog: c,
-    dataset: (id: string) => datasets.get(id),
+    datasets,
+    activeRelease: releases.find((r) => r.isActive),
+    dataset: (id: string) => datasetById.get(id),
     version: (id: string) => versions.get(id),
-    identity: (id: string) => identities.get(id),
+    identity: (id: string) => identityById.get(id),
     identityVersion: (id: string) => identityVersions.get(id),
-    release: (id: string) => releases.get(id),
-    report: (id: string) => reports.get(id),
-    versionsOf: (datasetId: string) => (c?.versions ?? []).filter((v) => v.datasetId === datasetId).sort((a, b) => b.versionNumber - a.versionNumber),
-    latestPublished: (datasetId: string) =>
-      (c?.versions ?? []).filter((v) => v.datasetId === datasetId && v.status === 'published').sort((a, b) => b.versionNumber - a.versionNumber)[0],
+    release: (id: string) => releaseById.get(id),
+    report: (id: string) => reportById.get(id),
+    /** Newest first. */
+    versionsOf,
+    latestPublished: (datasetId: string) => versionsOf(datasetId).find((v) => v.status === 'published'),
   }
 }
 export type Lookup = ReturnType<typeof makeLookup>
+
+/** Name lookups over the reads the release and set screens render from. */
+export function useLookup() {
+  const { data: releases } = useReleaseList()
+  const { data: datasets } = useManifestDatasets()
+  const { data: identities } = useIdentities()
+  const { data: reports } = useReportReads()
+  return useMemo(() => makeLookup({ releases, datasets, identities, reports }), [releases, datasets, identities, reports])
+}

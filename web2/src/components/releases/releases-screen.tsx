@@ -1,4 +1,4 @@
-import { GitCompareIcon, MoreHorizontalIcon, PlusIcon, RadioIcon, RocketIcon, SearchIcon } from 'lucide-react'
+import { GitCompareIcon, MoreHorizontalIcon, PlusIcon, RadioIcon, SearchIcon } from 'lucide-react'
 import { ListPage } from '@/components/shell/page-shell'
 import { useAppNav } from '@/lib/navigation'
 import { useMemo, useState } from 'react'
@@ -204,8 +204,6 @@ function ReleaseList() {
 
 function ActiveReleaseCard({ release, others, onCompare }: { release: ReleaseListItem; others: ReleaseListItem[]; onCompare: (id: string) => void }) {
   const nav = useAppNav()
-  const lookup = useLookup()
-  const rev = lookup.catalog?.tenant.semanticRevision
   return (
     <section aria-label="Active release" className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -213,7 +211,8 @@ function ActiveReleaseCard({ release, others, onCompare }: { release: ReleaseLis
       </div>
       <p className="flex-1 text-sm text-pretty">
         Queries and reports run on <span className="font-mono font-semibold">{release.key}</span>: {release.datasetCount} datasets, published{' '}
-        <AbsTime iso={release.publishedAt} />. <span className="text-muted-foreground">Semantic revision</span> <Mono className="text-foreground">{rev ?? '…'}</Mono>.
+        <AbsTime iso={release.publishedAt} />. <span className="text-muted-foreground">Activated</span> <AbsTime iso={release.activatedAt} />{' '}
+        <span className="text-muted-foreground">by</span> <Mono className="text-foreground">{release.activatedBy}</Mono>.
       </p>
       <div className="flex shrink-0 gap-2">
         <Button variant="outline" size="sm" onClick={() => nav.release(release.id)}>

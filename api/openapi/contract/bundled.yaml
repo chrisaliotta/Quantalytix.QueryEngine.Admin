@@ -831,6 +831,591 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
           description: The version is retired or the field is not materialized.
+  /api/tenants/{tenantId}/releases:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listReleases
+      summary: List releases with their activity and their difference from the active release
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Every release, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createRelease
+      summary: Create a draft release, empty or copying another release's manifest
+      tags:
+        - releases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReleaseInput'
+      responses:
+        '201':
+          description: The new draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Release'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The key is taken.
+  /api/tenants/{tenantId}/releases/diff:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: diffReleases
+      summary: Compare the manifests of two releases
+      tags:
+        - releases
+      parameters:
+        - $ref: '#/components/parameters/ReleaseDiffFrom'
+        - $ref: '#/components/parameters/ReleaseDiffTo'
+      responses:
+        '200':
+          description: What changes going from `from` to `to`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseDiff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: '`from` or `to` names no release.'
+  /api/tenants/{tenantId}/releases/{releaseId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    get:
+      operationId: getRelease
+      summary: Get a release with its manifest and activation history
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The release.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteRelease
+      summary: Delete a draft release and its manifest
+      tags:
+        - releases
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft.
+  /api/tenants/{tenantId}/releases/{releaseId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: previewReleaseChanges
+      summary: Apply staged manifest operations in memory, then check and diff the result
+      tags:
+        - releases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply; nothing was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A pinned version is not one of its dataset's versions or is not published.
+  /api/tenants/{tenantId}/releases/{releaseId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: commitReleaseChanges
+      summary: Apply and write staged manifest operations
+      tags:
+        - releases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A pinned version is not one of its dataset's versions or is not published.
+  /api/tenants/{tenantId}/releases/{releaseId}/check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: checkRelease
+      summary: Run the release rules over the saved manifest without writing
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The rule findings; `unsaved` is false.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseCheckReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/releases/{releaseId}/validate:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: validateRelease
+      summary: Move a draft to validated when every release rule passes
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Validated; the report has no violations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseTransitionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A release rule fails; `violations` are `ReleaseViolation`s.
+  /api/tenants/{tenantId}/releases/{releaseId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: publishRelease
+      summary: Publish a validated release and compute its content hash
+      description: Publishing activates and retires nothing.
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Published; `release.contentHash` is set and the report has no violations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseTransitionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not validated.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A release rule fails; `violations` are `ReleaseViolation`s.
+  /api/tenants/{tenantId}/releases/{releaseId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: backToDraft
+      summary: Return a validated release to draft
+      tags:
+        - releases
+      responses:
+        '200':
+          description: A draft again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Release'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not validated.
+  /api/tenants/{tenantId}/releases/{releaseId}/retire:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: retireRelease
+      summary: Retire a published release that is not active
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Retired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Release'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not published.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: '`release_not_active`: the release is the active one.'
+  /api/tenants/{tenantId}/releases/{releaseId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReleaseIdPath'
+    post:
+      operationId: activateRelease
+      summary: Make a published release the active one
+      description: Sets the tenant's active release, writes an activation log row and advances `semanticRevision`. Activating an older release is a rollback. Every enabled report is re-checked against the release first.
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The activation log row just written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseActivation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not published.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: An enabled report's rules fail on the release.
+  /api/tenants/{tenantId}/manifest-datasets:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listManifestDatasets
+      summary: List the datasets a manifest can pin, with every version
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Every dataset with its versions, newest version first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManifestDataset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/identities:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listIdentities
+      summary: List the dimensions, mapping sets and bridges an assumption set pins, with their versions
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Every identity, report-owned ones included.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PinIdentity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/report-reads:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listReportReads
+      summary: List what each report reads from releases and assumption sets
+      tags:
+        - releases
+      responses:
+        '200':
+          description: Every report with its sources and the identities it reads.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseReportRef'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/assumption-sets:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listSets
+      summary: List the active set and the historical sets with their pin counts
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The active set and every historical set, newest capture first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssumptionSetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: captureSet
+      summary: Capture the active set's analytical pins and the active release into a historical set
+      description: Report dimensions and bridges into them are left out. Advances `semanticRevision`.
+      tags:
+        - releases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureSetInput'
+      responses:
+        '201':
+          description: The new historical set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssumptionSet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The key is taken.
+  /api/tenants/{tenantId}/assumption-sets/capture-preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: capturePreview
+      summary: Count what a capture would pin and leave out
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The counts and the release a capture would record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetCapturePreview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/assumption-sets/compare:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: compareSets
+      summary: Compare the pins and the releases of two assumption sets
+      tags:
+        - releases
+      parameters:
+        - $ref: '#/components/parameters/SetCompareFrom'
+        - $ref: '#/components/parameters/SetCompareTo'
+      responses:
+        '200':
+          description: What `to` pins differently from `from`, and how their releases differ.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetComparison'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: '`from` or `to` names no assumption set.'
+  /api/tenants/{tenantId}/assumption-sets/{setId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/AssumptionSetIdPath'
+    get:
+      operationId: getSet
+      summary: Get an assumption set with its pins and, for a historical set, per-report readiness
+      tags:
+        - releases
+      responses:
+        '200':
+          description: The assumption set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: relabelSet
+      summary: Change a historical set's display name and description
+      description: The key, the pins and the release never change. Does not advance `semanticRevision`.
+      tags:
+        - releases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelabelSetInput'
+      responses:
+        '200':
+          description: The relabelled set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssumptionSet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The active set.
+    delete:
+      operationId: deleteSet
+      summary: Delete a historical set and its pins
+      description: Advances `semanticRevision`.
+      tags:
+        - releases
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The active set.
   /api/tenants/{tenantId}/calculation-models:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -4026,6 +4611,850 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/DatasetVersion'
+    ReleaseKey:
+      type: string
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_.\-/]{0,127}$
+      description: Natural key of a release, fixed after creation; screens show it as the release's name (R7, OI-39).
+      examples:
+        - prod/2026-q4
+    Release:
+      type: object
+      description: One row of `qe_semantic_release`.
+      required:
+        - id
+        - key
+        - status
+        - createdAt
+        - publishedAt
+        - contentHash
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/ReleaseKey'
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        contentHash:
+          type:
+            - string
+            - 'null'
+          description: Hash of the sorted manifest (`datasetId`, `datasetVersionId` pairs), computed on publish (OI-41).
+    ReleaseActivation:
+      type: object
+      description: One row of the activation log, `qe_release_activation` (OI-40).
+      required:
+        - releaseId
+        - previousReleaseId
+        - activatedAt
+        - activatedBy
+      properties:
+        releaseId:
+          $ref: '#/components/schemas/Id'
+        previousReleaseId:
+          type:
+            - string
+            - 'null'
+          description: The release that was active before; null for the tenant's first activation.
+        activatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        activatedBy:
+          type: string
+          description: The token subject of the caller.
+    ReleaseListItem:
+      allOf:
+        - $ref: '#/components/schemas/Release'
+        - type: object
+          required:
+            - isActive
+            - datasetCount
+            - diffVsActive
+            - activatedAt
+            - activatedBy
+          properties:
+            isActive:
+              type: boolean
+            datasetCount:
+              type: integer
+              minimum: 0
+            diffVsActive:
+              description: What activating this release would change; null for the active release itself.
+              oneOf:
+                - $ref: '#/components/schemas/ReleaseDiff'
+                - type: 'null'
+            activatedAt:
+              type:
+                - string
+                - 'null'
+              format: date-time
+              description: When the active release was last activated; null for every other release.
+            activatedBy:
+              type:
+                - string
+                - 'null'
+              description: Who last activated the active release; null for every other release.
+    ManifestEntry:
+      type: object
+      description: One pinned dataset version, a row of `qe_release_dataset`.
+      required:
+        - datasetId
+        - datasetVersionId
+      properties:
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        datasetVersionId:
+          $ref: '#/components/schemas/Id'
+    ReleaseDetail:
+      type: object
+      description: A release page's read model; also the state of a manifest change set.
+      required:
+        - release
+        - isActive
+        - manifest
+        - activations
+      properties:
+        release:
+          $ref: '#/components/schemas/Release'
+        isActive:
+          type: boolean
+        manifest:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestEntry'
+        activations:
+          type: array
+          description: Every activation of this release, newest first.
+          items:
+            $ref: '#/components/schemas/ReleaseActivation'
+    ReleaseDiffEntry:
+      type: object
+      required:
+        - datasetId
+        - versionId
+      properties:
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+          description: The pinned dataset version.
+    ReleaseDiffRemoval:
+      allOf:
+        - $ref: '#/components/schemas/ReleaseDiffEntry'
+        - type: object
+          required:
+            - readBy
+          properties:
+            readBy:
+              type: array
+              description: Keys of the enabled reports with a source on the dataset.
+              items:
+                type: string
+    ReleaseDiffChange:
+      type: object
+      required:
+        - datasetId
+        - fromVersionId
+        - toVersionId
+      properties:
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        fromVersionId:
+          $ref: '#/components/schemas/Id'
+        toVersionId:
+          $ref: '#/components/schemas/Id'
+    ReleaseDiff:
+      type: object
+      description: The manifest set difference going from one release to another (OI-38).
+      required:
+        - fromReleaseId
+        - toReleaseId
+        - added
+        - removed
+        - changed
+        - unchanged
+      properties:
+        fromReleaseId:
+          $ref: '#/components/schemas/Id'
+        toReleaseId:
+          $ref: '#/components/schemas/Id'
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseDiffEntry'
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseDiffRemoval'
+        changed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseDiffChange'
+        unchanged:
+          type: integer
+          minimum: 0
+          description: Datasets pinned at the same version in both.
+    ReleaseRuleCode:
+      type: string
+      description: The release rules, in the order the API runs them.
+      enum:
+        - manifest_not_empty
+        - pinned_version_belongs_to_dataset
+        - pinned_version_published
+        - bound_dimensions_resolvable
+        - mapped_bindings_resolvable
+        - bridge_bindings_resolvable
+        - report_sources_resolve
+        - report_factors_apply
+    ReleaseTargetArea:
+      type: string
+      description: What a release finding points at; the identity kinds name a dimension, mapping set or bridge.
+      enum:
+        - dataset
+        - dimension
+        - mapping_set
+        - bridge
+        - report
+    ReleaseViolationTarget:
+      description: A dataset (`itemId` = dataset id), an identity (`area` = its kind, `itemId` = identity id) or a report source (`itemId` = report id, `itemKey` = source key).
+      allOf:
+        - $ref: '#/components/schemas/ViolationTarget'
+        - type: object
+          required:
+            - area
+            - itemId
+          properties:
+            area:
+              $ref: '#/components/schemas/ReleaseTargetArea'
+    ReleaseViolation:
+      allOf:
+        - $ref: '#/components/schemas/Violation'
+        - type: object
+          required:
+            - code
+            - datasetId
+          properties:
+            code:
+              $ref: '#/components/schemas/ReleaseRuleCode'
+            datasetId:
+              type:
+                - string
+                - 'null'
+              description: The manifest row the finding belongs to, for inline issue icons.
+            target:
+              $ref: '#/components/schemas/ReleaseViolationTarget'
+    ReleaseCheckReport:
+      type: object
+      required:
+        - releaseId
+        - unsaved
+        - checkedAt
+        - violations
+      properties:
+        releaseId:
+          $ref: '#/components/schemas/Id'
+        unsaved:
+          type: boolean
+          description: True when the rules ran over staged, unsaved manifest operations (a change-set preview).
+        checkedAt:
+          $ref: '#/components/schemas/Timestamp'
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseViolation'
+    ReleaseTransitionResult:
+      type: object
+      description: Answer of `validate` and `publish`.
+      required:
+        - release
+        - report
+      properties:
+        release:
+          $ref: '#/components/schemas/Release'
+        report:
+          $ref: '#/components/schemas/ReleaseCheckReport'
+    CreateReleaseInput:
+      type: object
+      required:
+        - key
+        - copyFromReleaseId
+      properties:
+        key:
+          $ref: '#/components/schemas/ReleaseKey'
+        copyFromReleaseId:
+          type:
+            - string
+            - 'null'
+          description: The release whose manifest the draft starts from; null starts empty.
+    ReleaseSaveManifestOperation:
+      type: object
+      description: Replaces the whole manifest; the release editor keeps the manifest as its pending state.
+      required:
+        - op
+        - manifest
+      properties:
+        op:
+          const: saveManifest
+        manifest:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestEntry'
+    ReleaseOperation:
+      oneOf:
+        - $ref: '#/components/schemas/ReleaseSaveManifestOperation'
+      discriminator:
+        propertyName: op
+    ReleaseChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReleaseOperation'
+    ReleaseChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+            - violations
+            - report
+            - diffVsActive
+          properties:
+            state:
+              $ref: '#/components/schemas/ReleaseDetail'
+            violations:
+              type: array
+              description: The same findings as `report.violations`.
+              items:
+                $ref: '#/components/schemas/ReleaseViolation'
+            report:
+              $ref: '#/components/schemas/ReleaseCheckReport'
+              description: The release rules over the pending manifest; `unsaved` is true (OI-37).
+            diffVsActive:
+              description: The pending manifest compared with the active release; null when no release is active.
+              oneOf:
+                - $ref: '#/components/schemas/ReleaseDiff'
+                - type: 'null'
+    ReleaseChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/ReleaseDetail'
+    ManifestBindingKind:
+      type: string
+      enum:
+        - direct
+        - mapped
+        - range
+        - bridge
+        - time
+    ManifestBinding:
+      type: object
+      description: A binding of a dataset version, with the identities it resolves through.
+      required:
+        - displayName
+        - kind
+        - dimensionId
+        - mappingSetId
+        - bridgeId
+      properties:
+        displayName:
+          type: string
+        kind:
+          $ref: '#/components/schemas/ManifestBindingKind'
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+        mappingSetId:
+          type:
+            - string
+            - 'null'
+        bridgeId:
+          type:
+            - string
+            - 'null'
+    ManifestMeasure:
+      type: object
+      required:
+        - key
+        - appliesBridgeFactors
+      properties:
+        key:
+          type: string
+        appliesBridgeFactors:
+          type: boolean
+    ManifestDatasetVersion:
+      type: object
+      required:
+        - id
+        - versionNumber
+        - status
+        - publishedAt
+        - bindings
+        - measures
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        bindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestBinding'
+        measures:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestMeasure'
+    ManifestDataset:
+      type: object
+      description: A dataset as the manifest editor shows it, with every version.
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+        - versions
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        versions:
+          type: array
+          description: Newest first.
+          items:
+            $ref: '#/components/schemas/ManifestDatasetVersion'
+    PinKind:
+      type: string
+      enum:
+        - dimension
+        - mapping_set
+        - bridge
+    PinIdentityVersion:
+      type: object
+      description: A version of a living kind; it is live (published) or frozen (retired) (OI-14).
+      required:
+        - id
+        - versionNumber
+        - status
+        - publishedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+            - published
+            - retired
+        publishedAt:
+          $ref: '#/components/schemas/Timestamp'
+    PinIdentity:
+      type: object
+      description: A dimension, mapping set or bridge that an assumption set pins a version of.
+      required:
+        - kind
+        - id
+        - key
+        - displayName
+        - dimensionId
+        - reportId
+        - createdAt
+        - versions
+      properties:
+        kind:
+          $ref: '#/components/schemas/PinKind'
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+          description: A dimension key, or a mapping set or bridge dotted key.
+        displayName:
+          type: string
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+          description: The dimension itself, a mapping set's dimension, or a bridge's target dimension.
+        reportId:
+          type:
+            - string
+            - 'null'
+          description: The owning report of a report dimension or of a bridge into one.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PinIdentityVersion'
+    ReleaseReportSource:
+      type: object
+      required:
+        - key
+        - datasetId
+        - usesFactors
+        - measureKeys
+      properties:
+        key:
+          type: string
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        usesFactors:
+          type: boolean
+          description: The source adds items into rows with factors other than 1, computed from the report's bridges.
+        measureKeys:
+          type: array
+          items:
+            type: string
+    ReleaseReportRead:
+      type: object
+      required:
+        - kind
+        - identityId
+      properties:
+        kind:
+          $ref: '#/components/schemas/PinKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+    ReleaseReportRef:
+      type: object
+      description: What a report reads from a release (its sources) and from an assumption set (its identities).
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+        - sources
+        - reads
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseReportSource'
+        reads:
+          type: array
+          description: The analytical identities the report reads, computed by the server.
+          items:
+            $ref: '#/components/schemas/ReleaseReportRead'
+    AssumptionSetKey:
+      type: string
+      pattern: ^[A-Za-z][A-Za-z0-9_]{0,127}$
+      description: Natural key of an assumption set, fixed after creation (R11); requests name the set by it.
+      examples:
+        - fy2026_q3_close
+    AssumptionSetStatus:
+      type: string
+      enum:
+        - active
+        - historical
+    AssumptionSet:
+      type: object
+      description: One row of `qe_assumption_set`.
+      required:
+        - id
+        - key
+        - displayName
+        - description
+        - status
+        - releaseId
+        - capturedAt
+        - createdAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/AssumptionSetKey'
+        displayName:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        status:
+          $ref: '#/components/schemas/AssumptionSetStatus'
+        releaseId:
+          type:
+            - string
+            - 'null'
+          description: The captured release; null for the active set, which reads the active release.
+        capturedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    SetListItem:
+      allOf:
+        - $ref: '#/components/schemas/AssumptionSet'
+        - type: object
+          required:
+            - pinCount
+            - livePins
+            - changedSinceCapture
+          properties:
+            pinCount:
+              type: integer
+              minimum: 0
+            livePins:
+              type: integer
+              minimum: 0
+              description: Pins whose version is still published.
+            changedSinceCapture:
+              type: integer
+              minimum: 0
+              description: Pins whose identity now publishes another version; 0 for the active set.
+    AssumptionSetList:
+      type: object
+      required:
+        - active
+        - historical
+      properties:
+        active:
+          $ref: '#/components/schemas/SetListItem'
+        historical:
+          type: array
+          description: Newest capture first.
+          items:
+            $ref: '#/components/schemas/SetListItem'
+    PinState:
+      type: string
+      description: '`live`: the pinned version is published; `frozen`: it is retired; `report_owned`: the identity belongs to a report (active set only, captures leave these out).'
+      enum:
+        - live
+        - frozen
+        - report_owned
+    PinRow:
+      type: object
+      required:
+        - kind
+        - identityId
+        - versionId
+        - publishedVersionId
+        - state
+      properties:
+        kind:
+          $ref: '#/components/schemas/PinKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        publishedVersionId:
+          type:
+            - string
+            - 'null'
+          description: The identity's published version now.
+        state:
+          $ref: '#/components/schemas/PinState'
+    SetReadinessReason:
+      type: object
+      required:
+        - message
+        - target
+      properties:
+        message:
+          type: string
+        target:
+          $ref: '#/components/schemas/ReleaseViolationTarget'
+    SetReadiness:
+      type: object
+      description: 'Whether a report comparison can name the set: every analytical identity the report reads is pinned and every source dataset is in the set''s release.'
+      required:
+        - reportId
+        - ready
+        - reasons
+      properties:
+        reportId:
+          $ref: '#/components/schemas/Id'
+        ready:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetReadinessReason'
+    SetDetail:
+      type: object
+      required:
+        - set
+        - readsReleaseId
+        - pins
+        - readiness
+      properties:
+        set:
+          $ref: '#/components/schemas/AssumptionSet'
+        readsReleaseId:
+          $ref: '#/components/schemas/Id'
+          description: The release the set reads; the active release for the active set.
+        pins:
+          type: array
+          items:
+            $ref: '#/components/schemas/PinRow'
+        readiness:
+          description: One entry per enabled report for a historical set; null for the active set.
+          oneOf:
+            - type: array
+              items:
+                $ref: '#/components/schemas/SetReadiness'
+            - type: 'null'
+    SetPinEntry:
+      type: object
+      required:
+        - kind
+        - identityId
+        - versionId
+      properties:
+        kind:
+          $ref: '#/components/schemas/PinKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+    SetPinChange:
+      type: object
+      required:
+        - kind
+        - identityId
+        - fromVersionId
+        - toVersionId
+      properties:
+        kind:
+          $ref: '#/components/schemas/PinKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+        fromVersionId:
+          $ref: '#/components/schemas/Id'
+        toVersionId:
+          $ref: '#/components/schemas/Id'
+    SetComparison:
+      type: object
+      description: What `toSetId` pins differently from `fromSetId`; report-owned identities are left out.
+      required:
+        - fromSetId
+        - toSetId
+        - added
+        - removed
+        - changed
+        - unchanged
+        - release
+      properties:
+        fromSetId:
+          $ref: '#/components/schemas/Id'
+        toSetId:
+          $ref: '#/components/schemas/Id'
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetPinEntry'
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetPinEntry'
+        changed:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetPinChange'
+        unchanged:
+          type: integer
+          minimum: 0
+        release:
+          description: The difference of the two sets' releases; null when both read the same release.
+          oneOf:
+            - $ref: '#/components/schemas/ReleaseDiff'
+            - type: 'null'
+    SetCapturePreview:
+      type: object
+      required:
+        - dimensions
+        - mappingSets
+        - bridges
+        - leftOutDimensions
+        - leftOutBridges
+        - releaseId
+      properties:
+        dimensions:
+          type: integer
+          minimum: 0
+        mappingSets:
+          type: integer
+          minimum: 0
+        bridges:
+          type: integer
+          minimum: 0
+        leftOutDimensions:
+          type: integer
+          minimum: 0
+          description: Report dimensions a capture leaves out.
+        leftOutBridges:
+          type: integer
+          minimum: 0
+          description: Bridges into report dimensions a capture leaves out.
+        releaseId:
+          $ref: '#/components/schemas/Id'
+          description: The active release, which the capture records.
+    CaptureSetInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - description
+      properties:
+        key:
+          $ref: '#/components/schemas/AssumptionSetKey'
+        displayName:
+          type: string
+          minLength: 1
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 1024
+    RelabelSetInput:
+      type: object
+      required:
+        - displayName
+        - description
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 1024
     ModelFormulaLanguage:
       type: string
       enum:
@@ -5808,6 +7237,46 @@ components:
       description: The table or view name.
       schema:
         type: string
+    ReleaseIdPath:
+      name: releaseId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    ReleaseDiffFrom:
+      name: from
+      in: query
+      required: true
+      description: The release compared from.
+      schema:
+        $ref: '#/components/schemas/Id'
+    ReleaseDiffTo:
+      name: to
+      in: query
+      required: true
+      description: The release compared to.
+      schema:
+        $ref: '#/components/schemas/Id'
+    AssumptionSetIdPath:
+      name: setId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    SetCompareFrom:
+      name: from
+      in: query
+      required: true
+      description: The assumption set compared from.
+      schema:
+        $ref: '#/components/schemas/Id'
+    SetCompareTo:
+      name: to
+      in: query
+      required: true
+      description: The assumption set compared to.
+      schema:
+        $ref: '#/components/schemas/Id'
     ModelId:
       name: modelId
       in: path

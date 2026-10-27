@@ -39,7 +39,7 @@ function CreateForm({ copyFrom, onClose, onCreated }: { copyFrom: string | null;
       open
       onClose={onClose}
       dirty={!!k}
-      title={cloned && copyFrom !== lookup.catalog?.tenant.activeReleaseId ? `New release from ${cloned.key}` : 'New release'}
+      title={cloned && copyFrom !== lookup.activeRelease?.id ? `New release from ${cloned.key}` : 'New release'}
       description="A new release starts as a draft. Move datasets to new versions, validate, publish, then activate."
       footer={
         <>

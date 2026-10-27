@@ -42,7 +42,7 @@ function SetList() {
         .sort((a, b) => (b.capturedAt ?? '').localeCompare(a.capturedAt ?? '')),
     [data, query],
   )
-  const activeRelease = lookup.catalog ? lookup.release(lookup.catalog.tenant.activeReleaseId) : undefined
+  const { activeRelease } = lookup
 
   return (
     <ListPage

@@ -1,34 +1,19 @@
 import { CheckIcon, ClipboardCheckIcon, CopyIcon, GitCompareIcon, MoreHorizontalIcon, PackageIcon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useAppNav, useSearchParam } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog, WithReason } from '@/components/dimensions/shared'
-import { ChangeScopeProvider, useNavigationGuard, type ChangeScope } from '@/components/shell/changes'
+import { useHasPendingChanges, useNavigationGuard } from '@/components/shell/changes'
 import { DetailHeader, DetailShell, DetailTitle, PageMessage, SectionNav, type NavGroup } from '@/components/shell/page-shell'
-import { useLookup, useRelCall, useRelease, useReleasesApi } from '@/lib/releases/client'
-import { RELEASE_TABS, type CheckReport, type ManifestEntry, type ReleaseDetail as Detail, type ReleaseTab, type ReleaseViolation } from '@/lib/releases/contract'
+import { ReleaseEditScope, useLookup, useRelCall, useRelease, useReleasesApi } from '@/lib/releases/client'
+import { RELEASE_TABS, type ManifestEntry, type ReleaseCheckReport, type ReleaseDetail as Detail, type ReleaseTab, type ReleaseViolation } from '@/lib/releases/contract'
 import { cn } from '@/lib/utils'
 import { ActivateDialog } from './activate-dialog'
 import { CreateReleaseSheet } from './create-release-sheet'
 import { ManifestTab } from './manifest-tab'
 import { ChangesTab, ChecksPanel } from './release-tabs'
 import { ActiveBadge, AbsTime, StatusBadge, useOpenTarget } from './shared'
-
-const sameManifest = (a: ManifestEntry[], b: ManifestEntry[]) => {
-  if (a.length !== b.length) return false
-  const m = new Map(a.map((e) => [e.datasetId, e.datasetVersionId]))
-  return b.every((e) => m.get(e.datasetId) === e.datasetVersionId)
-}
-
-function countChanges(saved: ManifestEntry[], edited: ManifestEntry[]) {
-  const s = new Map(saved.map((e) => [e.datasetId, e.datasetVersionId]))
-  const e = new Map(edited.map((x) => [x.datasetId, x.datasetVersionId]))
-  let n = 0
-  for (const [id, v] of e) if (s.get(id) !== v) n++
-  for (const id of s.keys()) if (!e.has(id)) n++
-  return n
-}
 
 export function ReleaseDetail({ releaseId, onBack }: { releaseId: string; onBack: () => void }) {
   const { data: detail, error } = useRelease(releaseId)
@@ -45,7 +30,11 @@ export function ReleaseDetail({ releaseId, onBack }: { releaseId: string; onBack
       </PageMessage>
     )
   if (!detail) return <PageMessage>Loading release…</PageMessage>
-  return <ReleasePage detail={detail} onBack={onBack} />
+  return (
+    <ReleaseEditScope releaseId={detail.release.id} label={detail.release.key}>
+      <ReleasePage detail={detail} onBack={onBack} />
+    </ReleaseEditScope>
+  )
 }
 
 function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void }) {
@@ -57,40 +46,21 @@ function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void })
   const tab: ReleaseTab = (RELEASE_TABS as readonly string[]).includes(tabParam ?? '') ? (tabParam as ReleaseTab) : 'manifest'
   const { release, isActive } = detail
   const isDraft = release.status === 'draft'
+  const dirty = useHasPendingChanges()
 
-  const [edited, setEdited] = useState<ManifestEntry[]>(detail.manifest)
-  const savedSig = JSON.stringify(detail.manifest)
-  // Re-seed the local manifest whenever the stored one changes (save, discard or external update).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setEdited(detail.manifest), [savedSig])
-  const dirty = isDraft && !sameManifest(detail.manifest, edited)
-  const changes = dirty ? countChanges(detail.manifest, edited) : 0
-
-  const [report, setReport] = useState<CheckReport | null>(null)
+  const [report, setReport] = useState<ReleaseCheckReport | null>(null)
   const [running, setRunning] = useState(false)
   const [highlight, setHighlight] = useState<string | null>(null)
   const [compareTo, setCompareTo] = useState<string | null>(null)
   const [dialog, setDialog] = useState<null | 'publish' | 'retire' | 'delete' | 'activate' | 'clone'>(null)
   const guard = useNavigationGuard()
-  const scope = useMemo<ChangeScope>(
-    () => ({
-      id: `release:${release.id}`,
-      label: release.key,
-      count: changes,
-      saving,
-      save: async () => (changes === 0 ? true : (await run(() => api.saveManifest(release.id, edited), changes === 1 ? '1 change saved' : `${changes} changes saved`)).ok),
-      discard: async () => setEdited(detail.manifest),
-    }),
-    [release.id, release.key, changes, saving, run, api, edited, detail.manifest],
-  )
   const setTab = (t: ReleaseTab) => setTabParam(t === 'manifest' ? null : t)
+  const saveManifest = (manifest: ManifestEntry[]) => run(() => api.saveManifest(release.id, manifest))
 
   const runChecks = async () => {
     setRunning(true)
-    const r = await api.checkRelease(release.id, dirty ? edited : undefined)
+    setReport(await api.checkRelease(release.id))
     setRunning(false)
-    setReport(r)
-    return r
   }
 
   const transition = async (kind: 'validate' | 'publish') => {
@@ -105,17 +75,17 @@ function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void })
     return res
   }
 
-  const openTarget = useOpenTarget(lookup.identity, (datasetId) => {
+  const openTarget = useOpenTarget(lookup, (datasetId) => {
     setTab('manifest')
     setHighlight(datasetId)
     setTimeout(() => setHighlight(null), 2400)
   })
   const onViolation = (v: ReleaseViolation) => {
     if (v.target) guard(() => openTarget(v.target!))
-    else if (v.datasetId) openTarget({ type: 'dataset', datasetId: v.datasetId })
+    else if (v.datasetId) openTarget({ area: 'dataset', itemId: v.datasetId })
   }
 
-  const rowViolations = useMemo(() => report?.violations ?? [], [report])
+  const rowViolations = report?.violations ?? []
 
   const groups: NavGroup<ReleaseTab>[] = [
     {
@@ -148,6 +118,12 @@ function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void })
           {isActive && <ActiveBadge />}
           <span className="hidden text-xs text-muted-foreground xl:inline">
             Created <AbsTime iso={release.createdAt} /> · Published <AbsTime iso={release.publishedAt} />
+            {release.contentHash && (
+              <>
+                {' '}
+                · Hash <code className="font-mono">{release.contentHash}</code>
+              </>
+            )}
           </span>
         </>
       }
@@ -189,14 +165,13 @@ function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void })
   )
 
   return (
-    <ChangeScopeProvider scope={scope}>
     <DetailShell header={header} nav={<SectionNav label="Release sections" groups={groups} active={tab} onSelect={setTab} />}>
       <LifecycleStrip detail={detail} />
 
       {tab === 'manifest' ? (
-        <ManifestTab manifest={isDraft ? edited : detail.manifest} editable={isDraft} onChange={setEdited} violations={rowViolations} highlight={highlight} />
+        <ManifestTab manifest={detail.manifest} editable={isDraft} onChange={saveManifest} violations={rowViolations} highlight={highlight} />
       ) : tab === 'changes' ? (
-        <ChangesTab detail={detail} compareTo={compareTo} onCompareTo={setCompareTo} unsavedManifest={dirty ? edited : null} />
+        <ChangesTab detail={detail} compareTo={compareTo} onCompareTo={setCompareTo} unsaved={dirty} />
       ) : (
         <ChecksPanel report={report} running={running} onRun={runChecks} onTarget={onViolation} />
       )}
@@ -253,7 +228,6 @@ function ReleasePage({ detail, onBack }: { detail: Detail; onBack: () => void })
         }}
       />
     </DetailShell>
-    </ChangeScopeProvider>
   )
 }
 
