@@ -11,7 +11,6 @@ import type {
   FreezeResult,
   Id,
   Periodicity,
-  Problem,
   ValidationReport,
   VersionStatus,
   Violation,

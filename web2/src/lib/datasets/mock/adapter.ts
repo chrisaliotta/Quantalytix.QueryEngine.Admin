@@ -23,7 +23,6 @@ import type {
   DeleteBlocker,
   DeleteCheck,
   Problem,
-  Violation,
 } from '../contract'
 import type { Vocabularies } from '../lookups'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'

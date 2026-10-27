@@ -1,5 +1,5 @@
 import { analyzeBands, type BandIssueKind } from '../bands'
-import { USAGE_KIND_LABEL, type DeleteBlocker, type DeleteBlockerCode, type DeleteCheck, type DimensionDeleteTarget, type DimensionTab, type DimensionUsageKind, type DimensionUsageReference, type DimensionViolation, type DimensionViolationCode, type Violation } from '../contract'
+import { USAGE_KIND_LABEL, type DeleteBlocker, type DeleteBlockerCode, type DeleteCheck, type DimensionDeleteTarget, type DimensionTab, type DimensionUsageKind, type DimensionUsageReference, type DimensionViolation, type DimensionViolationCode } from '../contract'
 import { findCycles } from '../tree'
 import type { Db } from './data'
 
