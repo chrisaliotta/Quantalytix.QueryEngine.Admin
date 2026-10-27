@@ -1,71 +1,20 @@
 using System.Collections.Frozen;
+using System.Reflection;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-/// <summary>Every controlled vocabulary, as the web client loads them once and looks values up by name.</summary>
+/// <summary>
+/// Every controlled vocabulary and vocabulary relationship, found by discovery in the Application assembly: a module adds a
+/// vocabulary by declaring a public static <see cref="Vocabulary"/> field, and a relationship by implementing
+/// <see cref="IVocabularyRelation"/>, in its own folder. Nothing is listed here (the shared hotspot rule).
+/// </summary>
 public static class VocabularyCatalog
 {
-    /// <summary>Every vocabulary definition.</summary>
-    public static readonly IReadOnlyList<Vocabulary> All =
-    [
-        PublicationStatuses.Definition,
-        AssumptionSetStatuses.Definition,
-        DataTypes.Definition,
-        MeasureOutputDataTypes.Definition,
-        Periodicities.Definition,
-        SourceObjectKinds.Definition,
-        FieldSourceKinds.Definition,
-        GrainKinds.Definition,
-        DimensionKinds.Definition,
-        DefinitionOrigins.Definition,
-        DimensionPurposes.Definition,
-        RangeDataTypes.Definition,
-        BindingKinds.Definition,
-        GroupingModes.Definition,
-        RaggedBehaviors.Definition,
-        PeriodAlignments.Definition,
-        UnmappedBehaviors.Definition,
-        TimeValueTypes.Definition,
-        ObservationKinds.Definition,
-        CumulativeOrigins.Definition,
-        MeasureKinds.Definition,
-        AggregationFunctions.Definition,
-        ValueNullBehaviors.Definition,
-        NegativeWeightBehaviors.Definition,
-        EmptySetBehaviors.Definition,
-        BridgeFactorBehaviors.Definition,
-        BridgeAllocationBehaviors.Definition,
-        TotalBehaviors.Definition,
-        RoundingModes.Definition,
-        ComponentRoles.Definition,
-        ObservationSelections.Definition,
-        ValueTimeRoles.Definition,
-        BoundaryMatches.Definition,
-        DurationUnits.Definition,
-        PartialIntervalBehaviors.Definition,
-        MissingPeriodBehaviors.Definition,
-        Cardinalities.Definition,
-        AllocationModes.Definition,
-        SourceSelections.Definition,
-        ProviderIds.Definition,
-        SelectionScopes.Definition,
-        VariableMissingBehaviors.Definition,
-        FormulaLanguageVersions.Definition,
-        AttributionMethods.Definition,
-        ParameterValueTypes.Definition,
-        DayCountConventions.Definition,
-        ReportMappingMethods.Definition,
-        ReportLineKinds.Definition,
-        ReportRowKinds.Definition,
-        ReportValueKinds.Definition,
-        SubtotalPositions.Definition,
-        ReportLayouts.Definition,
-        RowRoles.Definition,
-        FontWeights.Definition,
-        BorderStyles.Definition,
-        VersionKinds.Definition,
-        LookupKinds.Definition
-    ];
+    /// <summary>Every vocabulary definition, by name.</summary>
+    public static readonly IReadOnlyList<Vocabulary> All = DiscoverVocabularies();
+
+    /// <summary>Every vocabulary relationship, by key.</summary>
+    public static readonly IReadOnlyList<IVocabularyRelation> Relations = DiscoverRelations();
 
     /// <summary>The vocabularies by name.</summary>
     private static readonly FrozenDictionary<string, Vocabulary> ByName = All.ToFrozenDictionary(vocabulary => vocabulary.Name, StringComparer.Ordinal);
@@ -76,5 +25,31 @@ public static class VocabularyCatalog
     public static Vocabulary? Find(string name)
     {
         return ByName.GetValueOrDefault(name);
+    }
+
+    /// <summary>The values of every public static <see cref="Vocabulary"/> field; a vocabulary derived from another counts once.</summary>
+    private static IReadOnlyList<Vocabulary> DiscoverVocabularies()
+    {
+        return
+        [
+            .. typeof(Vocabulary).Assembly.GetTypes()
+                .SelectMany(type => type.GetFields(BindingFlags.Public | BindingFlags.Static))
+                .Where(field => field.FieldType == typeof(Vocabulary))
+                .Select(field => (Vocabulary)field.GetValue(null)!)
+                .Distinct()
+                .OrderBy(vocabulary => vocabulary.Name, StringComparer.Ordinal)
+        ];
+    }
+
+    /// <summary>One instance of every concrete <see cref="IVocabularyRelation"/>.</summary>
+    private static IReadOnlyList<IVocabularyRelation> DiscoverRelations()
+    {
+        return
+        [
+            .. typeof(IVocabularyRelation).Assembly.GetTypes()
+                .Where(type => type is { IsClass: true, IsAbstract: false } && type.IsAssignableTo(typeof(IVocabularyRelation)))
+                .Select(type => (IVocabularyRelation)Activator.CreateInstance(type)!)
+                .OrderBy(relation => relation.Key, StringComparer.Ordinal)
+        ];
     }
 }

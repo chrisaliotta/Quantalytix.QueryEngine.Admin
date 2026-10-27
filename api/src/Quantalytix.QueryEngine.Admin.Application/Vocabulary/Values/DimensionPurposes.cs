@@ -13,11 +13,12 @@ public static class DimensionPurposes
     public static readonly Vocabulary Definition = new()
     {
         Name = "dimension_purpose",
+        Key = "dimensionPurpose",
         Description = "Whether a dimension classifies datasets or holds a report's rows.",
         Values =
         [
-            new() { Value = Analytical, Description = "A dimension datasets bind through its roles and queries group and filter by." },
-            new() { Value = Report, Description = "The rows of the one report that owns it; it has no roles, and every bridge into it belongs to that report." }
+            new() { Value = Analytical, Label = "Analytical", Description = "A dimension datasets bind through its roles and queries group and filter by." },
+            new() { Value = Report, Label = "Report", Description = "The rows of the one report that owns it; it has no roles, and every bridge into it belongs to that report." }
         ]
     };
 }

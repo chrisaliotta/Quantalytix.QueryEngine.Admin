@@ -16,12 +16,13 @@ public static class RangeDataTypes
     public static readonly Vocabulary Definition = new()
     {
         Name = "range_data_type",
+        Key = "rangeDataType",
         Description = "Boundary type of a range dimension's bands.",
         Values =
         [
-            new() { Value = Decimal, Description = "Bands use decimal boundaries." },
-            new() { Value = Date, Description = "Bands use date boundaries." },
-            new() { Value = Datetime, Description = "Bands use datetime boundaries." }
+            new() { Value = Decimal, Label = "Decimal", Description = "Bands use decimal boundaries." },
+            new() { Value = Date, Label = "Date", Description = "Bands use date boundaries." },
+            new() { Value = Datetime, Label = "Datetime", Description = "Bands use datetime boundaries." }
         ]
     };
 }

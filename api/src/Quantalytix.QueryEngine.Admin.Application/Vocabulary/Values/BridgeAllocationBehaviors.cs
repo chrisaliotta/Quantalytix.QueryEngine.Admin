@@ -13,11 +13,12 @@ public static class BridgeAllocationBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "bridge_allocation_behavior",
+        Key = "bridgeAllocationBehavior",
         Description = "How a bridge's allocation weight affects a measure.",
         Values =
         [
-            new() { Value = Apply, Description = "Apply allocation exactly once, to the contribution or the effective statistical weight." },
-            new() { Value = Ignore, Description = "Ignore allocation; only valid for an explicitly non-additive implementation." }
+            new() { Value = Apply, Label = "Apply", Description = "Apply allocation exactly once, to the contribution or the effective statistical weight." },
+            new() { Value = Ignore, Label = "Ignore", Description = "Ignore allocation; only valid for an explicitly non-additive implementation." }
         ]
     };
 }

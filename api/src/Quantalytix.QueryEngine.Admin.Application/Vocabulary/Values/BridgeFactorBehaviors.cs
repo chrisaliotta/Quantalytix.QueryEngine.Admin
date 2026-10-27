@@ -13,11 +13,12 @@ public static class BridgeFactorBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "bridge_factor_behavior",
+        Key = "bridgeFactorBehavior",
         Description = "How a bridge's factor affects a measure.",
         Values =
         [
-            new() { Value = Ignore, Description = "The bridge factor does not modify the measure." },
-            new() { Value = Value, Description = "The signed factor multiplies the value contribution exactly once." }
+            new() { Value = Ignore, Label = "Ignore", Description = "The bridge factor does not modify the measure." },
+            new() { Value = Value, Label = "Value", Description = "The signed factor multiplies the value contribution exactly once." }
         ]
     };
 }

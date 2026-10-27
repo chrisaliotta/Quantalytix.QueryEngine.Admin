@@ -19,13 +19,14 @@ public static class GroupingModes
     public static readonly Vocabulary Definition = new()
     {
         Name = "grouping_mode",
+        Key = "groupingMode",
         Description = "What a binding groups resolved members by.",
         Values =
         [
-            new() { Value = Member, Description = "Group by the resolved member itself." },
-            new() { Value = Level, Description = "Resolve each member to its unique ancestor at the grouping level." },
-            new() { Value = Ancestor, Description = "Group an intended subtree at a fixed ancestor member." },
-            new() { Value = Depth, Description = "Resolve to an ancestor at an explicit closure depth." }
+            new() { Value = Member, Label = "Member", Description = "Group by the resolved member itself." },
+            new() { Value = Level, Label = "Level", Description = "Resolve each member to its unique ancestor at the grouping level." },
+            new() { Value = Ancestor, Label = "Ancestor", Description = "Group an intended subtree at a fixed ancestor member." },
+            new() { Value = Depth, Label = "Depth", Description = "Resolve to an ancestor at an explicit closure depth." }
         ]
     };
 }

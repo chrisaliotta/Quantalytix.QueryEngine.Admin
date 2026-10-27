@@ -16,12 +16,13 @@ public static class PeriodAlignments
     public static readonly Vocabulary Definition = new()
     {
         Name = "default_period_alignment",
+        Key = "periodAlignment",
         Description = "The point in time a binding's dimension attributes are resolved at.",
         Values =
         [
-            new() { Value = Observation, Description = "Use dimension attributes from the selected fact observation." },
-            new() { Value = Start, Description = "Resolve dimension attributes at the requested period start." },
-            new() { Value = End, Description = "Resolve dimension attributes at the requested period end." }
+            new() { Value = Observation, Label = "Observation", Description = "Use dimension attributes from the selected fact observation." },
+            new() { Value = Start, Label = "Start", Description = "Resolve dimension attributes at the requested period start." },
+            new() { Value = End, Label = "End", Description = "Resolve dimension attributes at the requested period end." }
         ]
     };
 }

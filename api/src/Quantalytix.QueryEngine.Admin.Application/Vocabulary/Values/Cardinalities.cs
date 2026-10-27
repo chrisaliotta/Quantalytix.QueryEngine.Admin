@@ -13,11 +13,12 @@ public static class Cardinalities
     public static readonly Vocabulary Definition = new()
     {
         Name = "cardinality",
+        Key = "cardinality",
         Description = "How many target members a bridge maps each source member to.",
         Values =
         [
-            new() { Value = ManyToOne, Description = "Each source member maps to at most one target member." },
-            new() { Value = ManyToMany, Description = "A source member may map to several target members." }
+            new() { Value = ManyToOne, Label = "Many to one", Description = "Each source member maps to at most one target member." },
+            new() { Value = ManyToMany, Label = "Many to many", Description = "A source member may map to several target members." }
         ]
     };
 }

@@ -13,11 +13,12 @@ public static class NegativeWeightBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "negative_weight_behavior",
+        Key = "negativeWeightBehavior",
         Description = "How a weighted measure treats negative statistical weights.",
         Values =
         [
-            new() { Value = Allow, Description = "Signed weights take part as they are (the default)." },
-            new() { Value = Exclude, Description = "Negative-weight pairs are omitted." }
+            new() { Value = Allow, Label = "Allow", Description = "Signed weights take part as they are (the default)." },
+            new() { Value = Exclude, Label = "Exclude", Description = "Negative-weight pairs are omitted." }
         ]
     };
 }

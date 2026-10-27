@@ -13,11 +13,12 @@ public static class AttributionMethods
     public static readonly Vocabulary Definition = new()
     {
         Name = "attribution_method",
+        Key = "attributionMethod",
         Description = "How a metric's change between two values splits into the effects of its drivers.",
         Values =
         [
-            new() { Value = Shapley, Description = "Each driver's effect averaged over every order of switching the drivers (the default)." },
-            new() { Value = Sequential, Description = "The drivers switched one at a time, in their sort order." }
+            new() { Value = Shapley, Label = "Shapley", Description = "Each driver's effect averaged over every order of switching the drivers (the default)." },
+            new() { Value = Sequential, Label = "Sequential", Description = "The drivers switched one at a time, in their sort order." }
         ]
     };
 }

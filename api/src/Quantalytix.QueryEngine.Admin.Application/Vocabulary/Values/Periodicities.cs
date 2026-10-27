@@ -19,13 +19,14 @@ public static class Periodicities
     public static readonly Vocabulary Definition = new()
     {
         Name = "periodicity",
+        Key = "periodicity",
         Description = "Calendar grouping period.",
         Values =
         [
-            new() { Value = Day, Description = "Calendar-day grouping." },
-            new() { Value = Month, Description = "Calendar-month grouping." },
-            new() { Value = Quarter, Description = "Calendar-quarter grouping." },
-            new() { Value = Year, Description = "Calendar-year grouping." }
+            new() { Value = Day, Label = "Day", Description = "Calendar-day grouping." },
+            new() { Value = Month, Label = "Month", Description = "Calendar-month grouping." },
+            new() { Value = Quarter, Label = "Quarter", Description = "Calendar-quarter grouping." },
+            new() { Value = Year, Label = "Year", Description = "Calendar-year grouping." }
         ]
     };
 }

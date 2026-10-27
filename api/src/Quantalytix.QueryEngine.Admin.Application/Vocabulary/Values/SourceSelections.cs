@@ -13,11 +13,12 @@ public static class SourceSelections
     public static readonly Vocabulary Definition = new()
     {
         Name = "source_selection",
+        Key = "sourceSelection",
         Description = "Which members of its source dimension a bridge mapping maps.",
         Values =
         [
-            new() { Value = Member, Description = "The source member alone." },
-            new() { Value = Descendants, Description = "The source member and every member under it, including members added under it later." }
+            new() { Value = Member, Label = "Member", Description = "The source member alone." },
+            new() { Value = Descendants, Label = "Descendants", Description = "The source member and every member under it, including members added under it later." }
         ]
     };
 }

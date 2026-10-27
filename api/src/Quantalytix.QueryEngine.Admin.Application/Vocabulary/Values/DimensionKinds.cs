@@ -19,13 +19,14 @@ public static class DimensionKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "dimension_kind",
+        Key = "dimensionKind",
         Description = "Kind of a canonical dimension.",
         Values =
         [
-            new() { Value = Categorical, Description = "Flat or hierarchy-capable set of named members without inherent range semantics." },
-            new() { Value = Hierarchical, Description = "Parent/child member hierarchy is a first-class grouping and filtering concept." },
-            new() { Value = Range, Description = "Members are assigned from typed, non-overlapping bands." },
-            new() { Value = Time, Description = "Canonical temporal dimension used with a time binding." }
+            new() { Value = Categorical, Label = "Categorical", Description = "Flat or hierarchy-capable set of named members without inherent range semantics." },
+            new() { Value = Hierarchical, Label = "Hierarchical", Description = "Parent/child member hierarchy is a first-class grouping and filtering concept." },
+            new() { Value = Range, Label = "Range", Description = "Members are assigned from typed, non-overlapping bands." },
+            new() { Value = Time, Label = "Time", Description = "Canonical temporal dimension used with a time binding." }
         ]
     };
 }

@@ -10,10 +10,11 @@ public static class ProviderIds
     public static readonly Vocabulary Definition = new()
     {
         Name = "provider_id",
+        Key = "provider",
         Description = "The registered analytical provider that serves a tenant.",
         Values =
         [
-            new() { Value = StarRocks, Description = "StarRocks, reached over the MySQL protocol." }
+            new() { Value = StarRocks, Label = "StarRocks", Description = "StarRocks, reached over the MySQL protocol." }
         ]
     };
 }

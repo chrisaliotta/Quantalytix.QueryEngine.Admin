@@ -13,11 +13,12 @@ public static class PartialIntervalBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "partial_interval_behavior",
+        Key = "partialIntervalBehavior",
         Description = "How an interval only partly inside the requested range is weighted.",
         Values =
         [
-            new() { Value = ExactOnly, Description = "Never estimate; weigh each interval by its whole duration in the period it starts in (the default)." },
-            new() { Value = UniformEstimate, Description = "Permit an approved uniform-accrual estimate; result metadata identifies the estimate." }
+            new() { Value = ExactOnly, Label = "Exact only", Description = "Never estimate; weigh each interval by its whole duration in the period it starts in (the default)." },
+            new() { Value = UniformEstimate, Label = "Uniform estimate", Description = "Permit an approved uniform-accrual estimate; result metadata identifies the estimate." }
         ]
     };
 }

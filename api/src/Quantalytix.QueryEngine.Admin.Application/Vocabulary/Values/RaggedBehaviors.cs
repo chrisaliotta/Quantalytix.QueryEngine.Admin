@@ -16,12 +16,13 @@ public static class RaggedBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "ragged_behavior",
+        Key = "raggedBehavior",
         Description = "What happens when a requested level, depth or ancestor cannot be resolved for a member.",
         Values =
         [
-            new() { Value = Null, Description = "Group the member under a null dimension value (the default)." },
-            new() { Value = Self, Description = "Keep the closest or self member." },
-            new() { Value = Exclude, Description = "Exclude the member from the grouping result." }
+            new() { Value = Null, Label = "Null", Description = "Group the member under a null dimension value (the default)." },
+            new() { Value = Self, Label = "Self", Description = "Keep the closest or self member." },
+            new() { Value = Exclude, Label = "Exclude", Description = "Exclude the member from the grouping result." }
         ]
     };
 }

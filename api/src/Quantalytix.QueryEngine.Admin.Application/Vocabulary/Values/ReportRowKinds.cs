@@ -25,10 +25,10 @@ public static class ReportRowKinds
         Description = "Kind of a row of a report.",
         Values =
         [
-            new() { Value = Data, Description = "A member row whose values come from the source items mapped to it and the rows under it." },
-            new() { Value = Group, Description = "A member row that takes no items and totals the rows under it, or only heads them when it shows no values." },
-            new() { Value = Section, Description = "An overlay header row, which no source maps to." },
-            new() { Value = Formula, Description = "An overlay row that places one calculated measure in one column." }
+            new() { Value = Data, Label = "Data", Description = "A member row whose values come from the source items mapped to it and the rows under it." },
+            new() { Value = Group, Label = "Group", Description = "A member row that takes no items and totals the rows under it, or only heads them when it shows no values." },
+            new() { Value = Section, Label = "Section", Description = "An overlay header row, which no source maps to." },
+            new() { Value = Formula, Label = "Formula", Description = "An overlay row that places one calculated measure in one column." }
         ]
     };
 

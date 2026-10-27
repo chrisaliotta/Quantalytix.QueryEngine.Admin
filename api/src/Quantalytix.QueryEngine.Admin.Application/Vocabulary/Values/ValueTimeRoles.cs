@@ -16,12 +16,13 @@ public static class ValueTimeRoles
     public static readonly Vocabulary Definition = new()
     {
         Name = "value_time_role",
+        Key = "valueTimeRole",
         Description = "The point in time a measure value belongs to.",
         Values =
         [
-            new() { Value = Point, Description = "The value describes state at the observation timestamp." },
-            new() { Value = IntervalOpen, Description = "The value belongs to the interval's opening boundary." },
-            new() { Value = IntervalClose, Description = "The value belongs to the interval's closing boundary." }
+            new() { Value = Point, Label = "Point", Description = "The value describes state at the observation timestamp." },
+            new() { Value = IntervalOpen, Label = "Interval open", Description = "The value belongs to the interval's opening boundary." },
+            new() { Value = IntervalClose, Label = "Interval close", Description = "The value belongs to the interval's closing boundary." }
         ]
     };
 }

@@ -13,11 +13,12 @@ public static class ReportValueKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "report_value_kind",
+        Key = "columnValueKind",
         Description = "What a report column returns.",
         Values =
         [
-            new() { Value = Variable, Description = "A model variable." },
-            new() { Value = Calculated, Description = "A model calculated measure." }
+            new() { Value = Variable, Label = "Variable", Description = "A model variable." },
+            new() { Value = Calculated, Label = "Calculated", Description = "A model calculated measure." }
         ]
     };
 }

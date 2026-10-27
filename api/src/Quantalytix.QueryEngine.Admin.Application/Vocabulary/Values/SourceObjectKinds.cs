@@ -13,11 +13,12 @@ public static class SourceObjectKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "source_object_kind",
+        Key = "sourceObjectKind",
         Description = "Kind of physical object a dataset version queries.",
         Values =
         [
-            new() { Value = Table, Description = "Query a tenant-local table." },
-            new() { Value = View, Description = "Query an allowlisted managed view." }
+            new() { Value = Table, Label = "Table", Description = "Query a tenant-local table." },
+            new() { Value = View, Label = "View", Description = "Query an allowlisted managed view." }
         ]
     };
 }

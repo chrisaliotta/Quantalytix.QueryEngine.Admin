@@ -13,11 +13,12 @@ public static class GrainKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "grain_kind",
+        Key = "grainKind",
         Description = "What a dataset grain identifies.",
         Values =
         [
-            new() { Value = Row, Description = "Identifies one logical detail row." },
-            new() { Value = Series, Description = "Identifies one independent temporal trajectory, excluding observation time." }
+            new() { Value = Row, Label = "Row", Description = "Identifies one logical detail row." },
+            new() { Value = Series, Label = "Series", Description = "Identifies one independent temporal trajectory, excluding observation time." }
         ]
     };
 }

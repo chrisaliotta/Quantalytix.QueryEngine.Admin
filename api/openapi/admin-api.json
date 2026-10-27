@@ -10,10 +10,11 @@
         "tags": [
           "Vocabularies"
         ],
-        "summary": "Lists every vocabulary with its allowed values and their definitions.",
+        "summary": "Read every enumeration the UI renders.",
+        "operationId": "getVocabularies",
         "responses": {
           "401": {
-            "description": "The request has no valid bearer token.",
+            "description": "No valid bearer token.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -23,14 +24,11 @@
             }
           },
           "200": {
-            "description": "Every vocabulary, each with its values in the schema's order.",
+            "description": "Every vocabulary, keyed by name.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Vocabulary"
-                  }
+                  "$ref": "#/components/schemas/Vocabularies"
                 }
               }
             }
@@ -30639,35 +30637,389 @@
         },
         "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
       },
-      "Vocabulary": {
+      "Vocabularies": {
         "required": [
-          "name",
-          "description",
-          "values"
+          "aggregationFunction",
+          "allocationMode",
+          "assumptionSetStatus",
+          "attributionMethod",
+          "bindingKind",
+          "borderStyle",
+          "boundaryMatch",
+          "bridgeAllocationBehavior",
+          "bridgeFactorBehavior",
+          "cardinality",
+          "componentRole",
+          "cumulativeOrigin",
+          "dataType",
+          "dayCountConvention",
+          "periodAlignment",
+          "definitionOrigin",
+          "dimensionKind",
+          "dimensionPurpose",
+          "durationUnit",
+          "emptySetBehavior",
+          "fieldSourceKind",
+          "fontWeight",
+          "formulaLanguageVersion",
+          "grainKind",
+          "groupingMode",
+          "measureKind",
+          "measureOutputDataType",
+          "missingPeriodBehavior",
+          "negativeWeightBehavior",
+          "observationKind",
+          "observationSelection",
+          "parameterValueType",
+          "partialIntervalBehavior",
+          "periodicity",
+          "provider",
+          "versionStatus",
+          "raggedBehavior",
+          "rangeDataType",
+          "layout",
+          "mappingMethod",
+          "columnValueKind",
+          "roundingMode",
+          "styleRole",
+          "selectionScope",
+          "sourceObjectKind",
+          "sourceSelection",
+          "subtotalPosition",
+          "timeValueType",
+          "totalBehavior",
+          "unmappedBehavior",
+          "valueNullBehavior",
+          "valueTimeRole",
+          "variableMissingBehavior"
         ],
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "The vocabulary key the web client looks values up by, such as `publication_status`."
-          },
-          "description": {
-            "type": "string",
-            "description": "What the vocabulary classifies."
-          },
-          "values": {
+          "aggregationFunction": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VocabularyValue"
-            },
-            "description": "The allowed values, in the schema's order."
+            }
+          },
+          "allocationMode": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "assumptionSetStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "attributionMethod": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "bindingKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "borderStyle": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "boundaryMatch": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "bridgeAllocationBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "bridgeFactorBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "cardinality": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "componentRole": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "cumulativeOrigin": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "dataType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "dayCountConvention": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "periodAlignment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "definitionOrigin": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "dimensionKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "dimensionPurpose": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "durationUnit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "emptySetBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "fieldSourceKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "fontWeight": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "formulaLanguageVersion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "grainKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "groupingMode": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "measureKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "measureOutputDataType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "missingPeriodBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "negativeWeightBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "observationKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "observationSelection": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "parameterValueType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "partialIntervalBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "periodicity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "provider": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "versionStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "raggedBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "rangeDataType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "layout": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "mappingMethod": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "columnValueKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "roundingMode": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "styleRole": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "selectionScope": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "sourceObjectKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "sourceSelection": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "subtotalPosition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "timeValueType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "totalBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "unmappedBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "valueNullBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "valueTimeRole": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "variableMissingBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
           }
         },
-        "description": "A controlled vocabulary: the closed set of values a metadata column accepts."
+        "description": "The answer of `GET /api/vocabularies` (the contract's `Vocabularies`, OI-11): every served vocabulary's terms\nunder its key, and every vocabulary relationship under its key, as top-level members. Its OpenAPI schema lists the same\nmembers (`VocabulariesSchemaTransformer`)."
       },
       "VocabularyValue": {
         "required": [
           "value",
+          "label",
           "description"
         ],
         "type": "object",
@@ -30676,12 +31028,16 @@
             "type": "string",
             "description": "The value exactly as stored in the metadata column."
           },
+          "label": {
+            "type": "string",
+            "description": "The value as a select shows it."
+          },
           "description": {
             "type": "string",
             "description": "The schema's definition of the value, condensed to one sentence."
           }
         },
-        "description": "One allowed value of a controlled vocabulary."
+        "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
       }
     },
     "securitySchemes": {

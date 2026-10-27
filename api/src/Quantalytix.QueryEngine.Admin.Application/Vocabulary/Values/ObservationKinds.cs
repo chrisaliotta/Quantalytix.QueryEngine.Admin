@@ -16,12 +16,13 @@ public static class ObservationKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "observation_kind",
+        Key = "observationKind",
         Description = "What one fact row of a time binding represents.",
         Values =
         [
-            new() { Value = Instant, Description = "The row occurs at an instant or event time." },
-            new() { Value = Snapshot, Description = "The row describes state observed at a point in time." },
-            new() { Value = Interval, Description = "The row summarizes or represents an interval." }
+            new() { Value = Instant, Label = "Instant", Description = "The row occurs at an instant or event time." },
+            new() { Value = Snapshot, Label = "Snapshot", Description = "The row describes state observed at a point in time." },
+            new() { Value = Interval, Label = "Interval", Description = "The row summarizes or represents an interval." }
         ]
     };
 }

@@ -16,12 +16,13 @@ public static class SelectionScopes
     public static readonly Vocabulary Definition = new()
     {
         Name = "selection_scope",
+        Key = "selectionScope",
         Description = "Which report dimension node a variable reads on each report row.",
         Values =
         [
-            new() { Value = AllMapped, Description = "The row's own node; a variable the report does not target reads it." },
-            new() { Value = Exact, Description = "The variable's target member, which must be a leaf." },
-            new() { Value = Descendants, Description = "Whichever of the row's node and the target member lies inside the other's subtree." }
+            new() { Value = AllMapped, Label = "All mapped", Description = "The row's own node; a variable the report does not target reads it." },
+            new() { Value = Exact, Label = "Exact", Description = "The variable's target member, which must be a leaf." },
+            new() { Value = Descendants, Label = "Descendants", Description = "Whichever of the row's node and the target member lies inside the other's subtree." }
         ]
     };
 }

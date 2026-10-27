@@ -22,14 +22,15 @@ public static class BorderStyles
     public static readonly Vocabulary Definition = new()
     {
         Name = "border_style",
+        Key = "borderStyle",
         Description = "The rule a report style draws above or below its rows.",
         Values =
         [
-            new() { Value = None, Description = "No rule." },
-            new() { Value = Thin, Description = "A thin rule." },
-            new() { Value = Medium, Description = "A medium rule." },
-            new() { Value = Thick, Description = "A thick rule." },
-            new() { Value = Double, Description = "Two thin rules, as under a total." }
+            new() { Value = None, Label = "None", Description = "No rule." },
+            new() { Value = Thin, Label = "Thin", Description = "A thin rule." },
+            new() { Value = Medium, Label = "Medium", Description = "A medium rule." },
+            new() { Value = Thick, Label = "Thick", Description = "A thick rule." },
+            new() { Value = Double, Label = "Double", Description = "Two thin rules, as under a total." }
         ]
     };
 }

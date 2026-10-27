@@ -13,11 +13,12 @@ public static class VariableMissingBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "variable_missing_behavior",
+        Key = "variableMissingBehavior",
         Description = "The value a variable takes where its source has no data.",
         Values =
         [
-            new() { Value = Null, Description = "The value is null, and so is every formula that reads it." },
-            new() { Value = Zero, Description = "The value is zero." }
+            new() { Value = Null, Label = "Null", Description = "The value is null, and so is every formula that reads it." },
+            new() { Value = Zero, Label = "Zero", Description = "The value is zero." }
         ]
     };
 }

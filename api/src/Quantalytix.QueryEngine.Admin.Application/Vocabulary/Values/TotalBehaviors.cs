@@ -13,11 +13,12 @@ public static class TotalBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "total_behavior",
+        Key = "totalBehavior",
         Description = "How totals of a measure are formed.",
         Values =
         [
-            new() { Value = Recompute, Description = "Recompute the measure from mergeable state at the total grain; required for ratios and nonlinear measures." },
-            new() { Value = SumChildren, Description = "Sum already-resolved child values; only valid for additive measures." }
+            new() { Value = Recompute, Label = "Recompute", Description = "Recompute the measure from mergeable state at the total grain; required for ratios and nonlinear measures." },
+            new() { Value = SumChildren, Label = "Sum children", Description = "Sum already-resolved child values; only valid for additive measures." }
         ]
     };
 }

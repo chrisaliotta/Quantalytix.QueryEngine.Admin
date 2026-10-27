@@ -13,11 +13,12 @@ public static class MissingPeriodBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "missing_period_behavior",
+        Key = "missingPeriodBehavior",
         Description = "What a measure outputs for a period without observations.",
         Values =
         [
-            new() { Value = Null, Description = "Output null for the affected period (the default)." },
-            new() { Value = Zero, Description = "Treat the missing period as zero, only where business semantics justify it." }
+            new() { Value = Null, Label = "Null", Description = "Output null for the affected period (the default)." },
+            new() { Value = Zero, Label = "Zero", Description = "Treat the missing period as zero, only where business semantics justify it." }
         ]
     };
 }

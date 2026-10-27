@@ -16,12 +16,13 @@ public static class FieldSourceKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "field_source_kind",
+        Key = "fieldSourceKind",
         Description = "Where a logical field's value comes from.",
         Values =
         [
-            new() { Value = Column, Description = "A physical column; the source column is required." },
-            new() { Value = JsonPath, Description = "Typed extraction from a JSON column; a value that does not convert to the data type is null." },
-            new() { Value = Expression, Description = "A validated row-level expression over other fields." }
+            new() { Value = Column, Label = "Column", Description = "A physical column; the source column is required." },
+            new() { Value = JsonPath, Label = "Json path", Description = "Typed extraction from a JSON column; a value that does not convert to the data type is null." },
+            new() { Value = Expression, Label = "Expression", Description = "A validated row-level expression over other fields." }
         ]
     };
 }

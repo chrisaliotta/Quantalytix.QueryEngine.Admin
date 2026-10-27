@@ -16,12 +16,13 @@ public static class BoundaryMatches
     public static readonly Vocabulary Definition = new()
     {
         Name = "boundary_match",
+        Key = "boundaryMatch",
         Description = "How a boundary selection finds its observation.",
         Values =
         [
-            new() { Value = Exact, Description = "Require an observation exactly at the boundary." },
-            new() { Value = OnOrBefore, Description = "Use the latest valid observation at or before the boundary, within the lookback." },
-            new() { Value = StrictlyBefore, Description = "Use the latest valid observation strictly before the boundary." }
+            new() { Value = Exact, Label = "Exact", Description = "Require an observation exactly at the boundary." },
+            new() { Value = OnOrBefore, Label = "On or before", Description = "Use the latest valid observation at or before the boundary, within the lookback." },
+            new() { Value = StrictlyBefore, Label = "Strictly before", Description = "Use the latest valid observation strictly before the boundary." }
         ]
     };
 }

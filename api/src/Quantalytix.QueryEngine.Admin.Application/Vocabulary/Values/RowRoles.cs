@@ -22,14 +22,15 @@ public static class RowRoles
     public static readonly Vocabulary Definition = new()
     {
         Name = "row_role",
+        Key = "styleRole",
         Description = "What a report row is to its reader, which picks the style a row without one of its own shows.",
         Values =
         [
-            new() { Value = Header, Description = "A section, or a member whose values are hidden." },
-            new() { Value = Subtotal, Description = "A member with members under it." },
-            new() { Value = Total, Description = "The report dimension's root member." },
-            new() { Value = Detail, Description = "A member without members under it." },
-            new() { Value = Formula, Description = "A formula row." }
+            new() { Value = Header, Label = "Header", Description = "A section, or a member whose values are hidden." },
+            new() { Value = Subtotal, Label = "Subtotal", Description = "A member with members under it." },
+            new() { Value = Total, Label = "Total", Description = "The report dimension's root member." },
+            new() { Value = Detail, Label = "Detail", Description = "A member without members under it." },
+            new() { Value = Formula, Label = "Formula", Description = "A formula row." }
         ]
     };
 }

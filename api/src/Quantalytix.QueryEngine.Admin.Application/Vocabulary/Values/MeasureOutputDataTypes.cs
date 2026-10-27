@@ -31,6 +31,7 @@ public static class MeasureOutputDataTypes
     public static readonly Vocabulary Definition = new()
     {
         Name = "measure_output_data_type",
+        Key = "measureOutputDataType",
         Description = "Logical data type of a measure's output: every data type except json.",
         Values = [.. DataTypes.Definition.Values.Where(value => value.Value != DataTypes.Json)]
     };

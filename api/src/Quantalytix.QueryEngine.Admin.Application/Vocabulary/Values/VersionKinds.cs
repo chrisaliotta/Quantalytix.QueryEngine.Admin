@@ -42,11 +42,11 @@ public static class VersionKinds
         Description = "The kinds of versioned object whose status the version workflow changes.",
         Values =
         [
-            new() { Value = DatasetVersion, Description = "Immutable definition of a dataset (qe_dataset_version)." },
-            new() { Value = DimensionVersion, Description = "Levels, members and range bands of a canonical dimension (qe_dimension_version)." },
-            new() { Value = MappingVersion, Description = "Source-code mapping entries of a mapping set (qe_mapping_version)." },
-            new() { Value = BridgeVersion, Description = "Cardinality, allocation and assignments of a bridge (qe_bridge_version)." },
-            new() { Value = SemanticRelease, Description = "Manifest of the structural semantic model (qe_semantic_release)." }
+            new() { Value = DatasetVersion, Label = "Dataset version", Description = "Immutable definition of a dataset (qe_dataset_version)." },
+            new() { Value = DimensionVersion, Label = "Dimension version", Description = "Levels, members and range bands of a canonical dimension (qe_dimension_version)." },
+            new() { Value = MappingVersion, Label = "Mapping version", Description = "Source-code mapping entries of a mapping set (qe_mapping_version)." },
+            new() { Value = BridgeVersion, Label = "Bridge version", Description = "Cardinality, allocation and assignments of a bridge (qe_bridge_version)." },
+            new() { Value = SemanticRelease, Label = "Semantic release", Description = "Manifest of the structural semantic model (qe_semantic_release)." }
         ]
     };
 }

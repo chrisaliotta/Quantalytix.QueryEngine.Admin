@@ -13,11 +13,12 @@ public static class AssumptionSetStatuses
     public static readonly Vocabulary Definition = new()
     {
         Name = "assumption_set_status",
+        Key = "assumptionSetStatus",
         Description = "Whether an assumption set holds the default versions or is a captured snapshot.",
         Values =
         [
-            new() { Value = Active, Description = "The one set that pins every published version; every publish repoints it." },
-            new() { Value = Historical, Description = "A snapshot of the active set, captured under its own key; its pins never change." }
+            new() { Value = Active, Label = "Active", Description = "The one set that pins every published version; every publish repoints it." },
+            new() { Value = Historical, Label = "Historical", Description = "A snapshot of the active set, captured under its own key; its pins never change." }
         ]
     };
 }

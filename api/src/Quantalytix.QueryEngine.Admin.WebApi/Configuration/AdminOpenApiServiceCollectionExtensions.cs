@@ -23,6 +23,7 @@ public static class AdminOpenApiServiceCollectionExtensions
             options.AddSchemaTransformer<ParameterValuesSchemaTransformer>();
             options.AddSchemaTransformer<StringIdSchemaTransformer>();
             options.AddSchemaTransformer<OmittedWhenNullSchemaTransformer>();
+            options.AddSchemaTransformer<VocabulariesSchemaTransformer>();
         });
         return services;
     }

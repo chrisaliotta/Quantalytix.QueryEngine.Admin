@@ -13,11 +13,12 @@ public static class TimeValueTypes
     public static readonly Vocabulary Definition = new()
     {
         Name = "time_value_type",
+        Key = "timeValueType",
         Description = "Type of a time binding's source value.",
         Values =
         [
-            new() { Value = Date, Description = "Calendar date values." },
-            new() { Value = Timestamp, Description = "Instant values interpreted in the source time zone." }
+            new() { Value = Date, Label = "Date", Description = "Calendar date values." },
+            new() { Value = Timestamp, Label = "Timestamp", Description = "Instant values interpreted in the source time zone." }
         ]
     };
 }

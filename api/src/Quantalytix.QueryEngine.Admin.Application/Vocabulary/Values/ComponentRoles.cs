@@ -22,14 +22,15 @@ public static class ComponentRoles
     public static readonly Vocabulary Definition = new()
     {
         Name = "component_role",
+        Key = "componentRole",
         Description = "The role a source field plays in a measure.",
         Values =
         [
-            new() { Value = Value, Description = "Primary numeric value of most aggregates, weighted measures and period averages." },
-            new() { Value = Weight, Description = "Statistical weight for weighted sums and weighted averages." },
-            new() { Value = PeriodDays, Description = "Optional verification field for a source-supplied period duration; never summed blindly." },
-            new() { Value = Numerator, Description = "Optional precomputed mergeable numerator state for specialized plans." },
-            new() { Value = Denominator, Description = "Optional precomputed mergeable denominator state for specialized plans." }
+            new() { Value = Value, Label = "Value", Description = "Primary numeric value of most aggregates, weighted measures and period averages." },
+            new() { Value = Weight, Label = "Weight", Description = "Statistical weight for weighted sums and weighted averages." },
+            new() { Value = PeriodDays, Label = "Period days", Description = "Optional verification field for a source-supplied period duration; never summed blindly." },
+            new() { Value = Numerator, Label = "Numerator", Description = "Optional precomputed mergeable numerator state for specialized plans." },
+            new() { Value = Denominator, Label = "Denominator", Description = "Optional precomputed mergeable denominator state for specialized plans." }
         ]
     };
 }

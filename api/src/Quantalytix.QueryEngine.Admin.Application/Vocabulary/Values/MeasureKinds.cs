@@ -25,15 +25,16 @@ public static class MeasureKinds
     public static readonly Vocabulary Definition = new()
     {
         Name = "measure_kind",
+        Key = "measureKind",
         Description = "How a measure computes its value.",
         Values =
         [
-            new() { Value = Aggregate, Description = "Ordinary aggregate over eligible source rows or selected observations." },
-            new() { Value = WeightedSum, Description = "SUM(value * weight) after temporal and bridge policies." },
-            new() { Value = WeightedAverage, Description = "SUM(value * weight) / SUM(weight) over the same eligible population." },
-            new() { Value = PeriodAverage, Description = "Aggregate within each native interval, then duration-weight the interval series." },
-            new() { Value = Formula, Description = "Validated expression over other measures of the same dataset version." },
-            new() { Value = Specialized, Description = "Allowlisted domain implementation with versioned, validated configuration." }
+            new() { Value = Aggregate, Label = "Aggregate", Description = "Ordinary aggregate over eligible source rows or selected observations." },
+            new() { Value = WeightedSum, Label = "Weighted sum", Description = "SUM(value * weight) after temporal and bridge policies." },
+            new() { Value = WeightedAverage, Label = "Weighted average", Description = "SUM(value * weight) / SUM(weight) over the same eligible population." },
+            new() { Value = PeriodAverage, Label = "Period average", Description = "Aggregate within each native interval, then duration-weight the interval series." },
+            new() { Value = Formula, Label = "Formula", Description = "Validated expression over other measures of the same dataset version." },
+            new() { Value = Specialized, Label = "Specialized", Description = "Allowlisted domain implementation with versioned, validated configuration." }
         ]
     };
 }

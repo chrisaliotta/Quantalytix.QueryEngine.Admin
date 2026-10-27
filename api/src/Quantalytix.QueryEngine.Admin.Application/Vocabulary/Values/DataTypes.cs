@@ -34,18 +34,19 @@ public static class DataTypes
     public static readonly Vocabulary Definition = new()
     {
         Name = "data_type",
+        Key = "dataType",
         Description = "Logical data type of a field.",
         Values =
         [
-            new() { Value = Boolean, Description = "Logical true/false value." },
-            new() { Value = Int32, Description = "Signed 32-bit integer." },
-            new() { Value = Int64, Description = "Signed 64-bit integer." },
-            new() { Value = Decimal, Description = "Fixed-precision decimal; precision and scale are required where applicable." },
-            new() { Value = String, Description = "Character string value." },
-            new() { Value = Date, Description = "Calendar date without a time of day or time zone." },
-            new() { Value = Datetime, Description = "Date and time without a request-specific time zone conversion." },
-            new() { Value = Timestamp, Description = "Instant interpreted with the declared source time zone semantics." },
-            new() { Value = Json, Description = "JSON value exposed as a logical field." }
+            new() { Value = Boolean, Label = "Boolean", Description = "Logical true/false value." },
+            new() { Value = Int32, Label = "Int32", Description = "Signed 32-bit integer." },
+            new() { Value = Int64, Label = "Int64", Description = "Signed 64-bit integer." },
+            new() { Value = Decimal, Label = "Decimal", Description = "Fixed-precision decimal; precision and scale are required where applicable." },
+            new() { Value = String, Label = "String", Description = "Character string value." },
+            new() { Value = Date, Label = "Date", Description = "Calendar date without a time of day or time zone." },
+            new() { Value = Datetime, Label = "Datetime", Description = "Date and time without a request-specific time zone conversion." },
+            new() { Value = Timestamp, Label = "Timestamp", Description = "Instant interpreted with the declared source time zone semantics." },
+            new() { Value = Json, Label = "Json", Description = "JSON value exposed as a logical field." }
         ]
     };
 }

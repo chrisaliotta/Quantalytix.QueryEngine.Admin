@@ -19,13 +19,14 @@ public static class PublicationStatuses
     public static readonly Vocabulary Definition = new()
     {
         Name = "publication_status",
+        Key = "versionStatus",
         Description = "Lifecycle state of a versioned semantic object.",
         Values =
         [
-            new() { Value = Draft, Description = "Editable metadata under construction; never used by runtime queries." },
-            new() { Value = Validated, Description = "Passed metadata validation but is not yet runtime-active." },
-            new() { Value = Published, Description = "Immutable definition eligible for runtime activation or a publication manifest." },
-            new() { Value = Retired, Description = "Historical published definition no longer eligible for new releases." }
+            new() { Value = Draft, Label = "Draft", Description = "Editable metadata under construction; never used by runtime queries." },
+            new() { Value = Validated, Label = "Validated", Description = "Passed metadata validation but is not yet runtime-active." },
+            new() { Value = Published, Label = "Published", Description = "Immutable definition eligible for runtime activation or a publication manifest." },
+            new() { Value = Retired, Label = "Retired", Description = "Historical published definition no longer eligible for new releases." }
         ]
     };
 }

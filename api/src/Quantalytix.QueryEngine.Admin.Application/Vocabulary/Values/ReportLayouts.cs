@@ -16,11 +16,12 @@ public static class ReportLayouts
     public static readonly Vocabulary Definition = new()
     {
         Name = "report_layout",
+        Key = "layout",
         Description = "How a request's result filter, ordering and paging treat a report's rows.",
         Values =
         [
-            new() { Value = Statement, Description = "The lines and periods keep their order; requests filter, order and page breakout rows within each." },
-            new() { Value = List, Description = "Requests filter, order and page the whole table." }
+            new() { Value = Statement, Label = "Statement", Description = "The lines and periods keep their order; requests filter, order and page breakout rows within each." },
+            new() { Value = List, Label = "List", Description = "Requests filter, order and page the whole table." }
         ]
     };
 }

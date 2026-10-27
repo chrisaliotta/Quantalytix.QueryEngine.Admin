@@ -13,11 +13,12 @@ public static class DurationUnits
     public static readonly Vocabulary Definition = new()
     {
         Name = "duration_unit",
+        Key = "durationUnit",
         Description = "The unit interval durations are weighted by.",
         Values =
         [
-            new() { Value = CalendarDay, Description = "Weight by calendar-day count; suits date-based daily averages." },
-            new() { Value = ElapsedSecond, Description = "Weight by elapsed seconds between timestamp boundaries; relevant across daylight-saving shifts." }
+            new() { Value = CalendarDay, Label = "Calendar day", Description = "Weight by calendar-day count; suits date-based daily averages." },
+            new() { Value = ElapsedSecond, Label = "Elapsed second", Description = "Weight by elapsed seconds between timestamp boundaries; relevant across daylight-saving shifts." }
         ]
     };
 }

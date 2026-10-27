@@ -25,14 +25,15 @@ public static class DayCountConventions
     public static readonly Vocabulary Definition = new()
     {
         Name = "day_count_convention",
+        Key = "dayCountConvention",
         Description = "How YEARFRAC counts the days of a period and of its year.",
         Values =
         [
-            new() { Value = ActualActual, Description = "Actual days over the days of the start date's year, 365 or 366." },
-            new() { Value = Actual365, Description = "Actual days over 365." },
-            new() { Value = Actual360, Description = "Actual days over 360." },
-            new() { Value = Thirty360Us, Description = "30/360 US (NASD): 30-day months, with February month ends and 31sts adjusted, over 360." },
-            new() { Value = ThirtyE360, Description = "30E/360 (Eurobond basis): 30-day months, with every 31st counted as the 30th, over 360." }
+            new() { Value = ActualActual, Label = "Actual actual", Description = "Actual days over the days of the start date's year, 365 or 366." },
+            new() { Value = Actual365, Label = "Actual 365", Description = "Actual days over 365." },
+            new() { Value = Actual360, Label = "Actual 360", Description = "Actual days over 360." },
+            new() { Value = Thirty360Us, Label = "Thirty 360 us", Description = "30/360 US (NASD): 30-day months, with February month ends and 31sts adjusted, over 360." },
+            new() { Value = ThirtyE360, Label = "Thirty e 360", Description = "30E/360 (Eurobond basis): 30-day months, with every 31st counted as the 30th, over 360." }
         ]
     };
 

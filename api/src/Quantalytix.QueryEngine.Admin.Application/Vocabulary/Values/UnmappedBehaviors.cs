@@ -16,12 +16,13 @@ public static class UnmappedBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "unmapped_behavior",
+        Key = "unmappedBehavior",
         Description = "What happens to a source value that no mapping covers.",
         Values =
         [
-            new() { Value = Null, Description = "Expose a null dimension member (the default)." },
-            new() { Value = Exclude, Description = "The row does not contribute through the binding." },
-            new() { Value = Unknown, Description = "Route the row to the binding's unknown member." }
+            new() { Value = Null, Label = "Null", Description = "Expose a null dimension member (the default)." },
+            new() { Value = Exclude, Label = "Exclude", Description = "The row does not contribute through the binding." },
+            new() { Value = Unknown, Label = "Unknown", Description = "Route the row to the binding's unknown member." }
         ]
     };
 }

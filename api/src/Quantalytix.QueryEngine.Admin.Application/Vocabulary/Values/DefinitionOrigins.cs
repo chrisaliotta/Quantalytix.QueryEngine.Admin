@@ -13,11 +13,12 @@ public static class DefinitionOrigins
     public static readonly Vocabulary Definition = new()
     {
         Name = "definition_origin",
+        Key = "definitionOrigin",
         Description = "Who defined a dimension.",
         Values =
         [
-            new() { Value = System, Description = "Platform fixture." },
-            new() { Value = User, Description = "Tenant or user-defined dimension." }
+            new() { Value = System, Label = "System", Description = "Platform fixture." },
+            new() { Value = User, Label = "User", Description = "Tenant or user-defined dimension." }
         ]
     };
 }

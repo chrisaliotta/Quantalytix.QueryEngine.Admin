@@ -13,11 +13,12 @@ public static class EmptySetBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "empty_set_behavior",
+        Key = "emptySetBehavior",
         Description = "What a measure returns when no inputs are eligible.",
         Values =
         [
-            new() { Value = Null, Description = "No eligible inputs produces null (the default)." },
-            new() { Value = Zero, Description = "No eligible inputs produces zero." }
+            new() { Value = Null, Label = "Null", Description = "No eligible inputs produces null (the default)." },
+            new() { Value = Zero, Label = "Zero", Description = "No eligible inputs produces zero." }
         ]
     };
 }

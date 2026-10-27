@@ -13,11 +13,12 @@ public static class ReportMappingMethods
     public static readonly Vocabulary Definition = new()
     {
         Name = "report_mapping_method",
+        Key = "mappingMethod",
         Description = "How a report source's rows reach the report's rows.",
         Values =
         [
-            new() { Value = Direct, Description = "A field of the dataset holds row keys of the report." },
-            new() { Value = Bridge, Description = "The source's own bridge maps the members of a role the dataset binds to rows of the report." }
+            new() { Value = Direct, Label = "Direct", Description = "A field of the dataset holds row keys of the report." },
+            new() { Value = Bridge, Label = "Bridge", Description = "The source's own bridge maps the members of a role the dataset binds to rows of the report." }
         ]
     };
 }

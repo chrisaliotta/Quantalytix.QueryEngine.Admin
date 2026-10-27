@@ -13,11 +13,12 @@ public static class SubtotalPositions
     public static readonly Vocabulary Definition = new()
     {
         Name = "subtotal_position",
+        Key = "subtotalPosition",
         Description = "Where a member row that shows values sits relative to its descendants.",
         Values =
         [
-            new() { Value = Above, Description = "Before its descendants." },
-            new() { Value = Below, Description = "After its descendants." }
+            new() { Value = Above, Label = "Above", Description = "Before its descendants." },
+            new() { Value = Below, Label = "Below", Description = "After its descendants." }
         ]
     };
 }

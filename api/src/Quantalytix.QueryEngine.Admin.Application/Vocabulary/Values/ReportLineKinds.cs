@@ -16,8 +16,8 @@ public static class ReportLineKinds
         Description = "What an overlay row adds to the rows of the report dimension's members.",
         Values =
         [
-            new() { Value = Section, Description = "A header that groups the rows beneath it and holds no values." },
-            new() { Value = Formula, Description = "One calculated measure evaluated at report scope and placed in one column." }
+            new() { Value = Section, Label = "Section", Description = "A header that groups the rows beneath it and holds no values." },
+            new() { Value = Formula, Label = "Formula", Description = "One calculated measure evaluated at report scope and placed in one column." }
         ]
     };
 }

@@ -13,11 +13,12 @@ public static class CumulativeOrigins
     public static readonly Vocabulary Definition = new()
     {
         Name = "cumulative_origin",
+        Key = "cumulativeOrigin",
         Description = "Where cumulative calculations over a time binding begin.",
         Values =
         [
-            new() { Value = OutputRangeStart, Description = "Cumulative calculations begin at the request's output range start." },
-            new() { Value = FixedStart, Description = "Cumulative calculations begin at the binding's cumulative fixed start." }
+            new() { Value = OutputRangeStart, Label = "Output range start", Description = "Cumulative calculations begin at the request's output range start." },
+            new() { Value = FixedStart, Label = "Fixed start", Description = "Cumulative calculations begin at the binding's cumulative fixed start." }
         ]
     };
 }

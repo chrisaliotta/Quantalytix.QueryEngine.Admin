@@ -22,14 +22,15 @@ public static class RoundingModes
     public static readonly Vocabulary Definition = new()
     {
         Name = "rounding_mode",
+        Key = "roundingMode",
         Description = "How the client rounds a measure's output to its output scale for display.",
         Values =
         [
-            new() { Value = HalfEven, Description = "Banker's rounding; ties go to the even neighbor." },
-            new() { Value = HalfUp, Description = "Ties round away from zero, in conventional financial style." },
-            new() { Value = Down, Description = "Round toward negative infinity." },
-            new() { Value = Up, Description = "Round toward positive infinity." },
-            new() { Value = Truncate, Description = "Drop excess scale toward zero." }
+            new() { Value = HalfEven, Label = "Half even", Description = "Banker's rounding; ties go to the even neighbor." },
+            new() { Value = HalfUp, Label = "Half up", Description = "Ties round away from zero, in conventional financial style." },
+            new() { Value = Down, Label = "Down", Description = "Round toward negative infinity." },
+            new() { Value = Up, Label = "Up", Description = "Round toward positive infinity." },
+            new() { Value = Truncate, Label = "Truncate", Description = "Drop excess scale toward zero." }
         ]
     };
 }

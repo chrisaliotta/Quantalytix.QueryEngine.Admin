@@ -19,12 +19,13 @@ public static class FormulaLanguageVersions
     public static readonly Vocabulary Definition = new()
     {
         Name = "formula_language_version",
+        Key = "formulaLanguageVersion",
         Description = "The expression grammar of a calculation model's formulas and attribution expressions.",
         Values =
         [
-            new() { Value = Version10, Description = "Arithmetic, comparisons, CASE, COALESCE, NULLIF and ABS." },
-            new() { Value = Version11, Description = "Language 1.0 plus POWER(x, y)." },
-            new() { Value = Version12, Description = "Language 1.1 plus declared parameters (@key), text comparisons and YEARFRAC(convention)." }
+            new() { Value = Version10, Label = "1.0", Description = "Arithmetic, comparisons, CASE, COALESCE, NULLIF and ABS." },
+            new() { Value = Version11, Label = "1.1", Description = "Language 1.0 plus POWER(x, y)." },
+            new() { Value = Version12, Label = "1.2", Description = "Language 1.1 plus declared parameters (@key), text comparisons and YEARFRAC(convention)." }
         ]
     };
 

@@ -22,14 +22,15 @@ public static class ObservationSelections
     public static readonly Vocabulary Definition = new()
     {
         Name = "observation_selection",
+        Key = "observationSelection",
         Description = "Which observations of each series a time-aware measure uses.",
         Values =
         [
-            new() { Value = All, Description = "Use every eligible observation in the interval; typical for flow sums and period averages." },
-            new() { Value = FirstInPeriod, Description = "Select the earliest observation inside each requested period for each series." },
-            new() { Value = LastInPeriod, Description = "Select the latest observation inside each requested period for each series." },
-            new() { Value = AtStart, Description = "Resolve state at the period's inclusive start boundary using the boundary match and lookback rules." },
-            new() { Value = AtEnd, Description = "Resolve state at the period's exclusive end boundary using the boundary match rules." }
+            new() { Value = All, Label = "All", Description = "Use every eligible observation in the interval; typical for flow sums and period averages." },
+            new() { Value = FirstInPeriod, Label = "First in period", Description = "Select the earliest observation inside each requested period for each series." },
+            new() { Value = LastInPeriod, Label = "Last in period", Description = "Select the latest observation inside each requested period for each series." },
+            new() { Value = AtStart, Label = "At start", Description = "Resolve state at the period's inclusive start boundary using the boundary match and lookback rules." },
+            new() { Value = AtEnd, Label = "At end", Description = "Resolve state at the period's exclusive end boundary using the boundary match rules." }
         ]
     };
 }

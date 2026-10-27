@@ -19,13 +19,14 @@ public static class FontWeights
     public static readonly Vocabulary Definition = new()
     {
         Name = "font_weight",
+        Key = "fontWeight",
         Description = "How heavy a report style sets its rows' text.",
         Values =
         [
-            new() { Value = Normal, Description = "Regular text, CSS weight 400." },
-            new() { Value = Medium, Description = "CSS weight 500." },
-            new() { Value = Semibold, Description = "CSS weight 600." },
-            new() { Value = Bold, Description = "CSS weight 700." }
+            new() { Value = Normal, Label = "Normal", Description = "Regular text, CSS weight 400." },
+            new() { Value = Medium, Label = "Medium", Description = "CSS weight 500." },
+            new() { Value = Semibold, Label = "Semibold", Description = "CSS weight 600." },
+            new() { Value = Bold, Label = "Bold", Description = "CSS weight 700." }
         ]
     };
 }

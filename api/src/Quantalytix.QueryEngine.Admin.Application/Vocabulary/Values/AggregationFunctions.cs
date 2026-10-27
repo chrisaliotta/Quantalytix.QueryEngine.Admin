@@ -25,15 +25,16 @@ public static class AggregationFunctions
     public static readonly Vocabulary Definition = new()
     {
         Name = "aggregation_function",
+        Key = "aggregationFunction",
         Description = "Aggregate function of an ordinary aggregate measure.",
         Values =
         [
-            new() { Value = Sum, Description = "Sum of the values." },
-            new() { Value = Avg, Description = "Arithmetic mean of the values." },
-            new() { Value = Min, Description = "Smallest value." },
-            new() { Value = Max, Description = "Largest value." },
-            new() { Value = Count, Description = "Number of non-null values, or of rows when the measure has no value component." },
-            new() { Value = CountDistinct, Description = "Number of distinct non-null values." }
+            new() { Value = Sum, Label = "Sum", Description = "Sum of the values." },
+            new() { Value = Avg, Label = "Avg", Description = "Arithmetic mean of the values." },
+            new() { Value = Min, Label = "Min", Description = "Smallest value." },
+            new() { Value = Max, Label = "Max", Description = "Largest value." },
+            new() { Value = Count, Label = "Count", Description = "Number of non-null values, or of rows when the measure has no value component." },
+            new() { Value = CountDistinct, Label = "Count distinct", Description = "Number of distinct non-null values." }
         ]
     };
 }

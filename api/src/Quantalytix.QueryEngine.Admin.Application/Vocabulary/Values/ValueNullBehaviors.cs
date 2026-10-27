@@ -13,11 +13,12 @@ public static class ValueNullBehaviors
     public static readonly Vocabulary Definition = new()
     {
         Name = "value_null_behavior",
+        Key = "valueNullBehavior",
         Description = "How a measure treats a null value.",
         Values =
         [
-            new() { Value = Exclude, Description = "Remove the row or pair from the calculation, from numerator and denominator together (the default)." },
-            new() { Value = Zero, Description = "Treat a null value as zero while keeping the other eligibility rules." }
+            new() { Value = Exclude, Label = "Exclude", Description = "Remove the row or pair from the calculation, from numerator and denominator together (the default)." },
+            new() { Value = Zero, Label = "Zero", Description = "Treat a null value as zero while keeping the other eligibility rules." }
         ]
     };
 }
