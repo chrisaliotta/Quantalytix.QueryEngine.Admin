@@ -78,7 +78,7 @@ function withIdentity(d: DatasetFieldInput, p: Partial<DatasetFieldInput>): Data
 }
 
 /** Dataset name, key and the table it reads, editable in place. A new dataset's table follows its key until renamed. */
-function DatasetIdentity({ version, autoFocus }: { version: DatasetVersion; autoFocus?: boolean }) {
+function DatasetIdentity({ version }: { version: DatasetVersion }) {
   const api = useDatasetsApi()
   const { data: dataset } = useDataset(version.datasetId)
   const { data: sources } = useSourceObjects()
@@ -97,8 +97,6 @@ function DatasetIdentity({ version, autoFocus }: { version: DatasetVersion; auto
           <CommitInput
             id="ds-name"
             value={dataset.displayName}
-            autoFocus={autoFocus}
-            onFocus={(e) => autoFocus && e.currentTarget.select()}
             aria-invalid={!!errorsFor('displayName')}
             onCommit={(v) => v.trim() && run(() => api.updateDataset(dataset.id, { displayName: v.trim() }))}
           />
@@ -121,7 +119,7 @@ function DatasetIdentity({ version, autoFocus }: { version: DatasetVersion; auto
   )
 }
 
-export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, isNew }: SectionProps) {
+export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen }: SectionProps) {
   const api = useDatasetsApi()
   const refresh = useRefreshDatasets()
   const { data: vocab } = useVocabularies()
@@ -201,7 +199,7 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
 
   return (
     <div className="flex flex-col gap-4">
-      <DatasetIdentity version={version} autoFocus={isNew} />
+      <DatasetIdentity version={version} />
       <SectionHeader
         title="Fields"
         help="Logical columns of the dataset. Grains, bindings, measures and row filters all point at fields, so a JSON property can later become a real column without changing a request."

@@ -1,9 +1,9 @@
 import { BracesIcon, ClipboardCheckIcon, Columns3Icon, FingerprintIcon, LinkIcon, SettingsIcon, SigmaIcon, type LucideIcon } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { DatasetEditScope, useDataset, useDatasetsApi, useVersion } from '@/lib/datasets/client'
+import { DatasetEditScope, useDataset, useVersion } from '@/lib/datasets/client'
 import { useSearchParam } from '@/lib/navigation'
-import { useChangeScope, useNavigationGuard } from '@/components/shell/changes'
+import { useNavigationGuard } from '@/components/shell/changes'
 import type { DatasetTab, DatasetVersion, DatasetValidationReport } from '@/lib/datasets/contract'
 import { DetailShell, PageMessage, SectionNav, type NavGroup } from '@/components/shell/page-shell'
 import { BindingsSection } from './bindings-section'
@@ -23,8 +23,6 @@ export interface SectionProps {
   editingId: string | null
   onEdit: (id: string | null) => void
   onOpen: (tab: DatasetTab, itemId: string | null) => void
-  /** The dataset was just created in this editor and has not been saved yet. */
-  isNew?: boolean
 }
 
 const NAV: { id: Section; label: string; icon: LucideIcon; count?: (v: DatasetVersion) => number }[] = [
@@ -35,72 +33,16 @@ const NAV: { id: Section; label: string; icon: LucideIcon; count?: (v: DatasetVe
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ]
 
-/** `datasetId: null` opens the editor on a new, unsaved dataset; `onCreated` fires once it is saved. */
-export function DatasetDetail({ datasetId, onBack, onCreated }: { datasetId: string | null; onBack: () => void; onCreated?: (id: string) => void }) {
+export function DatasetDetail({ datasetId, onBack }: { datasetId: string; onBack: () => void }) {
   const { data: dataset } = useDataset(datasetId)
   return (
-    <DatasetEditScope datasetId={datasetId ?? 'new'} label={dataset?.displayName ?? 'New dataset'}>
-      {datasetId ? <DatasetDetailBody datasetId={datasetId} onBack={onBack} /> : <NewDataset onBack={onBack} onCreated={onCreated ?? (() => {})} />}
+    <DatasetEditScope datasetId={datasetId} label={dataset?.displayName ?? 'Dataset'}>
+      <DatasetDetailBody datasetId={datasetId} onBack={onBack} />
     </DatasetEditScope>
   )
 }
 
-/**
- * Stages an empty managed table + draft so the regular editor can fill it in. Nothing persists until Save;
- * Discard, Undo or leaving drops it, which sends the user back to the list.
- */
-function NewDataset({ onBack, onCreated }: { onBack: () => void; onCreated: (id: string) => void }) {
-  const api = useDatasetsApi()
-  const scope = useChangeScope()
-  const started = useRef(false)
-  const wasDirty = useRef(false)
-  const [id, setId] = useState<string | null>(null)
-  const [failure, setFailure] = useState<string | null>(null)
-  const count = scope?.count ?? 0
-
-  useEffect(() => {
-    if (started.current) return
-    started.current = true
-    void (async () => {
-      const [list, sources] = await Promise.all([api.listDatasets(), api.listSourceObjects()])
-      const taken = new Set<string>([...list.map((d) => d.key), ...sources.map((s) => s.name)])
-      let n = 1
-      const key = () => (n === 1 ? 'untitled' : `untitled_${n}`)
-      while (taken.has(key())) n++
-      const r = await api.createDataset({ mode: 'new', key: key(), displayName: n === 1 ? 'Untitled dataset' : `Untitled dataset ${n}`, tableName: key(), columns: [] })
-      if (r.ok) setId(r.data.id)
-      else setFailure(r.problem.title)
-    })()
-  }, [api])
-
-  useEffect(() => {
-    if (!id) return
-    if (count > 0) {
-      wasDirty.current = true
-      return
-    }
-    if (!wasDirty.current) return
-    void api.getDataset(id).then((r) => (r.ok ? onCreated(id) : onBack()))
-  }, [id, count, api, onCreated, onBack])
-
-  if (failure) {
-    return (
-      <PageMessage
-        action={
-          <Button size="sm" variant="outline" onClick={onBack}>
-            Back to datasets
-          </Button>
-        }
-      >
-        {failure}
-      </PageMessage>
-    )
-  }
-  if (!id) return <PageMessage>Preparing new dataset…</PageMessage>
-  return <DatasetDetailBody datasetId={id} onBack={onBack} isNew />
-}
-
-function DatasetDetailBody({ datasetId, onBack, isNew }: { datasetId: string; onBack: () => void; isNew?: boolean }) {
+function DatasetDetailBody({ datasetId, onBack }: { datasetId: string; onBack: () => void }) {
   const guard = useNavigationGuard()
   const { data: dataset, error } = useDataset(datasetId)
   const [versionParam, setVersionParam] = useSearchParam('version')
@@ -184,7 +126,7 @@ function DatasetDetailBody({ datasetId, onBack, isNew }: { datasetId: string; on
       ) : section === 'readiness' ? (
         <ReadinessSection version={version} report={report} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} onOpen={go} />
       ) : (
-        <SectionBody section={section} props={{ version, readOnly, editingId, onEdit: setEditingId, onOpen: go, isNew }} />
+        <SectionBody section={section} props={{ version, readOnly, editingId, onEdit: setEditingId, onOpen: go }} />
       )}
     </DetailShell>
   )

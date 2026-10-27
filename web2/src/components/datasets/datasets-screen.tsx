@@ -6,15 +6,11 @@ import { Input } from '@/components/ui/input'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { ListPage } from '@/components/shell/page-shell'
 import { useDatasetList, useDatasetsApi, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetSourceObjectKind, DatasetSourceObjectStats } from '@/lib/datasets/contract'
+import type { DatasetCreateInput, DatasetSourceObjectKind, DatasetSourceObjectStats } from '@/lib/datasets/contract'
 import { DatasetDetail } from './dataset-detail'
 import { FormRow, ProblemBanner, StatusBadge, Td, Th, VocabSelect, useApiCall } from './shared'
 
-/** `datasetId` value that opens the editor on a new, unsaved dataset. */
-export const NEW_DATASET = 'new'
-
 export function DatasetsScreen({ datasetId, onSelect }: { datasetId: string | null; onSelect: (id: string | null) => void }) {
-  if (datasetId === NEW_DATASET) return <DatasetDetail datasetId={null} onBack={() => onSelect(null)} onCreated={onSelect} />
   if (datasetId) return <DatasetDetail key={datasetId} datasetId={datasetId} onBack={() => onSelect(null)} />
   return <DatasetList onOpen={onSelect} />
 }
@@ -22,7 +18,7 @@ export function DatasetsScreen({ datasetId, onSelect }: { datasetId: string | nu
 function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, isLoading } = useDatasetList()
   const [query, setQuery] = useState('')
-  const [adding, setAdding] = useState(false)
+  const [creating, setCreating] = useState<DatasetCreateInput['mode'] | null>(null)
   const q = query.trim().toLowerCase()
   const rows = (data ?? []).filter((d) => !q || d.displayName.toLowerCase().includes(q) || d.key.toLowerCase().includes(q))
 
@@ -32,10 +28,10 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
       description="Describe a tenant table or view so the engine can read it: fields, grains, dimension bindings and measures, versioned and published through releases."
       actions={
         <>
-          <Button variant="outline" onClick={() => setAdding(true)}>
+          <Button variant="outline" onClick={() => setCreating('existing')}>
             <DatabaseIcon /> Add existing
           </Button>
-          <Button onClick={() => onOpen(NEW_DATASET)}>
+          <Button onClick={() => setCreating('new')}>
             <PlusIcon /> New dataset
           </Button>
         </>
@@ -111,7 +107,7 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
             </tbody>
           </table>
         </div>
-      {adding && <AddExistingDialog onClose={() => setAdding(false)} onCreated={onOpen} />}
+      {creating && <CreateDatasetDialog mode={creating} onClose={() => setCreating(null)} onCreated={onOpen} />}
     </ListPage>
   )
 }
@@ -153,7 +149,23 @@ function StorageCells({ storage }: { storage: DatasetSourceObjectStats | null })
   )
 }
 
-function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+const CREATE_COPY = {
+  existing: {
+    title: 'Add existing dataset',
+    description: 'Links a table or view that already exists. Draft version 1 maps every readable column to a field.',
+    action: 'Add dataset',
+    pending: 'Adding…',
+  },
+  new: {
+    title: 'New dataset',
+    description: 'Creates a managed table for the dataset. Add fields afterwards; each one can create its column on the table.',
+    action: 'Create dataset',
+    pending: 'Creating…',
+  },
+} as const
+
+/** Asks for the dataset key up front, because keys are fixed once created (OI-36). */
+function CreateDatasetDialog({ mode, onClose, onCreated }: { mode: DatasetCreateInput['mode']; onClose: () => void; onCreated: (id: string) => void }) {
   const api = useDatasetsApi()
   const { data: vocab } = useVocabularies()
   const { data: sources } = useSourceObjects()
@@ -162,9 +174,16 @@ function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCrea
   const [name, setName] = useState('')
   const [kind, setKind] = useState<DatasetSourceObjectKind>('table')
   const [object, setObject] = useState('')
+  const [tableName, setTableName] = useState('')
+  const copy = CREATE_COPY[mode]
 
   async function create() {
-    const d = await run(() => api.createDataset({ mode: 'existing', key: key.trim(), displayName: name, sourceObjectKind: kind, sourceObject: object }))
+    const identity = { key: key.trim(), displayName: name.trim() }
+    const input: DatasetCreateInput =
+      mode === 'existing'
+        ? { mode, ...identity, sourceObjectKind: kind, sourceObject: object }
+        : { mode, ...identity, tableName: tableName.trim(), columns: [] }
+    const d = await run(() => api.createDataset(input))
     if (d) {
       onClose()
       onCreated(d.id)
@@ -175,40 +194,48 @@ function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCrea
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add existing dataset</DialogTitle>
-          <DialogDescription>Links a table or view that already exists. Draft version 1 maps every readable column to a field.</DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {problem && !Object.keys(problem.errors).length && <ProblemBanner problem={problem} />}
           <div className="grid gap-4 sm:grid-cols-2">
             <FormRow label="Display name" htmlFor="nd-name" errors={errorsFor('displayName')}>
-              <Input id="nd-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Daily deposits" aria-invalid={!!errorsFor('displayName')} />
+              <Input id="nd-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Daily deposits" aria-invalid={!!errorsFor('displayName')} autoFocus />
             </FormRow>
-            <FormRow label="Dataset key" htmlFor="nd-key" errors={errorsFor('key')} hint="Stable identifier, e.g. deposits.daily">
+            <FormRow label="Dataset key" htmlFor="nd-key" errors={errorsFor('key')} hint="Query requests name the dataset by this key. Fixed after creation.">
               <Input id="nd-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="deposits.daily" className="font-mono" aria-invalid={!!errorsFor('key')} />
             </FormRow>
-            <FormRow label="Source kind" htmlFor="nd-kind" errors={errorsFor('sourceObjectKind')}>
-              <VocabSelect
-                id="nd-kind"
-                terms={vocab?.sourceObjectKind}
-                value={kind}
-                onChange={(v) => {
-                  setKind(v ?? 'table')
-                  setObject('')
-                }}
-              />
-            </FormRow>
-            <FormRow label="Source object" htmlFor="nd-object" errors={errorsFor('sourceObject')}>
-              <SimpleSelect
-                id="nd-object"
-                value={object}
-                onChange={setObject}
-                placeholder="Choose…"
-                options={(sources ?? []).filter((s) => s.kind === kind).map((s) => ({ value: s.name, label: s.name, hint: s.isManaged ? 'managed' : undefined }))}
-                className="font-mono"
-              />
-            </FormRow>
+            {mode === 'existing' ? (
+              <>
+                <FormRow label="Source kind" htmlFor="nd-kind" errors={errorsFor('sourceObjectKind')}>
+                  <VocabSelect
+                    id="nd-kind"
+                    terms={vocab?.sourceObjectKind}
+                    value={kind}
+                    onChange={(v) => {
+                      setKind(v ?? 'table')
+                      setObject('')
+                    }}
+                  />
+                </FormRow>
+                <FormRow label="Source object" htmlFor="nd-object" errors={errorsFor('sourceObject')}>
+                  <SimpleSelect
+                    id="nd-object"
+                    value={object}
+                    onChange={setObject}
+                    placeholder="Choose…"
+                    options={(sources ?? []).filter((s) => s.kind === kind).map((s) => ({ value: s.name, label: s.name, hint: s.isManaged ? 'managed' : undefined }))}
+                    className="font-mono"
+                  />
+                </FormRow>
+              </>
+            ) : (
+              <FormRow label="Table name" htmlFor="nd-table" errors={errorsFor('tableName')} hint="The managed table the API creates in the tenant database.">
+                <Input id="nd-table" value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="daily_deposits" className="font-mono" aria-invalid={!!errorsFor('tableName')} />
+              </FormRow>
+            )}
           </div>
         </div>
 
@@ -217,7 +244,7 @@ function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCrea
             Cancel
           </Button>
           <Button onClick={create} disabled={saving}>
-            {saving ? 'Adding…' : 'Add dataset'}
+            {saving ? copy.pending : copy.action}
           </Button>
         </DialogFooter>
       </DialogContent>
