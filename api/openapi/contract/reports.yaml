@@ -6,6 +6,987 @@ openapi: 3.1.0
 info:
   title: Reports
   version: 1.0.0
-paths: {}
+paths:
+  /api/tenants/{tenantId}/reports:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+    get:
+      operationId: listReports
+      summary: List the tenant's reports.
+      tags: [reports]
+      responses:
+        '200':
+          description: Every report, enabled or not.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReportSummary' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+    post:
+      operationId: createReport
+      summary: Create a report, its report dimension and, when copying, its content.
+      description: >-
+        A new report starts disabled. Without `startFromDimensionId` or `copyFromReportId` its report dimension has a
+        single root row. `startFromDimensionId` copies the published members of a categorical or hierarchical dimension.
+        `copyFromReportId` copies another report's rows, sources, report bridges and content; with a `modelId` other
+        than that report's, whatever does not resolve in the new model is dropped (OI-47).
+      tags: [reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportCreateInput' }
+      responses:
+        '201':
+          description: The report was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportSummary' }
+        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The report key is taken. }
+
+  /api/tenants/{tenantId}/reports/{reportId}:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: getReport
+      summary: Read a report's whole document.
+      tags: [reports]
+      responses:
+        '200':
+          description: The report as stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDocument' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+    delete:
+      operationId: deleteReport
+      summary: Delete a report with its report dimension, report bridges and content.
+      description: Never blocked (P12).
+      tags: [reports]
+      responses:
+        '204':
+          description: The report and everything it owns were deleted.
+        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+
+  /api/tenants/{tenantId}/reports/{reportId}/diagnostics:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: getReportDiagnostics
+      summary: Check the stored report against the report rules, with coverage and profile resolution.
+      description: Serves the port's `getDiagnostics`. Pending edits are diagnosed by the change-set preview instead.
+      tags: [reports]
+      responses:
+        '200':
+          description: The diagnostics of the stored report.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDiagnostics' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+
+  /api/tenants/{tenantId}/reports/{reportId}/sources/{sourceKey}/unmapped:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+      - $ref: '#/components/parameters/ReportSourceKey'
+    get:
+      operationId: getReportUnmappedItems
+      summary: List the items a source reads that reach no row and are not left out.
+      description: >-
+        Serves the port's `getUnmappedItems`. Bridge sources list members of the role's dimension; direct sources list
+        values of the field that are not row keys.
+      tags: [reports]
+      responses:
+        '200':
+          description: Item keys, in the source dimension's order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound', description: 'No such report, or the report has no source with that key.' }
+
+  /api/tenants/{tenantId}/reports/{reportId}/changes/preview:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+    post:
+      operationId: previewReportChanges
+      summary: Apply staged report operations in memory and return the resulting document and diagnostics.
+      description: Never writes. Serves every edit method of the port (01, Change-set protocol).
+      tags: [reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportChangeSetRequest' }
+      responses:
+        '200':
+          description: Every operation applies.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportChangeSetPreview' }
+        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'An operation names a row, source, profile, dimension or style the report does not have.' }
+        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'The report is enabled and the result fails the report gate, or a cascade is refused.' }
+
+  /api/tenants/{tenantId}/reports/{reportId}/changes:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+    post:
+      operationId: commitReportChanges
+      summary: Apply and write staged report operations as one batch.
+      description: Replays the operations onto the stored report; any failure writes nothing. Serves `commitChanges`.
+      tags: [reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportChangeSetRequest' }
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportChangeSetCommit' }
+        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'An operation names a row, source, profile, dimension or style the report does not have.' }
+        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'The report is enabled and the result fails the report gate, or a cascade is refused.' }
+
+  /api/tenants/{tenantId}/reports/{reportId}/enabled:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportId'
+    put:
+      operationId: setReportEnabled
+      summary: Enable or disable a report.
+      description: Serves the port's `setEnabled`. Enabling runs every report rule on the stored report.
+      tags: [reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportEnabledInput' }
+      responses:
+        '200':
+          description: The report's new state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportSummary' }
+        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
+        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'A report rule fails; the report stays disabled.' }
+
 components:
-  schemas: {}
+  parameters:
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { $ref: './common.yaml#/components/schemas/Id' }
+    ReportSourceKey:
+      name: sourceKey
+      in: path
+      required: true
+      schema: { type: string }
+
+  schemas:
+    # ───────────── vocabularies ─────────────
+
+    ReportPeriodicity:
+      type: string
+      enum: [day, month, quarter, year]
+    ReportLayout:
+      type: string
+      enum: [statement, list]
+    ReportSubtotalPosition:
+      type: string
+      enum: [above, below]
+    ReportRowKind:
+      type: string
+      description: >-
+        `data` and `group` rows are report dimension members (a `group` has members under it); `section` and `formula`
+        rows are overlay lines (OI-48).
+      enum: [data, group, section, formula]
+    ReportMappingMethod:
+      type: string
+      description: '`bridge` reaches rows through the source''s report bridge; `direct` matches a field''s values to row keys.'
+      enum: [bridge, direct]
+    ReportSelectionScope:
+      type: string
+      description: '`exact` needs a leaf member.'
+      enum: [exact, descendants]
+    ReportRuleSelection:
+      type: string
+      enum: [member, descendants]
+    ReportMissingBehavior:
+      type: string
+      enum: ['null', zero]
+    ReportStyleRole:
+      type: string
+      enum: [header, subtotal, total, detail, formula]
+    ReportFontWeight:
+      type: string
+      enum: [normal, medium, semibold, bold]
+    ReportBorderStyle:
+      type: string
+      enum: [none, thin, medium, thick, double]
+    ReportColumnValueKind:
+      type: string
+      enum: [variable, calculated]
+
+    # ───────────── grouping and filters ─────────────
+
+    ReportGrouping:
+      description: How a role's members group.
+      oneOf:
+        - $ref: '#/components/schemas/ReportGroupingMember'
+        - $ref: '#/components/schemas/ReportGroupingLevel'
+        - $ref: '#/components/schemas/ReportGroupingAncestor'
+        - $ref: '#/components/schemas/ReportGroupingDepth'
+      discriminator:
+        propertyName: mode
+        mapping:
+          member: '#/components/schemas/ReportGroupingMember'
+          level: '#/components/schemas/ReportGroupingLevel'
+          ancestor: '#/components/schemas/ReportGroupingAncestor'
+          depth: '#/components/schemas/ReportGroupingDepth'
+    ReportGroupingMember:
+      type: object
+      required: [mode]
+      properties:
+        mode: { const: member }
+    ReportGroupingLevel:
+      type: object
+      required: [mode, levelKey]
+      properties:
+        mode: { const: level }
+        levelKey: { type: string }
+    ReportGroupingAncestor:
+      type: object
+      required: [mode, memberKey]
+      properties:
+        mode: { const: ancestor }
+        memberKey: { type: string }
+    ReportGroupingDepth:
+      type: object
+      required: [mode, depth]
+      properties:
+        mode: { const: depth }
+        depth: { type: integer, minimum: 0 }
+
+    ReportFilterNode:
+      description: >-
+        The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and
+        `source_filter_json`. A dimension operand's grouping uses `ReportGrouping`; the server serializes it into the
+        engine's shape (OI-54).
+      oneOf:
+        - $ref: '#/components/schemas/ReportFilterLogical'
+        - $ref: '#/components/schemas/ReportFilterNot'
+        - $ref: '#/components/schemas/ReportFilterComparison'
+        - $ref: '#/components/schemas/ReportFilterIn'
+        - $ref: '#/components/schemas/ReportFilterNullCheck'
+    ReportFilterLogical:
+      type: object
+      required: [operator, operands]
+      properties:
+        operator: { type: string, enum: [and, or] }
+        operands:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ReportFilterNode' }
+    ReportFilterNot:
+      type: object
+      required: [operator, operand]
+      properties:
+        operator: { const: not }
+        operand: { $ref: '#/components/schemas/ReportFilterNode' }
+    ReportFilterComparison:
+      type: object
+      required: [operator, left, right]
+      properties:
+        operator: { type: string, enum: [eq, ne, lt, le, gt, ge] }
+        left: { $ref: '#/components/schemas/ReportFilterOperand' }
+        right: { $ref: '#/components/schemas/ReportFilterOperand' }
+    ReportFilterIn:
+      type: object
+      required: [operator, left, values]
+      properties:
+        operator: { const: in }
+        left: { $ref: '#/components/schemas/ReportFilterOperand' }
+        values:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ReportFilterOperand' }
+    ReportFilterNullCheck:
+      type: object
+      required: [operator, operand]
+      properties:
+        operator: { type: string, enum: [isNull, isNotNull] }
+        operand: { $ref: '#/components/schemas/ReportFilterOperand' }
+    ReportFilterOperand:
+      oneOf:
+        - $ref: '#/components/schemas/ReportFilterReferenceOperand'
+        - $ref: '#/components/schemas/ReportFilterDimensionOperand'
+        - $ref: '#/components/schemas/ReportFilterLiteralOperand'
+      discriminator:
+        propertyName: type
+        mapping:
+          field: '#/components/schemas/ReportFilterReferenceOperand'
+          measure: '#/components/schemas/ReportFilterReferenceOperand'
+          parameter: '#/components/schemas/ReportFilterReferenceOperand'
+          dimension: '#/components/schemas/ReportFilterDimensionOperand'
+          literal: '#/components/schemas/ReportFilterLiteralOperand'
+    ReportFilterReferenceOperand:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [field, measure, parameter] }
+        id: { type: string, description: 'The field, measure or parameter key.' }
+    ReportFilterDimensionOperand:
+      type: object
+      required: [type, id]
+      properties:
+        type: { const: dimension }
+        id: { type: string, description: The calculation dimension key. }
+        grouping: { $ref: '#/components/schemas/ReportGrouping' }
+    ReportFilterLiteralOperand:
+      type: object
+      required: [type, value]
+      properties:
+        type: { const: literal }
+        value: { type: [string, number, boolean, 'null'] }
+
+    # ───────────── read models ─────────────
+
+    ReportSummary:
+      type: object
+      required: [id, key, displayName, reportType, modelId, modelKey, isEnabled, periodicity, profileCount, sourceCount]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/Id' }
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        reportType: { type: string }
+        modelId: { $ref: './common.yaml#/components/schemas/Id' }
+        modelKey: { type: string }
+        isEnabled: { type: boolean }
+        periodicity:
+          oneOf:
+            - $ref: '#/components/schemas/ReportPeriodicity'
+            - type: 'null'
+        profileCount: { type: integer, minimum: 0 }
+        sourceCount: { type: integer, minimum: 0 }
+
+    ReportSettings:
+      type: object
+      required: [displayName, reportType, subtotalPosition, defaultProfileKey, periodicity, layout, defaultBreakout, defaultFilter]
+      properties:
+        displayName: { type: string }
+        reportType: { type: string }
+        subtotalPosition: { $ref: '#/components/schemas/ReportSubtotalPosition' }
+        defaultProfileKey: { type: [string, 'null'] }
+        periodicity:
+          oneOf:
+            - $ref: '#/components/schemas/ReportPeriodicity'
+            - type: 'null'
+        layout: { $ref: '#/components/schemas/ReportLayout' }
+        defaultBreakout:
+          type: array
+          description: Calculation dimension keys.
+          items: { type: string }
+        defaultFilter:
+          description: Filter over calculation dimension keys.
+          oneOf:
+            - $ref: '#/components/schemas/ReportFilterNode'
+            - type: 'null'
+
+    ReportSettingsPatch:
+      type: object
+      description: The settings to change; absent properties keep their value.
+      properties:
+        displayName: { type: string }
+        reportType: { type: string }
+        subtotalPosition: { $ref: '#/components/schemas/ReportSubtotalPosition' }
+        defaultProfileKey: { type: [string, 'null'] }
+        periodicity:
+          oneOf:
+            - $ref: '#/components/schemas/ReportPeriodicity'
+            - type: 'null'
+        layout: { $ref: '#/components/schemas/ReportLayout' }
+        defaultBreakout:
+          type: array
+          items: { type: string }
+        defaultFilter:
+          oneOf:
+            - $ref: '#/components/schemas/ReportFilterNode'
+            - type: 'null'
+
+    ReportRow:
+      type: object
+      required: [key, label, kind, parentKey, isVisible, showsValues, calculatedMeasureKey, valueColumnKey, styleKey, parameters]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        label: { type: string }
+        kind: { $ref: '#/components/schemas/ReportRowKind' }
+        parentKey: { type: [string, 'null'] }
+        isVisible: { type: boolean }
+        showsValues:
+          type: boolean
+          description: Member rows; false makes a header that shows no values.
+        calculatedMeasureKey:
+          type: [string, 'null']
+          description: Formula rows.
+        valueColumnKey:
+          type: [string, 'null']
+          description: Formula rows.
+        styleKey: { type: [string, 'null'] }
+        parameters:
+          type: object
+          description: The row's own model parameter values; missing keys inherit.
+          additionalProperties: { type: [string, number] }
+
+    ReportRowPosition:
+      type: object
+      required: [parentKey, index]
+      properties:
+        parentKey: { type: [string, 'null'] }
+        index:
+          type: integer
+          minimum: 0
+          description: Index among the new siblings after the move.
+
+    ReportSourceRule:
+      type: object
+      required: [itemKey, selection, factor]
+      properties:
+        itemKey: { type: string }
+        selection: { $ref: '#/components/schemas/ReportRuleSelection' }
+        factor:
+          type: number
+          description: The only number a rule carries; -1 on an item already included excludes it (OI-52).
+
+    ReportSourceVariable:
+      type: object
+      required: [variableKey, measureKey, filter, missingBehavior]
+      properties:
+        variableKey: { type: string }
+        measureKey: { type: string }
+        filter:
+          description: Filter over the dataset's filterable fields, applied before aggregation.
+          oneOf:
+            - $ref: '#/components/schemas/ReportFilterNode'
+            - type: 'null'
+        missingBehavior:
+          description: Replaces the variable's own missing behavior for this source; null keeps the variable's.
+          oneOf:
+            - $ref: '#/components/schemas/ReportMissingBehavior'
+            - type: 'null'
+
+    ReportSourceInput:
+      type: object
+      required: [key, displayName, datasetId, timeFieldKey, method, roleId, fieldKey]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        datasetId: { $ref: './common.yaml#/components/schemas/Id' }
+        timeFieldKey: { type: string }
+        method: { $ref: '#/components/schemas/ReportMappingMethod' }
+        roleId:
+          type: [string, 'null']
+          description: Bridge sources.
+        fieldKey:
+          type: [string, 'null']
+          description: Direct sources.
+
+    ReportSource:
+      allOf:
+        - $ref: '#/components/schemas/ReportSourceInput'
+        - type: object
+          required: [bridgeId, variables, rules, leftOut]
+          properties:
+            bridgeId:
+              type: [string, 'null']
+              description: Bridge sources; the report bridge the source owns.
+            variables:
+              type: array
+              items: { $ref: '#/components/schemas/ReportSourceVariable' }
+            rules:
+              type: object
+              description: Bridge sources; rules by row key.
+              additionalProperties:
+                type: array
+                items: { $ref: '#/components/schemas/ReportSourceRule' }
+            leftOut:
+              type: array
+              description: Bridge sources; items excluded on purpose, which coverage does not count as gaps.
+              items: { type: string }
+
+    ReportProfile:
+      type: object
+      required: [key, displayName, isEnabled, picks]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        isEnabled: { type: boolean }
+        picks:
+          type: object
+          description: Variable key to source key.
+          additionalProperties: { type: string }
+
+    ReportCalculationDimension:
+      type: object
+      required: [key, displayName, roleId, grouping, isGroupable, isFilterable, isEnabled]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        roleId: { $ref: './common.yaml#/components/schemas/Id' }
+        grouping: { $ref: '#/components/schemas/ReportGrouping' }
+        isGroupable: { type: boolean }
+        isFilterable: { type: boolean }
+        isEnabled: { type: boolean }
+
+    ReportScenario:
+      type: object
+      description: A role whose members a run reads one at a time; its display name is the role's (OI-50).
+      required: [roleId]
+      properties:
+        roleId: { $ref: './common.yaml#/components/schemas/Id' }
+
+    ReportVariableScope:
+      type: object
+      description: One scope per variable (OI-50).
+      required: [variableKey, scopeMemberKey, selectionScope]
+      properties:
+        variableKey: { type: string }
+        scopeMemberKey: { type: string }
+        selectionScope: { $ref: '#/components/schemas/ReportSelectionScope' }
+
+    ReportColumn:
+      type: object
+      required: [key, displayName, valueKind, metricKey, displayFormat, isVisible]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName:
+          type: [string, 'null']
+          description: Null keeps the metric's label.
+        valueKind: { $ref: '#/components/schemas/ReportColumnValueKind' }
+        metricKey: { type: string }
+        displayFormat:
+          type: [string, 'null']
+          description: Null keeps the metric's format.
+        isVisible: { type: boolean }
+
+    ReportStyle:
+      type: object
+      description: A null property keeps the client's own styling.
+      required: [key, displayName, defaultRole, fontFamily, fontSize, fontWeight, isItalic, textColor, backgroundColor, borderTop, borderBottom, indent]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        defaultRole:
+          oneOf:
+            - $ref: '#/components/schemas/ReportStyleRole'
+            - type: 'null'
+        fontFamily: { type: [string, 'null'] }
+        fontSize:
+          type: [number, 'null']
+          description: Points.
+        fontWeight:
+          oneOf:
+            - $ref: '#/components/schemas/ReportFontWeight'
+            - type: 'null'
+        isItalic: { type: boolean }
+        textColor: { $ref: '#/components/schemas/ReportColor' }
+        backgroundColor: { $ref: '#/components/schemas/ReportColor' }
+        borderTop:
+          oneOf:
+            - $ref: '#/components/schemas/ReportBorderStyle'
+            - type: 'null'
+        borderBottom:
+          oneOf:
+            - $ref: '#/components/schemas/ReportBorderStyle'
+            - type: 'null'
+        indent:
+          type: [integer, 'null']
+          minimum: 0
+          description: Indent levels added to the row's depth.
+    ReportColor:
+      type: [string, 'null']
+      pattern: '^#[0-9A-Fa-f]{6}$'
+
+    ReportDocument:
+      type: object
+      required: [id, key, isEnabled, modelId, reportDimensionId, reportDimensionVersionId, settings, rows, sources, profiles, calculationDimensions, scenarios, variableScopes, columns, styles]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/Id' }
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        isEnabled: { type: boolean }
+        modelId: { $ref: './common.yaml#/components/schemas/Id' }
+        reportDimensionId: { $ref: './common.yaml#/components/schemas/Id' }
+        reportDimensionVersionId: { $ref: './common.yaml#/components/schemas/Id' }
+        settings: { $ref: '#/components/schemas/ReportSettings' }
+        rows:
+          type: array
+          description: Hierarchy order.
+          items: { $ref: '#/components/schemas/ReportRow' }
+        sources:
+          type: array
+          items: { $ref: '#/components/schemas/ReportSource' }
+        profiles:
+          type: array
+          items: { $ref: '#/components/schemas/ReportProfile' }
+        calculationDimensions:
+          type: array
+          items: { $ref: '#/components/schemas/ReportCalculationDimension' }
+        scenarios:
+          type: array
+          items: { $ref: '#/components/schemas/ReportScenario' }
+        variableScopes:
+          type: array
+          items: { $ref: '#/components/schemas/ReportVariableScope' }
+        columns:
+          type: array
+          description: Sort order is the position.
+          items: { $ref: '#/components/schemas/ReportColumn' }
+        styles:
+          type: array
+          items: { $ref: '#/components/schemas/ReportStyle' }
+
+    # ───────────── diagnostics ─────────────
+
+    ReportDiagnostics:
+      type: object
+      description: Server-computed readiness, coverage and profile resolution (OI-05).
+      required: [ready, steps, coverage, resolution]
+      properties:
+        ready:
+          type: boolean
+          description: Every report rule passes, so the report can be enabled.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/ReportDiagnosticsStep' }
+        coverage:
+          type: object
+          description: By source key.
+          additionalProperties: { $ref: '#/components/schemas/ReportSourceCoverage' }
+        resolution:
+          type: object
+          description: Profile key to variable key to resolution.
+          additionalProperties:
+            type: object
+            additionalProperties: { $ref: '#/components/schemas/ReportVariableResolution' }
+    ReportDiagnosticsStep:
+      type: object
+      required: [step, status, violations]
+      properties:
+        step:
+          type: string
+          enum: [rows, sources, variables, items, profiles, dimensions, columns]
+        status:
+          type: string
+          enum: [ok, warn, fail]
+        violations:
+          type: array
+          items: { $ref: './common.yaml#/components/schemas/Violation' }
+    ReportSourceCoverage:
+      type: object
+      required: [unmapped, multi, leftOut]
+      properties:
+        unmapped:
+          type: array
+          items: { type: string }
+        multi:
+          type: array
+          description: Items that reach more than one row.
+          items: { $ref: '#/components/schemas/ReportCoverageMulti' }
+        leftOut:
+          type: array
+          items: { type: string }
+    ReportCoverageMulti:
+      type: object
+      required: [itemKey, net, rows]
+      properties:
+        itemKey: { type: string }
+        net:
+          type: number
+          description: Sum of the factors with which the item reaches rows.
+        rows:
+          type: array
+          description: Row keys.
+          items: { type: string }
+    ReportVariableResolution:
+      type: object
+      required: [status, sourceKey, rowGaps]
+      properties:
+        status:
+          type: string
+          enum: [ok, shadowed, gap, unresolved, na]
+        sourceKey: { type: [string, 'null'] }
+        rowGaps:
+          type: array
+          description: Row keys the picked source does not supply.
+          items: { type: string }
+
+    # ───────────── commands ─────────────
+
+    ReportCreateInput:
+      type: object
+      description: '`startFromDimensionId` and `copyFromReportId` exclude each other.'
+      required: [key, displayName, reportType, modelId]
+      properties:
+        key: { $ref: './common.yaml#/components/schemas/Key' }
+        displayName: { type: string }
+        reportType: { type: string }
+        modelId: { $ref: './common.yaml#/components/schemas/Id' }
+        startFromDimensionId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: A categorical or hierarchical dimension whose published members become the rows.
+        copyFromReportId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: A report whose rows, sources and content are copied.
+
+    ReportEnabledInput:
+      type: object
+      required: [isEnabled]
+      properties:
+        isEnabled: { type: boolean }
+
+    # ───────────── change set ─────────────
+
+    ReportOperation:
+      oneOf:
+        - $ref: '#/components/schemas/ReportUpdateSettingsOperation'
+        - $ref: '#/components/schemas/ReportSaveRowOperation'
+        - $ref: '#/components/schemas/ReportMoveRowOperation'
+        - $ref: '#/components/schemas/ReportDeleteRowOperation'
+        - $ref: '#/components/schemas/ReportSaveSourceOperation'
+        - $ref: '#/components/schemas/ReportDeleteSourceOperation'
+        - $ref: '#/components/schemas/ReportSetSourceVariablesOperation'
+        - $ref: '#/components/schemas/ReportSetRowRulesOperation'
+        - $ref: '#/components/schemas/ReportSetLeftOutOperation'
+        - $ref: '#/components/schemas/ReportSaveProfileOperation'
+        - $ref: '#/components/schemas/ReportDeleteProfileOperation'
+        - $ref: '#/components/schemas/ReportSaveCalculationDimensionOperation'
+        - $ref: '#/components/schemas/ReportDeleteCalculationDimensionOperation'
+        - $ref: '#/components/schemas/ReportSetScenariosOperation'
+        - $ref: '#/components/schemas/ReportSetVariableScopesOperation'
+        - $ref: '#/components/schemas/ReportSetColumnsOperation'
+        - $ref: '#/components/schemas/ReportSaveStyleOperation'
+        - $ref: '#/components/schemas/ReportDeleteStyleOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateSettings: '#/components/schemas/ReportUpdateSettingsOperation'
+          saveRow: '#/components/schemas/ReportSaveRowOperation'
+          moveRow: '#/components/schemas/ReportMoveRowOperation'
+          deleteRow: '#/components/schemas/ReportDeleteRowOperation'
+          saveSource: '#/components/schemas/ReportSaveSourceOperation'
+          deleteSource: '#/components/schemas/ReportDeleteSourceOperation'
+          setSourceVariables: '#/components/schemas/ReportSetSourceVariablesOperation'
+          setRowRules: '#/components/schemas/ReportSetRowRulesOperation'
+          setLeftOut: '#/components/schemas/ReportSetLeftOutOperation'
+          saveProfile: '#/components/schemas/ReportSaveProfileOperation'
+          deleteProfile: '#/components/schemas/ReportDeleteProfileOperation'
+          saveCalculationDimension: '#/components/schemas/ReportSaveCalculationDimensionOperation'
+          deleteCalculationDimension: '#/components/schemas/ReportDeleteCalculationDimensionOperation'
+          setScenarios: '#/components/schemas/ReportSetScenariosOperation'
+          setVariableScopes: '#/components/schemas/ReportSetVariableScopesOperation'
+          setColumns: '#/components/schemas/ReportSetColumnsOperation'
+          saveStyle: '#/components/schemas/ReportSaveStyleOperation'
+          deleteStyle: '#/components/schemas/ReportDeleteStyleOperation'
+
+    ReportUpdateSettingsOperation:
+      type: object
+      required: [op, patch]
+      properties:
+        op: { const: updateSettings }
+        patch: { $ref: '#/components/schemas/ReportSettingsPatch' }
+    ReportSaveRowOperation:
+      type: object
+      description: Creates the row when its key is new, otherwise updates it; the key is fixed once created.
+      required: [op, row, index]
+      properties:
+        op: { const: saveRow }
+        row: { $ref: '#/components/schemas/ReportRow' }
+        index:
+          type: integer
+          minimum: 0
+          description: Index among the row's siblings.
+    ReportMoveRowOperation:
+      type: object
+      required: [op, key, to]
+      properties:
+        op: { const: moveRow }
+        key: { type: string }
+        to: { $ref: '#/components/schemas/ReportRowPosition' }
+    ReportDeleteRowOperation:
+      type: object
+      description: Children move up; the row's rules, scopes, parameters and member option go (OI-56).
+      required: [op, key]
+      properties:
+        op: { const: deleteRow }
+        key: { type: string }
+    ReportSaveSourceOperation:
+      type: object
+      description: >-
+        Creates the source when its key is new, otherwise updates it. Creating a bridge source creates its report
+        bridge. `copyFromSourceKey` copies another source's variables, rules and left-out items into a new source.
+      required: [op, input]
+      properties:
+        op: { const: saveSource }
+        input: { $ref: '#/components/schemas/ReportSourceInput' }
+        copyFromSourceKey: { type: string }
+    ReportDeleteSourceOperation:
+      type: object
+      description: Deletes the source's report bridge and clears profile picks naming it (OI-56).
+      required: [op, key]
+      properties:
+        op: { const: deleteSource }
+        key: { type: string }
+    ReportSetSourceVariablesOperation:
+      type: object
+      required: [op, sourceKey, variables]
+      properties:
+        op: { const: setSourceVariables }
+        sourceKey: { type: string }
+        variables:
+          type: array
+          items: { $ref: '#/components/schemas/ReportSourceVariable' }
+    ReportSetRowRulesOperation:
+      type: object
+      description: Replaces the bridge rules of one row of a bridge source.
+      required: [op, sourceKey, rowKey, rules]
+      properties:
+        op: { const: setRowRules }
+        sourceKey: { type: string }
+        rowKey: { type: string }
+        rules:
+          type: array
+          items: { $ref: '#/components/schemas/ReportSourceRule' }
+    ReportSetLeftOutOperation:
+      type: object
+      required: [op, sourceKey, itemKeys]
+      properties:
+        op: { const: setLeftOut }
+        sourceKey: { type: string }
+        itemKeys:
+          type: array
+          items: { type: string }
+    ReportSaveProfileOperation:
+      type: object
+      description: '`originalKey` names the profile to update; absent creates one.'
+      required: [op, profile]
+      properties:
+        op: { const: saveProfile }
+        profile: { $ref: '#/components/schemas/ReportProfile' }
+        originalKey: { type: string }
+    ReportDeleteProfileOperation:
+      type: object
+      description: Refused while the profile is the default.
+      required: [op, key]
+      properties:
+        op: { const: deleteProfile }
+        key: { type: string }
+    ReportSaveCalculationDimensionOperation:
+      type: object
+      description: '`originalKey` names the calculation dimension to update; absent creates one.'
+      required: [op, input]
+      properties:
+        op: { const: saveCalculationDimension }
+        input: { $ref: '#/components/schemas/ReportCalculationDimension' }
+        originalKey: { type: string }
+    ReportDeleteCalculationDimensionOperation:
+      type: object
+      description: Also removes the key from the default breakout and default filter (OI-56).
+      required: [op, key]
+      properties:
+        op: { const: deleteCalculationDimension }
+        key: { type: string }
+    ReportSetScenariosOperation:
+      type: object
+      required: [op, roleIds]
+      properties:
+        op: { const: setScenarios }
+        roleIds:
+          type: array
+          items: { $ref: './common.yaml#/components/schemas/Id' }
+    ReportSetVariableScopesOperation:
+      type: object
+      required: [op, scopes]
+      properties:
+        op: { const: setVariableScopes }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/ReportVariableScope' }
+    ReportSetColumnsOperation:
+      type: object
+      required: [op, columns]
+      properties:
+        op: { const: setColumns }
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/ReportColumn' }
+    ReportSaveStyleOperation:
+      type: object
+      description: Creates the style when its key is new, otherwise updates it.
+      required: [op, style]
+      properties:
+        op: { const: saveStyle }
+        style: { $ref: '#/components/schemas/ReportStyle' }
+    ReportDeleteStyleOperation:
+      type: object
+      description: Refused with `report_styles_resolve` while a row names the style.
+      required: [op, key]
+      properties:
+        op: { const: deleteStyle }
+        key: { type: string }
+
+    ReportChangeSetRequest:
+      allOf:
+        - $ref: './common.yaml#/components/schemas/ChangeSetRequest'
+        - type: object
+          required: [operations]
+          properties:
+            operations:
+              type: array
+              items: { $ref: '#/components/schemas/ReportOperation' }
+    ReportChangeSetPreview:
+      allOf:
+        - $ref: './common.yaml#/components/schemas/ChangeSetPreview'
+        - type: object
+          required: [state, diagnostics]
+          properties:
+            state: { $ref: '#/components/schemas/ReportDocument' }
+            diagnostics: { $ref: '#/components/schemas/ReportDiagnostics' }
+    ReportChangeSetCommit:
+      allOf:
+        - $ref: './common.yaml#/components/schemas/ChangeSetCommit'
+        - type: object
+          required: [state]
+          properties:
+            state: { $ref: '#/components/schemas/ReportDocument' }

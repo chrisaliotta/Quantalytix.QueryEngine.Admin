@@ -333,6 +333,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** List the tenant's reports. */
+        get: operations["listReports"];
+        put?: never;
+        /**
+         * Create a report, its report dimension and, when copying, its content.
+         * @description A new report starts disabled. Without `startFromDimensionId` or `copyFromReportId` its report dimension has a single root row. `startFromDimensionId` copies the published members of a categorical or hierarchical dimension. `copyFromReportId` copies another report's rows, sources, report bridges and content; with a `modelId` other than that report's, whatever does not resolve in the new model is dropped (OI-47).
+         */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /** Read a report's whole document. */
+        get: operations["getReport"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a report with its report dimension, report bridges and content.
+         * @description Never blocked (P12).
+         */
+        delete: operations["deleteReport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Check the stored report against the report rules, with coverage and profile resolution.
+         * @description Serves the port's `getDiagnostics`. Pending edits are diagnosed by the change-set preview instead.
+         */
+        get: operations["getReportDiagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/sources/{sourceKey}/unmapped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+                sourceKey: components["parameters"]["ReportSourceKey"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List the items a source reads that reach no row and are not left out.
+         * @description Serves the port's `getUnmappedItems`. Bridge sources list members of the role's dimension; direct sources list values of the field that are not row keys.
+         */
+        get: operations["getReportUnmappedItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply staged report operations in memory and return the resulting document and diagnostics.
+         * @description Never writes. Serves every edit method of the port (01, Change-set protocol).
+         */
+        post: operations["previewReportChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply and write staged report operations as one batch.
+         * @description Replays the operations onto the stored report; any failure writes nothing. Serves `commitChanges`.
+         */
+        post: operations["commitReportChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/reports/{reportId}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Enable or disable a report.
+         * @description Serves the port's `setEnabled`. Enabling runs every report rule on the stored report.
+         */
+        put: operations["setReportEnabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1100,6 +1270,531 @@ export interface components {
         ModelChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
             state: components["schemas"]["ModelDocument"];
         };
+        /** @enum {string} */
+        ReportPeriodicity: "day" | "month" | "quarter" | "year";
+        /** @enum {string} */
+        ReportLayout: "statement" | "list";
+        /** @enum {string} */
+        ReportSubtotalPosition: "above" | "below";
+        /**
+         * @description `data` and `group` rows are report dimension members (a `group` has members under it); `section` and `formula` rows are overlay lines (OI-48).
+         * @enum {string}
+         */
+        ReportRowKind: "data" | "group" | "section" | "formula";
+        /**
+         * @description `bridge` reaches rows through the source's report bridge; `direct` matches a field's values to row keys.
+         * @enum {string}
+         */
+        ReportMappingMethod: "bridge" | "direct";
+        /**
+         * @description `exact` needs a leaf member.
+         * @enum {string}
+         */
+        ReportSelectionScope: "exact" | "descendants";
+        /** @enum {string} */
+        ReportRuleSelection: "member" | "descendants";
+        /** @enum {string} */
+        ReportMissingBehavior: "null" | "zero";
+        /** @enum {string} */
+        ReportStyleRole: "header" | "subtotal" | "total" | "detail" | "formula";
+        /** @enum {string} */
+        ReportFontWeight: "normal" | "medium" | "semibold" | "bold";
+        /** @enum {string} */
+        ReportBorderStyle: "none" | "thin" | "medium" | "thick" | "double";
+        /** @enum {string} */
+        ReportColumnValueKind: "variable" | "calculated";
+        /** @description How a role's members group. */
+        ReportGrouping: components["schemas"]["ReportGroupingMember"] | components["schemas"]["ReportGroupingLevel"] | components["schemas"]["ReportGroupingAncestor"] | components["schemas"]["ReportGroupingDepth"];
+        ReportGroupingMember: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "member";
+        };
+        ReportGroupingLevel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "level";
+            levelKey: string;
+        };
+        ReportGroupingAncestor: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "ancestor";
+            memberKey: string;
+        };
+        ReportGroupingDepth: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "depth";
+            depth: number;
+        };
+        /** @description The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and `source_filter_json`. A dimension operand's grouping uses `ReportGrouping`; the server serializes it into the engine's shape (OI-54). */
+        ReportFilterNode: components["schemas"]["ReportFilterLogical"] | components["schemas"]["ReportFilterNot"] | components["schemas"]["ReportFilterComparison"] | components["schemas"]["ReportFilterIn"] | components["schemas"]["ReportFilterNullCheck"];
+        ReportFilterLogical: {
+            /** @enum {string} */
+            operator: "and" | "or";
+            operands: components["schemas"]["ReportFilterNode"][];
+        };
+        ReportFilterNot: {
+            /** @constant */
+            operator: "not";
+            operand: components["schemas"]["ReportFilterNode"];
+        };
+        ReportFilterComparison: {
+            /** @enum {string} */
+            operator: "eq" | "ne" | "lt" | "le" | "gt" | "ge";
+            left: components["schemas"]["ReportFilterOperand"];
+            right: components["schemas"]["ReportFilterOperand"];
+        };
+        ReportFilterIn: {
+            /** @constant */
+            operator: "in";
+            left: components["schemas"]["ReportFilterOperand"];
+            values: components["schemas"]["ReportFilterOperand"][];
+        };
+        ReportFilterNullCheck: {
+            /** @enum {string} */
+            operator: "isNull" | "isNotNull";
+            operand: components["schemas"]["ReportFilterOperand"];
+        };
+        ReportFilterOperand: components["schemas"]["ReportFilterReferenceOperand"] | components["schemas"]["ReportFilterDimensionOperand"] | components["schemas"]["ReportFilterLiteralOperand"];
+        ReportFilterReferenceOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "field" | "measure" | "parameter";
+            /** @description The field, measure or parameter key. */
+            id: string;
+        };
+        ReportFilterDimensionOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "dimension";
+            /** @description The calculation dimension key. */
+            id: string;
+            grouping?: components["schemas"]["ReportGrouping"];
+        };
+        ReportFilterLiteralOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "literal";
+            value: string | number | boolean | null;
+        };
+        ReportSummary: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            reportType: string;
+            modelId: components["schemas"]["Id"];
+            modelKey: string;
+            isEnabled: boolean;
+            periodicity: components["schemas"]["ReportPeriodicity"] | null;
+            profileCount: number;
+            sourceCount: number;
+        };
+        ReportSettings: {
+            displayName: string;
+            reportType: string;
+            subtotalPosition: components["schemas"]["ReportSubtotalPosition"];
+            defaultProfileKey: string | null;
+            periodicity: components["schemas"]["ReportPeriodicity"] | null;
+            layout: components["schemas"]["ReportLayout"];
+            /** @description Calculation dimension keys. */
+            defaultBreakout: string[];
+            /** @description Filter over calculation dimension keys. */
+            defaultFilter: components["schemas"]["ReportFilterNode"] | null;
+        };
+        /** @description The settings to change; absent properties keep their value. */
+        ReportSettingsPatch: {
+            displayName?: string;
+            reportType?: string;
+            subtotalPosition?: components["schemas"]["ReportSubtotalPosition"];
+            defaultProfileKey?: string | null;
+            periodicity?: components["schemas"]["ReportPeriodicity"] | null;
+            layout?: components["schemas"]["ReportLayout"];
+            defaultBreakout?: string[];
+            defaultFilter?: components["schemas"]["ReportFilterNode"] | null;
+        };
+        ReportRow: {
+            key: components["schemas"]["Key"];
+            label: string;
+            kind: components["schemas"]["ReportRowKind"];
+            parentKey: string | null;
+            isVisible: boolean;
+            /** @description Member rows; false makes a header that shows no values. */
+            showsValues: boolean;
+            /** @description Formula rows. */
+            calculatedMeasureKey: string | null;
+            /** @description Formula rows. */
+            valueColumnKey: string | null;
+            styleKey: string | null;
+            /** @description The row's own model parameter values; missing keys inherit. */
+            parameters: {
+                [key: string]: string | number;
+            };
+        };
+        ReportRowPosition: {
+            parentKey: string | null;
+            /** @description Index among the new siblings after the move. */
+            index: number;
+        };
+        ReportSourceRule: {
+            itemKey: string;
+            selection: components["schemas"]["ReportRuleSelection"];
+            /** @description The only number a rule carries; -1 on an item already included excludes it (OI-52). */
+            factor: number;
+        };
+        ReportSourceVariable: {
+            variableKey: string;
+            measureKey: string;
+            /** @description Filter over the dataset's filterable fields, applied before aggregation. */
+            filter: components["schemas"]["ReportFilterNode"] | null;
+            /** @description Replaces the variable's own missing behavior for this source; null keeps the variable's. */
+            missingBehavior: components["schemas"]["ReportMissingBehavior"] | null;
+        };
+        ReportSourceInput: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            datasetId: components["schemas"]["Id"];
+            timeFieldKey: string;
+            method: components["schemas"]["ReportMappingMethod"];
+            /** @description Bridge sources. */
+            roleId: string | null;
+            /** @description Direct sources. */
+            fieldKey: string | null;
+        };
+        ReportSource: components["schemas"]["ReportSourceInput"] & {
+            /** @description Bridge sources; the report bridge the source owns. */
+            bridgeId: string | null;
+            variables: components["schemas"]["ReportSourceVariable"][];
+            /** @description Bridge sources; rules by row key. */
+            rules: {
+                [key: string]: components["schemas"]["ReportSourceRule"][];
+            };
+            /** @description Bridge sources; items excluded on purpose, which coverage does not count as gaps. */
+            leftOut: string[];
+        };
+        ReportProfile: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isEnabled: boolean;
+            /** @description Variable key to source key. */
+            picks: {
+                [key: string]: string;
+            };
+        };
+        ReportCalculationDimension: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            roleId: components["schemas"]["Id"];
+            grouping: components["schemas"]["ReportGrouping"];
+            isGroupable: boolean;
+            isFilterable: boolean;
+            isEnabled: boolean;
+        };
+        /** @description A role whose members a run reads one at a time; its display name is the role's (OI-50). */
+        ReportScenario: {
+            roleId: components["schemas"]["Id"];
+        };
+        /** @description One scope per variable (OI-50). */
+        ReportVariableScope: {
+            variableKey: string;
+            scopeMemberKey: string;
+            selectionScope: components["schemas"]["ReportSelectionScope"];
+        };
+        ReportColumn: {
+            key: components["schemas"]["Key"];
+            /** @description Null keeps the metric's label. */
+            displayName: string | null;
+            valueKind: components["schemas"]["ReportColumnValueKind"];
+            metricKey: string;
+            /** @description Null keeps the metric's format. */
+            displayFormat: string | null;
+            isVisible: boolean;
+        };
+        /** @description A null property keeps the client's own styling. */
+        ReportStyle: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            defaultRole: components["schemas"]["ReportStyleRole"] | null;
+            fontFamily: string | null;
+            /** @description Points. */
+            fontSize: number | null;
+            fontWeight: components["schemas"]["ReportFontWeight"] | null;
+            isItalic: boolean;
+            textColor: components["schemas"]["ReportColor"];
+            backgroundColor: components["schemas"]["ReportColor"];
+            borderTop: components["schemas"]["ReportBorderStyle"] | null;
+            borderBottom: components["schemas"]["ReportBorderStyle"] | null;
+            /** @description Indent levels added to the row's depth. */
+            indent: number | null;
+        };
+        ReportColor: string | null;
+        ReportDocument: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            isEnabled: boolean;
+            modelId: components["schemas"]["Id"];
+            reportDimensionId: components["schemas"]["Id"];
+            reportDimensionVersionId: components["schemas"]["Id"];
+            settings: components["schemas"]["ReportSettings"];
+            /** @description Hierarchy order. */
+            rows: components["schemas"]["ReportRow"][];
+            sources: components["schemas"]["ReportSource"][];
+            profiles: components["schemas"]["ReportProfile"][];
+            calculationDimensions: components["schemas"]["ReportCalculationDimension"][];
+            scenarios: components["schemas"]["ReportScenario"][];
+            variableScopes: components["schemas"]["ReportVariableScope"][];
+            /** @description Sort order is the position. */
+            columns: components["schemas"]["ReportColumn"][];
+            styles: components["schemas"]["ReportStyle"][];
+        };
+        /** @description Server-computed readiness, coverage and profile resolution (OI-05). */
+        ReportDiagnostics: {
+            /** @description Every report rule passes, so the report can be enabled. */
+            ready: boolean;
+            steps: components["schemas"]["ReportDiagnosticsStep"][];
+            /** @description By source key. */
+            coverage: {
+                [key: string]: components["schemas"]["ReportSourceCoverage"];
+            };
+            /** @description Profile key to variable key to resolution. */
+            resolution: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["ReportVariableResolution"];
+                };
+            };
+        };
+        ReportDiagnosticsStep: {
+            /** @enum {string} */
+            step: "rows" | "sources" | "variables" | "items" | "profiles" | "dimensions" | "columns";
+            /** @enum {string} */
+            status: "ok" | "warn" | "fail";
+            violations: components["schemas"]["Violation"][];
+        };
+        ReportSourceCoverage: {
+            unmapped: string[];
+            /** @description Items that reach more than one row. */
+            multi: components["schemas"]["ReportCoverageMulti"][];
+            leftOut: string[];
+        };
+        ReportCoverageMulti: {
+            itemKey: string;
+            /** @description Sum of the factors with which the item reaches rows. */
+            net: number;
+            /** @description Row keys. */
+            rows: string[];
+        };
+        ReportVariableResolution: {
+            /** @enum {string} */
+            status: "ok" | "shadowed" | "gap" | "unresolved" | "na";
+            sourceKey: string | null;
+            /** @description Row keys the picked source does not supply. */
+            rowGaps: string[];
+        };
+        /** @description `startFromDimensionId` and `copyFromReportId` exclude each other. */
+        ReportCreateInput: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            reportType: string;
+            modelId: components["schemas"]["Id"];
+            /** @description A categorical or hierarchical dimension whose published members become the rows. */
+            startFromDimensionId?: components["schemas"]["Id"];
+            /** @description A report whose rows, sources and content are copied. */
+            copyFromReportId?: components["schemas"]["Id"];
+        };
+        ReportEnabledInput: {
+            isEnabled: boolean;
+        };
+        ReportOperation: components["schemas"]["ReportUpdateSettingsOperation"] | components["schemas"]["ReportSaveRowOperation"] | components["schemas"]["ReportMoveRowOperation"] | components["schemas"]["ReportDeleteRowOperation"] | components["schemas"]["ReportSaveSourceOperation"] | components["schemas"]["ReportDeleteSourceOperation"] | components["schemas"]["ReportSetSourceVariablesOperation"] | components["schemas"]["ReportSetRowRulesOperation"] | components["schemas"]["ReportSetLeftOutOperation"] | components["schemas"]["ReportSaveProfileOperation"] | components["schemas"]["ReportDeleteProfileOperation"] | components["schemas"]["ReportSaveCalculationDimensionOperation"] | components["schemas"]["ReportDeleteCalculationDimensionOperation"] | components["schemas"]["ReportSetScenariosOperation"] | components["schemas"]["ReportSetVariableScopesOperation"] | components["schemas"]["ReportSetColumnsOperation"] | components["schemas"]["ReportSaveStyleOperation"] | components["schemas"]["ReportDeleteStyleOperation"];
+        ReportUpdateSettingsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateSettings";
+            patch: components["schemas"]["ReportSettingsPatch"];
+        };
+        /** @description Creates the row when its key is new, otherwise updates it; the key is fixed once created. */
+        ReportSaveRowOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveRow";
+            row: components["schemas"]["ReportRow"];
+            /** @description Index among the row's siblings. */
+            index: number;
+        };
+        ReportMoveRowOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "moveRow";
+            key: string;
+            to: components["schemas"]["ReportRowPosition"];
+        };
+        /** @description Children move up; the row's rules, scopes, parameters and member option go (OI-56). */
+        ReportDeleteRowOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteRow";
+            key: string;
+        };
+        /** @description Creates the source when its key is new, otherwise updates it. Creating a bridge source creates its report bridge. `copyFromSourceKey` copies another source's variables, rules and left-out items into a new source. */
+        ReportSaveSourceOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveSource";
+            input: components["schemas"]["ReportSourceInput"];
+            copyFromSourceKey?: string;
+        };
+        /** @description Deletes the source's report bridge and clears profile picks naming it (OI-56). */
+        ReportDeleteSourceOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteSource";
+            key: string;
+        };
+        ReportSetSourceVariablesOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setSourceVariables";
+            sourceKey: string;
+            variables: components["schemas"]["ReportSourceVariable"][];
+        };
+        /** @description Replaces the bridge rules of one row of a bridge source. */
+        ReportSetRowRulesOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setRowRules";
+            sourceKey: string;
+            rowKey: string;
+            rules: components["schemas"]["ReportSourceRule"][];
+        };
+        ReportSetLeftOutOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setLeftOut";
+            sourceKey: string;
+            itemKeys: string[];
+        };
+        /** @description `originalKey` names the profile to update; absent creates one. */
+        ReportSaveProfileOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveProfile";
+            profile: components["schemas"]["ReportProfile"];
+            originalKey?: string;
+        };
+        /** @description Refused while the profile is the default. */
+        ReportDeleteProfileOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteProfile";
+            key: string;
+        };
+        /** @description `originalKey` names the calculation dimension to update; absent creates one. */
+        ReportSaveCalculationDimensionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveCalculationDimension";
+            input: components["schemas"]["ReportCalculationDimension"];
+            originalKey?: string;
+        };
+        /** @description Also removes the key from the default breakout and default filter (OI-56). */
+        ReportDeleteCalculationDimensionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteCalculationDimension";
+            key: string;
+        };
+        ReportSetScenariosOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setScenarios";
+            roleIds: components["schemas"]["Id"][];
+        };
+        ReportSetVariableScopesOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setVariableScopes";
+            scopes: components["schemas"]["ReportVariableScope"][];
+        };
+        ReportSetColumnsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setColumns";
+            columns: components["schemas"]["ReportColumn"][];
+        };
+        /** @description Creates the style when its key is new, otherwise updates it. */
+        ReportSaveStyleOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveStyle";
+            style: components["schemas"]["ReportStyle"];
+        };
+        /** @description Refused with `report_styles_resolve` while a row names the style. */
+        ReportDeleteStyleOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteStyle";
+            key: string;
+        };
+        ReportChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["ReportOperation"][];
+        };
+        ReportChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["ReportDocument"];
+            diagnostics: components["schemas"]["ReportDiagnostics"];
+        };
+        ReportChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["ReportDocument"];
+        };
     };
     responses: {
         /** @description The body, route or query does not bind, or an input validator failed; see `errors`. */
@@ -1162,6 +1857,8 @@ export interface components {
         TenantId: string;
         /** @description The calculation model id. */
         ModelId: components["schemas"]["Id"];
+        ReportId: components["schemas"]["Id"];
+        ReportSourceKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -1706,6 +2403,278 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             /** @description An operation introduces a model-rule or enabled-report violation; nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    listReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every report, enabled or not. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportCreateInput"];
+            };
+        };
+        responses: {
+            /** @description The report was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The report key is taken. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report as stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report and everything it owns were deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getReportDiagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The diagnostics of the stored report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDiagnostics"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getReportUnmappedItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+                sourceKey: components["parameters"]["ReportSourceKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Item keys, in the source dimension's order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description No such report, or the report has no source with that key. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewReportChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applies. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description An operation names a row, source, profile, dimension or style the report does not have. */
+            409: components["responses"]["Conflict"];
+            /** @description The report is enabled and the result fails the report gate, or a cascade is refused. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitReportChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description An operation names a row, source, profile, dimension or style the report does not have. */
+            409: components["responses"]["Conflict"];
+            /** @description The report is enabled and the result fails the report gate, or a cascade is refused. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    setReportEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportEnabledInput"];
+            };
+        };
+        responses: {
+            /** @description The report's new state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description A report rule fails; the report stays disabled. */
             422: components["responses"]["UnprocessableContent"];
         };
     };
