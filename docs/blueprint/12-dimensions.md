@@ -61,56 +61,57 @@ and publishing remain only for dataset versions and releases (OI-17, OI-30).
 
 | Item | Change | Issue |
 |---|---|---|
-| `ProblemDetails`, `ApiResult`, `Violation`, `ValidationReport`, `DeleteCheck` | Kernel types; `Violation.tab`/`itemId` become `target.area`/`itemId`; codes become the API's snake_case rule codes | OI-11 |
+| `ProblemDetails`, `ApiResult`, `Violation`, `ValidationReport`, `DeleteCheck` | Kernel types (the `ProblemDetails` alias is removed); `DimensionViolation` and `DimensionValidationReport` narrow the target area to `DimensionTab`; `Violation.tab`/`itemId` become `target.area`/`itemId`; codes become the API's snake_case rule codes | OI-11 |
 | `DimensionProfile`, `Dimension.profileKey`, `EditPolicy`, `listAvailableProfiles`, `defineSystemDimension` | Kept. Profiles come from a code registry; `profileKey` is stored in `qe_dimension.dimension_profile_key` (SG-03); seeded system dimensions are backfilled. `DimensionProfile` gains `singleRole?: boolean` | OI-16, OI-20 |
-| `PropertyField`, `Member.properties` | `PropertyField[]` in the profile; the server validates `properties` for system dimensions only; user dimensions keep free key/value | OI-18 |
-| `DimensionVersion.createdAt`, `retiredAt`; `VersionSummary.retiredAt` | Stored (`created_at`, `retired_at`, SG-04) | OI-12 |
+| `DimensionPropertyField`, `DimensionMember.properties` | `DimensionPropertyField[]` in the profile; the server validates `properties` for system dimensions only; user dimensions keep free key/value | OI-18 |
+| `DimensionVersion.createdAt`, `retiredAt`; `DimensionVersionSummary.retiredAt` | Stored (`created_at`, `retired_at`, SG-04) | OI-12 |
 | `supersededBy` | Derived: the next version number | OI-12 |
 | `freezeNote` | Stored (`freeze_note`, SG-05) | OI-15 |
-| `UsageReference` kind `'report'` (template usage) | Removed | OI-19 |
+| `DimensionUsageReference` kind `'report'` (template usage) | Removed | OI-19 |
 | `listHiddenDimensions`, the Hidden tab, `useViewer().isSystemAdmin` gate | Removed | OI-09, OI-22 |
 | `RangeDataType` | Add `datetime` (schema allows it) | |
-| `Origin` list filter `listDimensions(origin)` | Kept | |
-| `listAllDimensions` | Moves to `TenantApi.getCatalog` | OI-13 |
+| `DimensionKind`, `DimensionPurpose`, `DefinitionOrigin` (was `DimensionOrigin`), `Periodicity`, `FreezeInput`, `FreezeResult` | Shared kernel types, also read by tenant, mappings, datasets and reports | |
+| `Origin` list filter `listDimensions(origin)` | Kept, typed with the kernel `DefinitionOrigin` | |
+| `listAllDimensions` | Moves to `TenantApi.getCatalog`; kept deprecated until `lib/mappings/directory.ts` switches in P5 | OI-13 |
 
 ### Port (Agreed)
 
 ```ts
 export interface DimensionsApi extends ChangeSetPort {
   // reads
-  listDimensions(origin: Origin): Promise<DimensionListItem[]>      // analytical only
-  listAvailableProfiles(): Promise<AvailableProfile[]>
+  listDimensions(origin: DefinitionOrigin): Promise<DimensionListItem[]>      // analytical only
+  listAvailableProfiles(): Promise<AvailableDimensionProfile[]>
   getDimension(id: Id): Promise<ApiResult<DimensionDetail>>
-  getVersion(versionId: Id): Promise<ApiResult<VersionContent>>
-  checkVersion(versionId: Id): Promise<ApiResult<ValidationReport>>
-  checkDelete(target: DeleteTarget): Promise<DeleteCheck>
+  getVersion(versionId: Id): Promise<ApiResult<DimensionVersionContent>>
+  checkVersion(versionId: Id): Promise<ApiResult<DimensionValidationReport>>
+  checkDelete(target: DimensionDeleteTarget): Promise<DeleteCheck>             // one HTTP delete-check per target kind
 
   // edits (staged per dimension: identity, roles, and the live version's content)
-  updateDimension(id: Id, patch: Partial<Pick<Dimension, 'displayName' | 'isEnabled' | 'isRemovable'>>): Promise<ApiResult<Dimension>>
-  updateVersion(versionId: Id, patch: { rangeDataType: RangeDataType | null }): Promise<ApiResult<DimensionVersion>>
-  saveMember(versionId: Id, input: MemberInput): Promise<ApiResult<Member>>
+  updateDimension(id: Id, patch: DimensionPatch): Promise<ApiResult<Dimension>>
+  updateVersion(versionId: Id, patch: DimensionVersionPatch): Promise<ApiResult<DimensionVersion>>
+  saveMember(versionId: Id, input: DimensionMemberInput): Promise<ApiResult<DimensionMember>>
   deleteMember(versionId: Id, memberId: Id): Promise<ApiResult<null>>
-  moveMember(versionId: Id, memberId: Id, to: MovePosition): Promise<ApiResult<MovePosition>>
-  importMembers(versionId: Id, rows: ImportRow[], mode?: ImportMode): Promise<ApiResult<ImportResult>>
+  moveMember(versionId: Id, memberId: Id, to: DimensionMemberPosition): Promise<ApiResult<DimensionMemberPosition>>
+  importMembers(versionId: Id, rows: DimensionMemberImportRow[], mode?: DimensionMemberImportMode): Promise<ApiResult<DimensionMemberImportResult>>
   clearMembers(versionId: Id): Promise<ApiResult<{ removed: number }>>
-  saveLevel(versionId: Id, input: LevelInput): Promise<ApiResult<Level>>
+  saveLevel(versionId: Id, input: DimensionLevelInput): Promise<ApiResult<DimensionLevel>>
   deleteLevel(versionId: Id, levelId: Id): Promise<ApiResult<null>>
-  reorderLevels(versionId: Id, orderedIds: Id[]): Promise<ApiResult<Level[]>>
+  reorderLevels(versionId: Id, orderedIds: Id[]): Promise<ApiResult<DimensionLevel[]>>
   saveBands(versionId: Id, bands: RangeBand[]): Promise<ApiResult<RangeBand[]>>
-  saveRole(dimensionId: Id, input: RoleInput): Promise<ApiResult<Role>>
+  saveRole(dimensionId: Id, input: DimensionRoleInput): Promise<ApiResult<DimensionRole>>
   deleteRole(roleId: Id): Promise<ApiResult<null>>
 
   // commands
-  createDimension(input: CreateDimensionInput): Promise<ApiResult<{ dimensionId: Id; versionId: Id }>>
-  defineSystemDimension(profileKey: string): Promise<ApiResult<{ dimensionId: Id; versionId: Id }>>
+  createDimension(input: CreateDimensionInput): Promise<ApiResult<DimensionCreated>>
+  defineSystemDimension(profileKey: string): Promise<ApiResult<DimensionCreated>>
   deleteDimension(id: Id): Promise<ApiResult<null>>
-  freezeVersion(versionId: Id, note: string | null): Promise<ApiResult<FreezeResult>>
+  freezeVersion(versionId: Id, note: string | null): Promise<ApiResult<DimensionFreezeResult>>
   deleteVersion(versionId: Id): Promise<ApiResult<null>>
 }
 ```
 
 Read models stay as in `web2`: `DimensionListItem` (dimension + profile + roles + version summaries + published
-member count), `DimensionDetail` (+ usage), `VersionContent` (version + levels + members + bands).
+member count), `DimensionDetail` (+ usage), `DimensionVersionContent` (version + levels + members + bands).
 
 `DimensionDetail.usage` is computed by the server from bindings, mapping sets, bridges, calculation dimensions, report
 scenarios, report sources and assumption set pins, with the member keys each names (drives member delete blockers and
@@ -123,25 +124,34 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | Method | Route | Request | Response | Errors | Port |
 |---|---|---|---|---|---|
 | GET | `dimensions?origin=user\|system` | | `DimensionListItem[]` (analytical only) | | `listDimensions` |
-| GET | `dimension-profiles?available=true` | | `AvailableProfile[]` | | `listAvailableProfiles` |
-| POST | `dimensions` | `CreateDimensionInput` | `201 { dimensionId, versionId }` (v1 live) | 400, 409 key taken | `createDimension` |
-| POST | `dimension-profiles/{profileKey}/define` | | `201 { dimensionId, versionId }` | 409 defined already | `defineSystemDimension` |
+| GET | `dimension-profiles?available=true` | | `AvailableDimensionProfile[]` | | `listAvailableProfiles` (`listAvailableDimensionProfiles`) |
+| POST | `dimensions` | `CreateDimensionInput` | `201 DimensionCreated` (v1 live) | 400, 409 key taken | `createDimension` |
+| POST | `dimension-profiles/{profileKey}/define` | | `201 DimensionCreated` | 409 defined already | `defineSystemDimension` |
 | GET | `dimensions/{id}` | | `DimensionDetail` | 404 (also for report-owned) | `getDimension` |
-| GET | `dimensions/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDelete({type:'dimension'})` |
+| GET | `dimensions/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDelete({type:'dimension'})` (`checkDimensionDelete`) |
 | DELETE | `dimensions/{id}` | | `204` | 409 blocked, report-owned, system | `deleteDimension` |
-| GET | `dimension-versions/{id}` | | `VersionContent` | 404 | `getVersion` |
+| GET | `dimension-versions/{id}` | | `DimensionVersionContent` | 404 | `getVersion` |
 | POST | `dimensions/{id}/changes/preview` | `ChangeSetRequest<DimensionOperation>` | `ChangeSetPreview<DimensionEditState>` | 400, 409, 422 | edits |
 | POST | `dimensions/{id}/changes` | `ChangeSetRequest<DimensionOperation>` | `ChangeSetCommit<DimensionEditState>` | 400, 409 owned by report / locked / frozen, 422 | `commitChanges` |
-| POST | `dimension-versions/{id}/check` | | `ValidationReport` | | `checkVersion` |
-| POST | `dimension-versions/{id}/freeze` | `{ note: string \| null }` | `FreezeResult` | 409 not live / locked, 422 (as data in the port) | `freezeVersion` |
-| GET | `dimension-versions/{id}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'version'})` |
+| POST | `dimension-versions/{id}/check` | | `DimensionValidationReport` | | `checkVersion` |
+| POST | `dimension-versions/{id}/freeze` | `FreezeInput` | `DimensionFreezeResult` | 409 not live / locked, 422 (as data in the port) | `freezeVersion` |
+| GET | `dimension-versions/{id}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'version'})` (`checkDimensionVersionDelete`) |
 | DELETE | `dimension-versions/{id}` | | `204` | 409 live / pinned | `deleteVersion` |
-| GET | `dimension-versions/{id}/members/{memberId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'member'})` |
-| GET | `dimension-versions/{id}/levels/{levelId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'level'})` |
-| GET | `dimension-roles/{roleId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'role'})` |
+| GET | `dimension-versions/{id}/members/{memberId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'member'})` (`checkDimensionMemberDelete`) |
+| GET | `dimension-versions/{id}/levels/{levelId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'level'})` (`checkDimensionLevelDelete`) |
+| GET | `dimension-roles/{roleId}/delete-check` | | `DeleteCheck` | | `checkDelete({type:'role'})` (`checkDimensionRoleDelete`) |
 
-`DimensionEditState` = `{ dimension: DimensionDetail; content: VersionContent }`, so the preview returns everything the
+`DimensionEditState` = `{ dimension: DimensionDetail; content: DimensionVersionContent }`, so the preview returns everything the
 editor shows.
+
+The port's one `checkDelete(target)` maps to one delete-check operation per target kind, so each target has its own
+route and 404. Reasons use the shared `DeleteBlockerCode` list ([01](01-api-conventions.md#delete-checks-agreed-oi-07)):
+`not_removable`, `system_dimension`, `live_version`, `has_children`, `required_by_profile`, `assigned_by_bands`,
+`named_by_consumers`, `referenced_by_member` and `referenced_by_<usage kind>`.
+
+Component names are prefixed with `Dimension` (`DimensionMember`, `DimensionLevel`, `DimensionRole`,
+`DimensionMemberInput`, `DimensionMemberPosition`, `DimensionVersionContent`, `AvailableDimensionProfile`) because
+contract component names are global across modules.
 
 The change set targets the dimension, not the version: identity, roles and the live version's content are saved
 together (as `DimensionEditScope` does today).
@@ -150,22 +160,22 @@ together (as `DimensionEditScope` does today).
 
 ```ts
 type DimensionOperation =
-  | { op: 'updateDimension'; patch: { displayName?: string; isEnabled?: boolean; isRemovable?: boolean } }
-  | { op: 'updateVersion'; versionId: Id; patch: { rangeDataType: RangeDataType | null } }   // clears band bounds
-  | { op: 'saveMember'; versionId: Id; input: MemberInput }
+  | { op: 'updateDimension'; patch: DimensionPatch }
+  | { op: 'updateVersion'; versionId: Id; patch: DimensionVersionPatch }   // clears band bounds
+  | { op: 'saveMember'; versionId: Id; input: DimensionMemberInput }
   | { op: 'deleteMember'; versionId: Id; memberId: Id }
-  | { op: 'moveMember'; versionId: Id; memberId: Id; to: MovePosition }
-  | { op: 'importMembers'; versionId: Id; rows: ImportRow[]; mode: ImportMode }
+  | { op: 'moveMember'; versionId: Id; memberId: Id; to: DimensionMemberPosition }
+  | { op: 'importMembers'; versionId: Id; rows: DimensionMemberImportRow[]; mode: DimensionMemberImportMode }
   | { op: 'clearMembers'; versionId: Id }
-  | { op: 'saveLevel'; versionId: Id; input: LevelInput }
+  | { op: 'saveLevel'; versionId: Id; input: DimensionLevelInput }
   | { op: 'deleteLevel'; versionId: Id; levelId: Id }
   | { op: 'reorderLevels'; versionId: Id; orderedIds: Id[] }
   | { op: 'saveBands'; versionId: Id; bands: RangeBand[] }
-  | { op: 'saveRole'; input: RoleInput }
+  | { op: 'saveRole'; input: DimensionRoleInput }
   | { op: 'deleteRole'; roleId: Id }
 ```
 
-Import parsing (CSV/TSV to `ImportRow[]`) stays in the browser (OI-21). Edit policy (M11) is enforced per operation.
+Import parsing (CSV/TSV to `DimensionMemberImportRow[]`) stays in the browser (OI-21). Edit policy (M11) is enforced per operation.
 
 ## Rule codes
 
@@ -187,10 +197,10 @@ Mapping from `web2` codes: `duplicateMemberKey` → `member_key_unique`, `duplic
 | `Dimension` | `qe_dimension` (`definition_origin` → `origin`, `dimension_purpose` → `purpose`) |
 | `Dimension.profileKey` | `qe_dimension.dimension_profile_key` (new, [SG-03](91-schema-gaps.md#sg-03-dimension-profile-key)) |
 | `Dimension.ownerReport` | `qe_report.report_dimension_id` reverse lookup |
-| `Role` | `qe_dimension_role` |
+| `DimensionRole` | `qe_dimension_role` |
 | `DimensionVersion` | `qe_dimension_version`; `createdAt`, `retiredAt`, `freezeNote` new ([SG-04](91-schema-gaps.md#sg-04-version-timestamps), [SG-05](91-schema-gaps.md#sg-05-freeze-note)) |
-| `Level` | `qe_dimension_level` (`is_leaf_level` → `isLeaf`) |
-| `Member` | `qe_dimension_member` (`parent_dimension_member_id` → `parentId`, `properties` JSON) |
+| `DimensionLevel` | `qe_dimension_level` (`is_leaf_level` → `isLeaf`) |
+| `DimensionMember` | `qe_dimension_member` (`parent_dimension_member_id` → `parentId`, `properties` JSON) |
 | closure | `qe_dimension_closure`, server-maintained |
 | `RangeBand` | `qe_range_band` (typed bound columns per `range_data_type`) |
 | usage | bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources, assumption set pins |

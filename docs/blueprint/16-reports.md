@@ -73,17 +73,14 @@ report bridges with versions and row counts that the editor never writes. The sc
 ## Frontend contract (Agreed, new `lib/reports/contract.ts`)
 
 ```ts
-export type RowKind = 'data' | 'group' | 'section' | 'formula'
-export type MappingMethod = 'bridge' | 'direct'
-export type SelectionScope = 'exact' | 'descendants'
-export type Grouping =
-  | { mode: 'member' }
-  | { mode: 'level'; levelKey: string }
-  | { mode: 'ancestor'; memberKey: string }
-  | { mode: 'depth'; depth: number }
+// Shared kernel: Periodicity, Grouping, FilterNode, SourceSelection, VariableMissingBehavior.
+export type ReportRowKind = 'data' | 'group' | 'section' | 'formula'
+export type ReportMappingMethod = 'bridge' | 'direct'
+export type ReportSelectionScope = 'exact' | 'descendants'
+// ReportLayout, ReportSubtotalPosition, ReportStyleRole, ReportFontWeight, ReportBorderStyle, ReportColumnValueKind: the schema's values
 
 export interface ReportSummary {
-  id: Id; key: string; displayName: string; reportType: string
+  id: Id; key: string; displayName: string; reportType: string          // key: DottedKey (OI-29)
   modelId: Id; modelKey: string; isEnabled: boolean
   periodicity: Periodicity | null; profileCount: number; sourceCount: number
 }
@@ -91,18 +88,19 @@ export interface ReportSummary {
 export interface ReportSettings {
   displayName: string
   reportType: string
-  subtotalPosition: 'above' | 'below'
+  subtotalPosition: ReportSubtotalPosition
   defaultProfileKey: string | null
   periodicity: Periodicity | null
-  layout: 'statement' | 'list'
+  layout: ReportLayout
   defaultBreakout: string[]                 // calculation dimension keys
   defaultFilter: FilterNode | null          // over calculation dimension keys
 }
+export type ReportSettingsPatch = Partial<ReportSettings>
 
 export interface ReportRow {
   key: string
   label: string
-  kind: RowKind
+  kind: ReportRowKind
   parentKey: string | null
   isVisible: boolean
   /** Member rows: false makes a header that shows no values. */
@@ -112,41 +110,42 @@ export interface ReportRow {
   styleKey: string | null
   parameters: Record<string, string | number>
 }
+export interface ReportRowPosition { parentKey: string | null; index: number }
 
-export interface SourceRule { itemKey: string; selection: 'member' | 'descendants'; factor: number }
+export interface ReportSourceRule { itemKey: string; selection: SourceSelection; factor: number }
+export interface ReportSourceVariable { variableKey: string; measureKey: string; filter: FilterNode | null; missingBehavior: VariableMissingBehavior | null }
 
-export interface ReportSource {
+export interface ReportSourceInput {
   key: string
   displayName: string
   datasetId: Id
   timeFieldKey: string
-  method: MappingMethod
+  method: ReportMappingMethod
   roleId: Id | null                         // bridge sources
   fieldKey: string | null                   // direct sources
+}
+export interface ReportSource extends ReportSourceInput {
   bridgeId: Id | null                       // bridge sources: the report bridge it owns
-  variables: { variableKey: string; measureKey: string; filter: FilterNode | null; missingBehavior: 'null' | 'zero' | null }[]
+  variables: ReportSourceVariable[]
   /** Bridge sources: rules per row key. */
-  rules: Record<string, SourceRule[]>
+  rules: Record<string, ReportSourceRule[]>
   /** Bridge sources: items excluded on purpose; coverage does not count them as gaps. */
   leftOut: string[]
 }
 
-export type SourceInput = Omit<ReportSource, 'bridgeId' | 'rules' | 'variables' | 'leftOut'>
-export type SourceVariable = ReportSource['variables'][number]
-
-export interface Profile { key: string; displayName: string; isEnabled: boolean; picks: Record<string, string> } // variable -> source key
-export interface CalculationDimension {
+export interface ReportProfile { key: string; displayName: string; isEnabled: boolean; picks: Record<string, string> } // variable -> source key
+export interface ReportCalculationDimension {
   key: string; displayName: string; roleId: Id; grouping: Grouping
   isGroupable: boolean; isFilterable: boolean; isEnabled: boolean
 }
-export interface Scenario { roleId: Id }
-export interface VariableScope { variableKey: string; scopeMemberKey: string; selectionScope: SelectionScope }
-export interface Column { key: string; displayName: string | null; valueKind: 'variable' | 'calculated'; metricKey: string; displayFormat: string | null; isVisible: boolean }
+export interface ReportScenario { roleId: Id }
+export interface ReportVariableScope { variableKey: string; scopeMemberKey: string; selectionScope: ReportSelectionScope }
+export interface ReportColumn { key: string; displayName: string | null; valueKind: ReportColumnValueKind; metricKey: string; displayFormat: string | null; isVisible: boolean }
 export interface ReportStyle {
-  key: string; displayName: string; defaultRole: 'header' | 'subtotal' | 'total' | 'detail' | 'formula' | null
-  fontFamily: string | null; fontSize: number | null; fontWeight: 'normal' | 'medium' | 'semibold' | 'bold' | null
+  key: string; displayName: string; defaultRole: ReportStyleRole | null
+  fontFamily: string | null; fontSize: number | null; fontWeight: ReportFontWeight | null
   isItalic: boolean; textColor: string | null; backgroundColor: string | null
-  borderTop: BorderStyle | null; borderBottom: BorderStyle | null; indent: number | null
+  borderTop: ReportBorderStyle | null; borderBottom: ReportBorderStyle | null; indent: number | null
 }
 
 export interface ReportDocument {
@@ -155,26 +154,33 @@ export interface ReportDocument {
   settings: ReportSettings
   rows: ReportRow[]                         // hierarchy order
   sources: ReportSource[]
-  profiles: Profile[]
-  calculationDimensions: CalculationDimension[]
-  scenarios: Scenario[]
-  variableScopes: VariableScope[]
-  columns: Column[]                         // sort order = position
+  profiles: ReportProfile[]
+  calculationDimensions: ReportCalculationDimension[]
+  scenarios: ReportScenario[]
+  variableScopes: ReportVariableScope[]
+  columns: ReportColumn[]                   // sort order = position
   styles: ReportStyle[]
 }
 
 /** Server-computed; replaces coverage.ts, profiles.ts, scenarios.ts and readiness in the browser (OI-05). */
 export interface ReportDiagnostics {
   ready: boolean                            // all report rules pass: the report can be enabled
-  steps: { step: 'rows' | 'sources' | 'variables' | 'items' | 'profiles' | 'dimensions' | 'columns'; status: 'ok' | 'warn' | 'fail'; violations: Violation[] }[]
-  coverage: Record<string, SourceCoverage>  // by source key
-  resolution: Record<string, Record<string, VariableResolution>>   // profile -> variable -> status
+  steps: ReportDiagnosticsStep[]            // { step: 'rows' | 'sources' | 'variables' | 'items' | 'profiles' | 'dimensions' | 'columns'; status: 'ok' | 'warn' | 'fail'; violations }
+  coverage: Record<string, ReportSourceCoverage>                         // by source key
+  resolution: Record<string, Record<string, ReportVariableResolution>>   // profile -> variable -> status
 }
-export interface SourceCoverage { unmapped: string[]; multi: { itemKey: string; net: number; rows: string[] }[]; leftOut: string[] }
-export interface VariableResolution { status: 'ok' | 'shadowed' | 'gap' | 'unresolved' | 'na'; sourceKey: string | null; rowGaps: string[] }
+export interface ReportSourceCoverage { unmapped: string[]; multi: ReportCoverageMulti[]; leftOut: string[] }
+export interface ReportCoverageMulti { itemKey: string; net: number; rows: string[] }
+export interface ReportVariableResolution { status: 'ok' | 'shadowed' | 'gap' | 'unresolved' | 'na'; sourceKey: string | null; rowGaps: string[] }
+
+export interface ReportCreateInput { key: string; displayName: string; reportType: string; modelId: Id; startFromDimensionId?: Id; copyFromReportId?: Id }
+export interface ReportEnabledInput { isEnabled: boolean }
 ```
 
-`FilterNode` is the schema's filter JSON shape, typed in the shared kernel.
+`FilterNode` (the schema's filter JSON shape) and `Grouping` are shared kernel types (`common.yaml`), as are
+`Periodicity`, `SourceSelection` (a rule's selection, the same values as a bridge mapping's) and
+`VariableMissingBehavior` (a source variable's override of the model variable's). Every other component carries a
+`Report` prefix because contract names are global (`ReportProfile`, `ReportColumn`, `ReportSourceInput`).
 
 ### Port
 
@@ -186,34 +192,37 @@ export interface ReportsApi extends ChangeSetPort {
   getDiagnostics(id: Id): Promise<ReportDiagnostics>          // saved state; pending state via preview
   getUnmappedItems(id: Id, sourceKey: string): Promise<string[]>
 
-  // edits (staged per report)
-  updateSettings(patch: Partial<ReportSettings>): Promise<ApiResult<ReportSettings>>
-  saveRow(row: ReportRow & { index: number }): Promise<ApiResult<ReportRow>>
-  moveRow(key: string, to: { parentKey: string | null; index: number }): Promise<ApiResult<null>>
-  deleteRow(key: string): Promise<ApiResult<null>>              // children move up; server cascades rules and scopes
-  saveSource(input: SourceInput & { copyFromSourceKey?: string }): Promise<ApiResult<ReportSource>>
-  deleteSource(key: string): Promise<ApiResult<null>>           // server cascades profile picks
-  setSourceVariables(sourceKey: string, variables: SourceVariable[]): Promise<ApiResult<null>>
-  setRowRules(sourceKey: string, rowKey: string, rules: SourceRule[]): Promise<ApiResult<null>>
-  setLeftOut(sourceKey: string, itemKeys: string[]): Promise<ApiResult<null>>
-  saveProfile(profile: Profile & { originalKey?: string }): Promise<ApiResult<Profile>>
-  deleteProfile(key: string): Promise<ApiResult<null>>
-  saveCalculationDimension(input: CalculationDimension & { originalKey?: string }): Promise<ApiResult<CalculationDimension>>
-  deleteCalculationDimension(key: string): Promise<ApiResult<null>>   // server cascades default breakout and filter
-  setScenarios(roleIds: Id[]): Promise<ApiResult<null>>
-  setVariableScopes(scopes: VariableScope[]): Promise<ApiResult<null>>
-  setColumns(columns: Column[]): Promise<ApiResult<null>>
-  saveStyle(style: ReportStyle): Promise<ApiResult<ReportStyle>>
-  deleteStyle(key: string): Promise<ApiResult<null>>
+  // edits (staged per report; every edit names the report first)
+  updateSettings(reportId: Id, patch: ReportSettingsPatch): Promise<ApiResult<ReportSettings>>
+  saveRow(reportId: Id, row: ReportRow & { index: number }): Promise<ApiResult<ReportRow>>
+  moveRow(reportId: Id, key: string, to: ReportRowPosition): Promise<ApiResult<null>>
+  deleteRow(reportId: Id, key: string): Promise<ApiResult<null>>              // children move up; server cascades rules and scopes
+  saveSource(reportId: Id, input: ReportSourceInput & { copyFromSourceKey?: string }): Promise<ApiResult<ReportSource>>
+  deleteSource(reportId: Id, key: string): Promise<ApiResult<null>>           // server cascades profile picks
+  setSourceVariables(reportId: Id, sourceKey: string, variables: ReportSourceVariable[]): Promise<ApiResult<null>>
+  setRowRules(reportId: Id, sourceKey: string, rowKey: string, rules: ReportSourceRule[]): Promise<ApiResult<null>>
+  setLeftOut(reportId: Id, sourceKey: string, itemKeys: string[]): Promise<ApiResult<null>>
+  saveProfile(reportId: Id, profile: ReportProfile & { originalKey?: string }): Promise<ApiResult<ReportProfile>>
+  deleteProfile(reportId: Id, key: string): Promise<ApiResult<null>>
+  saveCalculationDimension(reportId: Id, input: ReportCalculationDimension & { originalKey?: string }): Promise<ApiResult<ReportCalculationDimension>>
+  deleteCalculationDimension(reportId: Id, key: string): Promise<ApiResult<null>>   // server cascades default breakout and filter
+  setScenarios(reportId: Id, roleIds: Id[]): Promise<ApiResult<null>>
+  setVariableScopes(reportId: Id, scopes: ReportVariableScope[]): Promise<ApiResult<null>>
+  setColumns(reportId: Id, columns: ReportColumn[]): Promise<ApiResult<null>>
+  saveStyle(reportId: Id, style: ReportStyle): Promise<ApiResult<ReportStyle>>
+  deleteStyle(reportId: Id, key: string): Promise<ApiResult<null>>
 
   // commands
-  createReport(input: { key: string; displayName: string; reportType: string; modelId: Id; startFromDimensionId?: Id; copyFromReportId?: Id }): Promise<ApiResult<ReportSummary>>
+  createReport(input: ReportCreateInput): Promise<ApiResult<ReportSummary>>
   setEnabled(id: Id, isEnabled: boolean): Promise<ApiResult<ReportSummary>>
   deleteReport(id: Id): Promise<ApiResult<null>>
 }
 ```
 
-Edits are scoped to the open report (the staged port binds `id`).
+**Edit methods take `reportId` first (Agreed, G1).** Like every other port, an edit names the aggregate it changes
+instead of relying on a bound id; the staged port keys the change set by it, and one change set covers one report, so
+every edit of a batch names the same `reportId`. The operation union carries no `reportId`: the route names the
+report.
 
 **`createReport.copyFromReportId`** serves `web2`'s "New report" (copies rows, sources and profiles of another
 report, starts disabled) and "Duplicate" (`_copyN` key suggested by the client). The server copies the report
@@ -244,13 +253,13 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | Method | Route | Request | Response | Errors | Port |
 |---|---|---|---|---|---|
 | GET | `reports` | | `ReportSummary[]` | | `listReports` |
-| POST | `reports` | create input | `201 ReportSummary` | 400, 409 key taken | `createReport` |
+| POST | `reports` | `ReportCreateInput` | `201 ReportSummary` | 400, 409 key taken | `createReport` |
 | GET | `reports/{id}` | | `ReportDocument` | 404 | `getReport` |
 | GET | `reports/{id}/diagnostics` | | `ReportDiagnostics` | 404 | `getDiagnostics` |
 | GET | `reports/{id}/sources/{sourceKey}/unmapped` | | `string[]` | 404 | `getUnmappedItems` |
 | POST | `reports/{id}/changes/preview` | `ChangeSetRequest<ReportOperation>` | `ChangeSetPreview<ReportDocument> & { diagnostics: ReportDiagnostics }` | 400, 409, 422 (enabled report gate) | edits |
 | POST | `reports/{id}/changes` | `ChangeSetRequest<ReportOperation>` | `ChangeSetCommit<ReportDocument>` | 400, 422 | `commitChanges` |
-| PUT | `reports/{id}/enabled` | `{ isEnabled }` | `ReportSummary` | 422 rules | `setEnabled` |
+| PUT | `reports/{id}/enabled` | `ReportEnabledInput` | `ReportSummary` | 422 rules | `setEnabled` |
 | DELETE | `reports/{id}` | | `204` | 404 | `deleteReport` |
 
 Preview responses include `diagnostics`, so the readiness badge, coverage dialog, profile matrix and "what this row
@@ -260,22 +269,22 @@ shows" panel render the pending state without browser-side rules.
 
 ```ts
 type ReportOperation =
-  | { op: 'updateSettings'; patch: Partial<ReportSettings> }
+  | { op: 'updateSettings'; patch: ReportSettingsPatch }
   | { op: 'saveRow'; row: ReportRow; index: number }
-  | { op: 'moveRow'; key: string; to: { parentKey: string | null; index: number } }
+  | { op: 'moveRow'; key: string; to: ReportRowPosition }
   | { op: 'deleteRow'; key: string }
-  | { op: 'saveSource'; input: SourceInput; copyFromSourceKey?: string }
+  | { op: 'saveSource'; input: ReportSourceInput; copyFromSourceKey?: string }
   | { op: 'deleteSource'; key: string }
-  | { op: 'setSourceVariables'; sourceKey: string; variables: SourceVariable[] }
-  | { op: 'setRowRules'; sourceKey: string; rowKey: string; rules: SourceRule[] }
+  | { op: 'setSourceVariables'; sourceKey: string; variables: ReportSourceVariable[] }
+  | { op: 'setRowRules'; sourceKey: string; rowKey: string; rules: ReportSourceRule[] }
   | { op: 'setLeftOut'; sourceKey: string; itemKeys: string[] }
-  | { op: 'saveProfile'; profile: Profile; originalKey?: string }
+  | { op: 'saveProfile'; profile: ReportProfile; originalKey?: string }
   | { op: 'deleteProfile'; key: string }
-  | { op: 'saveCalculationDimension'; input: CalculationDimension; originalKey?: string }
+  | { op: 'saveCalculationDimension'; input: ReportCalculationDimension; originalKey?: string }
   | { op: 'deleteCalculationDimension'; key: string }
   | { op: 'setScenarios'; roleIds: Id[] }
-  | { op: 'setVariableScopes'; scopes: VariableScope[] }
-  | { op: 'setColumns'; columns: Column[] }
+  | { op: 'setVariableScopes'; scopes: ReportVariableScope[] }
+  | { op: 'setColumns'; columns: ReportColumn[] }
   | { op: 'saveStyle'; style: ReportStyle }
   | { op: 'deleteStyle'; key: string }
 ```

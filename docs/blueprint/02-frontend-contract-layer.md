@@ -51,8 +51,15 @@ Replaces the separate `ApiResult`/`ProblemDetails` declarations in `datasets/con
 
 ```ts
 export type Id = string
+export const newTempId = (): Id => `tmp:${crypto.randomUUID()}`  // items created inside a change set
+export const KEY_PATTERN: RegExp                                     // Key
+export const DOTTED_KEY_PATTERN: RegExp                              // DottedKey: datasets, models, reports, mapping sets, bridges
 
 export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
+
+// Vocabularies more than one module reads
+export type DimensionKind, DimensionPurpose, DefinitionOrigin, AssumptionSetStatus, BindingKind, Periodicity,
+  MeasureKind, ComponentRole, RoundingMode, SourceSelection, VariableMissingBehavior
 
 export interface Problem { /* see 01-api-conventions.md#problem-body */ }
 export interface Violation { code: string; message: string; target?: ViolationTarget }
@@ -60,7 +67,13 @@ export interface ViolationTarget { area: string; itemId?: string; itemKey?: stri
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem }
 
 export interface ValidationReport { versionId: Id; checkedAt: string; violations: Violation[] }
-export interface DeleteCheck { allowed: boolean; message: string | null; reasons: Violation[] }
+export interface DeleteCheck { allowed: boolean; message: string | null; reasons: DeleteBlocker[] }
+export interface DeleteBlocker extends Violation { code: DeleteBlockerCode }   // one list, 01 "Delete checks"
+
+export interface FreezeInput { note: string | null }
+export interface FreezeResult<V> { report: ValidationReport; live: V | null }  // dimensions, mapping sets, bridges
+export type Grouping = { mode: 'member' } | { mode: 'level'; levelKey: string } | { mode: 'ancestor'; memberKey: string } | { mode: 'depth'; depth: number }
+export type FilterNode = /* the engine's structured filterNode over FilterOperand */
 
 export interface VocabularyTerm<V extends string = string> { value: V; label: string; description?: string }
 

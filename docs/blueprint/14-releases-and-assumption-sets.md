@@ -35,13 +35,13 @@ Adopted with these deltas:
 
 | Item | Change | Issue |
 |---|---|---|
-| `ProblemDetails`, `ApiResult`, `ReleaseViolation`, `CheckTarget` | Kernel types. `ReleaseViolation` becomes `Violation` with `rule` → `code`. `CheckTarget` maps onto `ViolationTarget`: dataset → `{ area: 'dataset', itemId: datasetId }`; identity → `{ area: kind, itemId: identityId }`; report → `{ area: 'report', itemId: reportId, itemKey: sourceKey }`. `ReleaseViolation extends Violation { datasetId: Id \| null }` keeps the manifest row for inline issue icons. | |
-| `getCatalog`, `Catalog` | Replaced by `TenantApi.getCatalog`; `Identity` and `ReportRef` become projections served by `listIdentities()` and `listReportReads()` | OI-13 |
-| `ReportRef.sources[].usesFactors`, `reads` | Computed by the server from report sources and bridges | |
+| `ProblemDetails`, `ApiResult`, `ReleaseViolation`, `CheckTarget` | Kernel types. `ReleaseViolation` becomes `Violation` with `rule` → `code`. `CheckTarget` maps onto `ViolationTarget`: dataset → `{ area: 'dataset', itemId: datasetId }`; identity → `{ area: kind, itemId: identityId }`; report → `{ area: 'report', itemId: reportId, itemKey: sourceKey }`. `ReleaseViolation extends Violation { code: ReleaseRuleCode; datasetId: Id \| null; target?: ReleaseViolationTarget }` keeps the manifest row for inline issue icons. | |
+| `getCatalog`, `Catalog` | Replaced by `TenantApi.getCatalog`; `Identity` and `ReportRef` become `PinIdentity` and `ReleaseReportRef`, projections served by `listIdentities()` and `listReportReads()`; the manifest editor's datasets come from `listManifestDatasets()` | OI-13 |
+| `ReleaseReportRef.sources[].usesFactors`, `reads` | Computed by the server from report sources and bridges | |
 | `checkRelease(id, manifest?)` | Becomes the release change-set preview | OI-37 |
 | `saveManifest` | Becomes the release's single edit operation | OI-01 |
 | `diffReleases`, `compareSets`, `capturePreview`, `getSet().readiness`, `SetListItem.livePins`, `changedSinceCapture` | New server read models | OI-38 |
-| `TenantInfo` | Kernel `TenantInfo` from [10](10-tenant-session-catalog.md) | |
+| `TenantInfo` | `TenantInfo` from [10](10-tenant-session-catalog.md) (`tenant.yaml`); also the answer of `activateRelease` | |
 | `ReleasesApi` | Extends `ChangeSetPort` (manifest) | OI-01 |
 | Release activation date and history | Stored in `qe_release_activation` (SG-09); `ReleaseListItem` gains `activatedAt` and `activatedBy` for the active release, and `ReleaseDetail` gains `activations[]` | OI-40 |
 | `Release.contentHash` | New: computed on publish, shown on the release page | OI-41 |
@@ -54,21 +54,22 @@ export interface ReleasesApi extends ChangeSetPort {
   listReleases(): Promise<ReleaseListItem[]>
   getRelease(id: Id): Promise<ApiResult<ReleaseDetail>>
   diffReleases(fromId: Id, toId: Id): Promise<ReleaseDiff>
-  checkRelease(id: Id): Promise<CheckReport>                         // saved manifest; pending manifest via preview
-  listIdentities(): Promise<Identity[]>                              // dimensions, mapping sets, bridges with versions
-  listReportReads(): Promise<ReportRef[]>
-  listSets(): Promise<{ active: SetListItem; historical: SetListItem[] }>
+  checkRelease(id: Id): Promise<ReleaseCheckReport>                  // saved manifest; pending manifest via preview
+  listManifestDatasets(): Promise<ManifestDataset[]>                 // datasets with versions, bindings, measures
+  listIdentities(): Promise<PinIdentity[]>                           // dimensions, mapping sets, bridges with versions
+  listReportReads(): Promise<ReleaseReportRef[]>
+  listSets(): Promise<AssumptionSetList>                             // { active, historical }
   getSet(id: Id): Promise<ApiResult<SetDetail>>
   compareSets(fromSetId: Id, toSetId: Id): Promise<SetComparison>
-  capturePreview(): Promise<CapturePreview>
+  capturePreview(): Promise<SetCapturePreview>
 
   // edit (staged per draft release)
   saveManifest(id: Id, manifest: ManifestEntry[]): Promise<ApiResult<ReleaseDetail>>
 
   // commands
   createRelease(input: CreateReleaseInput): Promise<ApiResult<Release>>
-  validateRelease(id: Id): Promise<ApiResult<{ release: Release; report: CheckReport }>>
-  publishRelease(id: Id): Promise<ApiResult<{ release: Release; report: CheckReport }>>
+  validateRelease(id: Id): Promise<ApiResult<ReleaseTransitionResult>>  // { release, report }
+  publishRelease(id: Id): Promise<ApiResult<ReleaseTransitionResult>>
   backToDraft(id: Id): Promise<ApiResult<Release>>
   retireRelease(id: Id): Promise<ApiResult<Release>>
   activateRelease(id: Id): Promise<ApiResult<TenantInfo>>
@@ -79,7 +80,14 @@ export interface ReleasesApi extends ChangeSetPort {
 }
 ```
 
-`CheckReport.unsaved` stays: the preview response sets it when the report ran over pending operations.
+`ReleaseCheckReport.unsaved` stays: the preview response sets it when the report ran over pending operations.
+
+`activateRelease` answers the kernel `TenantInfo` ([10](10-tenant-session-catalog.md#tenant-overview-and-catalog-libtenantcontractts)):
+the new `activeReleaseId` and the advanced `semanticRevision`, so the active-release chip updates from the command's
+result. The activation log row appears in `ReleaseDetail.activations`.
+
+Component names carry a `Release`, `Pin` or `Set` prefix because contract names are global (`ReleaseCheckReport`,
+`ReleaseReportRef`, `PinIdentity`, `SetReadiness`, `SetCapturePreview`).
 
 `relabelSet` is a command, not a staged edit: the set page has a small sheet with its own Save, and relabelling does
 not touch anything else.
@@ -94,19 +102,20 @@ Prefix `/api/tenants/{t}`. Open to any tenant user, including activation, captur
 | POST | `releases` | `CreateReleaseInput` | `201 Release` | 400, 409 key taken | `createRelease` |
 | GET | `releases/{id}` | | `ReleaseDetail` (with `activations[]`) | 404 | `getRelease` |
 | GET | `releases/diff?from=&to=` | | `ReleaseDiff` (with `readBy` from enabled reports) | 404 | `diffReleases` |
-| POST | `releases/{id}/changes/preview` | `ChangeSetRequest<ReleaseOperation>` | `ChangeSetPreview<ReleaseDetail> & { report: CheckReport; diffVsActive: ReleaseDiff }` | 409 not draft | `saveManifest` (staged), `checkRelease` over pending manifest |
+| POST | `releases/{id}/changes/preview` | `ChangeSetRequest<ReleaseOperation>` | `ChangeSetPreview<ReleaseDetail> & { report: ReleaseCheckReport; diffVsActive: ReleaseDiff }` | 409 not draft | `saveManifest` (staged), `checkRelease` over pending manifest |
 | POST | `releases/{id}/changes` | `ChangeSetRequest<ReleaseOperation>` | `ChangeSetCommit<ReleaseDetail>` | 409 not draft, 422 pinned version not owned or not published | `commitChanges` |
-| POST | `releases/{id}/check` | | `CheckReport` | | `checkRelease` |
-| POST | `releases/{id}/validate` | | `{ release, report }` | 409, 422 | `validateRelease` |
-| POST | `releases/{id}/publish` | | `{ release, report }` (sets `contentHash`) | 409, 422 | `publishRelease` |
+| POST | `releases/{id}/check` | | `ReleaseCheckReport` | | `checkRelease` |
+| POST | `releases/{id}/validate` | | `ReleaseTransitionResult` | 409, 422 | `validateRelease` |
+| POST | `releases/{id}/publish` | | `ReleaseTransitionResult` (sets `contentHash`) | 409, 422 | `publishRelease` |
 | POST | `releases/{id}/reopen` | | `Release` | 409 | `backToDraft` |
 | POST | `releases/{id}/retire` | | `Release` | 409, 422 `release_not_active` | `retireRelease` |
 | POST | `releases/{id}/activate` | | `TenantInfo` | 409 not published, 422 enabled report rules | `activateRelease` |
 | DELETE | `releases/{id}` | | `204` | 409 not draft | `deleteRelease` |
-| GET | `identities` | | `Identity[]` | | `listIdentities` |
-| GET | `report-reads` | | `ReportRef[]` | | `listReportReads` |
-| GET | `assumption-sets` | | `{ active: SetListItem; historical: SetListItem[] }` | | `listSets` |
-| GET | `assumption-sets/capture-preview` | | `CapturePreview` | | `capturePreview` |
+| GET | `manifest-datasets` | | `ManifestDataset[]` | | `listManifestDatasets` |
+| GET | `identities` | | `PinIdentity[]` | | `listIdentities` |
+| GET | `report-reads` | | `ReleaseReportRef[]` | | `listReportReads` |
+| GET | `assumption-sets` | | `AssumptionSetList` | | `listSets` |
+| GET | `assumption-sets/capture-preview` | | `SetCapturePreview` | | `capturePreview` |
 | POST | `assumption-sets` | `CaptureSetInput` | `201 AssumptionSet` | 400, 409 key taken | `captureSet` |
 | GET | `assumption-sets/{id}` | | `SetDetail` (pins with state, readiness) | 404 | `getSet` |
 | GET | `assumption-sets/compare?from=&to=` | | `SetComparison` | 404 | `compareSets` |
@@ -137,8 +146,8 @@ Release (`semantic_release`): `manifest_not_empty`, `pinned_version_belongs_to_d
 | `PinRow.state` | `live` if the pinned version is live (published); `frozen` if frozen (retired); `report_owned` if the identity belongs to a report. Living kinds have no drafts (OI-14), so `unpublished` is removed |
 | `SetListItem.livePins`, `changedSinceCapture` | Count of pins whose version is still published; count whose identity's published version differs |
 | `SetComparison` | Pin set difference (report-owned excluded) plus `ReleaseDiff` of the two releases |
-| `CapturePreview` | Counts of active analytical pins and of left-out report-owned pins; the active release |
-| `Readiness` | Per enabled report: every analytical identity it reads is pinned and every source dataset is in the set's release |
+| `SetCapturePreview` | Counts of active analytical pins and of left-out report-owned pins; the active release |
+| `SetReadiness` | Per enabled report: every analytical identity it reads is pinned and every source dataset is in the set's release |
 
 ## Schema mapping
 
@@ -146,10 +155,10 @@ Release (`semantic_release`): `manifest_not_empty`, `pinned_version_belongs_to_d
 |---|---|
 | `Release` | `qe_semantic_release` (`release_key`, `status`, `created_at`, `published_at`, `content_hash`) |
 | activation history | `qe_release_activation` (new, [SG-09](91-schema-gaps.md#sg-09-release-activation-log)) |
-| `ReleaseDataset`, `ManifestEntry` | `qe_release_dataset` |
+| `ManifestEntry` | `qe_release_dataset` |
 | active release, `TenantInfo` | `qe_database_info` |
 | `AssumptionSet` | `qe_assumption_set` (`semantic_release_id` → `releaseId`) |
-| `Pin` | `qe_assumption_set_dimension`, `_mapping`, `_bridge` |
+| `PinRow`, `SetPinEntry` | `qe_assumption_set_dimension`, `_mapping`, `_bridge` |
 
 ## Deltas from the current API
 
@@ -159,7 +168,7 @@ Release (`semantic_release`): `manifest_not_empty`, `pinned_version_belongs_to_d
 | Change | `PUT releases/{id}/datasets` becomes the manifest change set |
 | Change | `PUT versions/semantic_release/{id}/status` becomes `validate`, `publish`, `reopen`, `retire` |
 | Change | `GET assumption-sets` returns `{ active, historical }` with derived counts |
-| New | `diff`, `check`, preview over unsaved manifest, `identities`, `report-reads`, `capture-preview`, `compare`, readiness, pin state |
+| New | `diff`, `check`, preview over unsaved manifest, `manifest-datasets`, `identities`, `report-reads`, `capture-preview`, `compare`, readiness, pin state |
 
 ## Decisions applied
 

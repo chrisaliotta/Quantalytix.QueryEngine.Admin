@@ -132,7 +132,7 @@ export interface DeleteBlocker extends Violation {
 |---|---|
 | `not_removable` | A dimension marked not removable. |
 | `system_dimension` | A system dimension. |
-| `not_draft` | A dataset version or release that is not a draft. |
+| `published_version` | A dataset version that is published or retired. |
 | `live_version` | The live version of a dimension, mapping set or bridge; only frozen versions can be deleted. |
 | `has_published_versions` | A dataset with published or retired versions. |
 | `has_children` | A member with child members. |

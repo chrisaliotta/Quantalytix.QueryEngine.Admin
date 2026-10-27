@@ -49,8 +49,10 @@ Adopted with these deltas:
 | `MappingsApi` | Extends `ChangeSetPort`; edits are staged per mapping set or analytical bridge (identity plus live version) | OI-01 |
 | `createMappingVersion`, `validate*Version`, `publish*Version`, `reopen*Version`, `createBridgeVersion`, `BridgeVersionInput` | Removed; replaced by `freezeMappingVersion` and `freezeBridgeVersion` | OI-14, OI-30 |
 | `isEditableStatus`, `defaultVersionOf` | Editable = live (`published`); default = the live version | OI-14 |
-| `createMappingSet`, `createBridge` | Return `{ ...Id, versionId }` of the live v1 | OI-27 |
+| `createMappingSet`, `createBridge` | Return `MappingSetCreated` / `BridgeCreated` (`{ ...Id, versionId }` of the live v1) | OI-27 |
 | `ApiResult`, `ProblemDetails`, `DeleteCheck`, `Violation`, `ValidationReport` | Kernel types; `Violation.itemId`/`filter` move into `target` | OI-06 |
+| `FreezeResult`, `newTempId`, `MappingSourceSelection`, dimension kind and purpose | Shared kernel `FreezeInput` / `FreezeResult`, `newTempId`, `SourceSelection` (also read by report rules), `DimensionKind`, `DimensionPurpose` | |
+| Delete-check reasons | Shared codes: `live_version`, `owned_by_report`, `referenced_by_dataset_binding`, `referenced_by_assumption_set` ([01](01-api-conventions.md#delete-checks-agreed-oi-07)) | OI-07 |
 | `listDimensionRefs`, `getPublishedMembers` | Move to `TenantApi` | OI-13 |
 | `BridgeOwner` | `{ reportId, reportKey, sourceKey }` | OI-31 |
 | `findReportBridge(reportKey, sourceKey)` | `findReportBridge(reportId, sourceKey)` | OI-46, OI-47 |
@@ -78,32 +80,33 @@ export interface MappingsApi extends ChangeSetPort {
   checkDeleteBridgeVersion(versionId: Id): Promise<DeleteCheck>
 
   // edits: a mapping set's identity and its live version
-  updateMappingSet(id: Id, patch: Partial<Pick<MappingSet, 'displayName' | 'sourceNamespace'>>): Promise<ApiResult<MappingSet>>
-  saveEntry(versionId: Id, input: EntryInput): Promise<ApiResult<MappingEntry>>
+  updateMappingSet(id: Id, patch: MappingSetPatch): Promise<ApiResult<MappingSet>>
+  saveEntry(versionId: Id, input: MappingEntryInput): Promise<ApiResult<MappingEntry>>
   deleteEntry(versionId: Id, entryId: Id): Promise<ApiResult<null>>
-  replaceEntries(versionId: Id, entries: EntryInput[]): Promise<ApiResult<MappingEntry[]>>
+  replaceEntries(versionId: Id, entries: MappingEntryInput[]): Promise<ApiResult<MappingEntry[]>>
 
   // edits: an analytical bridge's identity and its live version
-  updateBridge(id: Id, patch: Partial<Pick<Bridge, 'displayName' | 'isEnabled'>>): Promise<ApiResult<Bridge>>
-  updateBridgeVersion(versionId: Id, patch: Pick<BridgeVersion, 'cardinality' | 'allocationMode'>): Promise<ApiResult<BridgeVersion>>
+  updateBridge(id: Id, patch: BridgePatch): Promise<ApiResult<Bridge>>
+  updateBridgeVersion(versionId: Id, patch: BridgeVersionPatch): Promise<ApiResult<BridgeVersion>>
   saveBridgeMapping(versionId: Id, input: BridgeMappingInput): Promise<ApiResult<BridgeMapping>>
   deleteBridgeMapping(versionId: Id, mappingId: Id): Promise<ApiResult<null>>
   replaceBridgeMappings(versionId: Id, rows: BridgeMappingInput[]): Promise<ApiResult<BridgeMapping[]>>
 
   // commands
-  createMappingSet(input: CreateMappingSetInput): Promise<ApiResult<{ mappingSetId: Id; versionId: Id }>>
+  createMappingSet(input: CreateMappingSetInput): Promise<ApiResult<MappingSetCreated>>
   deleteMappingSet(id: Id): Promise<ApiResult<null>>
-  freezeMappingVersion(versionId: Id, note: string | null): Promise<ApiResult<FreezeResult<MappingVersionSummary>>>
+  freezeMappingVersion(versionId: Id, note: string | null): Promise<ApiResult<MappingFreezeResult>>   // FreezeResult<MappingVersionSummary>
   deleteMappingVersion(versionId: Id): Promise<ApiResult<null>>      // frozen versions only
-  createBridge(input: CreateBridgeInput): Promise<ApiResult<{ bridgeId: Id; versionId: Id }>>
+  createBridge(input: CreateBridgeInput): Promise<ApiResult<BridgeCreated>>
   deleteBridge(id: Id): Promise<ApiResult<null>>
-  freezeBridgeVersion(versionId: Id, note: string | null): Promise<ApiResult<FreezeResult<BridgeVersionSummary>>>
+  freezeBridgeVersion(versionId: Id, note: string | null): Promise<ApiResult<BridgeFreezeResult>>     // FreezeResult<BridgeVersionSummary>
   deleteBridgeVersion(versionId: Id): Promise<ApiResult<null>>       // frozen versions only
 }
-
-/** Shared with dimensions: the rule report, and the new live version when the rules passed. */
-export interface FreezeResult<V> { report: ValidationReport; live: V | null }
 ```
+
+`FreezeInput` and `FreezeResult<V>` are shared kernel types (`common.yaml`), defined once for dimensions, mapping sets
+and bridges; `MappingFreezeResult` and `BridgeFreezeResult` specialize `live` with `allOf`. `newTempId()` (`tmp:<uuid>`)
+for new entries and mappings comes from the kernel too.
 
 **Report bridges** are read through this port (Bridges sections, Usage, `ReportBridgeLine`) but every write to them
 goes through the report's change set ([16](16-reports.md#sources-and-report-bridges)). The server refuses a mappings
@@ -116,7 +119,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | Method | Route | Request | Response | Errors | Port |
 |---|---|---|---|---|---|
 | GET | `mapping-sets?dimensionId=` | | `MappingSetListItem[]` | | `listMappingSets` |
-| POST | `mapping-sets` | `CreateMappingSetInput` | `201 { mappingSetId, versionId }` (empty live v1) | 400, 409 key taken / report dimension | `createMappingSet` |
+| POST | `mapping-sets` | `CreateMappingSetInput` | `201 MappingSetCreated` (empty live v1) | 400, 409 key taken / report dimension | `createMappingSet` |
 | GET | `mapping-sets/{id}` | | `MappingSetDetail` (bindings, pins) | 404 | `getMappingSet` |
 | GET | `mapping-sets/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteMappingSet` |
 | DELETE | `mapping-sets/{id}` | | `204` | 409 blocked | `deleteMappingSet` |
@@ -124,12 +127,12 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | POST | `mapping-sets/{id}/changes` | `ChangeSetRequest<MappingOperation>` | `ChangeSetCommit<MappingSetEditState>` | 400, 409, 422 | `commitChanges` |
 | GET | `mapping-versions/{id}` | | `MappingVersionContent` | 404 | `getMappingVersion` |
 | POST | `mapping-versions/{id}/check` | | `ValidationReport` | | `checkMappingVersion` |
-| POST | `mapping-versions/{id}/freeze` | `{ note }` | `FreezeResult` | 409 not live, 422 | `freezeMappingVersion` |
+| POST | `mapping-versions/{id}/freeze` | `FreezeInput` | `MappingFreezeResult` | 409 not live, 422 | `freezeMappingVersion` |
 | GET | `mapping-versions/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteMappingVersion` |
 | DELETE | `mapping-versions/{id}` | | `204` | 409 live / pinned | `deleteMappingVersion` |
 | GET | `bridges?dimensionId=` | | `BridgeListItem[]` (both directions, analytical and report) | | `listBridges` |
-| GET | `bridges?reportId=&sourceKey=` | | `BridgeListItem[]` (0 or 1) | | `findReportBridge` |
-| POST | `bridges` | `CreateBridgeInput` | `201 { bridgeId, versionId }` (empty live v1, `many_to_one` / `none`) | 400, 409 | `createBridge` |
+| GET | `bridges?reportId=&sourceKey=` | | `BridgeListItem[]` (0 or 1) | | `findReportBridge` (`listBridges` with a filter) |
+| POST | `bridges` | `CreateBridgeInput` | `201 BridgeCreated` (empty live v1, `many_to_one` / `none`) | 400, 409 | `createBridge` |
 | GET | `bridges/{id}` | | `BridgeDetail` | 404 | `getBridge` |
 | GET | `bridges/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteBridge` |
 | DELETE | `bridges/{id}` | | `204` | 409 blocked / report-owned | `deleteBridge` |
@@ -137,7 +140,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | POST | `bridges/{id}/changes` | `ChangeSetRequest<BridgeOperation>` | `ChangeSetCommit<BridgeEditState>` | 400, 409 report-owned, 422 | `commitChanges` |
 | GET | `bridge-versions/{id}` | | `BridgeVersionContent` | 404 | `getBridgeVersion` |
 | POST | `bridge-versions/{id}/check` | | `ValidationReport` | | `checkBridgeVersion` |
-| POST | `bridge-versions/{id}/freeze` | `{ note }` | `FreezeResult` | 409 not live / report-owned, 422 | `freezeBridgeVersion` |
+| POST | `bridge-versions/{id}/freeze` | `FreezeInput` | `BridgeFreezeResult` | 409 not live / report-owned, 422 | `freezeBridgeVersion` |
 | GET | `bridge-versions/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteBridgeVersion` |
 | DELETE | `bridge-versions/{id}` | | `204` | 409 live / pinned | `deleteBridgeVersion` |
 
@@ -149,14 +152,14 @@ covers its live version.
 
 ```ts
 type MappingOperation =
-  | { op: 'updateMappingSet'; patch: { displayName?: string; sourceNamespace?: string } }
-  | { op: 'saveEntry'; versionId: Id; input: EntryInput }
+  | { op: 'updateMappingSet'; patch: MappingSetPatch }
+  | { op: 'saveEntry'; versionId: Id; input: MappingEntryInput }
   | { op: 'deleteEntry'; versionId: Id; entryId: Id }
-  | { op: 'replaceEntries'; versionId: Id; entries: EntryInput[] }
+  | { op: 'replaceEntries'; versionId: Id; entries: MappingEntryInput[] }
 
 type BridgeOperation =
-  | { op: 'updateBridge'; patch: { displayName?: string; isEnabled?: boolean } }
-  | { op: 'updateBridgeVersion'; versionId: Id; patch: { cardinality: Cardinality; allocationMode: AllocationMode } }
+  | { op: 'updateBridge'; patch: BridgePatch }
+  | { op: 'updateBridgeVersion'; versionId: Id; patch: BridgeVersionPatch }
   | { op: 'saveBridgeMapping'; versionId: Id; input: BridgeMappingInput }
   | { op: 'deleteBridgeMapping'; versionId: Id; mappingId: Id }
   | { op: 'replaceBridgeMappings'; versionId: Id; rows: BridgeMappingInput[] }
@@ -174,7 +177,7 @@ Mapping versions: `source_key_unique`, `dimension_version_published`, `entry_mem
 
 `web2`'s `lib/mappings/rules.ts` decided entry and mapping validity in the browser. With the server authoritative
 (OI-05), issue badges, uncovered-member counts and the allocation summary come from preview `violations` and from
-read-model fields the server computes (`coverage: { uncoveredMemberKeys }`, `allocation: AllocationSummary`). Paste
+read-model fields the server computes (`coverage: { uncoveredMemberKeys }`, `allocation: BridgeAllocationSummary`). Paste
 parsing and the paste preview's New/Unchanged/Changed/Removed grouping stay in the browser.
 
 ## Schema mapping
@@ -187,8 +190,8 @@ parsing and the paste preview's New/Unchanged/Changed/Removed grouping stay in t
 | `Bridge` | `qe_bridge`; `owner` from `qe_report_source.bridge_id` → `qe_report` |
 | `BridgeVersion` | `qe_bridge_version` (same status mapping and new columns) |
 | `BridgeMapping` | `qe_bridge_mapping` |
-| `BindingUsage` | `qe_dimension_binding` (`mapping_set_id`, `bridge_id`) joined to dataset versions |
-| `AssumptionPin` | `qe_assumption_set_mapping`, `qe_assumption_set_bridge` |
+| `MappingBindingUsage` | `qe_dimension_binding` (`mapping_set_id`, `bridge_id`) joined to dataset versions |
+| `MappingAssumptionPin` | `qe_assumption_set_mapping`, `qe_assumption_set_bridge` |
 
 ## Deltas from the current API
 

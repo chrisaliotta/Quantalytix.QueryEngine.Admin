@@ -49,27 +49,43 @@ export interface TenantInfo {
   activeReleaseId: Id | null
 }
 
-export interface TenantCatalog {
-  tenant: TenantInfo
-  datasets: { id: Id; key: string; displayName: string; isEnabled: boolean; activeVersionId: Id | null }[]
-  dimensions: {
-    id: Id; key: string; displayName: string; kind: DimensionKind; purpose: 'analytical' | 'report'
-    origin: 'system' | 'user'; isEnabled: boolean
-    publishedVersionId: Id | null; publishedVersionNumber: number | null
-    ownerReportId: Id | null
-  }[]
-  roles: { id: Id; key: string; displayName: string; dimensionId: Id }[]
-  mappingSets: { id: Id; key: string; displayName: string; dimensionId: Id }[]
-  bridges: { id: Id; key: string; displayName: string; sourceDimensionId: Id; targetDimensionId: Id; ownerReportId: Id | null }[]
-  models: { id: Id; key: string; displayName: string; isEnabled: boolean }[]
-  reports: { id: Id; key: string; displayName: string; isEnabled: boolean; modelId: Id; reportDimensionId: Id }[]
-  releases: { id: Id; key: string; status: VersionStatus; isActive: boolean }[]
-  assumptionSets: { id: Id; key: string; displayName: string; status: 'active' | 'historical' }[]
+export interface TenantOverview extends TenantInfo {
+  counts: TenantOverviewCounts // datasets, analytical dimensions, mapping sets, analytical bridges, releases, sets, models, reports, activeMeasures
+  drafts: TenantOverviewDrafts // datasetVersions, releases
 }
 
-export interface PublishedMembers { dimensionId: Id; versionId: Id; members: { key: string; displayName: string; parentKey: string | null; isAssignable: boolean; levelKey: string | null }[] }
+// Dataset, model, report, mapping set and bridge keys are DottedKey (OI-29).
+export interface TenantCatalogDataset { id: Id; key: string; displayName: string; isEnabled: boolean; activeVersionId: Id | null }
+export interface TenantCatalogDimension {
+  id: Id; key: string; displayName: string; kind: DimensionKind; purpose: DimensionPurpose; origin: DefinitionOrigin
+  isEnabled: boolean; publishedVersionId: Id | null; publishedVersionNumber: number | null; ownerReportId: Id | null
+}
+export interface TenantCatalogRole { id: Id; key: string; displayName: string; dimensionId: Id }
+export interface TenantCatalogMappingSet { id: Id; key: string; displayName: string; dimensionId: Id }
+export interface TenantCatalogBridge { id: Id; key: string; displayName: string; sourceDimensionId: Id; targetDimensionId: Id; ownerReportId: Id | null }
+export interface TenantCatalogModel { id: Id; key: string; displayName: string; isEnabled: boolean }
+export interface TenantCatalogReport { id: Id; key: string; displayName: string; isEnabled: boolean; modelId: Id; reportDimensionId: Id }
+export interface TenantCatalogRelease { id: Id; key: string; status: VersionStatus; isActive: boolean }
+export interface TenantCatalogAssumptionSet { id: Id; key: string; displayName: string; status: AssumptionSetStatus }
+
+export interface TenantCatalog {
+  tenant: TenantInfo
+  datasets: TenantCatalogDataset[]
+  dimensions: TenantCatalogDimension[]
+  roles: TenantCatalogRole[]
+  mappingSets: TenantCatalogMappingSet[]
+  bridges: TenantCatalogBridge[]
+  models: TenantCatalogModel[]
+  reports: TenantCatalogReport[]
+  releases: TenantCatalogRelease[]
+  assumptionSets: TenantCatalogAssumptionSet[]
+}
+
+export interface PublishedMember { key: string; displayName: string; parentKey: string | null; isAssignable: boolean; levelKey: string | null }
+export interface PublishedMembers { dimensionId: Id; versionId: Id; members: PublishedMember[] }
 
 export interface TenantApi {
+  getOverview(): Promise<TenantOverview>
   getCatalog(): Promise<TenantCatalog>
   /** Members of a dimension's published version, or null when none is published. */
   getPublishedMembers(dimensionId: Id): Promise<PublishedMembers | null>
@@ -77,11 +93,15 @@ export interface TenantApi {
 }
 ```
 
+`TenantInfo` is also the answer of release activation ([14](14-releases-and-assumption-sets.md#http-api)), so a client
+updates its revision display from the command's own result.
+
 Report-owned dimensions and bridges are in the catalog only so cross-module references resolve (a report source's
 bridge, an assumption set pin); no picker or list offers them (OI-22).
 
-Module contracts keep their own narrow types (`DimensionRef`, `Identity`) as projections of the catalog where it helps
-a screen, but they read from `TenantApi`, not from a module-specific catalog endpoint.
+Module contracts keep their own narrow types (`MappingDimensionRef`, `PinIdentity`) as projections of the catalog where
+it helps a screen, but they read from `TenantApi`, not from a module-specific catalog endpoint. The dataset screens'
+`TenantLookups` is a `Pick` of `TenantApi`, so a `TenantApi` serves them unchanged.
 
 **Deltas from `web2`:**
 
@@ -94,7 +114,10 @@ a screen, but they read from `TenantApi`, not from a module-specific catalog end
 ### Vocabularies
 
 `GET /api/vocabularies` returns every enumeration a select renders, keyed by name, with `componentRolesByKind` and
-the time zone list. The dataset contract's `Vocabularies` interface is the starting point and grows with the other
+the time zone list. Each vocabulary's values reference the schema that owns them: the shared kernel for the values more
+than one module reads (`DimensionKind`, `DimensionPurpose`, `DefinitionOrigin`, `AssumptionSetStatus`, `BindingKind`,
+`Periodicity`, `MeasureKind`, `ComponentRole`, `RoundingMode`, `SourceSelection`, `VariableMissingBehavior`), the module
+file otherwise (`DatasetDataType`, `MappingCardinality`, `ReportLayout`). The dataset contract's `Vocabularies` interface is the starting point and grows with the other
 modules' unions: `dimensionKind`, `rangeDataType`, `editPolicy`, `cardinality`, `allocationMode`, `sourceSelection`,
 `mappingMethod`, `groupingMode`, `selectionScope`, `formulaLanguageVersion`, `attributionMethod`, `parameterValueType`,
 `displayFormat`, `subtotalPosition`, `styleRole`, `fontWeight`, `borderStyle`, `layout`, `periodicity`,
@@ -107,10 +130,10 @@ modules' unions: `dimensionKind`, `rangeDataType`, `editPolicy`, `cardinality`, 
 | GET | `/api/me` | `Session` | any | `SessionApi.getSession` |
 | GET | `/api/tenants` | `AccessibleTenant[]` | any | `SessionApi.listTenants` |
 | GET | `/api/vocabularies` | `Vocabularies` | any | `TenantApi.getVocabularies` |
-| GET | `/api/tenants/{t}/overview` | `TenantInfo & { counts, drafts }` | any | overview screen (not in `web2` yet) |
+| GET | `/api/tenants/{t}/overview` | `TenantOverview` | any | `TenantApi.getOverview` |
 | GET | `/api/tenants/{t}/catalog` | `TenantCatalog` | any | `TenantApi.getCatalog` (new) |
 | GET | `/api/tenants/{t}/dimensions/{id}/published-members` | `PublishedMembers` or `404` when none published | any | `TenantApi.getPublishedMembers` (new) |
-| GET | `/api/tenants/{t}/source-objects` | `SourceObject[]` | any | [11 Datasets](11-datasets.md) |
+| GET | `/api/tenants/{t}/source-objects` | `DatasetSourceObject[]` | any | [11 Datasets](11-datasets.md) |
 | GET | `/api/system/tenants` | `TenantDirectoryEntry[]` | SystemAdmin | system screen |
 | POST | `/api/system/tenants` | `201 TenantDirectoryEntry` | SystemAdmin | |
 | GET / PUT | `/api/system/tenants/{t}` | `TenantDirectoryEntry` | SystemAdmin | |

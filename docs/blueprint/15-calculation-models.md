@@ -33,38 +33,38 @@ This file defines the contract.
 Types follow `web2`'s `lib/model/types.ts`, renamed to the naming rule and given ids:
 
 ```ts
-export type FormulaLanguage = '1.0' | '1.1' | '1.2'
+// Shared kernel: VariableMissingBehavior ('null' | 'zero', also read by report sources), RoundingMode (also datasets).
+export type ModelFormulaLanguage = '1.0' | '1.1' | '1.2'
 export type AttributionMethod = 'shapley' | 'sequential'
-export type MissingBehavior = 'null' | 'zero'
-export type ParameterValueType = 'number' | 'text'
-export type RoundingMode = 'half_even' | 'half_up' | 'down' | 'up' | 'truncate'
+export type ModelParameterValueType = 'number' | 'text'
+export type ModelOutputDataType = 'decimal' | 'int64' | 'int32'
 
 export interface CalcModel {
   id: Id
-  key: string
+  key: string                 // DottedKey (OI-29)
   displayName: string
   currencyCode: string
   calendarKey: string
-  formulaLanguage: FormulaLanguage
+  formulaLanguage: ModelFormulaLanguage
   attributionMethod: AttributionMethod
   isEnabled: boolean
 }
 
-export interface ModelVariable { key: string; displayName: string; displayFormat: string; unitKey: string | null; missingBehavior: MissingBehavior }
+export interface ModelVariable { key: string; displayName: string; displayFormat: string; unitKey: string | null; missingBehavior: VariableMissingBehavior }
 export interface ModelMeasure {
   key: string; displayName: string; formula: string
-  outputDataType: 'decimal' | 'int64' | 'int32'; outputPrecision: number | null; outputScale: number | null
+  outputDataType: ModelOutputDataType; outputPrecision: number | null; outputScale: number | null
   roundingMode: RoundingMode | null; unitKey: string | null; displayFormat: string
 }
 export interface ModelParameter {
-  key: string; displayName: string; valueType: ParameterValueType
+  key: string; displayName: string; valueType: ModelParameterValueType
   allowedValues: string[] | null; defaultNumber: number | null; defaultText: string | null; description: string | null
 }
-export interface Driver { key: string; displayName: string; inputs: string[] }   // sort order = position
-export interface Attribution { metricKey: string; expression: string | null; weightVariableKey: string | null; drivers: Driver[] }
+export interface AttributionDriver { key: string; displayName: string; inputs: string[] }   // sort order = position
+export interface Attribution { metricKey: string; expression: string | null; weightVariableKey: string | null; drivers: AttributionDriver[] }
 
-export interface ModelListItem extends CalcModel { variableCount: number; measureCount: number; usedBy: ReportUse[] }
-export interface ReportUse { reportId: Id; reportKey: string; displayName: string; isEnabled: boolean }
+export interface ModelListItem extends CalcModel { variableCount: number; measureCount: number; usedBy: ModelReportUse[] }
+export interface ModelReportUse { reportId: Id; reportKey: string; displayName: string; isEnabled: boolean }
 
 export interface ModelDocument extends CalcModel {
   variables: ModelVariable[]
@@ -73,16 +73,21 @@ export interface ModelDocument extends CalcModel {
   /** Explicit attribution rows only; a metric without one uses default drivers (see effectiveDrivers). */
   attributions: Attribution[]
   /** Server-computed: drivers in effect per metric, default or explicit. */
-  effectiveDrivers: Record<string, Driver[]>
-  usedBy: ReportUse[]
+  effectiveDrivers: Record<string, AttributionDriver[]>
+  usedBy: ModelReportUse[]
 }
 
-export interface FormulaCheck {
-  errors: { message: string; start: number; end: number }[]
+export interface ModelFormulaError { message: string; start: number; end: number }
+export interface ModelFormulaCheck {
+  errors: ModelFormulaError[]
   reads: string[]          // metric keys
   parameters: string[]     // @param keys
-  requiresLanguage: FormulaLanguage
+  requiresLanguage: ModelFormulaLanguage
 }
+
+export type CalcModelPatch = Partial<Pick<CalcModel, 'displayName' | 'currencyCode' | 'calendarKey' | 'formulaLanguage' | 'attributionMethod' | 'isEnabled'>>
+export interface CalcModelCreateInput { key: string; displayName: string; currencyCode: string; formulaLanguage: ModelFormulaLanguage; attributionMethod: AttributionMethod }
+export type ModelItemInput<T> = T & { originalKey?: string }
 ```
 
 **Deltas from `web2` `lib/model/types.ts`:**
@@ -94,7 +99,7 @@ export interface FormulaCheck {
 | `Attribution.useDefault` | Absence of an attribution row | Default drivers are computed, not stored |
 | `ModelMeasure.precision`, `scale`, `rounding`, `format`, `unit` | `output*`, `roundingMode`, `displayFormat`, `unitKey` | Schema names; `outputDataType` added (schema default `decimal`) |
 | `ModelParameter.name`, `type`, `allowedValues: string[]` (empty = any) | `displayName`, `valueType`, `allowedValues: string[] \| null` (null = any) | Schema `allowed_values_json` NULL means any |
-| `ReportRef` static list, `usedBy(key)` | `usedBy: ReportUse[]` computed by the server | OI-44 |
+| `ReportRef` static list, `usedBy(key)` | `usedBy: ModelReportUse[]` computed by the server | OI-44 |
 | `RuleViolation { rule, message }` | Kernel `Violation { code, message, target }` | |
 
 ### Port
@@ -104,25 +109,28 @@ export interface ModelsApi extends ChangeSetPort {
   // reads
   listModels(): Promise<ModelListItem[]>
   getModel(id: Id): Promise<ApiResult<ModelDocument>>
-  checkFormula(id: Id, formula: string, selfKey: string | null): Promise<FormulaCheck>      // OI-43
+  checkFormula(id: Id, formula: string, selfKey: string | null): Promise<ModelFormulaCheck>      // OI-43
   checkDeleteModel(id: Id): Promise<DeleteCheck>
 
   // edits (staged per model)
-  updateModel(id: Id, patch: Partial<Pick<CalcModel, 'displayName' | 'currencyCode' | 'calendarKey' | 'formulaLanguage' | 'attributionMethod' | 'isEnabled'>>): Promise<ApiResult<CalcModel>>
-  saveVariable(id: Id, input: ModelVariable & { originalKey?: string }): Promise<ApiResult<ModelVariable>>
+  updateModel(id: Id, patch: CalcModelPatch): Promise<ApiResult<CalcModel>>
+  saveVariable(id: Id, input: ModelItemInput<ModelVariable>): Promise<ApiResult<ModelVariable>>
   deleteVariable(id: Id, key: string): Promise<ApiResult<null>>
-  saveMeasure(id: Id, input: ModelMeasure & { originalKey?: string }): Promise<ApiResult<ModelMeasure>>
+  saveMeasure(id: Id, input: ModelItemInput<ModelMeasure>): Promise<ApiResult<ModelMeasure>>
   deleteMeasure(id: Id, key: string): Promise<ApiResult<null>>
-  saveParameter(id: Id, input: ModelParameter & { originalKey?: string }): Promise<ApiResult<ModelParameter>>
+  saveParameter(id: Id, input: ModelItemInput<ModelParameter>): Promise<ApiResult<ModelParameter>>
   deleteParameter(id: Id, key: string): Promise<ApiResult<null>>
   setAttribution(id: Id, input: Attribution): Promise<ApiResult<Attribution>>
   clearAttribution(id: Id, metricKey: string): Promise<ApiResult<null>>
 
   // commands
-  createModel(input: { key: string; displayName: string; currencyCode: string; formulaLanguage: FormulaLanguage; attributionMethod: AttributionMethod }): Promise<ApiResult<CalcModel>>
+  createModel(input: CalcModelCreateInput): Promise<ApiResult<CalcModel>>
   deleteModel(id: Id): Promise<ApiResult<null>>
 }
 ```
+
+Component names carry a `Model` or `Attribution` prefix because contract names are global (`ModelReportUse`,
+`ModelFormulaCheck`, `AttributionDriver`).
 
 `originalKey` is present when an existing metric or parameter is edited; metric and parameter keys are fixed once
 saved (C5, C9), so a changed key in an update is refused. `web2`'s editors allow typing a key only on new rows, which
@@ -150,9 +158,9 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | Method | Route | Request | Response | Errors | Port |
 |---|---|---|---|---|---|
 | GET | `calculation-models` | | `ModelListItem[]` | | `listModels` |
-| POST | `calculation-models` | create input | `201 CalcModel` (disabled, empty) | 400, 409 key taken | `createModel` |
+| POST | `calculation-models` | `CalcModelCreateInput` | `201 CalcModel` (disabled, empty) | 400, 409 key taken | `createModel` |
 | GET | `calculation-models/{id}` | | `ModelDocument` | 404 | `getModel` |
-| POST | `calculation-models/{id}/formula-check` | `{ formula, selfKey }` | `FormulaCheck` | 404 | `checkFormula` |
+| POST | `calculation-models/{id}/formula-check` | `ModelFormulaCheckRequest` (`{ formula, selfKey }`) | `ModelFormulaCheck` | 404 | `checkFormula` |
 | GET | `calculation-models/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteModel` |
 | DELETE | `calculation-models/{id}` | | `204` | 409 `referenced_by_report` | `deleteModel` |
 | POST | `calculation-models/{id}/changes/preview` | `ChangeSetRequest<ModelOperation>` | `ChangeSetPreview<ModelDocument>` | 400, 422 refused | edits |
@@ -166,7 +174,7 @@ formula editor passes pending keys through preview instead when it needs them.
 
 ```ts
 type ModelOperation =
-  | { op: 'updateModel'; patch: Partial<Pick<CalcModel, 'displayName' | 'currencyCode' | 'calendarKey' | 'formulaLanguage' | 'attributionMethod' | 'isEnabled'>> }
+  | { op: 'updateModel'; patch: CalcModelPatch }
   | { op: 'saveVariable'; input: ModelVariable; originalKey?: string }
   | { op: 'deleteVariable'; key: string }
   | { op: 'saveMeasure'; input: ModelMeasure; originalKey?: string }
