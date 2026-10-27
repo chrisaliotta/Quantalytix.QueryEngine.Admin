@@ -2,18 +2,13 @@ import type { ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
 import { Segmented } from '@/components/report/shared/segmented'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
-import type { AttributionMethod, CalcModel, FormulaLanguage } from '@/lib/model/types'
+import type { AttributionMethod, CalcModelPatch, ModelDocument, ModelFormulaLanguage, Violation } from '@/lib/models/contract'
 import { MethodExplainer } from './method-explainer'
-
-interface UsedByReport {
-  key: string
-  name: string
-}
+import { useModelEdit } from './use-model-edit'
 
 interface ModelGeneralSectionProps {
-  model: CalcModel
-  reports: UsedByReport[]
-  apply: (fn: (d: CalcModel) => void) => boolean
+  model: ModelDocument
+  onRefused: (violations: Violation[] | null) => void
   onOpenReport: (key: string) => void
 }
 
@@ -32,7 +27,9 @@ function SettingRow({ id, label, help, extra, children }: { id: string; label: s
   )
 }
 
-export function ModelGeneralSection({ model, reports, apply, onOpenReport }: ModelGeneralSectionProps) {
+export function ModelGeneralSection({ model, onRefused, onOpenReport }: ModelGeneralSectionProps) {
+  const run = useModelEdit()
+  const update = async (patch: CalcModelPatch) => onRefused(await run((api) => api.updateModel(model.id, patch)))
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="model-settings-heading" className="flex flex-col gap-3">
@@ -43,21 +40,15 @@ export function ModelGeneralSection({ model, reports, apply, onOpenReport }: Mod
           <SettingRow id="gen-currency" label="Currency" help="The currency every amount in this model is stated in.">
             <SimpleSelect
               id="gen-currency"
-              value={model.currency}
-              onChange={(currency) => apply((d) => void (d.currency = currency))}
+              value={model.currencyCode}
+              onChange={(currencyCode) => void update({ currencyCode })}
               options={['USD', 'EUR', 'GBP', 'CAD'].map((c) => ({ value: c, label: c }))}
             />
           </SettingRow>
-          <SettingRow id="gen-calendar" label="Calendar" help="How periods are bucketed for prior-period and year-to-date reads.">
-            <SimpleSelect
-              id="gen-calendar"
-              value={model.calendar}
-              onChange={(calendar) => apply((d) => void (d.calendar = calendar))}
-              options={[
-                { value: 'gregorian', label: 'Gregorian' },
-                { value: 'fiscal_4_4_5', label: 'Fiscal 4-4-5' },
-              ]}
-            />
+          <SettingRow id="gen-calendar" label="Calendar" help="How periods are bucketed for prior-period and year-to-date reads; every model follows the Gregorian calendar.">
+            <p id="gen-calendar" className="text-sm capitalize">
+              {model.calendarKey}
+            </p>
           </SettingRow>
           <SettingRow
             id="gen-language"
@@ -65,10 +56,10 @@ export function ModelGeneralSection({ model, reports, apply, onOpenReport }: Mod
             help="1.1 adds POWER. 1.2 adds declared parameters (@key), text comparisons and YEARFRAC(convention). Moving down is refused while a formula uses a newer feature."
           >
             <div id="gen-language">
-              <Segmented<FormulaLanguage>
+              <Segmented<ModelFormulaLanguage>
                 aria-label="Formula language version"
-                value={model.language}
-                onChange={(language) => apply((d) => void (d.language = language))}
+                value={model.formulaLanguage}
+                onChange={(formulaLanguage) => void update({ formulaLanguage })}
                 options={[
                   { value: '1.0', label: '1.0' },
                   { value: '1.1', label: '1.1' },
@@ -86,8 +77,8 @@ export function ModelGeneralSection({ model, reports, apply, onOpenReport }: Mod
             <div id="gen-method">
               <Segmented<AttributionMethod>
                 aria-label="Default attribution method"
-                value={model.method}
-                onChange={(method) => apply((d) => void (d.method = method))}
+                value={model.attributionMethod}
+                onChange={(attributionMethod) => void update({ attributionMethod })}
                 options={[
                   { value: 'shapley', label: 'Shapley' },
                   { value: 'sequential', label: 'Sequential' },
@@ -106,19 +97,19 @@ export function ModelGeneralSection({ model, reports, apply, onOpenReport }: Mod
           Used by
         </h3>
         <div className="rounded-lg border bg-card">
-          {reports.length === 0 ? (
+          {model.usedBy.length === 0 ? (
             <p className="px-4 py-4 text-sm text-muted-foreground">No reports read this model yet.</p>
           ) : (
             <ul className="divide-y">
-              {reports.map((r) => (
-                <li key={r.key}>
+              {model.usedBy.map((r) => (
+                <li key={r.reportId}>
                   <button
                     type="button"
-                    onClick={() => onOpenReport(r.key)}
+                    onClick={() => onOpenReport(r.reportKey)}
                     className="flex w-full items-center justify-between gap-4 px-4 py-2.5 text-left text-sm hover:bg-muted/40"
                   >
-                    <span className="text-primary">{r.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{r.key}</span>
+                    <span className="text-primary">{r.displayName}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{r.reportKey}</span>
                   </button>
                 </li>
               ))}

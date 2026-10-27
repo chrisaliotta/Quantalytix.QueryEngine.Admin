@@ -1,10 +1,11 @@
 import type { DisplayFormat } from '@/lib/report/types'
 
+/** The prototype's model shape, which the report editor still reads through `useModels()` (see `store.tsx`). */
+
 export type MissingValue = 'null' | 'zero'
 export type AttributionMethod = 'shapley' | 'sequential'
 export type FormulaLanguage = '1.0' | '1.1' | '1.2'
 export type ParameterType = 'number' | 'text'
-export type ParameterValue = string | number
 
 export interface ModelParameter {
   key: string
@@ -66,19 +67,4 @@ export interface CalcModel {
   parameters: ModelParameter[]
   variables: ModelVariable[]
   measures: ModelMeasure[]
-}
-
-export interface ReportRef {
-  key: string
-  name: string
-  type: string
-  model: string
-  layout: 'statement' | 'list'
-  defaultProfile: string
-  enabled: boolean
-}
-
-export interface RuleViolation {
-  rule: string
-  message: string
 }
