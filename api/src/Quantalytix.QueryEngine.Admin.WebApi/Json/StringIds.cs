@@ -5,7 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Json;
 
 /// <summary>
 /// The API's id convention (blueprint 01, OI-04): every surrogate id is a JSON string. An id is a <see cref="long"/> property
-/// whose name is <c>Id</c> or ends with <c>Id</c>, or a list of them whose name ends with <c>Ids</c>, which the naming rule
+/// whose name is <c>Id</c> or ends with <c>Id</c>, a list of them whose name ends with <c>Ids</c>, or a map of them by string whose
+/// name ends with <c>IdMap</c> (a change set's temporary-to-real ids), which the naming rule
 /// (OI-10) makes true of every id and of nothing else. The modifier gives those properties a string converter, so ids read and
 /// write as strings everywhere the API's JSON options apply, including the OpenAPI schema generator.
 /// </summary>
@@ -26,7 +27,7 @@ public static class StringIds
     /// <summary>Whether a property, parameter or route value of a type and name carries ids.</summary>
     /// <param name="type">The CLR type.</param>
     /// <param name="name">The member name, in any case.</param>
-    /// <returns>True for a <see cref="long"/> or nullable one named like an id, or a list of longs named like ids.</returns>
+    /// <returns>True for a <see cref="long"/> or nullable one named like an id, a list of longs named like ids, or an id map.</returns>
     public static bool IsId(Type type, string name)
     {
         return ConverterFor(type, name) is not null;
@@ -38,6 +39,7 @@ public static class StringIds
         if (type == typeof(long) && IsIdName(name)) return StringIdConverter.Instance;
         if (type == typeof(long?) && IsIdName(name)) return NullableStringIdConverter.Instance;
         if (type == typeof(IReadOnlyList<long>) && name.EndsWith("Ids", StringComparison.Ordinal)) return StringIdListConverter.Instance;
+        if (type == typeof(IReadOnlyDictionary<string, long>) && name.EndsWith("IdMap", StringComparison.Ordinal)) return StringIdMapConverter.Instance;
         return null;
     }
 

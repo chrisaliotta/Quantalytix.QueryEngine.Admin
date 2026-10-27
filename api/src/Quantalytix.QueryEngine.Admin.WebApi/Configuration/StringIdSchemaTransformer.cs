@@ -10,7 +10,10 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 /// </summary>
 internal sealed class StringIdSchemaTransformer : IOpenApiSchemaTransformer
 {
-    /// <summary>Gives an id property a string schema, nullable for an optional id, or an array of strings for a list of ids.</summary>
+    /// <summary>
+    /// Gives an id property a string schema, nullable for an optional id, an array of strings for a list of ids, or an object of
+    /// strings for an id map.
+    /// </summary>
     /// <param name="schema">The OpenAPI schema of a type or property.</param>
     /// <param name="context">The transformer context, naming the property the schema describes.</param>
     /// <param name="cancellationToken">Unused; the transform is synchronous.</param>
@@ -28,6 +31,10 @@ internal sealed class StringIdSchemaTransformer : IOpenApiSchemaTransformer
             case StringIdListConverter:
                 Describe(schema, JsonSchemaType.Array);
                 schema.Items = new OpenApiSchema { Type = JsonSchemaType.String };
+                break;
+            case StringIdMapConverter:
+                Describe(schema, JsonSchemaType.Object);
+                schema.AdditionalProperties = new OpenApiSchema { Type = JsonSchemaType.String };
                 break;
         }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
@@ -57,6 +58,19 @@ public static class Problems
         {
             Detail = detail,
             Violations = violations
+        };
+    }
+
+    /// <summary>The problem of an Application refusal: 400 with its errors, 409 with its detail, or 422 with its violations.</summary>
+    /// <param name="refusal">Why a change set or command wrote nothing.</param>
+    /// <returns>The problem.</returns>
+    public static Problem From(Refusal refusal)
+    {
+        return refusal.Kind switch
+        {
+            RefusalKind.Invalid => Invalid(refusal.Errors),
+            RefusalKind.Conflict => Conflict(refusal.Title!, refusal.Detail!),
+            _ => RulesViolated(refusal.Detail, refusal.Violations)
         };
     }
 
