@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { ListPage } from '@/components/shell/page-shell'
 import { useDatasetList, useDatasetsApi, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
-import type { SourceObjectKind, SourceObjectStats } from '@/lib/datasets/contract'
+import type { DatasetSourceObjectKind, DatasetSourceObjectStats } from '@/lib/datasets/contract'
 import { DatasetDetail } from './dataset-detail'
 import { FormRow, ProblemBanner, StatusBadge, Td, Th, VocabSelect, useApiCall } from './shared'
 
@@ -24,7 +24,7 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
   const q = query.trim().toLowerCase()
-  const rows = (data ?? []).filter((d) => !q || d.displayName.toLowerCase().includes(q) || d.datasetKey.toLowerCase().includes(q))
+  const rows = (data ?? []).filter((d) => !q || d.displayName.toLowerCase().includes(q) || d.key.toLowerCase().includes(q))
 
   return (
     <ListPage
@@ -76,7 +76,7 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
                     <Td>
                       <button type="button" onClick={() => onOpen(d.id)} className="flex flex-col text-left">
                         <span className="font-medium hover:underline">{d.displayName}</span>
-                        <span className="font-mono text-xs text-muted-foreground">{d.datasetKey}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{d.key}</span>
                       </button>
                     </Td>
                     <Td className="font-mono text-xs">{latest?.sourceObject ?? '—'}</Td>
@@ -126,7 +126,7 @@ function formatBytes(bytes: number) {
   return `${value.toFixed(exp === 0 || value >= 100 ? 0 : 1)} ${BYTE_UNITS[exp]}`
 }
 
-function StorageCells({ storage }: { storage: SourceObjectStats | null }) {
+function StorageCells({ storage }: { storage: DatasetSourceObjectStats | null }) {
   if (!storage)
     return (
       <>
@@ -160,11 +160,11 @@ function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCrea
   const { run, saving, problem, errorsFor } = useApiCall()
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<SourceObjectKind>('table')
+  const [kind, setKind] = useState<DatasetSourceObjectKind>('table')
   const [object, setObject] = useState('')
 
   async function create() {
-    const d = await run(() => api.createDataset({ mode: 'existing', datasetKey: key.trim(), displayName: name, sourceObjectKind: kind, sourceObject: object }))
+    const d = await run(() => api.createDataset({ mode: 'existing', key: key.trim(), displayName: name, sourceObjectKind: kind, sourceObject: object }))
     if (d) {
       onClose()
       onCreated(d.id)
@@ -185,8 +185,8 @@ function AddExistingDialog({ onClose, onCreated }: { onClose: () => void; onCrea
             <FormRow label="Display name" htmlFor="nd-name" errors={errorsFor('displayName')}>
               <Input id="nd-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Daily deposits" aria-invalid={!!errorsFor('displayName')} />
             </FormRow>
-            <FormRow label="Dataset key" htmlFor="nd-key" errors={errorsFor('datasetKey')} hint="Stable identifier, e.g. deposits.daily">
-              <Input id="nd-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="deposits.daily" className="font-mono" aria-invalid={!!errorsFor('datasetKey')} />
+            <FormRow label="Dataset key" htmlFor="nd-key" errors={errorsFor('key')} hint="Stable identifier, e.g. deposits.daily">
+              <Input id="nd-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="deposits.daily" className="font-mono" aria-invalid={!!errorsFor('key')} />
             </FormRow>
             <FormRow label="Source kind" htmlFor="nd-kind" errors={errorsFor('sourceObjectKind')}>
               <VocabSelect

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { CommitInput, InlineSelect, PanelSection, PropertiesPanel, SplitView, focusRowClass, usePanelDraft } from '@/components/shell/inline-table'
 import { useDatasetsApi, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetGrain, DatasetVersion, GrainInput, ValidationProblemDetails } from '@/lib/datasets/contract'
+import type { DatasetGrain, DatasetVersion, DatasetGrainInput, Problem } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dataset-detail'
 import { timeFieldIds } from './fields-section'
@@ -13,26 +13,26 @@ import { Chip, DependentsList, FormRow, ProblemBanner, RowEditActions, SectionHe
 
 const NEW_ROW_ID = '__new__'
 const scrollToRow = (id: string) => requestAnimationFrame(() => document.querySelector(`[data-row-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }))
-const blankGrain = (): GrainInput => ({ grainKey: '', grainKind: 'row', fieldIds: [] })
+const blankGrain = (): DatasetGrainInput => ({ key: '', grainKind: 'row', fieldIds: [] })
 
 export function GrainsSection({ version, readOnly, editingId, onEdit, onOpen }: SectionProps) {
   const api = useDatasetsApi()
   const refresh = useRefreshDatasets()
   const { data: vocab } = useVocabularies()
   const { run, problem, setProblem } = useApiCall()
-  const [newDraft, setNewDraftState] = useState<GrainInput | null>(null)
-  const [newProblem, setNewProblem] = useState<ValidationProblemDetails | null>(null)
+  const [newDraft, setNewDraftState] = useState<DatasetGrainInput | null>(null)
+  const [newProblem, setNewProblem] = useState<Problem | null>(null)
   const [creating, setCreating] = useState(false)
   const newRef = useRef(newDraft)
-  const fieldKey = (id: string) => version.fields.find((f) => f.id === id)?.fieldKey ?? '?'
+  const fieldKey = (id: string) => version.fields.find((f) => f.id === id)?.key ?? '?'
   const focused = editingId ? version.grains.find((g) => g.id === editingId) : undefined
   const kindOptions = (vocab?.grainKind ?? []).map((t) => ({ value: t.value, label: t.label }))
 
-  const setNewDraft = (d: GrainInput | null) => {
+  const setNewDraft = (d: DatasetGrainInput | null) => {
     newRef.current = d
     setNewDraftState(d)
   }
-  const editNew = (p: Partial<GrainInput>) => {
+  const editNew = (p: Partial<DatasetGrainInput>) => {
     if (!newRef.current) return
     setNewDraft({ ...newRef.current, ...p })
     if (newProblem) setNewProblem(null)
@@ -95,11 +95,11 @@ export function GrainsSection({ version, readOnly, editingId, onEdit, onOpen }: 
         help="What makes a row, or a series over time, unique. The row grain anchors detail paging; time-aware measures pick first, last or boundary observations within each series."
         action={
           !readOnly && (
-            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.grainKey.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
+            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.key.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
           )
         }
       />
-      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpen={onOpen} />}
       <SplitView panel={side}>
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
@@ -116,16 +116,16 @@ export function GrainsSection({ version, readOnly, editingId, onEdit, onOpen }: 
                 const deps = version.dependents[g.id] ?? []
                 return (
                   <tr key={g.id} data-row-id={g.id} aria-selected={g.id === editingId} onClick={() => focus(g.id)} className={focusRowClass(g.id === editingId)}>
-                    <Td className="font-mono text-xs">{g.grainKey}</Td>
+                    <Td className="font-mono text-xs">{g.key}</Td>
                     <Td>
                       {readOnly ? (
                         <span className="text-xs capitalize">{g.grainKind}</span>
                       ) : (
                         <InlineSelect
-                          aria-label={`Kind of ${g.grainKey}`}
+                          aria-label={`Kind of ${g.key}`}
                           value={g.grainKind}
                           options={kindOptions}
-                          onCommit={(k) => run(() => api.saveGrain(version.id, { ...g, grainKind: k as GrainInput['grainKind'] }))}
+                          onCommit={(k) => run(() => api.saveGrain(version.id, { ...g, grainKind: k as DatasetGrainInput['grainKind'] }))}
                           className="w-28 text-xs"
                         />
                       )}
@@ -187,12 +187,12 @@ function NewGrainRow({
   onSubmit,
   onCancel,
 }: {
-  draft: GrainInput
-  problem: ValidationProblemDetails | null
+  draft: DatasetGrainInput
+  problem: Problem | null
   creating: boolean
   kindOptions: { value: string; label: string }[]
   fieldKey: (id: string) => string
-  onChange: (p: Partial<GrainInput>) => void
+  onChange: (p: Partial<DatasetGrainInput>) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -216,17 +216,17 @@ function NewGrainRow({
         <input
           autoFocus
           aria-label="New grain: grain key"
-          value={draft.grainKey}
-          placeholder="grainKey"
+          value={draft.key}
+          placeholder="key"
           disabled={creating}
-          aria-invalid={!!errs.grainKey}
-          onChange={(e) => onChange({ grainKey: e.target.value })}
+          aria-invalid={!!errs.key}
+          onChange={(e) => onChange({ key: e.target.value })}
           onKeyDown={onKeyDown}
           className={cn(rowInputClass, 'w-44 font-mono text-xs')}
         />
       </Td>
       <Td className="whitespace-nowrap">
-        <InlineSelect aria-label="New grain: kind" value={draft.grainKind} options={kindOptions} onCommit={(k) => onChange({ grainKind: k as GrainInput['grainKind'] })} className="w-28 text-xs" />
+        <InlineSelect aria-label="New grain: kind" value={draft.grainKind} options={kindOptions} onCommit={(k) => onChange({ grainKind: k as DatasetGrainInput['grainKind'] })} className="w-28 text-xs" />
       </Td>
       <Td>
         <span className="flex flex-wrap items-center gap-1 pt-1.5">
@@ -266,12 +266,12 @@ function GrainPanel({
   version: DatasetVersion
   readOnly: boolean
   grain?: DatasetGrain
-  seed: GrainInput
+  seed: DatasetGrainInput
   onClose: () => void
   onOpen: SectionProps['onOpen']
   /** New grains only: panel edits update the pending row's draft instead of saving. */
-  onDraftCommit?: (draft: GrainInput) => void
-  createProblem?: ValidationProblemDetails | null
+  onDraftCommit?: (draft: DatasetGrainInput) => void
+  createProblem?: Problem | null
   onDismissCreateProblem?: () => void
 }) {
   const api = useDatasetsApi()
@@ -308,7 +308,7 @@ function GrainPanel({
     <PropertiesPanel
       size="lg"
       label="Grain properties"
-      title={<span className="font-mono">{draft.grainKey || 'New grain'}</span>}
+      title={<span className="font-mono">{draft.key || 'New grain'}</span>}
       subtitle={!grain ? 'Not added yet · needs a key and at least one component.' : pending && shown ? <span className="text-destructive">Not applied — fix the highlighted inputs.</span> : undefined}
       onClose={onClose}
       bodyProps={bodyProps}
@@ -318,12 +318,12 @@ function GrainPanel({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`Delete ${grain.grainKey}`}
+            aria-label={`Delete ${grain.key}`}
             title={blocking.length ? `Selected by ${blocking.map((d) => d.itemKey).join(', ')}` : 'Delete grain'}
             disabled={!!blocking.length || saving}
             onClick={async () => {
               if (await runOk(() => api.deleteGrain(version.id, grain.id))) {
-                toast.success(`Deleted ${grain.grainKey}`)
+                toast.success(`Deleted ${grain.key}`)
                 onClose()
               }
             }}
@@ -333,12 +333,12 @@ function GrainPanel({
         )
       }
     >
-      {shown && <ProblemBanner problem={shown} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {shown && <ProblemBanner problem={shown} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpen={onOpen} />}
       <fieldset disabled={readOnly} className="contents">
         <PanelSection title="Identity">
           <div className="grid gap-4 @md:grid-cols-2">
-            <FormRow label="Grain key" htmlFor="g-key" errors={errorsFor('grainKey')} hint={grain ? 'Fixed after creation.' : 'e.g. rowIdentity, temporalSeries'}>
-              <CommitInput id="g-key" value={draft.grainKey} disabled={!!grain} onCommit={(v) => setDraft((d) => ({ ...d, grainKey: v }))} className="font-mono" aria-invalid={!!errorsFor('grainKey')} />
+            <FormRow label="Grain key" htmlFor="g-key" errors={errorsFor('key')} hint={grain ? 'Fixed after creation.' : 'e.g. rowIdentity, temporalSeries'}>
+              <CommitInput id="g-key" value={draft.key} disabled={!!grain} onCommit={(v) => setDraft((d) => ({ ...d, key: v }))} className="font-mono" aria-invalid={!!errorsFor('key')} />
             </FormRow>
             <FormRow label="Kind" htmlFor="g-kind" errors={errorsFor('grainKind')} hint={vocab?.grainKind.find((t) => t.value === draft.grainKind)?.description}>
               <VocabSelect id="g-kind" terms={vocab?.grainKind} value={draft.grainKind} onChange={(k) => setDraft((d) => ({ ...d, grainKind: k ?? 'row' }))} />
@@ -380,7 +380,7 @@ function GrainPanel({
                 >
                   {!readOnly && <GripVerticalIcon aria-hidden className="size-4 cursor-grab text-muted-foreground" />}
                   <span className="w-5 text-right font-mono text-xs text-muted-foreground">{i + 1}</span>
-                  <span className="font-mono text-xs">{f?.fieldKey ?? '?'}</span>
+                  <span className="font-mono text-xs">{f?.key ?? '?'}</span>
                   <span className="truncate text-xs text-muted-foreground">{f?.displayName}</span>
                   {isTime && (
                     <Chip tone={draft.grainKind === 'series' ? 'warn' : 'primary'} className="ml-1">
@@ -389,13 +389,13 @@ function GrainPanel({
                   )}
                   {!readOnly && (
                     <span className="ml-auto flex items-center">
-                      <Button variant="ghost" size="icon-sm" aria-label={`Move ${f?.fieldKey} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>
+                      <Button variant="ghost" size="icon-sm" aria-label={`Move ${f?.key} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>
                         <ArrowUpIcon />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Move ${f?.fieldKey} down`} disabled={i === draft.fieldIds.length - 1} onClick={() => move(i, i + 1)}>
+                      <Button variant="ghost" size="icon-sm" aria-label={`Move ${f?.key} down`} disabled={i === draft.fieldIds.length - 1} onClick={() => move(i, i + 1)}>
                         <ArrowDownIcon />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Remove ${f?.fieldKey}`} onClick={() => setDraft((d) => ({ ...d, fieldIds: d.fieldIds.filter((x) => x !== id) }))}>
+                      <Button variant="ghost" size="icon-sm" aria-label={`Remove ${f?.key}`} onClick={() => setDraft((d) => ({ ...d, fieldIds: d.fieldIds.filter((x) => x !== id) }))}>
                         <XIcon />
                       </Button>
                     </span>
@@ -411,7 +411,7 @@ function GrainPanel({
               value=""
               placeholder="Add a field…"
               onChange={(id) => setDraft((d) => ({ ...d, fieldIds: [...d.fieldIds, id] }))}
-              options={remaining.map((f) => ({ value: f.id, label: f.fieldKey, hint: timeIds.has(f.id) ? (draft.grainKind === 'series' ? 'time field · excluded from series' : 'time field') : f.dataType }))}
+              options={remaining.map((f) => ({ value: f.id, label: f.key, hint: timeIds.has(f.id) ? (draft.grainKind === 'series' ? 'time field · excluded from series' : 'time field') : f.dataType }))}
             />
           )}
         </PanelSection>

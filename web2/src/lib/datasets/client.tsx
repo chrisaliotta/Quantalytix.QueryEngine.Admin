@@ -1,15 +1,24 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import type { ApiResult, DatasetsApi, SourceObjectKind, ValidationProblemDetails } from './contract'
+import { unwrap } from '@/lib/api/contract'
+import { DATASET_COMMANDS, DATASET_EDITS, type DatasetsApi, type DatasetSourceObjectKind } from './contract'
+import type { TenantLookups } from './lookups'
 import { createMockDatasetsApi } from './mock/adapter'
+import { createMockTenantLookups } from './mock/lookups'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 
 const ApiContext = createContext<DatasetsApi | null>(null)
+const LookupsContext = createContext<TenantLookups | null>(null)
 
-/** Supplies the adapter. Swap `createMockDatasetsApi` for an HTTP adapter without touching any screen. */
-export function DatasetsApiProvider({ children, api }: { children: ReactNode; api?: DatasetsApi }) {
+/** Supplies the adapters. Swap the mocks for HTTP adapters without touching any screen. */
+export function DatasetsApiProvider({ children, api, lookups }: { children: ReactNode; api?: DatasetsApi; lookups?: TenantLookups }) {
   const [instance] = useState(() => api ?? createMockDatasetsApi())
-  return <ApiContext.Provider value={instance}>{children}</ApiContext.Provider>
+  const [lookupsInstance] = useState(() => lookups ?? createMockTenantLookups())
+  return (
+    <LookupsContext.Provider value={lookupsInstance}>
+      <ApiContext.Provider value={instance}>{children}</ApiContext.Provider>
+    </LookupsContext.Provider>
+  )
 }
 
 export function useDatasetsApi() {
@@ -18,33 +27,11 @@ export function useDatasetsApi() {
   return api
 }
 
-const DATASET_EDITS = [
-  'createDataset',
-  'renameSourceTable',
-  'updateDataset',
-  'saveField',
-  'deleteField',
-  'addFieldsFromColumns',
-  'saveGrain',
-  'deleteGrain',
-  'saveBinding',
-  'deleteBinding',
-  'saveMeasure',
-  'deleteMeasure',
-  'saveSettings',
-] as const satisfies readonly (keyof DatasetsApi)[]
-const DATASET_COMMANDS = [
-  'deleteDataset',
-  'createDraft',
-  'deleteDraft',
-  'validateVersion',
-  'publishVersion',
-  'reopenVersion',
-  'retireVersion',
-  'materializeField',
-  'refreshMaterialization',
-  'dematerializeField',
-] as const satisfies readonly (keyof DatasetsApi)[]
+function useLookups() {
+  const lookups = useContext(LookupsContext)
+  if (!lookups) throw new Error('useLookups must be used inside DatasetsApiProvider')
+  return lookups
+}
 
 /**
  * Batches every draft edit inside one dataset until Save. Lifecycle steps and engine jobs (validate, publish,
@@ -61,43 +48,38 @@ export function DatasetEditScope({ datasetId, label, children }: { datasetId: st
   )
 }
 
-export class ProblemError extends Error {
-  constructor(public problem: ValidationProblemDetails) {
-    super(problem.title)
-  }
-}
-
-async function unwrap<T>(p: Promise<ApiResult<T>>): Promise<T> {
-  const r = await p
-  if (!r.ok) throw new ProblemError(r.problem)
-  return r.data
-}
-
 const STATIC = { revalidateOnFocus: false, revalidateIfStale: false }
 
 export const keys = {
   vocab: ['ds', 'vocab'] as const,
   catalog: ['ds', 'catalog'] as const,
+  members: (dimensionId: string) => ['ds', 'members', dimensionId] as const,
   sources: ['ds', 'sources'] as const,
   list: ['ds', 'list'] as const,
   dataset: (id: string) => ['ds', 'dataset', id] as const,
   version: (id: string) => ['ds', 'version', id] as const,
-  columns: (kind: SourceObjectKind, name: string) => ['ds', 'columns', kind, name] as const,
+  columns: (kind: DatasetSourceObjectKind, name: string) => ['ds', 'columns', kind, name] as const,
 }
 
+const LOOKUP_KEYS = new Set<string>([keys.vocab[1], keys.catalog[1], 'members'])
+
 export function useVocabularies() {
-  const api = useDatasetsApi()
-  return useSWR(keys.vocab, () => api.getVocabularies(), STATIC)
+  const lookups = useLookups()
+  return useSWR(keys.vocab, () => lookups.getVocabularies(), STATIC)
 }
 export function useCatalog() {
-  const api = useDatasetsApi()
-  return useSWR(keys.catalog, () => api.getTenantCatalog(), STATIC)
+  const lookups = useLookups()
+  return useSWR(keys.catalog, () => lookups.getCatalog(), STATIC)
+}
+export function usePublishedMembers(dimensionId: string | null | undefined) {
+  const lookups = useLookups()
+  return useSWR(dimensionId ? keys.members(dimensionId) : null, () => lookups.getPublishedMembers(dimensionId!), STATIC)
 }
 export function useSourceObjects() {
   const api = useDatasetsApi()
   return useSWR(keys.sources, () => api.listSourceObjects(), STATIC)
 }
-export function useSourceColumns(kind: SourceObjectKind | null | undefined, name: string | null | undefined) {
+export function useSourceColumns(kind: DatasetSourceObjectKind | null | undefined, name: string | null | undefined) {
   const api = useDatasetsApi()
   return useSWR(kind && name ? keys.columns(kind, name) : null, () => unwrap(api.getSourceColumns(kind!, name!)), { revalidateOnFocus: false })
 }
@@ -121,8 +103,5 @@ export function useVersion(id: string | null) {
 /** Revalidates everything a write to one dataset can change: the list, the dataset, its versions, source objects and columns. */
 export function useRefreshDatasets() {
   const { mutate } = useSWRConfig()
-  return useCallback(
-    () => mutate((key) => Array.isArray(key) && key[0] === 'ds' && key[1] !== 'vocab' && key[1] !== 'catalog'),
-    [mutate],
-  )
+  return useCallback(() => mutate((key) => Array.isArray(key) && key[0] === 'ds' && !LOOKUP_KEYS.has(key[1])), [mutate])
 }

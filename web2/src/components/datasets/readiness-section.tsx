@@ -1,7 +1,7 @@
 import { CircleCheckIcon, CircleXIcon, ShieldCheckIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDatasetsApi } from '@/lib/datasets/client'
-import type { DatasetTab, DatasetVersion, ValidationReport } from '@/lib/datasets/contract'
+import type { DatasetTab, DatasetVersion, DatasetValidationReport } from '@/lib/datasets/contract'
 import { ProblemBanner, SectionHeader, TAB_LABEL, useApiCall } from './shared'
 
 const TAB_ORDER: DatasetTab[] = ['settings', 'fields', 'grains', 'bindings', 'measures']
@@ -13,8 +13,8 @@ export function ReadinessSection({
   onOpen,
 }: {
   version: DatasetVersion
-  report: ValidationReport | null
-  onReport: (r: ValidationReport) => void
+  report: DatasetValidationReport | null
+  onReport: (r: DatasetValidationReport) => void
   onOpen: (tab: DatasetTab, itemId: string | null) => void
 }) {
   const api = useDatasetsApi()
@@ -26,7 +26,7 @@ export function ReadinessSection({
     if (r) onReport(r)
   }
 
-  const grouped = TAB_ORDER.map((tab) => ({ tab, items: (report?.violations ?? []).filter((v) => v.tab === tab) })).filter((g) => g.items.length)
+  const grouped = TAB_ORDER.map((tab) => ({ tab, items: (report?.violations ?? []).filter((v) => v.target.area === tab) })).filter((g) => g.items.length)
 
   return (
     <div className="flex max-w-4xl flex-col gap-4">
@@ -69,14 +69,14 @@ export function ReadinessSection({
               </h3>
               <ul className="divide-y">
                 {g.items.map((v, i) => (
-                  <li key={`${v.code}-${v.itemId}-${i}`}>
-                    <button type="button" onClick={() => onOpen(v.tab, v.itemId)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-muted/40">
+                  <li key={`${v.code}-${v.target.itemId}-${i}`}>
+                    <button type="button" onClick={() => onOpen(v.target.area, v.target.itemId ?? null)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-muted/40">
                       <CircleXIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm text-pretty">{v.message}</span>
                         <span className="flex flex-wrap gap-2 font-mono text-[11px] text-muted-foreground">
                           <span>{v.code}</span>
-                          {v.itemKey && <span className="text-foreground">{v.itemKey}</span>}
+                          {v.target.itemKey && <span className="text-foreground">{v.target.itemKey}</span>}
                         </span>
                       </span>
                       <span className="shrink-0 text-xs text-primary">Open</span>

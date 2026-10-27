@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
-import { useCatalog, useDatasetsApi, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { BindingInput, DatasetBinding, DatasetVersion, Periodicity, TenantCatalog, TimeBindingExtension, ValidationProblemDetails } from '@/lib/datasets/contract'
+import { useCatalog, useDatasetsApi, usePublishedMembers, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
+import type { DatasetBindingInput, DatasetBinding, DatasetVersion, DatasetPeriodicity, DatasetTimeBinding, Problem } from '@/lib/datasets/contract'
+import type { TenantCatalog } from '@/lib/datasets/lookups'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dataset-detail'
 import { InlineSelect, InlineSwitch, PanelSection, PropertiesPanel, SplitView, focusRowClass, usePanelDraft } from '@/components/shell/inline-table'
@@ -25,7 +26,7 @@ import {
   useApiCall,
 } from './shared'
 
-const PERIOD_ORDER: Periodicity[] = ['day', 'month', 'quarter', 'year']
+const PERIOD_ORDER: DatasetPeriodicity[] = ['day', 'month', 'quarter', 'year']
 
 export function bindingDimensionId(b: Pick<DatasetBinding, 'bindingKind' | 'dimensionId' | 'dimensionRoleId'>, catalog: TenantCatalog | undefined) {
   if (b.bindingKind === 'time') return b.dimensionId
@@ -33,8 +34,8 @@ export function bindingDimensionId(b: Pick<DatasetBinding, 'bindingKind' | 'dime
 }
 
 export function bindingLabel(b: DatasetBinding, version: DatasetVersion, catalog: TenantCatalog | undefined) {
-  if (b.bindingKind === 'time') return version.fields.find((f) => f.id === b.sourceFieldId)?.fieldKey ?? 'time'
-  return catalog?.roles.find((r) => r.id === b.dimensionRoleId)?.roleKey ?? '?'
+  if (b.bindingKind === 'time') return version.fields.find((f) => f.id === b.sourceFieldId)?.key ?? 'time'
+  return catalog?.roles.find((r) => r.id === b.dimensionRoleId)?.key ?? '?'
 }
 
 /** Enabled measures aggregating on this time binding that lack uniform interval estimates. */
@@ -55,7 +56,7 @@ const scrollToRow = (id: string) => requestAnimationFrame(() => document.querySe
 const clearRefs = { mappingSetId: null, bridgeId: null, unknownMemberKey: null } as const
 
 /** Switching kind keeps only the inputs that still mean something for the new kind. */
-function withBindingKind(x: BindingInput, k: BindingInput['bindingKind']): BindingInput {
+function withBindingKind(x: DatasetBindingInput, k: DatasetBindingInput['bindingKind']): DatasetBindingInput {
   return {
     ...x,
     ...clearRefs,
@@ -68,9 +69,9 @@ function withBindingKind(x: BindingInput, k: BindingInput['bindingKind']): Bindi
   }
 }
 
-function roleOptionsFor(d: BindingInput, version: DatasetVersion, catalog: TenantCatalog | undefined, excludeId?: string) {
+function roleOptionsFor(d: DatasetBindingInput, version: DatasetVersion, catalog: TenantCatalog | undefined, excludeId?: string) {
   const bound = new Set(version.bindings.filter((b) => b.id !== excludeId && b.dimensionRoleId).map((b) => b.dimensionRoleId))
-  const kindOf = (dimensionId: string) => catalog?.dimensions.find((x) => x.id === dimensionId)?.dimensionKind
+  const kindOf = (dimensionId: string) => catalog?.dimensions.find((x) => x.id === dimensionId)?.kind
   return (catalog?.roles ?? [])
     .filter((r) => !bound.has(r.id))
     .filter((r) => (d.bindingKind === 'range' ? kindOf(r.dimensionId) === 'range' : kindOf(r.dimensionId) !== 'time'))
@@ -88,16 +89,16 @@ function SourceFieldCell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function mappingSetOptionsFor(d: BindingInput, catalog: TenantCatalog | undefined) {
+function mappingSetOptionsFor(d: DatasetBindingInput, catalog: TenantCatalog | undefined) {
   const dimId = bindingDimensionId(d, catalog)
-  return (catalog?.mappingSets ?? []).filter((m) => m.dimensionId === dimId).map((m) => ({ value: m.id, label: m.displayName, hint: m.mappingSetKey }))
+  return (catalog?.mappingSets ?? []).filter((m) => m.dimensionId === dimId).map((m) => ({ value: m.id, label: m.displayName, hint: m.key }))
 }
 
-function fieldOptionsFor(d: BindingInput, version: DatasetVersion) {
+function fieldOptionsFor(d: DatasetBindingInput, version: DatasetVersion) {
   const isTime = d.bindingKind === 'time'
   return version.fields
     .filter((f) => !isTime || f.dataType === 'date' || f.dataType === 'timestamp' || f.dataType === 'datetime')
-    .map((f) => ({ value: f.id, label: f.fieldKey, hint: f.dataType }))
+    .map((f) => ({ value: f.id, label: f.key, hint: f.dataType }))
 }
 
 export function BindingsSection({ version, readOnly, editingId, onEdit, onOpen }: SectionProps) {
@@ -106,20 +107,20 @@ export function BindingsSection({ version, readOnly, editingId, onEdit, onOpen }
   const { data: catalog } = useCatalog()
   const { data: vocab } = useVocabularies()
   const { run, problem, setProblem } = useApiCall()
-  const [newDraft, setNewDraftState] = useState<BindingInput | null>(null)
-  const [newProblem, setNewProblem] = useState<ValidationProblemDetails | null>(null)
+  const [newDraft, setNewDraftState] = useState<DatasetBindingInput | null>(null)
+  const [newProblem, setNewProblem] = useState<Problem | null>(null)
   const [creating, setCreating] = useState(false)
   const newRef = useRef(newDraft)
   const kindLabel = (k: string) => vocab?.bindingKind.find((t) => t.value === k)?.label ?? k
   const kindOptions = (vocab?.bindingKind ?? []).map((t) => ({ value: t.value, label: t.label }))
-  const fieldKey = (id: string | null) => (id ? (version.fields.find((f) => f.id === id)?.fieldKey ?? '?') : null)
+  const fieldKey = (id: string | null) => (id ? (version.fields.find((f) => f.id === id)?.key ?? '?') : null)
   const focused = editingId ? version.bindings.find((b) => b.id === editingId) : undefined
 
-  const setNewDraft = (d: BindingInput | null) => {
+  const setNewDraft = (d: DatasetBindingInput | null) => {
     newRef.current = d
     setNewDraftState(d)
   }
-  const editNew = (update: (d: BindingInput) => BindingInput) => {
+  const editNew = (update: (d: DatasetBindingInput) => DatasetBindingInput) => {
     if (!newRef.current) return
     setNewDraft(update(newRef.current))
     if (newProblem) setNewProblem(null)
@@ -155,7 +156,7 @@ export function BindingsSection({ version, readOnly, editingId, onEdit, onOpen }
     scrollToRow(r.data.id)
     return true
   }
-  const patch = (b: DatasetBinding, p: Partial<BindingInput>) => run(() => api.saveBinding(version.id, { ...b, ...p }))
+  const patch = (b: DatasetBinding, p: Partial<DatasetBindingInput>) => run(() => api.saveBinding(version.id, { ...b, ...p }))
   const toggle = (b: DatasetBinding, key: 'isGroupable' | 'isFilterable' | 'isEnabled', label: string, disabled = false) => (
     <button
       type="button"
@@ -202,7 +203,7 @@ export function BindingsSection({ version, readOnly, editingId, onEdit, onOpen }
           )
         }
       />
-      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpen={onOpen} />}
       <SplitView panel={side}>
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
@@ -290,7 +291,7 @@ export function BindingsSection({ version, readOnly, editingId, onEdit, onOpen }
   )
 }
 
-const blankTime = (): TimeBindingExtension => ({
+const blankTime = (): DatasetTimeBinding => ({
   timeValueType: 'date',
   sourceTimeZone: null,
   defaultQueryTimeZone: 'UTC',
@@ -302,7 +303,7 @@ const blankTime = (): TimeBindingExtension => ({
   cumulativeFixedStart: null,
 })
 
-const blankBinding = (): BindingInput => ({
+const blankBinding = (): DatasetBindingInput => ({
   bindingKind: 'direct',
   dimensionRoleId: null,
   dimensionId: null,
@@ -333,13 +334,13 @@ function NewBindingRow({
   onSubmit,
   onCancel,
 }: {
-  draft: BindingInput
-  problem: ValidationProblemDetails | null
+  draft: DatasetBindingInput
+  problem: Problem | null
   creating: boolean
   version: DatasetVersion
   catalog: TenantCatalog | undefined
   kindOptions: { value: string; label: string }[]
-  onChange: (update: (d: BindingInput) => BindingInput) => void
+  onChange: (update: (d: DatasetBindingInput) => DatasetBindingInput) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -347,13 +348,13 @@ function NewBindingRow({
   const messages = Object.values(problem?.errors ?? {}).flat()
   const isTime = draft.bindingKind === 'time'
   const dim = catalog?.dimensions.find((x) => x.id === bindingDimensionId(draft, catalog))
-  const timeDims = (catalog?.dimensions ?? []).filter((x) => x.dimensionKind === 'time').map((x) => ({ value: x.id, label: x.displayName }))
+  const timeDims = (catalog?.dimensions ?? []).filter((x) => x.kind === 'time').map((x) => ({ value: x.id, label: x.displayName }))
   const fieldOptions = fieldOptionsFor(draft, version)
   const sourceBinding = draft.sourceDimensionBindingId ? version.bindings.find((x) => x.id === draft.sourceDimensionBindingId) : undefined
   const sourceDimId = sourceBinding ? bindingDimensionId(sourceBinding, catalog) : null
   const bridgeOptions = (catalog?.bridges ?? [])
-    .filter((b) => b.toDimensionId === dim?.id && (!sourceDimId || b.fromDimensionId === sourceDimId))
-    .map((b) => ({ value: b.id, label: b.displayName, hint: b.bridgeKey }))
+    .filter((b) => b.targetDimensionId === dim?.id && (!sourceDimId || b.sourceDimensionId === sourceDimId))
+    .map((b) => ({ value: b.id, label: b.displayName, hint: b.key }))
 
   useEffect(() => {
     rowRef.current?.querySelector<HTMLElement>('button')?.focus()
@@ -374,7 +375,7 @@ function NewBindingRow({
   return (
     <tr ref={rowRef} data-row-id={NEW_ROW_ID} aria-selected aria-label="New binding" onKeyDown={onKeyDown} className={cn(focusRowClass(true), 'align-top')}>
       <Td>
-        <InlineSelect aria-label="New binding: kind" value={draft.bindingKind} options={kindOptions} onCommit={(k) => onChange((x) => withBindingKind(x, k as BindingInput['bindingKind']))} className="w-28 text-xs" />
+        <InlineSelect aria-label="New binding: kind" value={draft.bindingKind} options={kindOptions} onCommit={(k) => onChange((x) => withBindingKind(x, k as DatasetBindingInput['bindingKind']))} className="w-28 text-xs" />
       </Td>
       <Td>
         <span className="flex items-center gap-1.5">
@@ -464,12 +465,12 @@ function BindingPanel({
   version: DatasetVersion
   readOnly: boolean
   existing?: DatasetBinding
-  seed: BindingInput
+  seed: DatasetBindingInput
   onClose: () => void
   onOpen: SectionProps['onOpen']
   /** New bindings only: panel edits update the pending row's draft instead of saving. */
-  onDraftCommit?: (draft: BindingInput) => void
-  createProblem?: ValidationProblemDetails | null
+  onDraftCommit?: (draft: DatasetBindingInput) => void
+  createProblem?: Problem | null
   onDismissCreateProblem?: () => void
 }) {
   const api = useDatasetsApi()
@@ -487,18 +488,19 @@ function BindingPanel({
     return !!(await run(() => api.saveBinding(version.id, next)))
   })
 
-  const set = <K extends keyof BindingInput>(k: K, v: BindingInput[K]) => setD((x) => ({ ...x, [k]: v }))
-  const setTime = <K extends keyof TimeBindingExtension>(k: K, v: TimeBindingExtension[K]) => setD((x) => ({ ...x, time: { ...(x.time ?? blankTime()), [k]: v } }))
+  const set = <K extends keyof DatasetBindingInput>(k: K, v: DatasetBindingInput[K]) => setD((x) => ({ ...x, [k]: v }))
+  const setTime = <K extends keyof DatasetTimeBinding>(k: K, v: DatasetTimeBinding[K]) => setD((x) => ({ ...x, time: { ...(x.time ?? blankTime()), [k]: v } }))
 
   const isTime = d.bindingKind === 'time'
   const dimId = bindingDimensionId(d, catalog)
   const dim = catalog?.dimensions.find((x) => x.id === dimId)
+  const { data: members } = usePublishedMembers(dim?.id)
   const roleOptions = roleOptionsFor(d, version, catalog, existing?.id)
-  const timeDims = (catalog?.dimensions ?? []).filter((x) => x.dimensionKind === 'time')
+  const timeDims = (catalog?.dimensions ?? []).filter((x) => x.kind === 'time')
   const fieldOptions = fieldOptionsFor(d, version)
   const sourceBinding = version.bindings.find((b) => b.id === d.sourceDimensionBindingId)
   const sourceDimId = sourceBinding ? bindingDimensionId(sourceBinding, catalog) : null
-  const bridges = (catalog?.bridges ?? []).filter((b) => b.toDimensionId === dimId && (!sourceDimId || b.fromDimensionId === sourceDimId))
+  const bridges = (catalog?.bridges ?? []).filter((b) => b.targetDimensionId === dimId && (!sourceDimId || b.sourceDimensionId === sourceDimId))
   const mappingSets = (catalog?.mappingSets ?? []).filter((m) => m.dimensionId === dimId)
 
   const deps = existing ? (version.dependents[existing.id] ?? []) : []
@@ -508,7 +510,7 @@ function BindingPanel({
   const finerTicked = native ? (d.time?.allowedPeriodicities ?? []).filter((p) => PERIOD_ORDER.indexOf(p) < PERIOD_ORDER.indexOf(native)) : []
   const offenders = finerTicked.length ? measuresBlockingFinerPeriods(version, existing?.id) : []
 
-  const title = existing ? (isTime ? `Time · ${version.fields.find((f) => f.id === existing.sourceFieldId)?.fieldKey ?? ''}` : (catalog?.roles.find((r) => r.id === existing.dimensionRoleId)?.roleKey ?? 'Binding')) : 'New binding'
+  const title = existing ? (isTime ? `Time · ${version.fields.find((f) => f.id === existing.sourceFieldId)?.key ?? ''}` : (catalog?.roles.find((r) => r.id === existing.dimensionRoleId)?.key ?? 'Binding')) : 'New binding'
 
   return (
     <PropertiesPanel
@@ -547,7 +549,7 @@ function BindingPanel({
         )
       }
     >
-      {problem && <ProblemBanner problem={problem} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpenDependent={(x) => onOpen(x.tab, x.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpen={onOpen} />}
         <fieldset disabled={readOnly} className="contents">
           <PanelSection title="Kind and references" description={vocab?.bindingKind.find((t) => t.value === d.bindingKind)?.description}>
             <div className="grid gap-4 @md:grid-cols-2">
@@ -566,7 +568,7 @@ function BindingPanel({
                     value={d.dimensionId ?? ''}
                     placeholder="Choose…"
                     onChange={(v) => setD((x) => ({ ...x, ...clearRefs, dimensionId: v }))}
-                    options={timeDims.map((x) => ({ value: x.id, label: x.displayName, hint: x.dimensionKey }))}
+                    options={timeDims.map((x) => ({ value: x.id, label: x.displayName, hint: x.key }))}
                   />
                 </FormRow>
               ) : (
@@ -600,7 +602,7 @@ function BindingPanel({
                     value={d.mappingSetId ?? ''}
                     placeholder="Choose…"
                     onChange={(v) => set('mappingSetId', v)}
-                    options={mappingSets.map((m) => ({ value: m.id, label: m.displayName, hint: m.mappingSetKey }))}
+                    options={mappingSets.map((m) => ({ value: m.id, label: m.displayName, hint: m.key }))}
                   />
                 </FormRow>
               )}
@@ -622,7 +624,7 @@ function BindingPanel({
                       value={d.bridgeId ?? ''}
                       placeholder={bridges.length ? 'Choose…' : 'No matching bridge'}
                       onChange={(v) => set('bridgeId', v)}
-                      options={bridges.map((b) => ({ value: b.id, label: b.displayName, hint: b.bridgeKey }))}
+                      options={bridges.map((b) => ({ value: b.id, label: b.displayName, hint: b.key }))}
                     />
                   </FormRow>
                 </>
@@ -654,7 +656,7 @@ function BindingPanel({
                     value={d.unknownMemberKey ?? ''}
                     placeholder="Choose…"
                     onChange={(v) => set('unknownMemberKey', v)}
-                    options={(dim?.publishedMembers ?? []).map((m) => ({ value: m.key, label: m.label, hint: m.key }))}
+                    options={(members?.members ?? []).map((m) => ({ value: m.key, label: m.displayName, hint: m.key }))}
                   />
                 </FormRow>
               )}
@@ -728,7 +730,7 @@ function BindingPanel({
                       <p className="flex flex-wrap gap-1.5">
                         {offenders.map((m) => (
                           <button key={m.id} type="button" onClick={() => onOpen('measures', m.id)} className="font-mono text-primary hover:underline">
-                            {m.measureKey}
+                            {m.key}
                           </button>
                         ))}
                       </p>

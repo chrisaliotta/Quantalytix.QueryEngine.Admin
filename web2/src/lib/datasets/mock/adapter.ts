@@ -1,35 +1,35 @@
 import type {
-  ApiResult,
-  BindingInput,
-  CreateDatasetInput,
-  CreateDraftInput,
   Dataset,
   DatasetBinding,
+  DatasetBindingInput,
+  DatasetCreateDraftInput,
+  DatasetCreateInput,
   DatasetField,
+  DatasetFieldInput,
   DatasetGrain,
+  DatasetGrainInput,
   DatasetListItem,
   DatasetMeasure,
+  DatasetMeasureInput,
+  DatasetNewColumnInput,
   DatasetsApi,
+  DatasetSourceColumn,
+  DatasetSourceObject,
+  DatasetSourceObjectKind,
+  DatasetValidationReport,
   DatasetVersion,
   DatasetVersionSettings,
   DatasetVersionSummary,
-  Dependent,
-  FieldInput,
-  GrainInput,
-  MeasureInput,
-  NewColumnInput,
-  SourceObject,
-  SourceColumn,
-  SourceObjectKind,
-  ValidationProblemDetails,
-  ValidationReport,
-  Vocabularies,
+  DeleteCheck,
+  Problem,
+  Violation,
 } from '../contract'
+import type { Vocabularies } from '../lookups'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
-import { catalog as seedCatalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
+import { catalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
 import { dependentsOf, FIELD_REF, MEASURE_REF, publicationViolations, refsOf } from './rules'
 
-const DATASET_KEY = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
+const DATASET_KEY = /^[A-Za-z][A-Za-z0-9_.]*$/
 const ITEM_KEY = /^[A-Za-z][A-Za-z0-9_]*$/
 const JSON_PATH = /^\$(\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+$/
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -37,8 +37,8 @@ const TIME_TYPES = new Set(['date', 'datetime', 'timestamp'])
 
 type Errors = Record<string, string[]>
 
-function problem(status: ValidationProblemDetails['status'], title: string, errors: Errors = {}, extra: Partial<ValidationProblemDetails> = {}): { ok: false; problem: ValidationProblemDetails } {
-  return { ok: false, problem: { type: `https://errors.meridian.example/${status}`, title, status, errors, ...extra } }
+function problem(status: Problem['status'], title: string, errors: Errors = {}, extra: Partial<Problem> = {}): { ok: false; problem: Problem } {
+  return { ok: false, problem: { type: `urn:qe:problem:mock-${status}`, title, status, errors, ...extra } }
 }
 const ok = <T>(data: T): { ok: true; data: T } => ({ ok: true, data: structuredClone(data) })
 const delay = () => new Promise((r) => setTimeout(r, 90 + Math.random() * 120))
@@ -91,12 +91,12 @@ const title = (s: string) => s.replace(/_/g, ' ').replace(/^./, (ch) => ch.toUpp
 const COLUMN_NAME = /^[a-z][a-z0-9_]{0,62}$/
 const MATERIALIZE_MS = 2400
 
-function nativeTypeOf(c: Pick<NewColumnInput, 'dataType' | 'numericPrecision' | 'numericScale'>) {
+function nativeTypeOf(c: Pick<DatasetNewColumnInput, 'dataType' | 'numericPrecision' | 'numericScale'>) {
   const map: Record<string, string> = { boolean: 'boolean', int32: 'integer', int64: 'bigint', string: 'text', date: 'date', datetime: 'timestamp', timestamp: 'timestamptz', json: 'jsonb' }
   return c.dataType === 'decimal' ? `numeric(${c.numericPrecision ?? 18},${c.numericScale ?? 2})` : (map[c.dataType] ?? 'text')
 }
 
-function columnFromInput(c: NewColumnInput, generated = false): SourceColumn {
+function columnFromInput(c: DatasetNewColumnInput, generated = false): DatasetSourceColumn {
   return {
     name: c.name,
     nativeType: nativeTypeOf(c),
@@ -104,7 +104,7 @@ function columnFromInput(c: NewColumnInput, generated = false): SourceColumn {
     numericPrecision: c.dataType === 'decimal' ? c.numericPrecision : null,
     numericScale: c.dataType === 'decimal' ? c.numericScale : null,
     isNullable: c.isNullable,
-    isGenerated: generated || undefined,
+    isGenerated: generated,
   }
 }
 
@@ -114,12 +114,11 @@ const sameSource = (a: Pick<DatasetField, 'sourceColumn' | 'jsonPath' | 'dataTyp
 export function createMockDatasetsApi(): DatasetsApi {
   const datasets: Dataset[] = structuredClone(seedDatasets)
   const versions: StoredVersion[] = structuredClone(seedVersions)
-  const columns: Record<string, SourceColumn[]> = structuredClone(seedColumns)
-  const objects: SourceObject[] = structuredClone(sourceObjects)
-  const catalog = structuredClone(seedCatalog)
-  catalog.releases.forEach((r) => (r.pins = structuredClone(seedReleasePins[r.id] ?? [])))
+  const columns: Record<string, DatasetSourceColumn[]> = structuredClone(seedColumns)
+  const objects: DatasetSourceObject[] = structuredClone(sourceObjects)
+  const pinsOf = (releaseId: string) => seedReleasePins[releaseId] ?? []
 
-  const columnsOf = (name: string, kind?: SourceObjectKind) => {
+  const columnsOf = (name: string, kind?: DatasetSourceObjectKind) => {
     const obj = objects.find((o) => o.name === name && (!kind || o.kind === kind))
     return obj ? (columns[name] ?? []) : null
   }
@@ -134,12 +133,13 @@ export function createMockDatasetsApi(): DatasetsApi {
     publishedAt: v.publishedAt,
     clonedFromVersionId: v.clonedFromVersionId,
     releases: catalog.releases
-      .filter((r) => r.pins.some((p) => p.versionId === v.id))
-      .map((r) => ({ releaseId: r.id, releaseKey: r.releaseKey, isActive: r.isActive })),
+      .filter((r) => pinsOf(r.id).some((p) => p.versionId === v.id))
+      .map((r) => ({ releaseId: r.id, releaseKey: r.key, isActive: r.isActive })),
   })
 
   const listItem = (d: Dataset): DatasetListItem => {
-    const active = catalog.releases.find((r) => r.isActive)?.pins.find((p) => p.datasetId === d.id)
+    const activeRelease = catalog.releases.find((r) => r.isActive)
+    const active = activeRelease && pinsOf(activeRelease.id).find((p) => p.datasetId === d.id)
     const own = versions.filter((v) => v.datasetId === d.id).sort((a, b) => b.versionNumber - a.versionNumber)
     const source = own[0] && objects.find((o) => o.name === own[0].settings.sourceObject)
     return {
@@ -160,7 +160,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     dependents: dependentsOf(v, catalog),
   })
 
-  type Found = { ok: true; v: StoredVersion } | { ok: false; problem: ValidationProblemDetails }
+  type Found = { ok: true; v: StoredVersion } | { ok: false; problem: Problem }
   const findVersion = (versionId: string): Found => {
     const v = versions.find((x) => x.id === versionId)
     return v ? { ok: true, v } : problem(404, 'Version not found', {}, { detail: `No version '${versionId}'.` })
@@ -178,11 +178,29 @@ export function createMockDatasetsApi(): DatasetsApi {
     if (!blocking.length) return null
     return problem(409, `This ${what} is in use`, {}, {
       detail: `${blocking.length} ${blocking.length === 1 ? 'item reads' : 'items read'} this ${what}. Remove those references first.`,
-      dependents: blocking,
+      violations: blocking.map((d) => ({
+        code: `${what}_in_use`,
+        message: `${d.itemKey} reads it as ${d.relation}.`,
+        target: { area: d.tab, itemId: d.itemId ?? undefined, itemKey: d.itemKey },
+      })),
     })
   }
 
-  type Materializable = { ok: true; v: StoredVersion; f: DatasetField } | { ok: false; problem: ValidationProblemDetails }
+  const isPinned = (versionId: string) => catalog.releases.some((r) => pinsOf(r.id).some((p) => p.versionId === versionId))
+
+  const deleteCheck = (d: Dataset): DeleteCheck => {
+    const reasons: Violation[] = [
+      ...versions
+        .filter((v) => v.datasetId === d.id && (v.status === 'published' || v.status === 'retired'))
+        .map((v) => ({ code: 'dataset_version_not_deletable', message: `Version ${v.versionNumber} is ${v.status}.` })),
+      ...catalog.releases
+        .filter((r) => pinsOf(r.id).some((p) => p.datasetId === d.id))
+        .map((r) => ({ code: 'dataset_in_release', message: `Release ${r.key} lists it.` })),
+    ]
+    return { allowed: reasons.length === 0, message: reasons.length ? `Dataset '${d.displayName}' cannot be deleted.` : null, reasons }
+  }
+
+  type Materializable = { ok: true; v: StoredVersion; f: DatasetField } | { ok: false; problem: Problem }
   const findMaterializable = (versionId: string, fieldId: string): Materializable => {
     const found = findVersion(versionId)
     if (!found.ok) return found
@@ -221,9 +239,8 @@ export function createMockDatasetsApi(): DatasetsApi {
         }
   }
 
-  const report = (v: StoredVersion): ValidationReport => ({
+  const report = (v: StoredVersion): DatasetValidationReport => ({
     versionId: v.id,
-    status: v.status,
     violations: publicationViolations(v, catalog, (n) => columnsOf(n, v.settings.sourceObjectKind)),
     checkedAt: new Date().toISOString(),
   })
@@ -239,14 +256,6 @@ export function createMockDatasetsApi(): DatasetsApi {
         resumeBuilds()
       },
     ),
-    async getVocabularies() {
-      await delay()
-      return structuredClone(vocabularies)
-    },
-    async getTenantCatalog() {
-      await delay()
-      return structuredClone(catalog)
-    },
     async listSourceObjects() {
       await delay()
       return structuredClone(objects)
@@ -267,11 +276,20 @@ export function createMockDatasetsApi(): DatasetsApi {
       const d = datasets.find((x) => x.id === datasetId)
       return d ? ok(listItem(d)) : problem(404, 'Dataset not found')
     },
-    async createDataset(input: CreateDatasetInput) {
+    async checkDeleteDataset(datasetId) {
+      await delay()
+      return deleteCheck(datasets.find((x) => x.id === datasetId)!)
+    },
+    async checkVersion(versionId) {
+      await delay()
+      const found = findVersion(versionId)
+      return found.ok ? ok(report(found.v)) : found
+    },
+    async createDataset(input: DatasetCreateInput) {
       await delay()
       const errors: Errors = {}
-      if (!DATASET_KEY.test(input.datasetKey)) err(errors, 'datasetKey', 'Use letters, digits, _ . or -, starting with a letter or digit.')
-      else if (datasets.some((d) => d.datasetKey === input.datasetKey)) err(errors, 'datasetKey', `'${input.datasetKey}' is already a dataset key.`)
+      if (!DATASET_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits, _ and .')
+      else if (datasets.some((d) => d.key === input.key)) err(errors, 'key', `'${input.key}' is already a dataset key.`)
       if (!input.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       if (input.mode === 'existing') {
         checkVocab(errors, 'sourceObjectKind', 'sourceObjectKind', input.sourceObjectKind)
@@ -290,7 +308,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         })
       }
       if (Object.keys(errors).length) return problem(400, 'The dataset could not be created', errors)
-      const sourceObjectKind: SourceObjectKind = input.mode === 'existing' ? input.sourceObjectKind : 'table'
+      const sourceObjectKind: DatasetSourceObjectKind = input.mode === 'existing' ? input.sourceObjectKind : 'table'
       const sourceObject = input.mode === 'existing' ? input.sourceObject : input.tableName
       if (input.mode === 'new') {
         objects.push({ name: input.tableName, kind: 'table', isManaged: true, stats: { rowCount: 0, sizeBytes: 8192, measuredAt: new Date().toISOString() } })
@@ -299,7 +317,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       const mapped = input.mode === 'new' ? input.columns : (columnsOf(sourceObject, sourceObjectKind) ?? []).flatMap((c) => (c.mappedType ? [{ name: c.name, dataType: c.mappedType, numericPrecision: c.numericPrecision, numericScale: c.numericScale, isNullable: c.isNullable }] : []))
       const fields: DatasetField[] = mapped.map((c) => ({
           id: newId('f'),
-          fieldKey: camel(c.name),
+          key: camel(c.name),
           displayName: title(c.name),
           fieldSourceKind: 'column' as const,
           sourceColumn: c.name,
@@ -317,7 +335,7 @@ export function createMockDatasetsApi(): DatasetsApi {
           isGroupable: c.dataType === 'string' || TIME_TYPES.has(c.dataType) || c.dataType === 'boolean',
           isEnabled: true,
         }))
-      const d: Dataset = { id: newId('ds'), datasetKey: input.datasetKey, displayName: input.displayName.trim(), isEnabled: false }
+      const d: Dataset = { id: newId('ds'), key: input.key, displayName: input.displayName.trim(), isEnabled: false }
       datasets.push(d)
       versions.push({
         id: newId('v'),
@@ -359,10 +377,6 @@ export function createMockDatasetsApi(): DatasetsApi {
       const d = datasets.find((x) => x.id === datasetId)
       if (!d) return problem(404, 'Dataset not found')
       const errors: Errors = {}
-      if (patch.datasetKey !== undefined) {
-        if (!DATASET_KEY.test(patch.datasetKey)) err(errors, 'datasetKey', 'Use letters, digits, _ . or -, starting with a letter or digit.')
-        else if (datasets.some((x) => x.id !== d.id && x.datasetKey === patch.datasetKey)) err(errors, 'datasetKey', `'${patch.datasetKey}' is already a dataset key.`)
-      }
       if (patch.displayName !== undefined && !patch.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       if (Object.keys(errors).length) return problem(400, 'The dataset could not be saved', errors)
       Object.assign(d, patch)
@@ -372,20 +386,10 @@ export function createMockDatasetsApi(): DatasetsApi {
       await delay()
       const d = datasets.find((x) => x.id === datasetId)
       if (!d) return problem(404, 'Dataset not found')
-      const own = versions.filter((v) => v.datasetId === d.id)
-      const nonDraft = own.filter((v) => v.status !== 'draft')
-      const pinnedBy = catalog.releases.filter((r) => r.pins.some((p) => p.datasetId === d.id))
-      if (nonDraft.length || pinnedBy.length)
-        return problem(409, 'This dataset cannot be deleted', {}, {
-          detail: [
-            nonDraft.length ? `It has ${nonDraft.length} non-draft ${nonDraft.length === 1 ? 'version' : 'versions'} (${nonDraft.map((v) => `v${v.versionNumber} ${v.status}`).join(', ')}).` : '',
-            pinnedBy.length ? `It is listed in ${pinnedBy.map((r) => r.releaseKey).join(', ')}.` : '',
-          ]
-            .filter(Boolean)
-            .join(' '),
-        })
+      const check = deleteCheck(d)
+      if (!check.allowed) return problem(409, 'This dataset cannot be deleted', {}, { detail: check.message!, violations: check.reasons })
       datasets.splice(datasets.indexOf(d), 1)
-      own.forEach((v) => versions.splice(versions.indexOf(v), 1))
+      versions.filter((v) => v.datasetId === d.id).forEach((v) => versions.splice(versions.indexOf(v), 1))
       return ok(null)
     },
 
@@ -394,10 +398,12 @@ export function createMockDatasetsApi(): DatasetsApi {
       const found = findVersion(versionId)
       return found.ok ? ok(detail(found.v)) : found
     },
-    async createDraft(datasetId, input: CreateDraftInput) {
+    async createDraft(datasetId, input: DatasetCreateDraftInput) {
       await delay()
       if (!datasets.some((d) => d.id === datasetId)) return problem(404, 'Dataset not found')
       const own = versions.filter((v) => v.datasetId === datasetId)
+      const open = own.find((v) => v.status === 'draft' || v.status === 'validated')
+      if (open) return problem(409, 'This dataset already has an open version', {}, { detail: `Version ${open.versionNumber} is ${open.status}; finish or delete it first.` })
       const versionNumber = Math.max(0, ...own.map((v) => v.versionNumber)) + 1
       const base = { id: newId('v'), datasetId, versionNumber, status: 'draft' as const, createdAt: new Date().toISOString(), publishedAt: null }
       if (input.mode === 'empty') {
@@ -426,8 +432,10 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async deleteDraft(versionId) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findVersion(versionId)
       if (!found.ok) return found
+      if (found.v.status !== 'draft' && found.v.status !== 'validated') return problem(409, 'Only a draft or validated version can be deleted', {}, { detail: `Version ${found.v.versionNumber} is ${found.v.status}.` })
+      if (isPinned(versionId)) return problem(409, 'A release pins this version', {}, { detail: 'Remove it from the release first.' })
       versions.splice(versions.indexOf(found.v), 1)
       return ok(null)
     },
@@ -438,7 +446,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       const r = report(found.v)
       if (found.v.status === 'draft' && r.violations.length === 0) found.v.status = 'validated'
       if (found.v.status === 'validated' && r.violations.length > 0) found.v.status = 'draft'
-      return ok({ ...r, status: found.v.status })
+      return ok(r)
     },
     async publishVersion(versionId) {
       await delay()
@@ -450,7 +458,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         found.v.status = 'published'
         found.v.publishedAt = new Date().toISOString()
       }
-      return ok({ ...r, status: found.v.status })
+      return ok(r)
     },
     async reopenVersion(versionId) {
       await delay()
@@ -465,13 +473,17 @@ export function createMockDatasetsApi(): DatasetsApi {
       const found = findVersion(versionId)
       if (!found.ok) return found
       if (found.v.status !== 'published') return problem(409, 'Only a published version can be retired')
-      const active = catalog.releases.find((r) => r.isActive && r.pins.some((p) => p.versionId === versionId))
-      if (active) return problem(409, 'This version is in the active release', {}, { detail: `${active.releaseKey} pins it, so the engine reads it today. Pin another version in that release first.` })
+      const active = catalog.releases.find((r) => r.isActive && pinsOf(r.id).some((p) => p.versionId === versionId))
+      if (active)
+        return problem(422, 'This version is in the active release', {}, {
+          detail: `${active.key} pins it, so the engine reads it today. Pin another version in that release first.`,
+          violations: [{ code: 'release_pins_retired_version', message: `The active release ${active.key} pins this version.` }],
+        })
       found.v.status = 'retired'
       return ok(summary(found.v))
     },
 
-    async saveField(versionId, input: FieldInput) {
+    async saveField(versionId, input: DatasetFieldInput) {
       await delay()
       const found = findDraft(versionId)
       if (!found.ok) return found
@@ -479,8 +491,8 @@ export function createMockDatasetsApi(): DatasetsApi {
       const existing = input.id ? v.fields.find((f) => f.id === input.id) : undefined
       if (input.id && !existing) return problem(404, 'Field not found')
       const errors: Errors = {}
-      if (existing && existing.fieldKey !== input.fieldKey) err(errors, 'fieldKey', 'The field key is fixed once created.')
-      else if (!ITEM_KEY.test(input.fieldKey)) err(errors, 'fieldKey', 'Start with a letter; use letters, digits and _.')
+      if (existing && existing.key !== input.key) err(errors, 'key', 'The field key is fixed once created.')
+      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       if (!input.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       checkVocab(errors, 'fieldSourceKind', 'fieldSourceKind', input.fieldSourceKind)
       checkVocab(errors, 'dataType', 'dataType', input.dataType)
@@ -552,7 +564,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       })
       if (!names.length) err(errors, 'columns', 'Choose at least one column.')
       if (Object.keys(errors).length) return problem(400, 'The fields could not be created', errors)
-      const keys = new Set(v.fields.map((f) => f.fieldKey))
+      const keys = new Set(v.fields.map((f) => f.key))
       const created = names.map((n) => {
         const c = cols.find((x) => x.name === n)!
         let key = camel(n)
@@ -560,7 +572,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         keys.add(key)
         const f: DatasetField = {
           id: newId('f'),
-          fieldKey: key,
+          key,
           displayName: title(n),
           fieldSourceKind: 'column',
           sourceColumn: n,
@@ -607,7 +619,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       return ok(found.f)
     },
 
-    async saveGrain(versionId, input: GrainInput) {
+    async saveGrain(versionId, input: DatasetGrainInput) {
       await delay()
       const found = findDraft(versionId)
       if (!found.ok) return found
@@ -615,8 +627,8 @@ export function createMockDatasetsApi(): DatasetsApi {
       const existing = input.id ? v.grains.find((g) => g.id === input.id) : undefined
       if (input.id && !existing) return problem(404, 'Grain not found')
       const errors: Errors = {}
-      if (existing && existing.grainKey !== input.grainKey) err(errors, 'grainKey', 'The grain key is fixed once created.')
-      else if (!ITEM_KEY.test(input.grainKey)) err(errors, 'grainKey', 'Start with a letter; use letters, digits and _.')
+      if (existing && existing.key !== input.key) err(errors, 'key', 'The grain key is fixed once created.')
+      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       checkVocab(errors, 'grainKind', 'grainKind', input.grainKind)
       if (!input.fieldIds.length) err(errors, 'fieldIds', 'Add at least one component field.')
       if (new Set(input.fieldIds).size !== input.fieldIds.length) err(errors, 'fieldIds', 'A field can appear only once.')
@@ -637,7 +649,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       return ok(null)
     },
 
-    async saveBinding(versionId, input: BindingInput) {
+    async saveBinding(versionId, input: DatasetBindingInput) {
       await delay()
       const found = findDraft(versionId)
       if (!found.ok) return found
@@ -660,7 +672,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         next.bridgeId = null
         next.sourceDimensionBindingId = null
         if (!input.dimensionId) err(errors, 'dimensionId', 'Choose a time dimension.')
-        else if (!seedCatalog.dimensions.some((d) => d.id === input.dimensionId)) err(errors, 'dimensionId', 'Choose a dimension of this tenant.')
+        else if (!catalog.dimensions.some((d) => d.id === input.dimensionId)) err(errors, 'dimensionId', 'Choose a dimension of this tenant.')
       } else {
         next.dimensionId = null
         next.time = null
@@ -692,7 +704,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         if (!t) err(errors, 'time', 'A time binding needs its time axis settings.')
         else {
           const src = field(input.sourceFieldId)
-          if (src && !TIME_TYPES.has(src.dataType)) err(errors, 'sourceFieldId', `A time axis reads a date or timestamp field; '${src.fieldKey}' is ${src.dataType}.`)
+          if (src && !TIME_TYPES.has(src.dataType)) err(errors, 'sourceFieldId', `A time axis reads a date or timestamp field; '${src.key}' is ${src.dataType}.`)
           checkVocab(errors, 'time.timeValueType', 'timeValueType', t.timeValueType)
           checkVocab(errors, 'time.observationKind', 'observationKind', t.observationKind)
           checkVocab(errors, 'time.nativePeriodicity', 'periodicity', t.nativePeriodicity, true)
@@ -726,7 +738,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       return ok(null)
     },
 
-    async saveMeasure(versionId, input: MeasureInput) {
+    async saveMeasure(versionId, input: DatasetMeasureInput) {
       await delay()
       const found = findDraft(versionId)
       if (!found.ok) return found
@@ -735,8 +747,8 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (input.id && !existing) return problem(404, 'Measure not found')
       const errors: Errors = {}
       const next: DatasetMeasure = structuredClone({ ...input, id: existing?.id ?? newId('m'), displayName: input.displayName.trim() })
-      if (existing && existing.measureKey !== input.measureKey) err(errors, 'measureKey', 'The measure key is fixed once created.')
-      else if (!ITEM_KEY.test(input.measureKey)) err(errors, 'measureKey', 'Start with a letter; use letters, digits and _.')
+      if (existing && existing.key !== input.key) err(errors, 'key', 'The measure key is fixed once created.')
+      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       if (!next.displayName) err(errors, 'displayName', 'Enter a display name.')
       checkVocab(errors, 'measureKind', 'measureKind', input.measureKind)
       const kind = input.measureKind
@@ -753,7 +765,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         if (!input.expressionText?.trim()) err(errors, 'expressionText', 'Enter a formula over other measures, e.g. [m.a] / [m.b].')
         else {
           checkBrackets(errors, 'expressionText', input.expressionText)
-          if (refsOf(input.expressionText, MEASURE_REF).includes(input.measureKey)) err(errors, 'expressionText', 'A formula cannot reference its own measure.')
+          if (refsOf(input.expressionText, MEASURE_REF).includes(input.key)) err(errors, 'expressionText', 'A formula cannot reference its own measure.')
           if (refsOf(input.expressionText, FIELD_REF).length) err(errors, 'expressionText', 'Formulas compose measures ([m.key]); fields belong in components.')
         }
       } else next.expressionText = null
@@ -842,5 +854,3 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
   }
 }
-
-export type { Dependent }

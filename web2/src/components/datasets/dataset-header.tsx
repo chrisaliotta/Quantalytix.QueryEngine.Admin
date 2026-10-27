@@ -1,10 +1,9 @@
-import { ArchiveIcon, ArrowLeftIcon, CopyIcon, FilePlusIcon, KeyRoundIcon, MoreHorizontalIcon, RotateCcwIcon, ShieldCheckIcon, Trash2Icon, UploadIcon } from 'lucide-react'
+import { ArchiveIcon, ArrowLeftIcon, CopyIcon, FilePlusIcon, MoreHorizontalIcon, RotateCcwIcon, ShieldCheckIcon, Trash2Icon, UploadIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { EditableLabel } from '@/components/report/shared/editable-label'
@@ -12,11 +11,11 @@ import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { DetailHeader, DetailKey } from '@/components/shell/page-shell'
 import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
 import { useDatasetsApi, useRefreshDatasets, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
-import type { ApiResult, DatasetListItem, DatasetVersionSummary, SourceObjectKind, ValidationProblemDetails, ValidationReport } from '@/lib/datasets/contract'
+import type { ApiResult, DatasetListItem, DatasetVersionSummary, DatasetSourceObjectKind, Problem, DatasetValidationReport } from '@/lib/datasets/contract'
 import { FormRow, ProblemBanner, STATUS_TONE, VocabSelect, useApiCall } from './shared'
 import { cn } from '@/lib/utils'
 
-type HeaderDialog = { type: 'newDraft'; mode: 'empty' | 'clone' } | { type: 'renameKey' } | { type: 'confirm'; action: 'deleteDraft' | 'retire' | 'deleteDataset' } | null
+type HeaderDialog = { type: 'newDraft'; mode: 'empty' | 'clone' } | { type: 'confirm'; action: 'deleteDraft' | 'retire' | 'deleteDataset' } | null
 
 export function DatasetHeader({
   dataset,
@@ -29,14 +28,14 @@ export function DatasetHeader({
   selected: DatasetVersionSummary
   onBack: () => void
   onSelectVersion: (id: string) => void
-  onReport: (r: ValidationReport) => void
+  onReport: (r: DatasetValidationReport) => void
 }) {
   const api = useDatasetsApi()
   const { run, saving, problem, setProblem } = useApiCall()
   const [dialog, setDialog] = useState<HeaderDialog>(null)
   const active = selected.releases.find((r) => r.isActive)
   const otherPins = selected.releases.filter((r) => !r.isActive)
-  const hasDraft = dataset.versions.some((v) => v.status === 'draft')
+  const hasOpen = dataset.versions.some((v) => v.status === 'draft' || v.status === 'validated')
   const pending = useHasPendingChanges()
 
   async function validate() {
@@ -76,7 +75,7 @@ export function DatasetHeader({
       }
       meta={
         <>
-          <DetailKey>{dataset.datasetKey}</DetailKey>
+          <DetailKey>{dataset.key}</DetailKey>
           <div className="ml-2 flex items-center gap-2">
             <Switch
               id="dataset-enabled"
@@ -135,13 +134,13 @@ export function DatasetHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               {pending && <p className="px-2 pt-1 pb-1.5 text-[11px] text-muted-foreground">{SAVE_FIRST}.</p>}
-              <DropdownMenuItem disabled={hasDraft || pending} onClick={() => setDialog({ type: 'newDraft', mode: 'empty' })}>
+              <DropdownMenuItem disabled={hasOpen || pending} onClick={() => setDialog({ type: 'newDraft', mode: 'empty' })}>
                 <FilePlusIcon /> New empty draft
               </DropdownMenuItem>
-              <DropdownMenuItem disabled={hasDraft || pending} onClick={() => setDialog({ type: 'newDraft', mode: 'clone' })}>
+              <DropdownMenuItem disabled={hasOpen || pending} onClick={() => setDialog({ type: 'newDraft', mode: 'clone' })}>
                 <CopyIcon /> Clone into new draft…
               </DropdownMenuItem>
-              {hasDraft && <p className="px-2 pb-1 text-[11px] text-muted-foreground">A dataset holds one draft at a time.</p>}
+              {hasOpen && <p className="px-2 pb-1 text-[11px] text-muted-foreground">A dataset holds one draft or validated version at a time.</p>}
               {selected.status === 'validated' && (
                 <DropdownMenuItem disabled={pending} onClick={reopen}>
                   <RotateCcwIcon /> Return to draft
@@ -152,15 +151,12 @@ export function DatasetHeader({
                   <ArchiveIcon /> Retire version {selected.versionNumber}…
                 </DropdownMenuItem>
               )}
-              {selected.status === 'draft' && (
+              {(selected.status === 'draft' || selected.status === 'validated') && (
                 <DropdownMenuItem disabled={pending} variant="destructive" onClick={() => setDialog({ type: 'confirm', action: 'deleteDraft' })}>
-                  <Trash2Icon /> Delete draft…
+                  <Trash2Icon /> Delete version {selected.versionNumber}…
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={pending} onClick={() => setDialog({ type: 'renameKey' })}>
-                <KeyRoundIcon /> Change dataset key…
-              </DropdownMenuItem>
               <DropdownMenuItem disabled={pending} variant="destructive" onClick={() => setDialog({ type: 'confirm', action: 'deleteDataset' })}>
                 <Trash2Icon /> Delete dataset…
               </DropdownMenuItem>
@@ -186,7 +182,6 @@ export function DatasetHeader({
           }}
         />
       )}
-      {dialog?.type === 'renameKey' && <RenameKeyDialog dataset={dataset} onClose={() => setDialog(null)} />}
       {dialog?.type === 'confirm' && (
         <ConfirmDialog
           action={dialog.action}
@@ -222,7 +217,7 @@ function NewDraftDialog({
   const { run, saving, problem, errorsFor } = useApiCall()
   const [mode, setMode] = useState(initialMode)
   const [from, setFrom] = useState(selected.id)
-  const [kind, setKind] = useState<SourceObjectKind>('table')
+  const [kind, setKind] = useState<DatasetSourceObjectKind>('table')
   const [object, setObject] = useState(selected.sourceObject)
 
   async function create() {
@@ -304,44 +299,10 @@ function NewDraftDialog({
   )
 }
 
-function RenameKeyDialog({ dataset, onClose }: { dataset: DatasetListItem; onClose: () => void }) {
-  const api = useDatasetsApi()
-  const { run, saving, errorsFor, problem } = useApiCall()
-  const [key, setKey] = useState(dataset.datasetKey)
-  async function save() {
-    if (await run(() => api.updateDataset(dataset.id, { datasetKey: key.trim() }))) {
-      toast.success('Dataset key changed')
-      onClose()
-    }
-  }
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change dataset key</DialogTitle>
-          <DialogDescription>Query requests name the dataset by this key. Requests using the old key stop resolving once you save.</DialogDescription>
-        </DialogHeader>
-        {problem && !problem.errors.datasetKey && <ProblemBanner problem={problem} />}
-        <FormRow label="Dataset key" htmlFor="rk-key" errors={errorsFor('datasetKey')}>
-          <Input id="rk-key" value={key} onChange={(e) => setKey(e.target.value)} className="font-mono" aria-invalid={!!errorsFor('datasetKey')} />
-        </FormRow>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={saving || key.trim() === dataset.datasetKey}>
-            Change key
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 const CONFIRM = {
-  deleteDraft: { title: 'Delete this draft?', body: 'Every field, grain, binding and measure in the draft is removed. Published versions are not affected.', cta: 'Delete draft', done: 'Draft deleted' },
+  deleteDraft: { title: 'Delete this version?', body: 'Every field, grain, binding and measure in the version is removed. Published versions are not affected.', cta: 'Delete version', done: 'Version deleted' },
   retire: { title: 'Retire this version?', body: 'A retired version stays readable for reference but can no longer be pinned by a release.', cta: 'Retire version', done: 'Version retired' },
-  deleteDataset: { title: 'Delete this dataset?', body: 'Only possible while every version is a draft and no release lists the dataset.', cta: 'Delete dataset', done: 'Dataset deleted' },
+  deleteDataset: { title: 'Delete this dataset?', body: 'Only possible while every version is a draft or validated and no release lists the dataset.', cta: 'Delete dataset', done: 'Dataset deleted' },
 } as const
 
 function ConfirmDialog({
@@ -360,7 +321,7 @@ function ConfirmDialog({
   const api = useDatasetsApi()
   const refresh = useRefreshDatasets()
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<ValidationProblemDetails | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
   const copy = CONFIRM[action]
 
   async function confirm() {

@@ -1,19 +1,18 @@
 import type {
   Dataset,
   DatasetBinding,
+  DatasetDataType,
   DatasetField,
-  DatasetMeasure,
-  DatasetVersionSettings,
   DatasetGrain,
-  SourceColumn,
-  SourceObject,
-  TenantCatalog,
-  TimeBindingExtension,
-  TimePolicy,
-  Vocabularies,
+  DatasetMeasure,
+  DatasetMeasureTimePolicy,
+  DatasetSourceColumn,
+  DatasetSourceObject,
+  DatasetTimeBinding,
+  DatasetVersionSettings,
   VersionStatus,
-  DataType,
 } from '../contract'
+import type { PublishedMembers, TenantCatalog, Vocabularies } from '../lookups'
 
 /* ───────────────────────── Vocabularies ───────────────────────── */
 
@@ -135,7 +134,7 @@ export const vocabularies: Vocabularies = {
     t('recompute', 'Recompute', 'Totals recompute from rows. Use for ratios, weighted and nonlinear measures.'),
     t('sum_children', 'Sum children', 'Totals add the child values. Additive measures only.'),
   ],
-  roundingMode: [t('half_up', 'Half up'), t('half_even', 'Half even'), t('down', 'Down'), t('up', 'Up')],
+  roundingMode: [t('half_up', 'Half up'), t('half_even', 'Half even'), t('down', 'Down'), t('up', 'Up'), t('truncate', 'Truncate')],
   observationSelection: [
     t('all', 'All observations'),
     t('first_in_period', 'First in period'),
@@ -160,69 +159,93 @@ export const vocabularies: Vocabularies = {
 
 /* ───────────────────────── Tenant catalog ───────────────────────── */
 
-const members = (prefix: string, labels: string[]) => labels.map((label, i) => ({ key: `${prefix}${String(i + 1).padStart(2, '0')}`, label }))
-
 export const catalog: TenantCatalog = {
   dimensions: [
-    { id: 'dim_branch', dimensionKey: 'branch', displayName: 'Branch', dimensionKind: 'standard', publishedMembers: [...members('BR', ['Downtown', 'Northside', 'Harbor', 'Westfield', 'Airport']), { key: 'BR_UNK', label: 'Unknown branch' }] },
-    { id: 'dim_region', dimensionKey: 'region', displayName: 'Region', dimensionKind: 'standard', publishedMembers: [...members('RG', ['North', 'South', 'Central']), { key: 'RG_UNK', label: 'Unassigned' }] },
-    { id: 'dim_product', dimensionKey: 'product', displayName: 'Product', dimensionKind: 'standard', publishedMembers: [...members('PR', ['Mortgage', 'Auto loan', 'Personal loan', 'Credit card', 'Checking', 'Savings', 'Term deposit']), { key: 'PR_OTHER', label: 'Other product' }] },
-    { id: 'dim_account', dimensionKey: 'gl_account', displayName: 'GL account', dimensionKind: 'standard', publishedMembers: [...members('GL', ['Cash', 'Loans', 'Deposits', 'Equity', 'Interest income', 'Interest expense']), { key: 'GL_SUSPENSE', label: 'Suspense' }] },
-    { id: 'dim_cost_center', dimensionKey: 'cost_center', displayName: 'Cost center', dimensionKind: 'standard', publishedMembers: members('CC', ['Retail', 'Commercial', 'Treasury', 'Operations']) },
-    { id: 'dim_dpd_bucket', dimensionKey: 'dpd_bucket', displayName: 'Days past due band', dimensionKind: 'range', publishedMembers: [{ key: 'CURRENT', label: 'Current' }, { key: 'DPD_1_30', label: '1–30' }, { key: 'DPD_31_90', label: '31–90' }, { key: 'DPD_90P', label: '90+' }] },
-    { id: 'dim_balance_band', dimensionKey: 'balance_band', displayName: 'Balance band', dimensionKind: 'range', publishedMembers: [{ key: 'LT_10K', label: '< 10k' }, { key: '10K_100K', label: '10k–100k' }, { key: 'GT_100K', label: '> 100k' }] },
-    { id: 'dim_business_date', dimensionKey: 'business_date', displayName: 'Business date', dimensionKind: 'time', publishedMembers: [] },
-    { id: 'dim_maturity_date', dimensionKey: 'maturity_date', displayName: 'Maturity date', dimensionKind: 'time', publishedMembers: [] },
+    { id: 'dim_branch', key: 'branch', displayName: 'Branch', kind: 'categorical' },
+    { id: 'dim_region', key: 'region', displayName: 'Region', kind: 'categorical' },
+    { id: 'dim_product', key: 'product', displayName: 'Product', kind: 'categorical' },
+    { id: 'dim_account', key: 'gl_account', displayName: 'GL account', kind: 'hierarchical' },
+    { id: 'dim_cost_center', key: 'cost_center', displayName: 'Cost center', kind: 'categorical' },
+    { id: 'dim_dpd_bucket', key: 'dpd_bucket', displayName: 'Days past due band', kind: 'range' },
+    { id: 'dim_balance_band', key: 'balance_band', displayName: 'Balance band', kind: 'range' },
+    { id: 'dim_business_date', key: 'business_date', displayName: 'Business date', kind: 'time' },
+    { id: 'dim_maturity_date', key: 'maturity_date', displayName: 'Maturity date', kind: 'time' },
   ],
   roles: [
-    { id: 'role_servicing_branch', roleKey: 'servicingBranch', displayName: 'Servicing branch', dimensionId: 'dim_branch' },
-    { id: 'role_origination_branch', roleKey: 'originationBranch', displayName: 'Origination branch', dimensionId: 'dim_branch' },
-    { id: 'role_branch', roleKey: 'branch', displayName: 'Branch', dimensionId: 'dim_branch' },
-    { id: 'role_region', roleKey: 'region', displayName: 'Region', dimensionId: 'dim_region' },
-    { id: 'role_product', roleKey: 'product', displayName: 'Product', dimensionId: 'dim_product' },
-    { id: 'role_account', roleKey: 'account', displayName: 'GL account', dimensionId: 'dim_account' },
-    { id: 'role_cost_center', roleKey: 'costCenter', displayName: 'Cost center', dimensionId: 'dim_cost_center' },
-    { id: 'role_dpd_band', roleKey: 'dpdBand', displayName: 'Days past due band', dimensionId: 'dim_dpd_bucket' },
-    { id: 'role_balance_band', roleKey: 'balanceBand', displayName: 'Balance band', dimensionId: 'dim_balance_band' },
+    { id: 'role_servicing_branch', key: 'servicingBranch', displayName: 'Servicing branch', dimensionId: 'dim_branch' },
+    { id: 'role_origination_branch', key: 'originationBranch', displayName: 'Origination branch', dimensionId: 'dim_branch' },
+    { id: 'role_branch', key: 'branch', displayName: 'Branch', dimensionId: 'dim_branch' },
+    { id: 'role_region', key: 'region', displayName: 'Region', dimensionId: 'dim_region' },
+    { id: 'role_product', key: 'product', displayName: 'Product', dimensionId: 'dim_product' },
+    { id: 'role_account', key: 'account', displayName: 'GL account', dimensionId: 'dim_account' },
+    { id: 'role_cost_center', key: 'costCenter', displayName: 'Cost center', dimensionId: 'dim_cost_center' },
+    { id: 'role_dpd_band', key: 'dpdBand', displayName: 'Days past due band', dimensionId: 'dim_dpd_bucket' },
+    { id: 'role_balance_band', key: 'balanceBand', displayName: 'Balance band', dimensionId: 'dim_balance_band' },
   ],
   mappingSets: [
-    { id: 'ms_branch_codes', mappingSetKey: 'branch_codes', displayName: 'Core branch codes', dimensionId: 'dim_branch' },
-    { id: 'ms_legacy_branch', mappingSetKey: 'legacy_branch_codes', displayName: 'Legacy branch codes', dimensionId: 'dim_branch' },
-    { id: 'ms_product_codes', mappingSetKey: 'product_codes', displayName: 'Product codes', dimensionId: 'dim_product' },
-    { id: 'ms_legacy_accounts', mappingSetKey: 'legacy_gl', displayName: 'Legacy GL accounts', dimensionId: 'dim_account' },
+    { id: 'ms_branch_codes', key: 'branch_codes', displayName: 'Core branch codes', dimensionId: 'dim_branch' },
+    { id: 'ms_legacy_branch', key: 'legacy_branch_codes', displayName: 'Legacy branch codes', dimensionId: 'dim_branch' },
+    { id: 'ms_product_codes', key: 'product_codes', displayName: 'Product codes', dimensionId: 'dim_product' },
+    { id: 'ms_legacy_accounts', key: 'legacy_gl', displayName: 'Legacy GL accounts', dimensionId: 'dim_account' },
   ],
   bridges: [
-    { id: 'br_branch_region', bridgeKey: 'branch_to_region', displayName: 'Branch → region', fromDimensionId: 'dim_branch', toDimensionId: 'dim_region' },
-    { id: 'br_account_cc', bridgeKey: 'account_to_cost_center', displayName: 'GL account → cost center', fromDimensionId: 'dim_account', toDimensionId: 'dim_cost_center' },
+    { id: 'br_branch_region', key: 'branch_to_region', displayName: 'Branch → region', sourceDimensionId: 'dim_branch', targetDimensionId: 'dim_region' },
+    { id: 'br_account_cc', key: 'account_to_cost_center', displayName: 'GL account → cost center', sourceDimensionId: 'dim_account', targetDimensionId: 'dim_cost_center' },
   ],
   releases: [
-    { id: 'rel_2026_10', releaseKey: '2026.10', displayName: 'October 2026', isActive: true, pins: [] },
-    { id: 'rel_2026_09', releaseKey: '2026.09', displayName: 'September 2026', isActive: false, pins: [] },
+    { id: 'rel_2026_10', key: '2026.10', status: 'published', isActive: true },
+    { id: 'rel_2026_09', key: '2026.09', status: 'published', isActive: false },
   ],
 }
 
+const members = (prefix: string, labels: string[]) => labels.map((displayName, i) => ({ key: `${prefix}${String(i + 1).padStart(2, '0')}`, displayName }))
+const published = (dimensionId: string, list: PublishedMembers['members']): PublishedMembers => ({ dimensionId, versionId: `${dimensionId}_v1`, members: list })
+
+/** Dimension id → its published version's members. Time dimensions have none. */
+export const publishedMembers: Record<string, PublishedMembers> = Object.fromEntries(
+  [
+    published('dim_branch', [...members('BR', ['Downtown', 'Northside', 'Harbor', 'Westfield', 'Airport']), { key: 'BR_UNK', displayName: 'Unknown branch' }]),
+    published('dim_region', [...members('RG', ['North', 'South', 'Central']), { key: 'RG_UNK', displayName: 'Unassigned' }]),
+    published('dim_product', [...members('PR', ['Mortgage', 'Auto loan', 'Personal loan', 'Credit card', 'Checking', 'Savings', 'Term deposit']), { key: 'PR_OTHER', displayName: 'Other product' }]),
+    published('dim_account', [...members('GL', ['Cash', 'Loans', 'Deposits', 'Equity', 'Interest income', 'Interest expense']), { key: 'GL_SUSPENSE', displayName: 'Suspense' }]),
+    published('dim_cost_center', members('CC', ['Retail', 'Commercial', 'Treasury', 'Operations'])),
+    published('dim_dpd_bucket', [
+      { key: 'CURRENT', displayName: 'Current' },
+      { key: 'DPD_1_30', displayName: '1–30' },
+      { key: 'DPD_31_90', displayName: '31–90' },
+      { key: 'DPD_90P', displayName: '90+' },
+    ]),
+    published('dim_balance_band', [
+      { key: 'LT_10K', displayName: '< 10k' },
+      { key: '10K_100K', displayName: '10k–100k' },
+      { key: 'GT_100K', displayName: '> 100k' },
+    ]),
+  ].map((p) => [p.dimensionId, p]),
+)
+
 /* ───────────────────────── Source objects ───────────────────────── */
 
-const c = (name: string, nativeType: string, mappedType: DataType | null, opts: Partial<SourceColumn> = {}): SourceColumn => ({
+const c = (name: string, nativeType: string, mappedType: DatasetDataType | null, opts: Partial<DatasetSourceColumn> = {}): DatasetSourceColumn => ({
   name,
   nativeType,
   mappedType,
   numericPrecision: null,
   numericScale: null,
   isNullable: true,
+  isGenerated: false,
   ...opts,
 })
-const dec = (name: string, p: number, s: number, opts: Partial<SourceColumn> = {}) =>
+const dec = (name: string, p: number, s: number, opts: Partial<DatasetSourceColumn> = {}) =>
   c(name, `numeric(${p},${s})`, 'decimal', { numericPrecision: p, numericScale: s, ...opts })
 
-export const sourceObjects: SourceObject[] = [
-  { name: 'fact_loan_daily', kind: 'table', stats: { rowCount: 48_213_904, sizeBytes: 13_314_398_618, measuredAt: '2026-10-26T04:10:00Z' } },
-  { name: 'vw_gl_balance_daily', kind: 'view', stats: { rowCount: 9_842_117, sizeBytes: 0, measuredAt: '2026-10-26T04:10:00Z' } },
-  { name: 'fact_deposit_daily', kind: 'table', stats: { rowCount: 112_506_330, sizeBytes: 41_875_931_136, measuredAt: '2026-10-26T04:12:00Z' } },
-  { name: 'vw_loan_snapshot', kind: 'view', stats: null },
+export const sourceObjects: DatasetSourceObject[] = [
+  { name: 'fact_loan_daily', kind: 'table', isManaged: false, stats: { rowCount: 48_213_904, sizeBytes: 13_314_398_618, measuredAt: '2026-10-26T04:10:00Z' } },
+  { name: 'vw_gl_balance_daily', kind: 'view', isManaged: false, stats: { rowCount: 9_842_117, sizeBytes: 0, measuredAt: '2026-10-26T04:10:00Z' } },
+  { name: 'fact_deposit_daily', kind: 'table', isManaged: false, stats: { rowCount: 112_506_330, sizeBytes: 41_875_931_136, measuredAt: '2026-10-26T04:12:00Z' } },
+  { name: 'vw_loan_snapshot', kind: 'view', isManaged: false, stats: null },
 ]
 
-export const sourceColumns: Record<string, SourceColumn[]> = {
+export const sourceColumns: Record<string, DatasetSourceColumn[]> = {
   fact_loan_daily: [
     c('loan_id', 'varchar(32)', 'string', { isNullable: false }),
     c('as_of_date', 'date', 'date', { isNullable: false }),
@@ -271,12 +294,12 @@ export const sourceColumns: Record<string, SourceColumn[]> = {
 
 /* ───────────────────────── Builders ───────────────────────── */
 
-type FieldOpts = Partial<Omit<DatasetField, 'id' | 'fieldKey' | 'displayName'>>
+type FieldOpts = Partial<Omit<DatasetField, 'id' | 'key' | 'displayName'>>
 
-function field(id: string, fieldKey: string, displayName: string, opts: FieldOpts): DatasetField {
+function field(id: string, key: string, displayName: string, opts: FieldOpts): DatasetField {
   return {
     id,
-    fieldKey,
+    key,
     displayName,
     fieldSourceKind: 'column',
     sourceColumn: null,
@@ -318,7 +341,7 @@ export function emptyBinding(): Omit<DatasetBinding, 'id'> {
   }
 }
 
-export function emptyTimeExtension(): TimeBindingExtension {
+export function emptyTimeExtension(): DatasetTimeBinding {
   return {
     timeValueType: 'date',
     sourceTimeZone: null,
@@ -334,7 +357,7 @@ export function emptyTimeExtension(): TimeBindingExtension {
 
 export function emptyMeasure(): Omit<DatasetMeasure, 'id'> {
   return {
-    measureKey: '',
+    key: '',
     displayName: '',
     isEnabled: true,
     measureKind: 'aggregate',
@@ -362,7 +385,7 @@ export function emptyMeasure(): Omit<DatasetMeasure, 'id'> {
   }
 }
 
-export function defaultTimePolicy(): TimePolicy {
+export function defaultTimePolicy(): DatasetMeasureTimePolicy {
   return {
     requiredTimeBindingId: null,
     selectionDatasetGrainId: null,
@@ -377,10 +400,10 @@ export function defaultTimePolicy(): TimePolicy {
 }
 
 const binding = (id: string, opts: Partial<DatasetBinding>): DatasetBinding => ({ id, ...emptyBinding(), ...opts })
-const measure = (id: string, measureKey: string, displayName: string, opts: Partial<DatasetMeasure>): DatasetMeasure => ({
+const measure = (id: string, key: string, displayName: string, opts: Partial<DatasetMeasure>): DatasetMeasure => ({
   id,
   ...emptyMeasure(),
-  measureKey,
+  key,
   displayName,
   ...opts,
 })
@@ -433,8 +456,8 @@ function loanVersionBody(withDraftChanges: boolean): Omit<StoredVersion, 'id' | 
   }
 
   const grains: DatasetGrain[] = [
-    { id: 'g_row', grainKey: 'rowIdentity', grainKind: 'row', fieldIds: ['f_loan_id', 'f_as_of'] },
-    { id: 'g_series', grainKey: 'temporalSeries', grainKind: 'series', fieldIds: withDraftChanges ? ['f_loan_id', 'f_as_of'] : ['f_loan_id'] },
+    { id: 'g_row', key: 'rowIdentity', grainKind: 'row', fieldIds: ['f_loan_id', 'f_as_of'] },
+    { id: 'g_series', key: 'temporalSeries', grainKind: 'series', fieldIds: withDraftChanges ? ['f_loan_id', 'f_as_of'] : ['f_loan_id'] },
   ]
 
   const bindings: DatasetBinding[] = [
@@ -452,7 +475,7 @@ function loanVersionBody(withDraftChanges: boolean): Omit<StoredVersion, 'id' | 
     binding('b_dpd', { bindingKind: 'range', dimensionRoleId: 'role_dpd_band', sourceFieldId: 'f_dpd', isGroupable: false }),
   ]
 
-  const endingBalancePolicy: TimePolicy = {
+  const endingBalancePolicy: DatasetMeasureTimePolicy = {
     ...defaultTimePolicy(),
     requiredTimeBindingId: 'b_time',
     selectionDatasetGrainId: 'g_series',
@@ -546,8 +569,8 @@ function glVersionBody(): ReturnType<typeof loanVersionBody> {
       field('gf_amount', 'amount', 'Amount', { sourceColumn: 'amount', dataType: 'decimal', numericPrecision: 20, numericScale: 2, isNullable: false, unitKey: 'USD' }),
     ],
     grains: [
-      { id: 'gg_row', grainKey: 'rowIdentity', grainKind: 'row', fieldIds: ['gf_as_of', 'gf_branch', 'gf_account', 'gf_cc'] },
-      { id: 'gg_series', grainKey: 'temporalSeries', grainKind: 'series', fieldIds: ['gf_branch', 'gf_account', 'gf_cc'] },
+      { id: 'gg_row', key: 'rowIdentity', grainKind: 'row', fieldIds: ['gf_as_of', 'gf_branch', 'gf_account', 'gf_cc'] },
+      { id: 'gg_series', key: 'temporalSeries', grainKind: 'series', fieldIds: ['gf_branch', 'gf_account', 'gf_cc'] },
     ],
     bindings: [
       binding('gb_time', { bindingKind: 'time', dimensionId: 'dim_business_date', sourceFieldId: 'gf_as_of', isRequired: true, time: emptyTimeExtension() }),
@@ -600,9 +623,9 @@ export function reId<T extends ReturnType<typeof loanVersionBody>>(body: T, suff
 }
 
 export const seedDatasets: Dataset[] = [
-  { id: 'ds_loans', datasetKey: 'loans.daily', displayName: 'Daily loans', isEnabled: true },
-  { id: 'ds_gl', datasetKey: 'gl.balance_daily', displayName: 'Daily balance sheet', isEnabled: true },
-  { id: 'ds_deposits', datasetKey: 'deposits.daily', displayName: 'Daily deposits', isEnabled: false },
+  { id: 'ds_loans', key: 'loans.daily', displayName: 'Daily loans', isEnabled: true },
+  { id: 'ds_gl', key: 'gl.balance_daily', displayName: 'Daily balance sheet', isEnabled: true },
+  { id: 'ds_deposits', key: 'deposits.daily', displayName: 'Daily deposits', isEnabled: false },
 ]
 
 export const seedVersions: StoredVersion[] = [

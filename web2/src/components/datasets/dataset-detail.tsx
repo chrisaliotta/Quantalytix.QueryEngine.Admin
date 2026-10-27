@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { DatasetEditScope, useDataset, useDatasetsApi, useVersion } from '@/lib/datasets/client'
 import { useSearchParam } from '@/lib/navigation'
 import { useChangeScope, useNavigationGuard } from '@/components/shell/changes'
-import type { DatasetTab, DatasetVersion, ValidationReport } from '@/lib/datasets/contract'
+import type { DatasetTab, DatasetVersion, DatasetValidationReport } from '@/lib/datasets/contract'
 import { DetailShell, PageMessage, SectionNav, type NavGroup } from '@/components/shell/page-shell'
 import { BindingsSection } from './bindings-section'
 import { DatasetHeader } from './dataset-header'
@@ -63,11 +63,11 @@ function NewDataset({ onBack, onCreated }: { onBack: () => void; onCreated: (id:
     started.current = true
     void (async () => {
       const [list, sources] = await Promise.all([api.listDatasets(), api.listSourceObjects()])
-      const taken = new Set<string>([...list.map((d) => d.datasetKey), ...sources.map((s) => s.name)])
+      const taken = new Set<string>([...list.map((d) => d.key), ...sources.map((s) => s.name)])
       let n = 1
       const key = () => (n === 1 ? 'untitled' : `untitled_${n}`)
       while (taken.has(key())) n++
-      const r = await api.createDataset({ mode: 'new', datasetKey: key(), displayName: n === 1 ? 'Untitled dataset' : `Untitled dataset ${n}`, tableName: key(), columns: [] })
+      const r = await api.createDataset({ mode: 'new', key: key(), displayName: n === 1 ? 'Untitled dataset' : `Untitled dataset ${n}`, tableName: key(), columns: [] })
       if (r.ok) setId(r.data.id)
       else setFailure(r.problem.title)
     })()
@@ -106,7 +106,7 @@ function DatasetDetailBody({ datasetId, onBack, isNew }: { datasetId: string; on
   const [versionParam, setVersionParam] = useSearchParam('version')
   const [section, setSection] = useState<Section>('fields')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
+  const [reports, setReports] = useState<Record<string, DatasetValidationReport>>({})
 
   const versions = dataset?.versions ?? []
   const selected =

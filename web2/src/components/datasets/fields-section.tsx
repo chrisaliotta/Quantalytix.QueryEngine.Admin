@@ -3,10 +3,11 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { CommitInput, InlineSelect, InlineSwitch, InlineText, PanelSection, PropertiesPanel, SplitView, focusRowClass, keyFromName, usePanelDraft } from '@/components/shell/inline-table'
 import { useDataset, useDatasetsApi, useRefreshDatasets, useSourceColumns, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetField, DatasetVersion, FieldInput, FieldMaterialization, ValidationProblemDetails } from '@/lib/datasets/contract'
+import type { DatasetField, DatasetVersion, DatasetFieldInput, DatasetFieldMaterialization, Problem } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dataset-detail'
 import { ExpressionInput } from './expression-input'
@@ -29,10 +30,10 @@ export function fieldSourceText(f: DatasetField) {
   return f.expressionText ?? '—'
 }
 
-const toInput = ({ materialization: _m, ...rest }: DatasetField): FieldInput => rest
+const toInput = ({ materialization: _m, ...rest }: DatasetField): DatasetFieldInput => rest
 
-const blankField = (): FieldInput => ({
-  fieldKey: '',
+const blankField = (): DatasetFieldInput => ({
+  key: '',
   displayName: '',
   fieldSourceKind: 'column',
   sourceColumn: null,
@@ -53,7 +54,7 @@ const blankField = (): FieldInput => ({
 })
 
 /** Changing the source kind clears inputs that only belong to the previous kind. */
-function withSourceKind(d: FieldInput, k: FieldInput['fieldSourceKind']): FieldInput {
+function withSourceKind(d: DatasetFieldInput, k: DatasetFieldInput['fieldSourceKind']): DatasetFieldInput {
   return {
     ...d,
     fieldSourceKind: k,
@@ -69,10 +70,10 @@ const NEW_ROW_ID = '__new__'
 const scrollToRow = (id: string) => requestAnimationFrame(() => document.querySelector(`[data-row-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }))
 
 /** Keeps the key following the display name, and a new column following the key, until the user types their own. */
-function withIdentity(d: FieldInput, p: Partial<FieldInput>): FieldInput {
+function withIdentity(d: DatasetFieldInput, p: Partial<DatasetFieldInput>): DatasetFieldInput {
   const next = { ...d, ...p }
-  if ('displayName' in p && !('fieldKey' in p) && d.fieldKey === keyFromName(d.displayName, 'lower')) next.fieldKey = keyFromName(next.displayName, 'lower')
-  if (next.createColumn && !('sourceColumn' in p) && (d.sourceColumn ?? '') === d.fieldKey.toLowerCase()) next.sourceColumn = next.fieldKey.toLowerCase() || null
+  if ('displayName' in p && !('key' in p) && d.key === keyFromName(d.displayName, 'lower')) next.key = keyFromName(next.displayName, 'lower')
+  if (next.createColumn && !('sourceColumn' in p) && (d.sourceColumn ?? '') === d.key.toLowerCase()) next.sourceColumn = next.key.toLowerCase() || null
   return next
 }
 
@@ -88,17 +89,9 @@ function DatasetIdentity({ version, autoFocus }: { version: DatasetVersion; auto
   if (!dataset) return null
   const tableHint = canRename ? 'Managed table created for this dataset.' : source?.isManaged ? 'Managed table. Shared by other versions, so it keeps its name.' : `Existing ${version.settings.sourceObjectKind} registered with this dataset.`
 
-  async function commitKey(next: string) {
-    const datasetKey = next.trim()
-    if (!dataset || !datasetKey || datasetKey === dataset.datasetKey) return
-    const followsKey = canRename && table === keyFromName(dataset.datasetKey, 'lower')
-    if (!(await run(() => api.updateDataset(dataset.id, { datasetKey })))) return
-    if (followsKey) await run(() => api.renameSourceTable(version.id, keyFromName(datasetKey, 'lower')))
-  }
-
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
-      {problem && !problem.errors.displayName && !problem.errors.datasetKey && !problem.errors.tableName && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} />}
+      {problem && !problem.errors.displayName && !problem.errors.tableName && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} />}
       <div className="grid gap-4 md:grid-cols-3">
         <FormRow label="Display name" htmlFor="ds-name" errors={errorsFor('displayName')}>
           <CommitInput
@@ -110,8 +103,8 @@ function DatasetIdentity({ version, autoFocus }: { version: DatasetVersion; auto
             onCommit={(v) => v.trim() && run(() => api.updateDataset(dataset.id, { displayName: v.trim() }))}
           />
         </FormRow>
-        <FormRow label="Dataset key" htmlFor="ds-key" errors={errorsFor('datasetKey')} hint="Query requests name the dataset by this key.">
-          <CommitInput id="ds-key" value={dataset.datasetKey} className="font-mono" aria-invalid={!!errorsFor('datasetKey')} onCommit={commitKey} />
+        <FormRow label="Dataset key" htmlFor="ds-key" hint="Query requests name the dataset by this key. Fixed after creation.">
+          <Input id="ds-key" value={dataset.key} readOnly className="bg-muted/40 font-mono text-muted-foreground" />
         </FormRow>
         <FormRow label="Table name" htmlFor="ds-table" errors={errorsFor('tableName')} hint={tableHint}>
           <CommitInput
@@ -133,8 +126,8 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
   const refresh = useRefreshDatasets()
   const { data: vocab } = useVocabularies()
   const { run, runOk, problem, setProblem } = useApiCall()
-  const [newDraft, setNewDraftState] = useState<FieldInput | null>(null)
-  const [newProblem, setNewProblem] = useState<ValidationProblemDetails | null>(null)
+  const [newDraft, setNewDraftState] = useState<DatasetFieldInput | null>(null)
+  const [newProblem, setNewProblem] = useState<Problem | null>(null)
   const [creating, setCreating] = useState(false)
   const newRef = useRef(newDraft)
   const timeIds = timeFieldIds(version)
@@ -142,13 +135,13 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
   const kindLabel = (k: string) => vocab?.fieldSourceKind.find((t) => t.value === k)?.label ?? k
   const kindOptions = (vocab?.fieldSourceKind ?? []).map((t) => ({ value: t.value, label: t.label }))
   const focused = editingId ? version.fields.find((f) => f.id === editingId) : undefined
-  const patch = (f: DatasetField, p: Partial<FieldInput>) => run(() => api.saveField(version.id, { ...toInput(f), ...p }))
+  const patch = (f: DatasetField, p: Partial<DatasetFieldInput>) => run(() => api.saveField(version.id, { ...toInput(f), ...p }))
 
-  const setNewDraft = (d: FieldInput | null) => {
+  const setNewDraft = (d: DatasetFieldInput | null) => {
     newRef.current = d
     setNewDraftState(d)
   }
-  const editNew = (p: Partial<FieldInput>) => {
+  const editNew = (p: Partial<DatasetFieldInput>) => {
     if (!newRef.current) return
     setNewDraft(withIdentity(newRef.current, p))
     if (newProblem) setNewProblem(null)
@@ -214,11 +207,11 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
         help="Logical columns of the dataset. Grains, bindings, measures and row filters all point at fields, so a JSON property can later become a real column without changing a request."
         action={
           !readOnly && (
-            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.displayName.trim() && !!newDraft?.fieldKey.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
+            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.displayName.trim() && !!newDraft?.key.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
           )
         }
       />
-      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpen={onOpen} />}
       <SplitView panel={side}>
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
@@ -245,11 +238,11 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
                 return (
                   <tr key={f.id} data-row-id={f.id} aria-selected={f.id === editingId} onClick={() => focus(f.id)} className={cn(focusRowClass(f.id === editingId), !f.isEnabled && 'text-muted-foreground')}>
                     <Td className="min-w-40">
-                      {readOnly ? f.displayName : <InlineText aria-label={`Display name of ${f.fieldKey}`} value={f.displayName} onCommit={(v) => patch(f, { displayName: v })} />}
+                      {readOnly ? f.displayName : <InlineText aria-label={`Display name of ${f.key}`} value={f.displayName} onCommit={(v) => patch(f, { displayName: v })} />}
                     </Td>
                     <Td>
                       <span className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs">{f.fieldKey}</span>
+                        <span className="font-mono text-xs">{f.key}</span>
                         {timeIds.has(f.id) && <ClockIcon aria-label="Time field" className="size-3.5 shrink-0 text-primary" />}
                       </span>
                     </Td>
@@ -258,12 +251,12 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
                         <span className="text-xs">{kindLabel(f.fieldSourceKind)}</span>
                       ) : (
                         <InlineSelect
-                          aria-label={`Source kind of ${f.fieldKey}`}
+                          aria-label={`Source kind of ${f.key}`}
                           value={f.fieldSourceKind}
                           options={kindOptions}
                           onCommit={(k) => {
                             if (k === f.fieldSourceKind) return
-                            run(() => api.saveField(version.id, withSourceKind(toInput(f), k as FieldInput['fieldSourceKind']))).then(() => focus(f.id))
+                            run(() => api.saveField(version.id, withSourceKind(toInput(f), k as DatasetFieldInput['fieldSourceKind']))).then(() => focus(f.id))
                           }}
                           className="w-32 text-xs"
                         />
@@ -279,12 +272,12 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
                         <span className="font-mono text-xs">{f.dataType}</span>
                       ) : (
                         <InlineSelect
-                          aria-label={`Data type of ${f.fieldKey}`}
+                          aria-label={`Data type of ${f.key}`}
                           value={f.dataType}
                           options={(vocab?.dataType ?? []).map((t) => ({ value: t.value, label: t.label }))}
                           onCommit={(t) =>
                             patch(f, {
-                              dataType: t as FieldInput['dataType'],
+                              dataType: t as DatasetFieldInput['dataType'],
                               numericPrecision: t === 'decimal' ? (f.numericPrecision ?? 18) : null,
                               numericScale: t === 'decimal' ? (f.numericScale ?? 2) : null,
                             })
@@ -319,12 +312,12 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
                     </Td>
                     <Td className="text-xs tabular-nums">{deps.length ? `${deps.length} item${deps.length === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
                     <Td>
-                      <InlineSwitch aria-label={`${f.fieldKey} enabled`} checked={f.isEnabled} onCommit={(v) => !readOnly && patch(f, { isEnabled: v })} />
+                      <InlineSwitch aria-label={`${f.key} enabled`} checked={f.isEnabled} onCommit={(v) => !readOnly && patch(f, { isEnabled: v })} />
                     </Td>
                     <Td>
                       {(!readOnly || (canMaterialize && f.fieldSourceKind === 'json_path')) && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${f.fieldKey}`} />}>
+                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${f.key}`} />}>
                             <MoreHorizontalIcon />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-64">
@@ -340,7 +333,7 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen, is
                                   onClick={async () => {
                                     if (await runOk(() => api.deleteField(version.id, f.id))) {
                                       if (editingId === f.id) onEdit(null)
-                                      toast.success(`Deleted ${f.fieldKey}`)
+                                      toast.success(`Deleted ${f.key}`)
                                     }
                                   }}
                                 >
@@ -399,12 +392,12 @@ function NewFieldRow({
   onSubmit,
   onCancel,
 }: {
-  draft: FieldInput
-  problem: ValidationProblemDetails | null
+  draft: DatasetFieldInput
+  problem: Problem | null
   creating: boolean
   kindOptions: { value: string; label: string }[]
   dataTypes: { value: string; label: string }[]
-  onChange: (p: Partial<FieldInput>) => void
+  onChange: (p: Partial<DatasetFieldInput>) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -429,7 +422,7 @@ function NewFieldRow({
         <input autoFocus aria-label="New field: display name" value={draft.displayName} placeholder="Display name" disabled={creating} aria-invalid={!!errs.displayName} onChange={(e) => onChange({ displayName: e.target.value })} onKeyDown={onKeyDown} className={rowInputClass} />
       </Td>
       <Td>
-        <input aria-label="New field: field key" value={draft.fieldKey} placeholder="field_key" disabled={creating} aria-invalid={!!errs.fieldKey} onChange={(e) => onChange({ fieldKey: e.target.value })} onKeyDown={onKeyDown} className={cn(rowInputClass, 'w-36 font-mono text-xs')} />
+        <input aria-label="New field: field key" value={draft.key} placeholder="field_key" disabled={creating} aria-invalid={!!errs.key} onChange={(e) => onChange({ key: e.target.value })} onKeyDown={onKeyDown} className={cn(rowInputClass, 'w-36 font-mono text-xs')} />
       </Td>
       <Td className="whitespace-nowrap">
         <InlineSelect
@@ -437,8 +430,8 @@ function NewFieldRow({
           value={draft.fieldSourceKind}
           options={kindOptions}
           onCommit={(k) => {
-            const next = withSourceKind(draft, k as FieldInput['fieldSourceKind'])
-            onChange(k === 'column' && draft.fieldSourceKind !== 'column' ? { ...next, createColumn: true, sourceColumn: draft.fieldKey.toLowerCase() || null } : next)
+            const next = withSourceKind(draft, k as DatasetFieldInput['fieldSourceKind'])
+            onChange(k === 'column' && draft.fieldSourceKind !== 'column' ? { ...next, createColumn: true, sourceColumn: draft.key.toLowerCase() || null } : next)
           }}
           className="w-32 text-xs"
         />
@@ -467,7 +460,7 @@ function NewFieldRow({
           aria-label="New field: data type"
           value={draft.dataType}
           options={dataTypes}
-          onCommit={(t) => onChange({ dataType: t as FieldInput['dataType'], numericPrecision: t === 'decimal' ? (draft.numericPrecision ?? 18) : null, numericScale: t === 'decimal' ? (draft.numericScale ?? 2) : null })}
+          onCommit={(t) => onChange({ dataType: t as DatasetFieldInput['dataType'], numericPrecision: t === 'decimal' ? (draft.numericPrecision ?? 18) : null, numericScale: t === 'decimal' ? (draft.numericScale ?? 2) : null })}
           className="w-32 font-mono text-xs"
         />
       </Td>
@@ -498,12 +491,12 @@ function FieldPanel({
   version: DatasetVersion
   readOnly: boolean
   field?: DatasetField
-  seed: FieldInput
+  seed: DatasetFieldInput
   onClose: () => void
   onOpen: SectionProps['onOpen']
   /** New fields only: panel edits update the pending row's draft instead of saving. */
-  onDraftCommit?: (draft: FieldInput) => void
-  createProblem?: ValidationProblemDetails | null
+  onDraftCommit?: (draft: DatasetFieldInput) => void
+  createProblem?: Problem | null
   onDismissCreateProblem?: () => void
 }) {
   const api = useDatasetsApi()
@@ -521,7 +514,7 @@ function FieldPanel({
     }
     return !!(await run(() => api.saveField(version.id, next)))
   })
-  const set = <K extends keyof FieldInput>(k: K, v: FieldInput[K]) => setDraft((d) => ({ ...d, [k]: v }))
+  const set = <K extends keyof DatasetFieldInput>(k: K, v: DatasetFieldInput[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
   const deps = field ? (version.dependents[field.id] ?? []) : []
   const blocking = deps.filter((d) => d.blocksDelete)
@@ -535,10 +528,10 @@ function FieldPanel({
     <PropertiesPanel
       size="lg"
       label="Field properties"
-      title={field ? field.displayName || field.fieldKey : 'New field'}
+      title={field ? field.displayName || field.key : 'New field'}
       subtitle={
         <span className="flex items-center gap-2">
-          <span className="font-mono">{draft.fieldKey || 'field_key'}</span>
+          <span className="font-mono">{draft.key || 'field_key'}</span>
           {isTime && (
             <span className="inline-flex items-center gap-1 text-primary">
               <ClockIcon className="size-3" /> time field
@@ -556,12 +549,12 @@ function FieldPanel({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`Delete ${field.fieldKey}`}
+            aria-label={`Delete ${field.key}`}
             title={blocking.length ? `Kept by ${blocking.map((d) => d.itemKey).join(', ')}` : 'Delete field'}
             disabled={!!blocking.length || saving}
             onClick={async () => {
               if (await runOk(() => api.deleteField(version.id, field.id))) {
-                toast.success(`Deleted ${field.fieldKey}`)
+                toast.success(`Deleted ${field.key}`)
                 onClose()
               }
             }}
@@ -571,12 +564,12 @@ function FieldPanel({
         )
       }
     >
-      {shown && <ProblemBanner problem={shown} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {shown && <ProblemBanner problem={shown} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpen={onOpen} />}
       <fieldset disabled={readOnly} className="contents">
         <PanelSection title="Identity">
           <div className="grid gap-4 @md:grid-cols-2">
-            <FormRow label="Field key" htmlFor="f-key" errors={errorsFor('fieldKey')} hint={field ? 'Fixed after creation.' : 'Request-facing ID, e.g. as_of_date'}>
-              <CommitInput id="f-key" value={draft.fieldKey} disabled={!!field} onCommit={(v) => set('fieldKey', v)} className="font-mono" aria-invalid={!!errorsFor('fieldKey')} />
+            <FormRow label="Field key" htmlFor="f-key" errors={errorsFor('key')} hint={field ? 'Fixed after creation.' : 'Request-facing ID, e.g. as_of_date'}>
+              <CommitInput id="f-key" value={draft.key} disabled={!!field} onCommit={(v) => set('key', v)} className="font-mono" aria-invalid={!!errorsFor('key')} />
             </FormRow>
             <FormRow label="Display name" htmlFor="f-name" errors={errorsFor('displayName')}>
               <CommitInput id="f-name" value={draft.displayName} onCommit={(v) => set('displayName', v)} aria-invalid={!!errorsFor('displayName')} />
@@ -591,7 +584,7 @@ function FieldPanel({
                 id="f-kind"
                 terms={vocab?.fieldSourceKind}
                 value={draft.fieldSourceKind}
-                onChange={(k) => setDraft((d) => withSourceKind(d, (k ?? 'column') as FieldInput['fieldSourceKind']))}
+                onChange={(k) => setDraft((d) => withSourceKind(d, (k ?? 'column') as DatasetFieldInput['fieldSourceKind']))}
               />
             </FormRow>
             {draft.fieldSourceKind !== 'expression' && (
@@ -631,7 +624,7 @@ function FieldPanel({
                   prefix="f"
                   value={draft.expressionText ?? ''}
                   onChange={(v) => set('expressionText', v || null)}
-                  items={otherFields.map((f) => ({ key: f.fieldKey, label: f.displayName }))}
+                  items={otherFields.map((f) => ({ key: f.key, label: f.displayName }))}
                   placeholder="[f.principal] - [f.repaid]"
                   invalid={!!errorsFor('expressionText')}
                   disabled={readOnly}
@@ -720,12 +713,12 @@ function MaterializationMenuItems({ field, onRun }: { field: DatasetField; onRun
         </DropdownMenuItem>
       )}
       {m?.state === 'ready' && (
-        <DropdownMenuItem onClick={() => onRun(refreshMat, () => `Refreshing ${field.fieldKey}`)}>
+        <DropdownMenuItem onClick={() => onRun(refreshMat, () => `Refreshing ${field.key}`)}>
           <RefreshCwIcon /> Refresh stored values
         </DropdownMenuItem>
       )}
       {m && (
-        <DropdownMenuItem onClick={() => onRun(dematerialize, () => `${field.fieldKey} reads the JSON path again`)}>
+        <DropdownMenuItem onClick={() => onRun(dematerialize, () => `${field.key} reads the JSON path again`)}>
           <UndoIcon /> Remove from view
         </DropdownMenuItem>
       )}
@@ -740,7 +733,7 @@ function MaterializationStatus({ field }: { field: DatasetField }) {
   return <MaterializationBadge m={m} />
 }
 
-function MaterializationBadge({ m }: { m: FieldMaterialization }) {
+function MaterializationBadge({ m }: { m: DatasetFieldMaterialization }) {
   if (m.state === 'building')
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -807,17 +800,17 @@ function MaterializationSection({ version, field }: { version: DatasetVersion; f
       {canAct && (
         <div className="flex flex-wrap gap-2">
           {!m && (
-            <Button size="sm" disabled={call.saving} onClick={() => go(materialize, `Building ${field.fieldKey} in mv_${version.settings.sourceObject}`)}>
+            <Button size="sm" disabled={call.saving} onClick={() => go(materialize, `Building ${field.key} in mv_${version.settings.sourceObject}`)}>
               <DatabaseZapIcon /> Materialize in view
             </Button>
           )}
           {m && m.state !== 'building' && (
-            <Button size="sm" variant="outline" disabled={call.saving} onClick={() => go(refreshMat, `Refreshing ${field.fieldKey}`)}>
+            <Button size="sm" variant="outline" disabled={call.saving} onClick={() => go(refreshMat, `Refreshing ${field.key}`)}>
               <RefreshCwIcon /> {m.state === 'failed' ? 'Retry' : 'Refresh'}
             </Button>
           )}
           {m && (
-            <Button size="sm" variant="ghost" disabled={call.saving} onClick={() => go(dematerialize, `${field.fieldKey} reads the JSON path again`)}>
+            <Button size="sm" variant="ghost" disabled={call.saving} onClick={() => go(dematerialize, `${field.key} reads the JSON path again`)}>
               <UndoIcon /> Remove
             </Button>
           )}

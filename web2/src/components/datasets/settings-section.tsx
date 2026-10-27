@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useCatalog, useDatasetsApi, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetVersionSettings, PublicationViolation } from '@/lib/datasets/contract'
+import type { DatasetVersionSettings, DatasetViolation } from '@/lib/datasets/contract'
 import { bindingLabel } from './bindings-section'
 import type { SectionProps } from './dataset-detail'
 import { CheckRow, FormRow, FormSection, NONE, ProblemBanner, SectionHeader, VocabSelect, useApiCall } from './shared'
@@ -17,7 +17,7 @@ export function SettingsSection({ version, readOnly, onOpen }: SectionProps) {
   const { run, problem, setProblem, errorsFor } = useApiCall()
   const [d, setD] = useState<DatasetVersionSettings>(version.settings)
   const [synced, setSynced] = useState(version.settings)
-  const [warnings, setWarnings] = useState<PublicationViolation[]>([])
+  const [warnings, setWarnings] = useState<DatasetViolation[]>([])
   // Undo, redo and discard replace version.settings; adopt them unless an invalid edit is still being fixed.
   if (synced !== version.settings) {
     setSynced(version.settings)
@@ -52,9 +52,9 @@ export function SettingsSection({ version, readOnly, onOpen }: SectionProps) {
             <p className="font-medium">Some fields point at columns the new source doesn&apos;t have</p>
             <ul className="flex flex-col gap-0.5 text-xs">
               {warnings.map((w) => (
-                <li key={`${w.code}-${w.itemId}`}>
-                  <button type="button" onClick={() => onOpen(w.tab, w.itemId)} className="font-mono text-primary hover:underline">
-                    {w.itemKey}
+                <li key={`${w.code}-${w.target.itemId}`}>
+                  <button type="button" onClick={() => onOpen(w.target.area, w.target.itemId ?? null)} className="font-mono text-primary hover:underline">
+                    {w.target.itemKey}
                   </button>{' '}
                   {w.message}
                 </li>
