@@ -7391,13 +7391,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The activation log row just written. */
+            /** @description The tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`. The activation log row appears in the release detail's `activations`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReleaseActivation"];
+                    "application/json": components["schemas"]["TenantInfo"];
                 };
             };
             400: components["responses"]["BadRequest"];

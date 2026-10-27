@@ -261,10 +261,12 @@ paths:
       tags: [releases]
       responses:
         '200':
-          description: The activation log row just written.
+          description: >-
+            The tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`.
+            The activation log row appears in the release detail's `activations`.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReleaseActivation' }
+              schema: { $ref: './tenant.yaml#/components/schemas/TenantInfo' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
         '403': { $ref: './common.yaml#/components/responses/Forbidden' }

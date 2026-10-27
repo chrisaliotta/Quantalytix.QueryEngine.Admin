@@ -3,12 +3,14 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLookup, useRelCall, useReleasesApi } from '@/lib/releases/client'
+import { useRefreshTenant } from '@/lib/tenant/client'
 import { DiffList, diffSummary } from './release-tabs'
 
 export function ActivateDialog({ releaseId, onClose }: { releaseId: string; onClose: () => void }) {
   const api = useReleasesApi()
   const lookup = useLookup()
   const { run, saving } = useRelCall()
+  const refreshTenant = useRefreshTenant()
   const [showList, setShowList] = useState(false)
   const release = lookup.release(releaseId)
   const active = lookup.activeRelease
@@ -59,7 +61,9 @@ export function ActivateDialog({ releaseId, onClose }: { releaseId: string; onCl
             disabled={saving}
             onClick={async () => {
               const res = await run(() => api.activateRelease(releaseId), `${release?.key} is now the active release.`)
-              if (res.ok) onClose()
+              if (!res.ok) return
+              await refreshTenant()
+              onClose()
             }}
           >
             {saving ? 'Activating…' : 'Activate'}

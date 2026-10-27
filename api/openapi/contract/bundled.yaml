@@ -2108,11 +2108,11 @@ paths:
         - releases
       responses:
         '200':
-          description: The activation log row just written.
+          description: 'The tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`. The activation log row appears in the release detail''s `activations`.'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReleaseActivation'
+                $ref: '#/components/schemas/TenantInfo'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

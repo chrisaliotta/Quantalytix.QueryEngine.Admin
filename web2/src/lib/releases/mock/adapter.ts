@@ -12,6 +12,7 @@ import {
   type SetComparison,
   type SetListItem,
 } from '../contract'
+import { catalog as tenantCatalog } from '@/lib/tenant/mock/data'
 import { createSeed, type Db } from './data'
 import { activePins, diffReleases, manifestGate, manifestHash, manifestOf, pinRows, readiness, runReleaseChecks } from './rules'
 
@@ -196,7 +197,9 @@ export function createMockReleasesApi(seed: Db = createSeed()): ReleasesApi {
       const activation = { releaseId: id, previousReleaseId: db.activeReleaseId, activatedAt: now(), activatedBy: 'analyst@bank.example' }
       db.activations.push(activation)
       db.activeReleaseId = id
-      return ok(activation)
+      tenantCatalog.tenant.activeReleaseId = id
+      tenantCatalog.tenant.semanticRevision += 1
+      return ok(tenantCatalog.tenant)
     },
 
     async deleteRelease(id) {

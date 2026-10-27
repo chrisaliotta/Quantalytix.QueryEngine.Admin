@@ -4,7 +4,7 @@ import { catalog, overview, publishedMembers, vocabularies } from './data'
 export function createMockTenantApi(): TenantApi {
   return {
     async getOverview() {
-      return structuredClone(overview)
+      return structuredClone({ ...overview, ...catalog.tenant })
     },
     async getCatalog() {
       return structuredClone(catalog)

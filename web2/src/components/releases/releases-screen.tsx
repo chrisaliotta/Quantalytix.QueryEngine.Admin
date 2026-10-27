@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDialog, EmptyState, Mono, Td, Th } from '@/components/dimensions/shared'
 import { useLookup, useRelCall, useReleaseList, useReleasesApi, type Lookup } from '@/lib/releases/client'
 import type { ReleaseDiff, ReleaseListItem, VersionStatus } from '@/lib/releases/contract'
+import { useTenantOverview } from '@/lib/tenant/client'
 import { ActivateDialog } from './activate-dialog'
 import { CreateReleaseSheet } from './create-release-sheet'
 import { ReleaseDetail } from './release-detail'
@@ -204,6 +205,7 @@ function ReleaseList() {
 
 function ActiveReleaseCard({ release, others, onCompare }: { release: ReleaseListItem; others: ReleaseListItem[]; onCompare: (id: string) => void }) {
   const nav = useAppNav()
+  const { data: tenant } = useTenantOverview()
   return (
     <section aria-label="Active release" className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -212,7 +214,8 @@ function ActiveReleaseCard({ release, others, onCompare }: { release: ReleaseLis
       <p className="flex-1 text-sm text-pretty">
         Queries and reports run on <span className="font-mono font-semibold">{release.key}</span>: {release.datasetCount} datasets, published{' '}
         <AbsTime iso={release.publishedAt} />. <span className="text-muted-foreground">Activated</span> <AbsTime iso={release.activatedAt} />{' '}
-        <span className="text-muted-foreground">by</span> <Mono className="text-foreground">{release.activatedBy}</Mono>.
+        <span className="text-muted-foreground">by</span> <Mono className="text-foreground">{release.activatedBy}</Mono>.{' '}
+        <span className="text-muted-foreground">Semantic revision</span> <Mono className="text-foreground">{tenant?.semanticRevision ?? '…'}</Mono>.
       </p>
       <div className="flex shrink-0 gap-2">
         <Button variant="outline" size="sm" onClick={() => nav.release(release.id)}>

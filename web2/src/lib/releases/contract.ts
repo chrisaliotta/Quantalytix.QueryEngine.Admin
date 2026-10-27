@@ -3,6 +3,7 @@
  * same name in api/openapi/contract/releases.yaml. The UI talks only to `ReleasesApi`; ./mock implements it in memory.
  */
 import type { ChangeSetPort } from '@/lib/api/changes'
+import type { TenantInfo } from '@/lib/tenant/contract'
 import type { ApiResult, AssumptionSetStatus, BindingKind, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
 
 export type { ApiResult, AssumptionSetStatus, BindingKind, Id, VersionStatus } from '@/lib/api/contract'
@@ -356,7 +357,8 @@ export interface ReleasesApi extends ChangeSetPort {
   publishRelease(id: Id): Promise<ApiResult<ReleaseTransitionResult>>
   backToDraft(id: Id): Promise<ApiResult<Release>>
   retireRelease(id: Id): Promise<ApiResult<Release>>
-  activateRelease(id: Id): Promise<ApiResult<ReleaseActivation>>
+  /** Answers the tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`. */
+  activateRelease(id: Id): Promise<ApiResult<TenantInfo>>
   deleteRelease(id: Id): Promise<ApiResult<null>>
   captureSet(input: CaptureSetInput): Promise<ApiResult<AssumptionSet>>
   relabelSet(id: Id, input: RelabelSetInput): Promise<ApiResult<AssumptionSet>>

@@ -1,9 +1,11 @@
 import { useReleaseList } from '@/lib/releases/client'
 import { useAppNav } from '@/lib/navigation'
+import { useTenantOverview } from '@/lib/tenant/client'
 
 export function ActiveReleaseChip() {
   const { data: releases } = useReleaseList()
   const activeRelease = releases?.find((r) => r.isActive)
+  const { data: tenant } = useTenantOverview()
   const nav = useAppNav()
   if (!activeRelease) return null
   return (
@@ -16,6 +18,7 @@ export function ActiveReleaseChip() {
       <span aria-hidden className="size-1.5 rounded-full bg-success" />
       <span className="sr-only">Active release:</span>
       {activeRelease.key}
+      {tenant && <span className="text-muted-foreground">· rev {tenant.semanticRevision}</span>}
     </button>
   )
 }
