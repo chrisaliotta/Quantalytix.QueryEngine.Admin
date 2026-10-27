@@ -26,8 +26,11 @@ const config: HttpConfig = {
   onUnauthorized: () => sessionStorage.removeItem(TOKEN_KEY),
 }
 
+/** Paths relative to `/api`. */
+export const apiHttp = createHttpClient(config)
+
 /** Paths relative to `/api/tenants/{tenantId}`. */
-export const tenantHttp = createHttpClient(config).forTenant(tenantId)
+export const tenantHttp = apiHttp.forTenant(tenantId)
 
 export async function ensureDevelopmentToken() {
   if (sessionStorage.getItem(TOKEN_KEY)) return
