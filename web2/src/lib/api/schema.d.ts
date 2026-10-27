@@ -3,7 +3,205 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read who the caller is */
+        get: operations["getSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the tenants the caller can reach
+         * @description A system admin reaches every tenant in the directory; any other caller reaches its token's tenant.
+         */
+        get: operations["listTenants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabularies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read every enumeration the UI renders */
+        get: operations["getVocabularies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** Read the tenant's state, counts and work in progress */
+        get: operations["getOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read the names and ids every picker and cross-module link resolves against
+         * @description One catalog for every module, cached by the client on `tenant.semanticRevision` (OI-13). Report-owned dimensions and bridges are included only so references resolve; pickers and lists never offer them (OI-22).
+         */
+        get: operations["getCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/published-members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** Read the members of a dimension's published version */
+        get: operations["getPublishedMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every tenant in the directory */
+        get: operations["listSystemTenants"];
+        put?: never;
+        /** Register a tenant after verifying its connection string */
+        post: operations["createSystemTenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test a connection string for a tenant without storing it
+         * @description The connection must open, and its `qe_database_info` must name the tenant and have the metadata schema version this API supports.
+         */
+        post: operations["verifySystemTenantConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/{tenantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** Read one tenant's directory entry */
+        get: operations["getSystemTenant"];
+        /** Change a tenant's provider, cache lifetime and connection string */
+        put: operations["updateSystemTenant"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/tenants/{tenantId}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Permit or stop query routing for a tenant */
+        put: operations["setSystemTenantEnabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
@@ -102,6 +300,446 @@ export interface components {
             label: string;
             description?: string;
         };
+        /** @description Who the caller is, as the API sees its bearer token. There are no tenant roles (OI-09). */
+        Session: {
+            /** @description The token's `sub`. */
+            subject: string;
+            /** @description The token's name claim; null when it carries none. */
+            displayName: string | null;
+            /** @description The caller's tenant when the token carries exactly one tenant claim; otherwise null. */
+            tenantId: string | null;
+            /** @description Whether the caller may reach every tenant and the tenant directory. */
+            isSystemAdmin: boolean;
+        };
+        AccessibleTenant: {
+            /** @description The tenant directory key. */
+            tenantId: string;
+            /** @description Whether query routing is permitted for the tenant. */
+            isEnabled: boolean;
+        };
+        /** @description The tenant database's identity and the revision the engine keys its metadata cache by. */
+        TenantInfo: {
+            /** @description `qe_database_info.tenant_key`. */
+            tenantKey: string;
+            metadataSchemaVersion: number;
+            /**
+             * Format: int64
+             * @description Advances once per commit or command that changes what the engine reads.
+             */
+            semanticRevision: number;
+            /** @description The release runtime queries use; null when the tenant has none. */
+            activeReleaseId: string | null;
+        };
+        /** @description The tenant at a glance for the overview screen. */
+        TenantOverview: components["schemas"]["TenantInfo"] & {
+            counts: components["schemas"]["TenantOverviewCounts"];
+            drafts: components["schemas"]["TenantOverviewDrafts"];
+        };
+        /** @description How much metadata the tenant holds. */
+        TenantOverviewCounts: {
+            datasets: number;
+            /** @description Analytical dimensions; report-owned dimensions are not counted (OI-22). */
+            dimensions: number;
+            mappingSets: number;
+            /** @description Analytical bridges; report-owned bridges are not counted (OI-22). */
+            bridges: number;
+            releases: number;
+            assumptionSets: number;
+            models: number;
+            reports: number;
+            /** @description Measures of the dataset versions the active release pins. */
+            activeMeasures: number;
+        };
+        /** @description Work in progress: the kinds that still have a draft status. Dimensions, mapping sets and bridges follow the living lifecycle and have no drafts (OI-14). */
+        TenantOverviewDrafts: {
+            datasetVersions: number;
+            releases: number;
+        };
+        /** @description The union of what every module's pickers and cross-module links read (OI-13). */
+        TenantCatalog: {
+            tenant: components["schemas"]["TenantInfo"];
+            datasets: components["schemas"]["TenantCatalogDataset"][];
+            dimensions: components["schemas"]["TenantCatalogDimension"][];
+            roles: components["schemas"]["TenantCatalogRole"][];
+            mappingSets: components["schemas"]["TenantCatalogMappingSet"][];
+            bridges: components["schemas"]["TenantCatalogBridge"][];
+            models: components["schemas"]["TenantCatalogModel"][];
+            reports: components["schemas"]["TenantCatalogReport"][];
+            releases: components["schemas"]["TenantCatalogRelease"][];
+            assumptionSets: components["schemas"]["TenantCatalogAssumptionSet"][];
+        };
+        TenantCatalogDataset: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isEnabled: boolean;
+            /** @description The dataset version the active release pins; null when it pins none. */
+            activeVersionId: string | null;
+        };
+        TenantCatalogDimension: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            kind: components["schemas"]["VocabularyDimensionKind"];
+            purpose: components["schemas"]["VocabularyDimensionPurpose"];
+            origin: components["schemas"]["VocabularyDefinitionOrigin"];
+            isEnabled: boolean;
+            /** @description The live version; null when none is published. */
+            publishedVersionId: string | null;
+            publishedVersionNumber: number | null;
+            /** @description The report that owns a `report` purpose dimension; null otherwise. */
+            ownerReportId: string | null;
+        };
+        TenantCatalogRole: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            dimensionId: components["schemas"]["Id"];
+        };
+        TenantCatalogMappingSet: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            dimensionId: components["schemas"]["Id"];
+        };
+        TenantCatalogBridge: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            sourceDimensionId: components["schemas"]["Id"];
+            targetDimensionId: components["schemas"]["Id"];
+            /** @description The report that owns a report bridge; null for an analytical bridge. */
+            ownerReportId: string | null;
+        };
+        TenantCatalogModel: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isEnabled: boolean;
+        };
+        TenantCatalogReport: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isEnabled: boolean;
+            modelId: components["schemas"]["Id"];
+            reportDimensionId: components["schemas"]["Id"];
+        };
+        /** @description A release has a key and no display name (OI-39). */
+        TenantCatalogRelease: {
+            id: components["schemas"]["Id"];
+            key: string;
+            status: components["schemas"]["VersionStatus"];
+            isActive: boolean;
+        };
+        TenantCatalogAssumptionSet: {
+            id: components["schemas"]["Id"];
+            key: string;
+            displayName: string;
+            status: components["schemas"]["VocabularyAssumptionSetStatus"];
+        };
+        /** @description The members of a dimension's published version, fetched per picker. */
+        PublishedMembers: {
+            dimensionId: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            members: components["schemas"]["PublishedMember"][];
+        };
+        PublishedMember: {
+            key: string;
+            displayName: string;
+            parentKey: string | null;
+            isAssignable: boolean;
+            levelKey: string | null;
+        };
+        /** @description Every enumeration a select renders, keyed by name (OI-11). Values are the schema's; open vocabularies (`expressionLanguageVersion`, `displayFormat`, `timeZone`) list the offered values of a free-text column. */
+        Vocabularies: {
+            versionStatus: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VersionStatus"];
+            })[];
+            assumptionSetStatus: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyAssumptionSetStatus"];
+            })[];
+            dataType: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp" | "json";
+            })[];
+            /** @description Every `dataType` except `json`. */
+            measureOutputDataType: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp";
+            })[];
+            sourceObjectKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "table" | "view";
+            })[];
+            fieldSourceKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "column" | "json_path" | "expression";
+            })[];
+            grainKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "row" | "series";
+            })[];
+            dimensionKind: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyDimensionKind"];
+            })[];
+            dimensionPurpose: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyDimensionPurpose"];
+            })[];
+            definitionOrigin: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyDefinitionOrigin"];
+            })[];
+            rangeDataType: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "decimal" | "date" | "datetime";
+            })[];
+            /** @description How far a dimension profile lets users edit a profiled dimension. */
+            editPolicy: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "open" | "extend" | "locked";
+            })[];
+            bindingKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "direct" | "mapped" | "range" | "bridge" | "time";
+            })[];
+            groupingMode: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "member" | "level" | "ancestor" | "depth";
+            })[];
+            raggedBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "null" | "self" | "exclude";
+            })[];
+            periodAlignment: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "observation" | "start" | "end";
+            })[];
+            unmappedBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "null" | "exclude" | "unknown";
+            })[];
+            timeValueType: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "date" | "timestamp";
+            })[];
+            observationKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "instant" | "snapshot" | "interval";
+            })[];
+            periodicity: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "day" | "month" | "quarter" | "year";
+            })[];
+            cumulativeOrigin: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "output_range_start" | "fixed_start";
+            })[];
+            measureKind: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyMeasureKind"];
+            })[];
+            aggregationFunction: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "sum" | "avg" | "min" | "max" | "count" | "count_distinct";
+            })[];
+            componentRole: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyComponentRole"];
+            })[];
+            /** @description Which component roles each measure kind reads, and which of those are required; every measure kind is a key. */
+            componentRolesByKind: {
+                [key: string]: components["schemas"]["VocabularyComponentRoleRequirements"];
+            };
+            valueNullBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "exclude" | "zero";
+            })[];
+            negativeWeightBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "allow" | "exclude";
+            })[];
+            emptySetBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "null" | "zero";
+            })[];
+            bridgeFactorBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "ignore" | "value";
+            })[];
+            bridgeAllocationBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "apply" | "ignore";
+            })[];
+            totalBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "recompute" | "sum_children";
+            })[];
+            roundingMode: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "half_even" | "half_up" | "down" | "up" | "truncate";
+            })[];
+            observationSelection: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "all" | "first_in_period" | "last_in_period" | "at_start" | "at_end";
+            })[];
+            valueTimeRole: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "point" | "interval_open" | "interval_close";
+            })[];
+            boundaryMatch: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "exact" | "on_or_before" | "strictly_before";
+            })[];
+            durationUnit: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "calendar_day" | "elapsed_second";
+            })[];
+            partialIntervalBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "exact_only" | "uniform_estimate";
+            })[];
+            missingPeriodBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "null" | "zero";
+            })[];
+            /** @description Grammar versions a dataset version's expressions may declare. */
+            expressionLanguageVersion: components["schemas"]["VocabularyTerm"][];
+            /** @description IANA time zones offered for source and query time zones. */
+            timeZone: components["schemas"]["VocabularyTerm"][];
+            cardinality: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "many_to_one" | "many_to_many";
+            })[];
+            allocationMode: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "none" | "partition" | "replicate";
+            })[];
+            sourceSelection: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "member" | "descendants";
+            })[];
+            formulaLanguageVersion: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "1.0" | "1.1" | "1.2";
+            })[];
+            attributionMethod: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "shapley" | "sequential";
+            })[];
+            parameterValueType: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "number" | "text";
+            })[];
+            variableMissingBehavior: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "null" | "zero";
+            })[];
+            dayCountConvention: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "actual_actual" | "actual_365" | "actual_360" | "thirty_360_us" | "thirty_e_360";
+            })[];
+            /** @description Presentation hints offered for variables, calculated measures and report columns. */
+            displayFormat: components["schemas"]["VocabularyTerm"][];
+            /** @description How a report source reaches report rows. */
+            mappingMethod: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "bridge" | "direct";
+            })[];
+            selectionScope: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "exact" | "descendants";
+            })[];
+            /** @description What a report column evaluates. */
+            columnValueKind: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "variable" | "calculated";
+            })[];
+            subtotalPosition: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "above" | "below";
+            })[];
+            /** @description The row role a report style applies to by default. */
+            styleRole: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "header" | "subtotal" | "total" | "detail" | "formula";
+            })[];
+            fontWeight: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "normal" | "medium" | "semibold" | "bold";
+            })[];
+            borderStyle: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "none" | "thin" | "medium" | "thick" | "double";
+            })[];
+            /** @description Report layouts. */
+            layout: (components["schemas"]["VocabularyTerm"] & {
+                /** @enum {string} */
+                value: "statement" | "list";
+            })[];
+            /** @description Registered tenant database providers, the values of a directory entry's `providerId`. */
+            provider: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["VocabularyProvider"];
+            })[];
+        };
+        /** @enum {string} */
+        VocabularyAssumptionSetStatus: "active" | "historical";
+        /** @enum {string} */
+        VocabularyDimensionKind: "categorical" | "hierarchical" | "range" | "time";
+        /** @enum {string} */
+        VocabularyDimensionPurpose: "analytical" | "report";
+        /** @enum {string} */
+        VocabularyDefinitionOrigin: "system" | "user";
+        /** @enum {string} */
+        VocabularyMeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
+        /** @enum {string} */
+        VocabularyComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
+        /** @enum {string} */
+        VocabularyProvider: "starrocks";
+        /** @description The component roles a measure kind reads. */
+        VocabularyComponentRoleRequirements: {
+            role: components["schemas"]["VocabularyComponentRole"];
+            required: boolean;
+        }[];
+        /** @description A `query_control.qe_tenant_directory` row; the connection string's password is masked. */
+        TenantDirectoryEntry: {
+            tenantId: string;
+            providerId: components["schemas"]["VocabularyProvider"];
+            /** @description The connection string with its password replaced by `*****`. */
+            connectionString: string;
+            /** @description Whether query routing is permitted for the tenant. */
+            isEnabled: boolean;
+            /** @description The suggested metadata cache lifetime. */
+            metadataCacheSeconds: number;
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        TenantCreateInput: {
+            /** @description Fixed once created; the database's `tenant_key` must equal it. */
+            tenantId: string;
+            providerId: components["schemas"]["VocabularyProvider"];
+            /** @description Verified before it is stored. */
+            connectionString: string;
+            isEnabled: boolean;
+            metadataCacheSeconds: number;
+        };
+        /** @description The tenant id is fixed and enabling has its own request. */
+        TenantUpdateInput: {
+            providerId: components["schemas"]["VocabularyProvider"];
+            /** @description A new connection string, verified before it is stored; null keeps the current one. */
+            connectionString: string | null;
+            metadataCacheSeconds: number;
+        };
+        TenantEnabledInput: {
+            isEnabled: boolean;
+        };
+        TenantVerifyInput: {
+            /** @description The tenant the connection string must route to. */
+            tenantId: string;
+            connectionString: string;
+        };
+        TenantConnectionCheck: {
+            /** @description Whether the connection opens a database of the supported metadata schema version that belongs to the tenant. */
+            isValid: boolean;
+            /** @description What the connection reached, or why it is rejected. */
+            message: string;
+        };
     };
     responses: {
         /** @description The body, route or query does not bind, or an input validator failed; see `errors`. */
@@ -168,4 +806,315 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    getSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller as the API sees its bearer token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The accessible tenants, ordered by tenant id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessibleTenant"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getVocabularies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every vocabulary, keyed by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vocabularies"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tenant overview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tenant catalog. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantCatalog"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getPublishedMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The published version's members, in hierarchy order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedMembers"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The dimension does not exist or has no published version. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listSystemTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The directory entries, ordered by tenant id, with masked connection strings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDirectoryEntry"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSystemTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantCreateInput"];
+            };
+        };
+        responses: {
+            /** @description The tenant was registered; the body is its entry with a masked connection string. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDirectoryEntry"];
+                };
+            };
+            /** @description A field breaks a rule; a `connectionString` error gives the reason verification failed. */
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    verifySystemTenantConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantVerifyInput"];
+            };
+        };
+        responses: {
+            /** @description The test ran; `isValid` and `message` give its outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantConnectionCheck"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getSystemTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The directory entry with a masked connection string. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDirectoryEntry"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The directory has no such tenant. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSystemTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description The updated entry with a masked connection string. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDirectoryEntry"];
+                };
+            };
+            /** @description A field breaks a rule; a `connectionString` error gives the reason verification failed. */
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The directory has no such tenant. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setSystemTenantEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantEnabledInput"];
+            };
+        };
+        responses: {
+            /** @description The updated entry with a masked connection string. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDirectoryEntry"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The directory has no such tenant. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+}
