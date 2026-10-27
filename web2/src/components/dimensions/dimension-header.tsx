@@ -7,17 +7,17 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { useDimensionsApi, useRefreshDimensions } from '@/lib/dimensions/client'
-import { POLICY_TEXT, versionLabel, type DimensionDetail, type ValidationReport, type VersionSummary } from '@/lib/dimensions/contract'
+import { POLICY_TEXT, versionLabel, type DimensionDetail, type DimensionValidationReport, type DimensionVersionSummary } from '@/lib/dimensions/contract'
 import { cn } from '@/lib/utils'
 import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
 import { ConfirmDialog, DeleteDialog, KindBadge, STATUS_TONE, SystemBadge, formatDate, useDimCall } from './shared'
 
 interface Props {
   dim: DimensionDetail
-  selected: VersionSummary
+  selected: DimensionVersionSummary
   onBack: () => void
   onSelectVersion: (id: string) => void
-  onReport: (r: ValidationReport) => void
+  onReport: (r: DimensionValidationReport) => void
 }
 
 export function DimensionHeader({ dim, selected, onBack, onSelectVersion, onReport }: Props) {

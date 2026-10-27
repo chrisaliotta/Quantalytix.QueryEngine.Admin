@@ -582,6 +582,321 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List the analytical dimensions of one origin
+         * @description Report-owned dimensions are never listed (OI-22).
+         */
+        get: operations["listDimensions"];
+        put?: never;
+        /**
+         * Create a user dimension with a live version 1
+         * @description Creates origin `user`, purpose `analytical`; version 1 is created live (published).
+         */
+        post: operations["createDimension"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** List system dimension profiles */
+        get: operations["listAvailableDimensionProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-profiles/{profileKey}/define": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                profileKey: components["parameters"]["DimensionProfileKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Define the system dimension of a profile
+         * @description Creates the dimension with the profile's required roles and members; version 1 is live.
+         */
+        post: operations["defineSystemDimension"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        /** Get a dimension with its usage */
+        get: operations["getDimension"];
+        put?: never;
+        post?: never;
+        /** Delete a dimension */
+        delete: operations["deleteDimension"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a dimension can be deleted */
+        get: operations["checkDimensionDelete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a dimension change set without writing
+         * @description Applies the operations to the stored dimension and its live version in memory (OI-01).
+         */
+        post: operations["previewDimensionChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit a dimension change set
+         * @description Applies and writes the operations as one batch and advances `semantic_revision` once; any failure writes nothing (OI-01, OI-03).
+         */
+        post: operations["commitDimensionChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Get the content of a dimension version */
+        get: operations["getDimensionVersion"];
+        put?: never;
+        post?: never;
+        /** Delete a frozen dimension version */
+        delete: operations["deleteDimensionVersion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the dimension rules on a version without writing */
+        post: operations["checkDimensionVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze the live version and continue in a new live clone
+         * @description Runs every dimension rule; when they pass, clones the live version n to n+1 live, retires n with the note, repoints the active assumption set and advances `semantic_revision` (OI-14, OI-15).
+         */
+        post: operations["freezeDimensionVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a dimension version can be deleted */
+        get: operations["checkDimensionVersionDelete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}/members/{memberId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+                memberId: components["parameters"]["DimensionMemberId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a member can be deleted */
+        get: operations["checkDimensionMemberDelete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-versions/{versionId}/levels/{levelId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+                levelId: components["parameters"]["DimensionLevelId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a level can be deleted */
+        get: operations["checkDimensionLevelDelete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dimension-roles/{roleId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                roleId: components["parameters"]["DimensionRoleId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a role can be deleted */
+        get: operations["checkDimensionRoleDelete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/releases": {
         parameters: {
             query?: never;
@@ -2285,6 +2600,431 @@ export interface components {
             state: components["schemas"]["DatasetVersion"];
         };
         /**
+         * @description Fixed after creation (M1).
+         * @enum {string}
+         */
+        DimensionKind: "categorical" | "hierarchical" | "range" | "time";
+        /** @enum {string} */
+        DimensionOrigin: "system" | "user";
+        /**
+         * @description Report dimensions are refused by every write of this module and never listed (M8, OI-22).
+         * @enum {string}
+         */
+        DimensionPurpose: "analytical" | "report";
+        /**
+         * @description `locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).
+         * @enum {string}
+         */
+        DimensionEditPolicy: "open" | "extend" | "locked";
+        /** @enum {string} */
+        RangeDataType: "decimal" | "date" | "datetime";
+        /**
+         * @description Periodicity of a time dimension's level.
+         * @enum {string}
+         */
+        DimensionPeriodicity: "day" | "month" | "quarter" | "year";
+        /**
+         * @description Areas of the dimension editor; the values of `ViolationTarget.area` in this module.
+         * @enum {string}
+         */
+        DimensionTab: "properties" | "members" | "levels" | "bands" | "roles" | "mappings" | "bridges" | "usage";
+        /**
+         * @description Rule codes of this module's `Violation.code`.
+         * @enum {string}
+         */
+        DimensionViolationCode: "range_data_type_matches_kind" | "level_key_unique" | "member_key_unique" | "member_parent_in_version" | "member_level_in_version" | "hierarchy_acyclic" | "band_boundary_family" | "band_bounds_ordered" | "bands_non_overlapping" | "band_open_bounds_at_ends" | "band_member_in_version" | "dimension_consumers_resolve" | "profile_required_keys_present" | "profile_properties_valid";
+        /** @enum {string} */
+        DimensionUsageKind: "dataset_binding" | "mapping_set" | "bridge" | "calculation_dimension" | "report_scenario" | "report_source" | "assumption_set";
+        /** @description One member property of a profile's schema; the server validates system dimension members against it (OI-18). */
+        DimensionPropertyField: {
+            key: string;
+            label: string;
+            /** @enum {string} */
+            type: "text" | "number" | "date" | "url" | "image" | "select" | "geo" | "boolean";
+            /** @description Choices of a `select` field. */
+            options?: string[];
+            required?: boolean;
+            description?: string;
+            /**
+             * @description A text field holding GeoJSON.
+             * @enum {string}
+             */
+            format?: "geojson";
+        };
+        /** @description A system dimension type from the code registry (OI-16). A system dimension always has one; a user dimension never does. */
+        DimensionProfile: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            kind: components["schemas"]["DimensionKind"];
+            /** @description The product module that owns the profile. */
+            owner: string;
+            editPolicy: components["schemas"]["DimensionEditPolicy"];
+            /** @enum {string} */
+            visibility: "manager" | "module" | "hidden";
+            requiredRoleKeys: string[];
+            requiredMemberKeys: string[];
+            memberPropertySchema: components["schemas"]["DimensionPropertyField"][];
+            /** @enum {string} */
+            cardinality: "one" | "many";
+            /** @description Display names of required members and roles, used when the profile is defined. */
+            seedNames?: {
+                [key: string]: string;
+            };
+            /** @description Refuses a second role unconditionally (OI-20). */
+            singleRole?: boolean;
+        };
+        AvailableDimensionProfile: {
+            profile: components["schemas"]["DimensionProfile"];
+            /** @description The dimension defined from the profile; null when not defined yet. */
+            dimensionId: string | null;
+        };
+        Dimension: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            kind: components["schemas"]["DimensionKind"];
+            origin: components["schemas"]["DimensionOrigin"];
+            purpose: components["schemas"]["DimensionPurpose"];
+            /** @description Set only when purpose is `report`. */
+            ownerReport: components["schemas"]["DimensionOwnerReport"] | null;
+            /** @description The profile of a system dimension (SG-03); null for user dimensions. */
+            profileKey: string | null;
+            isEnabled: boolean;
+            isRemovable: boolean;
+        };
+        DimensionOwnerReport: {
+            reportKey: string;
+            reportName: string;
+        };
+        /** @description Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no drafts (M3, OI-14). */
+        DimensionVersion: {
+            id: components["schemas"]["Id"];
+            dimensionId: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            /** @description Range dimensions only. */
+            rangeDataType: components["schemas"]["RangeDataType"] | null;
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the version was frozen (SG-04).
+             */
+            retiredAt: string | null;
+            /** @description Derived; the next version number once frozen (OI-12). */
+            supersededBy: number | null;
+            /** @description Why the version was frozen (SG-05, OI-15). */
+            freezeNote: string | null;
+        };
+        DimensionVersionSummary: {
+            id: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            retiredAt: string | null;
+            supersededBy: number | null;
+            freezeNote: string | null;
+            memberCount: number;
+        };
+        DimensionRole: {
+            id: components["schemas"]["Id"];
+            dimensionId: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            description: string | null;
+        };
+        DimensionLevel: {
+            id: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            ordinal: number;
+            isLeaf: boolean;
+            /** @description Time dimensions only. */
+            periodicity: components["schemas"]["DimensionPeriodicity"] | null;
+        };
+        DimensionMember: {
+            id: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            description: string | null;
+            /** @description Hierarchical dimensions only; a member of the same version. */
+            parentId: string | null;
+            levelId: string | null;
+            isAssignable: boolean;
+            sortOrder: number;
+            /** @description Free key/value for user dimensions; validated against the profile's property schema for system dimensions (OI-18). */
+            properties: {
+                [key: string]: unknown;
+            };
+        };
+        /** @description A number for `decimal`, an ISO date for `date`, an ISO date-time for `datetime`; null is open (only the first band's lower and the last band's upper). */
+        RangeBound: number | string | null;
+        RangeBand: {
+            ordinal: number;
+            memberId: components["schemas"]["Id"];
+            lower: components["schemas"]["RangeBound"];
+            upper: components["schemas"]["RangeBound"];
+            lowerInclusive: boolean;
+            upperInclusive: boolean;
+        };
+        /** @description Something outside the dimension that references it, one of its roles, or some of its member keys. */
+        DimensionUsageReference: {
+            kind: components["schemas"]["DimensionUsageKind"];
+            name: string;
+            detail: string;
+            roleKey?: string;
+            /** @description Member keys this object names; deleting them is blocked and `dimension_consumers_resolve` requires them. */
+            memberKeys?: string[];
+            /** @description Assumption sets only; the version number pinned. */
+            pinsVersion?: number;
+            /** @description Display label for blocker phrasing, e.g. a dataset version "'loans.details' v3". */
+            label?: string;
+        };
+        DimensionListItem: components["schemas"]["Dimension"] & {
+            profile: components["schemas"]["DimensionProfile"] | null;
+            roles: components["schemas"]["DimensionRole"][];
+            versions: components["schemas"]["DimensionVersionSummary"][];
+            /** @description Members in the live version. */
+            publishedMemberCount: number | null;
+        };
+        DimensionDetail: components["schemas"]["DimensionListItem"] & {
+            /** @description Computed from bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources and assumption set pins. */
+            usage: components["schemas"]["DimensionUsageReference"][];
+        };
+        DimensionVersionContent: {
+            version: components["schemas"]["DimensionVersion"];
+            levels: components["schemas"]["DimensionLevel"][];
+            members: components["schemas"]["DimensionMember"][];
+            bands: components["schemas"]["RangeBand"][];
+        };
+        /** @description The change-set aggregate content; everything the dimension editor shows. */
+        DimensionEditState: {
+            dimension: components["schemas"]["DimensionDetail"];
+            content: components["schemas"]["DimensionVersionContent"];
+        };
+        DimensionCreated: {
+            dimensionId: components["schemas"]["Id"];
+            /** @description The live version 1. */
+            versionId: components["schemas"]["Id"];
+        };
+        /** @description Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14). */
+        FreezeInput: {
+            /** @description Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15). */
+            note: string | null;
+        };
+        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. When a rule fails the freeze answers 422 instead and changes nothing. */
+        FreezeResult: {
+            report: components["schemas"]["ValidationReport"];
+            /** @description The new live version. */
+            live: unknown;
+        };
+        DimensionFreezeResult: components["schemas"]["FreezeResult"] & {
+            live: components["schemas"]["DimensionVersionSummary"];
+        };
+        CreateDimensionInput: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            kind: components["schemas"]["DimensionKind"];
+            /** @description Required for range dimensions; null otherwise. */
+            rangeDataType: components["schemas"]["RangeDataType"] | null;
+            /** @description Required for non-time dimensions (M6); null for time. */
+            firstRole: components["schemas"]["DimensionFirstRoleInput"] | null;
+            isEnabled: boolean;
+            isRemovable: boolean;
+        };
+        DimensionFirstRoleInput: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+        };
+        /** @description The identity fields that change after creation (M1). */
+        DimensionPatch: {
+            displayName?: string;
+            isEnabled?: boolean;
+            isRemovable?: boolean;
+        };
+        DimensionVersionPatch: {
+            /** @description Changing it clears every band bound. */
+            rangeDataType: components["schemas"]["RangeDataType"] | null;
+        };
+        DimensionMemberInput: {
+            /** @description A stored id updates that member (its key stays fixed). Absent or a temporary id `tmp:<uuid>` creates one; later operations reference the new member by the temporary id. */
+            id?: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            description: string | null;
+            parentId: string | null;
+            levelId: string | null;
+            isAssignable: boolean;
+            /** @description Null appends to the end of the siblings. */
+            sortOrder: number | null;
+            properties: {
+                [key: string]: unknown;
+            };
+        };
+        DimensionLevelInput: {
+            /** @description A stored id updates that level; absent or `tmp:<uuid>` creates one. */
+            id?: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isLeaf: boolean;
+            periodicity: components["schemas"]["DimensionPeriodicity"] | null;
+        };
+        DimensionRoleInput: {
+            /** @description A stored id updates that role; absent or `tmp:<uuid>` creates one. */
+            id?: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            description: string | null;
+        };
+        DimensionMemberPosition: {
+            parentId: string | null;
+            /** @description Index among the new siblings after the move. */
+            index: number;
+        };
+        /** @description One parsed row; CSV/TSV parsing stays in the browser (OI-21). */
+        DimensionMemberImportRow: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            parentKey: string | null;
+        };
+        /**
+         * @description `merge` upserts by key and keeps everything else; `replace` makes the version's members exactly the imported rows and fails when a member it would remove is still needed.
+         * @enum {string}
+         */
+        DimensionMemberImportMode: "merge" | "replace";
+        /** @description One edit of the dimension change set, named after the port's edit methods (OI-01). The set covers the dimension's identity, its roles and its live version's content; edit policy (M11) is enforced per operation. */
+        DimensionOperation: components["schemas"]["DimensionUpdateDimensionOperation"] | components["schemas"]["DimensionUpdateVersionOperation"] | components["schemas"]["DimensionSaveMemberOperation"] | components["schemas"]["DimensionDeleteMemberOperation"] | components["schemas"]["DimensionMoveMemberOperation"] | components["schemas"]["DimensionImportMembersOperation"] | components["schemas"]["DimensionClearMembersOperation"] | components["schemas"]["DimensionSaveLevelOperation"] | components["schemas"]["DimensionDeleteLevelOperation"] | components["schemas"]["DimensionReorderLevelsOperation"] | components["schemas"]["DimensionSaveBandsOperation"] | components["schemas"]["DimensionSaveRoleOperation"] | components["schemas"]["DimensionDeleteRoleOperation"];
+        DimensionUpdateDimensionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateDimension";
+            patch: components["schemas"]["DimensionPatch"];
+        };
+        DimensionUpdateVersionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateVersion";
+            versionId: components["schemas"]["Id"];
+            patch: components["schemas"]["DimensionVersionPatch"];
+        };
+        DimensionSaveMemberOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveMember";
+            versionId: components["schemas"]["Id"];
+            input: components["schemas"]["DimensionMemberInput"];
+        };
+        DimensionDeleteMemberOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteMember";
+            versionId: components["schemas"]["Id"];
+            memberId: components["schemas"]["Id"];
+        };
+        DimensionMoveMemberOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "moveMember";
+            versionId: components["schemas"]["Id"];
+            memberId: components["schemas"]["Id"];
+            to: components["schemas"]["DimensionMemberPosition"];
+        };
+        DimensionImportMembersOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "importMembers";
+            versionId: components["schemas"]["Id"];
+            rows: components["schemas"]["DimensionMemberImportRow"][];
+            mode: components["schemas"]["DimensionMemberImportMode"];
+        };
+        DimensionClearMembersOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "clearMembers";
+            versionId: components["schemas"]["Id"];
+        };
+        DimensionSaveLevelOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveLevel";
+            versionId: components["schemas"]["Id"];
+            input: components["schemas"]["DimensionLevelInput"];
+        };
+        DimensionDeleteLevelOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteLevel";
+            versionId: components["schemas"]["Id"];
+            levelId: components["schemas"]["Id"];
+        };
+        DimensionReorderLevelsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "reorderLevels";
+            versionId: components["schemas"]["Id"];
+            orderedIds: components["schemas"]["Id"][];
+        };
+        /** @description Replaces the version's bands as a whole set (M5). */
+        DimensionSaveBandsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveBands";
+            versionId: components["schemas"]["Id"];
+            bands: components["schemas"]["RangeBand"][];
+        };
+        DimensionSaveRoleOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveRole";
+            input: components["schemas"]["DimensionRoleInput"];
+        };
+        DimensionDeleteRoleOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteRole";
+            roleId: components["schemas"]["Id"];
+        };
+        DimensionChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["DimensionOperation"][];
+        };
+        DimensionChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["DimensionEditState"];
+        };
+        DimensionChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["DimensionEditState"];
+        };
+        /**
          * @description Natural key of a release, fixed after creation; screens show it as the release's name (R7, OI-39).
          * @example prod/2026-q4
          */
@@ -3424,6 +4164,12 @@ export interface components {
         DatasetSourceObjectKindPath: components["schemas"]["DatasetSourceObjectKind"];
         /** @description The table or view name. */
         DatasetSourceObjectNamePath: string;
+        DimensionId: components["schemas"]["Id"];
+        DimensionVersionId: components["schemas"]["Id"];
+        DimensionMemberId: components["schemas"]["Id"];
+        DimensionLevelId: components["schemas"]["Id"];
+        DimensionRoleId: components["schemas"]["Id"];
+        DimensionProfileKey: components["schemas"]["Key"];
         ReleaseIdPath: components["schemas"]["Id"];
         /** @description The release compared from. */
         ReleaseDiffFrom: components["schemas"]["Id"];
@@ -4368,6 +5114,475 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description The version is retired or the field is not materialized. */
             409: components["responses"]["Conflict"];
+        };
+    };
+    listDimensions: {
+        parameters: {
+            query: {
+                origin: components["schemas"]["DimensionOrigin"];
+            };
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The list items, each with its profile, roles and version summaries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionListItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    createDimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDimensionInput"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description The dimension key or the first role key is taken. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listAvailableDimensionProfiles: {
+        parameters: {
+            query?: {
+                /** @description When true, only the profiles the dimension manager offers (manager-visible, single-instance). */
+                available?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each profile with the dimension defined from it, if any. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableDimensionProfile"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    defineSystemDimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                profileKey: components["parameters"]["DimensionProfileKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description No profile has this key. */
+            404: components["responses"]["NotFound"];
+            /** @description The profile's dimension is defined already. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The detail read model. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionDetail"];
+                };
+            };
+            /** @description No such dimension, or it is owned by a report. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Blocked (see `violations`), a system dimension, or owned by a report. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDimensionDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewDimensionChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimensionChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description The operations apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Owned by a report, locked by its profile, or an operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitDimensionChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                dimensionId: components["parameters"]["DimensionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimensionChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Owned by a report, locked by its profile, or an operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    getDimensionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version with its levels, members and bands. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionVersionContent"];
+                };
+            };
+            /** @description No such version, or its dimension is owned by a report. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDimensionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The live version, or pinned by a historical assumption set (see `violations`). */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDimensionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule report; codes are `DimensionViolationCode` values. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    freezeDimensionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeInput"];
+            };
+        };
+        responses: {
+            /** @description Frozen; `live` is the new live version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DimensionFreezeResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Not the live version, or locked by its profile. */
+            409: components["responses"]["Conflict"];
+            /** @description A rule fails; nothing changed. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    checkDimensionVersionDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkDimensionMemberDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+                memberId: components["parameters"]["DimensionMemberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkDimensionLevelDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                versionId: components["parameters"]["DimensionVersionId"];
+                levelId: components["parameters"]["DimensionLevelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkDimensionRoleDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                roleId: components["parameters"]["DimensionRoleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     listReleases: {

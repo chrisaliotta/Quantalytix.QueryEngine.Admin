@@ -1,19 +1,19 @@
-import { ArrowUpRightIcon, TriangleAlertIcon } from 'lucide-react'
+import { TriangleAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useDimensionsApi } from '@/lib/dimensions/client'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { KIND_LABEL, RANGE_TYPE_LABEL, versionLabel, type RangeDataType, type UsageKind, type UsageReference } from '@/lib/dimensions/contract'
+import { KIND_LABEL, RANGE_TYPE_LABEL, USAGE_KIND_LABEL, versionLabel, type RangeDataType, type DimensionUsageKind, type DimensionUsageReference } from '@/lib/dimensions/contract'
 import type { SectionProps } from './dimension-detail'
 import { ConfirmDialog, EmptyState, Field, Mono, ReadValue, StatusBadge, formatDate, useDimCall } from './shared'
 
-const GROUPS: { title: string; kinds: UsageKind[] }[] = [
-  { title: 'Dataset bindings', kinds: ['dataset binding'] },
-  { title: 'Mapping sets', kinds: ['mapping set'] },
+const GROUPS: { title: string; kinds: DimensionUsageKind[] }[] = [
+  { title: 'Dataset bindings', kinds: ['dataset_binding'] },
+  { title: 'Mapping sets', kinds: ['mapping_set'] },
   { title: 'Bridges', kinds: ['bridge'] },
-  { title: 'Reports', kinds: ['calculation dimension', 'report scenario', 'report'] },
-  { title: 'Assumption sets', kinds: ['assumption set'] },
+  { title: 'Reports', kinds: ['calculation_dimension', 'report_scenario', 'report_source'] },
+  { title: 'Assumption sets', kinds: ['assumption_set'] },
 ]
 
 export function UsageSection({ dim }: SectionProps) {
@@ -40,17 +40,14 @@ export function UsageSection({ dim }: SectionProps) {
   )
 }
 
-function UsageCard({ usage }: { usage: UsageReference }) {
+function UsageCard({ usage }: { usage: DimensionUsageReference }) {
   return (
     <li>
-      <a href={usage.href ?? '#'} className="group flex h-full flex-col gap-1 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/20">
-        <span className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium">{usage.name}</span>
-          <ArrowUpRightIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
-        </span>
+      <div className="flex h-full flex-col gap-1 rounded-lg border bg-card p-3">
+        <span className="text-sm font-medium">{usage.name}</span>
         <span className="text-xs text-pretty text-muted-foreground">{usage.detail}</span>
         <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          <span className="text-muted-foreground capitalize">{usage.kind}</span>
+          <span className="text-muted-foreground">{USAGE_KIND_LABEL[usage.kind]}</span>
           {usage.roleKey && (
             <span>
               role <Mono>{usage.roleKey}</Mono>
@@ -64,7 +61,7 @@ function UsageCard({ usage }: { usage: UsageReference }) {
             </span>
           ) : null}
         </span>
-      </a>
+      </div>
     </li>
   )
 }

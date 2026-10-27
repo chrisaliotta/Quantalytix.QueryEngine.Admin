@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Segmented } from '@/components/report/shared/segmented'
 import { useDimensionsApi, useRefreshDimensions } from '@/lib/dimensions/client'
-import type { ImportMode, ImportRow, Member, MemberInput, MovePosition } from '@/lib/dimensions/contract'
+import type { DimensionMemberImportMode, DimensionMemberImportRow, DimensionMember, DimensionMemberInput, DimensionMemberPosition } from '@/lib/dimensions/contract'
 import { descendantIds, indexTree, type TreeIndex } from '@/lib/dimensions/tree'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dimension-detail'
@@ -21,7 +21,7 @@ const NONE = '__none__'
 type View = 'tree' | 'table'
 type DropZone = 'before' | 'inside' | 'after'
 interface Row {
-  member: Member
+  member: DimensionMember
   depth: number
   hasChildren: boolean
 }
@@ -41,7 +41,7 @@ export function MembersSection({ dim, content, editable, policy, focusId, clearF
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(content.members.filter((m) => (index.depth.get(m.id) ?? 0) >= 1).map((m) => m.id)))
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [addingUnder, setAddingUnder] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<Member | null>(null)
+  const [deleting, setDeleting] = useState<DimensionMember | null>(null)
   const [importing, setImporting] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [drag, setDrag] = useState<{ id: string; overId: string | null; zone: DropZone | null } | null>(null)
@@ -105,16 +105,16 @@ export function MembersSection({ dim, content, editable, policy, focusId, clearF
 
   const rows = useMemo(() => flatten(index, hierarchical ? collapsed : new Set(), visibleIds), [index, collapsed, visibleIds, hierarchical])
   const canDrag = editable && !q && view === 'tree'
-  const canDelete = (m: Member) => editable && !(policy === 'extend' && required.has(m.key))
+  const canDelete = (m: DimensionMember) => editable && !(policy === 'extend' && required.has(m.key))
 
-  async function move(member: Member, to: MovePosition) {
+  async function move(member: DimensionMember, to: DimensionMemberPosition) {
     const r = await api.moveMember(content.version.id, member.id, to)
     if (!r.ok) return toast.error(r.problem.title, { description: r.problem.detail })
     await refresh()
     toast.success(`Moved ${member.displayName}`, { action: undoAction() })
   }
 
-  function drop(target: Member, zone: DropZone) {
+  function drop(target: DimensionMember, zone: DropZone) {
     if (!drag) return
     const dragged = index.byId.get(drag.id)
     setDrag(null)
@@ -434,13 +434,13 @@ function MemberTable({
   content: SectionProps['content']
   index: TreeIndex
   editable: boolean
-  members: Member[]
+  members: DimensionMember[]
   focusedId: string | null
   onFocus: (id: string) => void
-  onPatch: (m: Member, patch: Partial<MemberInput>) => Promise<unknown>
+  onPatch: (m: DimensionMember, patch: Partial<DimensionMemberInput>) => Promise<unknown>
   onAdd: (values: Record<string, string>) => Promise<AddRowResult>
-  onDelete: (m: Member) => boolean
-  setDeleting: (m: Member) => void
+  onDelete: (m: DimensionMember) => boolean
+  setDeleting: (m: DimensionMember) => void
 }) {
   const levelOptions = [{ value: NONE, label: 'None' }, ...content.levels.map((l) => ({ value: l.id, label: l.displayName }))]
   const schemaType = (k: string) => dim.profile?.memberPropertySchema.find((f) => f.key === k)?.type
@@ -451,7 +451,7 @@ function MemberTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'sortOrder', dir: 1 })
   const [page, setPage] = useState(0)
   const levelName = (id: string | null) => content.levels.find((l) => l.id === id)?.displayName ?? ''
-  const value = (m: Member, k: SortKey): string | number => {
+  const value = (m: DimensionMember, k: SortKey): string | number => {
     if (k === 'parent') return index.byId.get(m.parentId ?? '')?.key ?? ''
     if (k === 'level') return levelName(m.levelId)
     if (k === 'isAssignable') return m.isAssignable ? 1 : 0
@@ -585,7 +585,7 @@ function MemberTable({
 
 /* ───────────────────────── import ───────────────────────── */
 
-function parseRows(text: string): ImportRow[] {
+function parseRows(text: string): DimensionMemberImportRow[] {
   return text
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -632,11 +632,11 @@ function ClearMembersDialog({ open, onOpenChange, versionId, count }: { open: bo
   )
 }
 
-function ImportDialog({ open, onOpenChange, versionId, hierarchical, members }: { open: boolean; onOpenChange: (o: boolean) => void; versionId: string; hierarchical: boolean; members: Member[] }) {
+function ImportDialog({ open, onOpenChange, versionId, hierarchical, members }: { open: boolean; onOpenChange: (o: boolean) => void; versionId: string; hierarchical: boolean; members: DimensionMember[] }) {
   const api = useDimensionsApi()
   const { run, saving, problem, setProblem } = useDimCall()
   const [text, setText] = useState('')
-  const [mode, setMode] = useState<ImportMode>('merge')
+  const [mode, setMode] = useState<DimensionMemberImportMode>('merge')
   const rows = parseRows(text)
   const existingKeys = new Set(members.map((m) => m.key))
   const importedKeys = new Set(rows.map((r) => r.key))
@@ -672,7 +672,7 @@ function ImportDialog({ open, onOpenChange, versionId, hierarchical, members }: 
         />
         {members.length > 0 && (
           <div className="flex flex-wrap items-center gap-3">
-            <Segmented<ImportMode>
+            <Segmented<DimensionMemberImportMode>
               aria-label="Existing members"
               value={mode}
               onChange={(m) => (setMode(m), setProblem(null))}

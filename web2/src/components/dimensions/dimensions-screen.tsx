@@ -1,4 +1,4 @@
-import { EyeOffIcon, MoreHorizontalIcon, PlusIcon, SearchIcon, ShieldCheckIcon } from 'lucide-react'
+import { MoreHorizontalIcon, PlusIcon, SearchIcon, ShieldCheckIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ListPage } from '@/components/shell/page-shell'
@@ -9,14 +9,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useViewer } from '@/lib/session/viewer'
-import { HiddenDimensions } from './hidden-dimensions'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Segmented } from '@/components/report/shared/segmented'
 import { useDimensionList, useDimensionsApi } from '@/lib/dimensions/client'
 import { useAppNav, useSearchParam } from '@/lib/navigation'
-import { KIND_LABEL, type DimensionKind, type DimensionListItem, type Origin } from '@/lib/dimensions/contract'
+import { KIND_LABEL, type DimensionKind, type DimensionListItem, type DimensionOrigin } from '@/lib/dimensions/contract'
 import { useMappingCountsByDimension, type DimensionMappingCounts } from '@/lib/mappings/client'
 import { canHaveBridges, canHaveMappingSets } from '@/lib/mappings/contract'
 import { cn } from '@/lib/utils'
@@ -30,21 +28,16 @@ export function DimensionsScreen({ dimensionId }: { dimensionId: string | null }
   return <DimensionList />
 }
 
-type ListTab = Origin | 'hidden'
-const TAB_LABEL: Record<ListTab, string> = { user: 'User dimensions', system: 'System dimensions', hidden: 'Hidden dimensions' }
+const TABS: DimensionOrigin[] = ['user', 'system']
+const TAB_LABEL: Record<DimensionOrigin, string> = { user: 'User dimensions', system: 'System dimensions' }
 
 type KindFilter = 'all' | DimensionKind
 type StatusFilter = 'any' | 'frozen' | 'disabled'
 
 function DimensionList() {
-  const nav = useAppNav()
   const [listParam, setListParam] = useSearchParam('dimList')
-  const { isSystemAdmin } = useViewer()
-  const hidden = listParam === 'hidden' && isSystemAdmin
-  const origin: Origin = listParam === 'system' ? 'system' : 'user'
+  const origin: DimensionOrigin = listParam === 'system' ? 'system' : 'user'
   const { data, isLoading } = useDimensionList(origin)
-  const tabs: ListTab[] = isSystemAdmin ? ['user', 'system', 'hidden'] : ['user', 'system']
-  const activeTab: ListTab = hidden ? 'hidden' : origin
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
   const [status, setStatus] = useState<StatusFilter>('any')
@@ -66,7 +59,7 @@ function DimensionList() {
       description="Anything a query can group or filter by: branches, products, risk grades, balance bands, dates, plan scenarios. Define members, levels, range bands and roles, versioned and published."
       actions={
         <>
-          {!hidden && origin === 'user' && (
+          {origin === 'user' && (
             <Button size="sm" onClick={() => setCreating(true)}>
               <PlusIcon /> New dimension
             </Button>
@@ -76,22 +69,20 @@ function DimensionList() {
     >
 
         <div role="tablist" aria-label="Dimension origin" className="flex gap-4 border-b">
-          {tabs.map((o) => (
+          {TABS.map((o) => (
             <button
               key={o}
               role="tab"
               type="button"
-              aria-selected={activeTab === o}
+              aria-selected={origin === o}
               onClick={() => setListParam(o === 'user' ? null : o)}
               className={cn(
                 '-mb-px inline-flex items-center gap-1.5 border-b-2 px-0.5 pb-2 text-sm transition-colors',
-                activeTab === o ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                origin === o ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
               {o === 'system' && <ShieldCheckIcon aria-hidden className="size-3.5" />}
-              {o === 'hidden' && <EyeOffIcon aria-hidden className="size-3.5" />}
               {TAB_LABEL[o]}
-              {o === 'hidden' && <span className="rounded-sm bg-muted px-1 text-[11px] font-normal text-muted-foreground">Admin</span>}
             </button>
           ))}
         </div>
@@ -101,7 +92,6 @@ function DimensionList() {
             <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search key or name" aria-label="Search dimensions" className="pl-8" />
           </div>
-          {!hidden && (<>
           <Segmented<KindFilter>
             aria-label="Kind"
             value={kind}
@@ -118,12 +108,9 @@ function DimensionList() {
               { value: 'disabled', label: 'Disabled' },
             ]}
           />
-          </>)}
         </div>
 
-        {hidden ? (
-          <HiddenDimensions query={query} onInspect={(id) => nav.dimension(id)} />
-        ) : !isLoading && !rows.length ? (
+        {!isLoading && !rows.length ? (
           filtered ? (
             <EmptyState title="No dimensions match">Clear the search or filters to see every {origin} dimension.</EmptyState>
           ) : origin === 'user' ? (
@@ -148,7 +135,7 @@ function DimensionList() {
   )
 }
 
-function DimensionTable({ rows, origin, loading }: { rows: DimensionListItem[]; origin: Origin; loading: boolean }) {
+function DimensionTable({ rows, origin, loading }: { rows: DimensionListItem[]; origin: DimensionOrigin; loading: boolean }) {
   const system = origin === 'system'
   const cols = system ? 14 : 11
   const { data: counts } = useMappingCountsByDimension()

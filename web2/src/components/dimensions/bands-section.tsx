@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useDimensionsApi } from '@/lib/dimensions/client'
-import type { Bound, ImportMode, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
+import type { RangeBound, DimensionMemberImportMode, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
 import { analyzeBands, bandPreview, boundError, boundScale, compareBound, formatBound, insertBandAfter, parseBound, patchBandLinked, removeBandLinked, shiftIsoDate, type BandIssue } from '@/lib/dimensions/bands'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dimension-detail'
@@ -77,7 +77,7 @@ export function BandsSection({ content, editable, focusId, clearFocus }: Section
     setGenerating(false)
   }
 
-  function importBands(incoming: RangeBand[], mode: ImportMode) {
+  function importBands(incoming: RangeBand[], mode: DimensionMemberImportMode) {
     if (mode === 'replace') return setBands(renumber(incoming))
     const byMember = new Map(incoming.map((b) => [b.memberId, b]))
     const kept = bands.map((b) => byMember.get(b.memberId) ?? b)
@@ -328,12 +328,12 @@ function BoundInput({
 }: {
   label: string
   type: RangeDataType
-  value: Bound
+  value: RangeBound
   min?: string
   max?: string
-  validate: (v: Bound) => string | null
+  validate: (v: RangeBound) => string | null
   onReject: (message: string | null) => void
-  onChange: (v: Bound) => void
+  onChange: (v: RangeBound) => void
 }) {
   const committed = value === null ? '' : String(value)
   const [raw, setRaw] = useState(committed)
@@ -437,7 +437,7 @@ function CheckItem({ tone, icon: Icon, label, message, onClick }: { tone: 'error
 function BandStrip({ bands, type, issues, names }: { bands: RangeBand[]; type: RangeDataType; issues: BandIssue[]; names: Map<string, string> }) {
   const scale = boundScale(bands)
   const slots = scale.length + 1
-  const pos = (v: Bound, side: 'lo' | 'hi') => {
+  const pos = (v: RangeBound, side: 'lo' | 'hi') => {
     if (v === null || v === '') return side === 'lo' ? 0 : slots
     const i = scale.findIndex((x) => compareBound(x, v as string | number) === 0)
     return i + 0.5 + 0.5

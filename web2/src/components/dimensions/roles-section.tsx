@@ -3,26 +3,26 @@ import { useEffect, useRef, useState } from 'react'
 import { AddRow, InlineText, focusRowClass, keyFromName, type AddRowField } from '@/components/shell/inline-table'
 import { Button } from '@/components/ui/button'
 import { useDimensionsApi, useRefreshDimensions } from '@/lib/dimensions/client'
-import { KEY_HELP, type Role } from '@/lib/dimensions/contract'
+import { KEY_HELP, type DimensionRole, type DimensionUsageKind } from '@/lib/dimensions/contract'
 import type { SectionProps } from './dimension-detail'
 import { DeleteDialog, EmptyState, Mono, RequiredLock, TabIntro, Td, Th, WithReason, useDimCall } from './shared'
 
-const REPORT_KINDS = new Set(['calculation dimension', 'report scenario', 'report'])
+const REPORT_KINDS = new Set<DimensionUsageKind>(['calculation_dimension', 'report_scenario', 'report_source'])
 
 export function RolesSection({ dim, editable, policy, focusId, clearFocus }: SectionProps) {
   const api = useDimensionsApi()
   const refresh = useRefreshDimensions()
   const { run } = useDimCall()
   const [highlight, setHighlight] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<Role | null>(null)
+  const [deleting, setDeleting] = useState<DimensionRole | null>(null)
   const addRef = useRef<HTMLTableSectionElement>(null)
   const required = new Set(dim.profile?.requiredRoleKeys ?? [])
-  const fixedCount = dim.profile?.cardinality === 'one' && dim.profile.key === 'scenario'
+  const singleRole = !!dim.profile?.singleRole
   // Roles belong to the dimension, so they follow the policy rather than the selected version's status.
   const canEdit = policy !== 'locked'
-  const canAdd = canEdit && !fixedCount
-  const bound = (r: Role) => dim.usage.filter((u) => u.roleKey === r.key && u.kind === 'dataset binding').length
-  const reports = (r: Role) => dim.usage.filter((u) => u.roleKey === r.key && REPORT_KINDS.has(u.kind)).length
+  const canAdd = canEdit && !singleRole
+  const bound = (r: DimensionRole) => dim.usage.filter((u) => u.roleKey === r.key && u.kind === 'dataset_binding').length
+  const reports = (r: DimensionRole) => dim.usage.filter((u) => u.roleKey === r.key && REPORT_KINDS.has(u.kind)).length
 
   useEffect(() => {
     if (!focusId) return
@@ -33,7 +33,7 @@ export function RolesSection({ dim, editable, policy, focusId, clearFocus }: Sec
     clearFocus()
   }, [focusId, dim.roles, clearFocus])
 
-  async function patch(r: Role, changes: Partial<Pick<Role, 'displayName' | 'description'>>) {
+  async function patch(r: DimensionRole, changes: Partial<Pick<DimensionRole, 'displayName' | 'description'>>) {
     await run(() => api.saveRole(dim.id, { id: r.id, key: r.key, displayName: r.displayName, description: r.description, ...changes }))
   }
 
@@ -54,8 +54,8 @@ export function RolesSection({ dim, editable, policy, focusId, clearFocus }: Sec
       <TabIntro
         action={
           canEdit && (
-            <WithReason reason={fixedCount ? "A scenario's dimension has exactly one role." : null}>
-              <Button size="sm" disabled={fixedCount} onClick={() => addRef.current?.querySelector('input')?.focus()}>
+            <WithReason reason={singleRole ? `The ${dim.profile!.displayName} profile allows exactly one role.` : null}>
+              <Button size="sm" disabled={singleRole} onClick={() => addRef.current?.querySelector('input')?.focus()}>
                 <PlusIcon /> Add role
               </Button>
             </WithReason>

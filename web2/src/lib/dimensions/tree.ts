@@ -1,17 +1,17 @@
-import type { Member } from './contract'
+import type { DimensionMember } from './contract'
 
 export interface TreeIndex {
-  byId: Map<string, Member>
+  byId: Map<string, DimensionMember>
   /** Children keyed by parent id; roots under `null`. Sorted by sortOrder. */
-  children: Map<string | null, Member[]>
+  children: Map<string | null, DimensionMember[]>
   depth: Map<string, number>
   /** Members not reachable from a root: their parent links form a cycle. */
-  unreachable: Member[]
+  unreachable: DimensionMember[]
 }
 
-export function indexTree(members: Member[]): TreeIndex {
+export function indexTree(members: DimensionMember[]): TreeIndex {
   const byId = new Map(members.map((m) => [m.id, m]))
-  const children = new Map<string | null, Member[]>()
+  const children = new Map<string | null, DimensionMember[]>()
   for (const m of members) {
     const p = m.parentId && byId.has(m.parentId) ? m.parentId : null
     const list = children.get(p) ?? []
@@ -47,7 +47,7 @@ export function descendantIds(index: TreeIndex, id: string) {
 }
 
 export function ancestorPath(index: TreeIndex, id: string) {
-  const path: Member[] = []
+  const path: DimensionMember[] = []
   const seen = new Set<string>()
   let cur = index.byId.get(id)?.parentId ?? null
   while (cur && !seen.has(cur)) {
@@ -61,7 +61,7 @@ export function ancestorPath(index: TreeIndex, id: string) {
 }
 
 /** Each parent-link cycle as a list of member ids. */
-export function findCycles(members: Member[]) {
+export function findCycles(members: DimensionMember[]) {
   const byId = new Map(members.map((m) => [m.id, m]))
   const state = new Map<string, 'visiting' | 'done'>()
   const cycles: string[][] = []
