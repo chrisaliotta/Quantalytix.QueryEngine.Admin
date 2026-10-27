@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useRefreshDatasets } from '@/lib/datasets/client'
-import type { ApiResult, DatasetTab, Dependent, ValidationProblemDetails, VersionStatus, VocabularyTerm } from '@/lib/datasets/contract'
+import type { VocabularyTerm } from '@/lib/api/contract'
+import type { ApiResult, DatasetTab, DatasetDependent, Problem, VersionStatus, Violation } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
@@ -24,7 +25,7 @@ export function Td({ children, className, colSpan, onClick }: { children?: React
  * For inline add rows: when every error is about an input the row itself has, return them for the row to show.
  * Otherwise return null so the caller opens the item in its properties panel to finish it there.
  */
-export function rowErrorsOr(problem: ValidationProblemDetails, rowPaths: string[]): Record<string, string[]> | null {
+export function rowErrorsOr(problem: Problem, rowPaths: string[]): Record<string, string[]> | null {
   const paths = Object.keys(problem.errors)
   if (!paths.length) return { '': [problem.detail ?? problem.title] }
   return paths.every((p) => rowPaths.includes(p)) ? problem.errors : null
@@ -238,7 +239,7 @@ export const TAB_LABEL: Record<DatasetTab, string> = {
   settings: 'Settings',
 }
 
-export function DependentsList({ dependents, onOpen, empty = 'Nothing reads this yet.' }: { dependents: Dependent[]; onOpen?: (d: Dependent) => void; empty?: string }) {
+export function DependentsList({ dependents, onOpen, empty = 'Nothing reads this yet.' }: { dependents: DatasetDependent[]; onOpen?: (d: DatasetDependent) => void; empty?: string }) {
   if (!dependents.length) return <p className="text-sm text-muted-foreground">{empty}</p>
   return (
     <ul className="flex flex-col divide-y rounded-md border">
@@ -267,7 +268,30 @@ export function DependentsList({ dependents, onOpen, empty = 'Nothing reads this
   )
 }
 
-export function ProblemBanner({ problem, onDismiss, onOpenDependent }: { problem: ValidationProblemDetails; onDismiss?: () => void; onOpenDependent?: (d: Dependent) => void }) {
+/** Opens a tab of the dataset editor, optionally on one item. */
+export type OpenTab = (tab: DatasetTab, itemId: string | null) => void
+
+function ViolationList({ violations, onOpen }: { violations: Violation[]; onOpen?: OpenTab }) {
+  return (
+    <ul className="flex flex-col divide-y rounded-md border">
+      {violations.map((v, i) => (
+        <li key={`${v.code}-${v.target?.itemId}-${i}`} className="flex flex-col px-3 py-2 text-sm">
+          {v.target?.itemKey &&
+            (onOpen ? (
+              <button type="button" onClick={() => onOpen(v.target!.area as DatasetTab, v.target!.itemId ?? null)} className="w-fit truncate text-left font-mono text-xs hover:underline">
+                {v.target.itemKey}
+              </button>
+            ) : (
+              <span className="truncate font-mono text-xs">{v.target.itemKey}</span>
+            ))}
+          <span className="text-xs text-muted-foreground">{v.message}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function ProblemBanner({ problem, onDismiss, onOpen }: { problem: Problem; onDismiss?: () => void; onOpen?: OpenTab }) {
   const general = Object.entries(problem.errors).filter(([k]) => k === '' || k === 'columns')
   return (
     <div role="alert" className="flex gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm">
@@ -279,7 +303,7 @@ export function ProblemBanner({ problem, onDismiss, onOpenDependent }: { problem
           <p key={m}>{m}</p>
         ))}
         {!!Object.keys(problem.errors).length && !general.length && <p className="text-muted-foreground">Fix the highlighted inputs and save again.</p>}
-        {problem.dependents?.length ? <DependentsList dependents={problem.dependents} onOpen={onOpenDependent} /> : null}
+        {problem.violations?.length ? <ViolationList violations={problem.violations} onOpen={onOpen} /> : null}
       </div>
       {onDismiss && (
         <button
@@ -359,7 +383,7 @@ export function EditorFooter({ readOnly, saving, onCancel, onSave, saveLabel, ex
 export function useApiCall() {
   const refresh = useRefreshDatasets()
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<ValidationProblemDetails | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
   const run = useCallback(
     async <T,>(call: () => Promise<ApiResult<T>>): Promise<T | null> => {
       setSaving(true)

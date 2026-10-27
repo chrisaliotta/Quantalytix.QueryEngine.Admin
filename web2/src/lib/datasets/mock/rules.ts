@@ -1,7 +1,8 @@
-import type { DatasetTab, Dependent, PublicationViolation, SourceColumn, TenantCatalog, Periodicity } from '../contract'
-import type { StoredVersion } from './data'
+import type { DatasetDependent, DatasetPeriodicity, DatasetSourceColumn, DatasetTab, DatasetViolation } from '../contract'
+import type { TenantCatalog } from '../lookups'
+import { publishedMembers, type StoredVersion } from './data'
 
-const PERIOD_RANK: Record<Periodicity, number> = { day: 0, month: 1, quarter: 2, year: 3 }
+const PERIOD_RANK: Record<DatasetPeriodicity, number> = { day: 0, month: 1, quarter: 2, year: 3 }
 
 export const FIELD_REF = /\[f\.([A-Za-z0-9_]+)\]/g
 export const MEASURE_REF = /\[m\.([A-Za-z0-9_]+)\]/g
@@ -17,16 +18,17 @@ function duplicates<T>(items: T[], key: (x: T) => string) {
   return items.filter((x) => (seen.get(key(x)) ?? 0) > 1)
 }
 
-/** Every publication rule over one version. Runs on validate and publish. */
-export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, columnsOf: (name: string) => SourceColumn[] | null): PublicationViolation[] {
-  const out: PublicationViolation[] = []
-  const push = (code: string, tab: DatasetTab, itemId: string | null, itemKey: string | null, message: string) => out.push({ code, tab, itemId, itemKey, message })
+/** Every publication rule over one version. Runs on check, validate and publish. */
+export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, columnsOf: (name: string) => DatasetSourceColumn[] | null): DatasetViolation[] {
+  const out: DatasetViolation[] = []
+  const push = (code: string, area: DatasetTab, item: { id: string; key: string } | null, message: string) =>
+    out.push({ code, message, target: item ? { area, itemId: item.id, itemKey: item.key } : { area } })
 
   const fieldById = new Map(v.fields.map((f) => [f.id, f]))
-  const fieldByKey = new Map(v.fields.map((f) => [f.fieldKey, f]))
+  const fieldByKey = new Map(v.fields.map((f) => [f.key, f]))
   const bindingById = new Map(v.bindings.map((b) => [b.id, b]))
   const grainById = new Map(v.grains.map((g) => [g.id, g]))
-  const measureByKey = new Map(v.measures.map((m) => [m.measureKey, m]))
+  const measureByKey = new Map(v.measures.map((m) => [m.key, m]))
   const dim = (id: string | null) => catalog.dimensions.find((d) => d.id === id)
   const role = (id: string | null) => catalog.roles.find((r) => r.id === id)
   const timeBindings = v.bindings.filter((b) => b.bindingKind === 'time')
@@ -34,23 +36,19 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
 
   /* Settings */
   const columns = columnsOf(v.settings.sourceObject)
-  const kindOk = columns !== null
-  if (!kindOk) push('source_object_exists', 'settings', null, null, `${v.settings.sourceObjectKind} '${v.settings.sourceObject}' does not exist in the tenant database.`)
-  if (!v.settings.supportsAggregate && !v.settings.supportsDetail) push('version_supports_a_mode', 'settings', null, null, 'The version must support aggregate queries, detail queries, or both.')
+  if (columns === null) push('source_object_exists', 'settings', null, `${v.settings.sourceObjectKind} '${v.settings.sourceObject}' does not exist in the tenant database.`)
+  if (!v.settings.supportsAggregate && !v.settings.supportsDetail) push('version_supports_a_mode', 'settings', null, 'The version must support aggregate queries, detail queries, or both.')
   if (v.settings.defaultTimeBindingId && bindingById.get(v.settings.defaultTimeBindingId)?.bindingKind !== 'time')
-    push('default_time_binding_in_version', 'settings', null, null, 'The default time binding must be a time binding of this version.')
+    push('default_time_binding_in_version', 'settings', null, 'The default time binding must be a time binding of this version.')
 
   /* Fields */
-  duplicates(v.fields, (f) => f.fieldKey).forEach((f) => push('field_key_unique', 'fields', f.id, f.fieldKey, `Field key '${f.fieldKey}' is used by more than one field.`))
+  duplicates(v.fields, (f) => f.key).forEach((f) => push('field_key_unique', 'fields', f, `Field key '${f.key}' is used by more than one field.`))
   const colNames = new Set((columns ?? []).map((c) => c.name))
   for (const f of v.fields) {
-    if (columns) {
-      if (f.sourceColumn && f.fieldSourceKind !== 'expression' && !colNames.has(f.sourceColumn))
-        push('field_columns_exist', 'fields', f.id, f.fieldKey, `Column '${f.sourceColumn}' is not on ${v.settings.sourceObject}.`)
-    }
+    if (columns && f.sourceColumn && f.fieldSourceKind !== 'expression' && !colNames.has(f.sourceColumn))
+      push('field_columns_exist', 'fields', f, `Column '${f.sourceColumn}' is not on ${v.settings.sourceObject}.`)
     if (f.fieldSourceKind === 'expression') {
-      for (const key of refsOf(f.expressionText, FIELD_REF))
-        if (!fieldByKey.has(key)) push('expression_field_references', 'fields', f.id, f.fieldKey, `[f.${key}] is not a field of this version.`)
+      for (const key of refsOf(f.expressionText, FIELD_REF)) if (!fieldByKey.has(key)) push('expression_field_references', 'fields', f, `[f.${key}] is not a field of this version.`)
     }
   }
   // Cycles through expression fields.
@@ -69,20 +67,17 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
     visiting.delete(key)
     done.add(key)
   }
-  v.fields.forEach((f) => walk(f.fieldKey, []))
-  cyclic.forEach((k) => {
-    const f = fieldByKey.get(k)!
-    push('expression_field_acyclic', 'fields', f.id, f.fieldKey, `[f.${k}] reads itself through other expression fields.`)
-  })
+  v.fields.forEach((f) => walk(f.key, []))
+  cyclic.forEach((k) => push('expression_field_acyclic', 'fields', fieldByKey.get(k)!, `[f.${k}] reads itself through other expression fields.`))
 
   /* Grains */
-  duplicates(v.grains, (g) => g.grainKey).forEach((g) => push('grain_key_unique', 'grains', g.id, g.grainKey, `Grain key '${g.grainKey}' is used by more than one grain.`))
+  duplicates(v.grains, (g) => g.key).forEach((g) => push('grain_key_unique', 'grains', g, `Grain key '${g.key}' is used by more than one grain.`))
   for (const g of v.grains) {
-    if (g.fieldIds.some((id) => !fieldById.has(id))) push('grain_fields_in_version', 'grains', g.id, g.grainKey, 'Every grain component must be a field of this version.')
+    if (g.fieldIds.some((id) => !fieldById.has(id))) push('grain_fields_in_version', 'grains', g, 'Every grain component must be a field of this version.')
     if (g.grainKind === 'series')
       g.fieldIds
         .filter((id) => timeFieldIds.has(id))
-        .forEach((id) => push('series_grain_excludes_time_field', 'grains', g.id, g.grainKey, `A series grain must not include the time field '${fieldById.get(id)?.fieldKey}'.`))
+        .forEach((id) => push('series_grain_excludes_time_field', 'grains', g, `A series grain must not include the time field '${fieldById.get(id)?.key}'.`))
   }
 
   /* Bindings */
@@ -90,20 +85,20 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
   v.bindings.forEach((b) => b.dimensionRoleId && boundRoles.set(b.dimensionRoleId, (boundRoles.get(b.dimensionRoleId) ?? 0) + 1))
   for (const b of v.bindings) {
     const r = role(b.dimensionRoleId)
-    const key = b.bindingKind === 'time' ? (fieldById.get(b.sourceFieldId ?? '')?.fieldKey ?? 'time') : (r?.roleKey ?? b.id)
+    const item = { id: b.id, key: b.bindingKind === 'time' ? (fieldById.get(b.sourceFieldId ?? '')?.key ?? 'time') : (r?.key ?? b.id) }
     const d = b.bindingKind === 'time' ? dim(b.dimensionId) : dim(r?.dimensionId ?? null)
-    if (r && (boundRoles.get(r.id) ?? 0) > 1) push('bound_roles_distinct', 'bindings', b.id, key, `Role '${r.roleKey}' is bound more than once.`)
-    if (r && fieldByKey.has(r.roleKey)) push('bound_roles_distinct', 'bindings', b.id, key, `Role key '${r.roleKey}' equals the key of a field in this version.`)
-    if (b.sourceFieldId && !fieldById.has(b.sourceFieldId)) push('binding_fields_in_version', 'bindings', b.id, key, 'The source field is not a field of this version.')
-    if (b.time?.intervalEndFieldId && !fieldById.has(b.time.intervalEndFieldId)) push('binding_fields_in_version', 'bindings', b.id, key, 'The interval end field is not a field of this version.')
+    if (r && (boundRoles.get(r.id) ?? 0) > 1) push('bound_roles_distinct', 'bindings', item, `Role '${r.key}' is bound more than once.`)
+    if (r && fieldByKey.has(r.key)) push('bound_roles_distinct', 'bindings', item, `Role key '${r.key}' equals the key of a field in this version.`)
+    if (b.sourceFieldId && !fieldById.has(b.sourceFieldId)) push('binding_fields_in_version', 'bindings', item, 'The source field is not a field of this version.')
+    if (b.time?.intervalEndFieldId && !fieldById.has(b.time.intervalEndFieldId)) push('binding_fields_in_version', 'bindings', item, 'The interval end field is not a field of this version.')
     if (b.isGroupable && b.sourceFieldId && fieldById.get(b.sourceFieldId) && !fieldById.get(b.sourceFieldId)!.isGroupable && b.bindingKind !== 'time')
-      push('binding_source_field_groupable', 'bindings', b.id, key, `A groupable binding needs a groupable source field; '${fieldById.get(b.sourceFieldId)!.fieldKey}' is not.`)
+      push('binding_source_field_groupable', 'bindings', item, `A groupable binding needs a groupable source field; '${fieldById.get(b.sourceFieldId)!.key}' is not.`)
     if (b.bindingKind === 'mapped') {
       const ms = catalog.mappingSets.find((m) => m.id === b.mappingSetId)
-      if (!ms || ms.dimensionId !== r?.dimensionId) push('mapped_binding_mapping_set_dimension', 'bindings', b.id, key, "The mapping set must belong to the role's dimension.")
+      if (!ms || ms.dimensionId !== r?.dimensionId) push('mapped_binding_mapping_set_dimension', 'bindings', item, "The mapping set must belong to the role's dimension.")
     }
-    if (b.bindingKind === 'range' && d?.dimensionKind !== 'range') push('range_binding_dimension_kind', 'bindings', b.id, key, 'A range binding needs a role of a range-kind dimension.')
-    if (b.bindingKind === 'time' && d?.dimensionKind !== 'time') push('time_binding_dimension_kind', 'bindings', b.id, key, 'A time binding needs a time-kind dimension.')
+    if (b.bindingKind === 'range' && d?.kind !== 'range') push('range_binding_dimension_kind', 'bindings', item, 'A range binding needs a role of a range-kind dimension.')
+    if (b.bindingKind === 'time' && d?.kind !== 'time') push('time_binding_dimension_kind', 'bindings', item, 'A time binding needs a time-kind dimension.')
     if (b.bindingKind === 'bridge') {
       const src = bindingById.get(b.sourceDimensionBindingId ?? '')
       const srcDim = src ? (catalog.roles.find((x) => x.id === src.dimensionRoleId)?.dimensionId ?? null) : null
@@ -119,11 +114,11 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
         seen.add(cur.id)
         cur = bindingById.get(cur.sourceDimensionBindingId ?? '')
       }
-      if (!src || !br || br.fromDimensionId !== srcDim || br.toDimensionId !== r?.dimensionId || loops)
-        push('bridge_binding_route', 'bindings', b.id, key, loops ? 'The chain of source bindings loops.' : "The bridge must lead from the source binding's dimension into the role's dimension.")
+      if (!src || !br || br.sourceDimensionId !== srcDim || br.targetDimensionId !== r?.dimensionId || loops)
+        push('bridge_binding_route', 'bindings', item, loops ? 'The chain of source bindings loops.' : "The bridge must lead from the source binding's dimension into the role's dimension.")
     }
-    if (b.unmappedBehavior === 'unknown' && b.unknownMemberKey && d && !d.publishedMembers.some((m) => m.key === b.unknownMemberKey))
-      push('unknown_members_in_version', 'bindings', b.id, key, `'${b.unknownMemberKey}' is not a member of ${d.displayName}'s published version.`)
+    if (b.unmappedBehavior === 'unknown' && b.unknownMemberKey && d && !publishedMembers[d.id]?.members.some((m) => m.key === b.unknownMemberKey))
+      push('unknown_members_in_version', 'bindings', item, `'${b.unknownMemberKey}' is not a member of ${d.displayName}'s published version.`)
     if (b.bindingKind === 'time' && b.time) {
       const native = b.time.nativePeriodicity
       const finer = native ? b.time.allowedPeriodicities.filter((p) => PERIOD_RANK[p] < PERIOD_RANK[native]) : []
@@ -132,32 +127,26 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
           (m) => m.isEnabled && m.measureKind !== 'formula' && (m.timePolicy?.requiredTimeBindingId ?? v.settings.defaultTimeBindingId) === b.id && m.timePolicy?.partialIntervalBehavior !== 'uniform_estimate',
         )
         if (offending.length)
-          push(
-            'interval_estimates_for_finer_periods',
-            'bindings',
-            b.id,
-            key,
-            `${finer.join(', ')} is finer than native ${native}; ${offending.map((m) => m.measureKey).join(', ')} must use uniform_estimate.`,
-          )
+          push('interval_estimates_for_finer_periods', 'bindings', item, `${finer.join(', ')} is finer than native ${native}; ${offending.map((m) => m.key).join(', ')} must use uniform_estimate.`)
       }
     }
   }
 
   /* Measures */
-  duplicates(v.measures, (m) => m.measureKey).forEach((m) => push('measure_key_unique', 'measures', m.id, m.measureKey, `Measure key '${m.measureKey}' is used by more than one measure.`))
+  duplicates(v.measures, (m) => m.key).forEach((m) => push('measure_key_unique', 'measures', m, `Measure key '${m.key}' is used by more than one measure.`))
   for (const m of v.measures) {
     if (m.measureKind === 'formula') {
-      for (const ref of refsOf(m.expressionText, MEASURE_REF)) if (!measureByKey.has(ref)) push('formula_references_known_measures', 'measures', m.id, m.measureKey, `[m.${ref}] is not a measure of this version.`)
+      for (const ref of refsOf(m.expressionText, MEASURE_REF)) if (!measureByKey.has(ref)) push('formula_references_known_measures', 'measures', m, `[m.${ref}] is not a measure of this version.`)
     }
-    if (m.components.some((cp) => !fieldById.has(cp.fieldId))) push('component_fields_in_version', 'measures', m.id, m.measureKey, 'Every component must be a field of this version.')
-    if (m.measureKind === 'period_average' && !m.timePolicy) push('component_roles_match_kind', 'measures', m.id, m.measureKey, 'A period average always has a time policy.')
+    if (m.components.some((cp) => !fieldById.has(cp.fieldId))) push('component_fields_in_version', 'measures', m, 'Every component must be a field of this version.')
+    if (m.measureKind === 'period_average' && !m.timePolicy) push('component_roles_match_kind', 'measures', m, 'A period average always has a time policy.')
     const tp = m.timePolicy
     if (tp) {
       if (tp.requiredTimeBindingId && bindingById.get(tp.requiredTimeBindingId)?.bindingKind !== 'time')
-        push('time_policy_time_binding_in_version', 'measures', m.id, m.measureKey, 'The required time binding must be a time binding of this version.')
+        push('time_policy_time_binding_in_version', 'measures', m, 'The required time binding must be a time binding of this version.')
       if (tp.observationSelection !== 'all') {
         const g = grainById.get(tp.selectionDatasetGrainId ?? '')
-        if (!g || g.grainKind !== 'series') push('time_policy_series_grain', 'measures', m.id, m.measureKey, `'${tp.observationSelection}' selects per series; choose a series grain of this version.`)
+        if (!g || g.grainKind !== 'series') push('time_policy_series_grain', 'measures', m, `'${tp.observationSelection}' selects per series; choose a series grain of this version.`)
       }
     }
   }
@@ -177,31 +166,28 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
     mVisiting.delete(key)
     mDone.add(key)
   }
-  v.measures.forEach((m) => mWalk(m.measureKey, []))
-  mCyclic.forEach((k) => {
-    const m = measureByKey.get(k)!
-    push('formula_acyclic', 'measures', m.id, m.measureKey, `[m.${k}] depends on itself through other formulas.`)
-  })
+  v.measures.forEach((m) => mWalk(m.key, []))
+  mCyclic.forEach((k) => push('formula_acyclic', 'measures', measureByKey.get(k)!, `[m.${k}] depends on itself through other formulas.`))
 
   return out
 }
 
 /** Item id → everything that reads it. */
-export function dependentsOf(v: StoredVersion, catalog: TenantCatalog): Record<string, Dependent[]> {
-  const out: Record<string, Dependent[]> = {}
-  const add = (targetId: string | null | undefined, dep: Dependent) => {
+export function dependentsOf(v: StoredVersion, catalog: TenantCatalog): Record<string, DatasetDependent[]> {
+  const out: Record<string, DatasetDependent[]> = {}
+  const add = (targetId: string | null | undefined, dep: DatasetDependent) => {
     if (!targetId) return
     ;(out[targetId] ??= []).push(dep)
   }
-  const fieldByKey = new Map(v.fields.map((f) => [f.fieldKey, f]))
-  const measureByKey = new Map(v.measures.map((m) => [m.measureKey, m]))
+  const fieldByKey = new Map(v.fields.map((f) => [f.key, f]))
+  const measureByKey = new Map(v.measures.map((m) => [m.key, m]))
   const bindingKey = (b: StoredVersion['bindings'][number]) =>
-    b.bindingKind === 'time' ? `time · ${v.fields.find((f) => f.id === b.sourceFieldId)?.fieldKey ?? '—'}` : (catalog.roles.find((r) => r.id === b.dimensionRoleId)?.roleKey ?? 'binding')
+    b.bindingKind === 'time' ? `time · ${v.fields.find((f) => f.id === b.sourceFieldId)?.key ?? '—'}` : (catalog.roles.find((r) => r.id === b.dimensionRoleId)?.key ?? 'binding')
 
   for (const f of v.fields)
-    for (const key of refsOf(f.expressionText, FIELD_REF)) add(fieldByKey.get(key)?.id, { tab: 'fields', itemId: f.id, itemKey: f.fieldKey, relation: 'expression', blocksDelete: false })
+    for (const key of refsOf(f.expressionText, FIELD_REF)) add(fieldByKey.get(key)?.id, { tab: 'fields', itemId: f.id, itemKey: f.key, relation: 'expression', blocksDelete: false })
 
-  for (const g of v.grains) g.fieldIds.forEach((id) => add(id, { tab: 'grains', itemId: g.id, itemKey: g.grainKey, relation: `${g.grainKind} grain component`, blocksDelete: true }))
+  for (const g of v.grains) g.fieldIds.forEach((id) => add(id, { tab: 'grains', itemId: g.id, itemKey: g.key, relation: `${g.grainKind} grain component`, blocksDelete: true }))
 
   for (const b of v.bindings) {
     const key = bindingKey(b)
@@ -213,11 +199,11 @@ export function dependentsOf(v: StoredVersion, catalog: TenantCatalog): Record<s
   if (v.settings.defaultTimeBindingId) add(v.settings.defaultTimeBindingId, { tab: 'settings', itemId: null, itemKey: 'Settings', relation: 'default time binding', blocksDelete: true })
 
   for (const m of v.measures) {
-    m.components.forEach((cp) => add(cp.fieldId, { tab: 'measures', itemId: m.id, itemKey: m.measureKey, relation: `${cp.role} component`, blocksDelete: true }))
-    for (const key of refsOf(m.rowFilterExpression, FIELD_REF)) add(fieldByKey.get(key)?.id, { tab: 'measures', itemId: m.id, itemKey: m.measureKey, relation: 'row filter', blocksDelete: false })
-    for (const key of refsOf(m.expressionText, MEASURE_REF)) add(measureByKey.get(key)?.id, { tab: 'measures', itemId: m.id, itemKey: m.measureKey, relation: 'formula', blocksDelete: false })
-    add(m.timePolicy?.requiredTimeBindingId, { tab: 'measures', itemId: m.id, itemKey: m.measureKey, relation: 'required time binding', blocksDelete: true })
-    add(m.timePolicy?.selectionDatasetGrainId, { tab: 'measures', itemId: m.id, itemKey: m.measureKey, relation: 'selects by series grain', blocksDelete: true })
+    m.components.forEach((cp) => add(cp.fieldId, { tab: 'measures', itemId: m.id, itemKey: m.key, relation: `${cp.role} component`, blocksDelete: true }))
+    for (const key of refsOf(m.rowFilterExpression, FIELD_REF)) add(fieldByKey.get(key)?.id, { tab: 'measures', itemId: m.id, itemKey: m.key, relation: 'row filter', blocksDelete: false })
+    for (const key of refsOf(m.expressionText, MEASURE_REF)) add(measureByKey.get(key)?.id, { tab: 'measures', itemId: m.id, itemKey: m.key, relation: 'formula', blocksDelete: false })
+    add(m.timePolicy?.requiredTimeBindingId, { tab: 'measures', itemId: m.id, itemKey: m.key, relation: 'required time binding', blocksDelete: true })
+    add(m.timePolicy?.selectionDatasetGrainId, { tab: 'measures', itemId: m.id, itemKey: m.key, relation: 'selects by series grain', blocksDelete: true })
   }
   return out
 }

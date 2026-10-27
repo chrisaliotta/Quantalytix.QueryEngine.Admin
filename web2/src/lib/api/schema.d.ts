@@ -201,6 +201,387 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/source-objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** List the tables and views of the tenant database */
+        get: operations["listSourceObjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/source-objects/{kind}/{name}/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                kind: components["parameters"]["DatasetSourceObjectKindPath"];
+                /** @description The table or view name. */
+                name: components["parameters"]["DatasetSourceObjectNamePath"];
+            };
+            cookie?: never;
+        };
+        /** List the columns of a table or view */
+        get: operations["getSourceColumns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** List datasets with their version summaries */
+        get: operations["listDatasets"];
+        put?: never;
+        /**
+         * Create a dataset and its draft version 1
+         * @description Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a draft whose fields read them.
+         */
+        post: operations["createDataset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/datasets/{datasetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        /** Get one dataset with its version summaries */
+        get: operations["getDataset"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a dataset and all its versions
+         * @description Allowed only when every version is a draft or validated and no release lists the dataset (D10, OI-17).
+         */
+        delete: operations["deleteDataset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/datasets/{datasetId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tell whether a dataset can be deleted, and why not
+         * @description Never writes. Reasons carry the codes `dataset_version_not_deletable` (a version is published or retired) and `dataset_in_release` (a release lists the dataset).
+         */
+        get: operations["checkDeleteDataset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/datasets/{datasetId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a draft version, empty or cloned from another version of the dataset */
+        post: operations["createDatasetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        /** Get the whole content of one dataset version */
+        get: operations["getDatasetVersion"];
+        put?: never;
+        post?: never;
+        /** Delete a draft or validated version that no release pins */
+        delete: operations["deleteDatasetDraft"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply staged operations to a dataset version in memory and return the result
+         * @description Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01).
+         */
+        post: operations["previewDatasetChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply and write staged operations to a dataset version
+         * @description Replays the operations onto the stored version (last write wins, OI-02) and writes them; any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column.
+         */
+        post: operations["commitDatasetChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the publication rules on a dataset version without writing
+         * @description Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is a `DatasetTab`.
+         */
+        post: operations["checkDatasetVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a draft to validated when every publication rule passes */
+        post: operations["validateDatasetVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a draft or validated version when every publication rule passes
+         * @description A draft is validated first, in the same call.
+         */
+        post: operations["publishDatasetVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Return a validated version to draft */
+        post: operations["reopenDatasetVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a published version that the active release does not pin */
+        post: operations["retireDatasetVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+                /** @description A field of the version. */
+                fieldId: components["parameters"]["DatasetFieldIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a JSON path field to its source object's materialized view
+         * @description Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on any non-retired version: storage does not change what the version means.
+         */
+        post: operations["materializeDatasetField"];
+        /**
+         * Remove a field's column from the materialized view
+         * @description The field reads the JSON path again; the view is dropped when no column is left.
+         */
+        delete: operations["dematerializeDatasetField"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+                /** @description A field of the version. */
+                fieldId: components["parameters"]["DatasetFieldIdPath"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger a refresh of a materialized field */
+        post: operations["refreshDatasetFieldMaterialization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/calculation-models": {
         parameters: {
             query?: never;
@@ -1042,6 +1423,477 @@ export interface components {
             /** @description What the connection reached, or why it is rejected. */
             message: string;
         };
+        /** @enum {string} */
+        DatasetSourceObjectKind: "table" | "view";
+        /** @enum {string} */
+        DatasetFieldSourceKind: "column" | "json_path" | "expression";
+        /** @enum {string} */
+        DatasetDataType: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp" | "json";
+        /** @enum {string} */
+        DatasetGrainKind: "row" | "series";
+        /** @enum {string} */
+        DatasetBindingKind: "direct" | "mapped" | "range" | "bridge" | "time";
+        /** @enum {string} */
+        DatasetRaggedBehavior: "self" | "exclude";
+        /** @enum {string} */
+        DatasetPeriodAlignment: "observation" | "start" | "end";
+        /** @enum {string} */
+        DatasetUnmappedBehavior: "exclude" | "unknown";
+        /** @enum {string} */
+        DatasetTimeValueType: "date" | "timestamp";
+        /** @enum {string} */
+        DatasetObservationKind: "instant" | "snapshot" | "interval";
+        /** @enum {string} */
+        DatasetPeriodicity: "day" | "month" | "quarter" | "year";
+        /** @enum {string} */
+        DatasetCumulativeOrigin: "output_range_start" | "fixed_start";
+        /** @enum {string} */
+        DatasetMeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
+        /** @enum {string} */
+        DatasetAggregationFunction: "sum" | "avg" | "min" | "max" | "count" | "count_distinct";
+        /** @enum {string} */
+        DatasetComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
+        /** @enum {string} */
+        DatasetValueNullBehavior: "exclude" | "zero";
+        /** @enum {string} */
+        DatasetNegativeWeightBehavior: "allow" | "exclude";
+        /** @enum {string} */
+        DatasetEmptySetBehavior: "null" | "zero";
+        /** @enum {string} */
+        DatasetBridgeFactorBehavior: "ignore" | "value";
+        /** @enum {string} */
+        DatasetBridgeAllocationBehavior: "apply" | "ignore";
+        /** @enum {string} */
+        DatasetTotalBehavior: "recompute" | "sum_children";
+        /** @enum {string} */
+        DatasetRoundingMode: "half_up" | "half_even" | "down" | "up" | "truncate";
+        /** @enum {string} */
+        DatasetObservationSelection: "all" | "first_in_period" | "last_in_period" | "at_start" | "at_end";
+        /** @enum {string} */
+        DatasetValueTimeRole: "point" | "interval_open" | "interval_close";
+        /** @enum {string} */
+        DatasetBoundaryMatch: "exact" | "on_or_before" | "strictly_before";
+        /** @enum {string} */
+        DatasetDurationUnit: "calendar_day" | "elapsed_second";
+        /** @enum {string} */
+        DatasetPartialIntervalBehavior: "exact_only" | "uniform_estimate";
+        /** @enum {string} */
+        DatasetMissingPeriodBehavior: "null" | "zero";
+        /** @enum {string} */
+        DatasetMaterializationState: "building" | "ready" | "failed";
+        /**
+         * @description Editor tab; the `target.area` of a dataset violation and the tab of a dependent.
+         * @enum {string}
+         */
+        DatasetTab: "fields" | "grains" | "bindings" | "measures" | "settings";
+        DatasetSourceObject: {
+            name: string;
+            kind: components["schemas"]["DatasetSourceObjectKind"];
+            /** @description Created by the API through "New dataset" and registered (OI-33); fields may add columns to it. */
+            isManaged: boolean;
+            /** @description Null when the engine has not measured the object yet. */
+            stats: components["schemas"]["DatasetSourceObjectStats"] | null;
+        };
+        /** @description Read live from `information_schema` with a short cache (OI-34). */
+        DatasetSourceObjectStats: {
+            /** Format: int64 */
+            rowCount: number;
+            /**
+             * Format: int64
+             * @description On-disk size; a view reports its materialized storage, 0 if none.
+             */
+            sizeBytes: number;
+            measuredAt: components["schemas"]["Timestamp"];
+        };
+        DatasetSourceColumn: {
+            name: string;
+            nativeType: string;
+            /** @description The field type this column reads as; null when fields cannot read it. */
+            mappedType: components["schemas"]["DatasetDataType"] | null;
+            numericPrecision: number | null;
+            numericScale: number | null;
+            isNullable: boolean;
+            /** @description The API added the column on a field's behalf (`createColumn`). */
+            isGenerated: boolean;
+        };
+        /** @description The dataset identity (`qe_dataset`), shared by every version. */
+        Dataset: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            isEnabled: boolean;
+        };
+        /** @description Identity edits; the key is fixed after creation (OI-36). */
+        DatasetPatch: {
+            displayName?: string;
+            isEnabled?: boolean;
+        };
+        /** @description A release that pins the version. */
+        DatasetReleasePin: {
+            releaseId: components["schemas"]["Id"];
+            releaseKey: string;
+            isActive: boolean;
+        };
+        DatasetVersionSummary: {
+            id: components["schemas"]["Id"];
+            datasetId: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            sourceObject: string;
+            createdAt: components["schemas"]["Timestamp"];
+            publishedAt: components["schemas"]["Timestamp"] | null;
+            /** @description The version this one was cloned from (SG-04, OI-12). */
+            clonedFromVersionId: string | null;
+            releases: components["schemas"]["DatasetReleasePin"][];
+        };
+        DatasetListItem: components["schemas"]["Dataset"] & {
+            /** @description Newest first. */
+            versions: components["schemas"]["DatasetVersionSummary"][];
+            /** @description The version the active release pins; what the engine reads. */
+            activeVersionId: string | null;
+            /** @description Statistics of the latest version's source object. */
+            storage: components["schemas"]["DatasetSourceObjectStats"] | null;
+        };
+        DatasetVersionSettings: {
+            sourceObjectKind: components["schemas"]["DatasetSourceObjectKind"];
+            sourceObject: string;
+            supportsAggregate: boolean;
+            supportsDetail: boolean;
+            defaultTimeBindingId: string | null;
+            expressionLanguageVersion: string;
+            securityPolicyKey: string | null;
+            /** @description Free JSON text; carries no query semantics. */
+            properties: string;
+        };
+        /** @description Something that reads an item of the version; computed from the delete-blocker graph (OI-35). */
+        DatasetDependent: {
+            tab: components["schemas"]["DatasetTab"];
+            /** @description Null for the settings tab. */
+            itemId: string | null;
+            itemKey: string;
+            /** @description How the dependent reads the item, such as "grain component", "formula" or "default time binding". */
+            relation: string;
+            blocksDelete: boolean;
+        };
+        /** @description The whole editable content of one version; the state of its change set. */
+        DatasetVersion: components["schemas"]["DatasetVersionSummary"] & {
+            settings: components["schemas"]["DatasetVersionSettings"];
+            fields: components["schemas"]["DatasetField"][];
+            grains: components["schemas"]["DatasetGrain"][];
+            bindings: components["schemas"]["DatasetBinding"][];
+            measures: components["schemas"]["DatasetMeasure"][];
+            /** @description Item id to what reads it. */
+            dependents: {
+                [key: string]: components["schemas"]["DatasetDependent"][];
+            };
+        };
+        /** @description The field's column in its source object's materialized view; state, refresh time and error come from the view's refresh status (OI-32). */
+        DatasetFieldMaterialization: {
+            viewName: string;
+            columnName: string;
+            state: components["schemas"]["DatasetMaterializationState"];
+            requestedAt: components["schemas"]["Timestamp"];
+            refreshedAt: components["schemas"]["Timestamp"] | null;
+            error: string | null;
+        };
+        /** @description The writable content of a field, shared by `DatasetField` and `DatasetFieldInput`. */
+        DatasetFieldDefinition: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            fieldSourceKind: components["schemas"]["DatasetFieldSourceKind"];
+            sourceColumn: string | null;
+            jsonPath: string | null;
+            expressionText: string | null;
+            dataType: components["schemas"]["DatasetDataType"];
+            numericPrecision: number | null;
+            numericScale: number | null;
+            isNullable: boolean;
+            unitKey: string | null;
+            isSelectable: boolean;
+            isFilterable: boolean;
+            isSortable: boolean;
+            isGroupable: boolean;
+            isEnabled: boolean;
+        };
+        DatasetField: {
+            id: components["schemas"]["Id"];
+            /** @description JSON path fields only; managed by the materialization sub-resource, not by `saveField`. */
+            materialization: components["schemas"]["DatasetFieldMaterialization"] | null;
+        } & components["schemas"]["DatasetFieldDefinition"];
+        DatasetFieldInput: components["schemas"]["DatasetFieldDefinition"] & {
+            /** @description Absent or temporary (`tmp:<uuid>`) to create; a stored id to update. */
+            id?: components["schemas"]["Id"];
+            /** @description Column fields on a managed table: `sourceColumn` names a new column, added at commit (typed from `dataType`, precision, scale and nullability) before the field is written (OI-33). */
+            createColumn?: boolean;
+            /** @description JSON path fields; request materialization once the field is written. */
+            materialize?: boolean;
+        };
+        DatasetGrainDefinition: {
+            key: components["schemas"]["Key"];
+            grainKind: components["schemas"]["DatasetGrainKind"];
+            /** @description Ordered; position is the component ordinal. */
+            fieldIds: components["schemas"]["Id"][];
+        };
+        DatasetGrain: {
+            id: components["schemas"]["Id"];
+        } & components["schemas"]["DatasetGrainDefinition"];
+        DatasetGrainInput: components["schemas"]["DatasetGrainDefinition"] & {
+            /** @description Absent or temporary (`tmp:<uuid>`) to create; a stored id to update. */
+            id?: components["schemas"]["Id"];
+        };
+        /** @description The time axis of a `time` binding (`qe_time_binding`). */
+        DatasetTimeBinding: {
+            timeValueType: components["schemas"]["DatasetTimeValueType"];
+            sourceTimeZone: string | null;
+            defaultQueryTimeZone: string;
+            observationKind: components["schemas"]["DatasetObservationKind"];
+            nativePeriodicity: components["schemas"]["DatasetPeriodicity"] | null;
+            intervalEndFieldId: string | null;
+            allowedPeriodicities: components["schemas"]["DatasetPeriodicity"][];
+            cumulativeOrigin: components["schemas"]["DatasetCumulativeOrigin"];
+            /** Format: date */
+            cumulativeFixedStart: string | null;
+        };
+        DatasetBindingDefinition: {
+            bindingKind: components["schemas"]["DatasetBindingKind"];
+            /** @description Non-time bindings; the role requests address the binding by. */
+            dimensionRoleId: string | null;
+            /** @description Time bindings; the time-kind dimension. */
+            dimensionId: string | null;
+            sourceFieldId: string | null;
+            mappingSetId: string | null;
+            bridgeId: string | null;
+            sourceDimensionBindingId: string | null;
+            raggedBehavior: components["schemas"]["DatasetRaggedBehavior"] | null;
+            defaultPeriodAlignment: components["schemas"]["DatasetPeriodAlignment"];
+            unmappedBehavior: components["schemas"]["DatasetUnmappedBehavior"] | null;
+            unknownMemberKey: string | null;
+            /** @description Set by the server; a required binding cannot be disabled or deleted. */
+            isRequired: boolean;
+            isGroupable: boolean;
+            isFilterable: boolean;
+            isEnabled: boolean;
+            time: components["schemas"]["DatasetTimeBinding"] | null;
+        };
+        DatasetBinding: {
+            id: components["schemas"]["Id"];
+        } & components["schemas"]["DatasetBindingDefinition"];
+        DatasetBindingInput: components["schemas"]["DatasetBindingDefinition"] & {
+            /** @description Absent or temporary (`tmp:<uuid>`) to create; a stored id to update. */
+            id?: components["schemas"]["Id"];
+        };
+        DatasetMeasureComponent: {
+            role: components["schemas"]["DatasetComponentRole"];
+            fieldId: components["schemas"]["Id"];
+        };
+        DatasetMeasureTimePolicy: {
+            requiredTimeBindingId: string | null;
+            selectionDatasetGrainId: string | null;
+            observationSelection: components["schemas"]["DatasetObservationSelection"];
+            valueTimeRole: components["schemas"]["DatasetValueTimeRole"];
+            boundaryMatch: components["schemas"]["DatasetBoundaryMatch"];
+            /** Format: int64 */
+            maxLookbackSeconds: number | null;
+            durationUnit: components["schemas"]["DatasetDurationUnit"];
+            partialIntervalBehavior: components["schemas"]["DatasetPartialIntervalBehavior"];
+            missingPeriodBehavior: components["schemas"]["DatasetMissingPeriodBehavior"];
+        };
+        DatasetMeasureDefinition: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            isEnabled: boolean;
+            measureKind: components["schemas"]["DatasetMeasureKind"];
+            aggregationFunction: components["schemas"]["DatasetAggregationFunction"] | null;
+            /** @description Formula measures; composes other measures (`[m.key]`). */
+            expressionText: string | null;
+            implementationKey: string | null;
+            implementationVersion: string | null;
+            configurationJson: string | null;
+            components: components["schemas"]["DatasetMeasureComponent"][];
+            rowFilterExpression: string | null;
+            valueNullBehavior: components["schemas"]["DatasetValueNullBehavior"];
+            negativeWeightBehavior: components["schemas"]["DatasetNegativeWeightBehavior"];
+            emptySetBehavior: components["schemas"]["DatasetEmptySetBehavior"];
+            bridgeFactorBehavior: components["schemas"]["DatasetBridgeFactorBehavior"];
+            bridgeAllocationBehavior: components["schemas"]["DatasetBridgeAllocationBehavior"];
+            totalBehavior: components["schemas"]["DatasetTotalBehavior"];
+            outputDataType: components["schemas"]["DatasetDataType"];
+            outputPrecision: number | null;
+            outputScale: number | null;
+            roundingMode: components["schemas"]["DatasetRoundingMode"];
+            unitKey: string | null;
+            accumulatorPrecision: number;
+            accumulatorScale: number;
+            timePolicy: components["schemas"]["DatasetMeasureTimePolicy"] | null;
+        };
+        DatasetMeasure: {
+            id: components["schemas"]["Id"];
+        } & components["schemas"]["DatasetMeasureDefinition"];
+        DatasetMeasureInput: components["schemas"]["DatasetMeasureDefinition"] & {
+            /** @description Absent or temporary (`tmp:<uuid>`) to create; a stored id to update. */
+            id?: components["schemas"]["Id"];
+        };
+        /** @description A physical column the API creates; each one also becomes a column field of the same name. */
+        DatasetNewColumnInput: {
+            name: string;
+            dataType: components["schemas"]["DatasetDataType"];
+            numericPrecision: number | null;
+            numericScale: number | null;
+            isNullable: boolean;
+        };
+        DatasetCreateInput: components["schemas"]["DatasetCreateFromExistingInput"] | components["schemas"]["DatasetCreateWithNewTableInput"];
+        /** @description Registers a table or view that already exists in the tenant database. */
+        DatasetCreateFromExistingInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "existing";
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            sourceObjectKind: components["schemas"]["DatasetSourceObjectKind"];
+            sourceObject: string;
+        };
+        /** @description Creates and registers a managed table with these columns (possibly none), then a draft whose fields read them. */
+        DatasetCreateWithNewTableInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "new";
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            tableName: string;
+            columns: components["schemas"]["DatasetNewColumnInput"][];
+        };
+        DatasetCreateDraftInput: components["schemas"]["DatasetCreateEmptyDraftInput"] | components["schemas"]["DatasetCloneDraftInput"];
+        DatasetCreateEmptyDraftInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "empty";
+            sourceObjectKind: components["schemas"]["DatasetSourceObjectKind"];
+            sourceObject: string;
+        };
+        DatasetCloneDraftInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "clone";
+            fromVersionId: components["schemas"]["Id"];
+        };
+        /** @description One staged edit of a dataset version, named after the `DatasetsApi` edit method it records. */
+        DatasetOperation: components["schemas"]["DatasetUpdateDatasetOperation"] | components["schemas"]["DatasetSaveSettingsOperation"] | components["schemas"]["DatasetRenameSourceTableOperation"] | components["schemas"]["DatasetSaveFieldOperation"] | components["schemas"]["DatasetDeleteFieldOperation"] | components["schemas"]["DatasetAddFieldsFromColumnsOperation"] | components["schemas"]["DatasetSaveGrainOperation"] | components["schemas"]["DatasetDeleteGrainOperation"] | components["schemas"]["DatasetSaveBindingOperation"] | components["schemas"]["DatasetDeleteBindingOperation"] | components["schemas"]["DatasetSaveMeasureOperation"] | components["schemas"]["DatasetDeleteMeasureOperation"];
+        /** @description Edits the dataset identity; the only operation a version that is not a draft accepts. */
+        DatasetUpdateDatasetOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateDataset";
+            patch: components["schemas"]["DatasetPatch"];
+        };
+        DatasetSaveSettingsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveSettings";
+            settings: components["schemas"]["DatasetVersionSettings"];
+        };
+        /** @description Renames the managed table the draft reads; refused while a published version reads it (OI-33). */
+        DatasetRenameSourceTableOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "renameSourceTable";
+            tableName: string;
+        };
+        DatasetSaveFieldOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveField";
+            input: components["schemas"]["DatasetFieldInput"];
+        };
+        DatasetDeleteFieldOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteField";
+            fieldId: components["schemas"]["Id"];
+        };
+        /** @description Creates one column field per named column. The created fields carry temporary ids that stay the same on every replay of the same operation list. */
+        DatasetAddFieldsFromColumnsOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "addFieldsFromColumns";
+            columns: string[];
+        };
+        DatasetSaveGrainOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveGrain";
+            input: components["schemas"]["DatasetGrainInput"];
+        };
+        DatasetDeleteGrainOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteGrain";
+            grainId: components["schemas"]["Id"];
+        };
+        DatasetSaveBindingOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveBinding";
+            input: components["schemas"]["DatasetBindingInput"];
+        };
+        DatasetDeleteBindingOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteBinding";
+            bindingId: components["schemas"]["Id"];
+        };
+        DatasetSaveMeasureOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveMeasure";
+            input: components["schemas"]["DatasetMeasureInput"];
+        };
+        DatasetDeleteMeasureOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteMeasure";
+            measureId: components["schemas"]["Id"];
+        };
+        DatasetChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["DatasetOperation"][];
+        };
+        DatasetChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["DatasetVersion"];
+        };
+        DatasetChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["DatasetVersion"];
+        };
         /**
          * @description 1.1 adds `POWER`; 1.2 adds `@param`, text comparisons and `YEARFRAC(convention)` (C3).
          * @enum {string}
@@ -1855,6 +2707,14 @@ export interface components {
     parameters: {
         /** @description The tenant directory key. */
         TenantId: string;
+        DatasetIdPath: components["schemas"]["Id"];
+        /** @description A dataset version id. */
+        DatasetVersionIdPath: components["schemas"]["Id"];
+        /** @description A field of the version. */
+        DatasetFieldIdPath: components["schemas"]["Id"];
+        DatasetSourceObjectKindPath: components["schemas"]["DatasetSourceObjectKind"];
+        /** @description The table or view name. */
+        DatasetSourceObjectNamePath: string;
         /** @description The calculation model id. */
         ModelId: components["schemas"]["Id"];
         ReportId: components["schemas"]["Id"];
@@ -2174,6 +3034,621 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description The directory has no such tenant. */
             404: components["responses"]["NotFound"];
+        };
+    };
+    listSourceObjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every table and view, with live storage statistics (OI-34). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetSourceObject"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getSourceColumns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                kind: components["parameters"]["DatasetSourceObjectKindPath"];
+                /** @description The table or view name. */
+                name: components["parameters"]["DatasetSourceObjectNamePath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The object's columns in ordinal order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetSourceColumn"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description No table or view of that kind and name. */
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listDatasets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every dataset of the tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetListItem"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createDataset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetCreateInput"];
+            };
+        };
+        responses: {
+            /** @description The dataset, with draft version 1. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetListItem"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The dataset key or table name is taken. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDataset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The dataset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetListItem"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDataset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Delete blocked; `violations` are the reasons of the delete check. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDeleteDataset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createDatasetDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                datasetId: components["parameters"]["DatasetIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetCreateDraftInput"];
+            };
+        };
+        responses: {
+            /** @description The new draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The dataset already has an open (draft or validated) version (OI-23). */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings, fields, grains, bindings, measures and dependents. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersion"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDatasetDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is published or retired, or a release pins it. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    previewDatasetChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description The operations apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitDatasetChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    checkDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    validateDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The validated version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not a draft. */
+            409: components["responses"]["Conflict"];
+            /** @description A publication rule fails; nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    publishDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The published version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not a draft or validated. */
+            409: components["responses"]["Conflict"];
+            /** @description A publication rule fails; nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    reopenDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not validated. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    retireDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The retired version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetVersionSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not published. */
+            409: components["responses"]["Conflict"];
+            /** @description The active release pins the version. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    materializeDatasetField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+                /** @description A field of the version. */
+                fieldId: components["parameters"]["DatasetFieldIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The field with its materialization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetField"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is retired or the field is not a JSON path field. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    dematerializeDatasetField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+                /** @description A field of the version. */
+                fieldId: components["parameters"]["DatasetFieldIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The field, with `materialization` null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetField"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is retired or the field is not a JSON path field. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    refreshDatasetFieldMaterialization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+                /** @description A field of the version. */
+                fieldId: components["parameters"]["DatasetFieldIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The field, with `materialization.state` = `building`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetField"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is retired or the field is not materialized. */
+            409: components["responses"]["Conflict"];
         };
     };
     listModels: {

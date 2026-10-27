@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useCatalog, useDatasetsApi, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { ComponentRole, DatasetVersion, MeasureInput, MeasureKind, TimePolicy, ValidationProblemDetails } from '@/lib/datasets/contract'
+import type { DatasetComponentRole, DatasetVersion, DatasetMeasureInput, DatasetMeasureKind, DatasetMeasureTimePolicy, Problem } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 import { bindingLabel } from './bindings-section'
 import type { SectionProps } from './dataset-detail'
@@ -31,7 +31,7 @@ export function formulaRefs(expression: string | null) {
   return [...(expression ?? '').matchAll(/\[m\.([\w.-]+)\]/g)].map((m) => m[1])
 }
 
-const blankPolicy = (): TimePolicy => ({
+const blankPolicy = (): DatasetMeasureTimePolicy => ({
   requiredTimeBindingId: null,
   selectionDatasetGrainId: null,
   observationSelection: 'all',
@@ -43,7 +43,7 @@ const blankPolicy = (): TimePolicy => ({
   missingPeriodBehavior: 'null',
 })
 
-const PRESETS: { label: string; description: string; patch: Partial<TimePolicy> }[] = [
+const PRESETS: { label: string; description: string; patch: Partial<DatasetMeasureTimePolicy> }[] = [
   {
     label: 'Ending balance',
     description: 'Last value at or before the period end',
@@ -53,8 +53,8 @@ const PRESETS: { label: string; description: string; patch: Partial<TimePolicy> 
   { label: 'Period average', description: 'All observations, weighted by calendar days', patch: { observationSelection: 'all', durationUnit: 'calendar_day', boundaryMatch: 'exact', maxLookbackSeconds: null } },
 ]
 
-const blankMeasure = (): MeasureInput => ({
-  measureKey: '',
+const blankMeasure = (): DatasetMeasureInput => ({
+  key: '',
   displayName: '',
   isEnabled: true,
   measureKind: 'aggregate',
@@ -81,7 +81,7 @@ const blankMeasure = (): MeasureInput => ({
   timePolicy: null,
 })
 
-function measureSummary(m: MeasureInput) {
+function measureSummary(m: DatasetMeasureInput) {
   if (m.measureKind === 'formula') return m.expressionText ?? '—'
   if (m.measureKind === 'specialized') return `${m.implementationKey ?? '?'}@${m.implementationVersion ?? '?'}`
   if (m.measureKind === 'aggregate') return m.aggregationFunction ?? '—'
@@ -92,7 +92,7 @@ const NEW_ROW_ID = '__new__'
 const scrollToRow = (id: string) => requestAnimationFrame(() => document.querySelector(`[data-row-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }))
 
 /** Switching kind drops components and kind-specific inputs that no longer apply. */
-function withMeasureKind(x: MeasureInput, kind: MeasureKind, allowedRoles: Set<string>): MeasureInput {
+function withMeasureKind(x: DatasetMeasureInput, kind: DatasetMeasureKind, allowedRoles: Set<string>): DatasetMeasureInput {
   return {
     ...x,
     measureKind: kind,
@@ -112,23 +112,23 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
   const refresh = useRefreshDatasets()
   const { data: vocab } = useVocabularies()
   const { run, problem, setProblem } = useApiCall()
-  const [newDraft, setNewDraftState] = useState<MeasureInput | null>(null)
-  const [newProblem, setNewProblem] = useState<ValidationProblemDetails | null>(null)
+  const [newDraft, setNewDraftState] = useState<DatasetMeasureInput | null>(null)
+  const [newProblem, setNewProblem] = useState<Problem | null>(null)
   const [creating, setCreating] = useState(false)
   const newRef = useRef(newDraft)
-  const fieldKey = (id: string) => version.fields.find((f) => f.id === id)?.fieldKey ?? '?'
+  const fieldKey = (id: string) => version.fields.find((f) => f.id === id)?.key ?? '?'
   const kindLabel = (k: string) => vocab?.measureKind.find((t) => t.value === k)?.label ?? k
   const kindOptions = (vocab?.measureKind ?? []).map((t) => ({ value: t.value, label: t.label }))
   const aggOptions = (vocab?.aggregationFunction ?? []).map((t) => ({ value: t.value, label: t.label }))
-  const allowedRoles = (k: MeasureKind) => new Set<string>((vocab?.componentRolesByKind[k] ?? []).map((r) => r.role))
+  const allowedRoles = (k: DatasetMeasureKind) => new Set<string>((vocab?.componentRolesByKind[k] ?? []).map((r) => r.role))
   const focused = editingId ? version.measures.find((m) => m.id === editingId) : undefined
-  const patch = (m: MeasureInput & { id: string }, p: Partial<MeasureInput>) => run(() => api.saveMeasure(version.id, { ...m, ...p }))
+  const patch = (m: DatasetMeasureInput & { id: string }, p: Partial<DatasetMeasureInput>) => run(() => api.saveMeasure(version.id, { ...m, ...p }))
 
-  const setNewDraft = (d: MeasureInput | null) => {
+  const setNewDraft = (d: DatasetMeasureInput | null) => {
     newRef.current = d
     setNewDraftState(d)
   }
-  const editNew = (update: (d: MeasureInput) => MeasureInput) => {
+  const editNew = (update: (d: DatasetMeasureInput) => DatasetMeasureInput) => {
     if (!newRef.current) return
     setNewDraft(update(newRef.current))
     if (newProblem) setNewProblem(null)
@@ -191,11 +191,11 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
         help="Backend-defined calculations that aggregate requests ask for by key: which fields feed them, how they aggregate and treat nulls, weights, bridges and totals, and which observation counts per period."
         action={
           !readOnly && (
-            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.measureKey.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
+            <RowEditActions adding={!!newDraft} creating={creating} canCreate={!!newDraft?.key.trim()} onStartNew={startNew} onCreate={createNew} onCancelNew={cancelNew} />
           )
         }
       />
-      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpenDependent={(d) => onOpen(d.tab, d.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => setProblem(null)} onOpen={onOpen} />}
       <SplitView panel={side}>
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
@@ -214,12 +214,12 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
           <tbody className="divide-y">
             {version.measures.map((m) => (
               <tr key={m.id} data-row-id={m.id} aria-selected={m.id === editingId} onClick={() => focus(m.id)} className={cn(focusRowClass(m.id === editingId), !m.isEnabled && 'text-muted-foreground')}>
-                <Td className="font-mono text-xs">{m.measureKey}</Td>
+                <Td className="font-mono text-xs">{m.key}</Td>
                 <Td>
                   {readOnly ? (
                     <span className="text-sm">{m.displayName}</span>
                   ) : (
-                    <InlineText aria-label={`Display name of ${m.measureKey}`} value={m.displayName} onCommit={(v) => patch(m, { displayName: v })} placeholder="Display name" />
+                    <InlineText aria-label={`Display name of ${m.key}`} value={m.displayName} onCommit={(v) => patch(m, { displayName: v })} placeholder="Display name" />
                   )}
                 </Td>
                 <Td className="text-xs">{kindLabel(m.measureKind)}</Td>
@@ -256,7 +256,7 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
                   )}
                 </Td>
                 <Td>
-                  <InlineSwitch aria-label={`${m.measureKey} enabled`} checked={m.isEnabled} onCommit={(v) => !readOnly && patch(m, { isEnabled: v })} />
+                  <InlineSwitch aria-label={`${m.key} enabled`} checked={m.isEnabled} onCommit={(v) => !readOnly && patch(m, { isEnabled: v })} />
                 </Td>
               </tr>
             ))}
@@ -307,14 +307,14 @@ function NewMeasureRow({
   onSubmit,
   onCancel,
 }: {
-  draft: MeasureInput
-  problem: ValidationProblemDetails | null
+  draft: DatasetMeasureInput
+  problem: Problem | null
   creating: boolean
   kindOptions: { value: string; label: string }[]
   aggOptions: { value: string; label: string }[]
   fieldKey: (id: string) => string
-  onChange: (update: (d: MeasureInput) => MeasureInput) => void
-  onKindChange: (kind: MeasureKind) => void
+  onChange: (update: (d: DatasetMeasureInput) => DatasetMeasureInput) => void
+  onKindChange: (kind: DatasetMeasureKind) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -333,7 +333,7 @@ function NewMeasureRow({
     }
   }
   const setKey = (key: string) =>
-    onChange((x) => ({ ...x, measureKey: key, displayName: !x.displayName || x.displayName === humanize(x.measureKey) ? humanize(key) : x.displayName }))
+    onChange((x) => ({ ...x, key: key, displayName: !x.displayName || x.displayName === humanize(x.key) ? humanize(key) : x.displayName }))
 
   return (
     <tr data-row-id={NEW_ROW_ID} aria-selected aria-label="New measure" className={cn(focusRowClass(true), 'align-top')}>
@@ -341,10 +341,10 @@ function NewMeasureRow({
         <input
           autoFocus
           aria-label="New measure: measure key"
-          value={draft.measureKey}
-          placeholder="measureKey"
+          value={draft.key}
+          placeholder="key"
           disabled={creating}
-          aria-invalid={!!errs.measureKey}
+          aria-invalid={!!errs.key}
           onChange={(e) => setKey(e.target.value)}
           onKeyDown={onKeyDown}
           className={cn(rowInputClass, 'w-40 font-mono text-xs')}
@@ -363,7 +363,7 @@ function NewMeasureRow({
         />
       </Td>
       <Td>
-        <InlineSelect aria-label="New measure: kind" value={draft.measureKind} options={kindOptions} onCommit={(k) => onKindChange(k as MeasureKind)} className="w-32 text-xs" />
+        <InlineSelect aria-label="New measure: kind" value={draft.measureKind} options={kindOptions} onCommit={(k) => onKindChange(k as DatasetMeasureKind)} className="w-32 text-xs" />
       </Td>
       <Td>
         {hasAggregation ? (
@@ -372,7 +372,7 @@ function NewMeasureRow({
             value={draft.aggregationFunction ?? ''}
             placeholder="None"
             options={aggOptions}
-            onCommit={(v) => onChange((x) => ({ ...x, aggregationFunction: v as MeasureInput['aggregationFunction'] }))}
+            onCommit={(v) => onChange((x) => ({ ...x, aggregationFunction: v as DatasetMeasureInput['aggregationFunction'] }))}
             className="w-28 text-xs"
           />
         ) : (
@@ -417,12 +417,12 @@ function MeasurePanel({
   version: DatasetVersion
   readOnly: boolean
   existing?: DatasetVersion['measures'][number]
-  seed: MeasureInput
+  seed: DatasetMeasureInput
   onClose: () => void
   onOpen: SectionProps['onOpen']
   /** New measures only: panel edits update the pending row's draft instead of saving. */
-  onDraftCommit?: (draft: MeasureInput) => void
-  createProblem?: ValidationProblemDetails | null
+  onDraftCommit?: (draft: DatasetMeasureInput) => void
+  createProblem?: Problem | null
   onDismissCreateProblem?: () => void
 }) {
   const api = useDatasetsApi()
@@ -440,24 +440,24 @@ function MeasurePanel({
     return !!(await run(() => api.saveMeasure(version.id, next)))
   })
 
-  const set = <K extends keyof MeasureInput>(k: K, v: MeasureInput[K]) => setD((x) => ({ ...x, [k]: v }))
-  const setPolicy = (patch: Partial<TimePolicy>) => setD((x) => ({ ...x, timePolicy: { ...(x.timePolicy ?? blankPolicy()), ...patch } }))
+  const set = <K extends keyof DatasetMeasureInput>(k: K, v: DatasetMeasureInput[K]) => setD((x) => ({ ...x, [k]: v }))
+  const setPolicy = (patch: Partial<DatasetMeasureTimePolicy>) => setD((x) => ({ ...x, timePolicy: { ...(x.timePolicy ?? blankPolicy()), ...patch } }))
   const roles = vocab?.componentRolesByKind[d.measureKind] ?? []
   const deps = existing ? (version.dependents[existing.id] ?? []) : []
   const blocking = deps.filter((x) => x.blocksDelete)
   const reads = d.measureKind === 'formula' ? formulaRefs(d.expressionText) : []
   const timeBindings = version.bindings.filter((b) => b.bindingKind === 'time')
   const seriesGrains = version.grains.filter((g) => g.grainKind === 'series')
-  const fieldOptions = version.fields.map((f) => ({ value: f.id, label: f.fieldKey, hint: f.dataType }))
+  const fieldOptions = version.fields.map((f) => ({ value: f.id, label: f.key, hint: f.dataType }))
   const p = d.timePolicy
   const policyForced = d.measureKind === 'period_average'
 
-  function changeKind(kind: MeasureKind) {
+  function changeKind(kind: DatasetMeasureKind) {
     const allowed = new Set<string>((vocab?.componentRolesByKind[kind] ?? []).map((r) => r.role))
     setD((x) => withMeasureKind(x, kind, allowed))
   }
 
-  function setComponent(role: ComponentRole, fieldId: string | null) {
+  function setComponent(role: DatasetComponentRole, fieldId: string | null) {
     setD((x) => ({
       ...x,
       components: fieldId ? [...x.components.filter((c) => c.role !== role), { role, fieldId }] : x.components.filter((c) => c.role !== role),
@@ -471,7 +471,7 @@ function MeasurePanel({
                 {reads.length ? (
                   <ul className="flex flex-col gap-1">
                     {reads.map((k) => {
-                      const target = version.measures.find((m) => m.measureKey === k)
+                      const target = version.measures.find((m) => m.key === k)
                       return (
                         <li key={k} className="flex items-center gap-1.5 text-xs">
                           <ArrowRightIcon aria-hidden className="size-3 text-muted-foreground" />
@@ -508,14 +508,14 @@ function MeasurePanel({
     <PropertiesPanel
       size="lg"
       label="Measure properties"
-      title={existing ? existing.displayName || existing.measureKey : d.measureKey || 'New measure'}
+      title={existing ? existing.displayName || existing.key : d.key || 'New measure'}
       subtitle={
         !existing ? (
           'Not added yet · needs a key and its kind’s inputs.'
         ) : pending && problem ? (
           <span className="text-destructive">Not applied — fix the highlighted inputs.</span>
         ) : (
-          <span className="font-mono">{existing.measureKey}</span>
+          <span className="font-mono">{existing.key}</span>
         )
       }
       onClose={onClose}
@@ -526,12 +526,12 @@ function MeasurePanel({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`Delete ${existing.measureKey}`}
+            aria-label={`Delete ${existing.key}`}
             disabled={!!blocking.length || saving}
             title={blocking.length ? `Read by ${blocking.map((x) => x.itemKey).join(', ')}` : 'Delete measure'}
             onClick={async () => {
               if (await runOk(() => api.deleteMeasure(version.id, existing.id))) {
-                toast.success(`Deleted ${existing.measureKey}`)
+                toast.success(`Deleted ${existing.key}`)
                 onClose()
               }
             }}
@@ -541,12 +541,12 @@ function MeasurePanel({
         )
       }
     >
-      {problem && <ProblemBanner problem={problem} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpenDependent={(x) => onOpen(x.tab, x.itemId)} />}
+      {problem && <ProblemBanner problem={problem} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpen={onOpen} />}
         <fieldset disabled={readOnly} className="contents">
           <PanelSection title="Identity and kind" description={vocab?.measureKind.find((t) => t.value === d.measureKind)?.description}>
             <div className="grid gap-4 @md:grid-cols-2">
-              <FormRow label="Measure key" htmlFor="m-key" errors={errorsFor('measureKey')} hint={existing ? 'Fixed. Formulas reference it as [m.key].' : 'e.g. ending_balance'}>
-                <Input id="m-key" value={d.measureKey} disabled={!!existing} onChange={(e) => set('measureKey', e.target.value)} className="font-mono" aria-invalid={!!errorsFor('measureKey')} />
+              <FormRow label="Measure key" htmlFor="m-key" errors={errorsFor('key')} hint={existing ? 'Fixed. Formulas reference it as [m.key].' : 'e.g. ending_balance'}>
+                <Input id="m-key" value={d.key} disabled={!!existing} onChange={(e) => set('key', e.target.value)} className="font-mono" aria-invalid={!!errorsFor('key')} />
               </FormRow>
               <FormRow label="Display name" htmlFor="m-name" errors={errorsFor('displayName')}>
                 <Input id="m-name" value={d.displayName} onChange={(e) => set('displayName', e.target.value)} />
@@ -572,7 +572,7 @@ function MeasurePanel({
                     prefix="m"
                     value={d.expressionText ?? ''}
                     onChange={(v) => set('expressionText', v || null)}
-                    items={version.measures.filter((m) => m.id !== existing?.id).map((m) => ({ key: m.measureKey, label: m.displayName }))}
+                    items={version.measures.filter((m) => m.id !== existing?.id).map((m) => ({ key: m.key, label: m.displayName }))}
                     placeholder="[m.interest_income] / [m.average_balance]"
                     invalid={!!errorsFor('expressionText')}
                     disabled={readOnly}
@@ -627,7 +627,7 @@ function MeasurePanel({
                   prefix="f"
                   value={d.rowFilterExpression ?? ''}
                   onChange={(v) => set('rowFilterExpression', v || null)}
-                  items={version.fields.map((f) => ({ key: f.fieldKey, label: f.displayName }))}
+                  items={version.fields.map((f) => ({ key: f.key, label: f.displayName }))}
                   placeholder="[f.status] = 'open'"
                   invalid={!!errorsFor('rowFilterExpression')}
                   disabled={readOnly}
@@ -738,7 +738,7 @@ function MeasurePanel({
                         value={p.selectionDatasetGrainId ?? ''}
                         placeholder={seriesGrains.length ? 'Choose…' : 'No series grain yet'}
                         onChange={(v) => setPolicy({ selectionDatasetGrainId: v })}
-                        options={seriesGrains.map((g) => ({ value: g.id, label: g.grainKey }))}
+                        options={seriesGrains.map((g) => ({ value: g.id, label: g.key }))}
                         className="font-mono"
                       />
                     </FormRow>

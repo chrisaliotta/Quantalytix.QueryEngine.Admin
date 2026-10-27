@@ -300,6 +300,537 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
           description: The directory has no such tenant.
+  /api/tenants/{tenantId}/source-objects:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listSourceObjects
+      summary: List the tables and views of the tenant database
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: Every table and view, with live storage statistics (OI-34).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DatasetSourceObject'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/source-objects/{kind}/{name}/columns:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetSourceObjectKindPath'
+      - $ref: '#/components/parameters/DatasetSourceObjectNamePath'
+    get:
+      operationId: getSourceColumns
+      summary: List the columns of a table or view
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The object's columns in ordinal order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DatasetSourceColumn'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: No table or view of that kind and name.
+  /api/tenants/{tenantId}/datasets:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listDatasets
+      summary: List datasets with their version summaries
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: Every dataset of the tenant.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DatasetListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createDataset
+      summary: Create a dataset and its draft version 1
+      description: Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a draft whose fields read them.
+      tags:
+        - datasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetCreateInput'
+      responses:
+        '201':
+          description: The dataset, with draft version 1.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The dataset key or table name is taken.
+  /api/tenants/{tenantId}/datasets/{datasetId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetIdPath'
+    get:
+      operationId: getDataset
+      summary: Get one dataset with its version summaries
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The dataset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteDataset
+      summary: Delete a dataset and all its versions
+      description: Allowed only when every version is a draft or validated and no release lists the dataset (D10, OI-17).
+      tags:
+        - datasets
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Delete blocked; `violations` are the reasons of the delete check.
+  /api/tenants/{tenantId}/datasets/{datasetId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetIdPath'
+    get:
+      operationId: checkDeleteDataset
+      summary: Tell whether a dataset can be deleted, and why not
+      description: Never writes. Reasons carry the codes `dataset_version_not_deletable` (a version is published or retired) and `dataset_in_release` (a release lists the dataset).
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/datasets/{datasetId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetIdPath'
+    post:
+      operationId: createDatasetDraft
+      summary: Create a draft version, empty or cloned from another version of the dataset
+      tags:
+        - datasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetCreateDraftInput'
+      responses:
+        '201':
+          description: The new draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The dataset already has an open (draft or validated) version (OI-23).
+  /api/tenants/{tenantId}/dataset-versions/{versionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    get:
+      operationId: getDatasetVersion
+      summary: Get the whole content of one dataset version
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: Settings, fields, grains, bindings, measures and dependents.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteDatasetDraft
+      summary: Delete a draft or validated version that no release pins
+      tags:
+        - datasets
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is published or retired, or a release pins it.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: previewDatasetChanges
+      summary: Apply staged operations to a dataset version in memory and return the result
+      description: Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01).
+      tags:
+        - datasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: commitDatasetChanges
+      summary: Apply and write staged operations to a dataset version
+      description: Replays the operations onto the stored version (last write wins, OI-02) and writes them; any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column.
+      tags:
+        - datasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: checkDatasetVersion
+      summary: Run the publication rules on a dataset version without writing
+      description: 'Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation''s `target.area` is a `DatasetTab`.'
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The rule report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/validate:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: validateDatasetVersion
+      summary: Move a draft to validated when every publication rule passes
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The validated version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A publication rule fails; nothing was written.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: publishDatasetVersion
+      summary: Publish a draft or validated version when every publication rule passes
+      description: A draft is validated first, in the same call.
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The published version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not a draft or validated.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A publication rule fails; nothing was written.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: reopenDatasetVersion
+      summary: Return a validated version to draft
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not validated.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/retire:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    post:
+      operationId: retireDatasetVersion
+      summary: Retire a published version that the active release does not pin
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The retired version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not published.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: The active release pins the version.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+      - $ref: '#/components/parameters/DatasetFieldIdPath'
+    post:
+      operationId: materializeDatasetField
+      summary: Add a JSON path field to its source object's materialized view
+      description: 'Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on any non-retired version: storage does not change what the version means.'
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The field with its materialization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetField'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is retired or the field is not a JSON path field.
+    delete:
+      operationId: dematerializeDatasetField
+      summary: Remove a field's column from the materialized view
+      description: The field reads the JSON path again; the view is dropped when no column is left.
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The field, with `materialization` null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetField'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is retired or the field is not a JSON path field.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization/refresh:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+      - $ref: '#/components/parameters/DatasetFieldIdPath'
+    post:
+      operationId: refreshDatasetFieldMaterialization
+      summary: Trigger a refresh of a materialized field
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The field, with `materialization.state` = `building`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetField'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is retired or the field is not materialized.
   /api/tenants/{tenantId}/calculation-models:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -2293,6 +2824,1208 @@ components:
         message:
           type: string
           description: What the connection reached, or why it is rejected.
+    DatasetSourceObjectKind:
+      type: string
+      enum:
+        - table
+        - view
+    DatasetFieldSourceKind:
+      type: string
+      enum:
+        - column
+        - json_path
+        - expression
+    DatasetDataType:
+      type: string
+      enum:
+        - boolean
+        - int32
+        - int64
+        - decimal
+        - string
+        - date
+        - datetime
+        - timestamp
+        - json
+    DatasetGrainKind:
+      type: string
+      enum:
+        - row
+        - series
+    DatasetBindingKind:
+      type: string
+      enum:
+        - direct
+        - mapped
+        - range
+        - bridge
+        - time
+    DatasetRaggedBehavior:
+      type: string
+      enum:
+        - self
+        - exclude
+    DatasetPeriodAlignment:
+      type: string
+      enum:
+        - observation
+        - start
+        - end
+    DatasetUnmappedBehavior:
+      type: string
+      enum:
+        - exclude
+        - unknown
+    DatasetTimeValueType:
+      type: string
+      enum:
+        - date
+        - timestamp
+    DatasetObservationKind:
+      type: string
+      enum:
+        - instant
+        - snapshot
+        - interval
+    DatasetPeriodicity:
+      type: string
+      enum:
+        - day
+        - month
+        - quarter
+        - year
+    DatasetCumulativeOrigin:
+      type: string
+      enum:
+        - output_range_start
+        - fixed_start
+    DatasetMeasureKind:
+      type: string
+      enum:
+        - aggregate
+        - weighted_sum
+        - weighted_average
+        - period_average
+        - formula
+        - specialized
+    DatasetAggregationFunction:
+      type: string
+      enum:
+        - sum
+        - avg
+        - min
+        - max
+        - count
+        - count_distinct
+    DatasetComponentRole:
+      type: string
+      enum:
+        - value
+        - weight
+        - period_days
+        - numerator
+        - denominator
+    DatasetValueNullBehavior:
+      type: string
+      enum:
+        - exclude
+        - zero
+    DatasetNegativeWeightBehavior:
+      type: string
+      enum:
+        - allow
+        - exclude
+    DatasetEmptySetBehavior:
+      type: string
+      enum:
+        - 'null'
+        - zero
+    DatasetBridgeFactorBehavior:
+      type: string
+      enum:
+        - ignore
+        - value
+    DatasetBridgeAllocationBehavior:
+      type: string
+      enum:
+        - apply
+        - ignore
+    DatasetTotalBehavior:
+      type: string
+      enum:
+        - recompute
+        - sum_children
+    DatasetRoundingMode:
+      type: string
+      enum:
+        - half_up
+        - half_even
+        - down
+        - up
+        - truncate
+    DatasetObservationSelection:
+      type: string
+      enum:
+        - all
+        - first_in_period
+        - last_in_period
+        - at_start
+        - at_end
+    DatasetValueTimeRole:
+      type: string
+      enum:
+        - point
+        - interval_open
+        - interval_close
+    DatasetBoundaryMatch:
+      type: string
+      enum:
+        - exact
+        - on_or_before
+        - strictly_before
+    DatasetDurationUnit:
+      type: string
+      enum:
+        - calendar_day
+        - elapsed_second
+    DatasetPartialIntervalBehavior:
+      type: string
+      enum:
+        - exact_only
+        - uniform_estimate
+    DatasetMissingPeriodBehavior:
+      type: string
+      enum:
+        - 'null'
+        - zero
+    DatasetMaterializationState:
+      type: string
+      enum:
+        - building
+        - ready
+        - failed
+    DatasetTab:
+      type: string
+      description: Editor tab; the `target.area` of a dataset violation and the tab of a dependent.
+      enum:
+        - fields
+        - grains
+        - bindings
+        - measures
+        - settings
+    DatasetSourceObject:
+      type: object
+      required:
+        - name
+        - kind
+        - isManaged
+        - stats
+      properties:
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/DatasetSourceObjectKind'
+        isManaged:
+          type: boolean
+          description: Created by the API through "New dataset" and registered (OI-33); fields may add columns to it.
+        stats:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetSourceObjectStats'
+            - type: 'null'
+          description: Null when the engine has not measured the object yet.
+    DatasetSourceObjectStats:
+      type: object
+      description: Read live from `information_schema` with a short cache (OI-34).
+      required:
+        - rowCount
+        - sizeBytes
+        - measuredAt
+      properties:
+        rowCount:
+          type: integer
+          format: int64
+        sizeBytes:
+          type: integer
+          format: int64
+          description: On-disk size; a view reports its materialized storage, 0 if none.
+        measuredAt:
+          $ref: '#/components/schemas/Timestamp'
+    DatasetSourceColumn:
+      type: object
+      required:
+        - name
+        - nativeType
+        - mappedType
+        - numericPrecision
+        - numericScale
+        - isNullable
+        - isGenerated
+      properties:
+        name:
+          type: string
+        nativeType:
+          type: string
+        mappedType:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetDataType'
+            - type: 'null'
+          description: The field type this column reads as; null when fields cannot read it.
+        numericPrecision:
+          type:
+            - integer
+            - 'null'
+        numericScale:
+          type:
+            - integer
+            - 'null'
+        isNullable:
+          type: boolean
+        isGenerated:
+          type: boolean
+          description: The API added the column on a field's behalf (`createColumn`).
+    Dataset:
+      type: object
+      description: The dataset identity (`qe_dataset`), shared by every version.
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+    DatasetPatch:
+      type: object
+      description: Identity edits; the key is fixed after creation (OI-36).
+      properties:
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+    DatasetReleasePin:
+      type: object
+      description: A release that pins the version.
+      required:
+        - releaseId
+        - releaseKey
+        - isActive
+      properties:
+        releaseId:
+          $ref: '#/components/schemas/Id'
+        releaseKey:
+          type: string
+        isActive:
+          type: boolean
+    DatasetVersionSummary:
+      type: object
+      required:
+        - id
+        - datasetId
+        - versionNumber
+        - status
+        - sourceObject
+        - createdAt
+        - publishedAt
+        - clonedFromVersionId
+        - releases
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        sourceObject:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        clonedFromVersionId:
+          type:
+            - string
+            - 'null'
+          description: The version this one was cloned from (SG-04, OI-12).
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetReleasePin'
+    DatasetListItem:
+      allOf:
+        - $ref: '#/components/schemas/Dataset'
+        - type: object
+          required:
+            - versions
+            - activeVersionId
+            - storage
+          properties:
+            versions:
+              type: array
+              description: Newest first.
+              items:
+                $ref: '#/components/schemas/DatasetVersionSummary'
+            activeVersionId:
+              type:
+                - string
+                - 'null'
+              description: The version the active release pins; what the engine reads.
+            storage:
+              oneOf:
+                - $ref: '#/components/schemas/DatasetSourceObjectStats'
+                - type: 'null'
+              description: Statistics of the latest version's source object.
+    DatasetVersionSettings:
+      type: object
+      required:
+        - sourceObjectKind
+        - sourceObject
+        - supportsAggregate
+        - supportsDetail
+        - defaultTimeBindingId
+        - expressionLanguageVersion
+        - securityPolicyKey
+        - properties
+      properties:
+        sourceObjectKind:
+          $ref: '#/components/schemas/DatasetSourceObjectKind'
+        sourceObject:
+          type: string
+        supportsAggregate:
+          type: boolean
+        supportsDetail:
+          type: boolean
+        defaultTimeBindingId:
+          type:
+            - string
+            - 'null'
+        expressionLanguageVersion:
+          type: string
+        securityPolicyKey:
+          type:
+            - string
+            - 'null'
+        properties:
+          type: string
+          description: Free JSON text; carries no query semantics.
+    DatasetDependent:
+      type: object
+      description: Something that reads an item of the version; computed from the delete-blocker graph (OI-35).
+      required:
+        - tab
+        - itemId
+        - itemKey
+        - relation
+        - blocksDelete
+      properties:
+        tab:
+          $ref: '#/components/schemas/DatasetTab'
+        itemId:
+          type:
+            - string
+            - 'null'
+          description: Null for the settings tab.
+        itemKey:
+          type: string
+        relation:
+          type: string
+          description: How the dependent reads the item, such as "grain component", "formula" or "default time binding".
+        blocksDelete:
+          type: boolean
+    DatasetVersion:
+      description: The whole editable content of one version; the state of its change set.
+      allOf:
+        - $ref: '#/components/schemas/DatasetVersionSummary'
+        - type: object
+          required:
+            - settings
+            - fields
+            - grains
+            - bindings
+            - measures
+            - dependents
+          properties:
+            settings:
+              $ref: '#/components/schemas/DatasetVersionSettings'
+            fields:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetField'
+            grains:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetGrain'
+            bindings:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetBinding'
+            measures:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetMeasure'
+            dependents:
+              type: object
+              description: Item id to what reads it.
+              additionalProperties:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DatasetDependent'
+    DatasetFieldMaterialization:
+      type: object
+      description: The field's column in its source object's materialized view; state, refresh time and error come from the view's refresh status (OI-32).
+      required:
+        - viewName
+        - columnName
+        - state
+        - requestedAt
+        - refreshedAt
+        - error
+      properties:
+        viewName:
+          type: string
+        columnName:
+          type: string
+        state:
+          $ref: '#/components/schemas/DatasetMaterializationState'
+        requestedAt:
+          $ref: '#/components/schemas/Timestamp'
+        refreshedAt:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        error:
+          type:
+            - string
+            - 'null'
+    DatasetFieldDefinition:
+      type: object
+      description: The writable content of a field, shared by `DatasetField` and `DatasetFieldInput`.
+      required:
+        - key
+        - displayName
+        - fieldSourceKind
+        - sourceColumn
+        - jsonPath
+        - expressionText
+        - dataType
+        - numericPrecision
+        - numericScale
+        - isNullable
+        - unitKey
+        - isSelectable
+        - isFilterable
+        - isSortable
+        - isGroupable
+        - isEnabled
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        fieldSourceKind:
+          $ref: '#/components/schemas/DatasetFieldSourceKind'
+        sourceColumn:
+          type:
+            - string
+            - 'null'
+        jsonPath:
+          type:
+            - string
+            - 'null'
+        expressionText:
+          type:
+            - string
+            - 'null'
+        dataType:
+          $ref: '#/components/schemas/DatasetDataType'
+        numericPrecision:
+          type:
+            - integer
+            - 'null'
+        numericScale:
+          type:
+            - integer
+            - 'null'
+        isNullable:
+          type: boolean
+        unitKey:
+          type:
+            - string
+            - 'null'
+        isSelectable:
+          type: boolean
+        isFilterable:
+          type: boolean
+        isSortable:
+          type: boolean
+        isGroupable:
+          type: boolean
+        isEnabled:
+          type: boolean
+    DatasetField:
+      allOf:
+        - type: object
+          required:
+            - id
+            - materialization
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            materialization:
+              oneOf:
+                - $ref: '#/components/schemas/DatasetFieldMaterialization'
+                - type: 'null'
+              description: JSON path fields only; managed by the materialization sub-resource, not by `saveField`.
+        - $ref: '#/components/schemas/DatasetFieldDefinition'
+    DatasetFieldInput:
+      allOf:
+        - $ref: '#/components/schemas/DatasetFieldDefinition'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Absent or temporary (`tmp:<uuid>`) to create; a stored id to update.
+            createColumn:
+              type: boolean
+              description: 'Column fields on a managed table: `sourceColumn` names a new column, added at commit (typed from `dataType`, precision, scale and nullability) before the field is written (OI-33).'
+            materialize:
+              type: boolean
+              description: JSON path fields; request materialization once the field is written.
+    DatasetGrainDefinition:
+      type: object
+      required:
+        - key
+        - grainKind
+        - fieldIds
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        grainKind:
+          $ref: '#/components/schemas/DatasetGrainKind'
+        fieldIds:
+          type: array
+          description: Ordered; position is the component ordinal.
+          items:
+            $ref: '#/components/schemas/Id'
+    DatasetGrain:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+        - $ref: '#/components/schemas/DatasetGrainDefinition'
+    DatasetGrainInput:
+      allOf:
+        - $ref: '#/components/schemas/DatasetGrainDefinition'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Absent or temporary (`tmp:<uuid>`) to create; a stored id to update.
+    DatasetTimeBinding:
+      type: object
+      description: The time axis of a `time` binding (`qe_time_binding`).
+      required:
+        - timeValueType
+        - sourceTimeZone
+        - defaultQueryTimeZone
+        - observationKind
+        - nativePeriodicity
+        - intervalEndFieldId
+        - allowedPeriodicities
+        - cumulativeOrigin
+        - cumulativeFixedStart
+      properties:
+        timeValueType:
+          $ref: '#/components/schemas/DatasetTimeValueType'
+        sourceTimeZone:
+          type:
+            - string
+            - 'null'
+        defaultQueryTimeZone:
+          type: string
+        observationKind:
+          $ref: '#/components/schemas/DatasetObservationKind'
+        nativePeriodicity:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetPeriodicity'
+            - type: 'null'
+        intervalEndFieldId:
+          type:
+            - string
+            - 'null'
+        allowedPeriodicities:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetPeriodicity'
+        cumulativeOrigin:
+          $ref: '#/components/schemas/DatasetCumulativeOrigin'
+        cumulativeFixedStart:
+          type:
+            - string
+            - 'null'
+          format: date
+    DatasetBindingDefinition:
+      type: object
+      required:
+        - bindingKind
+        - dimensionRoleId
+        - dimensionId
+        - sourceFieldId
+        - mappingSetId
+        - bridgeId
+        - sourceDimensionBindingId
+        - raggedBehavior
+        - defaultPeriodAlignment
+        - unmappedBehavior
+        - unknownMemberKey
+        - isRequired
+        - isGroupable
+        - isFilterable
+        - isEnabled
+        - time
+      properties:
+        bindingKind:
+          $ref: '#/components/schemas/DatasetBindingKind'
+        dimensionRoleId:
+          type:
+            - string
+            - 'null'
+          description: Non-time bindings; the role requests address the binding by.
+        dimensionId:
+          type:
+            - string
+            - 'null'
+          description: Time bindings; the time-kind dimension.
+        sourceFieldId:
+          type:
+            - string
+            - 'null'
+        mappingSetId:
+          type:
+            - string
+            - 'null'
+        bridgeId:
+          type:
+            - string
+            - 'null'
+        sourceDimensionBindingId:
+          type:
+            - string
+            - 'null'
+        raggedBehavior:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetRaggedBehavior'
+            - type: 'null'
+        defaultPeriodAlignment:
+          $ref: '#/components/schemas/DatasetPeriodAlignment'
+        unmappedBehavior:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetUnmappedBehavior'
+            - type: 'null'
+        unknownMemberKey:
+          type:
+            - string
+            - 'null'
+        isRequired:
+          type: boolean
+          description: Set by the server; a required binding cannot be disabled or deleted.
+        isGroupable:
+          type: boolean
+        isFilterable:
+          type: boolean
+        isEnabled:
+          type: boolean
+        time:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetTimeBinding'
+            - type: 'null'
+    DatasetBinding:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+        - $ref: '#/components/schemas/DatasetBindingDefinition'
+    DatasetBindingInput:
+      allOf:
+        - $ref: '#/components/schemas/DatasetBindingDefinition'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Absent or temporary (`tmp:<uuid>`) to create; a stored id to update.
+    DatasetMeasureComponent:
+      type: object
+      required:
+        - role
+        - fieldId
+      properties:
+        role:
+          $ref: '#/components/schemas/DatasetComponentRole'
+        fieldId:
+          $ref: '#/components/schemas/Id'
+    DatasetMeasureTimePolicy:
+      type: object
+      required:
+        - requiredTimeBindingId
+        - selectionDatasetGrainId
+        - observationSelection
+        - valueTimeRole
+        - boundaryMatch
+        - maxLookbackSeconds
+        - durationUnit
+        - partialIntervalBehavior
+        - missingPeriodBehavior
+      properties:
+        requiredTimeBindingId:
+          type:
+            - string
+            - 'null'
+        selectionDatasetGrainId:
+          type:
+            - string
+            - 'null'
+        observationSelection:
+          $ref: '#/components/schemas/DatasetObservationSelection'
+        valueTimeRole:
+          $ref: '#/components/schemas/DatasetValueTimeRole'
+        boundaryMatch:
+          $ref: '#/components/schemas/DatasetBoundaryMatch'
+        maxLookbackSeconds:
+          type:
+            - integer
+            - 'null'
+          format: int64
+        durationUnit:
+          $ref: '#/components/schemas/DatasetDurationUnit'
+        partialIntervalBehavior:
+          $ref: '#/components/schemas/DatasetPartialIntervalBehavior'
+        missingPeriodBehavior:
+          $ref: '#/components/schemas/DatasetMissingPeriodBehavior'
+    DatasetMeasureDefinition:
+      type: object
+      required:
+        - key
+        - displayName
+        - isEnabled
+        - measureKind
+        - aggregationFunction
+        - expressionText
+        - implementationKey
+        - implementationVersion
+        - configurationJson
+        - components
+        - rowFilterExpression
+        - valueNullBehavior
+        - negativeWeightBehavior
+        - emptySetBehavior
+        - bridgeFactorBehavior
+        - bridgeAllocationBehavior
+        - totalBehavior
+        - outputDataType
+        - outputPrecision
+        - outputScale
+        - roundingMode
+        - unitKey
+        - accumulatorPrecision
+        - accumulatorScale
+        - timePolicy
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        measureKind:
+          $ref: '#/components/schemas/DatasetMeasureKind'
+        aggregationFunction:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetAggregationFunction'
+            - type: 'null'
+        expressionText:
+          type:
+            - string
+            - 'null'
+          description: Formula measures; composes other measures (`[m.key]`).
+        implementationKey:
+          type:
+            - string
+            - 'null'
+        implementationVersion:
+          type:
+            - string
+            - 'null'
+        configurationJson:
+          type:
+            - string
+            - 'null'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetMeasureComponent'
+        rowFilterExpression:
+          type:
+            - string
+            - 'null'
+        valueNullBehavior:
+          $ref: '#/components/schemas/DatasetValueNullBehavior'
+        negativeWeightBehavior:
+          $ref: '#/components/schemas/DatasetNegativeWeightBehavior'
+        emptySetBehavior:
+          $ref: '#/components/schemas/DatasetEmptySetBehavior'
+        bridgeFactorBehavior:
+          $ref: '#/components/schemas/DatasetBridgeFactorBehavior'
+        bridgeAllocationBehavior:
+          $ref: '#/components/schemas/DatasetBridgeAllocationBehavior'
+        totalBehavior:
+          $ref: '#/components/schemas/DatasetTotalBehavior'
+        outputDataType:
+          $ref: '#/components/schemas/DatasetDataType'
+        outputPrecision:
+          type:
+            - integer
+            - 'null'
+        outputScale:
+          type:
+            - integer
+            - 'null'
+        roundingMode:
+          $ref: '#/components/schemas/DatasetRoundingMode'
+        unitKey:
+          type:
+            - string
+            - 'null'
+        accumulatorPrecision:
+          type: integer
+        accumulatorScale:
+          type: integer
+        timePolicy:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetMeasureTimePolicy'
+            - type: 'null'
+    DatasetMeasure:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+        - $ref: '#/components/schemas/DatasetMeasureDefinition'
+    DatasetMeasureInput:
+      allOf:
+        - $ref: '#/components/schemas/DatasetMeasureDefinition'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+              description: Absent or temporary (`tmp:<uuid>`) to create; a stored id to update.
+    DatasetNewColumnInput:
+      type: object
+      description: A physical column the API creates; each one also becomes a column field of the same name.
+      required:
+        - name
+        - dataType
+        - numericPrecision
+        - numericScale
+        - isNullable
+      properties:
+        name:
+          type: string
+        dataType:
+          $ref: '#/components/schemas/DatasetDataType'
+        numericPrecision:
+          type:
+            - integer
+            - 'null'
+        numericScale:
+          type:
+            - integer
+            - 'null'
+        isNullable:
+          type: boolean
+    DatasetCreateInput:
+      oneOf:
+        - $ref: '#/components/schemas/DatasetCreateFromExistingInput'
+        - $ref: '#/components/schemas/DatasetCreateWithNewTableInput'
+      discriminator:
+        propertyName: mode
+        mapping:
+          existing: '#/components/schemas/DatasetCreateFromExistingInput'
+          new: '#/components/schemas/DatasetCreateWithNewTableInput'
+    DatasetCreateFromExistingInput:
+      type: object
+      description: Registers a table or view that already exists in the tenant database.
+      required:
+        - mode
+        - key
+        - displayName
+        - sourceObjectKind
+        - sourceObject
+      properties:
+        mode:
+          const: existing
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        sourceObjectKind:
+          $ref: '#/components/schemas/DatasetSourceObjectKind'
+        sourceObject:
+          type: string
+    DatasetCreateWithNewTableInput:
+      type: object
+      description: Creates and registers a managed table with these columns (possibly none), then a draft whose fields read them.
+      required:
+        - mode
+        - key
+        - displayName
+        - tableName
+        - columns
+      properties:
+        mode:
+          const: new
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        tableName:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetNewColumnInput'
+    DatasetCreateDraftInput:
+      oneOf:
+        - $ref: '#/components/schemas/DatasetCreateEmptyDraftInput'
+        - $ref: '#/components/schemas/DatasetCloneDraftInput'
+      discriminator:
+        propertyName: mode
+        mapping:
+          empty: '#/components/schemas/DatasetCreateEmptyDraftInput'
+          clone: '#/components/schemas/DatasetCloneDraftInput'
+    DatasetCreateEmptyDraftInput:
+      type: object
+      required:
+        - mode
+        - sourceObjectKind
+        - sourceObject
+      properties:
+        mode:
+          const: empty
+        sourceObjectKind:
+          $ref: '#/components/schemas/DatasetSourceObjectKind'
+        sourceObject:
+          type: string
+    DatasetCloneDraftInput:
+      type: object
+      required:
+        - mode
+        - fromVersionId
+      properties:
+        mode:
+          const: clone
+        fromVersionId:
+          $ref: '#/components/schemas/Id'
+    DatasetOperation:
+      description: One staged edit of a dataset version, named after the `DatasetsApi` edit method it records.
+      oneOf:
+        - $ref: '#/components/schemas/DatasetUpdateDatasetOperation'
+        - $ref: '#/components/schemas/DatasetSaveSettingsOperation'
+        - $ref: '#/components/schemas/DatasetRenameSourceTableOperation'
+        - $ref: '#/components/schemas/DatasetSaveFieldOperation'
+        - $ref: '#/components/schemas/DatasetDeleteFieldOperation'
+        - $ref: '#/components/schemas/DatasetAddFieldsFromColumnsOperation'
+        - $ref: '#/components/schemas/DatasetSaveGrainOperation'
+        - $ref: '#/components/schemas/DatasetDeleteGrainOperation'
+        - $ref: '#/components/schemas/DatasetSaveBindingOperation'
+        - $ref: '#/components/schemas/DatasetDeleteBindingOperation'
+        - $ref: '#/components/schemas/DatasetSaveMeasureOperation'
+        - $ref: '#/components/schemas/DatasetDeleteMeasureOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateDataset: '#/components/schemas/DatasetUpdateDatasetOperation'
+          saveSettings: '#/components/schemas/DatasetSaveSettingsOperation'
+          renameSourceTable: '#/components/schemas/DatasetRenameSourceTableOperation'
+          saveField: '#/components/schemas/DatasetSaveFieldOperation'
+          deleteField: '#/components/schemas/DatasetDeleteFieldOperation'
+          addFieldsFromColumns: '#/components/schemas/DatasetAddFieldsFromColumnsOperation'
+          saveGrain: '#/components/schemas/DatasetSaveGrainOperation'
+          deleteGrain: '#/components/schemas/DatasetDeleteGrainOperation'
+          saveBinding: '#/components/schemas/DatasetSaveBindingOperation'
+          deleteBinding: '#/components/schemas/DatasetDeleteBindingOperation'
+          saveMeasure: '#/components/schemas/DatasetSaveMeasureOperation'
+          deleteMeasure: '#/components/schemas/DatasetDeleteMeasureOperation'
+    DatasetUpdateDatasetOperation:
+      type: object
+      description: Edits the dataset identity; the only operation a version that is not a draft accepts.
+      required:
+        - op
+        - patch
+      properties:
+        op:
+          const: updateDataset
+        patch:
+          $ref: '#/components/schemas/DatasetPatch'
+    DatasetSaveSettingsOperation:
+      type: object
+      required:
+        - op
+        - settings
+      properties:
+        op:
+          const: saveSettings
+        settings:
+          $ref: '#/components/schemas/DatasetVersionSettings'
+    DatasetRenameSourceTableOperation:
+      type: object
+      description: Renames the managed table the draft reads; refused while a published version reads it (OI-33).
+      required:
+        - op
+        - tableName
+      properties:
+        op:
+          const: renameSourceTable
+        tableName:
+          type: string
+    DatasetSaveFieldOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveField
+        input:
+          $ref: '#/components/schemas/DatasetFieldInput'
+    DatasetDeleteFieldOperation:
+      type: object
+      required:
+        - op
+        - fieldId
+      properties:
+        op:
+          const: deleteField
+        fieldId:
+          $ref: '#/components/schemas/Id'
+    DatasetAddFieldsFromColumnsOperation:
+      type: object
+      description: Creates one column field per named column. The created fields carry temporary ids that stay the same on every replay of the same operation list.
+      required:
+        - op
+        - columns
+      properties:
+        op:
+          const: addFieldsFromColumns
+        columns:
+          type: array
+          items:
+            type: string
+    DatasetSaveGrainOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveGrain
+        input:
+          $ref: '#/components/schemas/DatasetGrainInput'
+    DatasetDeleteGrainOperation:
+      type: object
+      required:
+        - op
+        - grainId
+      properties:
+        op:
+          const: deleteGrain
+        grainId:
+          $ref: '#/components/schemas/Id'
+    DatasetSaveBindingOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveBinding
+        input:
+          $ref: '#/components/schemas/DatasetBindingInput'
+    DatasetDeleteBindingOperation:
+      type: object
+      required:
+        - op
+        - bindingId
+      properties:
+        op:
+          const: deleteBinding
+        bindingId:
+          $ref: '#/components/schemas/Id'
+    DatasetSaveMeasureOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveMeasure
+        input:
+          $ref: '#/components/schemas/DatasetMeasureInput'
+    DatasetDeleteMeasureOperation:
+      type: object
+      required:
+        - op
+        - measureId
+      properties:
+        op:
+          const: deleteMeasure
+        measureId:
+          $ref: '#/components/schemas/Id'
+    DatasetChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetOperation'
+    DatasetChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/DatasetVersion'
+    DatasetChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/DatasetVersion'
     ModelFormulaLanguage:
       type: string
       enum:
@@ -4040,6 +5773,39 @@ components:
       in: path
       required: true
       description: The tenant directory key.
+      schema:
+        type: string
+    DatasetIdPath:
+      name: datasetId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DatasetVersionIdPath:
+      name: versionId
+      in: path
+      required: true
+      description: A dataset version id.
+      schema:
+        $ref: '#/components/schemas/Id'
+    DatasetFieldIdPath:
+      name: fieldId
+      in: path
+      required: true
+      description: A field of the version.
+      schema:
+        $ref: '#/components/schemas/Id'
+    DatasetSourceObjectKindPath:
+      name: kind
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/DatasetSourceObjectKind'
+    DatasetSourceObjectNamePath:
+      name: name
+      in: path
+      required: true
+      description: The table or view name.
       schema:
         type: string
     ModelId:
