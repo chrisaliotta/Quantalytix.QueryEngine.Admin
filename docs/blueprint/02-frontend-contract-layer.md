@@ -4,6 +4,21 @@ How `web2` talks to the API. The prototype already has the right shape for four 
 adapter behind it, SWR hooks in a `client.tsx`); this file makes it uniform, adds the HTTP adapters and brings reports
 and models into the same pattern.
 
+## Source of truth (Agreed)
+
+The hand-authored OpenAPI contract in [`api/openapi/contract/`](../../api/openapi/contract/README.md) defines every
+read model, input, operation union and error the frontend sees ([00](00-architecture.md#the-contract-first-rule-agreed)).
+The `web2` side follows it in two ways:
+
+- **Ports mirror it by hand.** Each `lib/<module>/contract.ts` declares the contract's schemas under the same names
+  and the port methods that use them. A port type that differs from its schema in more than presentation-only
+  additions is a defect in the port or a change the contract makes first.
+- **HTTP adapters use generated types.** `pnpm contract:types` bundles the contract and generates
+  `lib/api/schema.d.ts` with `openapi-typescript`. Only `lib/<module>/http/*.ts` imports it; the adapter maps the
+  generated types onto the port types, so a contract change that the port does not follow fails `pnpm build`.
+
+`lib/api/contract.ts` mirrors `common.yaml` the same way.
+
 ## Folder layout (Agreed)
 
 ```
@@ -11,8 +26,8 @@ web2/src/lib/
   api/
     contract.ts        shared kernel: ApiResult, Problem, Violation, DeleteCheck, VersionStatus, Vocabulary, ids
     http.ts            fetch wrapper: base URL, tenant prefix, bearer token, problem parsing, 401 handling
-    schema.d.ts        generated from api/openapi/admin-api.json; imported only by */http/*.ts
-    changes.ts         ChangeSetPort, the staged-port helper, operation recording (moved from lib/changes.ts)
+    schema.d.ts        generated from api/openapi/contract/bundled.yaml; imported only by */http/*.ts
+    changes.ts         ChangeSetPort, the mock snapshot change set, the HTTP change set (moved from lib/changes.ts)
   session/
     contract.ts        Session, role, tenant list
     client.tsx         SessionProvider, useSession, useTenant
@@ -52,7 +67,20 @@ export interface VocabularyTerm<V extends string = string> { value: V; label: st
 export interface ChangeSetRequest<Op> { operations: Op[] }
 export interface ChangeSetPreview<State> { state: State; violations: Violation[] }
 export interface ChangeSetCommit<State> { state: State; idMap: Record<string, Id> }
+
+export class ProblemError extends Error { problem: Problem }          // thrown by unwrap
+export function unwrap<T>(result: Promise<ApiResult<T>>): Promise<T>  // SWR fetchers of reads that return ApiResult
 ```
+
+Each type mirrors the `common.yaml` schema of the same name. The contract expresses the three `ChangeSet*` generics as
+base schemas that each aggregate specializes with `allOf` (see the contract README).
+
+### HTTP client: `lib/api/http.ts` (Agreed)
+
+`createHttpClient({ baseUrl, token, onUnauthorized })` returns a client whose `get`, `post`, `put`, `patch` and
+`delete` resolve to `ApiResult`: 2xx bodies are the data (`204` is `null`), error bodies are the `Problem`.
+`forTenant(tenantId)` returns a client rooted at `/api/tenants/{tenantId}`. Every `401` calls `onUnauthorized` before
+the problem is returned. The session layer creates the client once; HTTP adapters receive it.
 
 Module contracts re-export what they use (`export type { ApiResult, VersionStatus } from '@/lib/api/contract'`) and
 extend `Violation` codes with module unions where useful:
@@ -96,16 +124,21 @@ The HTTP implementation per aggregate:
 
 | Method | Implementation |
 |---|---|
-| `beginChanges` | Start an empty operation list over the aggregate read model as last loaded. |
+| `beginChanges` | Start an empty operation list; until the first preview, reads still answer from the server. |
 | edit method `m(args)` | Append `{ op: 'm', ...args }`; post all operations to `changes/preview`; on success replace the local pending state with `state` and return the edited item from it; on failure pop the operation and return the problem. |
 | reads while pending | Answer from the last preview `state`. |
 | `captureState` | Copy of `{ operations, state }`. |
 | `restoreState` | Put that copy back (no request). |
-| `commitChanges` | Post operations to `changes`; on success clear, revalidate SWR keys, return `idMap`. Last write wins (OI-02): there is no stale-revision check; an operation that no longer applies fails the commit and the user reloads. |
+| `commitChanges` | Post operations to `changes`; on success clear, return `idMap`; the staged proxy's `onSettled` revalidates SWR keys. Last write wins (OI-02): there is no stale-revision check; an operation that no longer applies fails the commit and the user reloads. |
 | `discardChanges` | Clear locally. |
 
-`commitChanges` changes from `{ ok, problem: { title, detail } }` to the kernel `ApiResult` so the save bar can show
+`commitChanges` returns the kernel `ApiResult` (it was `{ ok, problem: { title, detail } }`) so the save bar can show
 field-level problems.
+
+`lib/api/changes.ts` implements this table once, as `createHttpChangeSet<Op, State>(http)`. An HTTP adapter spreads
+it into its port, implements each edit method as `stage(aggregatePath, { op: '<method>', ...args })` and answers
+reads from `pending()` while it is not null. `stage` strips the `operations[n].` prefix from the refused operation's
+`errors`. Mock adapters use `createSnapshotChangeSet`, whose commit returns an empty `idMap`.
 
 ### Commit scope
 

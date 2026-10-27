@@ -4,6 +4,8 @@
 
 ```mermaid
 flowchart LR
+  Contract["OpenAPI contract, api/openapi/contract"] -. mirrored by .-> Port
+  Contract -. matched by DTOs .-> Rest
   Screens --> Port["Module port, contract.ts"]
   Port --> HttpAdapter["HTTP adapter, lib/module/http"]
   Port --> MockAdapter["Mock adapter, lib/module/mock"]
@@ -17,7 +19,7 @@ flowchart LR
 | Layer | Owns | Never does |
 |---|---|---|
 | Screens (`web2/src/components`) | Rendering, local UI state, URL state | Calls `fetch`, imports a DTO, decides whether input is valid |
-| Module port (`web2/src/lib/<module>/contract.ts`) | The frontend contract: read models, inputs, results, the port interface | Knows about HTTP or the mock |
+| Module port (`web2/src/lib/<module>/contract.ts`) | The frontend contract: read models, inputs, results, the port interface, mirroring the OpenAPI contract | Knows about HTTP or the mock |
 | Adapters (`lib/<module>/http`, `lib/<module>/mock`) | Translating the port to a transport | Holds business rules the server does not also hold |
 | Admin Web API (controllers) | Routing, authentication, tenant access, binding, problem responses | Business rules |
 | Application | Feature services, input validators, publication rules, gates, change-set application | SQL |
@@ -25,15 +27,23 @@ flowchart LR
 
 ## The contract-first rule (Agreed)
 
-1. The TypeScript port in `contract.ts` is the frontend contract. A screen depends only on its module's port and on
-   the shared kernel ([02](02-frontend-contract-layer.md)).
-2. Backend request and response DTOs are shaped to the port's read models and inputs, not to the tables. A read model
-   may join several tables (a dimension list item carries its roles, version summaries and profile); the Application
-   composes it.
-3. The OpenAPI document stays generated from the C# build. The generated `schema.d.ts` is imported only inside the HTTP
-   adapters, which map DTOs to port types. A DTO that differs from its port type only in naming is a defect: rename the
-   DTO.
-4. Each adapter must pass the same port-level test suite, so the mock and HTTP adapters cannot drift (parity rule).
+1. **The hand-authored OpenAPI contract is the source of truth (design-first).** It lives in
+   [`api/openapi/contract/`](../../api/openapi/contract/README.md): a root `admin-api.yaml`, the shared kernel
+   `common.yaml` (from [01](01-api-conventions.md)) and one file per module. Its read models and inputs are shaped to
+   what the screens need, not to the tables. A read model may join several tables (a dimension list item carries its
+   roles, version summaries and profile); the Application composes it.
+2. The TypeScript port in `contract.ts` mirrors the contract's schemas by name and is what screens see. A screen depends
+   only on its module's port and on the shared kernel ([02](02-frontend-contract-layer.md)).
+3. **C# request and response DTOs are written by hand to match the contract;** no server code is generated. A DTO
+   whose name, property names, types or nullability differ from its contract schema is a defect: fix the DTO, or change
+   the contract first.
+4. `api/openapi/admin-api.json` stays generated from the C# build, as the record of what the server implements.
+   `ContractConformanceTests` (`api/tests`) loads the bundled contract and `admin-api.json` and fails on any difference
+   in paths, methods, status codes, schema property names, types or nullability. Operations not yet implemented are
+   listed in its allow-list, which only shrinks and is empty when the refactor ends.
+5. `web2/src/lib/api/schema.d.ts` is generated from the bundled contract and imported only inside the HTTP adapters,
+   which map generated types to port types.
+6. Each adapter must pass the same port-level test suite, so the mock and HTTP adapters cannot drift (parity rule).
 
 Today's `web` client re-exports generated schema types into screens. `web2` must not; its prototype already isolates
 screens behind ports, and the blueprint keeps that boundary.

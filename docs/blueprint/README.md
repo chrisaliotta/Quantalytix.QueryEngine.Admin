@@ -9,6 +9,11 @@ The frontend drives the design. Where the prototype's contracts (`web2/src/lib/*
 needs, the API is shaped to serve it. Where the prototype asks for something the schema cannot hold, or where two
 sources disagree, the blueprint records an open issue instead of choosing silently.
 
+Each module's frontend contract and HTTP API are transcribed into the hand-authored OpenAPI contract in
+[`api/openapi/contract/`](../../api/openapi/contract/README.md). The contract is the source of truth for the wire
+format; the blueprint remains the source for the rules behind it
+([00, the contract-first rule](00-architecture.md#the-contract-first-rule-agreed)).
+
 ## Sources
 
 | Source                                                                                                                                              | Role                                                                      |
@@ -71,7 +76,7 @@ current API" table says keep, change, new or remove).
 | Current controller | Blueprint |
 |---|---|
 | `SessionController`, `TenantsController`, `SystemTenantsController`, `VocabulariesController`, `OverviewController`, `LookupsController`, `DevelopmentTokenController` | [10](10-tenant-session-catalog.md) |
-| `VersionStatusController` (`PUT versions/{kind}/{id}/status`, `POST versions/{kind}/{id}/validation`) | Replaced by per-kind `validate`, `publish`, `reopen`, `retire`, `freeze` and `check` endpoints ([01](01-api-conventions.md#routing-and-tenancy-agreed-kept-from-the-current-api)) in 11–14 |
+| `VersionStatusController` (`PUT versions/{kind}/{id}/status`, `POST versions/{kind}/{id}/validation`) | Replaced by per-kind `validate`, `publish`, `reopen`, `retire`, `freeze` and `check` endpoints ([01](01-api-conventions.md#routing-and-tenancy-agreed)) in 11–14 |
 | `DatasetsController`, `DatasetVersionsController`, `FieldsController`, `GrainsController`, `BindingsController`, `MeasuresController`, `SourceObjectsController` | [11](11-datasets.md) |
 | `DimensionsController`, `DimensionRolesController`, `DimensionVersionsController`, `DimensionLevelsController`, `DimensionMembersController`, `RangeBandsController` | [12](12-dimensions.md) |
 | `MappingSetsController`, `MappingVersionsController`, `MappingEntriesController`, `BridgesController`, `BridgeVersionsController`, `BridgeMappingsController` | [13](13-mappings-and-bridges.md) |
