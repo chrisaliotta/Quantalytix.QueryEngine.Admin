@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea'
 import { Segmented } from '@/components/report/shared/segmented'
 import { useDimensionsApi } from '@/lib/dimensions/client'
-import type { ImportMode, Member, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
+import type { DimensionMemberImportMode, DimensionMember, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
 import { analyzeBands, bandPreview, parseBandImport } from '@/lib/dimensions/bands'
 import { cn } from '@/lib/utils'
 import { Mono, Td, Th, useDimCall } from './shared'
@@ -12,6 +12,7 @@ import { Mono, Td, Th, useDimCall } from './shared'
 const PLACEHOLDER: Record<RangeDataType, string> = {
   decimal: 'member key,name,lower,upper,brackets\nBAL_LOW,Under 10k,,10000,[)\nBAL_MID,10k – 50k,10000,50000,[)\nBAL_HIGH,50k and over,50000,,[)',
   date: 'member key,name,lower,upper,brackets\nFY24,FY 2024,2024-01-01,2025-01-01,[)\nFY25,FY 2025,2025-01-01,2026-01-01,[)',
+  datetime: 'member key,name,lower,upper,brackets\nAM,Morning,2026-01-01T00:00:00Z,2026-01-01T12:00:00Z,[)\nPM,Afternoon,2026-01-01T12:00:00Z,2026-01-02T00:00:00Z,[)',
 }
 
 /** Paste bands as CSV/TSV. Rows reuse a member by key or create it when the key is new. */
@@ -28,14 +29,14 @@ export function BandImportDialog({
   onOpenChange: (o: boolean) => void
   versionId: string
   type: RangeDataType
-  members: Member[]
+  members: DimensionMember[]
   hasBands: boolean
-  onImport: (bands: RangeBand[], mode: ImportMode) => void
+  onImport: (bands: RangeBand[], mode: DimensionMemberImportMode) => void
 }) {
   const api = useDimensionsApi()
   const { run, saving, setProblem } = useDimCall()
   const [text, setText] = useState('')
-  const [mode, setMode] = useState<ImportMode>('merge')
+  const [mode, setMode] = useState<DimensionMemberImportMode>('merge')
   const rows = useMemo(() => parseBandImport(text, type), [text, type])
   const byKey = useMemo(() => new Map(members.map((m) => [m.key, m])), [members])
   const bad = rows.some((r) => r.error)
@@ -123,7 +124,7 @@ export function BandImportDialog({
         <DialogFooter className="items-center sm:justify-between">
           {hasBands ? (
             <div className="flex flex-col gap-1">
-              <Segmented<ImportMode>
+              <Segmented<DimensionMemberImportMode>
                 aria-label="Existing bands"
                 value={mode}
                 onChange={setMode}

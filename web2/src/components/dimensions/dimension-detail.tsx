@@ -7,7 +7,7 @@ import { MappingSetsSection } from '@/components/mappings/mapping-sets-section'
 import { DimensionEditScope, useDimension, useDimensionVersion } from '@/lib/dimensions/client'
 import { useSearchParam, useSetSearchParams } from '@/lib/navigation'
 import { useNavigationGuard } from '@/components/shell/changes'
-import { defaultVersion, isVersionEditable, SELF_VERSIONED_TABS, tabsForKind, type DimensionDetail as Detail, type DimensionTab, type EditPolicy, type ValidationReport, type VersionContent } from '@/lib/dimensions/contract'
+import { defaultVersion, isVersionEditable, SELF_VERSIONED_TABS, tabsForKind, type DimensionDetail as Detail, type DimensionTab, type DimensionEditPolicy, type DimensionValidationReport, type DimensionVersionContent } from '@/lib/dimensions/contract'
 import { useBridges, useMappingSets } from '@/lib/mappings/client'
 import { cn } from '@/lib/utils'
 import { BandsSection } from './bands-section'
@@ -19,9 +19,9 @@ import { PropertiesSection, UsageSection } from './usage-settings-sections'
 
 export interface SectionProps {
   dim: Detail
-  content: VersionContent
+  content: DimensionVersionContent
   editable: boolean
-  policy: EditPolicy | null
+  policy: DimensionEditPolicy | null
   /** An item to open, set by a validation link. Sections consume and clear it. */
   focusId: string | null
   clearFocus: () => void
@@ -43,7 +43,7 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
   const [versionParam, setVersionParam] = useSearchParam('version')
   const [tabParam] = useSearchParam('tab')
   const setSearchParams = useSetSearchParams()
-  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
+  const [reports, setReports] = useState<Record<string, DimensionValidationReport>>({})
   const [focusId, setFocusId] = useState<string | null>(null)
   const guard = useNavigationGuard()
 
@@ -94,7 +94,7 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
   const groups: NavGroup<DimensionTab>[] = [
     {
       items: tabs.map((t) => {
-        const issues = report?.violations.filter((v) => v.tab === t).length ?? 0
+        const issues = report?.violations.filter((v) => v.target?.area === t).length ?? 0
         return { id: t, ...TAB_META[t], badge: issues > 0 ? issues : countFor(t), tone: issues > 0 ? ('bad' as const) : undefined }
       }),
     },
@@ -170,7 +170,7 @@ function ReadOnlyNote({ status, locked, owner, versionNumber }: { status: string
   )
 }
 
-function ValidationPanel({ report, onOpen, onDismiss }: { report: ValidationReport; onOpen: (tab: DimensionTab, id: string | null) => void; onDismiss: () => void }) {
+function ValidationPanel({ report, onOpen, onDismiss }: { report: DimensionValidationReport; onOpen: (tab: DimensionTab, id: string | null) => void; onDismiss: () => void }) {
   const ok = !report.violations.length
   return (
     <section
@@ -179,7 +179,7 @@ function ValidationPanel({ report, onOpen, onDismiss }: { report: ValidationRepo
     >
       <div className="flex items-center gap-2">
         {ok ? <CircleCheckIcon aria-hidden className="size-4 text-success-foreground" /> : <OctagonXIcon aria-hidden className="size-4 text-destructive" />}
-        <h2 className="flex-1 text-sm font-medium">{ok ? 'No violations — ready to publish.' : `${report.violations.length} violation${report.violations.length === 1 ? '' : 's'} block publishing`}</h2>
+        <h2 className="flex-1 text-sm font-medium">{ok ? 'No violations — ready to freeze.' : `${report.violations.length} violation${report.violations.length === 1 ? '' : 's'} block freezing`}</h2>
         <Button variant="ghost" size="icon-sm" aria-label="Dismiss results" onClick={onDismiss}>
           <XIcon />
         </Button>
@@ -189,9 +189,11 @@ function ValidationPanel({ report, onOpen, onDismiss }: { report: ValidationRepo
           {report.violations.map((v, i) => (
             <li key={`${v.code}-${i}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
               <span className="text-pretty">{v.message}</span>
-              <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => onOpen(v.tab, v.itemId ?? null)}>
-                Go to {TAB_META[v.tab].label.toLowerCase()}
-              </Button>
+              {v.target && (
+                <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => onOpen(v.target!.area, v.target!.itemId ?? null)}>
+                  Go to {TAB_META[v.target.area].label.toLowerCase()}
+                </Button>
+              )}
             </li>
           ))}
         </ul>

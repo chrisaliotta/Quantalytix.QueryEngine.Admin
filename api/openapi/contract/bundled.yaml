@@ -35,7 +35,386 @@ tags:
   - name: reports
     x-displayName: Reports
     description: Reports and their rows, sources, profiles, scenarios, scopes, columns and styles. Blueprint 16-reports.md.
-paths: {}
+paths:
+  /api/tenants/{tenantId}/dimensions:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listDimensions
+      summary: List the analytical dimensions of one origin
+      description: Report-owned dimensions are never listed (OI-22).
+      tags:
+        - dimensions
+      parameters:
+        - name: origin
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DimensionOrigin'
+      responses:
+        '200':
+          description: The list items, each with its profile, roles and version summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DimensionListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: createDimension
+      summary: Create a user dimension with a live version 1
+      description: Creates origin `user`, purpose `analytical`; version 1 is created live (published).
+      tags:
+        - dimensions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDimensionInput'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The dimension key or the first role key is taken.
+  /api/tenants/{tenantId}/dimension-profiles:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listAvailableDimensionProfiles
+      summary: List system dimension profiles
+      tags:
+        - dimensions
+      parameters:
+        - name: available
+          in: query
+          required: false
+          description: When true, only the profiles the dimension manager offers (manager-visible, single-instance).
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Each profile with the dimension defined from it, if any.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableDimensionProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/tenants/{tenantId}/dimension-profiles/{profileKey}/define:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionProfileKey'
+    post:
+      operationId: defineSystemDimension
+      summary: Define the system dimension of a profile
+      description: Creates the dimension with the profile's required roles and members; version 1 is live.
+      tags:
+        - dimensions
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: No profile has this key.
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The profile's dimension is defined already.
+  /api/tenants/{tenantId}/dimensions/{dimensionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionId'
+    get:
+      operationId: getDimension
+      summary: Get a dimension with its usage
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The detail read model.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: No such dimension, or it is owned by a report.
+    delete:
+      operationId: deleteDimension
+      summary: Delete a dimension
+      tags:
+        - dimensions
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Blocked (see `violations`), a system dimension, or owned by a report.
+  /api/tenants/{tenantId}/dimensions/{dimensionId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionId'
+    get:
+      operationId: checkDimensionDelete
+      summary: Check whether a dimension can be deleted
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dimensions/{dimensionId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionId'
+    post:
+      operationId: previewDimensionChanges
+      summary: Preview a dimension change set without writing
+      description: Applies the operations to the stored dimension and its live version in memory (OI-01).
+      tags:
+        - dimensions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DimensionChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Owned by a report, locked by its profile, or an operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/dimensions/{dimensionId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionId'
+    post:
+      operationId: commitDimensionChanges
+      summary: Commit a dimension change set
+      description: Applies and writes the operations as one batch and advances `semantic_revision` once; any failure writes nothing (OI-01, OI-03).
+      tags:
+        - dimensions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DimensionChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Owned by a report, locked by its profile, or an operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/dimension-versions/{versionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+    get:
+      operationId: getDimensionVersion
+      summary: Get the content of a dimension version
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The version with its levels, members and bands.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionVersionContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: No such version, or its dimension is owned by a report.
+    delete:
+      operationId: deleteDimensionVersion
+      summary: Delete a frozen dimension version
+      tags:
+        - dimensions
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The live version, or pinned by a historical assumption set (see `violations`).
+  /api/tenants/{tenantId}/dimension-versions/{versionId}/check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+    post:
+      operationId: checkDimensionVersion
+      summary: Run the dimension rules on a version without writing
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The rule report; codes are `DimensionViolationCode` values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dimension-versions/{versionId}/freeze:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+    post:
+      operationId: freezeDimensionVersion
+      summary: Freeze the live version and continue in a new live clone
+      description: Runs every dimension rule; when they pass, clones the live version n to n+1 live, retires n with the note, repoints the active assumption set and advances `semantic_revision` (OI-14, OI-15).
+      tags:
+        - dimensions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FreezeInput'
+      responses:
+        '200':
+          description: Frozen; `live` is the new live version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionFreezeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Not the live version, or locked by its profile.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A rule fails; nothing changed.
+  /api/tenants/{tenantId}/dimension-versions/{versionId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+    get:
+      operationId: checkDimensionVersionDelete
+      summary: Check whether a dimension version can be deleted
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dimension-versions/{versionId}/members/{memberId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+      - $ref: '#/components/parameters/DimensionMemberId'
+    get:
+      operationId: checkDimensionMemberDelete
+      summary: Check whether a member can be deleted
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dimension-versions/{versionId}/levels/{levelId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionVersionId'
+      - $ref: '#/components/parameters/DimensionLevelId'
+    get:
+      operationId: checkDimensionLevelDelete
+      summary: Check whether a level can be deleted
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/dimension-roles/{roleId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DimensionRoleId'
+    get:
+      operationId: checkDimensionRoleDelete
+      summary: Check whether a role can be deleted
+      tags:
+        - dimensions
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     Bearer:
@@ -231,6 +610,1002 @@ components:
           type: string
         description:
           type: string
+    DimensionKind:
+      type: string
+      enum:
+        - categorical
+        - hierarchical
+        - range
+        - time
+      description: Fixed after creation (M1).
+    DimensionOrigin:
+      type: string
+      enum:
+        - system
+        - user
+    DimensionPurpose:
+      type: string
+      enum:
+        - analytical
+        - report
+      description: Report dimensions are refused by every write of this module and never listed (M8, OI-22).
+    DimensionEditPolicy:
+      type: string
+      enum:
+        - open
+        - extend
+        - locked
+      description: '`locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).'
+    RangeDataType:
+      type: string
+      enum:
+        - decimal
+        - date
+        - datetime
+    DimensionPeriodicity:
+      type: string
+      enum:
+        - day
+        - month
+        - quarter
+        - year
+      description: Periodicity of a time dimension's level.
+    DimensionTab:
+      type: string
+      enum:
+        - properties
+        - members
+        - levels
+        - bands
+        - roles
+        - mappings
+        - bridges
+        - usage
+      description: Areas of the dimension editor; the values of `ViolationTarget.area` in this module.
+    DimensionViolationCode:
+      type: string
+      enum:
+        - range_data_type_matches_kind
+        - level_key_unique
+        - member_key_unique
+        - member_parent_in_version
+        - member_level_in_version
+        - hierarchy_acyclic
+        - band_boundary_family
+        - band_bounds_ordered
+        - bands_non_overlapping
+        - band_open_bounds_at_ends
+        - band_member_in_version
+        - dimension_consumers_resolve
+        - profile_required_keys_present
+        - profile_properties_valid
+      description: Rule codes of this module's `Violation.code`.
+    DimensionUsageKind:
+      type: string
+      enum:
+        - dataset_binding
+        - mapping_set
+        - bridge
+        - calculation_dimension
+        - report_scenario
+        - report_source
+        - assumption_set
+    DimensionPropertyField:
+      type: object
+      description: One member property of a profile's schema; the server validates system dimension members against it (OI-18).
+      required:
+        - key
+        - label
+        - type
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+            - text
+            - number
+            - date
+            - url
+            - image
+            - select
+            - geo
+            - boolean
+        options:
+          type: array
+          description: Choices of a `select` field.
+          items:
+            type: string
+        required:
+          type: boolean
+        description:
+          type: string
+        format:
+          type: string
+          enum:
+            - geojson
+          description: A text field holding GeoJSON.
+    DimensionProfile:
+      type: object
+      description: A system dimension type from the code registry (OI-16). A system dimension always has one; a user dimension never does.
+      required:
+        - key
+        - displayName
+        - kind
+        - owner
+        - editPolicy
+        - visibility
+        - requiredRoleKeys
+        - requiredMemberKeys
+        - memberPropertySchema
+        - cardinality
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        kind:
+          $ref: '#/components/schemas/DimensionKind'
+        owner:
+          type: string
+          description: The product module that owns the profile.
+        editPolicy:
+          $ref: '#/components/schemas/DimensionEditPolicy'
+        visibility:
+          type: string
+          enum:
+            - manager
+            - module
+            - hidden
+        requiredRoleKeys:
+          type: array
+          items:
+            type: string
+        requiredMemberKeys:
+          type: array
+          items:
+            type: string
+        memberPropertySchema:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionPropertyField'
+        cardinality:
+          type: string
+          enum:
+            - one
+            - many
+        seedNames:
+          type: object
+          description: Display names of required members and roles, used when the profile is defined.
+          additionalProperties:
+            type: string
+        singleRole:
+          type: boolean
+          description: Refuses a second role unconditionally (OI-20).
+    AvailableDimensionProfile:
+      type: object
+      required:
+        - profile
+        - dimensionId
+      properties:
+        profile:
+          $ref: '#/components/schemas/DimensionProfile'
+        dimensionId:
+          type:
+            - string
+            - 'null'
+          description: The dimension defined from the profile; null when not defined yet.
+    Dimension:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - kind
+        - origin
+        - purpose
+        - ownerReport
+        - profileKey
+        - isEnabled
+        - isRemovable
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        kind:
+          $ref: '#/components/schemas/DimensionKind'
+        origin:
+          $ref: '#/components/schemas/DimensionOrigin'
+        purpose:
+          $ref: '#/components/schemas/DimensionPurpose'
+        ownerReport:
+          description: Set only when purpose is `report`.
+          oneOf:
+            - $ref: '#/components/schemas/DimensionOwnerReport'
+            - type: 'null'
+        profileKey:
+          type:
+            - string
+            - 'null'
+          description: The profile of a system dimension (SG-03); null for user dimensions.
+        isEnabled:
+          type: boolean
+        isRemovable:
+          type: boolean
+    DimensionOwnerReport:
+      type: object
+      required:
+        - reportKey
+        - reportName
+      properties:
+        reportKey:
+          type: string
+        reportName:
+          type: string
+    DimensionVersion:
+      type: object
+      description: Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no drafts (M3, OI-14).
+      required:
+        - id
+        - dimensionId
+        - versionNumber
+        - status
+        - rangeDataType
+        - createdAt
+        - publishedAt
+        - retiredAt
+        - supersededBy
+        - freezeNote
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        rangeDataType:
+          description: Range dimensions only.
+          oneOf:
+            - $ref: '#/components/schemas/RangeDataType'
+            - type: 'null'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: When the version was frozen (SG-04).
+        supersededBy:
+          type:
+            - integer
+            - 'null'
+          description: Derived; the next version number once frozen (OI-12).
+        freezeNote:
+          type:
+            - string
+            - 'null'
+          description: Why the version was frozen (SG-05, OI-15).
+    DimensionVersionSummary:
+      type: object
+      required:
+        - id
+        - versionNumber
+        - status
+        - publishedAt
+        - retiredAt
+        - supersededBy
+        - freezeNote
+        - memberCount
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        supersededBy:
+          type:
+            - integer
+            - 'null'
+        freezeNote:
+          type:
+            - string
+            - 'null'
+        memberCount:
+          type: integer
+    DimensionRole:
+      type: object
+      required:
+        - id
+        - dimensionId
+        - key
+        - displayName
+        - description
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+    DimensionLevel:
+      type: object
+      required:
+        - id
+        - versionId
+        - key
+        - displayName
+        - ordinal
+        - isLeaf
+        - periodicity
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        ordinal:
+          type: integer
+        isLeaf:
+          type: boolean
+        periodicity:
+          description: Time dimensions only.
+          oneOf:
+            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - type: 'null'
+    DimensionMember:
+      type: object
+      required:
+        - id
+        - versionId
+        - key
+        - displayName
+        - description
+        - parentId
+        - levelId
+        - isAssignable
+        - sortOrder
+        - properties
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        parentId:
+          type:
+            - string
+            - 'null'
+          description: Hierarchical dimensions only; a member of the same version.
+        levelId:
+          type:
+            - string
+            - 'null'
+        isAssignable:
+          type: boolean
+        sortOrder:
+          type: integer
+        properties:
+          type: object
+          description: Free key/value for user dimensions; validated against the profile's property schema for system dimensions (OI-18).
+          additionalProperties: true
+    RangeBound:
+      type:
+        - number
+        - string
+        - 'null'
+      description: A number for `decimal`, an ISO date for `date`, an ISO date-time for `datetime`; null is open (only the first band's lower and the last band's upper).
+    RangeBand:
+      type: object
+      required:
+        - ordinal
+        - memberId
+        - lower
+        - upper
+        - lowerInclusive
+        - upperInclusive
+      properties:
+        ordinal:
+          type: integer
+        memberId:
+          $ref: '#/components/schemas/Id'
+        lower:
+          $ref: '#/components/schemas/RangeBound'
+        upper:
+          $ref: '#/components/schemas/RangeBound'
+        lowerInclusive:
+          type: boolean
+        upperInclusive:
+          type: boolean
+    DimensionUsageReference:
+      type: object
+      description: Something outside the dimension that references it, one of its roles, or some of its member keys.
+      required:
+        - kind
+        - name
+        - detail
+      properties:
+        kind:
+          $ref: '#/components/schemas/DimensionUsageKind'
+        name:
+          type: string
+        detail:
+          type: string
+        roleKey:
+          type: string
+        memberKeys:
+          type: array
+          description: Member keys this object names; deleting them is blocked and `dimension_consumers_resolve` requires them.
+          items:
+            type: string
+        pinsVersion:
+          type: integer
+          description: Assumption sets only; the version number pinned.
+        label:
+          type: string
+          description: Display label for blocker phrasing, e.g. a dataset version "'loans.details' v3".
+    DimensionListItem:
+      allOf:
+        - $ref: '#/components/schemas/Dimension'
+        - type: object
+          required:
+            - profile
+            - roles
+            - versions
+            - publishedMemberCount
+          properties:
+            profile:
+              oneOf:
+                - $ref: '#/components/schemas/DimensionProfile'
+                - type: 'null'
+            roles:
+              type: array
+              items:
+                $ref: '#/components/schemas/DimensionRole'
+            versions:
+              type: array
+              items:
+                $ref: '#/components/schemas/DimensionVersionSummary'
+            publishedMemberCount:
+              type:
+                - integer
+                - 'null'
+              description: Members in the live version.
+    DimensionDetail:
+      allOf:
+        - $ref: '#/components/schemas/DimensionListItem'
+        - type: object
+          required:
+            - usage
+          properties:
+            usage:
+              type: array
+              description: Computed from bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources and assumption set pins.
+              items:
+                $ref: '#/components/schemas/DimensionUsageReference'
+    DimensionVersionContent:
+      type: object
+      required:
+        - version
+        - levels
+        - members
+        - bands
+      properties:
+        version:
+          $ref: '#/components/schemas/DimensionVersion'
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionLevel'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionMember'
+        bands:
+          type: array
+          items:
+            $ref: '#/components/schemas/RangeBand'
+    DimensionEditState:
+      type: object
+      description: The change-set aggregate content; everything the dimension editor shows.
+      required:
+        - dimension
+        - content
+      properties:
+        dimension:
+          $ref: '#/components/schemas/DimensionDetail'
+        content:
+          $ref: '#/components/schemas/DimensionVersionContent'
+    DimensionCreated:
+      type: object
+      required:
+        - dimensionId
+        - versionId
+      properties:
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+          description: The live version 1.
+    FreezeInput:
+      type: object
+      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
+      required:
+        - note
+      properties:
+        note:
+          type:
+            - string
+            - 'null'
+          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
+    FreezeResult:
+      type: object
+      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. When a rule fails the freeze answers 422 instead and changes nothing.'
+      required:
+        - report
+        - live
+      properties:
+        report:
+          $ref: '#/components/schemas/ValidationReport'
+        live:
+          description: The new live version.
+    DimensionFreezeResult:
+      allOf:
+        - $ref: '#/components/schemas/FreezeResult'
+        - type: object
+          required:
+            - live
+          properties:
+            live:
+              $ref: '#/components/schemas/DimensionVersionSummary'
+    CreateDimensionInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - kind
+        - rangeDataType
+        - firstRole
+        - isEnabled
+        - isRemovable
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        kind:
+          $ref: '#/components/schemas/DimensionKind'
+        rangeDataType:
+          description: Required for range dimensions; null otherwise.
+          oneOf:
+            - $ref: '#/components/schemas/RangeDataType'
+            - type: 'null'
+        firstRole:
+          description: Required for non-time dimensions (M6); null for time.
+          oneOf:
+            - $ref: '#/components/schemas/DimensionFirstRoleInput'
+            - type: 'null'
+        isEnabled:
+          type: boolean
+        isRemovable:
+          type: boolean
+    DimensionFirstRoleInput:
+      type: object
+      required:
+        - key
+        - displayName
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+    DimensionPatch:
+      type: object
+      description: The identity fields that change after creation (M1).
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        isRemovable:
+          type: boolean
+    DimensionVersionPatch:
+      type: object
+      required:
+        - rangeDataType
+      properties:
+        rangeDataType:
+          description: Changing it clears every band bound.
+          oneOf:
+            - $ref: '#/components/schemas/RangeDataType'
+            - type: 'null'
+    DimensionMemberInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - description
+        - parentId
+        - levelId
+        - isAssignable
+        - sortOrder
+        - properties
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: A stored id updates that member (its key stays fixed). Absent or a temporary id `tmp:<uuid>` creates one; later operations reference the new member by the temporary id.
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        parentId:
+          type:
+            - string
+            - 'null'
+        levelId:
+          type:
+            - string
+            - 'null'
+        isAssignable:
+          type: boolean
+        sortOrder:
+          type:
+            - integer
+            - 'null'
+          description: Null appends to the end of the siblings.
+        properties:
+          type: object
+          additionalProperties: true
+    DimensionLevelInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - isLeaf
+        - periodicity
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: A stored id updates that level; absent or `tmp:<uuid>` creates one.
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isLeaf:
+          type: boolean
+        periodicity:
+          oneOf:
+            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - type: 'null'
+    DimensionRoleInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - description
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: A stored id updates that role; absent or `tmp:<uuid>` creates one.
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+    DimensionMemberPosition:
+      type: object
+      required:
+        - parentId
+        - index
+      properties:
+        parentId:
+          type:
+            - string
+            - 'null'
+        index:
+          type: integer
+          minimum: 0
+          description: Index among the new siblings after the move.
+    DimensionMemberImportRow:
+      type: object
+      description: One parsed row; CSV/TSV parsing stays in the browser (OI-21).
+      required:
+        - key
+        - displayName
+        - parentKey
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        parentKey:
+          type:
+            - string
+            - 'null'
+    DimensionMemberImportMode:
+      type: string
+      enum:
+        - merge
+        - replace
+      description: '`merge` upserts by key and keeps everything else; `replace` makes the version''s members exactly the imported rows and fails when a member it would remove is still needed.'
+    DimensionOperation:
+      description: One edit of the dimension change set, named after the port's edit methods (OI-01). The set covers the dimension's identity, its roles and its live version's content; edit policy (M11) is enforced per operation.
+      oneOf:
+        - $ref: '#/components/schemas/DimensionUpdateDimensionOperation'
+        - $ref: '#/components/schemas/DimensionUpdateVersionOperation'
+        - $ref: '#/components/schemas/DimensionSaveMemberOperation'
+        - $ref: '#/components/schemas/DimensionDeleteMemberOperation'
+        - $ref: '#/components/schemas/DimensionMoveMemberOperation'
+        - $ref: '#/components/schemas/DimensionImportMembersOperation'
+        - $ref: '#/components/schemas/DimensionClearMembersOperation'
+        - $ref: '#/components/schemas/DimensionSaveLevelOperation'
+        - $ref: '#/components/schemas/DimensionDeleteLevelOperation'
+        - $ref: '#/components/schemas/DimensionReorderLevelsOperation'
+        - $ref: '#/components/schemas/DimensionSaveBandsOperation'
+        - $ref: '#/components/schemas/DimensionSaveRoleOperation'
+        - $ref: '#/components/schemas/DimensionDeleteRoleOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateDimension: '#/components/schemas/DimensionUpdateDimensionOperation'
+          updateVersion: '#/components/schemas/DimensionUpdateVersionOperation'
+          saveMember: '#/components/schemas/DimensionSaveMemberOperation'
+          deleteMember: '#/components/schemas/DimensionDeleteMemberOperation'
+          moveMember: '#/components/schemas/DimensionMoveMemberOperation'
+          importMembers: '#/components/schemas/DimensionImportMembersOperation'
+          clearMembers: '#/components/schemas/DimensionClearMembersOperation'
+          saveLevel: '#/components/schemas/DimensionSaveLevelOperation'
+          deleteLevel: '#/components/schemas/DimensionDeleteLevelOperation'
+          reorderLevels: '#/components/schemas/DimensionReorderLevelsOperation'
+          saveBands: '#/components/schemas/DimensionSaveBandsOperation'
+          saveRole: '#/components/schemas/DimensionSaveRoleOperation'
+          deleteRole: '#/components/schemas/DimensionDeleteRoleOperation'
+    DimensionUpdateDimensionOperation:
+      type: object
+      required:
+        - op
+        - patch
+      properties:
+        op:
+          const: updateDimension
+        patch:
+          $ref: '#/components/schemas/DimensionPatch'
+    DimensionUpdateVersionOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - patch
+      properties:
+        op:
+          const: updateVersion
+        versionId:
+          $ref: '#/components/schemas/Id'
+        patch:
+          $ref: '#/components/schemas/DimensionVersionPatch'
+    DimensionSaveMemberOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - input
+      properties:
+        op:
+          const: saveMember
+        versionId:
+          $ref: '#/components/schemas/Id'
+        input:
+          $ref: '#/components/schemas/DimensionMemberInput'
+    DimensionDeleteMemberOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - memberId
+      properties:
+        op:
+          const: deleteMember
+        versionId:
+          $ref: '#/components/schemas/Id'
+        memberId:
+          $ref: '#/components/schemas/Id'
+    DimensionMoveMemberOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - memberId
+        - to
+      properties:
+        op:
+          const: moveMember
+        versionId:
+          $ref: '#/components/schemas/Id'
+        memberId:
+          $ref: '#/components/schemas/Id'
+        to:
+          $ref: '#/components/schemas/DimensionMemberPosition'
+    DimensionImportMembersOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - rows
+        - mode
+      properties:
+        op:
+          const: importMembers
+        versionId:
+          $ref: '#/components/schemas/Id'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionMemberImportRow'
+        mode:
+          $ref: '#/components/schemas/DimensionMemberImportMode'
+    DimensionClearMembersOperation:
+      type: object
+      required:
+        - op
+        - versionId
+      properties:
+        op:
+          const: clearMembers
+        versionId:
+          $ref: '#/components/schemas/Id'
+    DimensionSaveLevelOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - input
+      properties:
+        op:
+          const: saveLevel
+        versionId:
+          $ref: '#/components/schemas/Id'
+        input:
+          $ref: '#/components/schemas/DimensionLevelInput'
+    DimensionDeleteLevelOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - levelId
+      properties:
+        op:
+          const: deleteLevel
+        versionId:
+          $ref: '#/components/schemas/Id'
+        levelId:
+          $ref: '#/components/schemas/Id'
+    DimensionReorderLevelsOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - orderedIds
+      properties:
+        op:
+          const: reorderLevels
+        versionId:
+          $ref: '#/components/schemas/Id'
+        orderedIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+    DimensionSaveBandsOperation:
+      type: object
+      description: Replaces the version's bands as a whole set (M5).
+      required:
+        - op
+        - versionId
+        - bands
+      properties:
+        op:
+          const: saveBands
+        versionId:
+          $ref: '#/components/schemas/Id'
+        bands:
+          type: array
+          items:
+            $ref: '#/components/schemas/RangeBand'
+    DimensionSaveRoleOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveRole
+        input:
+          $ref: '#/components/schemas/DimensionRoleInput'
+    DimensionDeleteRoleOperation:
+      type: object
+      required:
+        - op
+        - roleId
+      properties:
+        op:
+          const: deleteRole
+        roleId:
+          $ref: '#/components/schemas/Id'
+    DimensionChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/DimensionOperation'
+    DimensionChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/DimensionEditState'
+    DimensionChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/DimensionEditState'
   parameters:
     TenantId:
       name: tenantId
@@ -239,6 +1614,42 @@ components:
       description: The tenant directory key.
       schema:
         type: string
+    DimensionId:
+      name: dimensionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DimensionVersionId:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DimensionMemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DimensionLevelId:
+      name: levelId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DimensionRoleId:
+      name: roleId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    DimensionProfileKey:
+      name: profileKey
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Key'
   responses:
     BadRequest:
       description: The body, route or query does not bind, or an input validator failed; see `errors`.

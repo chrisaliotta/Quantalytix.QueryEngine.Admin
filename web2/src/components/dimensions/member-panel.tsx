@@ -7,14 +7,14 @@ import { Switch } from '@/components/ui/switch'
 import { SearchCombobox } from '@/components/report/shared/search-combobox'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useDimensionsApi, useRefreshDimensions } from '@/lib/dimensions/client'
-import type { DimensionDetail, Member, MemberInput, PropertyField, VersionContent } from '@/lib/dimensions/contract'
+import type { DimensionDetail, DimensionMember, DimensionMemberInput, DimensionPropertyField, DimensionVersionContent } from '@/lib/dimensions/contract'
 import { ancestorPath, descendantIds, indexTree } from '@/lib/dimensions/tree'
 import { Field, ReadValue, RequiredLock } from './shared'
 
 const ROOT = '__root__'
 const NONE = '__none__'
 
-export const toMemberInput = (m: Member): MemberInput => ({
+export const toMemberInput = (m: DimensionMember): DimensionMemberInput => ({
   id: m.id,
   key: m.key,
   displayName: m.displayName,
@@ -30,7 +30,7 @@ export const toMemberInput = (m: Member): MemberInput => ({
 export function usePatchMember(versionId: string) {
   const api = useDimensionsApi()
   const refresh = useRefreshDimensions()
-  return async (m: Member, patch: Partial<MemberInput>) => {
+  return async (m: DimensionMember, patch: Partial<DimensionMemberInput>) => {
     const r = await api.saveMember(versionId, { ...toMemberInput(m), ...patch })
     if (!r.ok) {
       const first = Object.values(r.problem.errors).flat()[0]
@@ -44,9 +44,9 @@ export function usePatchMember(versionId: string) {
 
 interface Props {
   dim: DimensionDetail
-  content: VersionContent
+  content: DimensionVersionContent
   editable: boolean
-  member: Member
+  member: DimensionMember
   onClose: () => void
 }
 
@@ -60,7 +60,7 @@ export function MemberPanel({ dim, content, editable, member, onClose }: Props) 
   const typed = dim.origin === 'system'
   const required = !!dim.profile?.requiredMemberKeys.includes(member.key)
 
-  const set = async (p: Partial<MemberInput>) => setErrors((await patch(member, p)) ?? {})
+  const set = async (p: Partial<DimensionMemberInput>) => setErrors((await patch(member, p)) ?? {})
   const errorsFor = (k: string) => errors[k]
 
   const parentOptions = useMemo(() => {
@@ -151,7 +151,7 @@ export function MemberPanel({ dim, content, editable, member, onClose }: Props) 
   )
 }
 
-function TypedProperty({ field, value, editable, errors, onChange }: { field: PropertyField; value: unknown; editable: boolean; errors?: string[]; onChange: (v: unknown) => void }) {
+function TypedProperty({ field, value, editable, errors, onChange }: { field: DimensionPropertyField; value: unknown; editable: boolean; errors?: string[]; onChange: (v: unknown) => void }) {
   const id = `prop-${field.key}`
   const str = value === undefined || value === null ? '' : String(value)
 
@@ -241,7 +241,7 @@ function TypedProperty({ field, value, editable, errors, onChange }: { field: Pr
   }
 }
 
-function GeoField({ field, value, errors, onChange }: { field: PropertyField; value: { lat?: number; lng?: number } | undefined; errors?: string[]; onChange: (v: unknown) => void }) {
+function GeoField({ field, value, errors, onChange }: { field: DimensionPropertyField; value: { lat?: number; lng?: number } | undefined; errors?: string[]; onChange: (v: unknown) => void }) {
   const lat = value?.lat
   const lng = value?.lng
   const setPart = (part: 'lat' | 'lng', raw: string) => onChange({ ...value, [part]: raw === '' ? undefined : Number(raw) })

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import type { ApiResult, DeleteTarget, DimensionsApi, Origin, ProblemDetails } from './contract'
+import { unwrap } from '@/lib/api/contract'
+import { DIMENSION_COMMANDS, DIMENSION_EDITS, type DimensionDeleteTarget, type DimensionOrigin, type DimensionsApi } from './contract'
 import { createMockDimensionsApi } from './mock/adapter'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 
@@ -18,23 +19,6 @@ export function useDimensionsApi() {
   return api
 }
 
-const DIMENSION_EDITS = [
-  'updateDimension',
-  'updateVersion',
-  'saveMember',
-  'deleteMember',
-  'moveMember',
-  'importMembers',
-  'clearMembers',
-  'saveLevel',
-  'deleteLevel',
-  'reorderLevels',
-  'saveBands',
-  'saveRole',
-  'deleteRole',
-] as const satisfies readonly (keyof DimensionsApi)[]
-const DIMENSION_COMMANDS = ['freezeVersion', 'deleteVersion', 'deleteDimension', 'createDimension', 'defineSystemDimension'] as const satisfies readonly (keyof DimensionsApi)[]
-
 /**
  * Batches every edit inside one dimension: members, levels, bands, roles and properties stay pending until Save.
  * Children keep calling `useDimensionsApi()`; they receive the staged port.
@@ -50,35 +34,17 @@ export function DimensionEditScope({ dimensionId, label, children }: { dimension
   )
 }
 
-export class ProblemError extends Error {
-  constructor(public problem: ProblemDetails) {
-    super(problem.title)
-  }
-}
-
-async function unwrap<T>(p: Promise<ApiResult<T>>): Promise<T> {
-  const r = await p
-  if (!r.ok) throw new ProblemError(r.problem)
-  return r.data
-}
-
 const OPTS = { revalidateOnFocus: false }
 
 export const dimKeys = {
-  list: (origin: Origin) => ['dim', 'list', origin] as const,
+  list: (origin: DimensionOrigin) => ['dim', 'list', origin] as const,
   profiles: ['dim', 'profiles'] as const,
   dimension: (id: string) => ['dim', 'dimension', id] as const,
   version: (id: string) => ['dim', 'version', id] as const,
-  deleteCheck: (t: DeleteTarget) => ['dim', 'deleteCheck', JSON.stringify(t)] as const,
+  deleteCheck: (t: DimensionDeleteTarget) => ['dim', 'deleteCheck', JSON.stringify(t)] as const,
 }
 
-/** Report-owned dimensions; pass `enabled=false` for non-admins so no request is made. */
-export function useHiddenDimensions(enabled: boolean) {
-  const api = useDimensionsApi()
-  return useSWR(enabled ? ['dim', 'hidden'] : null, () => unwrap(api.listHiddenDimensions()), OPTS)
-}
-
-export function useDimensionList(origin: Origin) {
+export function useDimensionList(origin: DimensionOrigin) {
   const api = useDimensionsApi()
   return useSWR(dimKeys.list(origin), () => api.listDimensions(origin), OPTS)
 }
@@ -95,7 +61,7 @@ export function useDimensionVersion(id: string | null) {
   return useSWR(id ? dimKeys.version(id) : null, () => unwrap(api.getVersion(id!)), { ...OPTS, keepPreviousData: true })
 }
 /** Fetches blockers when a delete dialog opens; null target skips the request. */
-export function useDeleteCheck(target: DeleteTarget | null) {
+export function useDeleteCheck(target: DimensionDeleteTarget | null) {
   const api = useDimensionsApi()
   return useSWR(target ? dimKeys.deleteCheck(target) : null, () => api.checkDelete(target!), { ...OPTS, revalidateOnMount: true, dedupingInterval: 0 })
 }

@@ -1,20 +1,71 @@
 import type { ChangeSetPort } from '@/lib/api/changes'
+import type {
+  ApiResult,
+  ChangeSetCommit,
+  ChangeSetPreview,
+  ChangeSetRequest,
+  DeleteCheck,
+  Id,
+  Problem,
+  ValidationReport,
+  VersionStatus,
+  Violation,
+  ViolationTarget,
+} from '@/lib/api/contract'
 
 /**
- * Business contract for the dimension manager. Screens depend only on these types and the `DimensionsApi` port;
- * the mock adapter in ./mock implements it in memory, and an HTTP adapter can replace it without touching the UI.
+ * Business contract for the dimension manager (blueprint 12). Every type mirrors the schema of the same name in
+ * api/openapi/contract/dimensions.yaml. Screens depend only on these types and the `DimensionsApi` port; the mock
+ * adapter in ./mock implements it in memory, and an HTTP adapter can replace it without touching the UI.
  */
 
+export type { ApiResult, DeleteCheck, Id, Problem, ValidationReport, VersionStatus, Violation }
+
+/** @deprecated Use `Problem`. Kept while lib/mappings imports it from here. */
+export type ProblemDetails = Problem
+
+/* ───────────────────────── vocabularies ───────────────────────── */
+
 export type DimensionKind = 'categorical' | 'hierarchical' | 'range' | 'time'
-export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
-export type RangeDataType = 'decimal' | 'date'
-export type EditPolicy = 'open' | 'extend' | 'locked'
-export type Origin = 'system' | 'user'
-export type Periodicity = 'day' | 'month' | 'quarter' | 'year'
+export type DimensionOrigin = 'system' | 'user'
+export type DimensionPurpose = 'analytical' | 'report'
+export type DimensionEditPolicy = 'open' | 'extend' | 'locked'
+export type RangeDataType = 'decimal' | 'date' | 'datetime'
+export type DimensionPeriodicity = 'day' | 'month' | 'quarter' | 'year'
 
 export type DimensionTab = 'properties' | 'members' | 'levels' | 'bands' | 'roles' | 'mappings' | 'bridges' | 'usage'
 
-export interface PropertyField {
+export type DimensionViolationCode =
+  | 'range_data_type_matches_kind'
+  | 'level_key_unique'
+  | 'member_key_unique'
+  | 'member_parent_in_version'
+  | 'member_level_in_version'
+  | 'hierarchy_acyclic'
+  | 'band_boundary_family'
+  | 'band_bounds_ordered'
+  | 'bands_non_overlapping'
+  | 'band_open_bounds_at_ends'
+  | 'band_member_in_version'
+  | 'dimension_consumers_resolve'
+  | 'profile_required_keys_present'
+  | 'profile_properties_valid'
+
+export interface DimensionViolation extends Violation {
+  code: DimensionViolationCode
+  /** `itemId` is a member, level or role id, or a band ordinal as a string. */
+  target?: ViolationTarget & { area: DimensionTab }
+}
+
+export interface DimensionValidationReport extends ValidationReport {
+  violations: DimensionViolation[]
+}
+
+export type DimensionUsageKind = 'dataset_binding' | 'mapping_set' | 'bridge' | 'calculation_dimension' | 'report_scenario' | 'report_source' | 'assumption_set'
+
+/* ───────────────────────── profiles ───────────────────────── */
+
+export interface DimensionPropertyField {
   key: string
   label: string
   type: 'text' | 'number' | 'date' | 'url' | 'image' | 'select' | 'geo' | 'boolean'
@@ -31,39 +82,47 @@ export interface DimensionProfile {
   displayName: string
   kind: DimensionKind
   owner: string
-  editPolicy: EditPolicy
+  editPolicy: DimensionEditPolicy
   visibility: 'manager' | 'module' | 'hidden'
   requiredRoleKeys: string[]
   requiredMemberKeys: string[]
-  memberPropertySchema: PropertyField[]
+  memberPropertySchema: DimensionPropertyField[]
   cardinality: 'one' | 'many'
   /** Display names for required members and roles, used when the profile is defined. */
   seedNames?: Record<string, string>
+  /** Refuses a second role unconditionally. */
+  singleRole?: boolean
 }
 
+export interface AvailableDimensionProfile {
+  profile: DimensionProfile
+  dimensionId: Id | null
+}
+
+/* ───────────────────────── entities ───────────────────────── */
+
 export interface Dimension {
-  id: string
+  id: Id
   key: string
   displayName: string
   kind: DimensionKind
-  origin: Origin
-  /** `report` dimensions are hidden: discrete hierarchies that are a report's Rows tree, bound to exactly one report. */
-  purpose: 'analytical' | 'report'
+  origin: DimensionOrigin
+  purpose: DimensionPurpose
   /** Set only when purpose is `report`. Links go to this report in the editor, never to the dimension. */
-  ownerReport: OwnerReport | null
+  ownerReport: DimensionOwnerReport | null
   profileKey: string | null
   isEnabled: boolean
   isRemovable: boolean
 }
 
-export interface OwnerReport {
+export interface DimensionOwnerReport {
   reportKey: string
   reportName: string
 }
 
 export interface DimensionVersion {
-  id: string
-  dimensionId: string
+  id: Id
+  dimensionId: Id
   versionNumber: number
   status: VersionStatus
   rangeDataType: RangeDataType | null
@@ -71,73 +130,12 @@ export interface DimensionVersion {
   publishedAt: string | null
   retiredAt: string | null
   supersededBy: number | null
-  /** Why the version was frozen, e.g. "FY26 close". Frozen versions only. */
-  freezeNote?: string | null
+  /** Why the version was frozen, e.g. "FY26 close". */
+  freezeNote: string | null
 }
 
-export interface Role {
-  id: string
-  dimensionId: string
-  key: string
-  displayName: string
-  description: string | null
-}
-
-export interface Level {
-  id: string
-  versionId: string
-  key: string
-  displayName: string
-  ordinal: number
-  isLeaf: boolean
-  periodicity: Periodicity | null
-}
-
-export interface Member {
-  id: string
-  versionId: string
-  key: string
-  displayName: string
-  description: string | null
-  parentId: string | null
-  levelId: string | null
-  isAssignable: boolean
-  sortOrder: number
-  properties: Record<string, unknown>
-}
-
-export type Bound = string | number | null
-
-export interface RangeBand {
-  ordinal: number
-  memberId: string
-  lower: Bound
-  upper: Bound
-  lowerInclusive: boolean
-  upperInclusive: boolean
-}
-
-export type UsageKind = 'dataset binding' | 'mapping set' | 'bridge' | 'calculation dimension' | 'report scenario' | 'report' | 'assumption set'
-
-/** Something outside the dimension that references it, one of its roles, or some of its member keys. */
-export interface UsageReference {
-  kind: UsageKind
-  name: string
-  detail: string
-  roleKey?: string
-  /** Member keys this object names; deleting them is blocked and a draft missing them fails validation. */
-  memberKeys?: string[]
-  /** For assumption sets: the version number pinned. */
-  pinsVersion?: number
-  /** Dataset bindings: dataset version label for blocker phrasing, e.g. "'loans.details' v3". */
-  label?: string
-  href?: string
-}
-
-/* ───────────────────────── read models ───────────────────────── */
-
-export interface VersionSummary {
-  id: string
+export interface DimensionVersionSummary {
+  id: Id
   versionNumber: number
   status: VersionStatus
   publishedAt: string | null
@@ -147,75 +145,111 @@ export interface VersionSummary {
   memberCount: number
 }
 
-export interface FreezeResult {
-  report: ValidationReport
-  /** The new live version, or null when checks found violations. */
-  live: VersionSummary | null
+export interface DimensionRole {
+  id: Id
+  dimensionId: Id
+  key: string
+  displayName: string
+  description: string | null
 }
+
+export interface DimensionLevel {
+  id: Id
+  versionId: Id
+  key: string
+  displayName: string
+  ordinal: number
+  isLeaf: boolean
+  periodicity: DimensionPeriodicity | null
+}
+
+export interface DimensionMember {
+  id: Id
+  versionId: Id
+  key: string
+  displayName: string
+  description: string | null
+  parentId: Id | null
+  levelId: Id | null
+  isAssignable: boolean
+  sortOrder: number
+  properties: Record<string, unknown>
+}
+
+/** A number for `decimal`, an ISO date for `date`, an ISO date-time for `datetime`; null is open. */
+export type RangeBound = string | number | null
+
+export interface RangeBand {
+  ordinal: number
+  memberId: Id
+  lower: RangeBound
+  upper: RangeBound
+  lowerInclusive: boolean
+  upperInclusive: boolean
+}
+
+/** Something outside the dimension that references it, one of its roles, or some of its member keys. */
+export interface DimensionUsageReference {
+  kind: DimensionUsageKind
+  name: string
+  detail: string
+  roleKey?: string
+  /** Member keys this object names; deleting them is blocked and the live version must keep them. */
+  memberKeys?: string[]
+  /** For assumption sets: the version number pinned. */
+  pinsVersion?: number
+  /** Dataset bindings: dataset version label for blocker phrasing, e.g. "'loans.details' v3". */
+  label?: string
+}
+
+/* ───────────────────────── read models ───────────────────────── */
 
 export interface DimensionListItem extends Dimension {
   profile: DimensionProfile | null
-  roles: Role[]
-  versions: VersionSummary[]
-  /** Members in the published version. */
+  roles: DimensionRole[]
+  versions: DimensionVersionSummary[]
+  /** Members in the live version. */
   publishedMemberCount: number | null
 }
 
 export interface DimensionDetail extends DimensionListItem {
-  usage: UsageReference[]
+  usage: DimensionUsageReference[]
 }
 
-export interface VersionContent {
+export interface DimensionVersionContent {
   version: DimensionVersion
-  levels: Level[]
-  members: Member[]
+  levels: DimensionLevel[]
+  members: DimensionMember[]
   bands: RangeBand[]
 }
 
-export interface AvailableProfile {
-  profile: DimensionProfile
-  dimensionId: string | null
+/** The change-set aggregate content: everything the dimension editor shows. */
+export interface DimensionEditState {
+  dimension: DimensionDetail
+  content: DimensionVersionContent
 }
 
-export interface Violation {
-  code: 'duplicateMemberKey' | 'duplicateLevelKey' | 'cycle' | 'rangeType' | 'bandOverlap' | 'bandOrder' | 'bandMember' | 'bandOpenBound' | 'requiredMember' | 'requiredRole' | 'namedKeyMissing'
-  message: string
-  tab: DimensionTab
-  /** Member id, level id, role id or band ordinal as a string. */
-  itemId?: string
+export interface DimensionCreated {
+  dimensionId: Id
+  versionId: Id
 }
 
-export interface ValidationReport {
-  versionId: string
-  checkedAt: string
-  violations: Violation[]
+/* ───────────────────────── live-and-frozen versions ───────────────────────── */
+
+/** Body of a freeze for dimensions, mapping sets and bridges. */
+export interface FreezeInput {
+  note: string | null
 }
 
-/** Reasons something cannot be deleted, already phrased for display. Empty `reasons` means deletable. */
-export interface DeleteCheck {
-  allowed: boolean
-  message: string | null
-  reasons: string[]
+/** The port's freeze answer for any living kind; `live` is null when a rule failed and nothing changed. */
+export interface FreezeResult<V> {
+  report: ValidationReport
+  live: V | null
 }
 
-export type DeleteTarget =
-  | { type: 'dimension'; dimensionId: string }
-  | { type: 'version'; versionId: string }
-  | { type: 'member'; versionId: string; memberId: string }
-  | { type: 'level'; versionId: string; levelId: string }
-  | { type: 'role'; roleId: string }
-
-/* ───────────────────────── results & errors ───────────────────────── */
-
-export interface ProblemDetails {
-  title: string
-  detail?: string
-  status: number
-  /** Field path → messages. */
-  errors: Record<string, string[]>
+export interface DimensionFreezeResult extends FreezeResult<DimensionVersionSummary> {
+  report: DimensionValidationReport
 }
-
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: ProblemDetails }
 
 /* ───────────────────────── inputs ───────────────────────── */
 
@@ -224,107 +258,163 @@ export interface CreateDimensionInput {
   displayName: string
   kind: DimensionKind
   rangeDataType: RangeDataType | null
-  firstRole: { key: string; displayName: string } | null
+  firstRole: DimensionFirstRoleInput | null
   isEnabled: boolean
   isRemovable: boolean
 }
 
-export interface MemberInput {
-  id?: string
+export interface DimensionFirstRoleInput {
+  key: string
+  displayName: string
+}
+
+export type DimensionPatch = Partial<Pick<Dimension, 'displayName' | 'isEnabled' | 'isRemovable'>>
+
+export interface DimensionVersionPatch {
+  rangeDataType: RangeDataType | null
+}
+
+/** A stored `id` updates; an absent or `tmp:<uuid>` id creates. Keys are fixed once created. */
+export interface DimensionMemberInput {
+  id?: Id
   key: string
   displayName: string
   description: string | null
-  parentId: string | null
-  levelId: string | null
+  parentId: Id | null
+  levelId: Id | null
   isAssignable: boolean
   sortOrder: number | null
   properties: Record<string, unknown>
 }
 
-export interface LevelInput {
-  id?: string
+export interface DimensionLevelInput {
+  id?: Id
   key: string
   displayName: string
   isLeaf: boolean
-  periodicity: Periodicity | null
+  periodicity: DimensionPeriodicity | null
 }
 
-export interface RoleInput {
-  id?: string
+export interface DimensionRoleInput {
+  id?: Id
   key: string
   displayName: string
   description: string | null
 }
 
-export interface MovePosition {
-  parentId: string | null
+export interface DimensionMemberPosition {
+  parentId: Id | null
   /** Index among the new siblings after the move. */
   index: number
 }
 
-export interface ImportRow {
+export interface DimensionMemberImportRow {
   key: string
   displayName: string
   parentKey: string | null
 }
 
 /** `merge` upserts by key and keeps everything else; `replace` makes the version's members exactly the imported rows. */
-export type ImportMode = 'merge' | 'replace'
+export type DimensionMemberImportMode = 'merge' | 'replace'
 
-export interface ImportResult {
-  added: Member[]
-  updated: Member[]
+export interface DimensionMemberImportResult {
+  added: DimensionMember[]
+  updated: DimensionMember[]
   removed: number
 }
 
+export type DimensionDeleteTarget =
+  | { type: 'dimension'; dimensionId: Id }
+  | { type: 'version'; versionId: Id }
+  | { type: 'member'; versionId: Id; memberId: Id }
+  | { type: 'level'; versionId: Id; levelId: Id }
+  | { type: 'role'; roleId: Id }
+
+/* ───────────────────────── change set ───────────────────────── */
+
+export type DimensionOperation =
+  | { op: 'updateDimension'; patch: DimensionPatch }
+  | { op: 'updateVersion'; versionId: Id; patch: DimensionVersionPatch }
+  | { op: 'saveMember'; versionId: Id; input: DimensionMemberInput }
+  | { op: 'deleteMember'; versionId: Id; memberId: Id }
+  | { op: 'moveMember'; versionId: Id; memberId: Id; to: DimensionMemberPosition }
+  | { op: 'importMembers'; versionId: Id; rows: DimensionMemberImportRow[]; mode: DimensionMemberImportMode }
+  | { op: 'clearMembers'; versionId: Id }
+  | { op: 'saveLevel'; versionId: Id; input: DimensionLevelInput }
+  | { op: 'deleteLevel'; versionId: Id; levelId: Id }
+  | { op: 'reorderLevels'; versionId: Id; orderedIds: Id[] }
+  | { op: 'saveBands'; versionId: Id; bands: RangeBand[] }
+  | { op: 'saveRole'; input: DimensionRoleInput }
+  | { op: 'deleteRole'; roleId: Id }
+
+export type DimensionChangeSetRequest = ChangeSetRequest<DimensionOperation>
+export type DimensionChangeSetPreview = ChangeSetPreview<DimensionEditState>
+export type DimensionChangeSetCommit = ChangeSetCommit<DimensionEditState>
+
 /* ───────────────────────── the port ───────────────────────── */
 
-/** Edits stage into the change set and apply on `commitChanges`; see lib/api/changes.ts. */
+/** Edits stage into the dimension's change set and apply on `commitChanges`; see lib/api/changes.ts. */
 export interface DimensionsApi extends ChangeSetPort {
-  listDimensions(origin: Origin): Promise<DimensionListItem[]>
-  /** Every dimension of any purpose (analytical and report-owned), for cross-module resolution such as bridges. Not for the list screen. */
+  /** Analytical dimensions only; report-owned dimensions are reached from their report. */
+  listDimensions(origin: DimensionOrigin): Promise<DimensionListItem[]>
+  /** @deprecated Moves to the tenant catalog (OI-13). Kept while lib/mappings resolves dimensions through it. */
   listAllDimensions(): Promise<DimensionListItem[]>
-  /** Report-owned (hidden) dimensions. System admins only; anyone else gets 403. */
-  listHiddenDimensions(): Promise<ApiResult<DimensionListItem[]>>
-  listAvailableProfiles(): Promise<AvailableProfile[]>
-  getDimension(id: string): Promise<ApiResult<DimensionDetail>>
-  getVersion(versionId: string): Promise<ApiResult<VersionContent>>
+  listAvailableProfiles(): Promise<AvailableDimensionProfile[]>
+  getDimension(id: Id): Promise<ApiResult<DimensionDetail>>
+  getVersion(versionId: Id): Promise<ApiResult<DimensionVersionContent>>
+  /** Runs the rules without changing anything. */
+  checkVersion(versionId: Id): Promise<ApiResult<DimensionValidationReport>>
+  checkDelete(target: DimensionDeleteTarget): Promise<DeleteCheck>
 
-  createDimension(input: CreateDimensionInput): Promise<ApiResult<{ dimensionId: string; versionId: string }>>
-  defineSystemDimension(profileKey: string): Promise<ApiResult<{ dimensionId: string; versionId: string }>>
-  updateDimension(id: string, patch: Partial<Pick<Dimension, 'displayName' | 'isEnabled' | 'isRemovable'>>): Promise<ApiResult<Dimension>>
-  checkDelete(target: DeleteTarget): Promise<DeleteCheck>
-  deleteDimension(id: string): Promise<ApiResult<null>>
-
-  updateVersion(versionId: string, patch: { rangeDataType: RangeDataType | null }): Promise<ApiResult<DimensionVersion>>
-  /** Runs the integrity checks without changing anything. */
-  checkVersion(versionId: string): Promise<ApiResult<ValidationReport>>
-  /**
-   * Freezes the live version as a read-only snapshot and continues editing in a new live version cloned from it.
-   * Checks run first; on violations nothing changes and `live` is null.
-   */
-  freezeVersion(versionId: string, note: string | null): Promise<ApiResult<FreezeResult>>
-  /** Frozen versions only; the live version can't be deleted. */
-  deleteVersion(versionId: string): Promise<ApiResult<null>>
-
-  saveMember(versionId: string, input: MemberInput): Promise<ApiResult<Member>>
-  deleteMember(versionId: string, memberId: string): Promise<ApiResult<null>>
+  updateDimension(id: Id, patch: DimensionPatch): Promise<ApiResult<Dimension>>
+  /** Changing the range data type clears every band bound. */
+  updateVersion(versionId: Id, patch: DimensionVersionPatch): Promise<ApiResult<DimensionVersion>>
+  saveMember(versionId: Id, input: DimensionMemberInput): Promise<ApiResult<DimensionMember>>
+  deleteMember(versionId: Id, memberId: Id): Promise<ApiResult<null>>
   /** Returns the member's previous position so callers can undo. */
-  moveMember(versionId: string, memberId: string, to: MovePosition): Promise<ApiResult<MovePosition>>
+  moveMember(versionId: Id, memberId: Id, to: DimensionMemberPosition): Promise<ApiResult<DimensionMemberPosition>>
   /** Defaults to `merge`. Replace fails (changing nothing) when a member it would remove is still needed. */
-  importMembers(versionId: string, rows: ImportRow[], mode?: ImportMode): Promise<ApiResult<ImportResult>>
+  importMembers(versionId: Id, rows: DimensionMemberImportRow[], mode?: DimensionMemberImportMode): Promise<ApiResult<DimensionMemberImportResult>>
   /** Removes every member. Fails (changing nothing) when any member is still needed. */
-  clearMembers(versionId: string): Promise<ApiResult<{ removed: number }>>
+  clearMembers(versionId: Id): Promise<ApiResult<{ removed: number }>>
+  saveLevel(versionId: Id, input: DimensionLevelInput): Promise<ApiResult<DimensionLevel>>
+  deleteLevel(versionId: Id, levelId: Id): Promise<ApiResult<null>>
+  reorderLevels(versionId: Id, orderedIds: Id[]): Promise<ApiResult<DimensionLevel[]>>
+  saveBands(versionId: Id, bands: RangeBand[]): Promise<ApiResult<RangeBand[]>>
+  saveRole(dimensionId: Id, input: DimensionRoleInput): Promise<ApiResult<DimensionRole>>
+  deleteRole(roleId: Id): Promise<ApiResult<null>>
 
-  saveLevel(versionId: string, input: LevelInput): Promise<ApiResult<Level>>
-  deleteLevel(versionId: string, levelId: string): Promise<ApiResult<null>>
-  reorderLevels(versionId: string, orderedIds: string[]): Promise<ApiResult<Level[]>>
-
-  saveBands(versionId: string, bands: RangeBand[]): Promise<ApiResult<RangeBand[]>>
-
-  saveRole(dimensionId: string, input: RoleInput): Promise<ApiResult<Role>>
-  deleteRole(roleId: string): Promise<ApiResult<null>>
+  createDimension(input: CreateDimensionInput): Promise<ApiResult<DimensionCreated>>
+  defineSystemDimension(profileKey: string): Promise<ApiResult<DimensionCreated>>
+  deleteDimension(id: Id): Promise<ApiResult<null>>
+  /**
+   * Freezes the live version as a read-only snapshot and continues in a new live version cloned from it.
+   * Rules run first; on violations nothing changes and `live` is null.
+   */
+  freezeVersion(versionId: Id, note: string | null): Promise<ApiResult<DimensionFreezeResult>>
+  /** Frozen versions only; the live version can't be deleted. */
+  deleteVersion(versionId: Id): Promise<ApiResult<null>>
 }
+
+/** Port methods staged into the dimension change set; each is one `DimensionOperation`. */
+export const DIMENSION_EDITS = [
+  'updateDimension',
+  'updateVersion',
+  'saveMember',
+  'deleteMember',
+  'moveMember',
+  'importMembers',
+  'clearMembers',
+  'saveLevel',
+  'deleteLevel',
+  'reorderLevels',
+  'saveBands',
+  'saveRole',
+  'deleteRole',
+] as const satisfies readonly (keyof DimensionsApi & DimensionOperation['op'])[]
+
+/** Port methods that run on saved state immediately and are refused while edits are pending. */
+export const DIMENSION_COMMANDS = ['createDimension', 'defineSystemDimension', 'deleteDimension', 'freezeVersion', 'deleteVersion'] as const satisfies readonly (keyof DimensionsApi)[]
 
 /* ───────────────────────── shared rules ───────────────────────── */
 
@@ -338,15 +428,25 @@ export const KIND_LABEL: Record<DimensionKind, string> = {
   time: 'Time',
 }
 
-export const RANGE_TYPE_LABEL: Record<RangeDataType, string> = { decimal: 'Decimal', date: 'Date' }
+export const RANGE_TYPE_LABEL: Record<RangeDataType, string> = { decimal: 'Decimal', date: 'Date', datetime: 'Date and time' }
 
-export const POLICY_TEXT: Record<EditPolicy, (owner: string) => string> = {
+export const USAGE_KIND_LABEL: Record<DimensionUsageKind, string> = {
+  dataset_binding: 'Dataset binding',
+  mapping_set: 'Mapping set',
+  bridge: 'Bridge',
+  calculation_dimension: 'Calculation dimension',
+  report_scenario: 'Report scenario',
+  report_source: 'Report source',
+  assumption_set: 'Assumption set',
+}
+
+export const POLICY_TEXT: Record<DimensionEditPolicy, (owner: string) => string> = {
   open: () => 'You can edit everything; it cannot be deleted.',
   extend: () => 'You can add members and roles and rename things. Required members and roles cannot be removed or re-keyed.',
   locked: (owner) => `Read-only. Managed by ${owner}.`,
 }
 
-export function tabsForKind(kind: DimensionKind, purpose: Dimension['purpose'] = 'analytical'): DimensionTab[] {
+export function tabsForKind(kind: DimensionKind, purpose: DimensionPurpose = 'analytical'): DimensionTab[] {
   const mappable = purpose === 'analytical' && (kind === 'categorical' || kind === 'hierarchical')
   return [
     'properties',
@@ -371,10 +471,10 @@ export const VERSION_LABEL: Partial<Record<VersionStatus, string>> = { published
 export const versionLabel = (s: VersionStatus) => VERSION_LABEL[s] ?? s
 
 /** Only the live version is editable, and only when the dimension isn't locked. */
-export function isVersionEditable(status: VersionStatus, policy: EditPolicy | null) {
+export function isVersionEditable(status: VersionStatus, policy: DimensionEditPolicy | null) {
   return policy !== 'locked' && status === 'published'
 }
 
-export function defaultVersion(versions: VersionSummary[]) {
+export function defaultVersion(versions: DimensionVersionSummary[]) {
   return versions.find((v) => v.status === 'published') ?? [...versions].sort((a, b) => b.versionNumber - a.versionNumber)[0]
 }

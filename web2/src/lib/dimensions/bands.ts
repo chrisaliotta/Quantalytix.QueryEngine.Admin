@@ -1,4 +1,4 @@
-import type { Bound, RangeBand, RangeDataType } from './contract'
+import type { RangeBound, RangeBand, RangeDataType } from './contract'
 
 export type BandIssueKind = 'overlap' | 'gap' | 'order' | 'openLower' | 'openUpper' | 'member'
 
@@ -8,11 +8,11 @@ export interface BandIssue {
   ordinals: number[]
   message: string
   /** The span of an overlap or gap, for the band strip. */
-  from?: Bound
-  to?: Bound
+  from?: RangeBound
+  to?: RangeBound
 }
 
-const isSet = (v: Bound): v is string | number => v !== null && v !== ''
+const isSet = (v: RangeBound): v is string | number => v !== null && v !== ''
 
 /** Compares two finite bounds of the same type. ISO date strings sort lexically. */
 export function compareBound(a: string | number, b: string | number) {
@@ -20,7 +20,7 @@ export function compareBound(a: string | number, b: string | number) {
   return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0
 }
 
-export function formatBound(v: Bound, type: RangeDataType | null) {
+export function formatBound(v: RangeBound, type: RangeDataType | null) {
   if (!isSet(v)) return ''
   if (type === 'decimal' && typeof v === 'number') return v.toLocaleString('en-US')
   return String(v)
@@ -33,7 +33,7 @@ export function bandPreview(b: RangeBand, type: RangeDataType | null) {
   return `${isSet(b.lower) && b.lowerInclusive ? '[' : '('}${lo}, ${hi}${isSet(b.upper) && b.upperInclusive ? ']' : ')'}`
 }
 
-export function parseBound(raw: string, type: RangeDataType | null): Bound {
+export function parseBound(raw: string, type: RangeDataType | null): RangeBound {
   const t = raw.trim()
   if (!t) return null
   if (type === 'decimal') {
@@ -44,14 +44,14 @@ export function parseBound(raw: string, type: RangeDataType | null): Bound {
 }
 
 /** −∞/+∞ aware comparison of endpoints. `side` says which infinity a null stands for. */
-function cmpEnd(a: Bound, aSide: 'lo' | 'hi', b: Bound, bSide: 'lo' | 'hi') {
+function cmpEnd(a: RangeBound, aSide: 'lo' | 'hi', b: RangeBound, bSide: 'lo' | 'hi') {
   const ai = isSet(a) ? 0 : aSide === 'lo' ? -1 : 1
   const bi = isSet(b) ? 0 : bSide === 'lo' ? -1 : 1
   if (ai || bi) return ai - bi
   return compareBound(a as string | number, b as string | number)
 }
 
-function overlapOf(a: RangeBand, b: RangeBand): { from: Bound; to: Bound } | null {
+function overlapOf(a: RangeBand, b: RangeBand): { from: RangeBound; to: RangeBound } | null {
   const loIsA = cmpEnd(a.lower, 'lo', b.lower, 'lo') >= 0
   const lo = loIsA ? a.lower : b.lower
   const loInc = cmpEnd(a.lower, 'lo', b.lower, 'lo') === 0 ? a.lowerInclusive && b.lowerInclusive : loIsA ? a.lowerInclusive : b.lowerInclusive
@@ -68,7 +68,7 @@ function overlapOf(a: RangeBand, b: RangeBand): { from: Bound; to: Bound } | nul
 export function analyzeBands(bands: RangeBand[], type: RangeDataType | null, memberIds?: Set<string>): BandIssue[] {
   const issues: BandIssue[] = []
   const sorted = [...bands].sort((a, b) => a.ordinal - b.ordinal)
-  const fmt = (v: Bound) => formatBound(v, type)
+  const fmt = (v: RangeBound) => formatBound(v, type)
 
   sorted.forEach((b, i) => {
     if (isSet(b.lower) && isSet(b.upper) && compareBound(b.lower, b.upper) > 0)
@@ -102,8 +102,8 @@ export type ClosedEnd = 'lower' | 'upper'
 
 export interface BandSpec {
   type: RangeDataType
-  min: Bound
-  max: Bound
+  min: RangeBound
+  max: RangeBound
   mode: 'count' | 'step'
   count: number
   step: number
@@ -115,8 +115,8 @@ export interface BandSpec {
 
 /** A band before it has a member: the label seeds the new member's name. */
 export interface BandDraft {
-  lower: Bound
-  upper: Bound
+  lower: RangeBound
+  upper: RangeBound
   lowerInclusive: boolean
   upperInclusive: boolean
   label: string
@@ -124,37 +124,40 @@ export interface BandDraft {
 
 export const MAX_GENERATED_BANDS = 200
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+const BOUND_PATTERN: Record<Exclude<RangeDataType, 'decimal'>, RegExp> = { date: ISO_DATE, datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$/ }
+export const BOUND_FORMAT: Record<RangeDataType, string> = { decimal: 'number', date: 'YYYY-MM-DD date', datetime: 'YYYY-MM-DDTHH:MM:SSZ date-time' }
 const round = (n: number) => Math.round(n * 1e9) / 1e9
 
-const toDate = (iso: string) => new Date(`${iso}T00:00:00Z`)
-const toIso = (d: Date) => d.toISOString().slice(0, 10)
+const toDate = (iso: string) => new Date(ISO_DATE.test(iso) ? `${iso}T00:00:00Z` : iso)
+/** Formats `d` at the precision of `like`: a date stays a date, a date-time stays a date-time. */
+const toIsoLike = (d: Date, like: string) => (ISO_DATE.test(like) ? d.toISOString().slice(0, 10) : d.toISOString())
 const dayDiff = (a: string, b: string) => Math.round((toDate(b).getTime() - toDate(a).getTime()) / 86_400_000)
 const addDays = (iso: string, n: number) => {
   const d = toDate(iso)
   d.setUTCDate(d.getUTCDate() + n)
-  return toIso(d)
+  return toIsoLike(d, iso)
 }
 function addUnit(iso: string, n: number, unit: StepUnit) {
   if (unit === 'day') return addDays(iso, n)
   const d = toDate(iso)
   if (unit === 'month') d.setUTCMonth(d.getUTCMonth() + n)
   else d.setUTCFullYear(d.getUTCFullYear() + n)
-  return toIso(d)
+  return toIsoLike(d, iso)
 }
 
-export function isValidBound(v: Bound, type: RangeDataType) {
+export function isValidBound(v: RangeBound, type: RangeDataType) {
   if (!isSet(v)) return false
-  return type === 'decimal' ? typeof v === 'number' && Number.isFinite(v) : typeof v === 'string' && ISO_DATE.test(v) && !Number.isNaN(toDate(v).getTime())
+  return type === 'decimal' ? typeof v === 'number' && Number.isFinite(v) : typeof v === 'string' && BOUND_PATTERN[type].test(v) && !Number.isNaN(toDate(v).getTime())
 }
 
-function labelFor(lo: Bound, hi: Bound, type: RangeDataType) {
-  const f = (v: Bound) => formatBound(v, type)
-  if (!isSet(lo)) return type === 'date' ? `Before ${f(hi)}` : `Under ${f(hi)}`
-  if (!isSet(hi)) return type === 'date' ? `${f(lo)} onwards` : `${f(lo)} and over`
+function labelFor(lo: RangeBound, hi: RangeBound, type: RangeDataType) {
+  const f = (v: RangeBound) => formatBound(v, type)
+  if (!isSet(lo)) return type !== 'decimal' ? `Before ${f(hi)}` : `Under ${f(hi)}`
+  if (!isSet(hi)) return type !== 'decimal' ? `${f(lo)} onwards` : `${f(lo)} and over`
   return `${f(lo)} – ${f(hi)}`
 }
 
-const draft = (lower: Bound, upper: Bound, closed: ClosedEnd, type: RangeDataType): BandDraft => ({
+const draft = (lower: RangeBound, upper: RangeBound, closed: ClosedEnd, type: RangeDataType): BandDraft => ({
   lower,
   upper,
   lowerInclusive: closed === 'lower',
@@ -165,7 +168,7 @@ const draft = (lower: Bound, upper: Bound, closed: ClosedEnd, type: RangeDataTyp
 /** Splits `[min, max]` into evenly sized or fixed-step bands, optionally with open bands either side. */
 export function generateBands(spec: BandSpec): { bands: BandDraft[]; error?: string } {
   const { type, min, max } = spec
-  if (!isValidBound(min, type) || !isValidBound(max, type)) return { bands: [], error: `Enter a valid ${type === 'date' ? 'start and end date' : 'minimum and maximum'}.` }
+  if (!isValidBound(min, type) || !isValidBound(max, type)) return { bands: [], error: `Enter a valid ${type === 'decimal' ? 'minimum and maximum' : 'start and end'}.` }
   if (compareBound(min as string | number, max as string | number) >= 0) return { bands: [], error: 'The maximum must be above the minimum.' }
 
   const edges: (string | number)[] = [min as string | number]
@@ -230,7 +233,7 @@ export function insertBandAfter(bands: RangeBand[], index: number, type: RangeDa
   // An unbounded band above a finite one: split the finite band's lower half instead of extrapolating past the data.
   const after = next[index + 1]
   const afterWidth = after ? widthOf(after, type) : null
-  if (width === null && after && afterWidth !== null && afterWidth > 0 && !(type === 'date' && afterWidth < 2)) {
+  if (width === null && after && afterWidth !== null && afterWidth > 0 && !(type !== 'decimal' && afterWidth < 2)) {
     const cut = shift(after.lower as string | number, afterWidth / 2, type)
     const closedLower = after.lowerInclusive
     fresh.lower = after.lower
@@ -245,7 +248,7 @@ export function insertBandAfter(bands: RangeBand[], index: number, type: RangeDa
   let cut: string | number | null = null
 
   if (width !== null) {
-    if (width <= 0 || (type === 'date' && width < 2)) cut = null
+    if (width <= 0 || (type !== 'decimal' && width < 2)) cut = null
     else cut = shift(base.lower as string | number, width / 2, type)
   } else if (isSet(base.lower)) cut = shift(base.lower, neighbourWidth, type)
   else if (isSet(base.upper)) cut = shift(base.upper, -neighbourWidth, type)
@@ -290,12 +293,12 @@ export function patchBandLinked(bands: RangeBand[], index: number, patch: Partia
  * Enforces lower < upper strictly; when `linked`, also keeps the neighbour that would be
  * dragged along from inverting (its own lower < upper).
  */
-export function boundError(bands: RangeBand[], index: number, side: 'lower' | 'upper', value: Bound, linked: boolean, type: RangeDataType | null): string | null {
+export function boundError(bands: RangeBand[], index: number, side: 'lower' | 'upper', value: RangeBound, linked: boolean, type: RangeDataType | null): string | null {
   if (!isSet(value)) return null
   const b = bands[index]
   if (!b) return null
   const v = value as string | number
-  const fmt = (x: Bound) => formatBound(x, type)
+  const fmt = (x: RangeBound) => formatBound(x, type)
   if (side === 'lower') {
     if (isSet(b.upper) && compareBound(v, b.upper as string | number) >= 0) return `Lower bound must be less than the upper bound (${fmt(b.upper)}).`
     const prev = bands[index - 1]
@@ -341,8 +344,8 @@ export function removeBandLinked(bands: RangeBand[], index: number, linked: bool
 export interface BandImportRow {
   memberKey: string
   memberName: string
-  lower: Bound
-  upper: Bound
+  lower: RangeBound
+  upper: RangeBound
   lowerInclusive: boolean
   upperInclusive: boolean
   error?: string
@@ -364,8 +367,8 @@ export function parseBandImport(text: string, type: RangeDataType): BandImportRo
       const upper = parseBound(hi, type)
       let error: string | undefined
       if (!memberKey) error = 'Missing member key.'
-      else if (lo.trim() && !isValidBound(lower, type)) error = `Lower bound '${lo}' is not a valid ${type === 'date' ? 'YYYY-MM-DD date' : 'number'}.`
-      else if (hi.trim() && !isValidBound(upper, type)) error = `Upper bound '${hi}' is not a valid ${type === 'date' ? 'YYYY-MM-DD date' : 'number'}.`
+      else if (lo.trim() && !isValidBound(lower, type)) error = `Lower bound '${lo}' is not a valid ${BOUND_FORMAT[type]}.`
+      else if (hi.trim() && !isValidBound(upper, type)) error = `Upper bound '${hi}' is not a valid ${BOUND_FORMAT[type]}.`
       else if (!brackets) error = `Brackets '${br}' must be one of [) (] [] ().`
       return { memberKey, memberName: memberName || memberKey, lower, upper, lowerInclusive: brackets?.[0] ?? true, upperInclusive: brackets?.[1] ?? false, error }
     })

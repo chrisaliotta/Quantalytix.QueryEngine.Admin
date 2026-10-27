@@ -5,12 +5,12 @@ import { useUndoAction } from '@/components/shell/history'
 import { AddRow, InlineSelect, InlineSwitch, InlineText, focusRowClass, keyFromName, type AddRowField } from '@/components/shell/inline-table'
 import { Button } from '@/components/ui/button'
 import { useDimensionsApi, useRefreshDimensions } from '@/lib/dimensions/client'
-import { KEY_HELP, type Level, type Periodicity } from '@/lib/dimensions/contract'
+import { KEY_HELP, type DimensionLevel, type DimensionPeriodicity } from '@/lib/dimensions/contract'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dimension-detail'
 import { DeleteDialog, EmptyState, Mono, TabIntro, Td, Th, useDimCall } from './shared'
 
-const PERIODICITIES: Periodicity[] = ['day', 'month', 'quarter', 'year']
+const PERIODICITIES: DimensionPeriodicity[] = ['day', 'month', 'quarter', 'year']
 const PERIOD_OPTIONS = PERIODICITIES.map((p) => ({ value: p, label: p[0].toUpperCase() + p.slice(1) }))
 
 export function LevelsSection({ dim, content, editable, focusId, clearFocus }: SectionProps) {
@@ -19,7 +19,7 @@ export function LevelsSection({ dim, content, editable, focusId, clearFocus }: S
   const refresh = useRefreshDimensions()
   const { run } = useDimCall()
   const [highlight, setHighlight] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<Level | null>(null)
+  const [deleting, setDeleting] = useState<DimensionLevel | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   const addRef = useRef<HTMLTableSectionElement>(null)
@@ -37,7 +37,7 @@ export function LevelsSection({ dim, content, editable, focusId, clearFocus }: S
     clearFocus()
   }, [focusId, content.levels, clearFocus])
 
-  async function patch(l: Level, changes: Partial<Pick<Level, 'displayName' | 'isLeaf' | 'periodicity'>>) {
+  async function patch(l: DimensionLevel, changes: Partial<Pick<DimensionLevel, 'displayName' | 'isLeaf' | 'periodicity'>>) {
     await run(() => api.saveLevel(versionId, { id: l.id, key: l.key, displayName: l.displayName, isLeaf: l.isLeaf, periodicity: l.periodicity, ...changes }))
   }
 
@@ -137,7 +137,7 @@ export function LevelsSection({ dim, content, editable, focusId, clearFocus }: S
                   {time && (
                     <Td>
                       {editable ? (
-                        <InlineSelect aria-label={`Periodicity of ${l.displayName}`} value={l.periodicity ?? ''} options={PERIOD_OPTIONS} onCommit={(v) => patch(l, { periodicity: v as Periodicity })} className="-ml-2.5 w-32" />
+                        <InlineSelect aria-label={`Periodicity of ${l.displayName}`} value={l.periodicity ?? ''} options={PERIOD_OPTIONS} onCommit={(v) => patch(l, { periodicity: v as DimensionPeriodicity })} className="-ml-2.5 w-32" />
                       ) : (
                         <span className="text-muted-foreground capitalize">{l.periodicity ?? '—'}</span>
                       )}

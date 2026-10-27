@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDeleteCheck, useRefreshDimensions } from '@/lib/dimensions/client'
-import { KIND_LABEL, type ApiResult, type DeleteTarget, type DimensionKind, type EditPolicy, type ProblemDetails, type VersionStatus } from '@/lib/dimensions/contract'
+import { KIND_LABEL, type ApiResult, type DimensionDeleteTarget, type DimensionKind, type DimensionEditPolicy, type Problem, type VersionStatus } from '@/lib/dimensions/contract'
 import { cn } from '@/lib/utils'
 
 export const KIND_ICON: Record<DimensionKind, LucideIcon> = { categorical: ListIcon, hierarchical: NetworkIcon, range: RulerIcon, time: CalendarIcon }
@@ -37,13 +37,13 @@ export function StatusBadge({ status, label, className }: { status: VersionStatu
   )
 }
 
-const POLICY_TONE: Record<EditPolicy, string> = {
+const POLICY_TONE: Record<DimensionEditPolicy, string> = {
   open: 'text-muted-foreground',
   extend: 'border-primary/40 bg-primary/10 text-primary',
   locked: 'border-warning/50 bg-warning-muted text-warning-foreground',
 }
 
-export function PolicyBadge({ policy }: { policy: EditPolicy }) {
+export function PolicyBadge({ policy }: { policy: DimensionEditPolicy }) {
   return (
     <Badge variant="outline" className={cn('gap-1 font-normal capitalize', POLICY_TONE[policy])}>
       {policy === 'locked' && <LockIcon aria-hidden className="size-3" />}
@@ -140,7 +140,7 @@ export function WithReason({ reason, children }: { reason: string | null | undef
   )
 }
 
-export function ProblemBanner({ problem }: { problem: ProblemDetails | null }) {
+export function ProblemBanner({ problem }: { problem: Problem | null }) {
   if (!problem) return null
   const general = problem.errors['']
   return (
@@ -159,7 +159,7 @@ export function ProblemBanner({ problem }: { problem: ProblemDetails | null }) {
 export function useDimCall() {
   const refresh = useRefreshDimensions()
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<ProblemDetails | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
   const run = useCallback(
     async <T,>(call: () => Promise<ApiResult<T>>, success?: string | ((data: T) => string)): Promise<{ ok: true; data: T } | { ok: false }> => {
       setSaving(true)
@@ -191,7 +191,7 @@ export function DeleteDialog({
   onOpenChange,
   onConfirm,
 }: {
-  target: DeleteTarget | null
+  target: DimensionDeleteTarget | null
   title: string
   description?: string
   onOpenChange: (open: boolean) => void
@@ -218,7 +218,7 @@ export function DeleteDialog({
               {check.reasons.length > 1 && (
                 <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs text-muted-foreground">
                   {check.reasons.map((r) => (
-                    <li key={r}>{r}</li>
+                    <li key={r.code + r.message}>{r.message}</li>
                   ))}
                 </ul>
               )}

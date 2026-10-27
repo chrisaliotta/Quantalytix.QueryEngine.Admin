@@ -1,4 +1,3 @@
-import { getViewer } from '@/lib/session/viewer'
 import { createSnapshotChangeSet } from '@/lib/api/changes'
 import {
   KEY_PATTERN,
@@ -9,13 +8,13 @@ import {
   type DimensionProfile,
   type DimensionsApi,
   type DimensionVersion,
-  type Level,
-  type Member,
-  type MovePosition,
-  type ProblemDetails,
+  type DimensionLevel,
+  type DimensionMember,
+  type DimensionMemberPosition,
+  type Problem,
   type RangeBand,
-  type ValidationReport,
-  type VersionSummary,
+  type DimensionValidationReport,
+  type DimensionVersionSummary,
 } from '../contract'
 import { descendantIds, indexTree } from '../tree'
 import { createSeed, type Db } from './data'
@@ -28,8 +27,21 @@ const today = () => new Date().toISOString().slice(0, 10)
 let seq = 0
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`
 
+const PROBLEM_TYPE: Record<Problem['status'], string> = {
+  400: 'urn:qe:problem:invalid-input',
+  401: 'urn:qe:problem:unauthorized',
+  403: 'urn:qe:problem:forbidden',
+  404: 'urn:qe:problem:not-found',
+  409: 'urn:qe:problem:conflict',
+  422: 'urn:qe:problem:rules-violated',
+  500: 'urn:qe:problem:server-error',
+}
+
 const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data: clone(data) })
-const fail = (title: string, errors: Record<string, string[]> = {}, status = 422, detail?: string): ApiResult<never> => ({ ok: false, problem: { title, status, errors, detail } satisfies ProblemDetails })
+const fail = (title: string, errors: Record<string, string[]> = {}, status: Problem['status'] = 400, detail?: string): ApiResult<never> => ({
+  ok: false,
+  problem: { type: PROBLEM_TYPE[status], title, status, errors, detail },
+})
 const notFound = (what: string) => fail(`${what} not found`, {}, 404)
 
 /**
@@ -64,7 +76,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     db.dimensions.push({ id: dimensionId, key: p.displayName.replace(/\s+/g, ''), displayName: p.displayName, kind: p.kind, origin: 'system', purpose: 'analytical', ownerReport: null, profileKey: p.key, isEnabled: true, isRemovable: false })
     for (const k of p.requiredRoleKeys) db.roles.push({ id: newId('role'), dimensionId, key: k, displayName: name(k), description: null })
     const versionId = newId('ver')
-    db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null })
+    db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null, freezeNote: null })
     p.requiredMemberKeys.forEach((k, i) =>
       db.members.push({ id: newId('mbr'), versionId, key: k, displayName: name(k), description: null, parentId: null, levelId: null, isAssignable: true, sortOrder: i + 1, properties: {} }),
     )
@@ -86,7 +98,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
   const resolvable = (d: Dimension) => profileOf(d)?.visibility !== 'hidden'
   const reachable = (d: Dimension) => d.purpose === 'analytical' && resolvable(d)
 
-  function summary(v: DimensionVersion): VersionSummary {
+  function summary(v: DimensionVersion): DimensionVersionSummary {
     return {
       id: v.id,
       versionNumber: v.versionNumber,
@@ -94,7 +106,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       publishedAt: v.publishedAt,
       retiredAt: v.retiredAt,
       supersededBy: v.supersededBy,
-      freezeNote: v.freezeNote ?? null,
+      freezeNote: v.freezeNote,
       memberCount: db.members.filter((m) => m.versionId === v.id).length,
     }
   }
@@ -123,18 +135,18 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
   }
 
   const keyErrors = (key: string) => (!key ? ['Enter a key.'] : !KEY_PATTERN.test(key) ? ['Start with a letter, then use letters, digits or underscores.'] : null)
-  const renumber = (list: Member[]) => list.forEach((m, i) => (m.sortOrder = i + 1))
+  const renumber = (list: DimensionMember[]) => list.forEach((m, i) => (m.sortOrder = i + 1))
   const siblings = (versionId: string, parentId: string | null) =>
     db.members.filter((m) => m.versionId === versionId && m.parentId === parentId).sort((a, b) => a.sortOrder - b.sortOrder)
 
   /** Delete blockers for removing a set of members together; children inside the set don't block their parent. */
-  function memberBlockers(versionId: string, removing: Member[]) {
+  function memberBlockers(versionId: string, removing: DimensionMember[]) {
     const ids = new Set(removing.map((m) => m.id))
     const out: string[] = []
     for (const m of removing) {
       const kidsStay = db.members.some((x) => x.versionId === versionId && x.parentId === m.id && !ids.has(x.id))
-      const reasons = checkDelete(db, { type: 'member', versionId, memberId: m.id }).reasons.filter((r) => kidsStay || !r.startsWith('it has child members'))
-      if (reasons.length) out.push(`'${m.key}' — ${reasons.join(', ')}`)
+      const reasons = checkDelete(db, { type: 'member', versionId, memberId: m.id }).reasons.filter((r) => kidsStay || r.code !== 'has_children')
+      if (reasons.length) out.push(`'${m.key}' — ${reasons.map((r) => r.message).join(', ')}`)
     }
     return out
   }
@@ -160,7 +172,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     if (db.bands[fromId]) db.bands[toId] = db.bands[fromId].map((b) => ({ ...b, memberId: memberMap.get(b.memberId) ?? b.memberId }))
   }
 
-  function report(versionId: string): ValidationReport {
+  function report(versionId: string): DimensionValidationReport {
     return { versionId, checkedAt: new Date().toISOString(), violations: validate(db, versionId) }
   }
 
@@ -182,12 +194,6 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     async listAllDimensions() {
       await wait()
       return clone(db.dimensions.filter(resolvable).map(listItem))
-    },
-
-    async listHiddenDimensions() {
-      await wait()
-      if (getViewer().role !== 'system_admin') return fail('Forbidden', {}, 403, 'Hidden dimensions are visible to system admins only.')
-      return { ok: true, data: clone(db.dimensions.filter((d) => d.purpose === 'report').map(listItem)) }
     },
 
     async listAvailableProfiles() {
@@ -239,7 +245,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       db.dimensions.push({ id: dimensionId, key, displayName: input.displayName.trim(), kind: input.kind, origin: 'user', purpose: 'analytical', ownerReport: null, profileKey: null, isEnabled: input.isEnabled, isRemovable: input.isRemovable })
       if (input.firstRole && input.kind !== 'time') db.roles.push({ id: newId('role'), dimensionId, key: input.firstRole.key.trim(), displayName: input.firstRole.displayName.trim(), description: null })
       const versionId = newId('ver')
-      db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: input.kind === 'range' ? input.rangeDataType : null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null })
+      db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: input.kind === 'range' ? input.rangeDataType : null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null, freezeNote: null })
       db.usage[dimensionId] = []
       return ok({ dimensionId, versionId })
     },
@@ -318,6 +324,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
         publishedAt: today(),
         retiredAt: null,
         supersededBy: null,
+        freezeNote: null,
       }
       v.status = 'retired'
       v.retiredAt = today()
@@ -325,7 +332,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       v.freezeNote = note?.trim() || null
       db.versions.push(next)
       copyVersionContent(v.id, next.id)
-      for (const u of db.usage[d.id] ?? []) if (u.kind === 'assumption set' && u.name === 'active') {
+      for (const u of db.usage[d.id] ?? []) if (u.kind === 'assumption_set' && u.name === 'active') {
         u.pinsVersion = next.versionNumber
         u.detail = `active → v${next.versionNumber}`
       }
@@ -388,7 +395,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
         if (input.sortOrder !== null) existing.sortOrder = input.sortOrder
         return ok(existing)
       }
-      const m: Member = {
+      const m: DimensionMember = {
         id: newId('mbr'),
         versionId,
         key,
@@ -428,7 +435,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
         if (parentId === m.id || descendantIds(index, m.id).has(parentId)) return fail('A member cannot move under itself or its descendants', {}, 422)
       }
       const fromList = siblings(versionId, m.parentId)
-      const previous: MovePosition = { parentId: m.parentId, index: fromList.indexOf(m) }
+      const previous: DimensionMemberPosition = { parentId: m.parentId, index: fromList.indexOf(m) }
       const remaining = fromList.filter((x) => x.id !== m.id)
       renumber(remaining)
       m.parentId = parentId
@@ -483,8 +490,8 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
 
       const removedIds = new Set(removing.map((m) => m.id))
       db.members = db.members.filter((m) => !removedIds.has(m.id))
-      const added: Member[] = []
-      const updated: Member[] = []
+      const added: DimensionMember[] = []
+      const updated: DimensionMember[] = []
       const ids = new Map([...byKey].filter(([, m]) => !removedIds.has(m.id)).map(([k, m]) => [k, m.id]))
       for (const r of rows) {
         const m = byKey.get(r.key)
@@ -541,7 +548,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
         Object.assign(existing, { displayName: input.displayName.trim(), isLeaf: input.isLeaf, periodicity })
         return ok(existing)
       }
-      const l: Level = { id: newId('lvl'), versionId, key, displayName: input.displayName.trim(), ordinal: levels.length + 1, isLeaf: input.isLeaf, periodicity }
+      const l: DimensionLevel = { id: newId('lvl'), versionId, key, displayName: input.displayName.trim(), ordinal: levels.length + 1, isLeaf: input.isLeaf, periodicity }
       db.levels.push(l)
       return ok(l)
     },
@@ -592,7 +599,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       if (profile?.editPolicy === 'locked') return fail('Read-only', {}, 409, `${d.displayName} is managed by ${profile.owner}.`)
       if (d.kind === 'time') return fail('Time dimensions have no roles', {}, 409)
       const existing = input.id ? db.roles.find((r) => r.id === input.id && r.dimensionId === dimensionId) : null
-      if (!existing && profile?.key === 'planVersion') return fail('Cannot add a role', {}, 409, "A scenario's dimension has exactly one role.")
+      if (!existing && profile?.singleRole) return fail('Cannot add a role', {}, 409, `The ${profile.displayName} profile allows exactly one role.`)
       const errors: Record<string, string[]> = {}
       const key = existing ? existing.key : input.key.trim()
       if (!existing) {

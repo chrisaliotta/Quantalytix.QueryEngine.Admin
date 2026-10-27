@@ -7,7 +7,7 @@ import { Segmented } from '@/components/report/shared/segmented'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { keyFromName } from '@/components/shell/inline-table'
 import { useDimensionsApi } from '@/lib/dimensions/client'
-import type { Member, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
+import type { DimensionMember, RangeBand, RangeDataType } from '@/lib/dimensions/contract'
 import { bandPreview, generateBands, parseBound, type BandDraft, type BandSpec, type ClosedEnd, type StepUnit } from '@/lib/dimensions/bands'
 import { cn } from '@/lib/utils'
 import { useDimCall } from './shared'
@@ -35,6 +35,12 @@ const UNIT_OPTIONS: { value: StepUnit; label: string }[] = [
   { value: 'year', label: 'Years' },
 ]
 
+const DEFAULT_RANGE: Record<RangeDataType, [min: string, max: string]> = {
+  decimal: ['0', '100000'],
+  date: ['2024-01-01', '2025-01-01'],
+  datetime: ['2024-01-01T00:00:00Z', '2025-01-01T00:00:00Z'],
+}
+
 /** Inline builder that turns a min/max span and a bucket count or step into bands, creating members as needed. */
 export function BandGenerator({
   versionId,
@@ -46,18 +52,18 @@ export function BandGenerator({
 }: {
   versionId: string
   type: RangeDataType
-  members: Member[]
+  members: DimensionMember[]
   hasBands: boolean
   onClose: () => void
   onGenerate: (bands: RangeBand[], placement: BandPlacement) => void
 }) {
   const api = useDimensionsApi()
   const { run, saving } = useDimCall()
-  const [min, setMin] = useState(type === 'date' ? '2024-01-01' : '0')
-  const [max, setMax] = useState(type === 'date' ? '2025-01-01' : '100000')
+  const [min, setMin] = useState(DEFAULT_RANGE[type][0])
+  const [max, setMax] = useState(DEFAULT_RANGE[type][1])
   const [mode, setMode] = useState<BandSpec['mode']>('count')
   const [count, setCount] = useState('5')
-  const [step, setStep] = useState(type === 'date' ? '1' : '10000')
+  const [step, setStep] = useState(type === 'decimal' ? '10000' : '1')
   const [unit, setUnit] = useState<StepUnit>('month')
   const [openBelow, setOpenBelow] = useState(false)
   const [openAbove, setOpenAbove] = useState(true)
@@ -93,10 +99,10 @@ export function BandGenerator({
       </header>
 
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-        <Field label={type === 'date' ? 'From' : 'Minimum'}>
+        <Field label={type === 'decimal' ? 'Minimum' : 'From'}>
           <BoundField type={type} value={min} onChange={setMin} />
         </Field>
-        <Field label={type === 'date' ? 'To' : 'Maximum'}>
+        <Field label={type === 'decimal' ? 'Maximum' : 'To'}>
           <BoundField type={type} value={max} onChange={setMax} />
         </Field>
         <Field label="Split by">
@@ -117,8 +123,8 @@ export function BandGenerator({
         ) : (
           <Field label="Step">
             <div className="flex items-center gap-2">
-              <Input type="number" min={type === 'date' ? 1 : undefined} step="any" className="h-8 w-28 font-mono text-sm" value={step} onChange={(e) => setStep(e.target.value)} />
-              {type === 'date' && <SimpleSelect size="sm" className="w-28" aria-label="Step unit" value={unit} onChange={(v) => setUnit(v as StepUnit)} options={UNIT_OPTIONS} />}
+              <Input type="number" min={type === 'decimal' ? undefined : 1} step="any" className="h-8 w-28 font-mono text-sm" value={step} onChange={(e) => setStep(e.target.value)} />
+              {type !== 'decimal' && <SimpleSelect size="sm" className="w-28" aria-label="Step unit" value={unit} onChange={(v) => setUnit(v as StepUnit)} options={UNIT_OPTIONS} />}
             </div>
           </Field>
         )}
