@@ -35,7 +35,271 @@ tags:
   - name: reports
     x-displayName: Reports
     description: Reports and their rows, sources, profiles, scenarios, scopes, columns and styles. Blueprint 16-reports.md.
-paths: {}
+paths:
+  /api/me:
+    get:
+      operationId: getSession
+      summary: Read who the caller is
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The caller as the API sees its bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/tenants:
+    get:
+      operationId: listTenants
+      summary: List the tenants the caller can reach
+      description: A system admin reaches every tenant in the directory; any other caller reaches its token's tenant.
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The accessible tenants, ordered by tenant id.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessibleTenant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/vocabularies:
+    get:
+      operationId: getVocabularies
+      summary: Read every enumeration the UI renders
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: Every vocabulary, keyed by name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vocabularies'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/tenants/{tenantId}/overview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: getOverview
+      summary: Read the tenant's state, counts and work in progress
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The tenant overview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/catalog:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: getCatalog
+      summary: Read the names and ids every picker and cross-module link resolves against
+      description: One catalog for every module, cached by the client on `tenant.semanticRevision` (OI-13). Report-owned dimensions and bridges are included only so references resolve; pickers and lists never offer them (OI-22).
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The tenant catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/dimensions/{dimensionId}/published-members:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - name: dimensionId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+    get:
+      operationId: getPublishedMembers
+      summary: Read the members of a dimension's published version
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The published version's members, in hierarchy order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishedMembers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The dimension does not exist or has no published version.
+  /api/system/tenants:
+    get:
+      operationId: listSystemTenants
+      summary: List every tenant in the directory
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The directory entries, ordered by tenant id, with masked connection strings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantDirectoryEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createSystemTenant
+      summary: Register a tenant after verifying its connection string
+      tags:
+        - tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreateInput'
+      responses:
+        '201':
+          description: The tenant was registered; the body is its entry with a masked connection string.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDirectoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+          description: A field breaks a rule; a `connectionString` error gives the reason verification failed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/system/tenants/verify:
+    post:
+      operationId: verifySystemTenantConnection
+      summary: Test a connection string for a tenant without storing it
+      description: The connection must open, and its `qe_database_info` must name the tenant and have the metadata schema version this API supports.
+      tags:
+        - tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantVerifyInput'
+      responses:
+        '200':
+          description: The test ran; `isValid` and `message` give its outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantConnectionCheck'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/system/tenants/{tenantId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: getSystemTenant
+      summary: Read one tenant's directory entry
+      tags:
+        - tenant
+      responses:
+        '200':
+          description: The directory entry with a masked connection string.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDirectoryEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The directory has no such tenant.
+    put:
+      operationId: updateSystemTenant
+      summary: Change a tenant's provider, cache lifetime and connection string
+      tags:
+        - tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdateInput'
+      responses:
+        '200':
+          description: The updated entry with a masked connection string.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDirectoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+          description: A field breaks a rule; a `connectionString` error gives the reason verification failed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The directory has no such tenant.
+  /api/system/tenants/{tenantId}/enabled:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    put:
+      operationId: setSystemTenantEnabled
+      summary: Permit or stop query routing for a tenant
+      tags:
+        - tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantEnabledInput'
+      responses:
+        '200':
+          description: The updated entry with a masked connection string.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDirectoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The directory has no such tenant.
 components:
   securitySchemes:
     Bearer:
@@ -231,6 +495,1381 @@ components:
           type: string
         description:
           type: string
+    Session:
+      type: object
+      description: Who the caller is, as the API sees its bearer token. There are no tenant roles (OI-09).
+      required:
+        - subject
+        - displayName
+        - tenantId
+        - isSystemAdmin
+      properties:
+        subject:
+          type: string
+          description: The token's `sub`.
+        displayName:
+          type:
+            - string
+            - 'null'
+          description: The token's name claim; null when it carries none.
+        tenantId:
+          type:
+            - string
+            - 'null'
+          description: The caller's tenant when the token carries exactly one tenant claim; otherwise null.
+        isSystemAdmin:
+          type: boolean
+          description: Whether the caller may reach every tenant and the tenant directory.
+    AccessibleTenant:
+      type: object
+      required:
+        - tenantId
+        - isEnabled
+      properties:
+        tenantId:
+          type: string
+          description: The tenant directory key.
+        isEnabled:
+          type: boolean
+          description: Whether query routing is permitted for the tenant.
+    TenantInfo:
+      type: object
+      description: The tenant database's identity and the revision the engine keys its metadata cache by.
+      required:
+        - tenantKey
+        - metadataSchemaVersion
+        - semanticRevision
+        - activeReleaseId
+      properties:
+        tenantKey:
+          type: string
+          description: '`qe_database_info.tenant_key`.'
+        metadataSchemaVersion:
+          type: integer
+        semanticRevision:
+          type: integer
+          format: int64
+          description: Advances once per commit or command that changes what the engine reads.
+        activeReleaseId:
+          type:
+            - string
+            - 'null'
+          description: The release runtime queries use; null when the tenant has none.
+    TenantOverview:
+      description: The tenant at a glance for the overview screen.
+      allOf:
+        - $ref: '#/components/schemas/TenantInfo'
+        - type: object
+          required:
+            - counts
+            - drafts
+          properties:
+            counts:
+              $ref: '#/components/schemas/TenantOverviewCounts'
+            drafts:
+              $ref: '#/components/schemas/TenantOverviewDrafts'
+    TenantOverviewCounts:
+      type: object
+      description: How much metadata the tenant holds.
+      required:
+        - datasets
+        - dimensions
+        - mappingSets
+        - bridges
+        - releases
+        - assumptionSets
+        - models
+        - reports
+        - activeMeasures
+      properties:
+        datasets:
+          type: integer
+        dimensions:
+          type: integer
+          description: Analytical dimensions; report-owned dimensions are not counted (OI-22).
+        mappingSets:
+          type: integer
+        bridges:
+          type: integer
+          description: Analytical bridges; report-owned bridges are not counted (OI-22).
+        releases:
+          type: integer
+        assumptionSets:
+          type: integer
+        models:
+          type: integer
+        reports:
+          type: integer
+        activeMeasures:
+          type: integer
+          description: Measures of the dataset versions the active release pins.
+    TenantOverviewDrafts:
+      type: object
+      description: 'Work in progress: the kinds that still have a draft status. Dimensions, mapping sets and bridges follow the living lifecycle and have no drafts (OI-14).'
+      required:
+        - datasetVersions
+        - releases
+      properties:
+        datasetVersions:
+          type: integer
+        releases:
+          type: integer
+    TenantCatalog:
+      type: object
+      description: The union of what every module's pickers and cross-module links read (OI-13).
+      required:
+        - tenant
+        - datasets
+        - dimensions
+        - roles
+        - mappingSets
+        - bridges
+        - models
+        - reports
+        - releases
+        - assumptionSets
+      properties:
+        tenant:
+          $ref: '#/components/schemas/TenantInfo'
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogDataset'
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogDimension'
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogRole'
+        mappingSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogMappingSet'
+        bridges:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogBridge'
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogModel'
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogReport'
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogRelease'
+        assumptionSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantCatalogAssumptionSet'
+    TenantCatalogDataset:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+        - activeVersionId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        activeVersionId:
+          type:
+            - string
+            - 'null'
+          description: The dataset version the active release pins; null when it pins none.
+    TenantCatalogDimension:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - kind
+        - purpose
+        - origin
+        - isEnabled
+        - publishedVersionId
+        - publishedVersionNumber
+        - ownerReportId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        kind:
+          $ref: '#/components/schemas/VocabularyDimensionKind'
+        purpose:
+          $ref: '#/components/schemas/VocabularyDimensionPurpose'
+        origin:
+          $ref: '#/components/schemas/VocabularyDefinitionOrigin'
+        isEnabled:
+          type: boolean
+        publishedVersionId:
+          type:
+            - string
+            - 'null'
+          description: The live version; null when none is published.
+        publishedVersionNumber:
+          type:
+            - integer
+            - 'null'
+        ownerReportId:
+          type:
+            - string
+            - 'null'
+          description: The report that owns a `report` purpose dimension; null otherwise.
+    TenantCatalogRole:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - dimensionId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+    TenantCatalogMappingSet:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - dimensionId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+    TenantCatalogBridge:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - sourceDimensionId
+        - targetDimensionId
+        - ownerReportId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        sourceDimensionId:
+          $ref: '#/components/schemas/Id'
+        targetDimensionId:
+          $ref: '#/components/schemas/Id'
+        ownerReportId:
+          type:
+            - string
+            - 'null'
+          description: The report that owns a report bridge; null for an analytical bridge.
+    TenantCatalogModel:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+    TenantCatalogReport:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - isEnabled
+        - modelId
+        - reportDimensionId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+        modelId:
+          $ref: '#/components/schemas/Id'
+        reportDimensionId:
+          $ref: '#/components/schemas/Id'
+    TenantCatalogRelease:
+      type: object
+      description: A release has a key and no display name (OI-39).
+      required:
+        - id
+        - key
+        - status
+        - isActive
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        isActive:
+          type: boolean
+    TenantCatalogAssumptionSet:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - status
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/VocabularyAssumptionSetStatus'
+    PublishedMembers:
+      type: object
+      description: The members of a dimension's published version, fetched per picker.
+      required:
+        - dimensionId
+        - versionId
+        - members
+      properties:
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishedMember'
+    PublishedMember:
+      type: object
+      required:
+        - key
+        - displayName
+        - parentKey
+        - isAssignable
+        - levelKey
+      properties:
+        key:
+          type: string
+        displayName:
+          type: string
+        parentKey:
+          type:
+            - string
+            - 'null'
+        isAssignable:
+          type: boolean
+        levelKey:
+          type:
+            - string
+            - 'null'
+    Vocabularies:
+      type: object
+      description: Every enumeration a select renders, keyed by name (OI-11). Values are the schema's; open vocabularies (`expressionLanguageVersion`, `displayFormat`, `timeZone`) list the offered values of a free-text column.
+      required:
+        - versionStatus
+        - assumptionSetStatus
+        - dataType
+        - measureOutputDataType
+        - sourceObjectKind
+        - fieldSourceKind
+        - grainKind
+        - dimensionKind
+        - dimensionPurpose
+        - definitionOrigin
+        - rangeDataType
+        - editPolicy
+        - bindingKind
+        - groupingMode
+        - raggedBehavior
+        - periodAlignment
+        - unmappedBehavior
+        - timeValueType
+        - observationKind
+        - periodicity
+        - cumulativeOrigin
+        - measureKind
+        - aggregationFunction
+        - componentRole
+        - componentRolesByKind
+        - valueNullBehavior
+        - negativeWeightBehavior
+        - emptySetBehavior
+        - bridgeFactorBehavior
+        - bridgeAllocationBehavior
+        - totalBehavior
+        - roundingMode
+        - observationSelection
+        - valueTimeRole
+        - boundaryMatch
+        - durationUnit
+        - partialIntervalBehavior
+        - missingPeriodBehavior
+        - expressionLanguageVersion
+        - timeZone
+        - cardinality
+        - allocationMode
+        - sourceSelection
+        - formulaLanguageVersion
+        - attributionMethod
+        - parameterValueType
+        - variableMissingBehavior
+        - dayCountConvention
+        - displayFormat
+        - mappingMethod
+        - selectionScope
+        - columnValueKind
+        - subtotalPosition
+        - styleRole
+        - fontWeight
+        - borderStyle
+        - layout
+        - provider
+      properties:
+        versionStatus:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VersionStatus'
+        assumptionSetStatus:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyAssumptionSetStatus'
+        dataType:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - boolean
+                      - int32
+                      - int64
+                      - decimal
+                      - string
+                      - date
+                      - datetime
+                      - timestamp
+                      - json
+        measureOutputDataType:
+          type: array
+          description: Every `dataType` except `json`.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - boolean
+                      - int32
+                      - int64
+                      - decimal
+                      - string
+                      - date
+                      - datetime
+                      - timestamp
+        sourceObjectKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - table
+                      - view
+        fieldSourceKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - column
+                      - json_path
+                      - expression
+        grainKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - row
+                      - series
+        dimensionKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyDimensionKind'
+        dimensionPurpose:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyDimensionPurpose'
+        definitionOrigin:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyDefinitionOrigin'
+        rangeDataType:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - decimal
+                      - date
+                      - datetime
+        editPolicy:
+          type: array
+          description: How far a dimension profile lets users edit a profiled dimension.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - open
+                      - extend
+                      - locked
+        bindingKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - direct
+                      - mapped
+                      - range
+                      - bridge
+                      - time
+        groupingMode:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - member
+                      - level
+                      - ancestor
+                      - depth
+        raggedBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - 'null'
+                      - self
+                      - exclude
+        periodAlignment:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - observation
+                      - start
+                      - end
+        unmappedBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - 'null'
+                      - exclude
+                      - unknown
+        timeValueType:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - date
+                      - timestamp
+        observationKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - instant
+                      - snapshot
+                      - interval
+        periodicity:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - day
+                      - month
+                      - quarter
+                      - year
+        cumulativeOrigin:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - output_range_start
+                      - fixed_start
+        measureKind:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyMeasureKind'
+        aggregationFunction:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - sum
+                      - avg
+                      - min
+                      - max
+                      - count
+                      - count_distinct
+        componentRole:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyComponentRole'
+        componentRolesByKind:
+          type: object
+          description: Which component roles each measure kind reads, and which of those are required; every measure kind is a key.
+          propertyNames:
+            $ref: '#/components/schemas/VocabularyMeasureKind'
+          additionalProperties:
+            $ref: '#/components/schemas/VocabularyComponentRoleRequirements'
+        valueNullBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - exclude
+                      - zero
+        negativeWeightBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - allow
+                      - exclude
+        emptySetBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - 'null'
+                      - zero
+        bridgeFactorBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - ignore
+                      - value
+        bridgeAllocationBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - apply
+                      - ignore
+        totalBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - recompute
+                      - sum_children
+        roundingMode:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - half_even
+                      - half_up
+                      - down
+                      - up
+                      - truncate
+        observationSelection:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - all
+                      - first_in_period
+                      - last_in_period
+                      - at_start
+                      - at_end
+        valueTimeRole:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - point
+                      - interval_open
+                      - interval_close
+        boundaryMatch:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - exact
+                      - on_or_before
+                      - strictly_before
+        durationUnit:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - calendar_day
+                      - elapsed_second
+        partialIntervalBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - exact_only
+                      - uniform_estimate
+        missingPeriodBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - 'null'
+                      - zero
+        expressionLanguageVersion:
+          type: array
+          description: Grammar versions a dataset version's expressions may declare.
+          items:
+            $ref: '#/components/schemas/VocabularyTerm'
+        timeZone:
+          type: array
+          description: IANA time zones offered for source and query time zones.
+          items:
+            $ref: '#/components/schemas/VocabularyTerm'
+        cardinality:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - many_to_one
+                      - many_to_many
+        allocationMode:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - none
+                      - partition
+                      - replicate
+        sourceSelection:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - member
+                      - descendants
+        formulaLanguageVersion:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - '1.0'
+                      - '1.1'
+                      - '1.2'
+        attributionMethod:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - shapley
+                      - sequential
+        parameterValueType:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - number
+                      - text
+        variableMissingBehavior:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - 'null'
+                      - zero
+        dayCountConvention:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - actual_actual
+                      - actual_365
+                      - actual_360
+                      - thirty_360_us
+                      - thirty_e_360
+        displayFormat:
+          type: array
+          description: Presentation hints offered for variables, calculated measures and report columns.
+          items:
+            $ref: '#/components/schemas/VocabularyTerm'
+        mappingMethod:
+          type: array
+          description: How a report source reaches report rows.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - bridge
+                      - direct
+        selectionScope:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - exact
+                      - descendants
+        columnValueKind:
+          type: array
+          description: What a report column evaluates.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - variable
+                      - calculated
+        subtotalPosition:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - above
+                      - below
+        styleRole:
+          type: array
+          description: The row role a report style applies to by default.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - header
+                      - subtotal
+                      - total
+                      - detail
+                      - formula
+        fontWeight:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - normal
+                      - medium
+                      - semibold
+                      - bold
+        borderStyle:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - none
+                      - thin
+                      - medium
+                      - thick
+                      - double
+        layout:
+          type: array
+          description: Report layouts.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    type: string
+                    enum:
+                      - statement
+                      - list
+        provider:
+          type: array
+          description: Registered tenant database providers, the values of a directory entry's `providerId`.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/VocabularyProvider'
+    VocabularyAssumptionSetStatus:
+      type: string
+      enum:
+        - active
+        - historical
+    VocabularyDimensionKind:
+      type: string
+      enum:
+        - categorical
+        - hierarchical
+        - range
+        - time
+    VocabularyDimensionPurpose:
+      type: string
+      enum:
+        - analytical
+        - report
+    VocabularyDefinitionOrigin:
+      type: string
+      enum:
+        - system
+        - user
+    VocabularyMeasureKind:
+      type: string
+      enum:
+        - aggregate
+        - weighted_sum
+        - weighted_average
+        - period_average
+        - formula
+        - specialized
+    VocabularyComponentRole:
+      type: string
+      enum:
+        - value
+        - weight
+        - period_days
+        - numerator
+        - denominator
+    VocabularyProvider:
+      type: string
+      enum:
+        - starrocks
+    VocabularyComponentRoleRequirements:
+      type: array
+      description: The component roles a measure kind reads.
+      items:
+        type: object
+        required:
+          - role
+          - required
+        properties:
+          role:
+            $ref: '#/components/schemas/VocabularyComponentRole'
+          required:
+            type: boolean
+    TenantDirectoryEntry:
+      type: object
+      description: A `query_control.qe_tenant_directory` row; the connection string's password is masked.
+      required:
+        - tenantId
+        - providerId
+        - connectionString
+        - isEnabled
+        - metadataCacheSeconds
+        - updatedAt
+      properties:
+        tenantId:
+          type: string
+        providerId:
+          $ref: '#/components/schemas/VocabularyProvider'
+        connectionString:
+          type: string
+          description: The connection string with its password replaced by `*****`.
+        isEnabled:
+          type: boolean
+          description: Whether query routing is permitted for the tenant.
+        metadataCacheSeconds:
+          type: integer
+          description: The suggested metadata cache lifetime.
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    TenantCreateInput:
+      type: object
+      required:
+        - tenantId
+        - providerId
+        - connectionString
+        - isEnabled
+        - metadataCacheSeconds
+      properties:
+        tenantId:
+          type: string
+          description: Fixed once created; the database's `tenant_key` must equal it.
+        providerId:
+          $ref: '#/components/schemas/VocabularyProvider'
+        connectionString:
+          type: string
+          description: Verified before it is stored.
+        isEnabled:
+          type: boolean
+        metadataCacheSeconds:
+          type: integer
+    TenantUpdateInput:
+      type: object
+      description: The tenant id is fixed and enabling has its own request.
+      required:
+        - providerId
+        - connectionString
+        - metadataCacheSeconds
+      properties:
+        providerId:
+          $ref: '#/components/schemas/VocabularyProvider'
+        connectionString:
+          type:
+            - string
+            - 'null'
+          description: A new connection string, verified before it is stored; null keeps the current one.
+        metadataCacheSeconds:
+          type: integer
+    TenantEnabledInput:
+      type: object
+      required:
+        - isEnabled
+      properties:
+        isEnabled:
+          type: boolean
+    TenantVerifyInput:
+      type: object
+      required:
+        - tenantId
+        - connectionString
+      properties:
+        tenantId:
+          type: string
+          description: The tenant the connection string must route to.
+        connectionString:
+          type: string
+    TenantConnectionCheck:
+      type: object
+      required:
+        - isValid
+        - message
+      properties:
+        isValid:
+          type: boolean
+          description: Whether the connection opens a database of the supported metadata schema version that belongs to the tenant.
+        message:
+          type: string
+          description: What the connection reached, or why it is rejected.
   parameters:
     TenantId:
       name: tenantId
