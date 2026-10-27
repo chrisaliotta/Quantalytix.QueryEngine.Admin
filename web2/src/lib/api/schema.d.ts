@@ -3,7 +3,140 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/api/tenants/{tenantId}/calculation-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** List the tenant's calculation models with their metric counts and the reports that read them. */
+        get: operations["listModels"];
+        put?: never;
+        /** Create a disabled, empty calculation model (command). */
+        post: operations["createModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        /** Read one model with its variables, measures, parameters, attributions, effective drivers and readers. */
+        get: operations["getModel"];
+        put?: never;
+        post?: never;
+        /** Delete a model that no report reads (command, C8). */
+        delete: operations["deleteModel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        /** Whether the model can be deleted, and the reports that block it. */
+        get: operations["checkDeleteModel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/formula-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse a formula against the saved model and report errors, reads, parameters and the language it needs (OI-43). */
+        post: operations["checkFormula"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply the staged operations in memory and run the model gate; never writes (OI-42). */
+        post: operations["previewModelChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-run the model gate over the staged operations and write them as one batch. */
+        post: operations["commitModelChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
@@ -102,6 +235,234 @@ export interface components {
             label: string;
             description?: string;
         };
+        /**
+         * @description 1.1 adds `POWER`; 1.2 adds `@param`, text comparisons and `YEARFRAC(convention)` (C3).
+         * @enum {string}
+         */
+        ModelFormulaLanguage: "1.0" | "1.1" | "1.2";
+        /** @enum {string} */
+        AttributionMethod: "shapley" | "sequential";
+        /** @enum {string} */
+        ModelMissingBehavior: "null" | "zero";
+        /** @enum {string} */
+        ModelParameterValueType: "number" | "text";
+        /** @enum {string} */
+        ModelRoundingMode: "half_even" | "half_up" | "down" | "up" | "truncate";
+        /** @enum {string} */
+        ModelOutputDataType: "decimal" | "int64" | "int32";
+        /** @description The model's own settings (`qe_calculation_model`). */
+        CalcModel: {
+            id: components["schemas"]["Id"];
+            /** @description Fixed after creation (C9). */
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            /** @example USD */
+            currencyCode: string;
+            /** @example gregorian */
+            calendarKey: string;
+            formulaLanguage: components["schemas"]["ModelFormulaLanguage"];
+            attributionMethod: components["schemas"]["AttributionMethod"];
+            isEnabled: boolean;
+        };
+        /** @description An input metric read from the report's sources (`qe_variable`). Its key shares the model's metric namespace (C1). */
+        ModelVariable: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            /** @example currency */
+            displayFormat: string;
+            unitKey: string | null;
+            missingBehavior: components["schemas"]["ModelMissingBehavior"];
+        };
+        /** @description A calculated measure (`qe_calculated_measure`); `formula` is `expression_text`. */
+        ModelMeasure: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            /** @example [m.INTEREST_INCOME] - [m.INTEREST_EXPENSE] */
+            formula: string;
+            outputDataType: components["schemas"]["ModelOutputDataType"];
+            outputPrecision: number | null;
+            outputScale: number | null;
+            roundingMode: components["schemas"]["ModelRoundingMode"] | null;
+            unitKey: string | null;
+            /** @example percent */
+            displayFormat: string;
+        };
+        /** @description A model parameter (`qe_model_parameter`, language 1.2). It sets exactly the default its type names; only text parameters have allowed values, and they include the default (C5). */
+        ModelParameter: {
+            key: components["schemas"]["Key"];
+            displayName: string;
+            valueType: components["schemas"]["ModelParameterValueType"];
+            /** @description Null means any value. */
+            allowedValues: string[] | null;
+            defaultNumber: number | null;
+            defaultText: string | null;
+            description: string | null;
+        };
+        /** @description One driver of an attribution; its position in the list is `sort_order`. */
+        AttributionDriver: {
+            /** @description Never `residual`. */
+            key: components["schemas"]["Key"];
+            displayName: string;
+            /** @description Metric keys and day parameters (`@periodDays`, `@yearDays`) the driver owns (`input_keys_json`). */
+            inputs: string[];
+        };
+        /** @description An explicit attribution row (`qe_metric_attribution` and its drivers). A metric without one uses default drivers, listed in `ModelDocument.effectiveDrivers` (C6). */
+        Attribution: {
+            metricKey: components["schemas"]["Key"];
+            /** @description Required for a variable; null on a calculated measure splits its own formula. */
+            expression: string | null;
+            weightVariableKey: string | null;
+            drivers: components["schemas"]["AttributionDriver"][];
+        };
+        /** @description A report that reads the model (`qe_report.calculation_model_id`, OI-44). */
+        ModelReportUse: {
+            reportId: components["schemas"]["Id"];
+            reportKey: string;
+            displayName: string;
+            isEnabled: boolean;
+        };
+        ModelListItem: components["schemas"]["CalcModel"] & {
+            variableCount: number;
+            measureCount: number;
+            usedBy: components["schemas"]["ModelReportUse"][];
+        };
+        ModelDocument: components["schemas"]["CalcModel"] & {
+            variables: components["schemas"]["ModelVariable"][];
+            measures: components["schemas"]["ModelMeasure"][];
+            parameters: components["schemas"]["ModelParameter"][];
+            /** @description Explicit attribution rows only. */
+            attributions: components["schemas"]["Attribution"][];
+            /** @description Server-computed drivers in effect per metric key, explicit or default. A metric that cannot be attributed (a variable without an attribution) has no entry. */
+            effectiveDrivers: {
+                [key: string]: components["schemas"]["AttributionDriver"][];
+            };
+            usedBy: components["schemas"]["ModelReportUse"][];
+        };
+        CalcModelCreateInput: {
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            currencyCode: string;
+            formulaLanguage: components["schemas"]["ModelFormulaLanguage"];
+            attributionMethod: components["schemas"]["AttributionMethod"];
+        };
+        /** @description The model settings an `updateModel` operation changes; absent properties are kept. */
+        CalcModelPatch: {
+            displayName?: string;
+            currencyCode?: string;
+            calendarKey?: string;
+            formulaLanguage?: components["schemas"]["ModelFormulaLanguage"];
+            attributionMethod?: components["schemas"]["AttributionMethod"];
+            isEnabled?: boolean;
+        };
+        ModelFormulaCheckRequest: {
+            formula: string;
+            /** @description The key of the metric that owns the formula, so self-reads are reported; null for a new metric. */
+            selfKey: string | null;
+        };
+        ModelFormulaError: {
+            message: string;
+            /** @description Zero-based character offset where the error starts. */
+            start: number;
+            /** @description Zero-based character offset just past the error. */
+            end: number;
+        };
+        ModelFormulaCheck: {
+            errors: components["schemas"]["ModelFormulaError"][];
+            /** @description Metric keys the formula reads, in order of first use. */
+            reads: string[];
+            /** @description Declared parameter keys (`@param`) the formula reads; never `periodDays` or `yearDays`. */
+            parameters: string[];
+            requiresLanguage: components["schemas"]["ModelFormulaLanguage"];
+        };
+        ModelUpdateModelOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateModel";
+            patch: components["schemas"]["CalcModelPatch"];
+        };
+        ModelSaveVariableOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveVariable";
+            input: components["schemas"]["ModelVariable"];
+            /** @description Present when an existing variable is edited; a key differing from it is refused (keys are fixed). */
+            originalKey?: string;
+        };
+        ModelDeleteVariableOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteVariable";
+            key: string;
+        };
+        ModelSaveMeasureOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveMeasure";
+            input: components["schemas"]["ModelMeasure"];
+            /** @description Present when an existing measure is edited; a key differing from it is refused (keys are fixed). */
+            originalKey?: string;
+        };
+        ModelDeleteMeasureOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteMeasure";
+            key: string;
+        };
+        ModelSaveParameterOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveParameter";
+            input: components["schemas"]["ModelParameter"];
+            /** @description Present when an existing parameter is edited; a key differing from it is refused (keys are fixed). */
+            originalKey?: string;
+        };
+        ModelDeleteParameterOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteParameter";
+            key: string;
+        };
+        ModelSetAttributionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "setAttribution";
+            input: components["schemas"]["Attribution"];
+        };
+        ModelClearAttributionOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "clearAttribution";
+            metricKey: string;
+        };
+        /** @description One edit of a model change set, named after the `ModelsApi` edit method it records. */
+        ModelOperation: components["schemas"]["ModelUpdateModelOperation"] | components["schemas"]["ModelSaveVariableOperation"] | components["schemas"]["ModelDeleteVariableOperation"] | components["schemas"]["ModelSaveMeasureOperation"] | components["schemas"]["ModelDeleteMeasureOperation"] | components["schemas"]["ModelSaveParameterOperation"] | components["schemas"]["ModelDeleteParameterOperation"] | components["schemas"]["ModelSetAttributionOperation"] | components["schemas"]["ModelClearAttributionOperation"];
+        ModelChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["ModelOperation"][];
+        };
+        ModelChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["ModelDocument"];
+        };
+        ModelChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["ModelDocument"];
+        };
     };
     responses: {
         /** @description The body, route or query does not bind, or an input validator failed; see `errors`. */
@@ -162,10 +523,243 @@ export interface components {
     parameters: {
         /** @description The tenant directory key. */
         TenantId: string;
+        /** @description The calculation model id. */
+        ModelId: components["schemas"]["Id"];
     };
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    listModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every model of the tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelListItem"][];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalcModelCreateInput"];
+            };
+        };
+        responses: {
+            /** @description The created model. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalcModel"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description The model key is taken. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The model document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelDocument"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description A report reads the model; `violations` carry `model_not_in_use` per report. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDeleteModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkFormula: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelFormulaCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The check result; never writes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelFormulaCheck"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewModelChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description The operations apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The last operation introduces a violation of a model rule or of a report rule of an enabled report over the model; it is refused. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitModelChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description The calculation model id. */
+                modelId: components["parameters"]["ModelId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description An operation introduces a model-rule or enabled-report violation; nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+}
