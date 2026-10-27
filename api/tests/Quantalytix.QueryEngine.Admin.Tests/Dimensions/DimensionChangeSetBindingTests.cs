@@ -16,10 +16,10 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
 /// <summary>
-/// Confirms that a dimension change set's operations bind by their <c>op</c> discriminator wherever it stands in the object, and
-/// that an operation no union member matches answers the 400 problem before anything reads the tenant, so a malformed change set
-/// never surfaces as a 500. Runs in the startup collection, because starting the API sets FluentValidation's process-wide name
-/// resolvers.
+/// Confirms how the dimension endpoints bind what the web2 HTTP adapter sends, before anything reads the tenant: an operation no
+/// member of the change-set union matches answers the 400 problem, so a malformed change set never surfaces as a 500, and the list's
+/// <c>origin</c> query binds under its contract name. Runs in the startup collection, because starting the API sets FluentValidation's
+/// process-wide name resolvers.
 /// </summary>
 [Collection(StartupCollection.Name)]
 public sealed class DimensionChangeSetBindingTests : IDisposable
@@ -47,6 +47,19 @@ public sealed class DimensionChangeSetBindingTests : IDisposable
         Assert.Equal(ProblemTypes.InvalidInput, (string)problem["type"]!);
     }
 
+    /// <summary>An unknown origin answers 400 keyed by the query name the contract gives it.</summary>
+    /// <returns>A task that completes when the response is checked.</returns>
+    [Fact]
+    public async Task ListWithAnUnknownOrigin_IsABadRequestOnOrigin()
+    {
+        using var client = await SignedInAsync();
+        using var response = await client.GetAsync(new Uri("/api/tenants/acme/dimensions?origin=report", UriKind.Relative), TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!.AsObject();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(["origin"], problem["errors"]!.AsObject().Select(entry => entry.Key));
+    }
+
     /// <summary>Disposes the host and restores FluentValidation's name resolvers for the tests that run after this one.</summary>
     public void Dispose()
     {
@@ -55,15 +68,22 @@ public sealed class DimensionChangeSetBindingTests : IDisposable
         ValidatorOptions.Global.DisplayNameResolver = _displayNames;
     }
 
-    /// <summary>Posts a preview body, signed in through the Development token endpoint, and reads the problem.</summary>
+    /// <summary>Posts a preview body, signed in, and reads the problem.</summary>
     private async Task<(HttpStatusCode Status, JsonObject Problem)> PreviewAsync(string body)
     {
-        using var client = _factory.CreateClient();
-        using var signIn = await client.PostAsJsonAsync("/development/token", new { tenantId = "acme" }, TestContext.Current.CancellationToken);
-        var token = (await signIn.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken))!["accessToken"]!.GetValue<string>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var client = await SignedInAsync();
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
         using var response = await client.PostAsync(new Uri("/api/tenants/acme/dimensions/1/changes/preview", UriKind.Relative), content, TestContext.Current.CancellationToken);
         return (response.StatusCode, JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!.AsObject());
+    }
+
+    /// <summary>A client signed in to tenant <c>acme</c> through the Development token endpoint.</summary>
+    private async Task<HttpClient> SignedInAsync()
+    {
+        var client = _factory.CreateClient();
+        using var signIn = await client.PostAsJsonAsync("/development/token", new { tenantId = "acme" }, TestContext.Current.CancellationToken);
+        var token = (await signIn.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken))!["accessToken"]!.GetValue<string>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }
