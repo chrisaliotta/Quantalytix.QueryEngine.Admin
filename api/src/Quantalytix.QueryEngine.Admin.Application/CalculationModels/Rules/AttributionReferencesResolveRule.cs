@@ -19,31 +19,32 @@ public static class AttributionReferencesResolveRule
     public static IEnumerable<RuleViolation> Evaluate(ModelGraph model)
     {
         var keys = model.MetricKeys;
-        var variableKeys = model.Variables.Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal);
+        var variableKeys = model.VariableKeys;
         foreach (var attribution in model.Attributions.OrderBy(attribution => attribution.MetricKey, StringComparer.Ordinal))
         {
             var subject = $"The attribution of '{attribution.MetricKey}'";
+            var target = ModelAreas.Attribution(attribution.MetricKey);
             if (!keys.Contains(attribution.MetricKey))
-                yield return Violation($"{subject} names no variable or calculated measure of the model.");
-            else if (attribution.ExpressionText is null && variableKeys.Contains(attribution.MetricKey))
-                yield return Violation($"{subject} needs an expression, because a variable has no formula to switch its drivers in.");
-            if (attribution.ExpressionText is { } expression)
+                yield return Violation($"{subject} names no variable or calculated measure of the model.", target);
+            else if (attribution.Expression is null && variableKeys.Contains(attribution.MetricKey))
+                yield return Violation($"{subject} needs an expression, because a variable has no formula to switch its drivers in.", target);
+            if (attribution.Expression is { } expression)
             {
                 foreach (var key in FormulaReferencesResolveRule.Unresolved(keys, expression))
-                    yield return Violation($"{subject} reads [m.{key}], which is no variable or calculated measure of the model.");
+                    yield return Violation($"{subject} reads [m.{key}], which is no variable or calculated measure of the model.", target);
             }
 
             foreach (var driver in attribution.Drivers)
             {
-                foreach (var input in driver.InputKeys.Where(input => !keys.Contains(input) && !AttributionInputs.ContextParameters.Contains(input)))
-                    yield return Violation($"{subject} has driver '{driver.DriverKey}' switch '{input}', which is no variable or calculated measure of the model, @periodDays or @yearDays.");
+                foreach (var input in driver.Inputs.Where(input => !keys.Contains(input) && !AttributionInputs.ContextParameters.Contains(input)))
+                    yield return Violation($"{subject} has driver '{driver.Key}' switch '{input}', which is no variable or calculated measure of the model, @periodDays or @yearDays.", target);
             }
         }
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, ViolationTarget target)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = target };
     }
 }

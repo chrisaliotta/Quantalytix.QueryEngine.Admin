@@ -39,17 +39,18 @@ internal static class ModelRows
             [Calculated(61, "YIELD", "[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays")],
             Attribution(
                 "YIELD", null,
-                Driver("income", 1, "INTEREST_INCOME"), Driver("volume", 2, "AVERAGE_BALANCE"), Driver("days", 3, "@periodDays", "@yearDays"))
+                Driver("income", "INTEREST_INCOME"), Driver("volume", "AVERAGE_BALANCE"), Driver("days", "@periodDays", "@yearDays"))
                 with { WeightVariableKey = "AVERAGE_BALANCE" },
             Attribution(
                 "INTEREST_INCOME", "[m.AVERAGE_BALANCE] * [m.YIELD] * @periodDays / @yearDays",
-                Driver("volume", 1, "AVERAGE_BALANCE"), Driver("rate", 2, "YIELD"), Driver("days", 3, "@periodDays", "@yearDays")));
+                Driver("volume", "AVERAGE_BALANCE"), Driver("rate", "YIELD"), Driver("days", "@periodDays", "@yearDays")));
     }
 
     /// <summary>The margin model with one attribution in place of the one for the same metric.</summary>
-    public static ModelGraph MarginGraphWith(MetricAttribution attribution)
+    public static ModelGraph MarginGraphWith(Attribution attribution)
     {
-        return MetricAttributionService.Put(MarginGraph(), attribution);
+        var model = MarginGraph();
+        return model with { Attributions = [.. model.Attributions.Where(existing => existing.MetricKey != attribution.MetricKey), attribution] };
     }
 
     /// <summary>
@@ -64,7 +65,7 @@ internal static class ModelRows
         {
             Model = model.Model with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
             CalculatedMeasures = [Calculated(61, "YIELD", "[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] / YEARFRAC(@dayCount)")],
-            Attributions = [model.Attributions[0], model.Attributions[1] with { ExpressionText = "[m.AVERAGE_BALANCE] * [m.YIELD] * YEARFRAC(@dayCount)" }],
+            Attributions = [model.Attributions[0], model.Attributions[1] with { Expression = "[m.AVERAGE_BALANCE] * [m.YIELD] * YEARFRAC(@dayCount)" }],
             Parameters = [DayCount()]
         };
     }
@@ -87,23 +88,29 @@ internal static class ModelRows
         return new ModelParameter { ParameterKey = parameterKey, DisplayName = parameterKey, ValueType = ParameterValueTypes.Number, DefaultNumber = defaultNumber };
     }
 
-    /// <summary>The model's metrics as <see cref="ModelChanges"/> checks them: model 40 with the given rows.</summary>
+    /// <summary>The stored row of a parameter of model 40, for seeding the parameter table.</summary>
+    public static ModelParameterRecord ParameterRow(ModelParameter parameter)
+    {
+        return ModelParameterService.ToRecord(CalculationModelId, parameter);
+    }
+
+    /// <summary>The content of model 40 with the given rows, as the model rules read it.</summary>
     public static ModelGraph Graph(
-        IReadOnlyList<VariableRecord> variables, IReadOnlyList<CalculatedMeasureRecord> measures, params IReadOnlyList<MetricAttribution> attributions)
+        IReadOnlyList<VariableRecord> variables, IReadOnlyList<CalculatedMeasureRecord> measures, params IReadOnlyList<Attribution> attributions)
     {
         return new ModelGraph { Model = Model(), Variables = variables, CalculatedMeasures = measures, Attributions = attributions, Parameters = [] };
     }
 
     /// <summary>An attribution of a metric with an optional expression and the given drivers, without a weight variable.</summary>
-    public static MetricAttribution Attribution(string metricKey, string? expressionText, params IReadOnlyList<AttributionDriver> drivers)
+    public static Attribution Attribution(string metricKey, string? expression, params IReadOnlyList<AttributionDriver> drivers)
     {
-        return new MetricAttribution { MetricKey = metricKey, ExpressionText = expressionText, Drivers = drivers };
+        return new Attribution { MetricKey = metricKey, Expression = expression, WeightVariableKey = null, Drivers = drivers };
     }
 
     /// <summary>A driver that switches the given inputs, labelled by its key.</summary>
-    public static AttributionDriver Driver(string driverKey, int sortOrder, params IReadOnlyList<string> inputKeys)
+    public static AttributionDriver Driver(string key, params IReadOnlyList<string> inputs)
     {
-        return new AttributionDriver { DriverKey = driverKey, DisplayName = driverKey, SortOrder = sortOrder, InputKeys = inputKeys };
+        return new AttributionDriver { Key = key, DisplayName = key, Inputs = inputs };
     }
 
     /// <summary>A currency variable that reads missing values as zero.</summary>

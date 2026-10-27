@@ -5,8 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
 /// <c>formula_references_resolve</c>: every <c>[m.KEY]</c> of every calculated measure names a variable or calculated measure of the
-/// model. The report orchestrator evaluates formulas against the model's keys alone, so a key that an edit renamed or deleted would
-/// have nothing to read.
+/// model. The report orchestrator evaluates formulas against the model's keys alone, so a key that an edit deleted would have
+/// nothing to read.
 /// </summary>
 public static class FormulaReferencesResolveRule
 {
@@ -23,7 +23,8 @@ public static class FormulaReferencesResolveRule
             Unresolved(keys, measure.ExpressionText).Select(key => new RuleViolation
             {
                 Code = Code,
-                Message = $"Calculated measure '{measure.MeasureKey}' reads [m.{key}], which is no variable or calculated measure of the model."
+                Message = $"Calculated measure '{measure.MeasureKey}' reads [m.{key}], which is no variable or calculated measure of the model.",
+                Target = ModelAreas.Measure(measure.MeasureKey)
             }));
     }
 

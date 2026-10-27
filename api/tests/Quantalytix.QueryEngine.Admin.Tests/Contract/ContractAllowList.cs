@@ -99,17 +99,6 @@ internal static class ContractAllowList
             "relabelSet",
             "deleteSet"
         ],
-        ["models"] =
-        [
-            "listModels",
-            "createModel",
-            "getModel",
-            "deleteModel",
-            "checkDeleteModel",
-            "checkFormula",
-            "previewModelChanges",
-            "commitModelChanges"
-        ],
         ["reports"] =
         [
             "listReports",
@@ -249,36 +238,6 @@ internal static class ContractAllowList
             "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/grains",
             "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}",
             "DELETE /api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}"
-        ],
-        ["CalculatedMeasures"] =
-        [
-            "GET /api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures",
-            "POST /api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures",
-            "PUT /api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures/{itemId}",
-            "DELETE /api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures/{itemId}"
-        ],
-        ["CalculationModels"] =
-        [
-            "PUT /api/tenants/{tenantId}/calculation-models/{calculationModelId}"
-        ],
-        ["MetricAttributions"] =
-        [
-            "GET /api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions",
-            "PUT /api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}",
-            "DELETE /api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}"
-        ],
-        ["ModelParameters"] =
-        [
-            "GET /api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters",
-            "PUT /api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}",
-            "DELETE /api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}"
-        ],
-        ["Variables"] =
-        [
-            "GET /api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables",
-            "POST /api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables",
-            "PUT /api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables/{itemId}",
-            "DELETE /api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables/{itemId}"
         ],
         ["BridgeMappings"] =
         [

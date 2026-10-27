@@ -200,13 +200,6 @@ internal sealed class ReportGraphFixture
             BridgeMappings, Dimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
-    /// <summary>The model gate over these tables.</summary>
-    /// <returns>The checks a write to model 40, its metrics or its parameters goes through.</returns>
-    public ModelChanges Changes()
-    {
-        return new ModelChanges(Models, Variables, CalculatedMeasures, AttributionService(), ParameterService(), new ReportUses(Reports), Reader());
-    }
-
     /// <summary>The parameters of model 40 over these tables.</summary>
     /// <returns>The service that reads and writes model parameters.</returns>
     public ModelParameterService ParameterService()

@@ -1,115 +1,163 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
-using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 
-/// <summary>Lists, creates, edits and deletes calculation models: the variables and formulas reports evaluate, edited in place.</summary>
+/// <summary>
+/// The model manager (blueprint 15): the list, create, the model document, the formula check, the delete check and delete, and the
+/// model change set, whose preview refuses an edit that introduces a model-rule or enabled-report violation (OI-42).
+/// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
-public sealed class CalculationModelsController(CalculationModelService models, ModelChanges changes) : ControllerBase
+public sealed class CalculationModelsController(
+    ModelQueries queries,
+    ModelCommands commands,
+    ChangeSetPipeline<ModelSnapshot, ModelOperation, ModelDocument> changes) : ControllerBase
 {
-    /// <summary>Lists every calculation model of the tenant.</summary>
-    /// <param name="tenantId">The tenant that owns the models.</param>
+    /// <summary>Lists the tenant's models with their metric counts and the reports that read them.</summary>
+    /// <param name="tenantId">The tenant.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The models by key.</returns>
-    /// <response code="200">The models by key, ignoring case.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
+    /// <returns>The list items by key.</returns>
+    /// <response code="200">Every model of the tenant.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<CalculationModelRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<CalculationModelRecord>>> List(string tenantId, CancellationToken cancellationToken)
+    [ProducesResponseType<IReadOnlyList<ModelListItem>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
+    public async Task<ActionResult<IReadOnlyList<ModelListItem>>> List(string tenantId, CancellationToken cancellationToken)
     {
-        return Ok(await models.ListAsync(cancellationToken));
+        return Ok(await queries.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a calculation model without variables or calculated measures.</summary>
-    /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="input">The new model's key, display name, currency, availability, formula language and attribution method.</param>
+    /// <summary>Creates a disabled model without metrics.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="input">The new model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created model.</returns>
-    /// <response code="200">The created model.</response>
-    /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
+    /// <returns>The model's settings.</returns>
+    /// <response code="201">Created.</response>
+    /// <response code="400">The input breaks a field rule.</response>
+    /// <response code="409">The model key is taken.</response>
     [HttpPost]
-    [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<CalculationModelRecord>> Create(string tenantId, NewCalculationModelInput input, CancellationToken cancellationToken)
+    [ProducesResponseType<CalcModel>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<ActionResult<CalcModel>> Create(string tenantId, CalcModelCreateInput input, CancellationToken cancellationToken)
     {
-        return Ok(await models.CreateAsync(input, cancellationToken));
+        var outcome = await commands.CreateAsync(input, cancellationToken);
+        return outcome.Succeeded ? StatusCode(StatusCodes.Status201Created, outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads one calculation model.</summary>
-    /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="calculationModelId">The model.</param>
+    /// <summary>Reads a model with its variables, measures, parameters, attributions, effective drivers and readers.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The model.</returns>
-    /// <response code="200">The model.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet("{calculationModelId:long}")]
-    [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<CalculationModelRecord>> Get(string tenantId, long calculationModelId, CancellationToken cancellationToken)
+    /// <returns>The document.</returns>
+    /// <response code="200">The model document.</response>
+    [HttpGet("{modelId:long}")]
+    [ProducesResponseType<ModelDocument>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ModelDocument>> Get(string tenantId, long modelId, CancellationToken cancellationToken)
     {
-        return Ok(await models.GetAsync(calculationModelId, cancellationToken));
+        return Ok(await queries.DocumentAsync(modelId, cancellationToken));
     }
 
-    /// <summary>
-    /// Edits a calculation model's display name, currency, availability, formula language and attribution method; the enabled reports
-    /// that read it show its new currency and attribute by its new method at once. A formula language that lacks a function the
-    /// model's formulas call is refused.
-    /// </summary>
-    /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="calculationModelId">The model.</param>
-    /// <param name="input">The new attributes.</param>
+    /// <summary>Deletes a model that no report reads, with its content (C8).</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The stored model.</returns>
-    /// <response code="200">The stored model.</response>
-    /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="422">The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written.</response>
-    [HttpPut("{calculationModelId:long}")]
-    [AdvancesModelRevision("calculationModelId")]
-    [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
-    public async Task<ActionResult<CalculationModelRecord>> Update(
+    /// <returns>No content.</returns>
+    /// <response code="204">Deleted.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">A report reads the model; <c>violations</c> carry <c>referenced_by_report</c> per report.</response>
+    [HttpDelete("{modelId:long}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<IActionResult> Delete(string tenantId, long modelId, CancellationToken cancellationToken)
+    {
+        return await commands.DeleteAsync(modelId, cancellationToken) is { } refusal ? Problems.From(refusal).ToResult() : NoContent();
+    }
+
+    /// <summary>Checks whether a model can be deleted.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The delete check.</returns>
+    /// <response code="200">The delete check.</response>
+    [HttpGet("{modelId:long}/delete-check")]
+    [ProducesResponseType<DeleteCheck>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<DeleteCheck>> CheckDelete(string tenantId, long modelId, CancellationToken cancellationToken)
+    {
+        return Ok(await queries.DeleteCheckAsync(modelId, cancellationToken));
+    }
+
+    /// <summary>Checks a formula against the saved model: errors with their positions, reads, parameters and the language it needs (OI-43).</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
+    /// <param name="request">The formula and the metric that owns it.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The check.</returns>
+    /// <response code="200">The check result; never writes.</response>
+    /// <response code="400">The request breaks a field rule.</response>
+    [HttpPost("{modelId:long}/formula-check")]
+    [ProducesResponseType<ModelFormulaCheck>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ModelFormulaCheck>> CheckFormula(string tenantId, long modelId, ModelFormulaCheckRequest request, CancellationToken cancellationToken)
+    {
+        return Ok(await queries.CheckFormulaAsync(modelId, request, cancellationToken));
+    }
+
+    /// <summary>Previews a model change set: applies the operations to the stored model in memory, runs the model gate, and writes nothing.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
+    /// <param name="request">The operations so far.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The pending document and every violation it has.</returns>
+    /// <response code="200">The operations apply.</response>
+    /// <response code="400">An operation's input is invalid or names an item the model lacks; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="422">The operations introduce a model-rule or enabled-report violation.</response>
+    [HttpPost("{modelId:long}/changes/preview")]
+    [ProducesResponseType<ChangeSetPreview<ModelDocument>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ChangeSetPreview<ModelDocument>>> Preview(
         string tenantId,
-        long calculationModelId,
-        CalculationModelInput input,
+        long modelId,
+        ChangeSetRequest<ModelOperation> request,
         CancellationToken cancellationToken)
     {
-        var updated = await models.ComposeAsync(calculationModelId, input, cancellationToken);
-        var violations = await changes.ApplyAsync(
-            calculationModelId, model => model with { Model = updated }, () => models.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
-        return Ok(updated);
+        return OkOrProblem(await changes.PreviewAsync(modelId, request, cancellationToken));
     }
 
-    /// <summary>Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions.</summary>
-    /// <param name="tenantId">The tenant that owns the model.</param>
-    /// <param name="calculationModelId">The model.</param>
+    /// <summary>Commits a model change set: re-runs the model gate on the model as stored now and writes the operations as one batch.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="modelId">The model.</param>
+    /// <param name="request">Every operation of the change set.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when something blocks the delete.</returns>
-    /// <response code="204">The model, its metrics and their attributions are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    /// <response code="409">Nothing was deleted; the detail names the reports that read the model.</response>
-    [HttpDelete("{calculationModelId:long}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<IActionResult> Delete(string tenantId, long calculationModelId, CancellationToken cancellationToken)
+    /// <returns>The stored document.</returns>
+    /// <response code="200">Every operation applied and was written.</response>
+    /// <response code="400">An operation's input is invalid or names an item the model lacks; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="422">The operations introduce a model-rule or enabled-report violation; nothing was written.</response>
+    [HttpPost("{modelId:long}/changes")]
+    [ProducesResponseType<ChangeSetCommit<ModelDocument>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ChangeSetCommit<ModelDocument>>> Commit(
+        string tenantId,
+        long modelId,
+        ChangeSetRequest<ModelOperation> request,
+        CancellationToken cancellationToken)
     {
-        var conflict = await models.DeleteAsync(calculationModelId, cancellationToken);
-        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
-        return NoContent();
+        return OkOrProblem(await changes.CommitAsync(modelId, request, cancellationToken));
+    }
+
+    /// <summary>200 with the value, or the refusal's problem.</summary>
+    private ActionResult<T> OkOrProblem<T>(Outcome<T> outcome) where T : class
+    {
+        return outcome.Succeeded ? Ok(outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 }

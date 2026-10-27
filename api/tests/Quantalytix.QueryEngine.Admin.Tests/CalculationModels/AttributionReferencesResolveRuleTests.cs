@@ -49,7 +49,7 @@ public sealed class AttributionReferencesResolveRuleTests
     {
         var model = MarginGraphWith(Attribution(
             "INTEREST_INCOME", "[m.AVERAGE_BALANCE] * [m.RATE] * @periodDays / @yearDays",
-            Driver("volume", 1, "AVERAGE_BALANCE"), Driver("rate", 2, "RATE"), Driver("days", 3, "@periodDays", "@yearDays")));
+            Driver("volume", "AVERAGE_BALANCE"), Driver("rate", "RATE"), Driver("days", "@periodDays", "@yearDays")));
 
         Assert.Equal(
             ["The attribution of 'INTEREST_INCOME' reads [m.RATE], which is no variable or calculated measure of the model.",

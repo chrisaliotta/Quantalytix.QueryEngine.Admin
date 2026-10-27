@@ -16245,745 +16245,17 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures": {
-      "get": {
-        "tags": [
-          "CalculatedMeasures"
-        ],
-        "summary": "Lists a model's calculated measures.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The calculated measures by key, ignoring case.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CalculatedMeasureRecord"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "CalculatedMeasures"
-        ],
-        "summary": "Adds a calculated measure to a calculation model, unless its formula reads a key the model lacks or reads itself.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculatedMeasureInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculatedMeasureInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created calculated measure.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculatedMeasureRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as a formula that does not parse or reads a dataset field; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The formula reads a variable or calculated measure the model lacks, or reads itself; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/calculated-measures/{itemId}": {
-      "put": {
-        "tags": [
-          "CalculatedMeasures"
-        ],
-        "summary": "Replaces a calculated measure of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculatedMeasureInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculatedMeasureInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored calculated measure.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculatedMeasureRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The calculated measure is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The change would break the model's formulas or an enabled report that reads the model, such as a formula that now reads a variable no profile picks a source for; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CalculatedMeasures"
-        ],
-        "summary": "Deletes a calculated measure of a calculation model, unless another formula of the model or an enabled report reads it.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The calculated measure is deleted."
-          },
-          "400": {
-            "description": "The calculated measure is not the model's; the error is keyed `itemId`.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Another formula of the model, or a column or formula row of an enabled report that reads the model, reads the measure; nothing was deleted.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tenants/{tenantId}/calculation-models": {
       "get": {
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Lists every calculation model of the tenant.",
+        "summary": "Lists the tenant's models with their metric counts and the reports that read them.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the models.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
@@ -16991,12 +16263,15 @@
           }
         ],
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
+          "200": {
+            "description": "Every model of the tenant.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelListItem"
+                  }
                 }
               }
             }
@@ -17007,19 +16282,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The models by key, ignoring case.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CalculationModelRecord"
-                  }
                 }
               }
             }
@@ -17030,12 +16292,12 @@
         "tags": [
           "CalculationModels"
         ],
-        "summary": "Creates a calculation model without variables or calculated measures.",
+        "summary": "Creates a disabled model without metrics.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
@@ -17046,50 +16308,30 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewCalculationModelInput"
+                "$ref": "#/components/schemas/CalcModelCreateInput"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/NewCalculationModelInput"
+                "$ref": "#/components/schemas/CalcModelCreateInput"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The created model.",
+          "201": {
+            "description": "Created.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CalculationModelRecord"
+                  "$ref": "#/components/schemas/CalcModel"
                 }
               }
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.",
+            "description": "The input breaks a field rule.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17097,407 +16339,9 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}": {
-      "get": {
-        "tags": [
-          "CalculationModels"
-        ],
-        "summary": "Reads one calculation model.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The model.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationModelRecord"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "CalculationModels"
-        ],
-        "summary": "Edits a calculation model's display name, currency, availability, formula language and attribution method; the enabled reports\nthat read it show its new currency and attribute by its new method at once. A formula language that lacks a function the\nmodel's formulas call is refused.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationModelInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculationModelInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored model.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalculationModelRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The model's formulas or attribution expressions call POWER, which formula language 1.0 lacks; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CalculationModels"
-        ],
-        "summary": "Deletes a calculation model that no report reads, together with its variables, calculated measures and attributions.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The model, its metrics and their attributions are deleted."
           },
           "409": {
-            "description": "Nothing was deleted; the detail names the reports that read the model.",
+            "description": "The model key is taken.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17505,127 +16349,30 @@
                 }
               }
             }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
           }
         }
       }
     },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}": {
       "get": {
         "tags": [
-          "MetricAttributions"
+          "CalculationModels"
         ],
-        "summary": "Lists a model's attributions, each with its drivers.",
+        "summary": "Reads a model with its variables, measures, parameters, attributions, effective drivers and readers.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The calculation model.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
@@ -17633,236 +16380,12 @@
           }
         ],
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "200": {
-            "description": "The attributions by metric key, their drivers by sort order.",
+            "description": "The model document.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/MetricAttribution"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/attributions/{metricKey}": {
-      "put": {
-        "tags": [
-          "MetricAttributions"
-        ],
-        "summary": "Sets a metric's attribution, with every one of its drivers, in place of the one stored, unless it breaks the model's rules:\nthe metric, the expression's keys, the drivers' inputs and the weight variable must resolve in the model, and the drivers must\nsplit the expression's inputs among them.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "metricKey",
-            "in": "path",
-            "description": "The key of the variable or calculated measure attributed.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MetricAttributionInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/MetricAttributionInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored attribution, its drivers by sort order.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MetricAttribution"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The input breaks a field rule, such as an expression that does not parse or a driver keyed residual; errors are keyed by camelCase JSON path.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The attribution breaks a model rule, such as a key the model lacks, an input no driver switches, or POWER in a model of formula language 1.0; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "$ref": "#/components/schemas/ModelDocument"
                 }
               }
             }
@@ -17968,32 +16491,23 @@
       },
       "delete": {
         "tags": [
-          "MetricAttributions"
+          "CalculationModels"
         ],
-        "summary": "Deletes a metric's attribution with its drivers: a calculated measure then has the default drivers, one per reference of its\nformula, and no member contributions.",
+        "summary": "Deletes a model that no report reads, with its content (C8).",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "metricKey",
-            "in": "path",
-            "description": "The key of the metric attributed.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
@@ -18001,382 +16515,11 @@
           }
         ],
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "204": {
-            "description": "The attribution is deleted, or the metric had none."
-          },
-          "422": {
-            "description": "The model breaks its rules without the attribution; nothing was deleted.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters": {
-      "get": {
-        "tags": [
-          "ModelParameters"
-        ],
-        "summary": "Lists a model's parameters.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The parameters by key.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelParameter"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/parameters/{parameterKey}": {
-      "put": {
-        "tags": [
-          "ModelParameters"
-        ],
-        "summary": "Sets a parameter of a calculation model, creating it under the key or replacing the one stored, unless the change breaks the\nmodel's formulas or a report's row values: a formula must read the parameter where its new type belongs, and YEARFRAC a text\nparameter whose allowed values are day count conventions, and every value a report's rows set must fit its new type and allowed\nvalues.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The model that declares the parameter.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "parameterKey",
-            "in": "path",
-            "description": "The parameter's key.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModelParameterInput"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModelParameterInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "The stored parameter.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelParameter"
-                }
-              }
-            }
+            "description": "Deleted."
           },
           "400": {
-            "description": "The key or the input breaks a field rule, such as a number parameter with allowed values; errors are keyed by camelCase JSON path.",
+            "description": "The route does not bind.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -18385,175 +16528,8 @@
               }
             }
           },
-          "422": {
-            "description": "The change would break a formula of the model or a report's row values, such as a type a formula or row reads otherwise; nothing was written.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "An id in the route names no row in the tenant.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "errors"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A short, user-facing summary."
-                    },
-                    "status": {
-                      "type": "integer",
-                      "description": "The HTTP status code.",
-                      "format": "int32"
-                    },
-                    "detail": {
-                      "type": "string",
-                      "description": "What happened, when the title does not say it all; omitted otherwise."
-                    },
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
-                    },
-                    "violations": {
-                      "type": "array",
-                      "items": {
-                        "required": [
-                          "code",
-                          "message"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "What is wrong, written for the person editing the version or the report."
-                          },
-                          "target": {
-                            "required": [
-                              "area"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "area": {
-                                "type": "string",
-                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
-                              },
-                              "itemId": {
-                                "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
-                              },
-                              "itemKey": {
-                                "type": "string",
-                                "description": "The offending item's key; omitted when the violation names none."
-                              },
-                              "filter": {
-                                "type": "string",
-                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
-                              }
-                            },
-                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
-                          }
-                        },
-                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
-                      },
-                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
-                    },
-                    "traceId": {
-                      "type": "string",
-                      "description": "The request's trace id on a 500; omitted otherwise."
-                    }
-                  },
-                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "ModelParameters"
-        ],
-        "summary": "Deletes a parameter of a calculation model, unless a formula of the model reads it or a report's rows set it.",
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "description": "The tenant that owns the model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "calculationModelId",
-            "in": "path",
-            "description": "The calculation model.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "parameterKey",
-            "in": "path",
-            "description": "The parameter's key.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The parameter is deleted, or the model had none by the key."
-          },
-          "422": {
-            "description": "A formula of the model reads the parameter or a report's rows set it; nothing was deleted.",
+          "409": {
+            "description": "A report reads the model; `violations` carry `referenced_by_report` per report.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -18662,26 +16638,26 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/delete-check": {
       "get": {
         "tags": [
-          "Variables"
+          "CalculationModels"
         ],
-        "summary": "Lists a model's variables.",
+        "summary": "Checks whether a model can be deleted.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The calculation model.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
@@ -18689,35 +16665,12 @@
           }
         ],
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "200": {
-            "description": "The variables by key, ignoring case.",
+            "description": "The delete check.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VariableRecord"
-                  }
+                  "$ref": "#/components/schemas/DeleteCheck"
                 }
               }
             }
@@ -18820,26 +16773,28 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/formula-check": {
       "post": {
         "tags": [
-          "Variables"
+          "CalculationModels"
         ],
-        "summary": "Adds a variable to a calculation model. A new variable breaks no formula and no report, so nothing checks it beyond its fields.",
+        "summary": "Checks a formula against the saved model: errors with their positions, reads, parameters and the language it needs (OI-43).",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The calculation model.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
@@ -18850,50 +16805,30 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VariableInput"
+                "$ref": "#/components/schemas/ModelFormulaCheckRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/VariableInput"
+                "$ref": "#/components/schemas/ModelFormulaCheckRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "200": {
-            "description": "The created variable.",
+            "description": "The check result; never writes.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VariableRecord"
+                  "$ref": "#/components/schemas/ModelFormulaCheck"
                 }
               }
             }
           },
           "400": {
-            "description": "The input breaks a field rule, such as a key another variable or calculated measure of the model has; errors are keyed by camelCase JSON path.",
+            "description": "The request breaks a field rule.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -19002,35 +16937,26 @@
         }
       }
     },
-    "/api/tenants/{tenantId}/calculation-models/{calculationModelId}/variables/{itemId}": {
-      "put": {
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/changes/preview": {
+      "post": {
         "tags": [
-          "Variables"
+          "CalculationModels"
         ],
-        "summary": "Replaces a variable of a calculation model, keeping its ID, unless the change breaks the model's formulas or an enabled report.",
+        "summary": "Previews a model change set: applies the operations to the stored model in memory, runs the model gate, and writes nothing.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The model that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
@@ -19041,50 +16967,30 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VariableInput"
+                "$ref": "#/components/schemas/ChangeSetRequestOfModelOperation"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/VariableInput"
+                "$ref": "#/components/schemas/ChangeSetRequestOfModelOperation"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
           "200": {
-            "description": "The stored variable.",
+            "description": "The operations apply.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VariableRecord"
+                  "$ref": "#/components/schemas/ChangeSetPreviewOfModelDocument"
                 }
               }
             }
           },
           "400": {
-            "description": "The variable is not the model's, or the input breaks a field rule; errors are keyed by camelCase JSON path.",
+            "description": "An operation's input is invalid or names an item the model lacks; errors are keyed by `operations[n]`.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -19094,7 +17000,7 @@
             }
           },
           "422": {
-            "description": "The change would break the model's formulas, such as a renamed key a formula reads, or an enabled report that reads the model; nothing was written.",
+            "description": "The operations introduce a model-rule or enabled-report violation.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -19201,67 +17107,62 @@
             }
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/api/tenants/{tenantId}/calculation-models/{modelId}/changes": {
+      "post": {
         "tags": [
-          "Variables"
+          "CalculationModels"
         ],
-        "summary": "Deletes a variable of a calculation model, unless a formula of the model or an enabled report reads it.",
+        "summary": "Commits a model change set: re-runs the model gate on the model as stored now and writes the operations as one batch.",
         "parameters": [
           {
             "name": "tenantId",
             "in": "path",
-            "description": "The tenant that owns the model.",
+            "description": "The tenant.",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "calculationModelId",
+            "name": "modelId",
             "in": "path",
-            "description": "The model that owns the row.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "itemId",
-            "in": "path",
-            "description": "The row.",
+            "description": "The model.",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeSetRequestOfModelOperation"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeSetRequestOfModelOperation"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "401": {
-            "description": "The request has no valid bearer token.",
+          "200": {
+            "description": "Every operation applied and was written.",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "$ref": "#/components/schemas/ChangeSetCommitOfModelDocument"
                 }
               }
             }
-          },
-          "403": {
-            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "The variable is deleted."
           },
           "400": {
-            "description": "The variable is not the model's; the error is keyed `itemId`.",
+            "description": "An operation's input is invalid or names an item the model lacks; errors are keyed by `operations[n]`.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -19271,7 +17172,7 @@
             }
           },
           "422": {
-            "description": "A formula of the model or an enabled report that reads the model reads the variable; nothing was deleted.",
+            "description": "The operations introduce a model-rule or enabled-report violation; nothing was written.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -22785,16 +20686,52 @@
         },
         "description": "The editable labels of an assumption set; its key and pins never change."
       },
-      "AttributionDriver": {
+      "Attribution": {
         "required": [
-          "driverKey",
-          "displayName",
-          "sortOrder",
-          "inputKeys"
+          "metricKey",
+          "expression",
+          "weightVariableKey",
+          "drivers"
         ],
         "type": "object",
         "properties": {
-          "driverKey": {
+          "metricKey": {
+            "type": "string",
+            "description": "The key of the variable or calculated measure attributed."
+          },
+          "expression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The expression the drivers are switched in; required for a variable, null for a measure's own formula."
+          },
+          "weightVariableKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The variable that weighs child rows and members when a ratio's change splits into rate, mix and interaction."
+          },
+          "drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttributionDriver"
+            },
+            "description": "The drivers in the order sequential attribution switches them; none for the default drivers."
+          }
+        },
+        "description": "The contract's `Attribution`: how a change in one metric, between two values such as a month and the month before, splits\ninto the effects of its drivers (`qe_metric_attribution` with its drivers). A metric without one uses the default drivers:\none per metric its formula reads and one `days` driver for `@periodDays` and `@yearDays` (C6)."
+      },
+      "AttributionDriver": {
+        "required": [
+          "key",
+          "displayName",
+          "inputs"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
             "type": "string",
             "description": "Key, unique among the metric's drivers and never `residual`; it names the driver's expanded report column."
           },
@@ -22802,20 +20739,15 @@
             "type": "string",
             "description": "Human-readable name."
           },
-          "sortOrder": {
-            "type": "integer",
-            "description": "The order sequential attribution switches the drivers in, unique among the metric's drivers.",
-            "format": "int32"
-          },
-          "inputKeys": {
+          "inputs": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "The metric keys and `@periodDays` or `@yearDays` parameters of the expression that switch together."
+            "description": "The metric keys and `@periodDays` or `@yearDays` of the expression that switch together (`input_keys_json`)."
           }
         },
-        "description": "One driver of a metric's attribution, as the attribution endpoints take and return it: inputs of the attribution expression that\nswitch together between the two values compared."
+        "description": "The contract's `AttributionDriver`: inputs of an attribution expression that switch together between the two values\ncompared. Its position among the metric's drivers is its `sort_order`."
       },
       "AvailableDimensionProfile": {
         "required": [
@@ -23275,141 +21207,116 @@
         },
         "description": "A `qe_bridge_version` row: the cardinality, allocation semantics and assignments of a bridge, of which at most one version is published."
       },
-      "CalculatedMeasureInput": {
+      "CalcModel": {
         "required": [
-          "measureKey",
+          "id",
+          "key",
           "displayName",
-          "expressionText",
-          "outputDataType",
-          "displayFormat"
+          "currencyCode",
+          "calendarKey",
+          "formulaLanguage",
+          "attributionMethod",
+          "isEnabled"
         ],
         "type": "object",
         "properties": {
-          "measureKey": {
+          "id": {
             "type": "string",
-            "description": "Key, unique among the model's variables and calculated measures."
+            "description": "The model's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The model's key, fixed after creation (C9)."
           },
           "displayName": {
             "type": "string",
             "description": "Human-readable name."
           },
-          "expressionText": {
+          "currencyCode": {
             "type": "string",
-            "description": "Expression over `[m.KEY]` references and the `@periodDays` and `@yearDays` parameters."
+            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
           },
-          "outputDataType": {
+          "calendarKey": {
             "type": "string",
-            "description": "A `measure_output_data_type` value."
+            "description": "The calendar the model's periods follow; `gregorian`."
           },
-          "outputPrecision": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Decimal precision of the output for display.",
-            "format": "int32"
-          },
-          "outputScale": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Decimal scale of the output for display.",
-            "format": "int32"
-          },
-          "roundingMode": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A `rounding_mode` value, or null for half to even."
-          },
-          "unitKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Optional unit, such as a currency code."
-          },
-          "displayFormat": {
+          "formulaLanguage": {
             "type": "string",
-            "description": "Presentation hint such as `number`, `percent` or `currency`."
+            "description": "A `formula_language_version` value: the grammar of the model's formulas and attribution expressions."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: `shapley` or `sequential`."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
           }
         },
-        "description": "A calculated measure of a calculation model, as its create and edit endpoints take it."
+        "description": "The contract's `CalcModel`: a calculation model's own settings (`qe_calculation_model`)."
       },
-      "CalculatedMeasureRecord": {
+      "CalcModelCreateInput": {
         "required": [
-          "calculatedMeasureId",
-          "calculationModelId",
-          "measureKey",
+          "key",
           "displayName",
-          "expressionText",
-          "outputDataType",
-          "displayFormat"
+          "currencyCode",
+          "formulaLanguage",
+          "attributionMethod"
         ],
         "type": "object",
         "properties": {
-          "calculatedMeasureId": {
+          "key": {
             "type": "string",
-            "description": "Primary key."
-          },
-          "calculationModelId": {
-            "type": "string",
-            "description": "The owning model."
-          },
-          "measureKey": {
-            "type": "string",
-            "description": "Key, unique among the model's variables and calculated measures."
+            "description": "The model's key, unique across models and fixed once created."
           },
           "displayName": {
             "type": "string",
             "description": "Human-readable name."
           },
-          "expressionText": {
+          "currencyCode": {
             "type": "string",
-            "description": "Expression over `[m.KEY]` references and the `@periodDays` and `@yearDays` parameters."
+            "description": "The ISO 4217 currency of the model's monetary figures."
           },
-          "outputDataType": {
+          "formulaLanguage": {
             "type": "string",
-            "description": "A `measure_output_data_type` value."
+            "description": "A `formula_language_version` value."
           },
-          "outputPrecision": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Decimal precision of the output for display.",
-            "format": "int32"
-          },
-          "outputScale": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Decimal scale of the output for display.",
-            "format": "int32"
-          },
-          "roundingMode": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A `rounding_mode` value, or null for half to even."
-          },
-          "unitKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Optional unit, such as a currency code."
-          },
-          "displayFormat": {
+          "attributionMethod": {
             "type": "string",
-            "description": "Presentation hint such as `number`, `percent` or `currency`."
+            "description": "An `attribution_method` value."
           }
         },
-        "description": "A `qe_calculated_measure` row: a formula over a model's variables and other calculated measures."
+        "description": "The contract's `CalcModelCreateInput`: a new model, which is created disabled and empty."
+      },
+      "CalcModelPatch": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "The new name."
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "The new currency."
+          },
+          "calendarKey": {
+            "type": "string",
+            "description": "The new calendar."
+          },
+          "formulaLanguage": {
+            "type": "string",
+            "description": "The new formula language."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "The new attribution method."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "The new availability."
+          }
+        },
+        "description": "The contract's `CalcModelPatch`: the settings an `updateModel` operation changes; an absent setting is kept."
       },
       "CalculationDimensionInput": {
         "required": [
@@ -23551,87 +21458,6 @@
         },
         "description": "A `qe_calculation_dimension` row: a dimension shared by a report's datasets, which runs break out and filter by.\nIt reads a dimension role, grouped as it says unless a report request names another grouping; a source reaches it when its\ndataset binds the role."
       },
-      "CalculationModelInput": {
-        "required": [
-          "displayName",
-          "currencyCode",
-          "isEnabled",
-          "formulaLanguageVersion",
-          "attributionMethod"
-        ],
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
-          },
-          "currencyCode": {
-            "type": "string",
-            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
-          },
-          "isEnabled": {
-            "type": "boolean",
-            "description": "Administrative availability flag."
-          },
-          "formulaLanguageVersion": {
-            "type": "string",
-            "description": "A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`."
-          },
-          "attributionMethod": {
-            "type": "string",
-            "description": "An `attribution_method` value: `shapley` or `sequential`."
-          }
-        },
-        "description": "The editable attributes of a calculation model, as `PUT calculation-models/{calculationModelId}` takes them."
-      },
-      "CalculationModelRecord": {
-        "required": [
-          "calculationModelId",
-          "modelKey",
-          "displayName",
-          "calendarKey",
-          "currencyCode",
-          "formulaLanguageVersion",
-          "isEnabled",
-          "attributionMethod"
-        ],
-        "type": "object",
-        "properties": {
-          "calculationModelId": {
-            "type": "string",
-            "description": "Primary key."
-          },
-          "modelKey": {
-            "type": "string",
-            "description": "Stable logical model identity."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
-          },
-          "calendarKey": {
-            "type": "string",
-            "description": "The calendar its periods follow; `gregorian`."
-          },
-          "currencyCode": {
-            "type": "string",
-            "description": "The ISO 4217 currency of its monetary figures."
-          },
-          "formulaLanguageVersion": {
-            "type": "string",
-            "description": "A `formula_language_version` value: the expression grammar its formulas and attribution expressions use."
-          },
-          "isEnabled": {
-            "type": "boolean",
-            "description": "Administrative availability flag."
-          },
-          "attributionMethod": {
-            "type": "string",
-            "description": "An `attribution_method` value: how a metric's change between two values splits into the effects of its drivers."
-          }
-        },
-        "description": "A `qe_calculation_model` row: a calculation model, whose variables and calculated measures reports read."
-      },
       "ChangeSetCommitOfDimensionEditState": {
         "required": [
           "state",
@@ -23642,6 +21468,27 @@
           "state": {
             "description": "The aggregate's content as stored after the commit.",
             "$ref": "#/components/schemas/DimensionEditState"
+          },
+          "idMap": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The real id of each item the commit created, by the temporary id (`tmp:&lt;uuid&gt;`) the client gave it."
+          }
+        },
+        "description": "The 200 answer of `POST &lt;aggregate&gt;/changes`: every operation applied and was written."
+      },
+      "ChangeSetCommitOfModelDocument": {
+        "required": [
+          "state",
+          "idMap"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "description": "The aggregate's content as stored after the commit.",
+            "$ref": "#/components/schemas/ModelDocument"
           },
           "idMap": {
             "type": "object",
@@ -23674,6 +21521,27 @@
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
       },
+      "ChangeSetPreviewOfModelDocument": {
+        "required": [
+          "state",
+          "violations"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "description": "The aggregate's content after the operations apply; what the editor renders.",
+            "$ref": "#/components/schemas/ModelDocument"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleViolation"
+            },
+            "description": "Publication-rule findings that do not block saving."
+          }
+        },
+        "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
+      },
       "ChangeSetRequestOfDimensionOperation": {
         "required": [
           "operations"
@@ -23684,6 +21552,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DimensionOperation"
+            },
+            "description": "The operations, applied in order."
+          }
+        },
+        "description": "The body of `POST &lt;aggregate&gt;/changes/preview` and `POST &lt;aggregate&gt;/changes` (blueprint 01, OI-01)."
+      },
+      "ChangeSetRequestOfModelOperation": {
+        "required": [
+          "operations"
+        ],
+        "type": "object",
+        "properties": {
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelOperation"
             },
             "description": "The operations, applied in order."
           }
@@ -27265,70 +25149,548 @@
         },
         "description": "The editable attributes of a measure with its components and optional time policy. MeasureInput adds the\nkey, which is fixed at creation. The formula dependencies are derived from the expression, never sent."
       },
-      "MetricAttribution": {
+      "ModelDocument": {
+        "required": [
+          "variables",
+          "measures",
+          "parameters",
+          "attributions",
+          "effectiveDrivers",
+          "usedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelVariable"
+            },
+            "description": "The variables, by key."
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelMeasure"
+            },
+            "description": "The calculated measures, by key."
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelParameterItem"
+            },
+            "description": "The parameters, by key."
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attribution"
+            },
+            "description": "The explicit attribution rows, by metric key."
+          },
+          "effectiveDrivers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/AttributionDriver"
+              }
+            },
+            "description": "The drivers in effect per metric key, explicit or default; a variable without an attribution has no entry."
+          },
+          "usedBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelReportUse"
+            },
+            "description": "The reports that read the model, by key."
+          },
+          "id": {
+            "type": "string",
+            "description": "The model's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The model's key, fixed after creation (C9)."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
+          },
+          "calendarKey": {
+            "type": "string",
+            "description": "The calendar the model's periods follow; `gregorian`."
+          },
+          "formulaLanguage": {
+            "type": "string",
+            "description": "A `formula_language_version` value: the grammar of the model's formulas and attribution expressions."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: `shapley` or `sequential`."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "The contract's `ModelDocument`: the whole model, the read model of `GET` and the change set's state."
+      },
+      "ModelFormulaCheck": {
+        "required": [
+          "errors",
+          "reads",
+          "parameters",
+          "requiresLanguage"
+        ],
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelFormulaError"
+            },
+            "description": "The errors, each over the characters it concerns; empty when the formula fits the model."
+          },
+          "reads": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The metric keys the formula reads, in order of first use."
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The declared parameter keys the formula reads, in order of first use; never `periodDays` or `yearDays`."
+          },
+          "requiresLanguage": {
+            "type": "string",
+            "description": "The oldest formula language that has everything the formula uses."
+          }
+        },
+        "description": "The contract's `ModelFormulaCheck`: what a formula would break in the saved model, and what it reads (OI-43)."
+      },
+      "ModelFormulaCheckRequest": {
+        "required": [
+          "formula",
+          "selfKey"
+        ],
+        "type": "object",
+        "properties": {
+          "formula": {
+            "type": "string",
+            "description": "The formula."
+          },
+          "selfKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The key of the metric that owns the formula, so reading itself is reported; null for a new metric."
+          }
+        },
+        "description": "The contract's `ModelFormulaCheckRequest`: the formula to check and the metric that owns it."
+      },
+      "ModelFormulaError": {
+        "required": [
+          "message",
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "What is wrong."
+          },
+          "start": {
+            "type": "integer",
+            "description": "The zero-based offset where the problem starts.",
+            "format": "int32"
+          },
+          "end": {
+            "type": "integer",
+            "description": "The zero-based offset just past the problem.",
+            "format": "int32"
+          }
+        },
+        "description": "The contract's `ModelFormulaError`: one problem of a formula and where it is."
+      },
+      "ModelListItem": {
+        "required": [
+          "variableCount",
+          "measureCount",
+          "usedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "variableCount": {
+            "type": "integer",
+            "description": "How many variables the model has.",
+            "format": "int32"
+          },
+          "measureCount": {
+            "type": "integer",
+            "description": "How many calculated measures the model has.",
+            "format": "int32"
+          },
+          "usedBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelReportUse"
+            },
+            "description": "The reports that read the model, by key."
+          },
+          "id": {
+            "type": "string",
+            "description": "The model's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The model's key, fixed after creation (C9)."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
+          },
+          "calendarKey": {
+            "type": "string",
+            "description": "The calendar the model's periods follow; `gregorian`."
+          },
+          "formulaLanguage": {
+            "type": "string",
+            "description": "A `formula_language_version` value: the grammar of the model's formulas and attribution expressions."
+          },
+          "attributionMethod": {
+            "type": "string",
+            "description": "An `attribution_method` value: `shapley` or `sequential`."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Administrative availability flag."
+          }
+        },
+        "description": "The contract's `ModelListItem`: a model's settings with its metric counts and the reports that read it."
+      },
+      "ModelMeasure": {
+        "required": [
+          "key",
+          "displayName",
+          "formula",
+          "outputDataType",
+          "outputPrecision",
+          "outputScale",
+          "roundingMode",
+          "unitKey",
+          "displayFormat"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Key, unique among the model's variables and calculated measures, fixed once saved."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "formula": {
+            "type": "string",
+            "description": "Expression over `[m.KEY]` references, `@periodDays`, `@yearDays` and (1.2) the model's parameters."
+          },
+          "outputDataType": {
+            "type": "string",
+            "description": "A `measure_output_data_type` value."
+          },
+          "outputPrecision": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Decimal precision of the output; null unless the output is decimal.",
+            "format": "int32"
+          },
+          "outputScale": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Decimal scale of the output; null unless the output is decimal.",
+            "format": "int32"
+          },
+          "roundingMode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value, or null for half to even."
+          },
+          "unitKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional unit, such as a currency code."
+          },
+          "displayFormat": {
+            "type": "string",
+            "description": "Presentation hint such as `number`, `percent` or `currency`."
+          }
+        },
+        "description": "The contract's `ModelMeasure`: a calculated measure (`qe_calculated_measure`), whose formula is `expression_text`."
+      },
+      "ModelOperation": {
+        "required": [
+          "op"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ModelOperationModelUpdateModelOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelSaveVariableOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelDeleteVariableOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelSaveMeasureOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelDeleteMeasureOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelSaveParameterOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelDeleteParameterOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelSetAttributionOperation"
+          },
+          {
+            "$ref": "#/components/schemas/ModelOperationModelClearAttributionOperation"
+          }
+        ],
+        "description": "The contract's `ModelOperation` union, discriminated by `op` and named after the port's edit methods (OI-01). Items are\nnamed by key, which is fixed once saved, so the model change set has no temporary ids. The derived types are declared in the\ncontract's order, which the conformance check pairs alternatives by.",
+        "discriminator": {
+          "propertyName": "op",
+          "mapping": {
+            "updateModel": "#/components/schemas/ModelOperationModelUpdateModelOperation",
+            "saveVariable": "#/components/schemas/ModelOperationModelSaveVariableOperation",
+            "deleteVariable": "#/components/schemas/ModelOperationModelDeleteVariableOperation",
+            "saveMeasure": "#/components/schemas/ModelOperationModelSaveMeasureOperation",
+            "deleteMeasure": "#/components/schemas/ModelOperationModelDeleteMeasureOperation",
+            "saveParameter": "#/components/schemas/ModelOperationModelSaveParameterOperation",
+            "deleteParameter": "#/components/schemas/ModelOperationModelDeleteParameterOperation",
+            "setAttribution": "#/components/schemas/ModelOperationModelSetAttributionOperation",
+            "clearAttribution": "#/components/schemas/ModelOperationModelClearAttributionOperation"
+          }
+        }
+      },
+      "ModelOperationModelClearAttributionOperation": {
         "required": [
           "metricKey",
-          "drivers"
+          "op"
         ],
         "type": "object",
         "properties": {
+          "op": {
+            "enum": [
+              "clearAttribution"
+            ],
+            "type": "string"
+          },
           "metricKey": {
             "type": "string",
-            "description": "The key of the variable or calculated measure attributed."
-          },
-          "expressionText": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The expression the drivers are switched in; null means the calculated measure's own formula."
-          },
-          "weightVariableKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The variable that weighs child rows and members when a ratio's change splits into rate, mix and interaction."
-          },
-          "drivers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AttributionDriver"
-            },
-            "description": "The drivers, by sort order; none for the default drivers."
+            "description": "The metric's key."
           }
         },
-        "description": "How a change in one metric of a model, between two values such as a month and the month before, splits into the effects of its\ndrivers, with the drivers it switches. Without drivers, each reference of the expression is a driver of its own, and\n`@periodDays` with `@yearDays` together form one `days` driver."
+        "description": "`clearAttribution`: removes a metric's attribution, so the metric uses the default drivers."
       },
-      "MetricAttributionInput": {
+      "ModelOperationModelDeleteMeasureOperation": {
         "required": [
-          "drivers"
+          "key",
+          "op"
         ],
         "type": "object",
         "properties": {
-          "expressionText": {
-            "type": [
-              "null",
-              "string"
+          "op": {
+            "enum": [
+              "deleteMeasure"
             ],
-            "description": "The expression the drivers are switched in, over `[m.KEY]` references and `@periodDays` and `@yearDays`;\nnull keeps a calculated measure's own formula, and a variable needs one."
+            "type": "string"
           },
-          "weightVariableKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The key of the variable that weighs members for the metric's contributions; null for none."
-          },
-          "drivers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AttributionDriver"
-            },
-            "description": "Every driver of the metric, at most eight; none for the default drivers."
+          "key": {
+            "type": "string",
+            "description": "The calculated measure's key."
           }
         },
-        "description": "A metric's attribution with its drivers, as `PUT calculation-models/{calculationModelId}/attributions/{metricKey}` takes it."
+        "description": "`deleteMeasure`: removes a calculated measure with its attribution."
+      },
+      "ModelOperationModelDeleteParameterOperation": {
+        "required": [
+          "key",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "deleteParameter"
+            ],
+            "type": "string"
+          },
+          "key": {
+            "type": "string",
+            "description": "The parameter's key."
+          }
+        },
+        "description": "`deleteParameter`: removes a parameter."
+      },
+      "ModelOperationModelDeleteVariableOperation": {
+        "required": [
+          "key",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "deleteVariable"
+            ],
+            "type": "string"
+          },
+          "key": {
+            "type": "string",
+            "description": "The variable's key."
+          }
+        },
+        "description": "`deleteVariable`: removes a variable with its attribution."
+      },
+      "ModelOperationModelSaveMeasureOperation": {
+        "required": [
+          "input",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "saveMeasure"
+            ],
+            "type": "string"
+          },
+          "input": {
+            "description": "The calculated measure.",
+            "$ref": "#/components/schemas/ModelMeasure"
+          },
+          "originalKey": {
+            "type": "string",
+            "description": "The key of the stored item edited; absent for a new item. A different input key is refused (keys are fixed)."
+          }
+        },
+        "description": "`saveMeasure`: creates or edits a calculated measure."
+      },
+      "ModelOperationModelSaveParameterOperation": {
+        "required": [
+          "input",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "saveParameter"
+            ],
+            "type": "string"
+          },
+          "input": {
+            "description": "The parameter.",
+            "$ref": "#/components/schemas/ModelParameterItem"
+          },
+          "originalKey": {
+            "type": "string",
+            "description": "The key of the stored item edited; absent for a new item. A different input key is refused (keys are fixed)."
+          }
+        },
+        "description": "`saveParameter`: creates or edits a parameter."
+      },
+      "ModelOperationModelSaveVariableOperation": {
+        "required": [
+          "input",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "saveVariable"
+            ],
+            "type": "string"
+          },
+          "input": {
+            "description": "The variable.",
+            "$ref": "#/components/schemas/ModelVariable"
+          },
+          "originalKey": {
+            "type": "string",
+            "description": "The key of the stored item edited; absent for a new item. A different input key is refused (keys are fixed)."
+          }
+        },
+        "description": "`saveVariable`: creates or edits a variable."
+      },
+      "ModelOperationModelSetAttributionOperation": {
+        "required": [
+          "input",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setAttribution"
+            ],
+            "type": "string"
+          },
+          "input": {
+            "description": "The attribution.",
+            "$ref": "#/components/schemas/Attribution"
+          }
+        },
+        "description": "`setAttribution`: sets a metric's attribution in place of the one it has."
+      },
+      "ModelOperationModelUpdateModelOperation": {
+        "required": [
+          "patch",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "updateModel"
+            ],
+            "type": "string"
+          },
+          "patch": {
+            "description": "The settings to change.",
+            "$ref": "#/components/schemas/CalcModelPatch"
+          }
+        },
+        "description": "`updateModel`: changes the model's settings."
       },
       "ModelParameter": {
         "required": [
@@ -27385,13 +25747,22 @@
         },
         "description": "A value a calculation model declares for its formulas to read as `@key`, as the parameter endpoints return it. Each report\nsets values on its rows; a row without one of its own takes its nearest ancestor's, and else the default."
       },
-      "ModelParameterInput": {
+      "ModelParameterItem": {
         "required": [
+          "key",
           "displayName",
-          "valueType"
+          "valueType",
+          "allowedValues",
+          "defaultNumber",
+          "defaultText",
+          "description"
         ],
         "type": "object",
         "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key formulas read the parameter by, as `@key`; never `periodDays` or `yearDays`."
+          },
           "displayName": {
             "type": "string",
             "description": "Human-readable name."
@@ -27408,14 +25779,14 @@
             "items": {
               "type": "string"
             },
-            "description": "The texts a text parameter may take, each once; null for any text, and for a number parameter."
+            "description": "The texts a text parameter may take; null for any text, and for a number parameter."
           },
           "defaultNumber": {
             "type": [
               "null",
               "number"
             ],
-            "description": "A number parameter's default, which fits `DECIMAL(38, 12)`; null for a text parameter.",
+            "description": "A number parameter's default; null for a text parameter.",
             "format": "double"
           },
           "defaultText": {
@@ -27423,7 +25794,7 @@
               "null",
               "string"
             ],
-            "description": "A text parameter's default, one of its allowed values when it has them; null for a number parameter."
+            "description": "A text parameter's default; null for a number parameter."
           },
           "description": {
             "type": [
@@ -27433,7 +25804,71 @@
             "description": "Optional description."
           }
         },
-        "description": "A parameter of a calculation model, as `PUT calculation-models/{calculationModelId}/parameters/{parameterKey}` takes it."
+        "description": "The contract's `ModelParameter` (`qe_model_parameter`, language 1.2): it sets exactly the default its type names; only\ntext parameters have allowed values, and they include the default (C5). Named apart from ModelParameter, the\nform the report rules read."
+      },
+      "ModelReportUse": {
+        "required": [
+          "reportId",
+          "reportKey",
+          "displayName",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "The report's id."
+          },
+          "reportKey": {
+            "type": "string",
+            "description": "The report's key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The report's name."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the engine offers the report, and so reads the model through it."
+          }
+        },
+        "description": "The contract's `ModelReportUse`: a report that reads the model (`qe_report.calculation_model_id`, OI-44)."
+      },
+      "ModelVariable": {
+        "required": [
+          "key",
+          "displayName",
+          "displayFormat",
+          "unitKey",
+          "missingBehavior"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Key, unique among the model's variables and calculated measures, fixed once saved."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "displayFormat": {
+            "type": "string",
+            "description": "Presentation hint such as `currency`, which report columns show unless they override it."
+          },
+          "unitKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional unit, such as a currency code."
+          },
+          "missingBehavior": {
+            "type": "string",
+            "description": "A `variable_missing_behavior` value."
+          }
+        },
+        "description": "The contract's `ModelVariable`: an input metric each report fills from its sources (`qe_variable`). Its key shares the\nmodel's metric namespace with the calculated measures (C1)."
       },
       "NewBridgeInput": {
         "required": [
@@ -27492,44 +25927,6 @@
           }
         },
         "description": "A new draft version of a bridge, as `POST bridges/{bridgeId}/versions` takes it: its allocation semantics, and\noptionally a version whose mappings it copies."
-      },
-      "NewCalculationModelInput": {
-        "required": [
-          "modelKey",
-          "displayName",
-          "currencyCode",
-          "isEnabled",
-          "formulaLanguageVersion",
-          "attributionMethod"
-        ],
-        "type": "object",
-        "properties": {
-          "modelKey": {
-            "type": "string",
-            "description": "Stable key, unique across calculation models and fixed once created."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
-          },
-          "currencyCode": {
-            "type": "string",
-            "description": "The ISO 4217 currency of the model's monetary figures, such as `USD`."
-          },
-          "isEnabled": {
-            "type": "boolean",
-            "description": "Administrative availability flag."
-          },
-          "formulaLanguageVersion": {
-            "type": "string",
-            "description": "A `formula_language_version` value: `1.0`, or `1.1`, whose formulas may call `POWER`."
-          },
-          "attributionMethod": {
-            "type": "string",
-            "description": "An `attribution_method` value: `shapley` or `sequential`."
-          }
-        },
-        "description": "A new calculation model, as `POST calculation-models` takes it: its fixed key plus its identity attributes."
       },
       "NewMappingSetInput": {
         "required": [
@@ -29464,86 +27861,6 @@
         },
         "description": "What running a version's rules found (the contract's `ValidationReport`); the run itself writes nothing."
       },
-      "VariableInput": {
-        "required": [
-          "variableKey",
-          "displayName",
-          "missingBehavior",
-          "displayFormat"
-        ],
-        "type": "object",
-        "properties": {
-          "variableKey": {
-            "type": "string",
-            "description": "Key, unique among the model's variables and calculated measures."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
-          },
-          "missingBehavior": {
-            "type": "string",
-            "description": "A `variable_missing_behavior` value."
-          },
-          "displayFormat": {
-            "type": "string",
-            "description": "Presentation hint such as `number`, `percent` or `currency`, which report columns show by default."
-          },
-          "unitKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Optional unit, such as a currency code."
-          }
-        },
-        "description": "A variable of a calculation model, as its create and edit endpoints take it."
-      },
-      "VariableRecord": {
-        "required": [
-          "variableId",
-          "calculationModelId",
-          "variableKey",
-          "displayName",
-          "missingBehavior",
-          "displayFormat"
-        ],
-        "type": "object",
-        "properties": {
-          "variableId": {
-            "type": "string",
-            "description": "Primary key."
-          },
-          "calculationModelId": {
-            "type": "string",
-            "description": "The owning model."
-          },
-          "variableKey": {
-            "type": "string",
-            "description": "Key, unique among the model's variables and calculated measures; reports name the variable by it."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable name."
-          },
-          "missingBehavior": {
-            "type": "string",
-            "description": "A `variable_missing_behavior` value."
-          },
-          "displayFormat": {
-            "type": "string",
-            "description": "Presentation hint such as `currency`, which a report column shows unless it overrides it."
-          },
-          "unitKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Optional unit, such as a currency code."
-          }
-        },
-        "description": "A `qe_variable` row: a logical input of a model, which each report fills from one of its own sources."
-      },
       "VersionCheck": {
         "required": [
           "violations"
@@ -30119,19 +28436,7 @@
       "name": "Grains"
     },
     {
-      "name": "CalculatedMeasures"
-    },
-    {
       "name": "CalculationModels"
-    },
-    {
-      "name": "MetricAttributions"
-    },
-    {
-      "name": "ModelParameters"
-    },
-    {
-      "name": "Variables"
     },
     {
       "name": "BridgeMappings"
