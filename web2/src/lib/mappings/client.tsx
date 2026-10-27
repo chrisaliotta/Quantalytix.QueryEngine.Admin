@@ -1,16 +1,39 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
+import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
+import { unwrap } from '@/lib/api/contract'
 import { useDimensionsApi } from '@/lib/dimensions/client'
-import type { ApiResult, MappingsApi, ProblemDetails } from './contract'
+import {
+  BRIDGE_EDITS,
+  MAPPING_SET_EDITS,
+  MAPPINGS_COMMANDS,
+  type ApiResult,
+  type BridgeVersionSummary,
+  type FreezeResult,
+  type Id,
+  type MappingsApi,
+  type MappingsDirectory,
+  type MappingVersionSummary,
+  type ValidationReport,
+} from './contract'
+import { createDimensionsDirectory } from './directory'
 import { createMockMappingsApi } from './mock/adapter'
 
 const ApiContext = createContext<MappingsApi | null>(null)
+const DirectoryContext = createContext<MappingsDirectory | null>(null)
 
-/** Supplies the adapter; must sit inside DimensionsApiProvider because the mock resolves members through it. */
+/** Supplies the adapter and the directory; must sit inside DimensionsApiProvider, which the directory reads through. */
 export function MappingsApiProvider({ children, api }: { children: ReactNode; api?: MappingsApi }) {
   const dims = useDimensionsApi()
-  const [instance] = useState(() => api ?? createMockMappingsApi(dims))
-  return <ApiContext.Provider value={instance}>{children}</ApiContext.Provider>
+  const [services] = useState(() => {
+    const directory = createDimensionsDirectory(dims)
+    return { directory, api: api ?? createMockMappingsApi(directory) }
+  })
+  return (
+    <DirectoryContext.Provider value={services.directory}>
+      <ApiContext.Provider value={services.api}>{children}</ApiContext.Provider>
+    </DirectoryContext.Provider>
+  )
 }
 
 export function useMappingsApi() {
@@ -19,71 +42,97 @@ export function useMappingsApi() {
   return api
 }
 
-export class MappingProblemError extends Error {
-  constructor(public problem: ProblemDetails) {
-    super(problem.title)
-  }
+function useDirectory() {
+  return useContext(DirectoryContext)!
 }
 
-async function unwrap<T>(p: Promise<ApiResult<T>>): Promise<T> {
-  const r = await p
-  if (!r.ok) throw new MappingProblemError(r.problem)
-  return r.data
+function MappingsEditScope({ id, label, edits, children }: { id: string; label: string; edits: readonly (keyof MappingsApi)[]; children: ReactNode }) {
+  const base = useMappingsApi()
+  const refresh = useRefreshMappings()
+  const { api, scope } = useStagedApi(base, { id, label, edits, commands: MAPPINGS_COMMANDS, onSettled: refresh })
+  return (
+    <ApiContext.Provider value={api}>
+      <ChangeScopeProvider scope={scope}>{children}</ChangeScopeProvider>
+    </ApiContext.Provider>
+  )
+}
+
+/** Batches every edit of one mapping set (identity and live entries) until Save. Children receive the staged port. */
+export function MappingSetEditScope({ mappingSetId, label, children }: { mappingSetId: Id; label: string; children: ReactNode }) {
+  return (
+    <MappingsEditScope id={`mapping-set:${mappingSetId}`} label={label} edits={MAPPING_SET_EDITS}>
+      {children}
+    </MappingsEditScope>
+  )
+}
+
+/** Batches every edit of one analytical bridge (identity, live settings and mappings) until Save. */
+export function BridgeEditScope({ bridgeId, label, children }: { bridgeId: Id; label: string; children: ReactNode }) {
+  return (
+    <MappingsEditScope id={`bridge:${bridgeId}`} label={label} edits={BRIDGE_EDITS}>
+      {children}
+    </MappingsEditScope>
+  )
 }
 
 const OPTS = { revalidateOnFocus: false }
+const CHECK_OPTS = { ...OPTS, revalidateOnMount: true, dedupingInterval: 0 }
+
+export type VersionKind = 'mapping' | 'bridge'
 
 export const mapKeys = {
   refs: ['map', 'refs'] as const,
-  members: (dimensionId: string) => ['map', 'members', dimensionId] as const,
-  sets: (dimensionId: string) => ['map', 'sets', dimensionId] as const,
-  set: (id: string) => ['map', 'set', id] as const,
-  setVersion: (id: string) => ['map', 'setVersion', id] as const,
-  bridges: (dimensionId: string) => ['map', 'bridges', dimensionId] as const,
-  bridge: (id: string) => ['map', 'bridge', id] as const,
-  bridgeVersion: (id: string) => ['map', 'bridgeVersion', id] as const,
-  reportBridge: (reportKey: string, sourceKey: string) => ['map', 'reportBridge', reportKey, sourceKey] as const,
+  members: (dimensionId: Id) => ['map', 'members', dimensionId] as const,
+  sets: (dimensionId: Id) => ['map', 'sets', dimensionId] as const,
+  set: (id: Id) => ['map', 'set', id] as const,
+  setVersion: (id: Id) => ['map', 'setVersion', id] as const,
+  bridges: (dimensionId: Id) => ['map', 'bridges', dimensionId] as const,
+  bridge: (id: Id) => ['map', 'bridge', id] as const,
+  bridgeVersion: (id: Id) => ['map', 'bridgeVersion', id] as const,
+  reportBridge: (reportId: Id, sourceKey: string) => ['map', 'reportBridge', reportId, sourceKey] as const,
   counts: ['map', 'counts'] as const,
-  deleteSet: (id: string) => ['map', 'deleteSet', id] as const,
-  deleteBridge: (id: string) => ['map', 'deleteBridge', id] as const,
+  deleteSet: (id: Id) => ['map', 'deleteSet', id] as const,
+  deleteBridge: (id: Id) => ['map', 'deleteBridge', id] as const,
+  deleteVersion: (kind: VersionKind, id: Id) => ['map', 'deleteVersion', kind, id] as const,
 }
 
 export function useDimensionRefs() {
-  const api = useMappingsApi()
-  return useSWR(mapKeys.refs, () => api.listDimensionRefs(), OPTS)
+  const directory = useDirectory()
+  return useSWR(mapKeys.refs, () => directory.listDimensionRefs(), OPTS)
 }
-export function usePublishedMembers(dimensionId: string | null) {
-  const api = useMappingsApi()
-  return useSWR(dimensionId ? mapKeys.members(dimensionId) : null, () => api.getPublishedMembers(dimensionId!), OPTS)
+export function usePublishedMembers(dimensionId: Id | null) {
+  const directory = useDirectory()
+  return useSWR(dimensionId ? mapKeys.members(dimensionId) : null, () => directory.getPublishedMembers(dimensionId!), OPTS)
 }
-export function useMappingSets(dimensionId: string) {
+export function useMappingSets(dimensionId: Id) {
   const api = useMappingsApi()
   return useSWR(mapKeys.sets(dimensionId), () => api.listMappingSets({ dimensionId }), OPTS)
 }
-export function useMappingSet(id: string | null) {
+export function useMappingSet(id: Id | null) {
   const api = useMappingsApi()
   return useSWR(id ? mapKeys.set(id) : null, () => unwrap(api.getMappingSet(id!)), { ...OPTS, shouldRetryOnError: false })
 }
-export function useMappingVersion(id: string | null) {
+export function useMappingVersion(id: Id | null) {
   const api = useMappingsApi()
   return useSWR(id ? mapKeys.setVersion(id) : null, () => unwrap(api.getMappingVersion(id!)), { ...OPTS, keepPreviousData: true })
 }
-export function useBridges(dimensionId: string) {
+export function useBridges(dimensionId: Id) {
   const api = useMappingsApi()
   return useSWR(mapKeys.bridges(dimensionId), () => api.listBridges({ dimensionId }), OPTS)
 }
-export function useBridge(id: string | null) {
+export function useBridge(id: Id | null) {
   const api = useMappingsApi()
   return useSWR(id ? mapKeys.bridge(id) : null, () => unwrap(api.getBridge(id!)), { ...OPTS, shouldRetryOnError: false })
 }
-export function useBridgeVersion(id: string | null) {
+export function useBridgeVersion(id: Id | null) {
   const api = useMappingsApi()
   return useSWR(id ? mapKeys.bridgeVersion(id) : null, () => unwrap(api.getBridgeVersion(id!)), { ...OPTS, keepPreviousData: true })
 }
-export function useReportBridge(reportKey: string, sourceKey: string) {
+export function useReportBridge(reportId: Id, sourceKey: string) {
   const api = useMappingsApi()
-  return useSWR(mapKeys.reportBridge(reportKey, sourceKey), () => api.findReportBridge(reportKey, sourceKey), OPTS)
+  return useSWR(mapKeys.reportBridge(reportId, sourceKey), () => api.findReportBridge(reportId, sourceKey), OPTS)
 }
+
 export interface DimensionMappingCounts {
   mappingSets: number
   bridges: number
@@ -109,7 +158,7 @@ export function useMappingCountsByDimension() {
           entry(b.sourceDimensionId).reportBridges++
         } else {
           entry(b.sourceDimensionId).bridges++
-          if (b.targetDimensionId !== b.sourceDimensionId) entry(b.targetDimensionId).bridges++
+          entry(b.targetDimensionId).bridges++
         }
       }
       return counts
@@ -118,16 +167,35 @@ export function useMappingCountsByDimension() {
   )
 }
 
-export function useMappingSetDeleteCheck(id: string | null) {
+export function useMappingSetDeleteCheck(id: Id | null) {
   const api = useMappingsApi()
-  return useSWR(id ? mapKeys.deleteSet(id) : null, () => api.checkDeleteMappingSet(id!), { ...OPTS, revalidateOnMount: true, dedupingInterval: 0 })
+  return useSWR(id ? mapKeys.deleteSet(id) : null, () => api.checkDeleteMappingSet(id!), CHECK_OPTS)
 }
-export function useBridgeDeleteCheck(id: string | null) {
+export function useBridgeDeleteCheck(id: Id | null) {
   const api = useMappingsApi()
-  return useSWR(id ? mapKeys.deleteBridge(id) : null, () => api.checkDeleteBridge(id!), { ...OPTS, revalidateOnMount: true, dedupingInterval: 0 })
+  return useSWR(id ? mapKeys.deleteBridge(id) : null, () => api.checkDeleteBridge(id!), CHECK_OPTS)
+}
+export function useVersionDeleteCheck(kind: VersionKind, versionId: Id | null) {
+  const api = useMappingsApi()
+  const check = kind === 'mapping' ? api.checkDeleteMappingVersion : api.checkDeleteBridgeVersion
+  return useSWR(versionId ? mapKeys.deleteVersion(kind, versionId) : null, () => check(versionId!), CHECK_OPTS)
 }
 
-/** Revalidates mapping data, plus dimension data when a dimension change can affect member resolution. */
+export interface VersionCommands {
+  check(versionId: Id): Promise<ApiResult<ValidationReport>>
+  freeze(versionId: Id, note: string | null): Promise<ApiResult<FreezeResult<MappingVersionSummary | BridgeVersionSummary>>>
+  remove(versionId: Id): Promise<ApiResult<null>>
+}
+
+/** The lifecycle commands of one version kind, so both editors share one version bar. */
+export function useVersionCommands(kind: VersionKind): VersionCommands {
+  const api = useMappingsApi()
+  return kind === 'mapping'
+    ? { check: api.checkMappingVersion, freeze: api.freezeMappingVersion, remove: api.deleteMappingVersion }
+    : { check: api.checkBridgeVersion, freeze: api.freezeBridgeVersion, remove: api.deleteBridgeVersion }
+}
+
+/** Revalidates every mapping and bridge read. */
 export function useRefreshMappings() {
   const { mutate } = useSWRConfig()
   return useCallback(() => mutate((key) => Array.isArray(key) && key[0] === 'map'), [mutate])
