@@ -1,25 +1,26 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using System.Diagnostics.CodeAnalysis;
+using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Overview;
 
-/// <summary>A tenant's metadata at a glance: its identity and revision, the active release, its counts and its drafts.</summary>
-public sealed record TenantOverview
+/// <summary>The contract's <c>TenantOverview</c>: the tenant info with its counts and its work in progress.</summary>
+public sealed record TenantOverview : TenantInfo
 {
-    /// <summary>The tenant-local identity marker, <c>qe_database_info.tenant_key</c>.</summary>
-    public required string TenantKey { get; init; }
-
-    /// <summary>The database's metadata contract version.</summary>
-    public required int MetadataSchemaVersion { get; init; }
-
-    /// <summary>The revision the query engine keys its metadata cache by.</summary>
-    public required long SemanticRevision { get; init; }
-
-    /// <summary>The release runtime queries use; null when the tenant has none.</summary>
-    public SemanticReleaseRecord? ActiveRelease { get; init; }
+    /// <summary>The tenant info with its counts and drafts.</summary>
+    /// <param name="info">The tenant info.</param>
+    /// <param name="counts">How much metadata the tenant holds.</param>
+    /// <param name="drafts">The drafts in progress.</param>
+    [SetsRequiredMembers]
+    public TenantOverview(TenantInfo info, TenantOverviewCounts counts, TenantOverviewDrafts drafts)
+        : base(info)
+    {
+        Counts = counts;
+        Drafts = drafts;
+    }
 
     /// <summary>How much metadata the tenant holds.</summary>
-    public required OverviewCounts Counts { get; init; }
+    public required TenantOverviewCounts Counts { get; init; }
 
     /// <summary>The drafts in progress.</summary>
-    public required OverviewDrafts Drafts { get; init; }
+    public required TenantOverviewDrafts Drafts { get; init; }
 }
