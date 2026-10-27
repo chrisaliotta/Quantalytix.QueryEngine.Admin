@@ -632,7 +632,7 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['null', self, exclude] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetRaggedBehavior' } } }
         periodAlignment:
           type: array
           items:
@@ -644,7 +644,7 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['null', exclude, unknown] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetUnmappedBehavior' } } }
         timeValueType:
           type: array
           items:

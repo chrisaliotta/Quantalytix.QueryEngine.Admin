@@ -18,9 +18,11 @@ export type DatasetSourceObjectKind = 'table' | 'view'
 export type DatasetFieldSourceKind = 'column' | 'json_path' | 'expression'
 export type DatasetDataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
 export type DatasetGrainKind = 'row' | 'series'
-export type DatasetRaggedBehavior = 'self' | 'exclude'
+/** `null` reads a null member (the schema's value, not JSON null). */
+export type DatasetRaggedBehavior = 'null' | 'self' | 'exclude'
 export type DatasetPeriodAlignment = 'observation' | 'start' | 'end'
-export type DatasetUnmappedBehavior = 'exclude' | 'unknown'
+/** `null` reads a null member (the schema's value, not JSON null). */
+export type DatasetUnmappedBehavior = 'null' | 'exclude' | 'unknown'
 export type DatasetTimeValueType = 'date' | 'timestamp'
 export type DatasetObservationKind = 'instant' | 'snapshot' | 'interval'
 export type DatasetCumulativeOrigin = 'output_range_start' | 'fixed_start'
@@ -240,9 +242,9 @@ export interface DatasetBindingDefinition {
   mappingSetId: Id | null
   bridgeId: Id | null
   sourceDimensionBindingId: Id | null
-  raggedBehavior: DatasetRaggedBehavior | null
+  raggedBehavior: DatasetRaggedBehavior
   defaultPeriodAlignment: DatasetPeriodAlignment
-  unmappedBehavior: DatasetUnmappedBehavior | null
+  unmappedBehavior: DatasetUnmappedBehavior
   unknownMemberKey: string | null
   /** Set by the server; a required binding cannot be disabled or deleted. */
   isRequired: boolean
@@ -410,6 +412,7 @@ export interface DatasetsApi extends ChangeSetPort {
   /** Runs the publication rules; never writes. */
   checkVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
   checkDeleteDataset(datasetId: Id): Promise<DeleteCheck>
+  checkDeleteVersion(versionId: Id): Promise<DeleteCheck>
 
   // edits
   updateDataset(datasetId: Id, patch: DatasetPatch): Promise<ApiResult<Dataset>>

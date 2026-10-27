@@ -311,9 +311,9 @@ const blankBinding = (): DatasetBindingInput => ({
   mappingSetId: null,
   bridgeId: null,
   sourceDimensionBindingId: null,
-  raggedBehavior: null,
+  raggedBehavior: 'null',
   defaultPeriodAlignment: 'observation',
-  unmappedBehavior: null,
+  unmappedBehavior: 'null',
   unknownMemberKey: null,
   isRequired: false,
   isGroupable: true,
@@ -635,7 +635,7 @@ function BindingPanel({
           <PanelSection title="Members" description="How rows that don't land neatly on a member are treated.">
             <div className="grid gap-4 @md:grid-cols-2">
               <FormRow label="Ragged behavior" htmlFor="b-ragged" errors={errorsFor('raggedBehavior')}>
-                <VocabSelect id="b-ragged" terms={vocab?.raggedBehavior} value={d.raggedBehavior} noneLabel="Not set" onChange={(v) => set('raggedBehavior', v)} />
+                <VocabSelect id="b-ragged" terms={vocab?.raggedBehavior} value={d.raggedBehavior} onChange={(v) => set('raggedBehavior', v ?? 'null')} />
               </FormRow>
               <FormRow label="Period alignment" htmlFor="b-align" errors={errorsFor('defaultPeriodAlignment')}>
                 <VocabSelect id="b-align" terms={vocab?.periodAlignment} value={d.defaultPeriodAlignment} onChange={(v) => set('defaultPeriodAlignment', v ?? 'observation')} />
@@ -645,8 +645,7 @@ function BindingPanel({
                   id="b-unmapped"
                   terms={vocab?.unmappedBehavior}
                   value={d.unmappedBehavior}
-                  noneLabel="Not set"
-                  onChange={(v) => setD((x) => ({ ...x, unmappedBehavior: v, unknownMemberKey: v === 'unknown' ? x.unknownMemberKey : null }))}
+                  onChange={(v) => setD((x) => ({ ...x, unmappedBehavior: v ?? 'null', unknownMemberKey: v === 'unknown' ? x.unknownMemberKey : null }))}
                 />
               </FormRow>
               {d.unmappedBehavior === 'unknown' && (

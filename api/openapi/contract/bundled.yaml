@@ -534,7 +534,30 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The version is published or retired, or a release pins it.
+          description: Delete blocked; `violations` are the reasons of the delete check.
+  /api/tenants/{tenantId}/dataset-versions/{versionId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/DatasetVersionIdPath'
+    get:
+      operationId: checkDeleteDatasetVersion
+      summary: Tell whether a dataset version can be deleted, and why not
+      description: Never writes. Reasons carry the codes `published_version` (the version is published or retired) and `referenced_by_release` (a release pins the version).
+      tags:
+        - datasets
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -2991,7 +3014,7 @@ components:
       enum:
         - not_removable
         - system_dimension
-        - not_draft
+        - published_version
         - live_version
         - has_published_versions
         - has_children
@@ -3919,11 +3942,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - 'null'
-                      - self
-                      - exclude
+                    $ref: '#/components/schemas/DatasetRaggedBehavior'
         periodAlignment:
           type: array
           items:
@@ -3943,11 +3962,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - 'null'
-                      - exclude
-                      - unknown
+                    $ref: '#/components/schemas/DatasetUnmappedBehavior'
         timeValueType:
           type: array
           items:
@@ -4492,7 +4507,9 @@ components:
         - series
     DatasetRaggedBehavior:
       type: string
+      description: What a row whose member lacks the requested ancestor reads; `null` reads a null member.
       enum:
+        - 'null'
         - self
         - exclude
     DatasetPeriodAlignment:
@@ -4503,7 +4520,9 @@ components:
         - end
     DatasetUnmappedBehavior:
       type: string
+      description: What a value with no member reads; `null` reads a null member.
       enum:
+        - 'null'
         - exclude
         - unknown
     DatasetTimeValueType:
@@ -5123,15 +5142,11 @@ components:
             - string
             - 'null'
         raggedBehavior:
-          oneOf:
-            - $ref: '#/components/schemas/DatasetRaggedBehavior'
-            - type: 'null'
+          $ref: '#/components/schemas/DatasetRaggedBehavior'
         defaultPeriodAlignment:
           $ref: '#/components/schemas/DatasetPeriodAlignment'
         unmappedBehavior:
-          oneOf:
-            - $ref: '#/components/schemas/DatasetUnmappedBehavior'
-            - type: 'null'
+          $ref: '#/components/schemas/DatasetUnmappedBehavior'
         unknownMemberKey:
           type:
             - string

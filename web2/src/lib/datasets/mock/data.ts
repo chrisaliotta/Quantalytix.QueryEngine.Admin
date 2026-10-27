@@ -12,6 +12,7 @@ import type {
   DatasetVersionSettings,
   VersionStatus,
 } from '../contract'
+import type { DimensionKind, PublishedMember, TenantCatalogDimension } from '@/lib/tenant/contract'
 import type { PublishedMembers, TenantCatalog, Vocabularies } from '../lookups'
 
 /* ───────────────────────── Vocabularies ───────────────────────── */
@@ -53,6 +54,7 @@ export const vocabularies: Vocabularies = {
     t('time', 'Time', 'Makes the field a time axis.'),
   ],
   raggedBehavior: [
+    t('null', 'Null', 'The row reads a null member.'),
     t('self', 'Self', 'Group under the member itself.'),
     t('exclude', 'Exclude', 'Leave the row out.'),
   ],
@@ -62,6 +64,7 @@ export const vocabularies: Vocabularies = {
     t('end', 'Period end', 'Resolve attributes at the end of the period.'),
   ],
   unmappedBehavior: [
+    t('null', 'Null', 'Rows whose value has no member read a null member.'),
     t('exclude', 'Exclude', 'Drop rows whose value has no member.'),
     t('unknown', 'Unknown member', 'Group them under a named member.'),
   ],
@@ -159,17 +162,31 @@ export const vocabularies: Vocabularies = {
 
 /* ───────────────────────── Tenant catalog ───────────────────────── */
 
+/** An analytical dimension whose published version is v1; time dimensions are system-defined and have no members. */
+const dimension = (id: string, key: string, displayName: string, kind: DimensionKind): TenantCatalogDimension => ({
+  id,
+  key,
+  displayName,
+  kind,
+  purpose: 'analytical',
+  origin: kind === 'time' ? 'system' : 'user',
+  isEnabled: true,
+  publishedVersionId: kind === 'time' ? null : `${id}_v1`,
+  publishedVersionNumber: kind === 'time' ? null : 1,
+  ownerReportId: null,
+})
+
 export const catalog: TenantCatalog = {
   dimensions: [
-    { id: 'dim_branch', key: 'branch', displayName: 'Branch', kind: 'categorical' },
-    { id: 'dim_region', key: 'region', displayName: 'Region', kind: 'categorical' },
-    { id: 'dim_product', key: 'product', displayName: 'Product', kind: 'categorical' },
-    { id: 'dim_account', key: 'gl_account', displayName: 'GL account', kind: 'hierarchical' },
-    { id: 'dim_cost_center', key: 'cost_center', displayName: 'Cost center', kind: 'categorical' },
-    { id: 'dim_dpd_bucket', key: 'dpd_bucket', displayName: 'Days past due band', kind: 'range' },
-    { id: 'dim_balance_band', key: 'balance_band', displayName: 'Balance band', kind: 'range' },
-    { id: 'dim_business_date', key: 'business_date', displayName: 'Business date', kind: 'time' },
-    { id: 'dim_maturity_date', key: 'maturity_date', displayName: 'Maturity date', kind: 'time' },
+    dimension('dim_branch', 'branch', 'Branch', 'categorical'),
+    dimension('dim_region', 'region', 'Region', 'categorical'),
+    dimension('dim_product', 'product', 'Product', 'categorical'),
+    dimension('dim_account', 'gl_account', 'GL account', 'hierarchical'),
+    dimension('dim_cost_center', 'cost_center', 'Cost center', 'categorical'),
+    dimension('dim_dpd_bucket', 'dpd_bucket', 'Days past due band', 'range'),
+    dimension('dim_balance_band', 'balance_band', 'Balance band', 'range'),
+    dimension('dim_business_date', 'business_date', 'Business date', 'time'),
+    dimension('dim_maturity_date', 'maturity_date', 'Maturity date', 'time'),
   ],
   roles: [
     { id: 'role_servicing_branch', key: 'servicingBranch', displayName: 'Servicing branch', dimensionId: 'dim_branch' },
@@ -189,8 +206,8 @@ export const catalog: TenantCatalog = {
     { id: 'ms_legacy_accounts', key: 'legacy_gl', displayName: 'Legacy GL accounts', dimensionId: 'dim_account' },
   ],
   bridges: [
-    { id: 'br_branch_region', key: 'branch_to_region', displayName: 'Branch → region', sourceDimensionId: 'dim_branch', targetDimensionId: 'dim_region' },
-    { id: 'br_account_cc', key: 'account_to_cost_center', displayName: 'GL account → cost center', sourceDimensionId: 'dim_account', targetDimensionId: 'dim_cost_center' },
+    { id: 'br_branch_region', key: 'branch_to_region', displayName: 'Branch → region', sourceDimensionId: 'dim_branch', targetDimensionId: 'dim_region', ownerReportId: null },
+    { id: 'br_account_cc', key: 'account_to_cost_center', displayName: 'GL account → cost center', sourceDimensionId: 'dim_account', targetDimensionId: 'dim_cost_center', ownerReportId: null },
   ],
   releases: [
     { id: 'rel_2026_10', key: '2026.10', status: 'published', isActive: true },
@@ -198,27 +215,28 @@ export const catalog: TenantCatalog = {
   ],
 }
 
-const members = (prefix: string, labels: string[]) => labels.map((displayName, i) => ({ key: `${prefix}${String(i + 1).padStart(2, '0')}`, displayName }))
+const member = (key: string, displayName: string): PublishedMember => ({ key, displayName, parentKey: null, isAssignable: true, levelKey: null })
+const members = (prefix: string, labels: string[]) => labels.map((displayName, i) => member(`${prefix}${String(i + 1).padStart(2, '0')}`, displayName))
 const published = (dimensionId: string, list: PublishedMembers['members']): PublishedMembers => ({ dimensionId, versionId: `${dimensionId}_v1`, members: list })
 
 /** Dimension id → its published version's members. Time dimensions have none. */
 export const publishedMembers: Record<string, PublishedMembers> = Object.fromEntries(
   [
-    published('dim_branch', [...members('BR', ['Downtown', 'Northside', 'Harbor', 'Westfield', 'Airport']), { key: 'BR_UNK', displayName: 'Unknown branch' }]),
-    published('dim_region', [...members('RG', ['North', 'South', 'Central']), { key: 'RG_UNK', displayName: 'Unassigned' }]),
-    published('dim_product', [...members('PR', ['Mortgage', 'Auto loan', 'Personal loan', 'Credit card', 'Checking', 'Savings', 'Term deposit']), { key: 'PR_OTHER', displayName: 'Other product' }]),
-    published('dim_account', [...members('GL', ['Cash', 'Loans', 'Deposits', 'Equity', 'Interest income', 'Interest expense']), { key: 'GL_SUSPENSE', displayName: 'Suspense' }]),
+    published('dim_branch', [...members('BR', ['Downtown', 'Northside', 'Harbor', 'Westfield', 'Airport']), member('BR_UNK', 'Unknown branch')]),
+    published('dim_region', [...members('RG', ['North', 'South', 'Central']), member('RG_UNK', 'Unassigned')]),
+    published('dim_product', [...members('PR', ['Mortgage', 'Auto loan', 'Personal loan', 'Credit card', 'Checking', 'Savings', 'Term deposit']), member('PR_OTHER', 'Other product')]),
+    published('dim_account', [...members('GL', ['Cash', 'Loans', 'Deposits', 'Equity', 'Interest income', 'Interest expense']), member('GL_SUSPENSE', 'Suspense')]),
     published('dim_cost_center', members('CC', ['Retail', 'Commercial', 'Treasury', 'Operations'])),
     published('dim_dpd_bucket', [
-      { key: 'CURRENT', displayName: 'Current' },
-      { key: 'DPD_1_30', displayName: '1–30' },
-      { key: 'DPD_31_90', displayName: '31–90' },
-      { key: 'DPD_90P', displayName: '90+' },
+      member('CURRENT', 'Current'),
+      member('DPD_1_30', '1–30'),
+      member('DPD_31_90', '31–90'),
+      member('DPD_90P', '90+'),
     ]),
     published('dim_balance_band', [
-      { key: 'LT_10K', displayName: '< 10k' },
-      { key: '10K_100K', displayName: '10k–100k' },
-      { key: 'GT_100K', displayName: '> 100k' },
+      member('LT_10K', '< 10k'),
+      member('10K_100K', '10k–100k'),
+      member('GT_100K', '> 100k'),
     ]),
   ].map((p) => [p.dimensionId, p]),
 )
@@ -329,9 +347,9 @@ export function emptyBinding(): Omit<DatasetBinding, 'id'> {
     mappingSetId: null,
     bridgeId: null,
     sourceDimensionBindingId: null,
-    raggedBehavior: null,
+    raggedBehavior: 'null',
     defaultPeriodAlignment: 'observation',
-    unmappedBehavior: null,
+    unmappedBehavior: 'null',
     unknownMemberKey: null,
     isRequired: false,
     isGroupable: true,

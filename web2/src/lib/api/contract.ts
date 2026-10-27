@@ -85,7 +85,7 @@ export interface DeleteCheck {
 export type DeleteBlockerCode =
   | 'not_removable'
   | 'system_dimension'
-  | 'not_draft'
+  | 'published_version'
   | 'live_version'
   | 'has_published_versions'
   | 'has_children'

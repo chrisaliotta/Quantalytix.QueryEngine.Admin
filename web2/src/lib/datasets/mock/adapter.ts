@@ -186,7 +186,6 @@ export function createMockDatasetsApi(): DatasetsApi {
     })
   }
 
-  const isPinned = (versionId: string) => catalog.releases.some((r) => pinsOf(r.id).some((p) => p.versionId === versionId))
 
   const deleteCheck = (d: Dataset): DeleteCheck => {
     const reasons: DeleteBlocker[] = [
@@ -198,6 +197,14 @@ export function createMockDatasetsApi(): DatasetsApi {
         .map((r) => ({ code: 'referenced_by_release' as const, message: `Release ${r.key} lists it.` })),
     ]
     return { allowed: reasons.length === 0, message: reasons.length ? `Dataset '${d.displayName}' cannot be deleted.` : null, reasons }
+  }
+
+  const versionDeleteCheck = (v: StoredVersion): DeleteCheck => {
+    const reasons: DeleteBlocker[] = [
+      ...(v.status === 'published' || v.status === 'retired' ? [{ code: 'published_version' as const, message: `Version ${v.versionNumber} is ${v.status}.` }] : []),
+      ...catalog.releases.filter((r) => pinsOf(r.id).some((p) => p.versionId === v.id)).map((r) => ({ code: 'referenced_by_release' as const, message: `Release ${r.key} pins it.` })),
+    ]
+    return { allowed: reasons.length === 0, message: reasons.length ? `Version ${v.versionNumber} cannot be deleted.` : null, reasons }
   }
 
   type Materializable = { ok: true; v: StoredVersion; f: DatasetField } | { ok: false; problem: Problem }
@@ -279,6 +286,10 @@ export function createMockDatasetsApi(): DatasetsApi {
     async checkDeleteDataset(datasetId) {
       await delay()
       return deleteCheck(datasets.find((x) => x.id === datasetId)!)
+    },
+    async checkDeleteVersion(versionId) {
+      await delay()
+      return versionDeleteCheck(versions.find((v) => v.id === versionId)!)
     },
     async checkVersion(versionId) {
       await delay()
@@ -434,8 +445,8 @@ export function createMockDatasetsApi(): DatasetsApi {
       await delay()
       const found = findVersion(versionId)
       if (!found.ok) return found
-      if (found.v.status !== 'draft' && found.v.status !== 'validated') return problem(409, 'Only a draft or validated version can be deleted', {}, { detail: `Version ${found.v.versionNumber} is ${found.v.status}.` })
-      if (isPinned(versionId)) return problem(409, 'A release pins this version', {}, { detail: 'Remove it from the release first.' })
+      const check = versionDeleteCheck(found.v)
+      if (!check.allowed) return problem(409, 'This version cannot be deleted', {}, { detail: check.message!, violations: check.reasons })
       versions.splice(versions.indexOf(found.v), 1)
       return ok(null)
     },
@@ -659,9 +670,9 @@ export function createMockDatasetsApi(): DatasetsApi {
       const errors: Errors = {}
       const next: DatasetBinding = structuredClone({ ...input, id: existing?.id ?? newId('b') })
       checkVocab(errors, 'bindingKind', 'bindingKind', input.bindingKind)
-      checkVocab(errors, 'raggedBehavior', 'raggedBehavior', input.raggedBehavior, true)
+      checkVocab(errors, 'raggedBehavior', 'raggedBehavior', input.raggedBehavior)
       checkVocab(errors, 'defaultPeriodAlignment', 'periodAlignment', input.defaultPeriodAlignment)
-      checkVocab(errors, 'unmappedBehavior', 'unmappedBehavior', input.unmappedBehavior, true)
+      checkVocab(errors, 'unmappedBehavior', 'unmappedBehavior', input.unmappedBehavior)
       const field = (id: string | null) => v.fields.find((f) => f.id === id)
       const kind = input.bindingKind
       const needsField = kind !== 'bridge'

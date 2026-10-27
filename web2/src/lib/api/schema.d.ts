@@ -361,6 +361,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/dataset-versions/{versionId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tell whether a dataset version can be deleted, and why not
+         * @description Never writes. Reasons carry the codes `published_version` (the version is published or retired) and `referenced_by_release` (a release pins the version).
+         */
+        get: operations["checkDeleteDatasetVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview": {
         parameters: {
             query?: never;
@@ -2113,7 +2138,7 @@ export interface components {
          * @description One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads the target; the other codes name a state of the target itself.
          * @enum {string}
          */
-        DeleteBlockerCode: "not_removable" | "system_dimension" | "not_draft" | "live_version" | "has_published_versions" | "has_children" | "required_by_profile" | "assigned_by_bands" | "named_by_consumers" | "owned_by_report" | "referenced_by_member" | "referenced_by_dataset_binding" | "referenced_by_mapping_set" | "referenced_by_bridge" | "referenced_by_calculation_dimension" | "referenced_by_report_scenario" | "referenced_by_report_source" | "referenced_by_assumption_set" | "referenced_by_release" | "referenced_by_report";
+        DeleteBlockerCode: "not_removable" | "system_dimension" | "published_version" | "live_version" | "has_published_versions" | "has_children" | "required_by_profile" | "assigned_by_bands" | "named_by_consumers" | "owned_by_report" | "referenced_by_member" | "referenced_by_dataset_binding" | "referenced_by_mapping_set" | "referenced_by_bridge" | "referenced_by_calculation_dimension" | "referenced_by_report_scenario" | "referenced_by_report_source" | "referenced_by_assumption_set" | "referenced_by_release" | "referenced_by_report";
         /** @description Answer of a read-only `check`; never writes. */
         ValidationReport: {
             versionId: components["schemas"]["Id"];
@@ -2447,15 +2472,13 @@ export interface components {
                 value: "member" | "level" | "ancestor" | "depth";
             })[];
             raggedBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "null" | "self" | "exclude";
+                value: components["schemas"]["DatasetRaggedBehavior"];
             })[];
             periodAlignment: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetPeriodAlignment"];
             })[];
             unmappedBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "null" | "exclude" | "unknown";
+                value: components["schemas"]["DatasetUnmappedBehavior"];
             })[];
             timeValueType: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetTimeValueType"];
@@ -2642,12 +2665,18 @@ export interface components {
         DatasetDataType: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp" | "json";
         /** @enum {string} */
         DatasetGrainKind: "row" | "series";
-        /** @enum {string} */
-        DatasetRaggedBehavior: "self" | "exclude";
+        /**
+         * @description What a row whose member lacks the requested ancestor reads; `null` reads a null member.
+         * @enum {string}
+         */
+        DatasetRaggedBehavior: "null" | "self" | "exclude";
         /** @enum {string} */
         DatasetPeriodAlignment: "observation" | "start" | "end";
-        /** @enum {string} */
-        DatasetUnmappedBehavior: "exclude" | "unknown";
+        /**
+         * @description What a value with no member reads; `null` reads a null member.
+         * @enum {string}
+         */
+        DatasetUnmappedBehavior: "null" | "exclude" | "unknown";
         /** @enum {string} */
         DatasetTimeValueType: "date" | "timestamp";
         /** @enum {string} */
@@ -2865,9 +2894,9 @@ export interface components {
             mappingSetId: string | null;
             bridgeId: string | null;
             sourceDimensionBindingId: string | null;
-            raggedBehavior: components["schemas"]["DatasetRaggedBehavior"] | null;
+            raggedBehavior: components["schemas"]["DatasetRaggedBehavior"];
             defaultPeriodAlignment: components["schemas"]["DatasetPeriodAlignment"];
-            unmappedBehavior: components["schemas"]["DatasetUnmappedBehavior"] | null;
+            unmappedBehavior: components["schemas"]["DatasetUnmappedBehavior"];
             unknownMemberKey: string | null;
             /** @description Set by the server; a required binding cannot be disabled or deleted. */
             isRequired: boolean;
@@ -5529,8 +5558,36 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description The version is published or retired, or a release pins it. */
+            /** @description Delete blocked; `violations` are the reasons of the delete check. */
             409: components["responses"]["Conflict"];
+        };
+    };
+    checkDeleteDatasetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A dataset version id. */
+                versionId: components["parameters"]["DatasetVersionIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     previewDatasetChanges: {
