@@ -405,7 +405,7 @@ export const DIMENSION_COMMANDS = ['createDimension', 'defineSystemDimension', '
 
 /* ───────────────────────── shared rules ───────────────────────── */
 
-export const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
+export { KEY_PATTERN } from '@/lib/api/contract'
 export const KEY_HELP = 'A letter, then letters, digits or underscores. Fixed once created.'
 
 export const KIND_LABEL: Record<DimensionKind, string> = {

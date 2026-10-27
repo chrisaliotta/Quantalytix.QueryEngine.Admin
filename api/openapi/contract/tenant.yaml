@@ -356,7 +356,7 @@ components:
       required: [id, key, displayName, isEnabled, activeVersionId]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         isEnabled: { type: boolean }
         activeVersionId:
@@ -419,7 +419,7 @@ components:
       required: [id, key, displayName, isEnabled]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         isEnabled: { type: boolean }
 
@@ -428,7 +428,7 @@ components:
       required: [id, key, displayName, isEnabled, modelId, reportDimensionId]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         isEnabled: { type: boolean }
         modelId: { $ref: './common.yaml#/components/schemas/Id' }

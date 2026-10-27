@@ -9,6 +9,11 @@ export type Id = string
 /** Temporary id of an item created inside a change set; the commit's `idMap` gives its real id. */
 export const newTempId = (): Id => `tmp:${crypto.randomUUID()}`
 
+/** `Key`: most natural keys (OI-29). */
+export const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
+/** `DottedKey`: dataset, calculation model, report, mapping set and bridge keys (OI-29). */
+export const DOTTED_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/
+
 export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
 
 /* ───────────────────────── Vocabularies read by more than one module ───────────────────────── */

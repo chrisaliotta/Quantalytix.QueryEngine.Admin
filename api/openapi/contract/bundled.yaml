@@ -3472,7 +3472,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         isEnabled:
@@ -3592,7 +3592,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         isEnabled:
@@ -3610,7 +3610,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         isEnabled:
@@ -5831,7 +5831,7 @@ components:
         - reportName
       properties:
         reportKey:
-          type: string
+          $ref: '#/components/schemas/DottedKey'
         reportName:
           type: string
     DimensionVersion:
@@ -6640,7 +6640,7 @@ components:
         datasetId:
           $ref: '#/components/schemas/Id'
         datasetKey:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         datasetVersionId:
           $ref: '#/components/schemas/Id'
         datasetVersionNumber:
@@ -7063,7 +7063,7 @@ components:
         reportId:
           $ref: '#/components/schemas/Id'
         reportKey:
-          type: string
+          $ref: '#/components/schemas/DottedKey'
         sourceKey:
           type: string
     Bridge:
@@ -7918,7 +7918,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         isEnabled:
@@ -8546,7 +8546,7 @@ components:
         reportId:
           $ref: '#/components/schemas/Id'
         reportKey:
-          type: string
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         isEnabled:
@@ -8929,7 +8929,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         reportType:
@@ -8937,7 +8937,7 @@ components:
         modelId:
           $ref: '#/components/schemas/Id'
         modelKey:
-          type: string
+          $ref: '#/components/schemas/DottedKey'
         isEnabled:
           type: boolean
         periodicity:
@@ -9357,7 +9357,7 @@ components:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         isEnabled:
           type: boolean
         modelId:
@@ -9528,7 +9528,7 @@ components:
         - modelId
       properties:
         key:
-          $ref: '#/components/schemas/Key'
+          $ref: '#/components/schemas/DottedKey'
         displayName:
           type: string
         reportType:

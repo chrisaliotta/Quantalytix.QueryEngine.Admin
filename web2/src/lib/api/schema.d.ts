@@ -2317,7 +2317,7 @@ export interface components {
         };
         TenantCatalogDataset: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
             /** @description The dataset version the active release pins; null when it pins none. */
@@ -2360,13 +2360,13 @@ export interface components {
         };
         TenantCatalogModel: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
         };
         TenantCatalogReport: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
             modelId: components["schemas"]["Id"];
@@ -3172,7 +3172,7 @@ export interface components {
             isRemovable: boolean;
         };
         DimensionOwnerReport: {
-            reportKey: string;
+            reportKey: components["schemas"]["DottedKey"];
             reportName: string;
         };
         /** @description Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no drafts (M3, OI-14). */
@@ -3515,7 +3515,7 @@ export interface components {
         /** @description A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers. */
         MappingBindingUsage: {
             datasetId: components["schemas"]["Id"];
-            datasetKey: components["schemas"]["Key"];
+            datasetKey: components["schemas"]["DottedKey"];
             datasetVersionId: components["schemas"]["Id"];
             datasetVersionNumber: number;
             status: components["schemas"]["VersionStatus"];
@@ -3690,7 +3690,7 @@ export interface components {
         /** @description The report source a report bridge belongs to (B9, OI-31). */
         BridgeOwner: {
             reportId: components["schemas"]["Id"];
-            reportKey: string;
+            reportKey: components["schemas"]["DottedKey"];
             sourceKey: string;
         };
         Bridge: {
@@ -4032,7 +4032,7 @@ export interface components {
         /** @description A dataset as the manifest editor shows it, with every version. */
         ManifestDataset: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
             /** @description Newest first. */
@@ -4264,7 +4264,7 @@ export interface components {
         /** @description A report that reads the model (`qe_report.calculation_model_id`, OI-44). */
         ModelReportUse: {
             reportId: components["schemas"]["Id"];
-            reportKey: string;
+            reportKey: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
         };
@@ -4439,11 +4439,11 @@ export interface components {
         ReportColumnValueKind: "variable" | "calculated";
         ReportSummary: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             reportType: string;
             modelId: components["schemas"]["Id"];
-            modelKey: string;
+            modelKey: components["schemas"]["DottedKey"];
             isEnabled: boolean;
             periodicity: components["schemas"]["Periodicity"] | null;
             profileCount: number;
@@ -4589,7 +4589,7 @@ export interface components {
         ReportColor: string | null;
         ReportDocument: {
             id: components["schemas"]["Id"];
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             isEnabled: boolean;
             modelId: components["schemas"]["Id"];
             reportDimensionId: components["schemas"]["Id"];
@@ -4651,7 +4651,7 @@ export interface components {
         };
         /** @description `startFromDimensionId` and `copyFromReportId` exclude each other. */
         ReportCreateInput: {
-            key: components["schemas"]["Key"];
+            key: components["schemas"]["DottedKey"];
             displayName: string;
             reportType: string;
             modelId: components["schemas"]["Id"];

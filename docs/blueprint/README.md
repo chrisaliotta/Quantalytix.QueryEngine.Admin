@@ -90,4 +90,4 @@ Record resolved open issues here, newest first, with the date, the issue, the ch
 
 | Date | Issue | Decision | By |
 |---|---|---|---|
-| | | | |
+| 2026-10-27 | [OI-29](90-open-issues.md#oi-29) | The dotted key pattern (`DottedKey`) extends to dataset, calculation model and report keys, as the seed writes them. | Integrator, G1 |

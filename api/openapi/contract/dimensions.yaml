@@ -588,7 +588,7 @@ components:
       required: [reportKey, reportName]
       properties:
         reportKey:
-          type: string
+          $ref: './common.yaml#/components/schemas/DottedKey'
         reportName:
           type: string
 

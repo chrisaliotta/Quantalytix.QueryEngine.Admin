@@ -782,7 +782,7 @@ components:
       required: [id, key, displayName, isEnabled, versions]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         isEnabled: { type: boolean }
         versions:

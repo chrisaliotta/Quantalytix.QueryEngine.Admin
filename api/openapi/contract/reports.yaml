@@ -258,11 +258,11 @@ components:
       required: [id, key, displayName, reportType, modelId, modelKey, isEnabled, periodicity, profileCount, sourceCount]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         reportType: { type: string }
         modelId: { $ref: './common.yaml#/components/schemas/Id' }
-        modelKey: { type: string }
+        modelKey: { $ref: './common.yaml#/components/schemas/DottedKey' }
         isEnabled: { type: boolean }
         periodicity:
           oneOf:
@@ -513,7 +513,7 @@ components:
       required: [id, key, isEnabled, modelId, reportDimensionId, reportDimensionVersionId, settings, rows, sources, profiles, calculationDimensions, scenarios, variableScopes, columns, styles]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         isEnabled: { type: boolean }
         modelId: { $ref: './common.yaml#/components/schemas/Id' }
         reportDimensionId: { $ref: './common.yaml#/components/schemas/Id' }
@@ -628,7 +628,7 @@ components:
       description: '`startFromDimensionId` and `copyFromReportId` exclude each other.'
       required: [key, displayName, reportType, modelId]
       properties:
-        key: { $ref: './common.yaml#/components/schemas/Key' }
+        key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         reportType: { type: string }
         modelId: { $ref: './common.yaml#/components/schemas/Id' }

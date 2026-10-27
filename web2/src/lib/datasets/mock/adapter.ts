@@ -27,11 +27,10 @@ import type {
 } from '../contract'
 import type { Vocabularies } from '../lookups'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
+import { DOTTED_KEY_PATTERN, KEY_PATTERN } from '@/lib/api/contract'
 import { catalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
 import { dependentsOf, FIELD_REF, MEASURE_REF, publicationViolations, refsOf } from './rules'
 
-const DATASET_KEY = /^[A-Za-z][A-Za-z0-9_.]*$/
-const ITEM_KEY = /^[A-Za-z][A-Za-z0-9_]*$/
 const JSON_PATH = /^\$(\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+$/
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_TYPES = new Set(['date', 'datetime', 'timestamp'])
@@ -289,7 +288,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     async createDataset(input: DatasetCreateInput) {
       await delay()
       const errors: Errors = {}
-      if (!DATASET_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits, _ and .')
+      if (!DOTTED_KEY_PATTERN.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits, _ and .')
       else if (datasets.some((d) => d.key === input.key)) err(errors, 'key', `'${input.key}' is already a dataset key.`)
       if (!input.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       if (input.mode === 'existing') {
@@ -493,7 +492,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (input.id && !existing) return problem(404, 'Field not found')
       const errors: Errors = {}
       if (existing && existing.key !== input.key) err(errors, 'key', 'The field key is fixed once created.')
-      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
+      else if (!KEY_PATTERN.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       if (!input.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       checkVocab(errors, 'fieldSourceKind', 'fieldSourceKind', input.fieldSourceKind)
       checkVocab(errors, 'dataType', 'dataType', input.dataType)
@@ -629,7 +628,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (input.id && !existing) return problem(404, 'Grain not found')
       const errors: Errors = {}
       if (existing && existing.key !== input.key) err(errors, 'key', 'The grain key is fixed once created.')
-      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
+      else if (!KEY_PATTERN.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       checkVocab(errors, 'grainKind', 'grainKind', input.grainKind)
       if (!input.fieldIds.length) err(errors, 'fieldIds', 'Add at least one component field.')
       if (new Set(input.fieldIds).size !== input.fieldIds.length) err(errors, 'fieldIds', 'A field can appear only once.')
@@ -749,7 +748,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       const errors: Errors = {}
       const next: DatasetMeasure = structuredClone({ ...input, id: existing?.id ?? newId('m'), displayName: input.displayName.trim() })
       if (existing && existing.key !== input.key) err(errors, 'key', 'The measure key is fixed once created.')
-      else if (!ITEM_KEY.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
+      else if (!KEY_PATTERN.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
       if (!next.displayName) err(errors, 'displayName', 'Enter a display name.')
       checkVocab(errors, 'measureKind', 'measureKind', input.measureKind)
       const kind = input.measureKind

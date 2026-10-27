@@ -1,6 +1,7 @@
 import { MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { DOTTED_KEY_PATTERN } from '@/lib/api/contract'
 import { EnabledBadge } from '@/components/models/model-detail'
 import { ListPage } from '@/components/shell/page-shell'
 import {
@@ -36,7 +37,6 @@ import { useModels } from '@/lib/model/store'
 import { useEditor, type LibraryItem } from '@/lib/report/store'
 import { useAppNav } from '@/lib/navigation'
 
-const KEY_PATTERN = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/
 
 export function ReportsScreen() {
   const { library, duplicateReport } = useEditor()
@@ -157,7 +157,7 @@ function NewReportDialog({ onClose }: { onClose: () => void }) {
   const [touched, setTouched] = useState(false)
 
   const taken = library.some((i) => i.report.settings.key === key)
-  const keyError = !key ? 'Enter a key.' : !KEY_PATTERN.test(key) ? 'Use lowercase letters, digits, _ and dots.' : taken ? 'That key is already used.' : null
+  const keyError = !key ? 'Enter a key.' : !DOTTED_KEY_PATTERN.test(key) ? 'Start with a letter; use letters, digits, _ and dots.' : taken ? 'That key is already used.' : null
   const nameError = name.trim() ? null : 'Enter a name.'
   const valid = !keyError && !nameError
 

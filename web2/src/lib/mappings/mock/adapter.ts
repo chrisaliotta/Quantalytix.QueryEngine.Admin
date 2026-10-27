@@ -1,4 +1,5 @@
 import { createSnapshotChangeSet } from '@/lib/api/changes'
+import { DOTTED_KEY_PATTERN } from '@/lib/api/contract'
 import {
   allowedModes,
   ALLOCATION_LABEL,
@@ -33,7 +34,6 @@ import { indexMembers } from '../rules'
 import { createSeed, type Db } from './data'
 import { bridgeAllocation, bridgeViolations, mappingCoverage, mappingSetViolations } from './rules'
 
-const KEY_RE = /^[A-Za-z][A-Za-z0-9_.]*$/
 const now = () => new Date().toISOString()
 const delay = () => new Promise((r) => setTimeout(r, 120))
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
@@ -304,7 +304,7 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     async createMappingSet(input) {
       await delay()
       const errors: Record<string, string[]> = {}
-      if (!KEY_RE.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
+      if (!DOTTED_KEY_PATTERN.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
       if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
       if (!input.sourceNamespace.trim()) errors.sourceNamespace = ['Source namespace is required.']
       if (Object.keys(errors).length) return invalid(errors)
@@ -454,7 +454,7 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     async createBridge(input) {
       await delay()
       const errors: Record<string, string[]> = {}
-      if (!KEY_RE.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
+      if (!DOTTED_KEY_PATTERN.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
       if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
       if (Object.keys(errors).length) return invalid(errors)
       if (db.bridges.some((b) => b.key === input.key)) return fail(409, 'Key taken', { detail: `Bridge '${input.key}' already exists.` })

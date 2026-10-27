@@ -365,6 +365,9 @@ Path shorthand: `web2/` = `Quantalytix.QueryEngine.Admin/web2/src/`, `api/` = `Q
 - **Recommendation:** allow `.` in mapping set and bridge keys (`^[A-Za-z][A-Za-z0-9_.]*$`), matching the seed and
   report-derived keys; keep namespace free text.
 - **Status:** Decided 2026-10-26. Allow dots: `^[A-Za-z][A-Za-z0-9_.]*$`; namespace free text.
+- **Note (2026-10-27, G1):** the dotted pattern (`DottedKey`) extends to dataset, calculation model and report keys,
+  which the seed also writes dotted (`bank.balance_monthly`, `mortgage.loan_daily`, `bank.margin_model`,
+  `bank.margin_statement`). Other keys keep `^[A-Za-z][A-Za-z0-9_]*$`.
 
 <a id="oi-30"></a>
 ### OI-30 Check versus validate

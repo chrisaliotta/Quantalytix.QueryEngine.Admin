@@ -643,7 +643,7 @@ components:
         datasetId:
           $ref: './common.yaml#/components/schemas/Id'
         datasetKey:
-          $ref: './common.yaml#/components/schemas/Key'
+          $ref: './common.yaml#/components/schemas/DottedKey'
         datasetVersionId:
           $ref: './common.yaml#/components/schemas/Id'
         datasetVersionNumber:
@@ -1009,7 +1009,7 @@ components:
         reportId:
           $ref: './common.yaml#/components/schemas/Id'
         reportKey:
-          type: string
+          $ref: './common.yaml#/components/schemas/DottedKey'
         sourceKey:
           type: string
 

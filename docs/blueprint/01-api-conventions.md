@@ -34,9 +34,10 @@ These rules apply to every module file. A module file states only its exceptions
 - **Keys are fixed after creation (Agreed)** for datasets (OI-36), fields, grains, measures, dimensions, roles,
   members, levels, mapping sets, bridges, releases, assumption sets, models and metrics and parameters (OI-45),
   reports (OI-47), rows (OI-48), sources, profiles, columns and styles.
-- **Key patterns (Agreed, OI-29):** `^[A-Za-z][A-Za-z0-9_]*$` for most keys; mapping set and bridge keys also allow
-  `.` (`^[A-Za-z][A-Za-z0-9_.]*$`), matching the seed and report-derived keys; release and assumption set keys follow
-  [14](14-releases-and-assumption-sets.md#domain-rules).
+- **Key patterns (Agreed, OI-29):** `^[A-Za-z][A-Za-z0-9_]*$` (`Key`) for most keys; dataset, calculation model,
+  report, mapping set and bridge keys also allow `.` (`^[A-Za-z][A-Za-z0-9_.]*$`, `DottedKey`), matching the seed
+  (`bank.balance_monthly`, `mortgage.loan_daily`, `bank.margin_model`, `bank.margin_statement`) and report-derived
+  bridge keys; release and assumption set keys follow [14](14-releases-and-assumption-sets.md#domain-rules).
 - **Field naming (Agreed, OI-10):** an entity's own identifier and natural key are `id` and `key`
   (`Dimension.id`, `Dimension.key`). A reference to another entity is `<entity>Id` or `<entity>Key`
   (`dimensionId`, `roleKey`). Display text is `displayName`. This renames `datasets/contract.ts`'s `datasetKey`,
