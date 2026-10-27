@@ -1,7 +1,10 @@
 import type { DimensionsApi } from '@/lib/dimensions/contract'
 import type { MappingDimensionRef, MappingsDirectory, MemberRef } from './contract'
 
-/** The directory over the dimensions port, until `TenantApi.getCatalog` and `getPublishedMembers` serve it (OI-13). */
+/**
+ * The directory over the dimensions port's deprecated `listAllDimensions`. In P5 it switches to `TenantApi.getCatalog`
+ * and `getPublishedMembers` (OI-13), and `listAllDimensions` is removed.
+ */
 export function createDimensionsDirectory(dims: DimensionsApi): MappingsDirectory {
   async function listDimensionRefs(): Promise<MappingDimensionRef[]> {
     return (await dims.listAllDimensions()).map((d) => {
