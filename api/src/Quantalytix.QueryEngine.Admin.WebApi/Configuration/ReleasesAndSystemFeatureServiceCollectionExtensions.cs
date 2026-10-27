@@ -5,6 +5,8 @@ using Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.TenantVerification;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -15,11 +17,14 @@ public static class ReleasesAndSystemFeatureServiceCollectionExtensions
     /// Registers the Releases and System slice's services, publication rules, retirement rule and lifecycle handlers, all scoped:
     /// releases with their activation, assumption sets with a pinner for each living kind that repoints the active set as a
     /// version is published, the tenant overview, and the tenant directory with its connection verification and masking.
+    /// Also registers the slice's route resources, which the shared 404 check reads.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddReleasesAndSystemFeature(this IServiceCollection services)
     {
+        services.AddRouteResource<SemanticReleaseRecord>("releases", id => new { SemanticReleaseId = id });
+        services.AddRouteResource<AssumptionSetRecord>("assumption-sets", id => new { AssumptionSetId = id });
         services.AddScoped<ReleaseService>();
         services.AddScoped<ReleaseActivator>();
         services.AddScoped<ReleaseManifestReader>();

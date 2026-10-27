@@ -1,5 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -9,11 +11,18 @@ public static class DimensionsFeatureServiceCollectionExtensions
     /// <summary>
     /// Registers the Dimensions slice's services, its <c>dimension_version</c> lifecycle handler (the closure builder, which member
     /// writes also call) and its <c>dimension_version</c> publication rules, all scoped. The workflow runs rules in this order.
+    /// Also registers the slice's route resources, which the shared 404 check reads.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddDimensionsFeature(this IServiceCollection services)
     {
+        services.AddRouteResource<DimensionRecord>("dimensions", id => new { DimensionId = id });
+        services.AddRouteResource<DimensionRoleRecord>("dimension-roles", id => new { DimensionRoleId = id });
+        services.AddRouteResource<DimensionRoleRecord>("roles", id => new { DimensionRoleId = id });
+        services.AddRouteResource<DimensionVersionRecord>("dimension-versions", id => new { DimensionVersionId = id });
+        services.AddRouteResource<DimensionLevelRecord>("levels", id => new { DimensionLevelId = id });
+        services.AddRouteResource<DimensionMemberRecord>("members", id => new { DimensionMemberId = id });
         services.AddScoped<DimensionService>();
         services.AddScoped<DimensionRoleService>();
         services.AddScoped<DimensionVersionService>();

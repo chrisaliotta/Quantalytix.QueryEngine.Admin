@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -20,6 +21,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     /// enabled ones on every write to a model, its metrics, their attributions or its parameters; and the report rules
     /// that read what a release gives reports also run, over the enabled reports, when a release is validated, after the release
     /// slice's own rules.
+    /// Also registers the slice's route resources, which the shared 404 check reads.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -27,6 +29,8 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     {
         services.AddScoped<ContentKeys>();
 
+        services.AddRouteResource<CalculationModelRecord>("calculation-models", id => new { CalculationModelId = id });
+        services.AddRouteResource<ReportRecord>("reports", id => new { ReportId = id });
         services.AddScoped<CalculationModelService>();
         services.AddScoped<ModelKeys>();
         services.AddScoped<ReportUses>();

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Quantalytix.QueryEngine.Admin.WebApi.Development;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.WebApi.Json;
+using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -13,7 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 public static class AdminControllersServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers controllers with the global <see cref="ValidationFilter"/>, binding errors keyed like its errors
+    /// Registers controllers with the global <see cref="RouteResourceFilter"/> (404 for a route id that names no row) before
+    /// the global <see cref="ValidationFilter"/>, binding errors keyed like its errors
     /// (<see cref="BindingErrorResults"/>), bodiless client errors left to the status code pages so they answer a
     /// <see cref="Problem"/> like every other error, JSON as the only body format, camelCase JSON (also used for OpenAPI schemas),
     /// camelCase FluentValidation paths, and, outside Development, removes the Development controllers.
@@ -26,9 +28,11 @@ public static class AdminControllersServiceCollectionExtensions
         ValidatorOptions.Global.PropertyNameResolver = JsonPropertyPaths.Resolve;
         ValidatorOptions.Global.DisplayNameResolver = JsonPropertyPaths.Resolve;
         services.ConfigureHttpJsonOptions(options => ConfigureJson(options.SerializerOptions));
+        services.AddSingleton<RouteResources>();
         services
             .AddControllers(options =>
             {
+                options.Filters.Add<RouteResourceFilter>();
                 options.Filters.Add<ValidationFilter>();
                 options.OutputFormatters.RemoveType<StringOutputFormatter>();
                 options.OutputFormatters.OfType<SystemTextJsonOutputFormatter>().Single().SupportedMediaTypes.Remove("text/json");

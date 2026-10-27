@@ -1,6 +1,8 @@
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -10,11 +12,16 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
     /// <summary>
     /// Registers the Mappings and Bridges slice's services and its <c>mapping_version</c> and <c>bridge_version</c> publication
     /// rules, all scoped. The workflow runs the rules of a kind in this order.
+    /// Also registers the slice's route resources, which the shared 404 check reads.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddMappingsAndBridgesFeature(this IServiceCollection services)
     {
+        services.AddRouteResource<MappingSetRecord>("mapping-sets", id => new { MappingSetId = id });
+        services.AddRouteResource<MappingVersionRecord>("mapping-versions", id => new { MappingVersionId = id });
+        services.AddRouteResource<BridgeRecord>("bridges", id => new { BridgeId = id });
+        services.AddRouteResource<BridgeVersionRecord>("bridge-versions", id => new { BridgeVersionId = id });
         services.AddScoped<MappingSetService>();
         services.AddScoped<MappingVersionService>();
         services.AddScoped<MappingEntryService>();
