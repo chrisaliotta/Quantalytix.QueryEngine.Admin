@@ -3,6 +3,7 @@
     <RootNamespace>Quantalytix.QueryEngine.Admin.Tests</RootNamespace>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <!-- The schema DDL the records must mirror is the seed kit's generated build script. -->
     <SchemaDdlPath>$(SeedKitRoot)ddl_srdb_bi_v2_26.sql</SchemaDdlPath>
   </PropertyGroup>
