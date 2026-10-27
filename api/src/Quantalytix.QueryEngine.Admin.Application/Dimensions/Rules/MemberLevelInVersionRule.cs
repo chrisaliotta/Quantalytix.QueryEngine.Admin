@@ -1,41 +1,25 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
-/// <summary>
-/// <c>member_level_in_version</c>: a member's level belongs to the same version, because level grouping matches levels by
-/// raw ID within the resolved version.
-/// </summary>
-public sealed class MemberLevelInVersionRule(
-    ITableGateway<DimensionMemberRecord> members,
-    ITableGateway<DimensionLevelRecord> levels) : IPublicationRule
+/// <summary><c>member_level_in_version</c>: a member's level is a level of the same version.</summary>
+public sealed class MemberLevelInVersionRule : DimensionRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "member_level_in_version";
+    /// <summary>Gate: level groupings resolve through these levels.</summary>
+    public override RuleStage Stage => RuleStage.Gate;
 
-    /// <summary>The kind the rule checks: dimension versions.</summary>
-    public string Kind { get; } = VersionKinds.DimensionVersion;
+    /// <summary><c>member_level_in_version</c>.</summary>
+    protected override string Code => "member_level_in_version";
 
-    /// <summary>Reports every member whose level is not a level of the version.</summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports every member whose level is not in the version.</summary>
+    /// <param name="snapshot">The dimension version.</param>
     /// <returns>One violation per such member.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    protected override IEnumerable<RuleViolation> Evaluate(DimensionSnapshot snapshot)
     {
-        var rows = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var levelIds = (await levels.ListAsync(new { DimensionVersionId = versionId }, cancellationToken)).Select(level => level.DimensionLevelId).ToHashSet();
-        return
-        [
-            .. rows
-                .Where(member => member.DimensionLevelId is { } dimensionLevelId && !levelIds.Contains(dimensionLevelId))
-                .OrderBy(member => member.MemberKey, StringComparer.Ordinal)
-                .Select(member => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"Member '{member.MemberKey}' has level {member.DimensionLevelId}, which is not a level of this version."
-                })
-        ];
+        var ids = snapshot.Levels.Select(level => level.DimensionLevelId).ToHashSet();
+        return snapshot.Members
+            .Where(member => member.DimensionLevelId is { } levelId && !ids.Contains(levelId))
+            .Select(member => Violation(DimensionTabs.Members, $"Member '{member.MemberKey}' has a level that is not a level of this version.", member.DimensionMemberId));
     }
 }

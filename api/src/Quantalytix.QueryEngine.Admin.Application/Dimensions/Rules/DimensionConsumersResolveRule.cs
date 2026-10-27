@@ -1,42 +1,33 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// <c>dimension_consumers_resolve</c>: every level and member key that live objects name in the dimension exists in the version,
-/// because publishing it makes it the version they resolve their keys in. <see cref="DimensionConsumers"/> lists the objects.
+/// <c>dimension_consumers_resolve</c> (M10): every level and member key a live object names in the dimension exists in the live
+/// version, the one they resolve keys in. A frozen version is read by no live object, so it is not checked.
 /// </summary>
-public sealed class DimensionConsumersResolveRule(
-    ITableGateway<DimensionVersionRecord> versions,
-    DimensionConsumers consumers,
-    PublishedDimensionReader reader)
-    : IPublicationRule
+public sealed class DimensionConsumersResolveRule : DimensionRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "dimension_consumers_resolve";
+    /// <summary>Gate: consumers read the live version as soon as it is saved.</summary>
+    public override RuleStage Stage => RuleStage.Gate;
 
-    /// <summary>The kind the rule checks: dimension versions.</summary>
-    public string Kind { get; } = VersionKinds.DimensionVersion;
+    /// <summary><c>dimension_consumers_resolve</c>.</summary>
+    protected override string Code => "dimension_consumers_resolve";
 
     /// <summary>Reports every key a live object names that the version lacks.</summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <param name="snapshot">The dimension version.</param>
     /// <returns>One violation per missing key reference.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    protected override IEnumerable<RuleViolation> Evaluate(DimensionSnapshot snapshot)
     {
-        var version = await versions.GetAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var keys = await reader.KeysAsync(version, cancellationToken);
-        return
-        [
-            .. (await consumers.ListAsync(version.DimensionId, cancellationToken))
-                .Where(reference => !keys.Has(reference))
-                .Select(reference => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"{reference.Consumer} names {(reference.IsLevel ? "level" : "member")} '{reference.Key}', which v{version.VersionNumber} lacks."
-                })
-        ];
+        if (snapshot.Version.Status == PublicationStatuses.Retired) return [];
+        var levelKeys = snapshot.Levels.Select(level => level.LevelKey).ToHashSet(StringComparer.Ordinal);
+        var memberKeys = snapshot.Members.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal);
+        return snapshot.Surroundings.NamedKeys
+            .Where(reference => !(reference.IsLevel ? levelKeys : memberKeys).Contains(reference.Key))
+            .Select(reference => Violation(
+                DimensionTabs.Usage,
+                $"{reference.Consumer} names {(reference.IsLevel ? "level" : "member")} '{reference.Key}', which v{snapshot.Version.VersionNumber} lacks."));
     }
 }

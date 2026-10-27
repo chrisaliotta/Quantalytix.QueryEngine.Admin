@@ -1,11 +1,20 @@
+using System.Text.Json.Serialization;
+
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
-/// <summary>The editable attributes of a dimension role, as <c>PUT dimensions/{dimensionId}/roles/{dimensionRoleId}</c> takes them.</summary>
-public record DimensionRoleInput
+/// <summary>The contract's <c>DimensionRoleInput</c>: a stored id updates that role; an absent or temporary id creates one.</summary>
+public sealed record DimensionRoleInput
 {
-    /// <summary>Human-readable name the catalog shows, such as <c>Servicing branch</c>; at most 256 bytes of UTF-8 text.</summary>
+    /// <summary>A stored id, a temporary id, or absent.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Id { get; init; }
+
+    /// <summary>The role key of a new role, unique in the tenant; ignored for a stored one.</summary>
+    public required string Key { get; init; }
+
+    /// <summary>The display name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Optional description the catalog shows; at most 1024 bytes of UTF-8 text.</summary>
-    public string? Description { get; init; }
+    /// <summary>The description.</summary>
+    public required string? Description { get; init; }
 }

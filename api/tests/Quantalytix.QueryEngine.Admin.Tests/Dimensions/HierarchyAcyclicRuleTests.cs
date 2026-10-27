@@ -1,7 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.Dimensions.DimensionRows;
 
@@ -43,7 +43,7 @@ public sealed class HierarchyAcyclicRuleTests
             Member(4, VersionId, "D", parentId: 1));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(HierarchyAcyclicRule.Code, violation.Code);
+        Assert.Equal("hierarchy_acyclic", violation.Code);
         Assert.Equal("Members 'A' -> 'B' -> 'C' -> 'A' form a parent cycle.", violation.Message);
     }
 
@@ -60,7 +60,7 @@ public sealed class HierarchyAcyclicRuleTests
     /// <summary>Runs the rule over the given members of the version.</summary>
     private static Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionMemberRecord[] members)
     {
-        var rule = new HierarchyAcyclicRule(new InMemoryTableGateway<DimensionMemberRecord>(members));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = Snapshot(1, VersionId, DimensionKinds.Hierarchical, null, members, []);
+        return new HierarchyAcyclicRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 }

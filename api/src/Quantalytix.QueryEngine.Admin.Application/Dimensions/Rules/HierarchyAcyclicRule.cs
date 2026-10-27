@@ -1,6 +1,6 @@
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
@@ -8,49 +8,44 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// <c>hierarchy_acyclic</c>: following parent links never returns to a member already passed. A cycle has no root, so its
 /// members would get no closure rows and would group nowhere.
 /// </summary>
-public sealed class HierarchyAcyclicRule(ITableGateway<DimensionMemberRecord> members) : IPublicationRule
+public sealed class HierarchyAcyclicRule : DimensionRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "hierarchy_acyclic";
+    /// <summary>Gate: the closure is built from these parents.</summary>
+    public override RuleStage Stage => RuleStage.Gate;
 
-    /// <summary>The kind the rule checks: dimension versions.</summary>
-    public string Kind { get; } = VersionKinds.DimensionVersion;
+    /// <summary><c>hierarchy_acyclic</c>.</summary>
+    protected override string Code => "hierarchy_acyclic";
 
     /// <summary>
-    /// Walks up from every member, stopping at a root, at a parent outside the version, or at a member an earlier walk
-    /// finished; returning to the current walk's own path is a cycle, reported once with the members on it.
+    /// Walks up from every member, stopping at a root, at a parent outside the version, or at a member an earlier walk finished;
+    /// returning to the current walk's own path is a cycle, reported once with the members on it.
     /// </summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <param name="snapshot">The dimension version.</param>
     /// <returns>One violation per cycle.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    protected override IEnumerable<RuleViolation> Evaluate(DimensionSnapshot snapshot)
     {
-        var rows = await members.ListAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var byId = rows.ToDictionary(member => member.DimensionMemberId);
+        var byId = snapshot.Members.ToDictionary(member => member.DimensionMemberId);
         var finished = new HashSet<long>();
-        var violations = new List<RuleViolation>();
-        foreach (var start in rows.OrderBy(member => member.MemberKey, StringComparer.Ordinal))
+        foreach (var start in snapshot.Members.OrderBy(member => member.MemberKey, StringComparer.Ordinal))
         {
             var path = new List<long>();
             var onPath = new HashSet<long>();
             long? current = start.DimensionMemberId;
-            while (current is { } dimensionMemberId && byId.ContainsKey(dimensionMemberId) && !finished.Contains(dimensionMemberId) && onPath.Add(dimensionMemberId))
+            while (current is { } memberId && byId.ContainsKey(memberId) && !finished.Contains(memberId) && onPath.Add(memberId))
             {
-                path.Add(dimensionMemberId);
-                current = byId[dimensionMemberId].ParentDimensionMemberId;
+                path.Add(memberId);
+                current = byId[memberId].ParentDimensionMemberId;
             }
 
-            if (current is { } repeated && onPath.Contains(repeated)) violations.Add(Cycle(path[path.IndexOf(repeated)..], byId));
+            if (current is { } repeated && onPath.Contains(repeated)) yield return Cycle(path[path.IndexOf(repeated)..], byId);
             finished.UnionWith(path);
         }
-
-        return violations;
     }
 
     /// <summary>A violation naming the members of a cycle in parent order, ending where it started.</summary>
-    private static RuleViolation Cycle(List<long> cycle, Dictionary<long, DimensionMemberRecord> byId)
+    private RuleViolation Cycle(List<long> cycle, Dictionary<long, DimensionMemberRecord> byId)
     {
-        var keys = cycle.Append(cycle[0]).Select(dimensionMemberId => $"'{byId[dimensionMemberId].MemberKey}'");
-        return new RuleViolation { Code = Code, Message = $"Members {string.Join(" -> ", keys)} form a parent cycle." };
+        var keys = cycle.Append(cycle[0]).Select(memberId => $"'{byId[memberId].MemberKey}'");
+        return Violation(DimensionTabs.Members, $"Members {string.Join(" -> ", keys)} form a parent cycle.", cycle[0]);
     }
 }

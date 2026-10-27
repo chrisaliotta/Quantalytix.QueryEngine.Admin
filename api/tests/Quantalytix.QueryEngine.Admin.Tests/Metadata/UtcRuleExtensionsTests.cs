@@ -1,6 +1,7 @@
 using System.Text.Json;
+using FluentValidation;
 using FluentValidation.TestHelper;
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Metadata;
@@ -8,13 +9,13 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Metadata;
 /// <summary>
 /// Confirms that metadata times are accepted only as UTC, written with a <c>Z</c> suffix. The tables store times without a
 /// zone and the query engine reads them as UTC, so a JSON time without a zone is ambiguous, and one with an offset parses
-/// as local time, which the StarRocks connection refuses to write. Every time input shares this rule; a range band's lower
-/// datetime bound stands in for them, read from JSON the way a request body is.
+/// as local time, which the StarRocks connection refuses to write. Every time input shares this rule; a time property read
+/// from JSON the way a request body is stands in for them.
 /// </summary>
 public sealed class UtcRuleExtensionsTests
 {
     /// <summary>The validator under test.</summary>
-    private readonly RangeBandsInputValidator _validator = new();
+    private readonly InlineValidator<Window> _validator = new() { validator => validator.RuleFor(window => window.Start).MustBeUtc() };
 
     /// <summary>A time with a <c>Z</c> suffix is UTC.</summary>
     [Fact]
@@ -35,13 +36,19 @@ public sealed class UtcRuleExtensionsTests
     {
         var result = _validator.TestValidate(Bands(time));
 
-        result.ShouldHaveValidationErrorFor("Bands[0].LowerDatetime");
+        result.ShouldHaveValidationErrorFor(window => window.Start);
     }
 
-    /// <summary>A band list of one band whose lower datetime bound is the given JSON time.</summary>
-    private static RangeBandsInput Bands(string time)
+    /// <summary>A window whose start is the given JSON time.</summary>
+    private static Window Bands(string time)
     {
-        var json = $$"""{"bands":[{"dimensionMemberId":1,"lowerDatetime":"{{time}}","lowerInclusive":true,"upperInclusive":false}]}""";
-        return JsonSerializer.Deserialize<RangeBandsInput>(json, JsonSerializerOptions.Web)!;
+        return JsonSerializer.Deserialize<Window>($$"""{"start":"{{time}}"}""", JsonSerializerOptions.Web)!;
+    }
+
+    /// <summary>An input with one time.</summary>
+    private sealed record Window
+    {
+        /// <summary>The time.</summary>
+        public required DateTime Start { get; init; }
     }
 }

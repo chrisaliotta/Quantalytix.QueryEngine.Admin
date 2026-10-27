@@ -13,7 +13,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// </summary>
 public sealed class ReportService(
     ITableGateway<ReportRecord> reports,
-    DimensionService dimensionService,
+    ReportDimensions reportDimensions,
     PublishedDimensionReader publishedDimensions,
     VersionWorkflow workflow,
     OwnedVersions owned,
@@ -56,7 +56,7 @@ public sealed class ReportService(
         long? templateVersionId = input.StartFromDimensionId is { } templateId
             ? (await publishedDimensions.ReadAsync(templateId, cancellationToken))!.Version.DimensionVersionId
             : null;
-        var structure = await dimensionService.CreateReportDimensionAsync(input.ReportKey, input.DisplayName, templateVersionId, cancellationToken);
+        var structure = await reportDimensions.CreateAsync(input.ReportKey, input.DisplayName, templateVersionId, cancellationToken);
         await workflow.PublishAsync(VersionKinds.DimensionVersion, structure.DimensionVersionId, cancellationToken);
         var report = new ReportRecord
         {
@@ -119,6 +119,6 @@ public sealed class ReportService(
         await remover.RemoveContentAsync(reportId, cancellationToken);
         await reports.DeleteAsync(new { ReportId = reportId }, cancellationToken);
         await pins.UnpinDimensionAsync(report.ReportDimensionId, cancellationToken);
-        await dimensionService.RemoveAsync(report.ReportDimensionId, [structure], cancellationToken);
+        await reportDimensions.RemoveAsync(report.ReportDimensionId, [structure], cancellationToken);
     }
 }

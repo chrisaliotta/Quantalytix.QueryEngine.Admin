@@ -1,5 +1,6 @@
+using FluentValidation;
 using FluentValidation.TestHelper;
-using Quantalytix.QueryEngine.Admin.Application.Dimensions;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Metadata;
@@ -14,7 +15,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Metadata;
 public sealed class VarcharRuleExtensionsTests
 {
     /// <summary>The validator under test.</summary>
-    private readonly DimensionInputValidator _validator = new();
+    private readonly InlineValidator<Named> _validator = new() { validator => validator.RuleFor(input => input.DisplayName).MustFitVarchar(256) };
 
     /// <summary>Two hundred two-byte characters are 400 bytes, too long for VARCHAR(256) though only 200 characters.</summary>
     [Fact]
@@ -34,9 +35,16 @@ public sealed class VarcharRuleExtensionsTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
-    /// <summary>A dimension update with the given display name.</summary>
-    private static DimensionInput Dimension(string displayName)
+    /// <summary>An input with the given display name.</summary>
+    private static Named Dimension(string displayName)
     {
-        return new DimensionInput { DisplayName = displayName, IsEnabled = true, IsRemovable = true };
+        return new Named { DisplayName = displayName };
+    }
+
+    /// <summary>An input with a display name.</summary>
+    private sealed record Named
+    {
+        /// <summary>The display name.</summary>
+        public required string DisplayName { get; init; }
     }
 }

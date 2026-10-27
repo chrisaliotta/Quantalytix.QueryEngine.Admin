@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>
 /// Checks a complete scenario list: roles that exist, each named once and each the only role of its dimension. Requests name each
 /// scenario by its role's key, and a scenario's dimension has exactly one role, so the scenario is its dimension and every dataset
-/// carries its members through that one role; <see cref="Dimensions.NewDimensionRoleInputValidator"/> keeps the dimension so.
+/// carries its members through that one role; the dimensions module's <c>saveRole</c> operation keeps the dimension so.
 /// Whether a calculation dimension of the report reads a scenario's role is the <c>scenario_roles_distinct</c> rule's concern,
 /// because the calculation dimensions change too.
 /// </summary>

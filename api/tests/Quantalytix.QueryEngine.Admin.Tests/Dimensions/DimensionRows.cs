@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
@@ -98,5 +99,38 @@ internal static class DimensionRows
     public static DateTime Utc(int year, int month, int day)
     {
         return new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// A snapshot of a user dimension's live version with the given content and nothing around it, for rules that read only the
+    /// version.
+    /// </summary>
+    public static DimensionSnapshot Snapshot(
+        long dimensionId,
+        long versionId,
+        string kind,
+        string? rangeDataType,
+        IReadOnlyList<DimensionMemberRecord> members,
+        IReadOnlyList<RangeBandRecord> bands)
+    {
+        var version = Version(versionId, dimensionId, 1, PublicationStatuses.Published, rangeDataType);
+        return new DimensionSnapshot
+        {
+            Dimension = Dimension(dimensionId, kind),
+            Profile = null,
+            Roles = [],
+            Version = version,
+            Levels = [],
+            Members = members,
+            Bands = bands,
+            Surroundings = new DimensionSurroundings
+            {
+                Usage = [],
+                NamedKeys = [],
+                OtherRoleKeys = new HashSet<string>(),
+                Versions = [version],
+                MemberCounts = new Dictionary<long, int> { [versionId] = members.Count }
+            }
+        };
     }
 }

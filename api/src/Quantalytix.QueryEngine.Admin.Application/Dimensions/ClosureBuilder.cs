@@ -50,10 +50,13 @@ public sealed class ClosureBuilder(
     }
 
     /// <summary>
-    /// Walks down from the roots, so every visited member's ancestors are exactly the path that reached it. Members of a
-    /// cycle are never reached, because no root sits above them.
+    /// The closure of a member tree. Walks down from the roots, so every visited member's ancestors are exactly the path that
+    /// reached it. Members of a cycle are never reached, because no root sits above them.
     /// </summary>
-    private static List<DimensionClosureRecord> ClosureOf(long versionId, IReadOnlyList<DimensionMemberRecord> tree)
+    /// <param name="versionId">The version the members belong to.</param>
+    /// <param name="tree">The version's members.</param>
+    /// <returns>One row per ancestor-descendant pair, each member its own ancestor at depth 0.</returns>
+    public static List<DimensionClosureRecord> ClosureOf(long versionId, IReadOnlyList<DimensionMemberRecord> tree)
     {
         var children = tree.Where(member => member.ParentDimensionMemberId is not null).ToLookup(member => member.ParentDimensionMemberId!.Value, member => member.DimensionMemberId);
         var pending = new Queue<(long DimensionMemberId, long[] Ancestors)>(

@@ -55,7 +55,7 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 2, 2, 10m, 20m));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(BandsNonOverlappingRule.Code, violation.Code);
+        Assert.Equal("bands_non_overlapping", violation.Code);
         Assert.Equal("Band 2 (member 'MID') overlaps Band 1 (member 'LOW'): each band must start after the previous one ends.", violation.Message);
     }
 
@@ -69,7 +69,7 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 1, 1, 0m, null),
             DecimalBand(VersionId, 2, 2, 100m, 200m));
 
-        Assert.Equal([BandsNonOverlappingRule.Code], violations.Select(violation => violation.Code));
+        Assert.Equal(["bands_non_overlapping"], violations.Select(violation => violation.Code));
     }
 
     /// <summary>Date versions compare the date bounds.</summary>
@@ -110,8 +110,8 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 2, 2, 10m, null) with { UpperDate = Utc(2026, 1, 1) });
 
         var violation = Assert.Single(violations);
-        Assert.Equal(BandBoundaryFamilyRule.Code, violation.Code);
-        Assert.Equal("Band 2 (member 'MID') sets date bounds, but the version's range_data_type is decimal.", violation.Message);
+        Assert.Equal("band_boundary_family", violation.Code);
+        Assert.Equal("Band 2 (member 'MID') sets date bounds, but the version's range data type is decimal.", violation.Message);
     }
 
     /// <summary>Only range dimensions use bands, so a categorical version's stray bands are not checked.</summary>
@@ -119,9 +119,9 @@ public sealed class RangeBandRuleTests
     [Fact]
     public async Task NonRangeDimension_HasNoBandsToCheck()
     {
-        var reader = Reader(DimensionKinds.Categorical, null, DecimalBand(VersionId, 1, 1, null, 10m) with { LowerDate = Utc(2026, 1, 1) });
+        var snapshot = RangeVersion(DimensionKinds.Categorical, null, DecimalBand(VersionId, 1, 1, null, 10m) with { LowerDate = Utc(2026, 1, 1) });
 
-        var violations = await new BandBoundaryFamilyRule(reader).EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var violations = await new BandBoundaryFamilyRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
 
         Assert.Empty(violations);
     }
@@ -129,25 +129,19 @@ public sealed class RangeBandRuleTests
     /// <summary>Runs <c>bands_non_overlapping</c> over a range version with the given bands.</summary>
     private static Task<IReadOnlyList<RuleViolation>> NonOverlappingAsync(string rangeDataType, params RangeBandRecord[] bands)
     {
-        var rule = new BandsNonOverlappingRule(Reader(DimensionKinds.Range, rangeDataType, bands));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        return new BandsNonOverlappingRule().EvaluateAsync(RangeVersion(DimensionKinds.Range, rangeDataType, bands), TestContext.Current.CancellationToken);
     }
 
     /// <summary>Runs <c>band_boundary_family</c> over a range version with the given bands.</summary>
     private static Task<IReadOnlyList<RuleViolation>> BoundaryFamilyAsync(string rangeDataType, params RangeBandRecord[] bands)
     {
-        var rule = new BandBoundaryFamilyRule(Reader(DimensionKinds.Range, rangeDataType, bands));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        return new BandBoundaryFamilyRule().EvaluateAsync(RangeVersion(DimensionKinds.Range, rangeDataType, bands), TestContext.Current.CancellationToken);
     }
 
-    /// <summary>A band set reader over one version of a dimension of the given kind, with the members and the given bands.</summary>
-    private static RangeBandSetReader Reader(string kind, string? rangeDataType, params RangeBandRecord[] bands)
+    /// <summary>A version of a dimension of the given kind, with the members and the given bands.</summary>
+    private static DimensionSnapshot RangeVersion(string kind, string? rangeDataType, params RangeBandRecord[] bands)
     {
-        return new RangeBandSetReader(
-            new InMemoryTableGateway<DimensionVersionRecord>(Version(VersionId, DimensionId, 1, PublicationStatuses.Draft, rangeDataType)),
-            new InMemoryTableGateway<DimensionRecord>(Dimension(DimensionId, kind)),
-            new InMemoryTableGateway<RangeBandRecord>(bands),
-            new InMemoryTableGateway<DimensionMemberRecord>(Members));
+        return Snapshot(DimensionId, VersionId, kind, rangeDataType, Members, bands);
     }
 
     /// <summary>A date band; the lower bound is inclusive and the upper one exclusive.</summary>

@@ -1,41 +1,29 @@
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// <c>band_boundary_family</c>: a range version's bands set only the bounds of its range data type's family, because the
-/// engine compares source values against that family's columns alone; the other families stay null.
+/// <c>band_boundary_family</c>: a range version's bands set only the bounds of its range data type's family, because the engine
+/// compares source values against that family's columns alone.
 /// </summary>
-public sealed class BandBoundaryFamilyRule(RangeBandSetReader reader) : IPublicationRule
+public sealed class BandBoundaryFamilyRule : DimensionBandRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "band_boundary_family";
+    /// <summary><c>band_boundary_family</c>.</summary>
+    protected override string Code => "band_boundary_family";
 
-    /// <summary>The kind the rule checks: dimension versions.</summary>
-    public string Kind { get; } = VersionKinds.DimensionVersion;
-
-    /// <summary>
-    /// Reports every band that sets a bound of another family. Without a range data type the family is unknown, which
-    /// <c>range_data_type_matches_kind</c> reports.
-    /// </summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports every band that sets a bound of another family; without a range data type the family is unknown.</summary>
+    /// <param name="snapshot">The dimension version.</param>
+    /// <param name="bands">Its bands by ordinal.</param>
     /// <returns>One violation per band with foreign bounds.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    protected override IEnumerable<RuleViolation> EvaluateBands(DimensionSnapshot snapshot, IReadOnlyList<RangeBandRecord> bands)
     {
-        var set = await reader.ReadAsync(versionId, cancellationToken);
-        if (set.RangeDataType is not { } family) return [];
-        return
-        [
-            .. set.Bands
-                .Select(band => (Band: band, Foreign: RangeBandBounds.FamiliesOf(band).Where(used => used != family).ToList()))
-                .Where(check => check.Foreign.Count > 0)
-                .Select(check => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"{set.Describe(check.Band)} sets {string.Join(" and ", check.Foreign)} bounds, but the version's range_data_type is {family}."
-                })
-        ];
+        if (snapshot.Version.RangeDataType is not { } family) return [];
+        return bands
+            .Select(band => (Band: band, Foreign: RangeBandBounds.FamiliesOf(band).Where(used => used != family).ToList()))
+            .Where(check => check.Foreign.Count > 0)
+            .Select(check => BandViolation(
+                check.Band,
+                $"{Describe(snapshot, check.Band)} sets {string.Join(" and ", check.Foreign)} bounds, but the version's range data type is {family}."));
     }
 }

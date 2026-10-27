@@ -46,26 +46,6 @@ internal static class ContractAllowList
             "dematerializeDatasetField",
             "refreshDatasetFieldMaterialization"
         ],
-        ["dimensions"] =
-        [
-            "listDimensions",
-            "createDimension",
-            "listAvailableDimensionProfiles",
-            "defineSystemDimension",
-            "getDimension",
-            "deleteDimension",
-            "checkDimensionDelete",
-            "previewDimensionChanges",
-            "commitDimensionChanges",
-            "getDimensionVersion",
-            "deleteDimensionVersion",
-            "checkDimensionVersion",
-            "freezeDimensionVersion",
-            "checkDimensionVersionDelete",
-            "checkDimensionMemberDelete",
-            "checkDimensionLevelDelete",
-            "checkDimensionRoleDelete"
-        ],
         ["mappings"] =
         [
             "listMappingSets",
@@ -243,43 +223,6 @@ internal static class ContractAllowList
         ["Lookups"] =
         [
             "GET /api/tenants/{tenantId}/lookups/{kind}"
-        ],
-        ["DimensionLevels"] =
-        [
-            "GET /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels",
-            "POST /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels",
-            "PUT /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}",
-            "DELETE /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/levels/{dimensionLevelId}"
-        ],
-        ["DimensionMembers"] =
-        [
-            "GET /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members",
-            "POST /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members",
-            "PUT /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}",
-            "DELETE /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/{dimensionMemberId}",
-            "PUT /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/members/order"
-        ],
-        ["DimensionRoles"] =
-        [
-            "GET /api/tenants/{tenantId}/dimensions/{dimensionId}/roles",
-            "POST /api/tenants/{tenantId}/dimensions/{dimensionId}/roles",
-            "PUT /api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{dimensionRoleId}",
-            "DELETE /api/tenants/{tenantId}/dimensions/{dimensionId}/roles/{dimensionRoleId}"
-        ],
-        ["Dimensions"] =
-        [
-            "PUT /api/tenants/{tenantId}/dimensions/{dimensionId}"
-        ],
-        ["DimensionVersions"] =
-        [
-            "GET /api/tenants/{tenantId}/dimensions/{dimensionId}/versions",
-            "POST /api/tenants/{tenantId}/dimensions/{dimensionId}/versions",
-            "PUT /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}"
-        ],
-        ["RangeBands"] =
-        [
-            "GET /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/range-bands",
-            "PUT /api/tenants/{tenantId}/dimension-versions/{dimensionVersionId}/range-bands"
         ],
         ["Datasets"] =
         [

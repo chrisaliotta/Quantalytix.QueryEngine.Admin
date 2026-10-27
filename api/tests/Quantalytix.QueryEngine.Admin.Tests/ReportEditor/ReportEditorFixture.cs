@@ -437,43 +437,12 @@ internal sealed class ReportEditorFixture
         return new VersionWorkflow(stores, [], [], handlers, new PublicationSet(), Revision(), _time);
     }
 
-    /// <summary>The dimension service, which creates and removes report dimensions.</summary>
-    private DimensionService DimensionService()
+    /// <summary>The dimensions module's hook that creates and removes report dimensions.</summary>
+    private ReportDimensions DimensionService()
     {
         var bands = new InMemoryTableGateway<RangeBandRecord>();
-        var versions = new DimensionVersionService(
-            DimensionVersions,
-            new DimensionVersionCloner(Levels, Members, bands, _ids),
-            new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands),
-            _ids,
-            _time);
-        var checks = Checks(bands);
-        var members = new DimensionMemberService(Members, checks, new ClosureBuilder(Members, Closure), _ids);
-        return new DimensionService(
-            Dimensions,
-            DimensionVersions,
-            Roles,
-            versions,
-            new DimensionRoleService(Roles, checks, Revision(), _ids),
-            members,
-            new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands),
-            checks,
-            Revision(),
-            _ids);
-    }
-
-    /// <summary>The delete checks over these tables, whose live consumers are read through an empty publication set.</summary>
-    private DimensionDeleteChecks Checks(InMemoryTableGateway<RangeBandRecord> bands)
-    {
-        var datasetVersions = new InMemoryTableGateway<DatasetVersionRecord>();
-        var mappingSets = new InMemoryTableGateway<MappingSetRecord>();
-        var names = new BindingNames(Roles, Fields);
-        var consumers = new DimensionConsumers(
-            Datasets, datasetVersions, Bindings, Roles, mappingSets, new InMemoryTableGateway<MappingVersionRecord>(), new InMemoryTableGateway<DimensionMappingRecord>(),
-            Bridges, BridgeVersions, BridgeMappings, Reports, CalculationDimensions, names);
-        return new DimensionDeleteChecks(
-            DimensionVersions, Members, bands, Roles, mappingSets, Bridges, Bindings, Datasets, datasetVersions, Reports, CalculationDimensions, Sources, Scenarios,
-            new ReportNames(Reports), consumers);
+        var drafts = new DimensionDrafts(DimensionVersions, new DimensionVersionCloner(Levels, Members, bands, _ids), _ids, _time);
+        return new ReportDimensions(Dimensions, Roles, Members, drafts, new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands), _ids);
     }
 
     /// <summary>The bridge version service.</summary>
