@@ -1,15 +1,17 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { unwrap } from '@/lib/api/contract'
+import { apiMode, tenantHttp } from '@/lib/api/session'
 import { DIMENSION_COMMANDS, DIMENSION_EDITS, type DimensionDeleteTarget, type DefinitionOrigin, type DimensionsApi } from './contract'
+import { createHttpDimensionsApi } from './http/adapter'
 import { createMockDimensionsApi } from './mock/adapter'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 
 const ApiContext = createContext<DimensionsApi | null>(null)
 
-/** Supplies the adapter. Swap `createMockDimensionsApi` for an HTTP adapter without touching any screen. */
+/** Supplies the adapter: an explicit `api`, else the HTTP adapter in http mode, else the in-memory mock. */
 export function DimensionsApiProvider({ children, api }: { children: ReactNode; api?: DimensionsApi }) {
-  const [instance] = useState(() => api ?? createMockDimensionsApi())
+  const [instance] = useState(() => api ?? (apiMode === 'http' ? createHttpDimensionsApi(tenantHttp) : createMockDimensionsApi()))
   return <ApiContext.Provider value={instance}>{children}</ApiContext.Provider>
 }
 
