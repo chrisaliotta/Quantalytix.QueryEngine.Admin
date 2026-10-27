@@ -1,599 +1,511 @@
-import type { DimensionsApi } from '@/lib/dimensions/contract'
+import { createSnapshotChangeSet } from '@/lib/api/changes'
 import {
   allowedModes,
+  ALLOCATION_LABEL,
   canHaveBridges,
   canHaveMappingSets,
+  CARDINALITY_LABEL,
+  isEditableStatus,
+  liveVersionOf,
   type ApiResult,
-  type AssumptionPin,
   type Bridge,
   type BridgeListItem,
   type BridgeMapping,
-  type BridgeMappingInput,
   type BridgeVersion,
+  type BridgeVersionContent,
   type BridgeVersionSummary,
   type DeleteCheck,
-  type DimensionRef,
-  type EntryInput,
+  type MappingAssumptionPin,
+  type MappingDimensionRef,
   type MappingEntry,
   type MappingSetListItem,
   type MappingsApi,
+  type MappingsDirectory,
   type MappingVersion,
+  type MappingVersionContent,
   type MappingVersionSummary,
-  type MemberRef,
-  type ProblemDetails,
+  type Problem,
   type ValidationReport,
   type Violation,
 } from '../contract'
-import { allocationSummary, allocationIssueCount, bridgeViolations, indexMembers, mappingSetViolations, sumsToOne } from '../rules'
+import { indexMembers } from '../rules'
 import { createSeed, type Db } from './data'
+import { bridgeAllocation, bridgeViolations, mappingCoverage, mappingSetViolations } from './rules'
 
-const KEY_RE = /^[a-z][a-z0-9_.]*$/
+const KEY_RE = /^[A-Za-z][A-Za-z0-9_.]*$/
 const now = () => new Date().toISOString()
-const today = () => now().slice(0, 10)
 const delay = () => new Promise((r) => setTimeout(r, 120))
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
-
-const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data })
-function fail<T>(status: number, title: string, detail?: string, errors: Record<string, string[]> = {}): ApiResult<T> {
-  const problem: ProblemDetails = { status, title, detail, errors }
-  return { ok: false, problem }
-}
-const notFound = <T,>(what: string) => fail<T>(404, `${what} not found`)
 const clone = <T,>(v: T): T => structuredClone(v)
 
-export function createMockMappingsApi(dims: DimensionsApi, seed: Db = createSeed()): MappingsApi {
-  const db = seed
+const PROBLEM_TYPE: Record<Problem['status'], string> = {
+  400: 'urn:qe:problem:invalid-input',
+  401: 'urn:qe:problem:unauthorized',
+  403: 'urn:qe:problem:forbidden',
+  404: 'urn:qe:problem:not-found',
+  409: 'urn:qe:problem:conflict',
+  422: 'urn:qe:problem:rules-violated',
+  500: 'urn:qe:problem:internal',
+}
+const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data })
+function fail<T>(status: Problem['status'], title: string, more: Partial<Pick<Problem, 'detail' | 'errors' | 'violations'>> = {}): ApiResult<T> {
+  return { ok: false, problem: { type: PROBLEM_TYPE[status], title, status, errors: {}, ...more } }
+}
+const notFound = <T,>(what: string) => fail<T>(404, `${what} not found`)
+const invalid = <T,>(errors: Record<string, string[]>) => fail<T>(400, 'Check the highlighted fields', { errors })
+const frozen = <T,>() => fail<T>(409, 'Version is frozen', { detail: 'Frozen versions are read-only. Edit the live version instead.' })
+const blocked = <T,>(title: string, check: DeleteCheck) => fail<T>(409, title, { detail: check.message!, violations: check.reasons })
 
-  /* ───────────── dimension resolution (through the dimensions port) ───────────── */
+const deleteCheck = (message: string, reasons: Violation[]): DeleteCheck => (reasons.length ? { allowed: false, message, reasons } : { allowed: true, message: null, reasons: [] })
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-  async function dimensionRefs(): Promise<DimensionRef[]> {
-    return (await dims.listAllDimensions()).map((d) => {
-      const pub = d.versions.find((v) => v.status === 'published')
-      return { id: d.id, key: d.key, displayName: d.displayName, kind: d.kind, purpose: d.purpose, publishedVersionId: pub?.id ?? null, publishedVersionNumber: pub?.versionNumber ?? null }
-    })
-  }
+type LivingVersion = MappingVersion | BridgeVersion
+const nextNumber = (versions: LivingVersion[]) => Math.max(...versions.map((v) => v.versionNumber)) + 1
 
-  async function refOf(id: string): Promise<DimensionRef | null> {
-    return (await dimensionRefs()).find((d) => d.id === id) ?? null
-  }
+export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = createSeed()): MappingsApi {
+  let db = seed
+  const changes = createSnapshotChangeSet(
+    () => db,
+    (snapshot) => {
+      db = snapshot
+    },
+  )
+  /** Live versions edited in the open change set; the commit refuses while any of them breaks a rule (B11). */
+  const touched = new Set<string>()
 
-  async function publishedMembers(dimensionId: string): Promise<MemberRef[] | null> {
-    const ref = await refOf(dimensionId)
-    if (!ref?.publishedVersionId) return null
-    const r = await dims.getVersion(ref.publishedVersionId)
-    if (!r.ok) return null
-    const keyById = new Map(r.data.members.map((m) => [m.id, m.key]))
-    return [...r.data.members]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((m) => ({ key: m.key, displayName: m.displayName, parentKey: m.parentId ? (keyById.get(m.parentId) ?? null) : null, isAssignable: m.isAssignable }))
-  }
+  /* ───────────── lookups ───────────── */
 
-  /* ───────────── helpers ───────────── */
+  const setOf = (v: MappingVersion) => db.mappingSets.find((s) => s.id === v.mappingSetId)!
+  const bridgeOf = (v: BridgeVersion) => db.bridges.find((b) => b.id === v.bridgeId)!
+  const mappingVersion = (id: string) => db.mappingVersions.find((v) => v.id === id)
+  const bridgeVersion = (id: string) => db.bridgeVersions.find((v) => v.id === id)
+  const nameOf = (refs: MappingDimensionRef[], id: string) => refs.find((d) => d.id === id)!.displayName
 
-  const pinsFor = (objectId: string): AssumptionPin[] =>
+  const pinsFor = (objectId: string): MappingAssumptionPin[] =>
     db.assumptionSets.flatMap((a) => {
-      const vid = a.pins[objectId]
-      if (!vid) return []
-      const v = db.mappingVersions.find((x) => x.id === vid) ?? db.bridgeVersions.find((x) => x.id === vid)
-      return v ? [{ assumptionSetKey: a.key, assumptionSetName: a.name, isActive: a.isActive, versionId: vid, versionNumber: v.versionNumber }] : []
+      const versionId = a.pins[objectId]
+      if (!versionId) return []
+      const v = mappingVersion(versionId) ?? bridgeVersion(versionId)!
+      return [{ assumptionSetId: a.id, assumptionSetKey: a.key, assumptionSetDisplayName: a.displayName, isActive: a.isActive, versionId, versionNumber: v.versionNumber }]
     })
 
-  const historicalPinsOn = (versionId: string) => db.assumptionSets.filter((a) => !a.isActive && Object.values(a.pins).includes(versionId))
-
-  const msVersionSummary = (v: MappingVersion): MappingVersionSummary => ({
+  const mappingSummary = (v: MappingVersion): MappingVersionSummary => ({
     id: v.id,
     versionNumber: v.versionNumber,
     status: v.status,
+    createdAt: v.createdAt,
     publishedAt: v.publishedAt,
     retiredAt: v.retiredAt,
+    freezeNote: v.freezeNote,
     entryCount: db.entries.filter((e) => e.versionId === v.id).length,
   })
 
-  const brVersionSummary = (v: BridgeVersion): BridgeVersionSummary => ({
+  const bridgeSummary = (v: BridgeVersion): BridgeVersionSummary => ({
     id: v.id,
     versionNumber: v.versionNumber,
     status: v.status,
     cardinality: v.cardinality,
     allocationMode: v.allocationMode,
+    createdAt: v.createdAt,
     publishedAt: v.publishedAt,
     retiredAt: v.retiredAt,
+    freezeNote: v.freezeNote,
     mappingCount: db.bridgeMappings.filter((m) => m.versionId === v.id).length,
   })
 
-  async function setListItem(setId: string, refs?: DimensionRef[]): Promise<MappingSetListItem | null> {
-    const s = db.mappingSets.find((x) => x.id === setId)
-    if (!s) return null
-    const all = refs ?? (await dimensionRefs())
-    const dimension = all.find((d) => d.id === s.dimensionId)
-    if (!dimension) return null
-    const versions = db.mappingVersions.filter((v) => v.mappingSetId === s.id).map(msVersionSummary)
-    const pub = versions.find((v) => v.status === 'published')
-    return { ...clone(s), dimension, versions, publishedEntryCount: pub?.entryCount ?? null, bindings: clone(db.bindings[s.id] ?? []) }
+  function setListItem(setId: string, refs: MappingDimensionRef[]): MappingSetListItem {
+    const s = db.mappingSets.find((x) => x.id === setId)!
+    const versions = db.mappingVersions.filter((v) => v.mappingSetId === s.id).map(mappingSummary)
+    return { ...clone(s), dimension: refs.find((d) => d.id === s.dimensionId)!, versions, publishedEntryCount: liveVersionOf(versions).entryCount, bindings: clone(db.bindings[s.id]) }
   }
 
-  async function bridgeListItem(bridgeId: string, refs?: DimensionRef[]): Promise<BridgeListItem | null> {
-    const b = db.bridges.find((x) => x.id === bridgeId)
-    if (!b) return null
-    const all = refs ?? (await dimensionRefs())
-    const source = all.find((d) => d.id === b.sourceDimensionId)
-    const target = all.find((d) => d.id === b.targetDimensionId)
-    if (!source || !target) return null
-    const versions = db.bridgeVersions.filter((v) => v.bridgeId === b.id).map(brVersionSummary)
-    const pub = versions.find((v) => v.status === 'published')
-    return { ...clone(b), source, target, versions, publishedMappingCount: pub?.mappingCount ?? null, bindings: clone(db.bindings[b.id] ?? []) }
+  function bridgeListItem(bridgeId: string, refs: MappingDimensionRef[]): BridgeListItem {
+    const b = db.bridges.find((x) => x.id === bridgeId)!
+    const versions = db.bridgeVersions.filter((v) => v.bridgeId === b.id).map(bridgeSummary)
+    return {
+      ...clone(b),
+      source: refs.find((d) => d.id === b.sourceDimensionId)!,
+      target: refs.find((d) => d.id === b.targetDimensionId)!,
+      versions,
+      publishedMappingCount: liveVersionOf(versions).mappingCount,
+      bindings: clone(db.bindings[b.id]),
+    }
   }
 
-  const msVersion = (id: string) => db.mappingVersions.find((v) => v.id === id)
-  const brVersion = (id: string) => db.bridgeVersions.find((v) => v.id === id)
-  const bridgeOf = (v: BridgeVersion) => db.bridges.find((b) => b.id === v.bridgeId)!
-
-  function reportBridgeBlock<T>(b: Bridge): ApiResult<T> | null {
-    if (!b.owner) return null
-    return fail(409, 'Report bridges are edited in their report', `${b.displayName} is owned by ${b.owner.reportKey} and changes as you map rows on its Rows page.`)
+  async function mappingContent(v: MappingVersion): Promise<MappingVersionContent> {
+    const set = setOf(v)
+    const [refs, members] = await Promise.all([directory.listDimensionRefs(), directory.getPublishedMembers(set.dimensionId)])
+    const entries = clone(db.entries.filter((e) => e.versionId === v.id))
+    return { version: clone(v), entries, coverage: mappingCoverage(entries, members), violations: mappingSetViolations(entries, indexMembers(members), nameOf(refs, set.dimensionId)) }
   }
 
-  function versionEditBlock<T>(status: string): ApiResult<T> | null {
-    if (status === 'validated') return fail(409, 'Version is validated', 'Return it to draft to make changes.')
-    if (status === 'retired') return fail(409, 'Version is retired', 'Retired versions are read-only. Create a new draft instead.')
-    return null
-  }
-
-  async function msReport(versionId: string): Promise<ApiResult<ValidationReport>> {
-    const v = msVersion(versionId)
-    if (!v) return notFound('Mapping version')
-    const set = db.mappingSets.find((s) => s.id === v.mappingSetId)!
-    const ref = await refOf(set.dimensionId)
-    const members = indexMembers(await publishedMembers(set.dimensionId))
-    const entries = db.entries.filter((e) => e.versionId === v.id)
-    return ok({ versionId, checkedAt: now(), violations: mappingSetViolations(entries, members, ref?.displayName ?? set.dimensionId) })
-  }
-
-  async function brReport(versionId: string): Promise<ApiResult<ValidationReport>> {
-    const v = brVersion(versionId)
-    if (!v) return notFound('Bridge version')
+  async function bridgeContent(v: BridgeVersion): Promise<BridgeVersionContent> {
     const b = bridgeOf(v)
-    const [src, tgt, srcMembers, tgtMembers] = await Promise.all([refOf(b.sourceDimensionId), refOf(b.targetDimensionId), publishedMembers(b.sourceDimensionId), publishedMembers(b.targetDimensionId)])
-    const mappings = db.bridgeMappings.filter((m) => m.versionId === v.id)
-    const violations: Violation[] = bridgeViolations(
+    const [refs, source, target] = await Promise.all([directory.listDimensionRefs(), directory.getPublishedMembers(b.sourceDimensionId), directory.getPublishedMembers(b.targetDimensionId)])
+    const mappings = clone(db.bridgeMappings.filter((m) => m.versionId === v.id))
+    const violations = bridgeViolations(
       v.cardinality,
       v.allocationMode,
       mappings,
-      { name: src?.displayName ?? 'Source', members: indexMembers(srcMembers) },
-      { name: tgt?.displayName ?? 'Target', members: indexMembers(tgtMembers) },
+      { name: nameOf(refs, b.sourceDimensionId), members: indexMembers(source) },
+      { name: nameOf(refs, b.targetDimensionId), members: indexMembers(target) },
+      b.owner !== null,
     )
-    return ok({ versionId, checkedAt: now(), violations })
+    return { version: clone(v), mappings, allocation: bridgeAllocation(mappings), violations }
   }
 
-  /** Publishes a version: retires the previous live one and repoints the active assumption set. */
-  function promote<V extends { id: string; status: string; publishedAt: string | null; retiredAt: string | null }>(v: V, siblings: V[], objectId: string) {
-    for (const s of siblings) {
-      if (s.status === 'published') {
-        s.status = 'retired'
-        s.retiredAt = today()
-      }
-    }
-    v.status = 'published'
-    v.publishedAt = today()
-    const active = db.assumptionSets.find((a) => a.isActive)
-    if (active) active.pins[objectId] = v.id
+  const reportOf = (versionId: string, violations: Violation[]): ValidationReport => ({ versionId, checkedAt: now(), violations })
+
+  function ownedByReport<T>(b: Bridge): ApiResult<T> | null {
+    return b.owner ? fail(409, 'Owned by a report', { detail: `${b.displayName} is owned by ${b.owner.reportKey} and changes as you map rows on its Rows page.` }) : null
   }
 
-  function checkEntry(versionId: string, input: EntryInput, members: ReturnType<typeof indexMembers>): Record<string, string[]> {
-    const errors: Record<string, string[]> = {}
-    if (input.sourceKeyValue === '') errors.sourceKeyValue = ['Source key is required.']
-    const clash = db.entries.find((e) => e.versionId === versionId && e.sourceKeyValue === input.sourceKeyValue && e.id !== input.id)
-    if (clash) errors.sourceKeyValue = [`'${input.sourceKeyValue}' already maps to ${clash.memberKey}.`]
-    if (!input.memberKey) errors.memberKey = ['Choose a member.']
-    else if (members) {
-      const m = members.get(input.memberKey)
-      if (!m) errors.memberKey = [`${input.memberKey} is not a member of the published version.`]
-      else if (!m.isAssignable) errors.memberKey = [`${m.displayName} is a folder and cannot receive source values.`]
-    }
-    return errors
+  /* ───────────── living lifecycle, shared by both kinds ───────────── */
+
+  const historicalPinsOn = (versionId: string) => db.assumptionSets.filter((a) => !a.isActive && Object.values(a.pins).includes(versionId))
+
+  /** Freezes `v` and continues in a live clone: retires n, inserts n+1 published, repoints the active set. */
+  function freeze<V extends LivingVersion>(v: V, store: V[], objectId: string, nextNumber: number, note: string | null): V {
+    const t = now()
+    const next: V = { ...clone(v), id: uid('ver'), versionNumber: nextNumber, status: 'published', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
+    Object.assign(v, { status: 'retired', retiredAt: t, freezeNote: note })
+    store.push(next)
+    db.assumptionSets.find((a) => a.isActive)!.pins[objectId] = next.id
+    return next
   }
 
-  async function bridgeMembers(b: Bridge) {
-    const [s, t] = await Promise.all([publishedMembers(b.sourceDimensionId), publishedMembers(b.targetDimensionId)])
-    return { src: indexMembers(s), tgt: indexMembers(t) }
+  function versionDeleteCheck(v: LivingVersion): DeleteCheck {
+    const reasons: Violation[] = historicalPinsOn(v.id).map((a) => ({ code: 'pinned_by_assumption_set', message: `Pinned by the ${a.displayName} assumption set.` }))
+    if (v.status === 'published') reasons.unshift({ code: 'version_live', message: `v${v.versionNumber} is the live version; only frozen versions can be deleted.` })
+    return deleteCheck(`v${v.versionNumber} cannot be deleted.`, reasons)
   }
 
-  function checkBridgeMapping(versionId: string, input: BridgeMappingInput, src: ReturnType<typeof indexMembers>, tgt: ReturnType<typeof indexMembers>, mode: string) {
-    const errors: Record<string, string[]> = {}
-    if (!input.sourceMemberKey) errors.sourceMemberKey = ['Choose a source member.']
-    else if (src && !src.has(input.sourceMemberKey)) errors.sourceMemberKey = [`${input.sourceMemberKey} is not in the published source version.`]
-    if (!input.targetMemberKey) errors.targetMemberKey = ['Choose a target member.']
-    else if (tgt && !tgt.has(input.targetMemberKey)) errors.targetMemberKey = [`${input.targetMemberKey} is not in the published target version.`]
-    if (!Number.isFinite(input.factor)) errors.factor = ['Factor must be a number.']
-    if (!Number.isFinite(input.allocationWeight)) errors.allocationWeight = ['Weight must be a number.']
-    else if (input.allocationWeight < 0) errors.allocationWeight = ['Weight cannot be negative.']
-    else if (mode === 'none' && !sumsToOne(input.allocationWeight)) errors.allocationWeight = ['Allocation none requires a weight of exactly 1.']
-    const clash = db.bridgeMappings.find((m) => m.versionId === versionId && m.id !== input.id && m.sourceMemberKey === input.sourceMemberKey && m.targetMemberKey === input.targetMemberKey)
-    if (clash) errors.targetMemberKey = [`${input.sourceMemberKey} → ${input.targetMemberKey} already exists.`]
-    return errors
+  function identityDeleteCheck(objectId: string, label: string): DeleteCheck {
+    const reasons: Violation[] = [
+      ...db.bindings[objectId].map((b) => ({ code: 'bound_by_dataset', message: `${b.datasetKey} v${b.datasetVersionNumber} binds ${b.fieldKey} → ${b.roleKey}` })),
+      ...db.assumptionSets.filter((a) => !a.isActive && a.pins[objectId]).map((a) => ({ code: 'pinned_by_assumption_set', message: `Pinned by the ${a.displayName} assumption set` })),
+    ]
+    return deleteCheck(`This ${label} is in use (${plural(reasons.length, 'reference')}). Remove them first.`, reasons)
+  }
+
+  function bridgeDeleteCheck(id: string): DeleteCheck {
+    const { owner } = db.bridges.find((x) => x.id === id)!
+    if (owner) return deleteCheck(`Owned by ${owner.reportKey}.`, [{ code: 'owned_by_report', message: `Remove source ${owner.sourceKey} from ${owner.reportKey} to delete its bridge.` }])
+    return identityDeleteCheck(id, 'bridge')
+  }
+
+  function removeObject(objectId: string) {
+    for (const a of db.assumptionSets) delete a.pins[objectId]
+    delete db.bindings[objectId]
+  }
+
+  async function touchedViolations() {
+    const found = await Promise.all(
+      [...touched].map(async (id) => {
+        const mv = mappingVersion(id)
+        return mv ? (await mappingContent(mv)).violations : (await bridgeContent(bridgeVersion(id)!)).violations
+      }),
+    )
+    return found.flat()
   }
 
   /* ───────────── the port ───────────── */
 
   return {
-    async listDimensionRefs() {
-      await delay()
-      return dimensionRefs()
+    ...changes,
+    async commitChanges() {
+      const violations = await touchedViolations()
+      if (violations.length) return fail(422, 'Fix the flagged rows before saving', { detail: `${plural(violations.length, 'rule violation')} remain on the live version.`, violations })
+      touched.clear()
+      return changes.commitChanges()
     },
-    async getPublishedMembers(dimensionId) {
-      await delay()
-      return publishedMembers(dimensionId)
+    async discardChanges() {
+      touched.clear()
+      return changes.discardChanges()
     },
 
-    /* mapping sets */
+    /* mapping set reads */
 
     async listMappingSets(filter) {
       await delay()
-      const refs = await dimensionRefs()
-      const items = await Promise.all(db.mappingSets.filter((s) => !filter?.dimensionId || s.dimensionId === filter.dimensionId).map((s) => setListItem(s.id, refs)))
-      return items.filter((x): x is MappingSetListItem => !!x).sort((a, b) => a.key.localeCompare(b.key))
+      const refs = await directory.listDimensionRefs()
+      return db.mappingSets
+        .filter((s) => !filter?.dimensionId || s.dimensionId === filter.dimensionId)
+        .map((s) => setListItem(s.id, refs))
+        .sort((a, b) => a.key.localeCompare(b.key))
     },
     async getMappingSet(id) {
       await delay()
-      const item = await setListItem(id)
-      return item ? ok({ ...item, pins: pinsFor(id) }) : notFound('Mapping set')
+      if (!db.mappingSets.some((s) => s.id === id)) return notFound('Mapping set')
+      return ok({ ...setListItem(id, await directory.listDimensionRefs()), pins: pinsFor(id) })
     },
     async getMappingVersion(versionId) {
       await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      return ok({ version: clone(v), entries: clone(db.entries.filter((e) => e.versionId === v.id)) })
+      const v = mappingVersion(versionId)
+      return v ? ok(await mappingContent(v)) : notFound('Mapping version')
     },
-    async createMappingSet(input) {
+    async checkMappingVersion(versionId) {
       await delay()
-      const errors: Record<string, string[]> = {}
-      if (!KEY_RE.test(input.key)) errors.key = ['Use lowercase letters, digits, dots or underscores, starting with a letter.']
-      else if (db.mappingSets.some((s) => s.key === input.key)) errors.key = [`Mapping set '${input.key}' already exists.`]
-      if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
-      if (!input.sourceNamespace.trim()) errors.sourceNamespace = ['Source namespace is required.']
-      const ref = await refOf(input.dimensionId)
-      if (!ref) errors.dimensionId = ['Dimension not found.']
-      else if (!canHaveMappingSets(ref)) errors.dimensionId = [`${ref.displayName} cannot receive mapping sets; only analytical categorical or hierarchical dimensions can.`]
-      if (Object.keys(errors).length) return fail(422, 'Check the highlighted fields', undefined, errors)
-      const id = uid('ms')
-      const vid = `${id}-v1`
-      db.mappingSets.push({ id, key: input.key, displayName: input.displayName.trim(), sourceNamespace: input.sourceNamespace.trim(), dimensionId: input.dimensionId })
-      db.mappingVersions.push({ id: vid, mappingSetId: id, versionNumber: 1, status: 'draft', createdAt: today(), publishedAt: null, retiredAt: null })
-      db.bindings[id] = []
-      return ok({ mappingSetId: id, versionId: vid })
+      return ok(reportOf(versionId, (await mappingContent(mappingVersion(versionId)!)).violations))
     },
+    async checkDeleteMappingSet(id) {
+      await delay()
+      return identityDeleteCheck(id, 'mapping set')
+    },
+    async checkDeleteMappingVersion(versionId) {
+      await delay()
+      return versionDeleteCheck(mappingVersion(versionId)!)
+    },
+
+    /* mapping set edits */
+
     async updateMappingSet(id, patch) {
       await delay()
-      const s = db.mappingSets.find((x) => x.id === id)
-      if (!s) return notFound('Mapping set')
-      if (patch.displayName !== undefined && !patch.displayName.trim()) return fail(422, 'Check the highlighted fields', undefined, { displayName: ['Display name is required.'] })
-      if (patch.sourceNamespace !== undefined && !patch.sourceNamespace.trim()) return fail(422, 'Check the highlighted fields', undefined, { sourceNamespace: ['Source namespace is required.'] })
-      Object.assign(s, { ...patch, displayName: patch.displayName?.trim() ?? s.displayName, sourceNamespace: patch.sourceNamespace?.trim() ?? s.sourceNamespace })
+      const errors: Record<string, string[]> = {}
+      if (patch.displayName !== undefined && !patch.displayName.trim()) errors.displayName = ['Display name is required.']
+      if (patch.sourceNamespace !== undefined && !patch.sourceNamespace.trim()) errors.sourceNamespace = ['Source namespace is required.']
+      if (Object.keys(errors).length) return invalid(errors)
+      const s = db.mappingSets.find((x) => x.id === id)!
+      Object.assign(s, { displayName: patch.displayName?.trim() ?? s.displayName, sourceNamespace: patch.sourceNamespace?.trim() ?? s.sourceNamespace })
+      touched.add(liveVersionOf(db.mappingVersions.filter((v) => v.mappingSetId === id)).id)
       return ok(clone(s))
-    },
-    async checkDeleteMappingSet(id): Promise<DeleteCheck> {
-      await delay()
-      const reasons = [
-        ...(db.bindings[id] ?? []).map((b) => `${b.datasetKey} v${b.datasetVersion} binds ${b.fieldKey} → ${b.roleKey}`),
-        ...db.assumptionSets.filter((a) => !a.isActive && a.pins[id]).map((a) => `Pinned by the ${a.name} assumption set`),
-      ]
-      return reasons.length ? { allowed: false, message: `This mapping set is in use (${reasons.length} reference${reasons.length === 1 ? '' : 's'}). Remove them first.`, reasons } : { allowed: true, message: null, reasons: [] }
-    },
-    async deleteMappingSet(id) {
-      const check = await this.checkDeleteMappingSet(id)
-      if (!check.allowed) return fail(409, 'Mapping set is in use', check.message ?? undefined)
-      const versionIds = new Set(db.mappingVersions.filter((v) => v.mappingSetId === id).map((v) => v.id))
-      db.entries = db.entries.filter((e) => !versionIds.has(e.versionId))
-      db.mappingVersions = db.mappingVersions.filter((v) => !versionIds.has(v.id))
-      db.mappingSets = db.mappingSets.filter((s) => s.id !== id)
-      for (const a of db.assumptionSets) delete a.pins[id]
-      delete db.bindings[id]
-      return ok(null)
-    },
-    async createMappingVersion(setId, input) {
-      await delay()
-      const versions = db.mappingVersions.filter((v) => v.mappingSetId === setId)
-      if (!versions.length && !db.mappingSets.some((s) => s.id === setId)) return notFound('Mapping set')
-      const open = versions.find((v) => v.status === 'draft' || v.status === 'validated')
-      if (open) return fail(409, 'A draft already exists', `Only one draft may exist at a time; v${open.versionNumber} is still open.`)
-      const n = Math.max(0, ...versions.map((v) => v.versionNumber)) + 1
-      const v: MappingVersion = { id: `${setId}-v${n}-${uid('x').slice(2)}`, mappingSetId: setId, versionNumber: n, status: 'draft', createdAt: today(), publishedAt: null, retiredAt: null }
-      db.mappingVersions.push(v)
-      if (input.mode === 'clone') {
-        for (const e of db.entries.filter((x) => x.versionId === input.fromVersionId)) db.entries.push({ ...e, id: uid('e'), versionId: v.id })
-      }
-      return ok(msVersionSummary(v))
-    },
-    checkMappingVersion: msReport,
-    async validateMappingVersion(versionId) {
-      await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      if (v.status !== 'draft') return fail(409, 'Only drafts can be validated')
-      const r = await msReport(versionId)
-      if (r.ok && !r.data.violations.length) v.status = 'validated'
-      return r
-    },
-    async publishMappingVersion(versionId) {
-      await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      if (v.status !== 'draft' && v.status !== 'validated') return fail(409, 'Only drafts or validated versions can be published')
-      const r = await msReport(versionId)
-      if (r.ok && !r.data.violations.length) promote(v, db.mappingVersions.filter((x) => x.mappingSetId === v.mappingSetId && x.id !== v.id), v.mappingSetId)
-      return r
-    },
-    async reopenMappingVersion(versionId) {
-      await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      if (v.status !== 'validated') return fail(409, 'Only validated versions can return to draft')
-      v.status = 'draft'
-      return ok(clone(v))
-    },
-    async deleteMappingVersion(versionId) {
-      await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      if (v.status !== 'draft' && v.status !== 'validated') return fail(409, 'Only drafts can be deleted', 'Published and retired versions are kept for history.')
-      db.entries = db.entries.filter((e) => e.versionId !== versionId)
-      db.mappingVersions = db.mappingVersions.filter((x) => x.id !== versionId)
-      return ok(null)
     },
     async saveEntry(versionId, input) {
       await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      const blocked = versionEditBlock<MappingEntry>(v.status)
-      if (blocked) return blocked
-      const set = db.mappingSets.find((s) => s.id === v.mappingSetId)!
-      const errors = checkEntry(versionId, input, indexMembers(await publishedMembers(set.dimensionId)))
-      if (Object.keys(errors).length) return fail(422, 'Check the highlighted fields', undefined, errors)
-      const existing = input.id ? db.entries.find((e) => e.id === input.id && e.versionId === versionId) : undefined
-      if (existing) {
-        existing.sourceKeyValue = input.sourceKeyValue
-        existing.memberKey = input.memberKey
-        return ok(clone(existing))
-      }
-      const entry: MappingEntry = { id: uid('e'), versionId, sourceKeyValue: input.sourceKeyValue, memberKey: input.memberKey }
-      db.entries.push(entry)
+      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      const errors: Record<string, string[]> = {}
+      if (input.sourceKeyValue === '') errors.sourceKeyValue = ['Source key is required.']
+      if (!input.memberKey) errors.memberKey = ['Choose a member.']
+      if (Object.keys(errors).length) return invalid(errors)
+      const entry: MappingEntry = { id: input.id, versionId, sourceKeyValue: input.sourceKeyValue, memberKey: input.memberKey }
+      db.entries = [...db.entries.filter((e) => e.id !== input.id), entry]
+      touched.add(versionId)
       return ok(clone(entry))
     },
     async deleteEntry(versionId, entryId) {
       await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      const blocked = versionEditBlock<null>(v.status)
-      if (blocked) return blocked
-      db.entries = db.entries.filter((e) => !(e.id === entryId && e.versionId === versionId))
+      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      db.entries = db.entries.filter((e) => e.id !== entryId)
+      touched.add(versionId)
       return ok(null)
     },
     async replaceEntries(versionId, entries) {
       await delay()
-      const v = msVersion(versionId)
-      if (!v) return notFound('Mapping version')
-      const blocked = versionEditBlock<MappingEntry[]>(v.status)
-      if (blocked) return blocked
-      const keys = new Set<string>()
-      for (const e of entries) {
-        if (keys.has(e.sourceKeyValue)) return fail(422, 'Duplicate source key', `'${e.sourceKeyValue}' appears more than once.`)
-        keys.add(e.sourceKeyValue)
-      }
-      if (v.status === 'published') {
-        const set = db.mappingSets.find((s) => s.id === v.mappingSetId)!
-        const members = indexMembers(await publishedMembers(set.dimensionId))
-        const bad = entries.find((e) => members && !members.get(e.memberKey)?.isAssignable)
-        if (bad) return fail(422, 'Live versions must stay valid', `${bad.memberKey} is not an assignable member.`)
-      }
-      db.entries = db.entries.filter((e) => e.versionId !== versionId)
-      const next = entries.map((e) => ({ id: e.id ?? uid('e'), versionId, sourceKeyValue: e.sourceKeyValue, memberKey: e.memberKey }))
-      db.entries.push(...next)
+      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      const next = entries.map((e) => ({ id: e.id, versionId, sourceKeyValue: e.sourceKeyValue, memberKey: e.memberKey }))
+      db.entries = [...db.entries.filter((e) => e.versionId !== versionId), ...next]
+      touched.add(versionId)
       return ok(clone(next))
     },
 
-    /* bridges */
+    /* mapping set commands */
+
+    async createMappingSet(input) {
+      await delay()
+      const errors: Record<string, string[]> = {}
+      if (!KEY_RE.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
+      if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
+      if (!input.sourceNamespace.trim()) errors.sourceNamespace = ['Source namespace is required.']
+      if (Object.keys(errors).length) return invalid(errors)
+      if (db.mappingSets.some((s) => s.key === input.key)) return fail(409, 'Key taken', { detail: `Mapping set '${input.key}' already exists.` })
+      const ref = (await directory.listDimensionRefs()).find((d) => d.id === input.dimensionId)!
+      if (!canHaveMappingSets(ref)) return fail(409, 'Dimension cannot receive mapping sets', { detail: `Only analytical categorical or hierarchical dimensions can; ${ref.displayName} cannot.` })
+      const id = uid('ms')
+      const t = now()
+      const v: MappingVersion = { id: uid('ver'), mappingSetId: id, versionNumber: 1, status: 'published', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
+      db.mappingSets.push({ id, key: input.key, displayName: input.displayName.trim(), sourceNamespace: input.sourceNamespace.trim(), dimensionId: input.dimensionId })
+      db.mappingVersions.push(v)
+      db.bindings[id] = []
+      db.assumptionSets.find((a) => a.isActive)!.pins[id] = v.id
+      return ok({ mappingSetId: id, versionId: v.id })
+    },
+    async deleteMappingSet(id) {
+      await delay()
+      const check = identityDeleteCheck(id, 'mapping set')
+      if (!check.allowed) return blocked('Mapping set is in use', check)
+      const versionIds = new Set(db.mappingVersions.filter((v) => v.mappingSetId === id).map((v) => v.id))
+      db.entries = db.entries.filter((e) => !versionIds.has(e.versionId))
+      db.mappingVersions = db.mappingVersions.filter((v) => !versionIds.has(v.id))
+      db.mappingSets = db.mappingSets.filter((s) => s.id !== id)
+      removeObject(id)
+      return ok(null)
+    },
+    async freezeMappingVersion(versionId, note) {
+      await delay()
+      const v = mappingVersion(versionId)!
+      if (!isEditableStatus(v.status)) return fail(409, 'Only the live version can be frozen')
+      const report = reportOf(versionId, (await mappingContent(v)).violations)
+      if (report.violations.length) return ok({ report, live: null })
+      const siblings = db.mappingVersions.filter((x) => x.mappingSetId === v.mappingSetId)
+      const next = freeze(v, db.mappingVersions, v.mappingSetId, nextNumber(siblings), note)
+      db.entries.push(...db.entries.filter((e) => e.versionId === v.id).map((e) => ({ ...e, id: uid('e'), versionId: next.id })))
+      return ok({ report, live: mappingSummary(next) })
+    },
+    async deleteMappingVersion(versionId) {
+      await delay()
+      const check = versionDeleteCheck(mappingVersion(versionId)!)
+      if (!check.allowed) return blocked('Version cannot be deleted', check)
+      db.entries = db.entries.filter((e) => e.versionId !== versionId)
+      db.mappingVersions = db.mappingVersions.filter((x) => x.id !== versionId)
+      return ok(null)
+    },
+
+    /* bridge reads */
 
     async listBridges(filter) {
       await delay()
-      const refs = await dimensionRefs()
-      const items = await Promise.all(
-        db.bridges.filter((b) => !filter?.dimensionId || b.sourceDimensionId === filter.dimensionId || b.targetDimensionId === filter.dimensionId).map((b) => bridgeListItem(b.id, refs)),
-      )
-      return items.filter((x): x is BridgeListItem => !!x).sort((a, b) => Number(!!a.owner) - Number(!!b.owner) || a.key.localeCompare(b.key))
+      const refs = await directory.listDimensionRefs()
+      return db.bridges
+        .filter((b) => !filter?.dimensionId || b.sourceDimensionId === filter.dimensionId || b.targetDimensionId === filter.dimensionId)
+        .map((b) => bridgeListItem(b.id, refs))
+        .sort((a, b) => Number(!!a.owner) - Number(!!b.owner) || a.key.localeCompare(b.key))
     },
     async getBridge(id) {
       await delay()
-      const item = await bridgeListItem(id)
-      return item ? ok({ ...item, pins: pinsFor(id) }) : notFound('Bridge')
+      if (!db.bridges.some((b) => b.id === id)) return notFound('Bridge')
+      return ok({ ...bridgeListItem(id, await directory.listDimensionRefs()), pins: pinsFor(id) })
     },
-    async findReportBridge(reportKey, sourceKey) {
+    async findReportBridge(reportId, sourceKey) {
       await delay()
-      const b = db.bridges.find((x) => x.owner?.reportKey === reportKey && x.owner.sourceKey === sourceKey)
-      return b ? bridgeListItem(b.id) : null
+      const b = db.bridges.find((x) => x.owner?.reportId === reportId && x.owner.sourceKey === sourceKey)
+      return b ? bridgeListItem(b.id, await directory.listDimensionRefs()) : null
     },
     async getBridgeVersion(versionId) {
       await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      return ok({ version: clone(v), mappings: clone(db.bridgeMappings.filter((m) => m.versionId === v.id)) })
+      const v = bridgeVersion(versionId)
+      return v ? ok(await bridgeContent(v)) : notFound('Bridge version')
     },
-    async createBridge(input) {
+    async checkBridgeVersion(versionId) {
       await delay()
-      const errors: Record<string, string[]> = {}
-      if (!KEY_RE.test(input.key)) errors.key = ['Use lowercase letters, digits, dots or underscores, starting with a letter.']
-      else if (db.bridges.some((b) => b.key === input.key)) errors.key = [`Bridge '${input.key}' already exists.`]
-      if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
-      const [src, tgt] = await Promise.all([refOf(input.sourceDimensionId), refOf(input.targetDimensionId)])
-      if (!src) errors.sourceDimensionId = ['Choose a source dimension.']
-      else if (!canHaveBridges(src)) errors.sourceDimensionId = ['Time dimensions cannot be bridged.']
-      else if (src.purpose === 'report') errors.sourceDimensionId = ['Report dimensions are bridge targets only, and only for report bridges.']
-      if (!tgt) errors.targetDimensionId = ['Choose a target dimension.']
-      else if (!canHaveBridges(tgt)) errors.targetDimensionId = ['Time dimensions cannot be bridged.']
-      else if (tgt.purpose === 'report') errors.targetDimensionId = ['Bridges to report dimensions are created by mapping rows in a report.']
-      if (src && tgt && src.id === tgt.id) errors.targetDimensionId = ['Source and target must be different dimensions.']
-      if (Object.keys(errors).length) return fail(422, 'Check the highlighted fields', undefined, errors)
-      const id = uid('bridge')
-      db.bridges.push({ id, key: input.key, displayName: input.displayName.trim(), sourceDimensionId: input.sourceDimensionId, targetDimensionId: input.targetDimensionId, isEnabled: input.isEnabled, owner: null })
-      db.bindings[id] = []
-      return ok({ bridgeId: id })
+      return ok(reportOf(versionId, (await bridgeContent(bridgeVersion(versionId)!)).violations))
     },
+    async checkDeleteBridge(id) {
+      await delay()
+      return bridgeDeleteCheck(id)
+    },
+    async checkDeleteBridgeVersion(versionId) {
+      await delay()
+      return versionDeleteCheck(bridgeVersion(versionId)!)
+    },
+
+    /* bridge edits */
+
     async updateBridge(id, patch) {
       await delay()
-      const b = db.bridges.find((x) => x.id === id)
-      if (!b) return notFound('Bridge')
-      const blocked = reportBridgeBlock<Bridge>(b)
-      if (blocked) return blocked
-      if (patch.displayName !== undefined && !patch.displayName.trim()) return fail(422, 'Check the highlighted fields', undefined, { displayName: ['Display name is required.'] })
+      const b = db.bridges.find((x) => x.id === id)!
+      const refused = ownedByReport<Bridge>(b)
+      if (refused) return refused
+      if (patch.displayName !== undefined && !patch.displayName.trim()) return invalid({ displayName: ['Display name is required.'] })
       Object.assign(b, { ...patch, displayName: patch.displayName?.trim() ?? b.displayName })
+      touched.add(liveVersionOf(db.bridgeVersions.filter((v) => v.bridgeId === id)).id)
       return ok(clone(b))
-    },
-    async checkDeleteBridge(id): Promise<DeleteCheck> {
-      await delay()
-      const b = db.bridges.find((x) => x.id === id)
-      if (b?.owner) return { allowed: false, message: `Owned by ${b.owner.reportKey}. Remove the source from that report to delete its bridge.`, reasons: [] }
-      const reasons = [
-        ...(db.bindings[id] ?? []).map((x) => `${x.datasetKey} v${x.datasetVersion} remaps ${x.sourceRoleKey ?? x.fieldKey} → ${x.roleKey}`),
-        ...db.assumptionSets.filter((a) => !a.isActive && a.pins[id]).map((a) => `Pinned by the ${a.name} assumption set`),
-      ]
-      return reasons.length ? { allowed: false, message: `This bridge is in use (${reasons.length} reference${reasons.length === 1 ? '' : 's'}). Remove them first.`, reasons } : { allowed: true, message: null, reasons: [] }
-    },
-    async deleteBridge(id) {
-      const check = await this.checkDeleteBridge(id)
-      if (!check.allowed) return fail(409, 'Bridge is in use', check.message ?? undefined)
-      const versionIds = new Set(db.bridgeVersions.filter((v) => v.bridgeId === id).map((v) => v.id))
-      db.bridgeMappings = db.bridgeMappings.filter((m) => !versionIds.has(m.versionId))
-      db.bridgeVersions = db.bridgeVersions.filter((v) => !versionIds.has(v.id))
-      db.bridges = db.bridges.filter((b) => b.id !== id)
-      for (const a of db.assumptionSets) delete a.pins[id]
-      delete db.bindings[id]
-      return ok(null)
-    },
-    async createBridgeVersion(bridgeId, input) {
-      await delay()
-      const b = db.bridges.find((x) => x.id === bridgeId)
-      if (!b) return notFound('Bridge')
-      const blocked = reportBridgeBlock<BridgeVersionSummary>(b)
-      if (blocked) return blocked
-      if (!allowedModes(input.cardinality).includes(input.allocationMode)) return fail(422, 'Invalid settings', `${input.cardinality} does not allow allocation ${input.allocationMode}.`)
-      const versions = db.bridgeVersions.filter((v) => v.bridgeId === bridgeId)
-      const open = versions.find((v) => v.status === 'draft' || v.status === 'validated')
-      if (open) return fail(409, 'A draft already exists', `Only one draft may exist at a time; v${open.versionNumber} is still open.`)
-      const n = Math.max(0, ...versions.map((v) => v.versionNumber)) + 1
-      const v: BridgeVersion = { id: `${bridgeId}-v${n}-${uid('x').slice(2)}`, bridgeId, versionNumber: n, status: 'draft', cardinality: input.cardinality, allocationMode: input.allocationMode, createdAt: today(), publishedAt: null, retiredAt: null }
-      db.bridgeVersions.push(v)
-      if (input.cloneFromVersionId) {
-        for (const m of db.bridgeMappings.filter((x) => x.versionId === input.cloneFromVersionId)) db.bridgeMappings.push({ ...m, id: uid('m'), versionId: v.id })
-      }
-      return ok(brVersionSummary(v))
     },
     async updateBridgeVersion(versionId, patch) {
       await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const blocked = reportBridgeBlock<BridgeVersion>(bridgeOf(v))
-      if (blocked) return blocked
-      if (v.status !== 'draft') return fail(409, 'Settings are fixed after validation', 'Cardinality and allocation can only change on a draft.')
-      if (!allowedModes(patch.cardinality).includes(patch.allocationMode)) return fail(422, 'Invalid settings', `${patch.cardinality} does not allow allocation ${patch.allocationMode}.`)
-      v.cardinality = patch.cardinality
-      v.allocationMode = patch.allocationMode
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<BridgeVersion>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeVersion>())
+      if (refused) return refused
+      if (!allowedModes(patch.cardinality).includes(patch.allocationMode))
+        return invalid({ allocationMode: [`${CARDINALITY_LABEL[patch.cardinality]} does not allow allocation ${ALLOCATION_LABEL[patch.allocationMode].toLowerCase()}.`] })
+      Object.assign(v, patch)
+      touched.add(versionId)
       return ok(clone(v))
-    },
-    checkBridgeVersion: brReport,
-    async validateBridgeVersion(versionId) {
-      await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      if (v.status !== 'draft') return fail(409, 'Only drafts can be validated')
-      const r = await brReport(versionId)
-      if (r.ok && !r.data.violations.length) v.status = 'validated'
-      return r
-    },
-    async publishBridgeVersion(versionId) {
-      await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const blocked = reportBridgeBlock<ValidationReport>(bridgeOf(v))
-      if (blocked) return blocked
-      if (v.status !== 'draft' && v.status !== 'validated') return fail(409, 'Only drafts or validated versions can be published')
-      const r = await brReport(versionId)
-      if (r.ok && !r.data.violations.length) promote(v, db.bridgeVersions.filter((x) => x.bridgeId === v.bridgeId && x.id !== v.id), v.bridgeId)
-      return r
-    },
-    async reopenBridgeVersion(versionId) {
-      await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      if (v.status !== 'validated') return fail(409, 'Only validated versions can return to draft')
-      v.status = 'draft'
-      return ok(clone(v))
-    },
-    async deleteBridgeVersion(versionId) {
-      await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const blocked = reportBridgeBlock<null>(bridgeOf(v))
-      if (blocked) return blocked
-      if (v.status !== 'draft' && v.status !== 'validated') return fail(409, 'Only drafts can be deleted', 'Published and retired versions are kept for history.')
-      if (historicalPinsOn(versionId).length) return fail(409, 'Version is pinned', 'An assumption set pins this version.')
-      db.bridgeMappings = db.bridgeMappings.filter((m) => m.versionId !== versionId)
-      db.bridgeVersions = db.bridgeVersions.filter((x) => x.id !== versionId)
-      return ok(null)
     },
     async saveBridgeMapping(versionId, input) {
       await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const b = bridgeOf(v)
-      const blocked = reportBridgeBlock<BridgeMapping>(b) ?? versionEditBlock<BridgeMapping>(v.status)
-      if (blocked) return blocked
-      const { src, tgt } = await bridgeMembers(b)
-      const errors = checkBridgeMapping(versionId, input, src, tgt, v.allocationMode)
-      if (Object.keys(errors).length) return fail(422, 'Check the highlighted fields', undefined, errors)
-      const existing = input.id ? db.bridgeMappings.find((m) => m.id === input.id && m.versionId === versionId) : undefined
-      const next: BridgeMapping = {
-        id: existing?.id ?? uid('m'),
-        versionId,
-        sourceMemberKey: input.sourceMemberKey,
-        targetMemberKey: input.targetMemberKey,
-        factor: input.factor,
-        allocationWeight: input.allocationWeight,
-        sourceSelection: input.sourceSelection ?? existing?.sourceSelection ?? 'member',
-      }
-      if (v.status === 'published') {
-        const after = [...db.bridgeMappings.filter((m) => m.versionId === versionId && m.id !== next.id), next]
-        if (allocationIssueCount(allocationSummary(v.cardinality, v.allocationMode, after)))
-          return fail(422, 'Live versions must stay valid', `This change would break the ${v.allocationMode} rules for ${next.sourceMemberKey}. Make the change in a new draft.`)
-      }
-      if (existing) Object.assign(existing, next)
-      else db.bridgeMappings.push(next)
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<BridgeMapping>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeMapping>())
+      if (refused) return refused
+      const errors: Record<string, string[]> = {}
+      if (!input.sourceMemberKey) errors.sourceMemberKey = ['Choose a source member.']
+      if (!input.targetMemberKey) errors.targetMemberKey = ['Choose a target member.']
+      if (!Number.isFinite(input.factor)) errors.factor = ['Factor must be a number.']
+      if (!Number.isFinite(input.allocationWeight)) errors.allocationWeight = ['Weight must be a number.']
+      if (Object.keys(errors).length) return invalid(errors)
+      const existing = db.bridgeMappings.find((m) => m.id === input.id)
+      const next: BridgeMapping = { ...input, versionId, sourceSelection: input.sourceSelection ?? existing?.sourceSelection ?? 'member' }
+      db.bridgeMappings = [...db.bridgeMappings.filter((m) => m.id !== input.id), next]
+      touched.add(versionId)
       return ok(clone(next))
     },
     async deleteBridgeMapping(versionId, mappingId) {
       await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const blocked = reportBridgeBlock<null>(bridgeOf(v)) ?? versionEditBlock<null>(v.status)
-      if (blocked) return blocked
-      if (v.status === 'published' && v.allocationMode === 'partition') {
-        const m = db.bridgeMappings.find((x) => x.id === mappingId)
-        const after = db.bridgeMappings.filter((x) => x.versionId === versionId && x.id !== mappingId)
-        if (m && after.some((x) => x.sourceMemberKey === m.sourceMemberKey) && allocationIssueCount(allocationSummary(v.cardinality, v.allocationMode, after)))
-          return fail(422, 'Live versions must stay valid', `Removing this mapping leaves ${m.sourceMemberKey}'s weights not summing to 1. Make the change in a new draft.`)
-      }
-      db.bridgeMappings = db.bridgeMappings.filter((m) => !(m.id === mappingId && m.versionId === versionId))
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<null>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<null>())
+      if (refused) return refused
+      db.bridgeMappings = db.bridgeMappings.filter((m) => m.id !== mappingId)
+      touched.add(versionId)
       return ok(null)
     },
     async replaceBridgeMappings(versionId, rows) {
       await delay()
-      const v = brVersion(versionId)
-      if (!v) return notFound('Bridge version')
-      const blocked = reportBridgeBlock<BridgeMapping[]>(bridgeOf(v)) ?? versionEditBlock<BridgeMapping[]>(v.status)
-      if (blocked) return blocked
-      if (v.status === 'published' && allocationIssueCount(allocationSummary(v.cardinality, v.allocationMode, rows)))
-        return fail(422, 'Live versions must stay valid', 'The pasted mappings break the allocation rules. Paste into a new draft instead.')
-      db.bridgeMappings = db.bridgeMappings.filter((m) => m.versionId !== versionId)
-      const next = rows.map((r) => ({ id: r.id ?? uid('m'), versionId, sourceMemberKey: r.sourceMemberKey, targetMemberKey: r.targetMemberKey, factor: r.factor, allocationWeight: r.allocationWeight, sourceSelection: r.sourceSelection ?? 'member' }))
-      db.bridgeMappings.push(...next)
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<BridgeMapping[]>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeMapping[]>())
+      if (refused) return refused
+      const next = rows.map((r): BridgeMapping => ({ ...r, versionId, sourceSelection: r.sourceSelection ?? 'member' }))
+      db.bridgeMappings = [...db.bridgeMappings.filter((m) => m.versionId !== versionId), ...next]
+      touched.add(versionId)
       return ok(clone(next))
+    },
+
+    /* bridge commands */
+
+    async createBridge(input) {
+      await delay()
+      const errors: Record<string, string[]> = {}
+      if (!KEY_RE.test(input.key)) errors.key = ['Use letters, digits, dots or underscores, starting with a letter.']
+      if (!input.displayName.trim()) errors.displayName = ['Display name is required.']
+      if (Object.keys(errors).length) return invalid(errors)
+      if (db.bridges.some((b) => b.key === input.key)) return fail(409, 'Key taken', { detail: `Bridge '${input.key}' already exists.` })
+      const refs = await directory.listDimensionRefs()
+      const src = refs.find((d) => d.id === input.sourceDimensionId)!
+      const tgt = refs.find((d) => d.id === input.targetDimensionId)!
+      if (src.id === tgt.id) return fail(409, 'Endpoints must differ', { detail: 'Source and target must be different dimensions.' })
+      if (!canHaveBridges(src) || !canHaveBridges(tgt)) return fail(409, 'Time dimensions cannot be bridged')
+      if (src.purpose === 'report' || tgt.purpose === 'report') return fail(409, 'Report dimensions are bridged by their report', { detail: 'Bridges into report dimensions are created by mapping rows in a report.' })
+      const id = uid('bridge')
+      const t = now()
+      const v: BridgeVersion = { id: uid('ver'), bridgeId: id, versionNumber: 1, status: 'published', cardinality: 'many_to_one', allocationMode: 'none', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
+      db.bridges.push({ id, key: input.key, displayName: input.displayName.trim(), sourceDimensionId: src.id, targetDimensionId: tgt.id, isEnabled: input.isEnabled, owner: null })
+      db.bridgeVersions.push(v)
+      db.bindings[id] = []
+      db.assumptionSets.find((a) => a.isActive)!.pins[id] = v.id
+      return ok({ bridgeId: id, versionId: v.id })
+    },
+    async deleteBridge(id) {
+      await delay()
+      const check = bridgeDeleteCheck(id)
+      if (!check.allowed) return blocked('Bridge cannot be deleted', check)
+      const versionIds = new Set(db.bridgeVersions.filter((v) => v.bridgeId === id).map((v) => v.id))
+      db.bridgeMappings = db.bridgeMappings.filter((m) => !versionIds.has(m.versionId))
+      db.bridgeVersions = db.bridgeVersions.filter((v) => !versionIds.has(v.id))
+      db.bridges = db.bridges.filter((b) => b.id !== id)
+      removeObject(id)
+      return ok(null)
+    },
+    async freezeBridgeVersion(versionId, note) {
+      await delay()
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<never>(bridgeOf(v))
+      if (refused) return refused
+      if (!isEditableStatus(v.status)) return fail(409, 'Only the live version can be frozen')
+      const report = reportOf(versionId, (await bridgeContent(v)).violations)
+      if (report.violations.length) return ok({ report, live: null })
+      const siblings = db.bridgeVersions.filter((x) => x.bridgeId === v.bridgeId)
+      const next = freeze(v, db.bridgeVersions, v.bridgeId, nextNumber(siblings), note)
+      db.bridgeMappings.push(...db.bridgeMappings.filter((m) => m.versionId === v.id).map((m) => ({ ...m, id: uid('m'), versionId: next.id })))
+      return ok({ report, live: bridgeSummary(next) })
+    },
+    async deleteBridgeVersion(versionId) {
+      await delay()
+      const v = bridgeVersion(versionId)!
+      const refused = ownedByReport<null>(bridgeOf(v))
+      if (refused) return refused
+      const check = versionDeleteCheck(v)
+      if (!check.allowed) return blocked('Version cannot be deleted', check)
+      db.bridgeMappings = db.bridgeMappings.filter((m) => m.versionId !== versionId)
+      db.bridgeVersions = db.bridgeVersions.filter((x) => x.id !== versionId)
+      return ok(null)
     },
   }
 }

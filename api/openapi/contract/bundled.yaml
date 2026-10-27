@@ -1210,6 +1210,564 @@ paths:
                 $ref: '#/components/schemas/DeleteCheck'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/mapping-sets:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listMappingSets
+      summary: List mapping sets
+      description: Every mapping set, or those targeting one dimension, with version summaries and bindings.
+      tags:
+        - mappings
+      parameters:
+        - name: dimensionId
+          in: query
+          required: false
+          description: Only mapping sets that target this dimension.
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: The mapping sets, ordered by key.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MappingSetListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: createMappingSet
+      summary: Create a mapping set
+      description: Creates the mapping set with an empty live v1 (OI-27).
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMappingSetInput'
+      responses:
+        '201':
+          description: Created, with its live v1.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSetCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The key is taken, or the dimension is not an analytical categorical or hierarchical dimension (B1).
+  /api/tenants/{tenantId}/mapping-sets/{mappingSetId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingSetId'
+    get:
+      operationId: getMappingSet
+      summary: Get a mapping set
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The mapping set with its bindings and assumption set pins.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSetDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteMappingSet
+      summary: Delete a mapping set
+      description: Deletes the mapping set and every version when no binding uses it and no historical set pins it (B12).
+      tags:
+        - mappings
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Blocked; `violations` lists the same reasons as the delete check.
+  /api/tenants/{tenantId}/mapping-sets/{mappingSetId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingSetId'
+    get:
+      operationId: checkDeleteMappingSet
+      summary: Check whether a mapping set can be deleted
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: Whether the delete is allowed, and why not.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/mapping-sets/{mappingSetId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingSetId'
+    post:
+      operationId: previewMappingSetChanges
+      summary: Preview mapping set changes
+      description: Applies the operations to the stored mapping set and its live version in memory and writes nothing. Entries that break a rule come back as `violations` so the editor can flag them (B11).
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSetChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSetChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: An operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/mapping-sets/{mappingSetId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingSetId'
+    post:
+      operationId: commitMappingSetChanges
+      summary: Commit mapping set changes
+      description: Applies the operations to the stored mapping set and its live version and writes them. Refused while any rule violation remains (B11); advances `semantic_revision` once.
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSetChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSetChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: An operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: The live version would break a rule; see `violations`. Nothing was written.
+  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingVersionId'
+    get:
+      operationId: getMappingVersion
+      summary: Get a mapping version's content
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The version, its entries, coverage and rule findings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingVersionContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteMappingVersion
+      summary: Delete a frozen mapping version
+      tags:
+        - mappings
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is live, or a historical assumption set pins it.
+  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingVersionId'
+    post:
+      operationId: checkMappingVersion
+      summary: Run the mapping version rules
+      description: Runs every mapping version rule on any version and writes nothing (OI-30).
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The rule report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/freeze:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingVersionId'
+    post:
+      operationId: freezeMappingVersion
+      summary: Freeze the live mapping version
+      description: Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone (12, The version model).
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingFreezeInput'
+      responses:
+        '200':
+          description: Frozen; `live` is the new live version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingFreezeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is not live.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A rule failed; see `violations`. Nothing was written.
+  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/MappingVersionId'
+    get:
+      operationId: checkDeleteMappingVersion
+      summary: Check whether a mapping version can be deleted
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: Whether the delete is allowed, and why not.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/bridges:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listBridges
+      summary: List bridges
+      description: Analytical and report bridges. With `dimensionId`, the bridges starting or ending at that dimension. With `reportId` and `sourceKey`, the one report bridge of that report source, or none (serves `findReportBridge`).
+      tags:
+        - mappings
+      parameters:
+        - name: dimensionId
+          in: query
+          required: false
+          description: Only bridges whose source or target is this dimension.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: reportId
+          in: query
+          required: false
+          description: Only the report bridge owned by this report; used with `sourceKey`.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: sourceKey
+          in: query
+          required: false
+          description: The report source whose bridge is wanted; used with `reportId`.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytical bridges first, then report bridges, each ordered by key.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BridgeListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: createBridge
+      summary: Create an analytical bridge
+      description: Creates the bridge with an empty live v1, `many_to_one` / `none` (OI-27). Report bridges come from their report.
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBridgeInput'
+      responses:
+        '201':
+          description: Created, with its live v1.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The key is taken, or the endpoints break B4 (equal, time source, report dimension).
+  /api/tenants/{tenantId}/bridges/{bridgeId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeId'
+    get:
+      operationId: getBridge
+      summary: Get a bridge
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The bridge with its bindings and assumption set pins.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteBridge
+      summary: Delete an analytical bridge
+      description: Deletes the bridge and every version when no binding uses it and no historical set pins it (B12).
+      tags:
+        - mappings
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: Blocked (`violations` as in the delete check), or owned by a report.
+  /api/tenants/{tenantId}/bridges/{bridgeId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeId'
+    get:
+      operationId: checkDeleteBridge
+      summary: Check whether a bridge can be deleted
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: Whether the delete is allowed, and why not. A report bridge is never allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/bridges/{bridgeId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeId'
+    post:
+      operationId: previewBridgeChanges
+      summary: Preview bridge changes
+      description: Applies the operations to the stored analytical bridge and its live version in memory and writes nothing. Mappings that break the cardinality, allocation or member rules come back as `violations` (B11).
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BridgeChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The bridge is owned by a report, or an operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+  /api/tenants/{tenantId}/bridges/{bridgeId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeId'
+    post:
+      operationId: commitBridgeChanges
+      summary: Commit bridge changes
+      description: Applies the operations to the stored analytical bridge and its live version and writes them. Refused while any rule violation remains (B11); advances `semantic_revision` once.
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BridgeChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The bridge is owned by a report, or an operation targets a frozen version.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: The live version would break a rule; see `violations`. Nothing was written.
+  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeVersionId'
+    get:
+      operationId: getBridgeVersion
+      summary: Get a bridge version's content
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The version, its mappings, the allocation summary and rule findings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeVersionContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteBridgeVersion
+      summary: Delete a frozen bridge version
+      tags:
+        - mappings
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is live, a historical assumption set pins it, or the bridge is owned by a report.
+  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeVersionId'
+    post:
+      operationId: checkBridgeVersion
+      summary: Run the bridge version rules
+      description: Runs every bridge version rule on any version and writes nothing (OI-30).
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: The rule report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/freeze:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeVersionId'
+    post:
+      operationId: freezeBridgeVersion
+      summary: Freeze the live bridge version
+      description: Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone with the same settings and mappings (12, The version model).
+      tags:
+        - mappings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BridgeFreezeInput'
+      responses:
+        '200':
+          description: Frozen; `live` is the new live version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeFreezeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The version is not live, or the bridge is owned by a report.
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: A rule failed; see `violations`. Nothing was written.
+  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/BridgeVersionId'
+    get:
+      operationId: checkDeleteBridgeVersion
+      summary: Check whether a bridge version can be deleted
+      tags:
+        - mappings
+      responses:
+        '200':
+          description: Whether the delete is allowed, and why not.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/tenants/{tenantId}/releases:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -5986,6 +6544,963 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/DimensionEditState'
+    MappingCardinality:
+      type: string
+      enum:
+        - many_to_one
+        - many_to_many
+    MappingAllocationMode:
+      type: string
+      enum:
+        - none
+        - partition
+        - replicate
+      description: '`many_to_one` allows `none` only; `many_to_many` allows `partition` or `replicate` (B5).'
+    MappingSourceSelection:
+      type: string
+      enum:
+        - member
+        - descendants
+      description: '`descendants` is used only by report bridges (B8, OI-28).'
+    MappingDimensionRef:
+      type: object
+      description: A read-only slice of a dimension, enough to label it and to state which version keys resolve against.
+      required:
+        - id
+        - key
+        - displayName
+        - kind
+        - purpose
+        - publishedVersionId
+        - publishedVersionNumber
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        kind:
+          type: string
+          enum:
+            - categorical
+            - hierarchical
+            - range
+            - time
+        purpose:
+          type: string
+          enum:
+            - analytical
+            - report
+        publishedVersionId:
+          type:
+            - string
+            - 'null'
+          description: The live version, whose members entry and mapping keys resolve against.
+        publishedVersionNumber:
+          type:
+            - integer
+            - 'null'
+    MappingBindingUsage:
+      type: object
+      description: A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers.
+      required:
+        - datasetId
+        - datasetKey
+        - datasetVersionId
+        - datasetVersionNumber
+        - status
+        - fieldKey
+        - roleKey
+        - sourceRoleKey
+      properties:
+        datasetId:
+          $ref: '#/components/schemas/Id'
+        datasetKey:
+          $ref: '#/components/schemas/Key'
+        datasetVersionId:
+          $ref: '#/components/schemas/Id'
+        datasetVersionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        fieldKey:
+          $ref: '#/components/schemas/Key'
+        roleKey:
+          $ref: '#/components/schemas/Key'
+        sourceRoleKey:
+          type:
+            - string
+            - 'null'
+          description: Bridge bindings only, the role of the binding the bridge remaps; null for mapping sets.
+    MappingAssumptionPin:
+      type: object
+      description: An assumption set that pins one version of a mapping set or bridge.
+      required:
+        - assumptionSetId
+        - assumptionSetKey
+        - assumptionSetDisplayName
+        - isActive
+        - versionId
+        - versionNumber
+      properties:
+        assumptionSetId:
+          $ref: '#/components/schemas/Id'
+        assumptionSetKey:
+          type: string
+        assumptionSetDisplayName:
+          type: string
+        isActive:
+          type: boolean
+          description: The active set always pins the live version; historical sets keep the version they captured.
+        versionId:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+    MappingViolationCode:
+      type: string
+      description: Rule codes of mapping versions.
+      enum:
+        - source_key_unique
+        - dimension_version_published
+        - entry_member_in_version
+        - entry_member_assignable
+    BridgeViolationCode:
+      type: string
+      description: Rule codes of bridge versions.
+      enum:
+        - endpoint_versions_published
+        - mapping_members_in_endpoint_versions
+        - cardinality_many_to_one
+        - allocation_none
+        - allocation_partition
+        - allocation_replicate
+        - pair_unique
+        - descendants_report_only
+    MappingSet:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - sourceNamespace
+        - dimensionId
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        sourceNamespace:
+          type: string
+          description: Free text naming the source system (B14).
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+    MappingVersion:
+      type: object
+      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
+      required:
+        - id
+        - mappingSetId
+        - versionNumber
+        - status
+        - createdAt
+        - publishedAt
+        - retiredAt
+        - freezeNote
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        mappingSetId:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: When it was frozen.
+        freezeNote:
+          type:
+            - string
+            - 'null'
+    MappingEntry:
+      type: object
+      required:
+        - id
+        - versionId
+        - sourceKeyValue
+        - memberKey
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        sourceKeyValue:
+          type: string
+          description: Compared exactly as text, never trimmed or coerced (B2).
+        memberKey:
+          type: string
+    MappingVersionSummary:
+      type: object
+      required:
+        - id
+        - versionNumber
+        - status
+        - createdAt
+        - publishedAt
+        - retiredAt
+        - freezeNote
+        - entryCount
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        freezeNote:
+          type:
+            - string
+            - 'null'
+        entryCount:
+          type: integer
+    MappingSetListItem:
+      allOf:
+        - $ref: '#/components/schemas/MappingSet'
+        - type: object
+          required:
+            - dimension
+            - versions
+            - publishedEntryCount
+            - bindings
+          properties:
+            dimension:
+              $ref: '#/components/schemas/MappingDimensionRef'
+            versions:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingVersionSummary'
+            publishedEntryCount:
+              type: integer
+              description: Entries of the live version.
+            bindings:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingBindingUsage'
+    MappingSetDetail:
+      allOf:
+        - $ref: '#/components/schemas/MappingSetListItem'
+        - type: object
+          required:
+            - pins
+          properties:
+            pins:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingAssumptionPin'
+    MappingCoverage:
+      type: object
+      description: Assignable members of the dimension's live version and those no entry maps to.
+      required:
+        - assignableMemberCount
+        - uncoveredMemberKeys
+      properties:
+        assignableMemberCount:
+          type: integer
+        uncoveredMemberKeys:
+          type: array
+          items:
+            type: string
+    MappingVersionContent:
+      type: object
+      required:
+        - version
+        - entries
+        - coverage
+        - violations
+      properties:
+        version:
+          $ref: '#/components/schemas/MappingVersion'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingEntry'
+        coverage:
+          $ref: '#/components/schemas/MappingCoverage'
+        violations:
+          type: array
+          description: Rule findings on this content, with `target.itemId` naming the entry at fault. Empty on a saved live version, because commits refuse violations (B11); a preview's state carries the findings of the pending edits.
+          items:
+            $ref: '#/components/schemas/Violation'
+    MappingSetEditState:
+      type: object
+      description: What the mapping set editor renders; the state of a mapping set change set.
+      required:
+        - set
+        - content
+      properties:
+        set:
+          $ref: '#/components/schemas/MappingSetDetail'
+        content:
+          $ref: '#/components/schemas/MappingVersionContent'
+    CreateMappingSetInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - sourceNamespace
+        - dimensionId
+      properties:
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+          minLength: 1
+        sourceNamespace:
+          type: string
+          minLength: 1
+        dimensionId:
+          $ref: '#/components/schemas/Id'
+    MappingSetCreated:
+      type: object
+      required:
+        - mappingSetId
+        - versionId
+      properties:
+        mappingSetId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+          description: The empty live v1.
+    MappingSetPatch:
+      type: object
+      description: Key and dimension are fixed after creation.
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        sourceNamespace:
+          type: string
+          minLength: 1
+    MappingEntryInput:
+      type: object
+      required:
+        - id
+        - sourceKeyValue
+        - memberKey
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: The entry's id, or a client-generated `tmp:<uuid>` for a new entry.
+        sourceKeyValue:
+          type: string
+          minLength: 1
+        memberKey:
+          type: string
+          minLength: 1
+    MappingFreezeInput:
+      type: object
+      required:
+        - note
+      properties:
+        note:
+          type:
+            - string
+            - 'null'
+          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
+    MappingFreezeResult:
+      type: object
+      description: The rule report of the frozen version, and the new live version.
+      required:
+        - report
+        - live
+      properties:
+        report:
+          $ref: '#/components/schemas/ValidationReport'
+        live:
+          description: 'The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors).'
+          oneOf:
+            - $ref: '#/components/schemas/MappingVersionSummary'
+            - type: 'null'
+    MappingSetUpdateOperation:
+      type: object
+      required:
+        - op
+        - patch
+      properties:
+        op:
+          const: updateMappingSet
+        patch:
+          $ref: '#/components/schemas/MappingSetPatch'
+    MappingEntrySaveOperation:
+      type: object
+      description: Adds the entry, or replaces the entry with the same id.
+      required:
+        - op
+        - versionId
+        - input
+      properties:
+        op:
+          const: saveEntry
+        versionId:
+          $ref: '#/components/schemas/Id'
+        input:
+          $ref: '#/components/schemas/MappingEntryInput'
+    MappingEntryDeleteOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - entryId
+      properties:
+        op:
+          const: deleteEntry
+        versionId:
+          $ref: '#/components/schemas/Id'
+        entryId:
+          $ref: '#/components/schemas/Id'
+    MappingEntriesReplaceOperation:
+      type: object
+      description: Replaces every entry of the version (bulk paste).
+      required:
+        - op
+        - versionId
+        - entries
+      properties:
+        op:
+          const: replaceEntries
+        versionId:
+          $ref: '#/components/schemas/Id'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingEntryInput'
+    MappingOperation:
+      description: One edit of a mapping set change set; `versionId` names the live version.
+      oneOf:
+        - $ref: '#/components/schemas/MappingSetUpdateOperation'
+        - $ref: '#/components/schemas/MappingEntrySaveOperation'
+        - $ref: '#/components/schemas/MappingEntryDeleteOperation'
+        - $ref: '#/components/schemas/MappingEntriesReplaceOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateMappingSet: '#/components/schemas/MappingSetUpdateOperation'
+          saveEntry: '#/components/schemas/MappingEntrySaveOperation'
+          deleteEntry: '#/components/schemas/MappingEntryDeleteOperation'
+          replaceEntries: '#/components/schemas/MappingEntriesReplaceOperation'
+    MappingSetChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingOperation'
+    MappingSetChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/MappingSetEditState'
+    MappingSetChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/MappingSetEditState'
+    BridgeOwner:
+      type: object
+      description: The report source a report bridge belongs to (B9, OI-31).
+      required:
+        - reportId
+        - reportKey
+        - sourceKey
+      properties:
+        reportId:
+          $ref: '#/components/schemas/Id'
+        reportKey:
+          type: string
+        sourceKey:
+          type: string
+    Bridge:
+      type: object
+      required:
+        - id
+        - key
+        - displayName
+        - sourceDimensionId
+        - targetDimensionId
+        - isEnabled
+        - owner
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+        sourceDimensionId:
+          $ref: '#/components/schemas/Id'
+        targetDimensionId:
+          $ref: '#/components/schemas/Id'
+        isEnabled:
+          type: boolean
+        owner:
+          description: Set for report bridges, which are written only through their report's change set.
+          oneOf:
+            - $ref: '#/components/schemas/BridgeOwner'
+            - type: 'null'
+    BridgeVersion:
+      type: object
+      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
+      required:
+        - id
+        - bridgeId
+        - versionNumber
+        - status
+        - cardinality
+        - allocationMode
+        - createdAt
+        - publishedAt
+        - retiredAt
+        - freezeNote
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        bridgeId:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        cardinality:
+          $ref: '#/components/schemas/MappingCardinality'
+        allocationMode:
+          $ref: '#/components/schemas/MappingAllocationMode'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: When it was frozen.
+        freezeNote:
+          type:
+            - string
+            - 'null'
+    BridgeMapping:
+      type: object
+      required:
+        - id
+        - versionId
+        - sourceMemberKey
+        - targetMemberKey
+        - factor
+        - allocationWeight
+        - sourceSelection
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        sourceMemberKey:
+          type: string
+        targetMemberKey:
+          type: string
+        factor:
+          type: number
+          description: Affects only measures with `bridge_factor_behavior = value` (B7).
+        allocationWeight:
+          type: number
+        sourceSelection:
+          $ref: '#/components/schemas/MappingSourceSelection'
+    BridgeVersionSummary:
+      type: object
+      required:
+        - id
+        - versionNumber
+        - status
+        - cardinality
+        - allocationMode
+        - createdAt
+        - publishedAt
+        - retiredAt
+        - freezeNote
+        - mappingCount
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        versionNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        cardinality:
+          $ref: '#/components/schemas/MappingCardinality'
+        allocationMode:
+          $ref: '#/components/schemas/MappingAllocationMode'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        retiredAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        freezeNote:
+          type:
+            - string
+            - 'null'
+        mappingCount:
+          type: integer
+    BridgeListItem:
+      allOf:
+        - $ref: '#/components/schemas/Bridge'
+        - type: object
+          required:
+            - source
+            - target
+            - versions
+            - publishedMappingCount
+            - bindings
+          properties:
+            source:
+              $ref: '#/components/schemas/MappingDimensionRef'
+            target:
+              $ref: '#/components/schemas/MappingDimensionRef'
+            versions:
+              type: array
+              items:
+                $ref: '#/components/schemas/BridgeVersionSummary'
+            publishedMappingCount:
+              type: integer
+              description: Mappings of the live version.
+            bindings:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingBindingUsage'
+    BridgeDetail:
+      allOf:
+        - $ref: '#/components/schemas/BridgeListItem'
+        - type: object
+          required:
+            - pins
+          properties:
+            pins:
+              type: array
+              items:
+                $ref: '#/components/schemas/MappingAssumptionPin'
+    BridgeSourceAllocation:
+      type: object
+      description: One source member's targets and the sum of its allocation weights.
+      required:
+        - sourceMemberKey
+        - targetCount
+        - weightSum
+      properties:
+        sourceMemberKey:
+          type: string
+        targetCount:
+          type: integer
+        weightSum:
+          type: number
+    BridgeAllocationSummary:
+      type: object
+      required:
+        - sources
+      properties:
+        sources:
+          type: array
+          description: Every source member the version maps, ordered by key.
+          items:
+            $ref: '#/components/schemas/BridgeSourceAllocation'
+    BridgeVersionContent:
+      type: object
+      required:
+        - version
+        - mappings
+        - allocation
+        - violations
+      properties:
+        version:
+          $ref: '#/components/schemas/BridgeVersion'
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/BridgeMapping'
+        allocation:
+          $ref: '#/components/schemas/BridgeAllocationSummary'
+        violations:
+          type: array
+          description: Rule findings on this content; `target.itemId` names the mapping at fault, or `target.itemKey` the source member for per-source rules. Empty on a saved live version, because commits refuse violations (B11); a preview's state carries the findings of the pending edits.
+          items:
+            $ref: '#/components/schemas/Violation'
+    BridgeEditState:
+      type: object
+      description: What the bridge editor renders; the state of a bridge change set.
+      required:
+        - bridge
+        - content
+      properties:
+        bridge:
+          $ref: '#/components/schemas/BridgeDetail'
+        content:
+          $ref: '#/components/schemas/BridgeVersionContent'
+    CreateBridgeInput:
+      type: object
+      description: Endpoints are fixed at creation, differ, and the source is neither `time` nor a report dimension (B4).
+      required:
+        - key
+        - displayName
+        - sourceDimensionId
+        - targetDimensionId
+        - isEnabled
+      properties:
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+          minLength: 1
+        sourceDimensionId:
+          $ref: '#/components/schemas/Id'
+        targetDimensionId:
+          $ref: '#/components/schemas/Id'
+        isEnabled:
+          type: boolean
+    BridgeCreated:
+      type: object
+      required:
+        - bridgeId
+        - versionId
+      properties:
+        bridgeId:
+          $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+          description: The empty live v1, `many_to_one` / `none`.
+    BridgePatch:
+      type: object
+      description: Key and endpoints are fixed after creation.
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        isEnabled:
+          type: boolean
+    BridgeVersionPatch:
+      type: object
+      description: Edited in place on the live version (OI-26); mappings that no longer comply become violations.
+      required:
+        - cardinality
+        - allocationMode
+      properties:
+        cardinality:
+          $ref: '#/components/schemas/MappingCardinality'
+        allocationMode:
+          $ref: '#/components/schemas/MappingAllocationMode'
+    BridgeMappingInput:
+      type: object
+      required:
+        - id
+        - sourceMemberKey
+        - targetMemberKey
+        - factor
+        - allocationWeight
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+          description: The mapping's id, or a client-generated `tmp:<uuid>` for a new mapping.
+        sourceMemberKey:
+          type: string
+          minLength: 1
+        targetMemberKey:
+          type: string
+          minLength: 1
+        factor:
+          type: number
+        allocationWeight:
+          type: number
+        sourceSelection:
+          $ref: '#/components/schemas/MappingSourceSelection'
+          description: Accepted only on report bridges, written by the report editor; absent means `member` (OI-28).
+    BridgeFreezeInput:
+      type: object
+      required:
+        - note
+      properties:
+        note:
+          type:
+            - string
+            - 'null'
+          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
+    BridgeFreezeResult:
+      type: object
+      description: The rule report of the frozen version, and the new live version.
+      required:
+        - report
+        - live
+      properties:
+        report:
+          $ref: '#/components/schemas/ValidationReport'
+        live:
+          description: 'The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors).'
+          oneOf:
+            - $ref: '#/components/schemas/BridgeVersionSummary'
+            - type: 'null'
+    BridgeUpdateOperation:
+      type: object
+      required:
+        - op
+        - patch
+      properties:
+        op:
+          const: updateBridge
+        patch:
+          $ref: '#/components/schemas/BridgePatch'
+    BridgeVersionUpdateOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - patch
+      properties:
+        op:
+          const: updateBridgeVersion
+        versionId:
+          $ref: '#/components/schemas/Id'
+        patch:
+          $ref: '#/components/schemas/BridgeVersionPatch'
+    BridgeMappingSaveOperation:
+      type: object
+      description: Adds the mapping, or replaces the mapping with the same id.
+      required:
+        - op
+        - versionId
+        - input
+      properties:
+        op:
+          const: saveBridgeMapping
+        versionId:
+          $ref: '#/components/schemas/Id'
+        input:
+          $ref: '#/components/schemas/BridgeMappingInput'
+    BridgeMappingDeleteOperation:
+      type: object
+      required:
+        - op
+        - versionId
+        - mappingId
+      properties:
+        op:
+          const: deleteBridgeMapping
+        versionId:
+          $ref: '#/components/schemas/Id'
+        mappingId:
+          $ref: '#/components/schemas/Id'
+    BridgeMappingsReplaceOperation:
+      type: object
+      description: Replaces every mapping of the version (bulk paste).
+      required:
+        - op
+        - versionId
+        - rows
+      properties:
+        op:
+          const: replaceBridgeMappings
+        versionId:
+          $ref: '#/components/schemas/Id'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/BridgeMappingInput'
+    BridgeOperation:
+      description: One edit of an analytical bridge change set; `versionId` names the live version.
+      oneOf:
+        - $ref: '#/components/schemas/BridgeUpdateOperation'
+        - $ref: '#/components/schemas/BridgeVersionUpdateOperation'
+        - $ref: '#/components/schemas/BridgeMappingSaveOperation'
+        - $ref: '#/components/schemas/BridgeMappingDeleteOperation'
+        - $ref: '#/components/schemas/BridgeMappingsReplaceOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateBridge: '#/components/schemas/BridgeUpdateOperation'
+          updateBridgeVersion: '#/components/schemas/BridgeVersionUpdateOperation'
+          saveBridgeMapping: '#/components/schemas/BridgeMappingSaveOperation'
+          deleteBridgeMapping: '#/components/schemas/BridgeMappingDeleteOperation'
+          replaceBridgeMappings: '#/components/schemas/BridgeMappingsReplaceOperation'
+    BridgeChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/BridgeOperation'
+    BridgeChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/BridgeEditState'
+    BridgeChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/BridgeEditState'
     ReleaseKey:
       type: string
       pattern: ^[A-Za-z0-9][A-Za-z0-9_.\-/]{0,127}$
@@ -8648,6 +10163,30 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Key'
+    MappingSetId:
+      name: mappingSetId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    MappingVersionId:
+      name: mappingVersionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    BridgeId:
+      name: bridgeId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    BridgeVersionId:
+      name: bridgeVersionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
     ReleaseIdPath:
       name: releaseId
       in: path

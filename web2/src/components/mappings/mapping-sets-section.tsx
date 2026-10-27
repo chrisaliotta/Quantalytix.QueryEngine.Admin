@@ -1,22 +1,22 @@
-import { ArrowLeftIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, PencilIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
+import { ArrowLeftIcon, ClipboardPasteIcon, CopyIcon, PencilIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { ConfirmDialog, EmptyState, Field, formatDate, Mono, ProblemBanner, StatusBadge, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
+import { EmptyState, Field, Mono, ProblemBanner, StatusBadge, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
 import { SearchCombobox } from '@/components/report/shared/search-combobox'
-import { useHistory, useUndoAction } from '@/components/shell/history'
+import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
+import { useUndoAction } from '@/components/shell/history'
 import { useSearchParam, useSetSearchParams } from '@/lib/navigation'
 import type { DimensionDetail } from '@/lib/dimensions/contract'
-import { useMappingSet, useMappingSetDeleteCheck, useMappingSets, useMappingsApi, useMappingVersion, usePublishedMembers } from '@/lib/mappings/client'
-import { defaultVersionOf, isEditableStatus, type MappingEntry, type MappingSetDetail, type MappingVersionSummary, type MemberRef, type ValidationReport } from '@/lib/mappings/contract'
-import { entriesToText, entryIssues, entryIssueText, indexMembers, previewEntryPaste, sourceKeyMarkers, uncoveredMembers, type MemberIndex } from '@/lib/mappings/rules'
+import { MappingSetEditScope, useMappingSet, useMappingSetDeleteCheck, useMappingSets, useMappingsApi, useMappingVersion, usePublishedMembers } from '@/lib/mappings/client'
+import { isEditableStatus, liveVersionOf, newTempId, type MappingEntry, type MappingSetDetail, type MappingVersionContent, type MemberRef, type ValidationReport, type Violation } from '@/lib/mappings/contract'
+import { entriesToText, indexMembers, previewEntryPaste, sourceKeyMarkers, violationsByTarget, type MemberIndex } from '@/lib/mappings/rules'
 import { cn } from '@/lib/utils'
-import { BlockedDeleteDialog, memberOptions, SourceKey, useMapCall, ValidationList, VersionPills } from './shared'
+import { BlockedDeleteDialog, memberOptions, PinsList, PREVIEW_TONE, RowIssues, SourceKey, useMapCall, ValidationList, VersionBar, withoutKey } from './shared'
 
 export function MappingSetsSection({ dim }: { dim: DimensionDetail }) {
   const [ms] = useSearchParam('ms')
@@ -30,7 +30,6 @@ export function MappingSetsSection({ dim }: { dim: DimensionDetail }) {
 function MappingSetList({ dim }: { dim: DimensionDetail }) {
   const { data: sets } = useMappingSets(dim.id)
   const [creating, setCreating] = useState(false)
-  const hasPublished = dim.versions.some((v) => v.status === 'published')
   const setSearchParams = useSetSearchParams()
   const open = (id: string) => setSearchParams({ ms: id, msv: null })
 
@@ -45,12 +44,6 @@ function MappingSetList({ dim }: { dim: DimensionDetail }) {
       >
         Mapping sets translate raw source codes into {dim.displayName} members. Each set covers one source system; datasets pick a set when they bind a field to this dimension.
       </TabIntro>
-      {!hasPublished && (
-        <p className="flex items-center gap-2 rounded-md border border-warning/50 bg-warning-muted px-3 py-2 text-sm text-warning-foreground">
-          <TriangleAlertIcon aria-hidden className="size-4 shrink-0" />
-          {dim.displayName} has no published version yet, so entries can&apos;t be checked against its members.
-        </p>
-      )}
       {!sets ? (
         <p className="text-sm text-muted-foreground">Loading mapping sets…</p>
       ) : !sets.length ? (
@@ -72,14 +65,14 @@ function MappingSetList({ dim }: { dim: DimensionDetail }) {
                 <Th>Mapping set</Th>
                 <Th>Source namespace</Th>
                 <Th>Live</Th>
-                <Th>Draft</Th>
+                <Th>Frozen</Th>
                 <Th className="text-right">Used by</Th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {sets.map((s) => {
-                const live = s.versions.find((v) => v.status === 'published')
-                const draft = s.versions.find((v) => v.status === 'draft' || v.status === 'validated')
+                const live = liveVersionOf(s.versions)
+                const frozenCount = s.versions.length - 1
                 return (
                   <tr key={s.id} className="hover:bg-muted/40">
                     <Td>
@@ -91,8 +84,10 @@ function MappingSetList({ dim }: { dim: DimensionDetail }) {
                     <Td>
                       <Mono className="text-foreground">{s.sourceNamespace}</Mono>
                     </Td>
-                    <Td>{live ? <span className="tabular-nums">v{live.versionNumber} · {live.entryCount} entries</span> : <span className="text-muted-foreground">Not published</span>}</Td>
-                    <Td>{draft ? <StatusBadge status={draft.status} label={`v${draft.versionNumber} ${draft.status}`} /> : <span className="text-muted-foreground">—</span>}</Td>
+                    <Td className="tabular-nums">
+                      v{live.versionNumber} · {s.publishedEntryCount} entries
+                    </Td>
+                    <Td className="tabular-nums">{frozenCount ? `${frozenCount} version${frozenCount === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
                     <Td className="text-right tabular-nums">{s.bindings.length ? `${s.bindings.length} binding${s.bindings.length === 1 ? '' : 's'}` : <span className="text-muted-foreground">Unused</span>}</Td>
                   </tr>
                 )
@@ -124,7 +119,7 @@ function CreateMappingSetDialog({ open, onOpenChange, dim, onCreated }: { open: 
           className="flex flex-col gap-4"
           onSubmit={async (e) => {
             e.preventDefault()
-            const r = await mc.run(() => api.createMappingSet({ ...form, dimensionId: dim.id }), 'Mapping set created with draft v1')
+            const r = await mc.run(() => api.createMappingSet({ ...form, dimensionId: dim.id }), 'Mapping set created')
             if (r.ok) {
               close(false)
               onCreated(r.data.mappingSetId)
@@ -133,9 +128,9 @@ function CreateMappingSetDialog({ open, onOpenChange, dim, onCreated }: { open: 
         >
           <DialogHeader>
             <DialogTitle>New mapping set</DialogTitle>
-            <DialogDescription>Maps one source system&apos;s codes to {dim.displayName} members. Starts as an empty draft.</DialogDescription>
+            <DialogDescription>Maps one source system&apos;s codes to {dim.displayName} members. Starts empty and live.</DialogDescription>
           </DialogHeader>
-          <Field label="Key" htmlFor="ms-key" required errors={mc.errorsFor('key')} hint="Lowercase, e.g. loan.branch. Can't change later.">
+          <Field label="Key" htmlFor="ms-key" required errors={mc.errorsFor('key')} hint="E.g. loan.branch. Can't change later.">
             <Input id="ms-key" className="font-mono" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} autoFocus />
           </Field>
           <Field label="Display name" htmlFor="ms-name" required errors={mc.errorsFor('displayName')}>
@@ -163,41 +158,42 @@ function CreateMappingSetDialog({ open, onOpenChange, dim, onCreated }: { open: 
 
 function MappingSetEditor({ id, onBack }: { id: string; onBack: () => void }) {
   const { data: set, error } = useMappingSet(id)
-  const [msv, setMsv] = useSearchParam('msv')
-  const selected = set ? (set.versions.find((v) => v.id === msv) ?? defaultVersionOf(set.versions)) : undefined
-  const { data: content } = useMappingVersion(selected?.id ?? null)
-  const { data: members } = usePublishedMembers(set?.dimensionId ?? null)
-  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
-  const [filter, setFilter] = useState('')
-
   if (error)
     return (
       <EmptyState title="Mapping set not found" action={<Button size="sm" variant="outline" onClick={onBack}>Back to mapping sets</Button>}>
         It may have been deleted.
       </EmptyState>
     )
-  if (!set || !selected) return <p className="text-sm text-muted-foreground">Loading mapping set…</p>
+  if (!set) return <p className="text-sm text-muted-foreground">Loading mapping set…</p>
+  return (
+    <MappingSetEditScope mappingSetId={set.id} label={set.displayName}>
+      <MappingSetPage set={set} onBack={onBack} />
+    </MappingSetEditScope>
+  )
+}
 
+function MappingSetPage({ set, onBack }: { set: MappingSetDetail; onBack: () => void }) {
+  const [msv, setMsv] = useSearchParam('msv')
+  const selected = set.versions.find((v) => v.id === msv) ?? liveVersionOf(set.versions)
+  const { data: content } = useMappingVersion(selected.id)
+  const { data: members } = usePublishedMembers(set.dimensionId)
+  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
+  const [filter, setFilter] = useState('')
   const ready = content && content.version.id === selected.id ? content : null
   const report = reports[selected.id]
 
   return (
     <div className="flex flex-col gap-5">
-      <SetHeader set={set} selected={selected} onBack={onBack} onSelect={setMsv} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} />
-      {report && (
-        <ValidationList
-          report={report}
-          onFilter={setFilter}
-          onDismiss={() => setReports(({ [selected.id]: _, ...rest }) => rest)}
-        />
-      )}
+      <SetHeader set={set} onBack={onBack} />
+      <VersionBar kind="mapping" versions={set.versions} selected={selected} pins={set.pins} onSelect={setMsv} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} />
+      {report && <ValidationList report={report} onFilter={setFilter} onDismiss={() => setReports((all) => withoutKey(all, selected.id))} />}
       {!ready ? (
         <p className="text-sm text-muted-foreground">Loading entries…</p>
       ) : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <EntriesTable set={set} version={selected} entries={ready.entries} members={members} filter={filter} setFilter={setFilter} />
+          <EntriesTable set={set} content={ready} members={members} filter={filter} setFilter={setFilter} />
           <aside className="flex flex-col gap-5">
-            <Coverage entries={ready.entries} members={members} dimensionName={set.dimension.displayName} />
+            <Coverage content={ready} members={members} />
             <SetUsage set={set} />
           </aside>
         </div>
@@ -206,37 +202,13 @@ function MappingSetEditor({ id, onBack }: { id: string; onBack: () => void }) {
   )
 }
 
-function SetHeader({
-  set,
-  selected,
-  onBack,
-  onSelect,
-  onReport,
-}: {
-  set: MappingSetDetail
-  selected: MappingVersionSummary
-  onBack: () => void
-  onSelect: (id: string) => void
-  onReport: (r: ValidationReport) => void
-}) {
+function SetHeader({ set, onBack }: { set: MappingSetDetail; onBack: () => void }) {
   const api = useMappingsApi()
   const mc = useMapCall()
-  const [publishing, setPublishing] = useState(false)
+  const dirty = useHasPendingChanges()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { data: deleteCheck } = useMappingSetDeleteCheck(deleting ? set.id : null)
-  const open = set.versions.find((v) => v.status === 'draft' || v.status === 'validated')
-  const live = set.versions.find((v) => v.status === 'published')
-  const isOpen = selected.status === 'draft' || selected.status === 'validated'
-
-  const check = async (call: () => ReturnType<typeof api.validateMappingVersion>, okText: string) => {
-    const r = await mc.run(call)
-    if (r.ok) {
-      onReport(r.data)
-      if (!r.data.violations.length) toast.success(okText)
-    }
-    return r
-  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -253,7 +225,7 @@ function SetHeader({
             </span>
             <span>
               to {set.dimension.displayName}
-              {set.dimension.publishedVersionNumber ? ` v${set.dimension.publishedVersionNumber}` : ' (unpublished)'}
+              {set.dimension.publishedVersionNumber ? ` v${set.dimension.publishedVersionNumber}` : ''}
             </span>
           </p>
         </div>
@@ -261,87 +233,19 @@ function SetHeader({
           <Button variant="ghost" size="sm" onClick={() => setRenaming(true)}>
             <PencilIcon /> Edit details
           </Button>
-          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleting(true)}>
-            <Trash2Icon /> Delete set
-          </Button>
+          <WithReason reason={dirty ? SAVE_FIRST : null}>
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={dirty} onClick={() => setDeleting(true)}>
+              <Trash2Icon /> Delete set
+            </Button>
+          </WithReason>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-2.5">
-        <VersionPills versions={set.versions} selectedId={selected.id} pins={set.pins} onSelect={onSelect} />
-        <div className="flex flex-wrap items-center gap-2">
-          {selected.status === 'draft' && (
-            <Button size="sm" variant="outline" disabled={mc.saving} onClick={() => check(() => api.validateMappingVersion(selected.id), `v${selected.versionNumber} validated`)}>
-              Validate
-            </Button>
-          )}
-          {selected.status === 'validated' && (
-            <Button size="sm" variant="outline" disabled={mc.saving} onClick={() => mc.run(() => api.reopenMappingVersion(selected.id), 'Returned to draft')}>
-              Return to draft
-            </Button>
-          )}
-          {isOpen && (
-            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={mc.saving} onClick={async () => {
-              const r = await mc.run(() => api.deleteMappingVersion(selected.id), `Draft v${selected.versionNumber} deleted`)
-              if (r.ok) onSelect('')
-            }}>
-              Delete draft
-            </Button>
-          )}
-          {isOpen && (
-            <Button size="sm" disabled={mc.saving} onClick={() => setPublishing(true)}>
-              Publish v{selected.versionNumber}
-            </Button>
-          )}
-          {!open && (
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
-                New draft <ChevronDownIcon />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={async () => {
-                    const r = await mc.run(() => api.createMappingVersion(set.id, { mode: 'clone', fromVersionId: selected.id }), (v) => `Draft v${v.versionNumber} created`)
-                    if (r.ok) onSelect(r.data.id)
-                  }}
-                >
-                  Copy of v{selected.versionNumber}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    const r = await mc.run(() => api.createMappingVersion(set.id, { mode: 'empty' }), (v) => `Draft v${v.versionNumber} created`)
-                    if (r.ok) onSelect(r.data.id)
-                  }}
-                >
-                  Empty draft
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
-      <ConfirmDialog
-        open={publishing}
-        onOpenChange={setPublishing}
-        title={`Publish v${selected.versionNumber}?`}
-        confirmLabel="Publish"
-        onConfirm={async () => {
-          const r = await check(() => api.publishMappingVersion(selected.id), `v${selected.versionNumber} is live`)
-          setPublishing(false)
-          return r
-        }}
-      >
-        <ul className="flex list-disc flex-col gap-1 pl-4">
-          <li>Publication checks run first; any violation stops the publish.</li>
-          {live && <li>v{live.versionNumber} will be retired.</li>}
-          <li>The active assumption set will point at v{selected.versionNumber}.</li>
-          {set.bindings.length > 0 && <li>{set.bindings.length} dataset binding{set.bindings.length === 1 ? '' : 's'} pick up the new entries on their next run.</li>}
-        </ul>
-      </ConfirmDialog>
       <RenameSetDialog set={set} open={renaming} onOpenChange={setRenaming} />
       <BlockedDeleteDialog
         open={deleting}
         onOpenChange={setDeleting}
         title={`Delete ${set.displayName}?`}
+        description="Deleting removes every version and its entries."
         check={deleteCheck}
         onConfirm={async () => {
           const r = await mc.run(() => api.deleteMappingSet(set.id), 'Mapping set deleted')
@@ -370,7 +274,7 @@ function RenameSetDialog({ set, open, onOpenChange }: { set: MappingSetDetail; o
           className="flex flex-col gap-4"
           onSubmit={async (e) => {
             e.preventDefault()
-            const r = await mc.run(() => api.updateMappingSet(set.id, form), 'Details saved')
+            const r = await mc.run(() => api.updateMappingSet(set.id, form))
             if (r.ok) onOpenChange(false)
           }}
         >
@@ -391,7 +295,7 @@ function RenameSetDialog({ set, open, onOpenChange }: { set: MappingSetDetail; o
               Cancel
             </Button>
             <Button type="submit" disabled={mc.saving}>
-              Save
+              Apply
             </Button>
           </DialogFooter>
         </form>
@@ -404,25 +308,23 @@ function RenameSetDialog({ set, open, onOpenChange }: { set: MappingSetDetail; o
 
 function EntriesTable({
   set,
-  version,
-  entries,
+  content,
   members,
   filter,
   setFilter,
 }: {
   set: MappingSetDetail
-  version: MappingVersionSummary
-  entries: MappingEntry[]
+  content: MappingVersionContent
   members: MemberRef[] | null | undefined
   filter: string
   setFilter: (v: string) => void
 }) {
   const api = useMappingsApi()
   const mc = useMapCall()
-  const history = useHistory()
   const undoAction = useUndoAction()
+  const { version, entries } = content
   const index = useMemo(() => indexMembers(members), [members])
-  const issues = useMemo(() => entryIssues(entries, index), [entries, index])
+  const issues = useMemo(() => violationsByTarget(content.violations).byId, [content.violations])
   const options = useMemo(() => memberOptions(members, { assignableOnly: true }), [members])
   const [issuesOnly, setIssuesOnly] = useState(false)
   const [draft, setDraft] = useState({ sourceKeyValue: '', memberKey: '' })
@@ -437,29 +339,13 @@ function EntriesTable({
     .sort((a, b) => a.sourceKeyValue.localeCompare(b.sourceKeyValue, undefined, { numeric: true }))
 
   const add = async () => {
-    const r = await mc.run(() => api.saveEntry(version.id, draft))
+    const r = await mc.run(() => api.saveEntry(version.id, { id: newTempId(), ...draft }))
     if (r.ok) setDraft({ sourceKeyValue: '', memberKey: draft.memberKey })
   }
 
   const remove = async (e: MappingEntry) => {
     const r = await mc.run(() => api.deleteEntry(version.id, e.id))
-    if (!r.ok) return
-    let entryId = e.id
-    const versionId = version.id
-    history.record(
-      `mapping:${versionId}`,
-      `Remove '${e.sourceKeyValue}'`,
-      async () => {
-        const res = await mc.run(() => api.saveEntry(versionId, { sourceKeyValue: e.sourceKeyValue, memberKey: e.memberKey }))
-        if (!res.ok) throw new Error('The entry could not be restored.')
-        entryId = res.data.id
-      },
-      async () => {
-        const res = await mc.run(() => api.deleteEntry(versionId, entryId))
-        if (!res.ok) throw new Error('The entry could not be removed.')
-      },
-    )
-    toast.success(`Removed '${e.sourceKeyValue}'`, { action: undoAction() })
+    if (r.ok) toast.success(`Removed '${e.sourceKeyValue}'`, { action: undoAction() })
   }
 
   return (
@@ -481,15 +367,16 @@ function EntriesTable({
         >
           <CopyIcon /> Copy
         </Button>
-        <WithReason reason={editable ? null : `v${version.versionNumber} is ${version.status} and read-only`}>
+        <WithReason reason={editable ? null : `v${version.versionNumber} is frozen and read-only`}>
           <Button size="sm" variant="outline" disabled={!editable} onClick={() => setPasting(true)}>
             <ClipboardPasteIcon /> Paste entries
           </Button>
         </WithReason>
       </div>
 
-      {version.status === 'published' && <p className="text-sm text-muted-foreground">Live version. Edits apply immediately and must keep the version valid.</p>}
-      {!editable && <p className="text-sm text-muted-foreground">v{version.versionNumber} is {version.status} and read-only.</p>}
+      <p className="text-sm text-muted-foreground">
+        {editable ? 'Live version. Edits stay pending until you save; saving is refused while any entry is flagged.' : `v${version.versionNumber} is a frozen snapshot and read-only.`}
+      </p>
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
@@ -546,11 +433,11 @@ function EntriesTable({
                       size="sm"
                       disabled={mc.saving}
                       onClick={async () => {
-                        const r = await mc.run(() => api.saveEntry(version.id, editing), 'Entry saved')
+                        const r = await mc.run(() => api.saveEntry(version.id, editing))
                         if (r.ok) setEditing(null)
                       }}
                     >
-                      Save
+                      Apply
                     </Button>
                   </Td>
                 </tr>
@@ -582,12 +469,12 @@ function EntriesTable({
       <p className="text-xs text-muted-foreground tabular-nums">
         {rows.length === entries.length ? `${entries.length} entries` : `${rows.length} of ${entries.length} entries`} · source keys match exactly, including spaces and leading zeros
       </p>
-      <PasteEntriesDialog open={pasting} onOpenChange={setPasting} versionId={version.id} entries={entries} index={index} />
+      <PasteEntriesDialog open={pasting} onOpenChange={setPasting} versionId={version.id} entries={entries} />
     </section>
   )
 }
 
-function EntryRow({ entry, index, issues, editable, onEdit, onDelete }: { entry: MappingEntry; index: MemberIndex | null; issues?: ReturnType<typeof entryIssues> extends Map<string, infer V> ? V : never; editable: boolean; onEdit: () => void; onDelete: () => void }) {
+function EntryRow({ entry, index, issues, editable, onEdit, onDelete }: { entry: MappingEntry; index: MemberIndex | null; issues?: Violation[]; editable: boolean; onEdit: () => void; onDelete: () => void }) {
   const m = index?.get(entry.memberKey)
   return (
     <tr className={cn('group', issues && 'bg-destructive/5')}>
@@ -600,12 +487,7 @@ function EntryRow({ entry, index, issues, editable, onEdit, onDelete }: { entry:
             {m ? m.displayName : <span className="text-muted-foreground">Unknown member</span>}
             <Mono>{entry.memberKey}</Mono>
           </span>
-          {issues?.map((i) => (
-            <span key={i.code} className="flex items-center gap-1 text-xs text-destructive">
-              <TriangleAlertIcon aria-hidden className="size-3" />
-              {entryIssueText(i, index)}
-            </span>
-          ))}
+          {issues && <RowIssues messages={issues.map((i) => i.message)} />}
         </div>
       </Td>
       <Td className="text-right whitespace-nowrap">
@@ -624,20 +506,12 @@ function EntryRow({ entry, index, issues, editable, onEdit, onDelete }: { entry:
   )
 }
 
-const PREVIEW_TONE = {
-  new: 'text-success-foreground',
-  changed: 'text-primary',
-  removed: 'text-destructive',
-  unchanged: 'text-muted-foreground',
-  error: 'text-destructive',
-} as const
-
-function PasteEntriesDialog({ open, onOpenChange, versionId, entries, index }: { open: boolean; onOpenChange: (o: boolean) => void; versionId: string; entries: MappingEntry[]; index: MemberIndex | null }) {
+function PasteEntriesDialog({ open, onOpenChange, versionId, entries }: { open: boolean; onOpenChange: (o: boolean) => void; versionId: string; entries: MappingEntry[] }) {
   const api = useMappingsApi()
   const mc = useMapCall()
   const [text, setText] = useState('')
   const [keep, setKeep] = useState(true)
-  const preview = useMemo(() => (text.trim() ? previewEntryPaste(entries, text, index, keep) : null), [entries, text, index, keep])
+  const preview = useMemo(() => (text.trim() ? previewEntryPaste(entries, text, keep) : null), [entries, text, keep])
   const changes = preview ? preview.counts.new + preview.counts.changed + preview.counts.removed : 0
   const close = (o: boolean) => {
     onOpenChange(o)
@@ -649,7 +523,7 @@ function PasteEntriesDialog({ open, onOpenChange, versionId, entries, index }: {
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Paste entries</DialogTitle>
-          <DialogDescription>One per line: source key, then member key, separated by a tab or comma. Keys are taken exactly as pasted.</DialogDescription>
+          <DialogDescription>One per line: source key, then member key, separated by a tab or comma. Keys are taken exactly as pasted; entries that break a rule are flagged after applying.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-3">
@@ -661,7 +535,7 @@ function PasteEntriesDialog({ open, onOpenChange, versionId, entries, index }: {
           </div>
           <div className="flex min-h-0 flex-col gap-2">
             {!preview ? (
-              <p className="text-sm text-muted-foreground">The preview shows what changes before anything is saved.</p>
+              <p className="text-sm text-muted-foreground">The preview shows what changes before anything is applied.</p>
             ) : (
               <>
                 <p className="flex flex-wrap gap-x-3 text-xs tabular-nums">
@@ -713,43 +587,39 @@ function PasteEntriesDialog({ open, onOpenChange, versionId, entries, index }: {
 
 /* ───────────────────────── side panels ───────────────────────── */
 
-function Coverage({ entries, members, dimensionName }: { entries: MappingEntry[]; members: MemberRef[] | null | undefined; dimensionName: string }) {
+function Coverage({ content, members }: { content: MappingVersionContent; members: MemberRef[] | null | undefined }) {
   const [all, setAll] = useState(false)
-  if (members === undefined) return null
-  const assignable = members?.filter((m) => m.isAssignable).length ?? 0
-  const uncovered = uncoveredMembers(entries, members ?? null)
+  const { assignableMemberCount: assignable, uncoveredMemberKeys: uncovered } = content.coverage
+  const index = useMemo(() => indexMembers(members), [members])
   const shown = all ? uncovered : uncovered.slice(0, 10)
   return (
     <section aria-labelledby="cov-h" className="flex flex-col gap-2 rounded-lg border bg-card p-3">
       <h3 id="cov-h" className="text-sm font-medium">
         Coverage
       </h3>
-      {!members ? (
-        <p className="text-sm text-muted-foreground">{dimensionName} isn&apos;t published, so coverage can&apos;t be measured.</p>
-      ) : (
+      <p className="text-sm tabular-nums">
+        {assignable - uncovered.length} of {assignable} assignable members receive at least one source key.
+      </p>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <div className="h-full bg-primary" style={{ width: `${assignable ? ((assignable - uncovered.length) / assignable) * 100 : 0}%` }} />
+      </div>
+      {uncovered.length > 0 && (
         <>
-          <p className="text-sm tabular-nums">
-            {assignable - uncovered.length} of {assignable} assignable members receive at least one source key.
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <TriangleAlertIcon aria-hidden className="size-3 shrink-0" />
+            No source key maps to these yet. That&apos;s allowed; their rows simply stay empty.
           </p>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-            <div className="h-full bg-primary" style={{ width: `${assignable ? ((assignable - uncovered.length) / assignable) * 100 : 0}%` }} />
-          </div>
-          {uncovered.length > 0 && (
-            <>
-              <p className="text-xs text-muted-foreground">No source key maps to these yet. That&apos;s allowed; their rows simply stay empty.</p>
-              <ul className="flex flex-wrap gap-1">
-                {shown.map((m) => (
-                  <li key={m.key} title={m.displayName} className="rounded-sm border px-1.5 font-mono text-[11px]">
-                    {m.key}
-                  </li>
-                ))}
-              </ul>
-              {uncovered.length > 10 && (
-                <Button variant="link" size="sm" className="h-auto self-start p-0" onClick={() => setAll(!all)}>
-                  {all ? 'Show fewer' : `Show all ${uncovered.length}`}
-                </Button>
-              )}
-            </>
+          <ul className="flex flex-wrap gap-1">
+            {shown.map((key) => (
+              <li key={key} title={index?.get(key)?.displayName} className="rounded-sm border px-1.5 font-mono text-[11px]">
+                {key}
+              </li>
+            ))}
+          </ul>
+          {uncovered.length > 10 && (
+            <Button variant="link" size="sm" className="h-auto self-start p-0" onClick={() => setAll(!all)}>
+              {all ? 'Show fewer' : `Show all ${uncovered.length}`}
+            </Button>
           )}
         </>
       )}
@@ -766,10 +636,10 @@ function SetUsage({ set }: { set: MappingSetDetail }) {
       {set.bindings.length ? (
         <ul className="flex flex-col gap-2 text-sm">
           {set.bindings.map((b) => (
-            <li key={`${b.datasetKey}-${b.fieldKey}`} className="flex flex-col">
+            <li key={`${b.datasetVersionId}-${b.fieldKey}`} className="flex flex-col">
               <span className="flex items-center gap-2">
                 <Mono className="text-foreground">{b.datasetKey}</Mono>
-                <StatusBadge status={b.status} label={`v${b.datasetVersion}`} />
+                <StatusBadge status={b.status} label={`v${b.datasetVersionNumber}`} />
               </span>
               <span className="text-xs text-muted-foreground">
                 <Mono>{b.fieldKey}</Mono> as role <Mono>{b.roleKey}</Mono>
@@ -784,25 +654,3 @@ function SetUsage({ set }: { set: MappingSetDetail }) {
     </section>
   )
 }
-
-export function PinsList({ pins }: { pins: MappingSetDetail['pins'] }) {
-  if (!pins.length) return null
-  return (
-    <div className="flex flex-col gap-1.5 border-t pt-3">
-      <h4 className="text-xs font-medium text-muted-foreground">Assumption sets</h4>
-      <ul className="flex flex-col gap-1 text-sm">
-        {pins.map((p) => (
-          <li key={p.assumptionSetKey} className="flex items-center justify-between gap-2">
-            <span>
-              {p.assumptionSetName}
-              {p.isActive && <span className="ml-1.5 text-xs text-muted-foreground">(active)</span>}
-            </span>
-            <Mono>v{p.versionNumber}</Mono>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-export { formatDate }

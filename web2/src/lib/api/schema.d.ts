@@ -897,6 +897,430 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{tenantId}/mapping-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List mapping sets
+         * @description Every mapping set, or those targeting one dimension, with version summaries and bindings.
+         */
+        get: operations["listMappingSets"];
+        put?: never;
+        /**
+         * Create a mapping set
+         * @description Creates the mapping set with an empty live v1 (OI-27).
+         */
+        post: operations["createMappingSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        /** Get a mapping set */
+        get: operations["getMappingSet"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a mapping set
+         * @description Deletes the mapping set and every version when no binding uses it and no historical set pins it (B12).
+         */
+        delete: operations["deleteMappingSet"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a mapping set can be deleted */
+        get: operations["checkDeleteMappingSet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview mapping set changes
+         * @description Applies the operations to the stored mapping set and its live version in memory and writes nothing. Entries that break a rule come back as `violations` so the editor can flag them (B11).
+         */
+        post: operations["previewMappingSetChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-sets/{mappingSetId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit mapping set changes
+         * @description Applies the operations to the stored mapping set and its live version and writes them. Refused while any rule violation remains (B11); advances `semantic_revision` once.
+         */
+        post: operations["commitMappingSetChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Get a mapping version's content */
+        get: operations["getMappingVersion"];
+        put?: never;
+        post?: never;
+        /** Delete a frozen mapping version */
+        delete: operations["deleteMappingVersion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the mapping version rules
+         * @description Runs every mapping version rule on any version and writes nothing (OI-30).
+         */
+        post: operations["checkMappingVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze the live mapping version
+         * @description Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone (12, The version model).
+         */
+        post: operations["freezeMappingVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a mapping version can be deleted */
+        get: operations["checkDeleteMappingVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List bridges
+         * @description Analytical and report bridges. With `dimensionId`, the bridges starting or ending at that dimension. With `reportId` and `sourceKey`, the one report bridge of that report source, or none (serves `findReportBridge`).
+         */
+        get: operations["listBridges"];
+        put?: never;
+        /**
+         * Create an analytical bridge
+         * @description Creates the bridge with an empty live v1, `many_to_one` / `none` (OI-27). Report bridges come from their report.
+         */
+        post: operations["createBridge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        /** Get a bridge */
+        get: operations["getBridge"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete an analytical bridge
+         * @description Deletes the bridge and every version when no binding uses it and no historical set pins it (B12).
+         */
+        delete: operations["deleteBridge"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a bridge can be deleted */
+        get: operations["checkDeleteBridge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview bridge changes
+         * @description Applies the operations to the stored analytical bridge and its live version in memory and writes nothing. Mappings that break the cardinality, allocation or member rules come back as `violations` (B11).
+         */
+        post: operations["previewBridgeChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridges/{bridgeId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit bridge changes
+         * @description Applies the operations to the stored analytical bridge and its live version and writes them. Refused while any rule violation remains (B11); advances `semantic_revision` once.
+         */
+        post: operations["commitBridgeChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Get a bridge version's content */
+        get: operations["getBridgeVersion"];
+        put?: never;
+        post?: never;
+        /** Delete a frozen bridge version */
+        delete: operations["deleteBridgeVersion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the bridge version rules
+         * @description Runs every bridge version rule on any version and writes nothing (OI-30).
+         */
+        post: operations["checkBridgeVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze the live bridge version
+         * @description Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone with the same settings and mappings (12, The version model).
+         */
+        post: operations["freezeBridgeVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/delete-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Check whether a bridge version can be deleted */
+        get: operations["checkDeleteBridgeVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/{tenantId}/releases": {
         parameters: {
             query?: never;
@@ -3024,6 +3448,404 @@ export interface components {
         DimensionChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
             state: components["schemas"]["DimensionEditState"];
         };
+        /** @enum {string} */
+        MappingCardinality: "many_to_one" | "many_to_many";
+        /**
+         * @description `many_to_one` allows `none` only; `many_to_many` allows `partition` or `replicate` (B5).
+         * @enum {string}
+         */
+        MappingAllocationMode: "none" | "partition" | "replicate";
+        /**
+         * @description `descendants` is used only by report bridges (B8, OI-28).
+         * @enum {string}
+         */
+        MappingSourceSelection: "member" | "descendants";
+        /** @description A read-only slice of a dimension, enough to label it and to state which version keys resolve against. */
+        MappingDimensionRef: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["Key"];
+            displayName: string;
+            /** @enum {string} */
+            kind: "categorical" | "hierarchical" | "range" | "time";
+            /** @enum {string} */
+            purpose: "analytical" | "report";
+            /** @description The live version, whose members entry and mapping keys resolve against. */
+            publishedVersionId: string | null;
+            publishedVersionNumber: number | null;
+        };
+        /** @description A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers. */
+        MappingBindingUsage: {
+            datasetId: components["schemas"]["Id"];
+            datasetKey: components["schemas"]["Key"];
+            datasetVersionId: components["schemas"]["Id"];
+            datasetVersionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            fieldKey: components["schemas"]["Key"];
+            roleKey: components["schemas"]["Key"];
+            /** @description Bridge bindings only, the role of the binding the bridge remaps; null for mapping sets. */
+            sourceRoleKey: string | null;
+        };
+        /** @description An assumption set that pins one version of a mapping set or bridge. */
+        MappingAssumptionPin: {
+            assumptionSetId: components["schemas"]["Id"];
+            assumptionSetKey: string;
+            assumptionSetDisplayName: string;
+            /** @description The active set always pins the live version; historical sets keep the version they captured. */
+            isActive: boolean;
+            versionId: components["schemas"]["Id"];
+            versionNumber: number;
+        };
+        /**
+         * @description Rule codes of mapping versions.
+         * @enum {string}
+         */
+        MappingViolationCode: "source_key_unique" | "dimension_version_published" | "entry_member_in_version" | "entry_member_assignable";
+        /**
+         * @description Rule codes of bridge versions.
+         * @enum {string}
+         */
+        BridgeViolationCode: "endpoint_versions_published" | "mapping_members_in_endpoint_versions" | "cardinality_many_to_one" | "allocation_none" | "allocation_partition" | "allocation_replicate" | "pair_unique" | "descendants_report_only";
+        MappingSet: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            /** @description Free text naming the source system (B14). */
+            sourceNamespace: string;
+            dimensionId: components["schemas"]["Id"];
+        };
+        /** @description Stored `published` is the live version and `retired` a frozen snapshot (B10). */
+        MappingVersion: {
+            id: components["schemas"]["Id"];
+            mappingSetId: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When it was frozen.
+             */
+            retiredAt: string | null;
+            freezeNote: string | null;
+        };
+        MappingEntry: {
+            id: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            /** @description Compared exactly as text, never trimmed or coerced (B2). */
+            sourceKeyValue: string;
+            memberKey: string;
+        };
+        MappingVersionSummary: {
+            id: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            retiredAt: string | null;
+            freezeNote: string | null;
+            entryCount: number;
+        };
+        MappingSetListItem: components["schemas"]["MappingSet"] & {
+            dimension: components["schemas"]["MappingDimensionRef"];
+            versions: components["schemas"]["MappingVersionSummary"][];
+            /** @description Entries of the live version. */
+            publishedEntryCount: number;
+            bindings: components["schemas"]["MappingBindingUsage"][];
+        };
+        MappingSetDetail: components["schemas"]["MappingSetListItem"] & {
+            pins: components["schemas"]["MappingAssumptionPin"][];
+        };
+        /** @description Assignable members of the dimension's live version and those no entry maps to. */
+        MappingCoverage: {
+            assignableMemberCount: number;
+            uncoveredMemberKeys: string[];
+        };
+        MappingVersionContent: {
+            version: components["schemas"]["MappingVersion"];
+            entries: components["schemas"]["MappingEntry"][];
+            coverage: components["schemas"]["MappingCoverage"];
+            /** @description Rule findings on this content, with `target.itemId` naming the entry at fault. Empty on a saved live version, because commits refuse violations (B11); a preview's state carries the findings of the pending edits. */
+            violations: components["schemas"]["Violation"][];
+        };
+        /** @description What the mapping set editor renders; the state of a mapping set change set. */
+        MappingSetEditState: {
+            set: components["schemas"]["MappingSetDetail"];
+            content: components["schemas"]["MappingVersionContent"];
+        };
+        CreateMappingSetInput: {
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            sourceNamespace: string;
+            dimensionId: components["schemas"]["Id"];
+        };
+        MappingSetCreated: {
+            mappingSetId: components["schemas"]["Id"];
+            /** @description The empty live v1. */
+            versionId: components["schemas"]["Id"];
+        };
+        /** @description Key and dimension are fixed after creation. */
+        MappingSetPatch: {
+            displayName?: string;
+            sourceNamespace?: string;
+        };
+        MappingEntryInput: {
+            /** @description The entry's id, or a client-generated `tmp:<uuid>` for a new entry. */
+            id: components["schemas"]["Id"];
+            sourceKeyValue: string;
+            memberKey: string;
+        };
+        MappingFreezeInput: {
+            /** @description Why the version was frozen, e.g. `FY26 close` (OI-15). */
+            note: string | null;
+        };
+        /** @description The rule report of the frozen version, and the new live version. */
+        MappingFreezeResult: {
+            report: components["schemas"]["ValidationReport"];
+            /** @description The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors). */
+            live: components["schemas"]["MappingVersionSummary"] | null;
+        };
+        MappingSetUpdateOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateMappingSet";
+            patch: components["schemas"]["MappingSetPatch"];
+        };
+        /** @description Adds the entry, or replaces the entry with the same id. */
+        MappingEntrySaveOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveEntry";
+            versionId: components["schemas"]["Id"];
+            input: components["schemas"]["MappingEntryInput"];
+        };
+        MappingEntryDeleteOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteEntry";
+            versionId: components["schemas"]["Id"];
+            entryId: components["schemas"]["Id"];
+        };
+        /** @description Replaces every entry of the version (bulk paste). */
+        MappingEntriesReplaceOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "replaceEntries";
+            versionId: components["schemas"]["Id"];
+            entries: components["schemas"]["MappingEntryInput"][];
+        };
+        /** @description One edit of a mapping set change set; `versionId` names the live version. */
+        MappingOperation: components["schemas"]["MappingSetUpdateOperation"] | components["schemas"]["MappingEntrySaveOperation"] | components["schemas"]["MappingEntryDeleteOperation"] | components["schemas"]["MappingEntriesReplaceOperation"];
+        MappingSetChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["MappingOperation"][];
+        };
+        MappingSetChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["MappingSetEditState"];
+        };
+        MappingSetChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["MappingSetEditState"];
+        };
+        /** @description The report source a report bridge belongs to (B9, OI-31). */
+        BridgeOwner: {
+            reportId: components["schemas"]["Id"];
+            reportKey: string;
+            sourceKey: string;
+        };
+        Bridge: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            sourceDimensionId: components["schemas"]["Id"];
+            targetDimensionId: components["schemas"]["Id"];
+            isEnabled: boolean;
+            /** @description Set for report bridges, which are written only through their report's change set. */
+            owner: components["schemas"]["BridgeOwner"] | null;
+        };
+        /** @description Stored `published` is the live version and `retired` a frozen snapshot (B10). */
+        BridgeVersion: {
+            id: components["schemas"]["Id"];
+            bridgeId: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            cardinality: components["schemas"]["MappingCardinality"];
+            allocationMode: components["schemas"]["MappingAllocationMode"];
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When it was frozen.
+             */
+            retiredAt: string | null;
+            freezeNote: string | null;
+        };
+        BridgeMapping: {
+            id: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            sourceMemberKey: string;
+            targetMemberKey: string;
+            /** @description Affects only measures with `bridge_factor_behavior = value` (B7). */
+            factor: number;
+            allocationWeight: number;
+            sourceSelection: components["schemas"]["MappingSourceSelection"];
+        };
+        BridgeVersionSummary: {
+            id: components["schemas"]["Id"];
+            versionNumber: number;
+            status: components["schemas"]["VersionStatus"];
+            cardinality: components["schemas"]["MappingCardinality"];
+            allocationMode: components["schemas"]["MappingAllocationMode"];
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            retiredAt: string | null;
+            freezeNote: string | null;
+            mappingCount: number;
+        };
+        BridgeListItem: components["schemas"]["Bridge"] & {
+            source: components["schemas"]["MappingDimensionRef"];
+            target: components["schemas"]["MappingDimensionRef"];
+            versions: components["schemas"]["BridgeVersionSummary"][];
+            /** @description Mappings of the live version. */
+            publishedMappingCount: number;
+            bindings: components["schemas"]["MappingBindingUsage"][];
+        };
+        BridgeDetail: components["schemas"]["BridgeListItem"] & {
+            pins: components["schemas"]["MappingAssumptionPin"][];
+        };
+        /** @description One source member's targets and the sum of its allocation weights. */
+        BridgeSourceAllocation: {
+            sourceMemberKey: string;
+            targetCount: number;
+            weightSum: number;
+        };
+        BridgeAllocationSummary: {
+            /** @description Every source member the version maps, ordered by key. */
+            sources: components["schemas"]["BridgeSourceAllocation"][];
+        };
+        BridgeVersionContent: {
+            version: components["schemas"]["BridgeVersion"];
+            mappings: components["schemas"]["BridgeMapping"][];
+            allocation: components["schemas"]["BridgeAllocationSummary"];
+            /** @description Rule findings on this content; `target.itemId` names the mapping at fault, or `target.itemKey` the source member for per-source rules. Empty on a saved live version, because commits refuse violations (B11); a preview's state carries the findings of the pending edits. */
+            violations: components["schemas"]["Violation"][];
+        };
+        /** @description What the bridge editor renders; the state of a bridge change set. */
+        BridgeEditState: {
+            bridge: components["schemas"]["BridgeDetail"];
+            content: components["schemas"]["BridgeVersionContent"];
+        };
+        /** @description Endpoints are fixed at creation, differ, and the source is neither `time` nor a report dimension (B4). */
+        CreateBridgeInput: {
+            key: components["schemas"]["DottedKey"];
+            displayName: string;
+            sourceDimensionId: components["schemas"]["Id"];
+            targetDimensionId: components["schemas"]["Id"];
+            isEnabled: boolean;
+        };
+        BridgeCreated: {
+            bridgeId: components["schemas"]["Id"];
+            /** @description The empty live v1, `many_to_one` / `none`. */
+            versionId: components["schemas"]["Id"];
+        };
+        /** @description Key and endpoints are fixed after creation. */
+        BridgePatch: {
+            displayName?: string;
+            isEnabled?: boolean;
+        };
+        /** @description Edited in place on the live version (OI-26); mappings that no longer comply become violations. */
+        BridgeVersionPatch: {
+            cardinality: components["schemas"]["MappingCardinality"];
+            allocationMode: components["schemas"]["MappingAllocationMode"];
+        };
+        BridgeMappingInput: {
+            /** @description The mapping's id, or a client-generated `tmp:<uuid>` for a new mapping. */
+            id: components["schemas"]["Id"];
+            sourceMemberKey: string;
+            targetMemberKey: string;
+            factor: number;
+            allocationWeight: number;
+            /** @description Accepted only on report bridges, written by the report editor; absent means `member` (OI-28). */
+            sourceSelection?: components["schemas"]["MappingSourceSelection"];
+        };
+        BridgeFreezeInput: {
+            /** @description Why the version was frozen, e.g. `FY26 close` (OI-15). */
+            note: string | null;
+        };
+        /** @description The rule report of the frozen version, and the new live version. */
+        BridgeFreezeResult: {
+            report: components["schemas"]["ValidationReport"];
+            /** @description The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors). */
+            live: components["schemas"]["BridgeVersionSummary"] | null;
+        };
+        BridgeUpdateOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateBridge";
+            patch: components["schemas"]["BridgePatch"];
+        };
+        BridgeVersionUpdateOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "updateBridgeVersion";
+            versionId: components["schemas"]["Id"];
+            patch: components["schemas"]["BridgeVersionPatch"];
+        };
+        /** @description Adds the mapping, or replaces the mapping with the same id. */
+        BridgeMappingSaveOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "saveBridgeMapping";
+            versionId: components["schemas"]["Id"];
+            input: components["schemas"]["BridgeMappingInput"];
+        };
+        BridgeMappingDeleteOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "deleteBridgeMapping";
+            versionId: components["schemas"]["Id"];
+            mappingId: components["schemas"]["Id"];
+        };
+        /** @description Replaces every mapping of the version (bulk paste). */
+        BridgeMappingsReplaceOperation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "replaceBridgeMappings";
+            versionId: components["schemas"]["Id"];
+            rows: components["schemas"]["BridgeMappingInput"][];
+        };
+        /** @description One edit of an analytical bridge change set; `versionId` names the live version. */
+        BridgeOperation: components["schemas"]["BridgeUpdateOperation"] | components["schemas"]["BridgeVersionUpdateOperation"] | components["schemas"]["BridgeMappingSaveOperation"] | components["schemas"]["BridgeMappingDeleteOperation"] | components["schemas"]["BridgeMappingsReplaceOperation"];
+        BridgeChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
+            operations: components["schemas"]["BridgeOperation"][];
+        };
+        BridgeChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
+            state: components["schemas"]["BridgeEditState"];
+        };
+        BridgeChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
+            state: components["schemas"]["BridgeEditState"];
+        };
         /**
          * @description Natural key of a release, fixed after creation; screens show it as the release's name (R7, OI-39).
          * @example prod/2026-q4
@@ -4170,6 +4992,10 @@ export interface components {
         DimensionLevelId: components["schemas"]["Id"];
         DimensionRoleId: components["schemas"]["Id"];
         DimensionProfileKey: components["schemas"]["Key"];
+        MappingSetId: components["schemas"]["Id"];
+        MappingVersionId: components["schemas"]["Id"];
+        BridgeId: components["schemas"]["Id"];
+        BridgeVersionId: components["schemas"]["Id"];
         ReleaseIdPath: components["schemas"]["Id"];
         /** @description The release compared from. */
         ReleaseDiffFrom: components["schemas"]["Id"];
@@ -5574,6 +6400,682 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The delete check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMappingSets: {
+        parameters: {
+            query?: {
+                /** @description Only mapping sets that target this dimension. */
+                dimensionId?: components["schemas"]["Id"];
+            };
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mapping sets, ordered by key. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingSetListItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    createMappingSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMappingSetInput"];
+            };
+        };
+        responses: {
+            /** @description Created, with its live v1. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingSetCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description The key is taken, or the dimension is not an analytical categorical or hierarchical dimension (B1). */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getMappingSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mapping set with its bindings and assumption set pins. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingSetDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteMappingSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Blocked; `violations` lists the same reasons as the delete check. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDeleteMappingSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the delete is allowed, and why not. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewMappingSetChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingSetChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description The operations apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingSetChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description An operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitMappingSetChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingSetId: components["parameters"]["MappingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingSetChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingSetChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description An operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            /** @description The live version would break a rule; see `violations`. Nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    getMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version, its entries, coverage and rule findings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingVersionContent"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is live, or a historical assumption set pins it. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    freezeMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingFreezeInput"];
+            };
+        };
+        responses: {
+            /** @description Frozen; `live` is the new live version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingFreezeResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is not live. */
+            409: components["responses"]["Conflict"];
+            /** @description A rule failed; see `violations`. Nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    checkDeleteMappingVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                mappingVersionId: components["parameters"]["MappingVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the delete is allowed, and why not. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listBridges: {
+        parameters: {
+            query?: {
+                /** @description Only bridges whose source or target is this dimension. */
+                dimensionId?: components["schemas"]["Id"];
+                /** @description Only the report bridge owned by this report; used with `sourceKey`. */
+                reportId?: components["schemas"]["Id"];
+                /** @description The report source whose bridge is wanted; used with `reportId`. */
+                sourceKey?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analytical bridges first, then report bridges, each ordered by key. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeListItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    createBridge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBridgeInput"];
+            };
+        };
+        responses: {
+            /** @description Created, with its live v1. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description The key is taken, or the endpoints break B4 (equal, time source, report dimension). */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getBridge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bridge with its bindings and assumption set pins. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteBridge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Blocked (`violations` as in the delete check), or owned by a report. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkDeleteBridge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the delete is allowed, and why not. A report bridge is never allowed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCheck"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewBridgeChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BridgeChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description The operations apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeChangeSetPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The bridge is owned by a report, or an operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    commitBridgeChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeId: components["parameters"]["BridgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BridgeChangeSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Every operation applied and was written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeChangeSetCommit"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The bridge is owned by a report, or an operation targets a frozen version. */
+            409: components["responses"]["Conflict"];
+            /** @description The live version would break a rule; see `violations`. Nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    getBridgeVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version, its mappings, the allocation summary and rule findings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeVersionContent"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteBridgeVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is live, a historical assumption set pins it, or the bridge is owned by a report. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkBridgeVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    freezeBridgeVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BridgeFreezeInput"];
+            };
+        };
+        responses: {
+            /** @description Frozen; `live` is the new live version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeFreezeResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description The version is not live, or the bridge is owned by a report. */
+            409: components["responses"]["Conflict"];
+            /** @description A rule failed; see `violations`. Nothing was written. */
+            422: components["responses"]["UnprocessableContent"];
+        };
+    };
+    checkDeleteBridgeVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the delete is allowed, and why not. */
             200: {
                 headers: {
                     [name: string]: unknown;
