@@ -2,7 +2,7 @@ import { HistoryIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useLookup, useRelCall, useReleaseDiff, useReleasesApi } from '@/lib/releases/client'
+import { useLookup, useRelCall, useReleasesApi } from '@/lib/releases/client'
 import { DiffList, diffSummary } from './release-tabs'
 
 export function ActivateDialog({ releaseId, onClose }: { releaseId: string; onClose: () => void }) {
@@ -10,10 +10,9 @@ export function ActivateDialog({ releaseId, onClose }: { releaseId: string; onCl
   const lookup = useLookup()
   const { run, saving } = useRelCall()
   const [showList, setShowList] = useState(false)
-  const activeId = lookup.catalog?.tenant.activeReleaseId ?? null
-  const { data: diff } = useReleaseDiff(activeId, releaseId)
   const release = lookup.release(releaseId)
-  const active = activeId ? lookup.release(activeId) : undefined
+  const active = lookup.activeRelease
+  const diff = release?.diffVsActive
   const rollback = !!release && !!active && release.createdAt < active.createdAt
 
   return (

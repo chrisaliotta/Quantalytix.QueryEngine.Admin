@@ -1,4 +1,4 @@
-import { ActivityIcon, CameraIcon, CheckIcon, CopyIcon, FileTextIcon, GitCompareIcon, HistoryIcon, MoreHorizontalIcon, PencilIcon, PinIcon, SearchIcon, SlidersHorizontalIcon, SnowflakeIcon, TriangleAlertIcon } from 'lucide-react'
+import { ActivityIcon, CameraIcon, CheckIcon, CopyIcon, FileTextIcon, GitCompareIcon, MoreHorizontalIcon, PencilIcon, PinIcon, SearchIcon, SnowflakeIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAppNav, useSearchParam } from '@/lib/navigation'
 import { toast } from 'sonner'
@@ -83,10 +83,12 @@ function SetPage({ detail, onBack }: { detail: Detail; onBack: () => void }) {
         </>
       }
     >
-        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-          <PencilIcon />
-          Edit
-        </Button>
+        {historical && (
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <PencilIcon />
+            Edit
+          </Button>
+        )}
         {!historical && (
           <Button variant="outline" size="sm" onClick={() => setCapturing(true)}>
             <CameraIcon />
@@ -228,7 +230,7 @@ function Snippet({ caption, code }: { caption: string; code: string }) {
 
 /* ───────────────────────── Pins ───────────────────────── */
 
-const STATE_LABEL: Record<PinState, string> = { live: 'Live', frozen: 'Frozen', report_owned: 'Report-owned', unpublished: 'Not published' }
+const STATE_LABEL: Record<PinState, string> = { live: 'Live', frozen: 'Frozen', report_owned: 'Report-owned' }
 
 function PinStateCell({ state }: { state: PinState }) {
   if (state === 'live')
@@ -246,17 +248,10 @@ function PinStateCell({ state }: { state: PinState }) {
         Frozen
       </span>
     )
-  if (state === 'report_owned')
-    return (
-      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground" title="A report's dimension or a bridge into one. Captures leave these out.">
-        <FileTextIcon aria-hidden className="size-3.5" />
-        Report-owned
-      </span>
-    )
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm text-warning-foreground">
-      <TriangleAlertIcon aria-hidden className="size-3.5" />
-      Not published
+    <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground" title="A report's dimension or a bridge into one. Captures leave these out.">
+      <FileTextIcon aria-hidden className="size-3.5" />
+      Report-owned
     </span>
   )
 }

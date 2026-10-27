@@ -1,33 +1,37 @@
 import type {
   AssumptionSet,
-  Binding,
-  Dataset,
-  DatasetVersion,
-  Identity,
-  IdentityVersion,
-  Pin,
+  ManifestBinding,
+  ManifestDataset,
+  ManifestDatasetVersion,
+  ManifestEntry,
+  PinIdentity,
+  PinIdentityVersion,
   PinKind,
   Release,
-  ReleaseDataset,
-  ReportRef,
-  TenantInfo,
+  ReleaseActivation,
+  ReleaseReportRef,
+  SetPinEntry,
   VersionStatus,
 } from '../contract'
+import { manifestHash } from './rules'
+
+export type ManifestRow = ManifestEntry & { releaseId: string }
+export type Pin = SetPinEntry & { setId: string }
 
 export interface Db {
-  tenant: TenantInfo
-  datasets: Dataset[]
-  versions: DatasetVersion[]
+  activeReleaseId: string
+  datasets: ManifestDataset[]
   releases: Release[]
-  manifests: ReleaseDataset[]
-  identities: Identity[]
+  manifests: ManifestRow[]
+  activations: ReleaseActivation[]
+  identities: PinIdentity[]
   sets: AssumptionSet[]
   /** Historical sets only; the active set always pins each identity's published version. */
   pins: Pin[]
-  reports: ReportRef[]
+  reports: ReleaseReportRef[]
 }
 
-type V = [n: number, status: VersionStatus, publishedAt: string | null]
+type V = [n: number, status: PinIdentityVersion['status'], publishedAt: string]
 
 const dimId = (key: string) => `dim-${key}`
 const msId = (key: string) => `ms-${key}`
@@ -35,7 +39,7 @@ const brId = (key: string) => `bridge-${key}`
 const dsId = (key: string) => `ds-${key}`
 const dsv = (key: string, n: number) => `${dsId(key)}-v${n}`
 
-function identity(kind: PinKind, id: string, key: string, displayName: string, dimensionId: string, versions: V[], opts: { reportId?: string; createdAt?: string } = {}): Identity {
+function identity(kind: PinKind, id: string, key: string, displayName: string, dimensionId: string, versions: V[], opts: { reportId?: string; createdAt?: string } = {}): PinIdentity {
   return {
     kind,
     id,
@@ -44,7 +48,7 @@ function identity(kind: PinKind, id: string, key: string, displayName: string, d
     dimensionId,
     reportId: opts.reportId ?? null,
     createdAt: opts.createdAt ?? '2023-06-01T09:00:00Z',
-    versions: versions.map(([n, status, publishedAt]): IdentityVersion => ({ id: `${id}-v${n}`, versionNumber: n, status, publishedAt })),
+    versions: versions.map(([n, status, publishedAt]): PinIdentityVersion => ({ id: `${id}-v${n}`, versionNumber: n, status, publishedAt })),
   }
 }
 
@@ -63,7 +67,7 @@ const DIMENSIONS: [key: string, name: string, versions: V[], createdAt?: string]
   ['GlAccount', 'GL account', [R(1, '2023-09-01T09:00:00Z'), P(2, '2025-11-01T09:00:00Z')]],
   ['GlAccountClass', 'GL account class', [P(1, '2023-09-01T09:00:00Z')]],
   ['MaturityBucket', 'Maturity bucket', [P(1, '2024-05-10T09:00:00Z')]],
-  ['Officer', 'Loan officer', [P(1, '2024-06-01T09:00:00Z'), [2, 'draft', null]]],
+  ['Officer', 'Loan officer', [P(1, '2024-06-01T09:00:00Z')]],
   ['Product', 'Product', [R(1, '2024-03-01T09:00:00Z'), P(2, '2026-03-01T09:00:00Z')]],
   ['Purpose', 'Loan purpose', [P(1, '2024-03-01T09:00:00Z')]],
   ['RiskClass', 'Risk class', [P(1, '2024-03-15T09:00:00Z')]],
@@ -88,7 +92,7 @@ const MAPPING_SETS: [key: string, name: string, dimension: string, versions: V[]
   ['collateral.codes', 'Collateral codes', 'Collateral', [P(1, '2024-04-03T09:00:00Z')]],
   ['finance.branch', 'Finance branches', 'Branch', [P(1, '2024-01-05T09:00:00Z')]],
   ['evolving.branch', 'Evolving branch codes', 'EvolvingBranch', [R(1, '2025-06-01T09:00:00Z'), P(2, '2026-01-20T09:00:00Z')]],
-  ['legacy.costcenter', 'Legacy cost centers', 'CostCenter', [[1, 'draft', null]], '2026-09-01T09:00:00Z'],
+  ['legacy.costcenter', 'Legacy cost centers', 'CostCenter', [P(1, '2026-09-01T09:00:00Z')], '2026-09-01T09:00:00Z'],
 ]
 
 const BRIDGES: [key: string, name: string, target: string, versions: V[], report?: string][] = [
@@ -106,16 +110,16 @@ const BRIDGES: [key: string, name: string, target: string, versions: V[], report
 export const reportIdOf = (key: string) => `rep-${key}`
 export const reportKeyOf = (id: string) => id.replace(/^rep-/, '')
 
-const b = (name: string, kind: Binding['kind'], dimension: string, via?: { ms?: string; bridge?: string }): Binding => ({
-  name,
+const b = (displayName: string, kind: ManifestBinding['kind'], dimension: string, via: { ms?: string; bridge?: string } = {}): ManifestBinding => ({
+  displayName,
   kind,
   dimensionId: dimId(dimension),
-  ...(via?.ms ? { mappingSetId: msId(via.ms) } : {}),
-  ...(via?.bridge ? { bridgeId: brId(via.bridge) } : {}),
+  mappingSetId: via.ms ? msId(via.ms) : null,
+  bridgeId: via.bridge ? brId(via.bridge) : null,
 })
 const m = (key: string, appliesBridgeFactors = true) => ({ key, appliesBridgeFactors })
 
-const DATASETS: { key: string; name: string; enabled?: boolean; versions: { n: number; status: VersionStatus; at: string | null; bindings: Binding[]; measures: DatasetVersion['measures'] }[] }[] = [
+const DATASETS: { key: string; name: string; enabled?: boolean; versions: { n: number; status: VersionStatus; at: string | null; bindings: ManifestBinding[]; measures: ManifestDatasetVersion['measures'] }[] }[] = [
   {
     key: 'bank.balance_monthly',
     name: 'Monthly balances',
@@ -208,15 +212,21 @@ const RELEASES: { key: string; status: VersionStatus; created: string; published
 
 export const releaseIdOf = (key: string) => `rel-${key.replace(/[/.]/g, '-')}`
 
-const REPORTS: ReportRef[] = [
+const ACTIVATIONS: [release: string, previous: string | null, at: string][] = [
+  ['prod/2025-q4', null, '2025-10-01T09:00:00Z'],
+  ['prod/2026-q2', 'prod/2025-q4', '2026-04-01T09:00:00Z'],
+  ['prod/2026-q3', 'prod/2026-q2', '2026-07-01T09:00:00Z'],
+]
+
+const REPORTS: ReleaseReportRef[] = [
   {
     id: reportIdOf('bank.margin_statement'),
     key: 'bank.margin_statement',
     displayName: 'Bank margin',
     isEnabled: true,
     sources: [
-      { key: 'balance', datasetId: dsId('bank.balance_monthly'), usesFactors: false, measureKeys: ['averageBalance'], variable: 'AVERAGE_BALANCE' },
-      { key: 'income', datasetId: dsId('bank.income_monthly'), usesFactors: false, measureKeys: ['interestIncome', 'interestExpense'], variable: 'INTEREST_INCOME' },
+      { key: 'balance', datasetId: dsId('bank.balance_monthly'), usesFactors: false, measureKeys: ['averageBalance'] },
+      { key: 'income', datasetId: dsId('bank.income_monthly'), usesFactors: false, measureKeys: ['interestIncome', 'interestExpense'] },
       { key: 'plan', datasetId: dsId('bank.plan_monthly'), usesFactors: false, measureKeys: ['planAmount'] },
       { key: 'simulation', datasetId: dsId('bank.nii_simulation_monthly'), usesFactors: false, measureKeys: ['niiDelta'] },
     ],
@@ -234,7 +244,7 @@ const REPORTS: ReportRef[] = [
     displayName: 'Consolidated balance sheet',
     isEnabled: true,
     sources: [
-      { key: 'ledger', datasetId: dsId('ledger.balance_sheet'), usesFactors: true, measureKeys: ['balance'], variable: 'BALANCE' },
+      { key: 'ledger', datasetId: dsId('ledger.balance_sheet'), usesFactors: true, measureKeys: ['balance'] },
       { key: 'loans', datasetId: dsId('loans.details'), usesFactors: false, measureKeys: ['principal'] },
     ],
     reads: [
@@ -256,25 +266,43 @@ const REPORTS: ReportRef[] = [
 ]
 
 /** The version an identity had published at a moment: the newest one published by then. */
-function publishedAsOf(i: Identity, at: string) {
-  return [...i.versions].filter((v) => v.publishedAt && v.publishedAt <= at).sort((a, c) => c.versionNumber - a.versionNumber)[0] ?? null
+function publishedAsOf(i: PinIdentity, at: string) {
+  return [...i.versions].filter((v) => v.publishedAt <= at).sort((a, c) => c.versionNumber - a.versionNumber)[0] ?? null
 }
 
 export function createSeed(): Db {
-  const identities: Identity[] = [
+  const identities: PinIdentity[] = [
     ...DIMENSIONS.map(([key, name, versions, createdAt]) => identity('dimension', dimId(key), key, name, dimId(key), versions, { createdAt })),
     ...REPORT_DIMENSIONS.map(([key, name, report]) => identity('dimension', dimId(key), key, name, dimId(key), [P(1, '2025-10-01T09:00:00Z')], { reportId: reportIdOf(report) })),
     ...MAPPING_SETS.map(([key, name, dim, versions, createdAt]) => identity('mapping_set', msId(key), key, name, dimId(dim), versions, { createdAt })),
     ...BRIDGES.map(([key, name, target, versions, report]) => identity('bridge', brId(key), key, name, dimId(target), versions, { reportId: report ? reportIdOf(report) : undefined })),
   ]
 
-  const datasets: Dataset[] = DATASETS.map((d) => ({ id: dsId(d.key), key: d.key, displayName: d.name, isEnabled: d.enabled ?? true }))
-  const versions: DatasetVersion[] = DATASETS.flatMap((d) =>
-    d.versions.map((v) => ({ id: dsv(d.key, v.n), datasetId: dsId(d.key), versionNumber: v.n, status: v.status, publishedAt: v.at, bindings: v.bindings, measures: v.measures })),
-  )
+  const datasets: ManifestDataset[] = DATASETS.map((d) => ({
+    id: dsId(d.key),
+    key: d.key,
+    displayName: d.name,
+    isEnabled: d.enabled ?? true,
+    versions: d.versions
+      .map((v) => ({ id: dsv(d.key, v.n), versionNumber: v.n, status: v.status, publishedAt: v.at, bindings: v.bindings, measures: v.measures }))
+      .sort((a, c) => c.versionNumber - a.versionNumber),
+  }))
 
-  const releases: Release[] = RELEASES.map((r) => ({ id: releaseIdOf(r.key), key: r.key, status: r.status, createdAt: r.created, publishedAt: r.published }))
-  const manifests: ReleaseDataset[] = RELEASES.flatMap((r) => r.manifest.map(([k, n]) => ({ releaseId: releaseIdOf(r.key), datasetId: dsId(k), datasetVersionId: dsv(k, n) })))
+  const manifests: ManifestRow[] = RELEASES.flatMap((r) => r.manifest.map(([k, n]) => ({ releaseId: releaseIdOf(r.key), datasetId: dsId(k), datasetVersionId: dsv(k, n) })))
+  const releases: Release[] = RELEASES.map((r) => ({
+    id: releaseIdOf(r.key),
+    key: r.key,
+    status: r.status,
+    createdAt: r.created,
+    publishedAt: r.published,
+    contentHash: r.published ? manifestHash(manifests.filter((x) => x.releaseId === releaseIdOf(r.key))) : null,
+  }))
+  const activations: ReleaseActivation[] = ACTIVATIONS.map(([release, previous, at]) => ({
+    releaseId: releaseIdOf(release),
+    previousReleaseId: previous ? releaseIdOf(previous) : null,
+    activatedAt: at,
+    activatedBy: 'analyst@bank.example',
+  }))
 
   const sets: AssumptionSet[] = [
     { id: 'set-active', key: 'active', displayName: 'Active', description: 'Pins every published version and reads the active release.', status: 'active', releaseId: null, capturedAt: null, createdAt: '2023-06-01T09:00:00Z' },
@@ -312,30 +340,14 @@ export function createSeed(): Db {
     )
 
   return {
-    tenant: { tenantKey: 'development', activeReleaseId: releaseIdOf('prod/2026-q3'), semanticRevision: 4182 },
+    activeReleaseId: releaseIdOf('prod/2026-q3'),
     datasets,
-    versions,
     releases,
     manifests,
+    activations,
     identities,
     sets,
     pins,
     reports: REPORTS,
   }
-}
-
-/** Jump targets for the dev menu. */
-export const DEV_JUMPS = {
-  releases: [
-    { id: releaseIdOf('prod/2026-q3'), label: 'prod/2026-q3', hint: 'Active' },
-    { id: releaseIdOf('prod/2026-q4'), label: 'prod/2026-q4', hint: 'Validated, ready to publish' },
-    { id: releaseIdOf('prod/2027-q1'), label: 'prod/2027-q1', hint: 'Draft failing 3 checks' },
-    { id: releaseIdOf('scratch/empty'), label: 'scratch/empty', hint: 'Empty, deletable' },
-    { id: releaseIdOf('prod/2026-q2'), label: 'prod/2026-q2', hint: 'Rollback target' },
-  ],
-  sets: [
-    { id: 'set-active', label: 'active', hint: 'The active set' },
-    { id: 'set-fy2025_close', label: 'fy2025_close', hint: 'Frozen, retired release' },
-    { id: 'set-fy2026_q2_close', label: 'fy2026_q2_close', hint: 'Live pins, one report not ready' },
-  ],
 }

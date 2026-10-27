@@ -4,7 +4,7 @@ import { useAppNav } from '@/lib/navigation'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { EmptyState, TabIntro } from '@/components/dimensions/shared'
 import { useLookup, useReleaseDiff, useReleaseList } from '@/lib/releases/client'
-import { RELEASE_RULES, RULE_LABEL, type CheckReport, type CheckTarget, type ManifestEntry, type ReleaseDetail, type ReleaseDiff, type ReleaseViolation } from '@/lib/releases/contract'
+import { RELEASE_RULES, RULE_LABEL, type ReleaseCheckReport, type ReleaseDetail, type ReleaseDiff, type ReleaseViolation } from '@/lib/releases/contract'
 import { cn } from '@/lib/utils'
 import { DIFF_TONE, LinkText, RelTime, VersionTag } from './shared'
 
@@ -103,13 +103,13 @@ export function DiffList({ diff, compact }: { diff: ReleaseDiff; compact?: boole
 
 /* ───────────────────────── Changes ───────────────────────── */
 
-export function ChangesTab({ detail, compareTo, onCompareTo, unsavedManifest }: { detail: ReleaseDetail; compareTo: string | null; onCompareTo: (id: string) => void; unsavedManifest: ManifestEntry[] | null }) {
+export function ChangesTab({ detail, compareTo, onCompareTo, unsaved }: { detail: ReleaseDetail; compareTo: string | null; onCompareTo: (id: string) => void; unsaved: boolean }) {
   const { data: list } = useReleaseList()
   const thisId = detail.release.id
   const others = (list ?? []).filter((r) => r.id !== thisId)
-  const fallback = detail.isActive ? others.filter((r) => r.status === 'published').sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))[0]?.id : others.find((r) => r.isActive)?.id
+  const fallback = detail.isActive ? detail.activations[0]?.previousReleaseId : others.find((r) => r.isActive)?.id
   const otherId = compareTo ?? fallback ?? null
-  const { data: diff } = useReleaseDiff(otherId, thisId, unsavedManifest ?? undefined)
+  const { data: diff } = useReleaseDiff(otherId, thisId)
   const other = others.find((r) => r.id === otherId)
 
   return (
@@ -134,10 +134,10 @@ export function ChangesTab({ detail, compareTo, onCompareTo, unsavedManifest }: 
       >
         {other?.isActive
           ? 'What activating this release would switch: datasets it adds, removes or moves to another version compared with the active release.'
-          : detail.isActive
-            ? 'The platform keeps no history of which release was active before, so this compares with the newest other published release.'
+          : detail.isActive && otherId === fallback
+            ? 'What this release changed when it was activated: compared with the release it replaced.'
             : 'Datasets this release adds, removes or moves to another version compared with the chosen release.'}
-        {unsavedManifest && <span className="ml-1 font-medium text-warning-foreground">Includes unsaved manifest edits.</span>}
+        {unsaved && <span className="ml-1 font-medium text-warning-foreground">Includes unsaved manifest edits.</span>}
       </TabIntro>
       {!otherId ? (
         <EmptyState title="Nothing to compare with">There is no other release yet.</EmptyState>
@@ -157,13 +157,13 @@ export function ChangesTab({ detail, compareTo, onCompareTo, unsavedManifest }: 
 
 /* ───────────────────────── Checks ───────────────────────── */
 
-export function ChecksPanel({ report, running, onRun, onTarget }: { report: CheckReport | null; running: boolean; onRun: () => void; onTarget: (v: ReleaseViolation) => void }) {
+export function ChecksPanel({ report, running, onRun, onTarget }: { report: ReleaseCheckReport | null; running: boolean; onRun: () => void; onTarget: (v: ReleaseViolation) => void }) {
   const lookup = useLookup()
   const byRule = new Map<string, ReleaseViolation[]>()
-  for (const v of report?.violations ?? []) byRule.set(v.rule, [...(byRule.get(v.rule) ?? []), v])
-  const linkLabel = (t: CheckTarget | null, datasetId: string | null) => {
-    if (t?.type === 'report') return `Open ${lookup.report(t.reportId)?.key ?? 'report'} · ${t.sourceKey}`
-    if (t?.type === 'identity') return `Open ${lookup.identity(t.identityId)?.key ?? 'identity'}`
+  for (const v of report?.violations ?? []) byRule.set(v.code, [...(byRule.get(v.code) ?? []), v])
+  const linkLabel = ({ target: t, datasetId }: ReleaseViolation) => {
+    if (t?.area === 'report') return `Open ${lookup.report(t.itemId)?.key ?? 'report'} · ${t.itemKey}`
+    if (t && t.area !== 'dataset') return `Open ${lookup.identity(t.itemId)?.key ?? 'identity'}`
     if (datasetId) return 'Show manifest row'
     return null
   }
@@ -198,7 +198,7 @@ export function ChecksPanel({ report, running, onRun, onTarget }: { report: Chec
             )}
             {report.unsaved && <span className="rounded-full border border-warning/50 bg-warning-muted px-2 py-0.5 text-xs text-warning-foreground">unsaved</span>}
             <span className="text-xs text-muted-foreground">
-              Ran <RelTime iso={report.ranAt} />
+              Ran <RelTime iso={report.checkedAt} />
             </span>
           </div>
           <ol className="flex flex-col divide-y rounded-lg border bg-card">
@@ -214,7 +214,7 @@ export function ChecksPanel({ report, running, onRun, onTarget }: { report: Chec
                   {vs.length > 0 && (
                     <ul className="flex flex-col gap-1.5 pl-6">
                       {vs.map((v) => {
-                        const label = linkLabel(v.target, v.datasetId)
+                        const label = linkLabel(v)
                         return (
                           <li key={v.message} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                             <span className="text-pretty">{v.message}</span>

@@ -4,22 +4,19 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { StatusBadge } from '@/components/dimensions/shared'
 import { useAppNav } from '@/lib/navigation'
-import type { CheckTarget, Identity, ReleaseDiff, VersionStatus } from '@/lib/releases/contract'
-import { reportKeyOf } from '@/lib/releases/mock/data'
+import type { Lookup } from '@/lib/releases/client'
+import type { ReleaseDiff, ReleaseViolationTarget, VersionStatus } from '@/lib/releases/contract'
 import { cn } from '@/lib/utils'
 
 export { StatusBadge }
 
 /** Follows a check or readiness target to the page that fixes it. */
-export function useOpenTarget(lookupIdentity: (id: string) => Identity | undefined, onDataset?: (datasetId: string) => void) {
+export function useOpenTarget(lookup: Lookup, onDataset: (datasetId: string) => void) {
   const nav = useAppNav()
-  return (t: CheckTarget) => {
-    if (t.type === 'dataset') onDataset?.(t.datasetId)
-    else if (t.type === 'report') nav.reportByKey(reportKeyOf(t.reportId))
-    else {
-      const i = lookupIdentity(t.identityId)
-      if (i) nav.identity(i)
-    }
+  return (t: ReleaseViolationTarget) => {
+    if (t.area === 'dataset') onDataset(t.itemId)
+    else if (t.area === 'report') nav.reportByKey(lookup.report(t.itemId)!.key)
+    else nav.identity(lookup.identity(t.itemId)!)
   }
 }
 

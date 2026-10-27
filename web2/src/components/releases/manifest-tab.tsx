@@ -10,17 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Td, Th } from '@/components/dimensions/shared'
 import { useLookup, type Lookup } from '@/lib/releases/client'
-import type { Binding, ManifestEntry, ReleaseViolation } from '@/lib/releases/contract'
+import type { ManifestBinding, ManifestEntry, ReleaseViolation } from '@/lib/releases/contract'
 import { cn } from '@/lib/utils'
 import { FilterChip, LinkText, VersionTag, useDebounced } from './shared'
 
 const PAGE = 100
 
-export function bindingText(b: Binding, lookup: Lookup) {
+export function bindingText(b: ManifestBinding, lookup: Lookup) {
   const dim = lookup.identity(b.dimensionId)?.displayName ?? b.dimensionId
-  if (b.mappingSetId) return `${b.name} · ${b.kind} via ${lookup.identity(b.mappingSetId)?.key ?? b.mappingSetId} → ${dim}`
-  if (b.bridgeId) return `${b.name} · ${b.kind} via ${lookup.identity(b.bridgeId)?.key ?? b.bridgeId} → ${dim}`
-  return `${b.name} · ${b.kind} → ${dim}`
+  const via = b.mappingSetId ?? b.bridgeId
+  if (via) return `${b.displayName} · ${b.kind} via ${lookup.identity(via)?.key ?? via} → ${dim}`
+  return `${b.displayName} · ${b.kind} → ${dim}`
 }
 
 export function ManifestTab({
@@ -58,7 +58,7 @@ export function ManifestTab({
   )
   const shown = rows.filter((r) => (!newerOnly || r.newer) && (!query || r.ds?.key.toLowerCase().includes(query) || r.ds?.displayName.toLowerCase().includes(query)))
   const moves = rows.filter((r) => r.newer)
-  const notIn = (lookup.catalog?.datasets ?? []).filter((d) => !manifest.some((m) => m.datasetId === d.id)).sort((a, b) => a.key.localeCompare(b.key))
+  const notIn = lookup.datasets.filter((d) => !manifest.some((m) => m.datasetId === d.id)).sort((a, b) => a.key.localeCompare(b.key))
   const issuesFor = (datasetId: string) => violations.filter((v) => v.datasetId === datasetId)
 
   const setPin = (datasetId: string, versionId: string) => onChange(manifest.map((m) => (m.datasetId === datasetId ? { ...m, datasetVersionId: versionId } : m)))
@@ -91,10 +91,8 @@ export function ManifestTab({
               <DropdownMenuContent align="end" className="max-h-80 w-72">
                 {notIn.map((d) => {
                   const latest = lookup.latestPublished(d.id)
-                  const fallback = lookup.versionsOf(d.id)[0]
-                  const pick = latest ?? fallback
                   return (
-                    <DropdownMenuItem key={d.id} disabled={!pick} onClick={() => pick && onChange([...manifest, { datasetId: d.id, datasetVersionId: pick.id }])} className="flex-col items-start gap-0.5">
+                    <DropdownMenuItem key={d.id} disabled={!latest} onClick={() => onChange([...manifest, { datasetId: d.id, datasetVersionId: latest!.id }])} className="flex-col items-start gap-0.5">
                       <span className="font-mono text-xs">{d.key}</span>
                       <span className={cn('text-xs', latest ? 'text-muted-foreground' : 'text-warning-foreground')}>
                         {latest ? `Pins v${latest.versionNumber}, the latest published` : 'No published version; a release pins only published versions'}
@@ -151,7 +149,7 @@ export function ManifestTab({
                             <SelectValue>{pinned ? <VersionTag n={pinned.versionNumber} status={pinned.status} /> : '?'}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {lookup.versionsOf(e.datasetId).map((v) => (
+                            {lookup.versionsOf(e.datasetId).filter((v) => v.status === 'published' || v.id === e.datasetVersionId).map((v) => (
                               <SelectItem key={v.id} value={v.id}>
                                 <VersionTag n={v.versionNumber} status={v.status} />
                               </SelectItem>
@@ -199,7 +197,7 @@ export function ManifestTab({
                         <TooltipContent className="max-w-md">
                           <ul className="flex flex-col gap-0.5 font-mono text-[11px]">
                             {pinned.bindings.map((b) => (
-                              <li key={b.name}>{bindingText(b, lookup)}</li>
+                              <li key={b.displayName}>{bindingText(b, lookup)}</li>
                             ))}
                           </ul>
                         </TooltipContent>
