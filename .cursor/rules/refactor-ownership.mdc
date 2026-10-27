@@ -1,0 +1,60 @@
+---
+description: File ownership, branches and hand-off rules for the multi-agent WebApi and web2 refactor
+alwaysApply: true
+---
+
+# Refactor ownership
+
+The WebApi and `web2` refactor runs in phases (P0 foundations, P1 contracts, P2 schema kit, P3 backend core, P4
+dimensions pilot, P5 module waves, P6 integration). The spec is `docs/blueprint/`; the contract is
+`api/openapi/contract/` (see its README). The **integrator** is the main session; it merges every branch.
+
+## Branches and worktrees
+
+- Each agent works in its own git worktree on `refactor/<phase>/<module>` (for example `refactor/p1/dimensions`,
+  `refactor/p5/datasets`), cut from the current phase base (`feature/web2-refactor` after the previous gate). The
+  schema agent works on a branch in the `database/srdb_ebm` repository.
+- Commit only files you own. Never merge, rebase onto or cherry-pick another agent's branch; the integrator merges in
+  a fixed order and rebases waiting branches.
+
+## Who writes what
+
+| Owner | Writes | Everything else |
+|---|---|---|
+| Integrator | `api/openapi/contract/admin-api.yaml`, `common.yaml`, `redocly.yaml`, `compose.mjs`, `plugins/`; `web2/src/lib/api/*`; `web2/src/app/*` (router, layout) and `web2/src/components/app-sidebar.tsx`; `WebApi/Program.cs`, shared `WebApi/Configuration/` extensions, `WebApi/Errors/`; `Application/Changes/`, `Versioning/` core, `Metadata/`, `Vocabulary/` core; `tests/.../Support`, `tests/.../Errors`, contract tests; `docs/blueprint/*`; root `package.json`; this file | — |
+| Module agent `<m>` | `api/openapi/contract/<m>.yaml`; its Application and WebApi feature folders (below) and its own `<Feature>ServiceCollectionExtensions.cs`; Infrastructure files for its new tables; its `tests/.../<Feature>/**`; `web2/src/lib/<m>/**`; `web2/src/components/<m>/**` | Read-only: other modules' folders, the shared kernel, everything the integrator owns |
+| Schema agent | `database/srdb_ebm/**` | Read-only: the Admin repo |
+
+| Module `<m>` | Blueprint | Feature folders (Application, WebApi, tests) | `web2` folders |
+|---|---|---|---|
+| `tenant` | 10 | `Session`, `Tenancy`, `SystemTenants`, `Overview`, `Development` | `lib/tenant`, `lib/session` |
+| `datasets` | 11 | `Datasets`, `Bindings`, `Measures`, `SourceObjects` | `lib/datasets`, `components/datasets` |
+| `dimensions` | 12 | `Dimensions` | `lib/dimensions`, `components/dimensions` |
+| `mappings` | 13 | `Mappings`, `Bridges` | `lib/mappings`, `components/mappings` |
+| `releases` | 14 | `Releases`, `AssumptionSets` | `lib/releases`, `components/releases`, `components/assumption-sets` |
+| `models` | 15 | `CalculationModels`, `Expressions` | `lib/models` (new), `lib/model`, `components/models` |
+| `reports` | 16 | `Reports`, `ReportEditor` | `lib/reports` (new), `lib/report`, `components/reports`, `components/report` |
+
+A folder not listed belongs to the integrator.
+
+## Cross-module needs
+
+A module that needs another module's data or behavior (reports writing report bridges, releases reading dataset
+versions) calls that module's public Application service. It never edits the other module's folder or contract file.
+A missing hook, a missing shared type in `common.yaml` or `lib/api`, or a change to an integrator-owned file is a
+written request to the integrator in the agent's report, with the exact change needed.
+
+## Shared hotspots (settled by the integrator)
+
+- **Contract tags and module files:** fixed in `admin-api.yaml`; a module only edits `<m>.yaml`. Component names are
+  global across contract files, so prefix them with the module's entities (`DimensionListItem`).
+- **Vocabularies:** each module adds its own vocabulary file, found by discovery; nobody edits `VocabularyCatalog.cs`.
+- **DI registration:** each module registers through its own `<Feature>ServiceCollectionExtensions.cs`.
+- **`web2` navigation:** routes and the sidebar belong to the integrator; request entries.
+- **Generated files:** `api/openapi/contract/bundled.yaml`, `web2/src/lib/api/schema.d.ts` and
+  `api/openapi/admin-api.json` are regenerated, never hand-edited or hand-merged.
+
+## Done checks before handing back
+
+From the repo root: `pnpm contract:lint` and `pnpm contract:bundle`. From `web2/`: `pnpm contract:types`,
+`pnpm build`, `pnpm lint`. From P3 on, also `dotnet build` and `dotnet test` in `api/`.
