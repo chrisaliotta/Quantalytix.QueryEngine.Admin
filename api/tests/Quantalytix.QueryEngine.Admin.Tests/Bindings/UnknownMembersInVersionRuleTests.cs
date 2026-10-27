@@ -39,9 +39,6 @@ public sealed class UnknownMembersInVersionRuleTests
         DimensionRows.Member(7022, V2, "UNKNOWN"),
         DimensionRows.Member(7033, V3, "PENDING"));
 
-    /// <summary>The bound role, whose key rule messages name the binding by.</summary>
-    private readonly InMemoryTableGateway<DimensionRoleRecord> _roles = new(DimensionRows.Role(81, "region", DimensionId));
-
     /// <summary>An unknown member the published version has passes.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
@@ -60,7 +57,7 @@ public sealed class UnknownMembersInVersionRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Binding(memberKey), Published()));
 
-        Assert.Equal(UnknownMembersInVersionRule.Code, violation.Code);
+        Assert.Equal("unknown_members_in_version", violation.Code);
         Assert.Equal(
             $"Binding 'region' routes unmapped rows to member '{memberKey}', which is not a member of v2, the published version of its dimension.",
             violation.Message);
@@ -90,11 +87,12 @@ public sealed class UnknownMembersInVersionRuleTests
     /// <summary>Evaluates the rule on a version holding one binding, over the given dimension versions.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(DimensionBindingRecord binding, InMemoryTableGateway<DimensionVersionRecord> versions)
     {
-        var rule = new UnknownMembersInVersionRule(
-            new InMemoryTableGateway<DimensionBindingRecord>(binding),
-            new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members, new PublicationSet()),
-            new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var rule = new UnknownMembersInVersionRule(new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members, new PublicationSet()));
+        var snapshot = DatasetRows.Snapshot(
+            fields: [DatasetRows.ColumnField(1, VersionId, "regionCode", "region_code")],
+            bindings: [binding],
+            roles: [DimensionRows.Role(81, "region", DimensionId)]);
+        return rule.EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 
     /// <summary>A mapped binding of the region role that routes unmapped rows to a member.</summary>

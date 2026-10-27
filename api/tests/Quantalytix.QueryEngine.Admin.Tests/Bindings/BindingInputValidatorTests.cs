@@ -1,94 +1,82 @@
 using FluentValidation.TestHelper;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bindings;
 
 /// <summary>
-/// Confirms the binding input rules of schema sections 11 and 12: a breakout binding binds an existing role and a time binding
-/// names its dimension, each binding kind requires its own references and forbids the others', the unknown unmapped behavior
-/// needs its member, a required binding stays enabled, and a time binding's extension carries valid periodicities, IANA time
-/// zones the query engine accepts, a source zone exactly for timestamps and a fixed start exactly for that origin. The engine
-/// resolves bindings from exactly these columns, so a binding that breaks them misroutes or fails at query time.
+/// Confirms the binding input shape of schema sections 11 and 12: a breakout binding names a role and a time binding its dimension,
+/// each binding kind requires its own references and forbids the others', the unknown unmapped behavior needs its member, and a time
+/// binding's axis carries valid periodicities, IANA time zones the query engine accepts, a source zone exactly for timestamps and a
+/// fixed start exactly for that origin. The engine resolves bindings from exactly these columns, so a binding that breaks them
+/// misroutes or fails at query time. Whether the role exists and whether a required binding stays enabled is decided as the
+/// operation applies, against the version.
 /// </summary>
 public sealed class BindingInputValidatorTests
 {
-    /// <summary>The validator under test, over role 81 of dimension 7000.</summary>
-    private readonly BindingInputValidator _validator = new(new InMemoryTableGateway<DimensionRoleRecord>(DimensionRows.Role(81, "branch", 7000)));
+    /// <summary>The validator under test.</summary>
+    private readonly DatasetBindingInputValidator _validator = new();
 
     /// <summary>A valid binding of each kind passes.</summary>
     /// <param name="kind">The binding's kind.</param>
-    /// <returns>A task that completes when the input is validated.</returns>
     [Theory]
     [InlineData(BindingKinds.Direct)]
     [InlineData(BindingKinds.Mapped)]
     [InlineData(BindingKinds.Range)]
     [InlineData(BindingKinds.Bridge)]
     [InlineData(BindingKinds.Time)]
-    public async Task ValidBindingOfEachKind_Passes(string kind)
+    public void ValidBindingOfEachKind_Passes(string kind)
     {
-        (await ValidateAsync(Binding(kind))).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(Binding(kind)).ShouldNotHaveAnyValidationErrors();
     }
 
-    /// <summary>
-    /// A breakout binding binds an existing role, whose template the service copies into the dimension, so it names no
-    /// dimension of its own; the error lands on the property the user set.
-    /// </summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
+    /// <summary>A breakout binding names its role and no dimension of its own: it classifies into the role's dimension.</summary>
     [Fact]
-    public async Task BreakoutBinding_BindsAnExistingRoleAndNoDimension()
+    public void BreakoutBinding_NamesARoleAndNoDimension()
     {
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionRoleId = null })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionRoleId = 99 })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { DimensionId = 7000 })).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { DimensionRoleId = null }).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { DimensionId = "7000" }).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
     }
 
     /// <summary>A time binding names its time dimension and no role, because time dimensions have no roles.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
     [Fact]
-    public async Task TimeBinding_NamesItsDimensionAndNoRole()
+    public void TimeBinding_NamesItsDimensionAndNoRole()
     {
-        (await ValidateAsync(Binding(BindingKinds.Time) with { DimensionId = null })).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
-        (await ValidateAsync(Binding(BindingKinds.Time) with { DimensionRoleId = 81 })).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { DimensionId = null }).ShouldHaveValidationErrorFor(binding => binding.DimensionId);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { DimensionRoleId = "81" }).ShouldHaveValidationErrorFor(binding => binding.DimensionRoleId);
     }
 
     /// <summary>Every kind but bridge classifies a source field's value, so it needs the field; a bridge binding may omit it.</summary>
     /// <param name="kind">The binding's kind.</param>
     /// <param name="required">Whether the source field is required.</param>
-    /// <returns>A task that completes when the input is validated.</returns>
     [Theory]
     [InlineData(BindingKinds.Direct, true)]
     [InlineData(BindingKinds.Mapped, true)]
     [InlineData(BindingKinds.Range, true)]
     [InlineData(BindingKinds.Time, true)]
     [InlineData(BindingKinds.Bridge, false)]
-    public async Task SourceField_IsRequiredExceptForBridges(string kind, bool required)
+    public void SourceField_IsRequiredExceptForBridges(string kind, bool required)
     {
-        var result = await ValidateAsync(Binding(kind) with { SourceFieldId = null });
+        var result = _validator.TestValidate(Binding(kind) with { SourceFieldId = null });
 
-        Assert.Equal(required, HasError(result, nameof(BindingInput.SourceFieldId)));
+        Assert.Equal(required, HasError(result, nameof(DatasetBindingInput.SourceFieldId)));
     }
 
     /// <summary>A mapped binding needs its mapping set, and no other kind may name one.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
     [Fact]
-    public async Task MappingSet_IsRequiredForMappedAndForbiddenOtherwise()
+    public void MappingSet_IsRequiredForMappedAndForbiddenOtherwise()
     {
-        (await ValidateAsync(Binding(BindingKinds.Mapped) with { MappingSetId = null })).ShouldHaveValidationErrorFor(binding => binding.MappingSetId);
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { MappingSetId = 30 })).ShouldHaveValidationErrorFor(binding => binding.MappingSetId);
+        _validator.TestValidate(Binding(BindingKinds.Mapped) with { MappingSetId = null }).ShouldHaveValidationErrorFor(binding => binding.MappingSetId);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { MappingSetId = "30" }).ShouldHaveValidationErrorFor(binding => binding.MappingSetId);
     }
 
-    /// <summary>A bridge binding needs its source binding and bridge version, and no other kind may name either.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
+    /// <summary>A bridge binding needs its source binding and bridge, and no other kind may name either.</summary>
     [Fact]
-    public async Task BridgeReferences_AreRequiredForBridgeAndForbiddenOtherwise()
+    public void BridgeReferences_AreRequiredForBridgeAndForbiddenOtherwise()
     {
-        var missing = await ValidateAsync(Binding(BindingKinds.Bridge) with { SourceDimensionBindingId = null, BridgeId = null });
-        var foreign = await ValidateAsync(Binding(BindingKinds.Mapped) with { SourceDimensionBindingId = 21, BridgeId = 40 });
+        var missing = _validator.TestValidate(Binding(BindingKinds.Bridge) with { SourceDimensionBindingId = null, BridgeId = null });
+        var foreign = _validator.TestValidate(Binding(BindingKinds.Mapped) with { SourceDimensionBindingId = "21", BridgeId = "40" });
 
         missing.ShouldHaveValidationErrorFor(binding => binding.SourceDimensionBindingId);
         missing.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
@@ -96,52 +84,41 @@ public sealed class BindingInputValidatorTests
         foreign.ShouldHaveValidationErrorFor(binding => binding.BridgeId);
     }
 
-    /// <summary>A time binding needs its time extension, and no other kind may send one.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
+    /// <summary>A time binding needs its time axis, and no other kind may send one.</summary>
     [Fact]
-    public async Task TimeExtension_IsRequiredForTimeAndForbiddenOtherwise()
+    public void TimeAxis_IsRequiredForTimeAndForbiddenOtherwise()
     {
-        (await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = null })).ShouldHaveValidationErrorFor(binding => binding.TimeBinding);
-        (await ValidateAsync(Binding(BindingKinds.Direct) with { TimeBinding = TimeBinding() })).ShouldHaveValidationErrorFor(binding => binding.TimeBinding);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { Time = null }).ShouldHaveValidationErrorFor(binding => binding.Time);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { Time = Time() }).ShouldHaveValidationErrorFor(binding => binding.Time);
     }
 
     /// <summary>Routing unmapped rows to the unknown member needs that member; other unmapped behaviors name none.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
     [Fact]
-    public async Task UnknownMember_IsRequiredExactlyForTheUnknownBehavior()
+    public void UnknownMember_IsRequiredExactlyForTheUnknownBehavior()
     {
         var missing = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Unknown, UnknownMemberKey = null };
         var unused = Binding(BindingKinds.Mapped) with { UnmappedBehavior = UnmappedBehaviors.Exclude, UnknownMemberKey = "UNKNOWN" };
 
-        (await ValidateAsync(missing)).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
-        (await ValidateAsync(unused)).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
-        (await ValidateAsync(missing with { UnknownMemberKey = "UNKNOWN" })).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(missing).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
+        _validator.TestValidate(unused).ShouldHaveValidationErrorFor(binding => binding.UnknownMemberKey);
+        _validator.TestValidate(missing with { UnknownMemberKey = "UNKNOWN" }).ShouldNotHaveAnyValidationErrors();
     }
 
-    /// <summary>A required binding is a dataset fixture that must not be disabled (schema section 11).</summary>
-    /// <returns>A task that completes when the input is validated.</returns>
+    /// <summary>Ids are stored or temporary ids, which the change set resolves.</summary>
     [Fact]
-    public async Task RequiredBinding_MustStayEnabled()
+    public void Ids_AreStoredOrTemporary()
     {
-        var input = Binding(BindingKinds.Direct) with { IsRequired = true, IsEnabled = false };
-
-        (await ValidateAsync(input)).ShouldHaveValidationErrorFor(binding => binding.IsEnabled);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { SourceFieldId = "field-1" }).ShouldHaveValidationErrorFor(binding => binding.SourceFieldId);
+        _validator.TestValidate(Binding(BindingKinds.Direct) with { SourceFieldId = "tmp:balance" }).ShouldNotHaveAnyValidationErrors();
     }
 
     /// <summary>Kinds and behaviors must be vocabulary values.</summary>
-    /// <returns>A task that completes when the input is validated.</returns>
     [Fact]
-    public async Task UnknownVocabularyValues_AreRejected()
+    public void UnknownVocabularyValues_AreRejected()
     {
-        var input = Binding(BindingKinds.Direct) with
-        {
-            BindingKind = "lookup",
-            RaggedBehavior = "skip",
-            DefaultPeriodAlignment = "middle",
-            UnmappedBehavior = "drop"
-        };
+        var input = Binding(BindingKinds.Direct) with { BindingKind = "lookup", RaggedBehavior = "skip", DefaultPeriodAlignment = "middle", UnmappedBehavior = "drop" };
 
-        var result = await ValidateAsync(input);
+        var result = _validator.TestValidate(input);
 
         result.ShouldHaveValidationErrorFor(binding => binding.BindingKind);
         result.ShouldHaveValidationErrorFor(binding => binding.RaggedBehavior);
@@ -152,117 +129,115 @@ public sealed class BindingInputValidatorTests
     /// <summary>The allowed periodicities are a non-empty set of distinct periodicity values.</summary>
     /// <param name="periodicities">The periodicities sent, comma-separated.</param>
     /// <param name="valid">Whether they are accepted.</param>
-    /// <returns>A task that completes when the input is validated.</returns>
     [Theory]
     [InlineData("day,month,quarter,year", true)]
     [InlineData("month", true)]
     [InlineData("", false)]
     [InlineData("day,day", false)]
     [InlineData("day,week", false)]
-    public async Task AllowedPeriodicities_AreADistinctNonEmptySubset(string periodicities, bool valid)
+    public void AllowedPeriodicities_AreADistinctNonEmptySubset(string periodicities, bool valid)
     {
         var allowed = periodicities.Split(',', StringSplitOptions.RemoveEmptyEntries);
-        var result = await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = TimeBinding() with { AllowedPeriodicities = allowed } });
+        var result = _validator.TestValidate(Binding(BindingKinds.Time) with { Time = Time() with { AllowedPeriodicities = allowed } });
 
-        Assert.Equal(!valid, result.Errors.Any(error => error.PropertyName.StartsWith("TimeBinding.AllowedPeriodicities", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(!valid, result.Errors.Any(error => error.PropertyName.StartsWith("Time.AllowedPeriodicities", StringComparison.OrdinalIgnoreCase)));
     }
 
     /// <summary>Timestamps are recorded in a source time zone, which dates do not have.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
     [Fact]
-    public async Task SourceTimeZone_IsRequiredForTimestampsAndForbiddenForDates()
+    public void SourceTimeZone_IsRequiredForTimestampsAndForbiddenForDates()
     {
-        var timestamp = Binding(BindingKinds.Time) with { TimeBinding = TimeBinding() with { TimeValueType = TimeValueTypes.Timestamp, SourceTimeZone = null } };
-        var date = Binding(BindingKinds.Time) with { TimeBinding = TimeBinding() with { SourceTimeZone = "America/Chicago" } };
+        var timestamp = Binding(BindingKinds.Time) with { Time = Time() with { TimeValueType = TimeValueTypes.Timestamp, SourceTimeZone = null } };
+        var date = Binding(BindingKinds.Time) with { Time = Time() with { SourceTimeZone = "America/Chicago" } };
 
-        (await ValidateAsync(timestamp)).ShouldHaveValidationErrorFor(binding => binding.TimeBinding!.SourceTimeZone);
-        (await ValidateAsync(date)).ShouldHaveValidationErrorFor(binding => binding.TimeBinding!.SourceTimeZone);
+        _validator.TestValidate(timestamp).ShouldHaveValidationErrorFor(binding => binding.Time!.SourceTimeZone);
+        _validator.TestValidate(date).ShouldHaveValidationErrorFor(binding => binding.Time!.SourceTimeZone);
     }
 
     /// <summary>
-    /// Time zones must be IANA zones, the query engine's own test: a Windows zone name resolves on most systems but has no
-    /// IANA name, so the engine would reject it.
+    /// Time zones must be IANA zones, the query engine's own test: a Windows zone name resolves on most systems but has no IANA name,
+    /// so the engine would reject it.
     /// </summary>
     /// <param name="timeZone">The zone sent as both the source and the default query zone.</param>
     /// <param name="valid">Whether it is accepted.</param>
-    /// <returns>A task that completes when the input is validated.</returns>
     [Theory]
     [InlineData("UTC", true)]
     [InlineData("America/Chicago", true)]
     [InlineData("Europe/London", true)]
     [InlineData("Central Standard Time", false)]
     [InlineData("Mars/Olympus_Mons", false)]
-    public async Task TimeZones_MustBeIanaZones(string timeZone, bool valid)
+    public void TimeZones_MustBeIanaZones(string timeZone, bool valid)
     {
-        var extension = TimeBinding() with { TimeValueType = TimeValueTypes.Timestamp, SourceTimeZone = timeZone, DefaultQueryTimeZone = timeZone };
+        var axis = Time() with { TimeValueType = TimeValueTypes.Timestamp, SourceTimeZone = timeZone, DefaultQueryTimeZone = timeZone };
 
-        var result = await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = extension });
+        var result = _validator.TestValidate(Binding(BindingKinds.Time) with { Time = axis });
 
-        Assert.Equal(!valid, HasError(result, "TimeBinding.SourceTimeZone"));
-        Assert.Equal(!valid, HasError(result, "TimeBinding.DefaultQueryTimeZone"));
+        Assert.Equal(!valid, HasError(result, "Time.SourceTimeZone"));
+        Assert.Equal(!valid, HasError(result, "Time.DefaultQueryTimeZone"));
     }
 
-    /// <summary>The fixed start is required exactly for the fixed_start cumulative origin, and must be a UTC time.</summary>
-    /// <returns>A task that completes when the inputs are validated.</returns>
+    /// <summary>The fixed start is required exactly for the fixed_start cumulative origin.</summary>
     [Fact]
-    public async Task FixedStart_IsRequiredExactlyForTheFixedStartOrigin()
+    public void FixedStart_IsRequiredExactlyForTheFixedStartOrigin()
     {
-        var missing = TimeBinding() with { CumulativeOrigin = CumulativeOrigins.FixedStart, CumulativeFixedStart = null };
-        var unused = TimeBinding() with { CumulativeFixedStart = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
-        var local = missing with { CumulativeFixedStart = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Local) };
+        var missing = Time() with { CumulativeOrigin = CumulativeOrigins.FixedStart, CumulativeFixedStart = null };
+        var unused = Time() with { CumulativeFixedStart = new DateOnly(2026, 1, 1) };
 
-        (await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = missing })).ShouldHaveValidationErrorFor(binding => binding.TimeBinding!.CumulativeFixedStart);
-        (await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = unused })).ShouldHaveValidationErrorFor(binding => binding.TimeBinding!.CumulativeFixedStart);
-        (await ValidateAsync(Binding(BindingKinds.Time) with { TimeBinding = local })).ShouldHaveValidationErrorFor(binding => binding.TimeBinding!.CumulativeFixedStart);
-    }
-
-    /// <summary>Validates an input.</summary>
-    private Task<TestValidationResult<BindingInput>> ValidateAsync(BindingInput input)
-    {
-        return _validator.TestValidateAsync(input, cancellationToken: TestContext.Current.CancellationToken);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { Time = missing }).ShouldHaveValidationErrorFor(binding => binding.Time!.CumulativeFixedStart);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { Time = unused }).ShouldHaveValidationErrorFor(binding => binding.Time!.CumulativeFixedStart);
+        _validator.TestValidate(Binding(BindingKinds.Time) with { Time = missing with { CumulativeFixedStart = new DateOnly(2026, 1, 1) } }).ShouldNotHaveAnyValidationErrors();
     }
 
     /// <summary>A valid binding of a kind with the schema's default behaviors: of role 81, or of time dimension 7000 for <c>time</c>.</summary>
-    private static BindingInput Binding(string kind)
+    private static DatasetBindingInput Binding(string kind)
     {
-        var binding = new BindingInput
+        var binding = new DatasetBindingInput
         {
-            DimensionRoleId = 81,
             BindingKind = kind,
-            SourceFieldId = 1,
+            DimensionRoleId = "81",
+            DimensionId = null,
+            SourceFieldId = "1",
+            MappingSetId = null,
+            BridgeId = null,
+            SourceDimensionBindingId = null,
             RaggedBehavior = RaggedBehaviors.Null,
             DefaultPeriodAlignment = PeriodAlignments.Observation,
             UnmappedBehavior = UnmappedBehaviors.Null,
+            UnknownMemberKey = null,
             IsRequired = false,
             IsGroupable = true,
             IsFilterable = true,
-            IsEnabled = true
+            IsEnabled = true,
+            Time = null
         };
         return kind switch
         {
-            BindingKinds.Mapped => binding with { MappingSetId = 30 },
-            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceDimensionBindingId = 21, BridgeId = 40 },
-            BindingKinds.Time => binding with { DimensionRoleId = null, DimensionId = 7000, TimeBinding = TimeBinding() },
+            BindingKinds.Mapped => binding with { MappingSetId = "30" },
+            BindingKinds.Bridge => binding with { SourceFieldId = null, SourceDimensionBindingId = "21", BridgeId = "40" },
+            BindingKinds.Time => binding with { DimensionRoleId = null, DimensionId = "7000", Time = Time() },
             _ => binding
         };
     }
 
-    /// <summary>A valid time extension: daily snapshots of a date, grouped by any periodicity, queried in UTC.</summary>
-    private static TimeBindingInput TimeBinding()
+    /// <summary>A valid time axis: daily snapshots of a date, grouped by any periodicity, queried in UTC.</summary>
+    private static DatasetTimeBinding Time()
     {
-        return new TimeBindingInput
+        return new DatasetTimeBinding
         {
             TimeValueType = TimeValueTypes.Date,
+            SourceTimeZone = null,
+            DefaultQueryTimeZone = "UTC",
             ObservationKind = ObservationKinds.Snapshot,
             NativePeriodicity = Periodicities.Day,
+            IntervalEndFieldId = null,
             AllowedPeriodicities = [Periodicities.Day, Periodicities.Month, Periodicities.Quarter, Periodicities.Year],
-            DefaultQueryTimeZone = "UTC",
-            CumulativeOrigin = CumulativeOrigins.OutputRangeStart
+            CumulativeOrigin = CumulativeOrigins.OutputRangeStart,
+            CumulativeFixedStart = null
         };
     }
 
     /// <summary>Whether the result has an error for a property path, however the validator names properties.</summary>
-    private static bool HasError(TestValidationResult<BindingInput> result, string path)
+    private static bool HasError(TestValidationResult<DatasetBindingInput> result, string path)
     {
         return result.Errors.Any(error => string.Equals(error.PropertyName, path, StringComparison.OrdinalIgnoreCase));
     }

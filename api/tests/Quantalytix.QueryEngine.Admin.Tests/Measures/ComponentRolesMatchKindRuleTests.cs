@@ -22,14 +22,11 @@ public sealed class ComponentRolesMatchKindRuleTests
     [Fact]
     public async Task RowCountPasses_WhileASumWithoutAValueIsReported()
     {
-        var measures = new InMemoryTableGateway<MeasureRecord>(
-            Aggregate(1, "rowCount", AggregationFunctions.Count),
-            Aggregate(2, "balance", AggregationFunctions.Sum));
-        var rule = new ComponentRolesMatchKindRule(measures, new InMemoryTableGateway<MeasureComponentRecord>());
+        var snapshot = DatasetRows.Snapshot(measures: [Aggregate(1, "rowCount", AggregationFunctions.Count), Aggregate(2, "balance", AggregationFunctions.Sum)]);
 
-        var violation = Assert.Single(await rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken));
+        var violation = Assert.Single(await new ComponentRolesMatchKindRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken));
 
-        Assert.Equal(ComponentRolesMatchKindRule.Code, violation.Code);
+        Assert.Equal("component_roles_match_kind", violation.Code);
         Assert.Equal("Measure 'balance': 'aggregate' measures need a 'value' component.", violation.Message);
     }
 

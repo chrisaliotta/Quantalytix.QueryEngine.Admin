@@ -1,46 +1,25 @@
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
+using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
-/// Confirms that <c>series_grain_excludes_time_field</c> reports a series grain that includes the source field of a time
-/// binding of the version, and only that: row grains may include it, and fields bound by bindings without a time extension
-/// are not observation times. A series identifies one trajectory over time (schema section 7); including the observation
-/// time would make every observation its own series, and time-aware measures would select nothing meaningful.
+/// Confirms that <c>series_grain_excludes_time_field</c> reports a series grain that includes a time binding's observation-time
+/// field, because a series is the set of rows that differ only in time; row grains and fields bound without a time axis may.
 /// </summary>
 public sealed class SeriesGrainExcludesTimeFieldRuleTests
 {
-    /// <summary>The version being validated.</summary>
-    private const long VersionId = 100;
-
-    /// <summary>The version's fields: loanId, asOfDate (the time binding's field) and branchCode (a mapped binding's field).</summary>
-    private readonly InMemoryTableGateway<FieldRecord> _fields = new(
-        DatasetRows.ColumnField(1, VersionId, "loanId", "loan_id"),
-        DatasetRows.ColumnField(2, VersionId, "asOfDate", "as_of_date", DataTypes.Date),
-        DatasetRows.ColumnField(3, VersionId, "branchCode", "branch_code"));
-
-    /// <summary>A time binding on asOfDate and a mapped binding on branchCode.</summary>
-    private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
-        DatasetRows.Binding(21, VersionId, null, BindingKinds.Time, 2),
-        DatasetRows.Binding(22, VersionId, 81, BindingKinds.Mapped, 3));
-
-    /// <summary>The time extension of the As of binding only.</summary>
-    private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(DatasetRows.TimeBinding(21));
-
     /// <summary>A series grain holding the observation time is reported, naming the grain and the field.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task SeriesGrainWithTheTimeField_IsReported()
     {
-        var violations = await EvaluateAsync(GrainKinds.Series, fieldIds: [1, 2]);
+        var violation = Assert.Single(await EvaluateAsync(GrainKinds.Series, fieldIds: [1, 2]));
 
-        var violation = Assert.Single(violations);
-        Assert.Equal(SeriesGrainExcludesTimeFieldRule.Code, violation.Code);
+        Assert.Equal("series_grain_excludes_time_field", violation.Code);
         Assert.Contains("'loanSeries'", violation.Message, StringComparison.Ordinal);
         Assert.Contains("'asOfDate'", violation.Message, StringComparison.Ordinal);
     }
@@ -53,7 +32,7 @@ public sealed class SeriesGrainExcludesTimeFieldRuleTests
         Assert.Empty(await EvaluateAsync(GrainKinds.Row, fieldIds: [1, 2]));
     }
 
-    /// <summary>A field bound without a time extension is not an observation time, so a series grain may include it.</summary>
+    /// <summary>A field bound without a time axis is not an observation time, so a series grain may include it.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task SeriesGrainWithANonTimeBoundField_Passes()
@@ -62,12 +41,20 @@ public sealed class SeriesGrainExcludesTimeFieldRuleTests
     }
 
     /// <summary>Evaluates the rule on a version holding one grain, <c>loanSeries</c>, of the given kind and fields.</summary>
-    private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(string grainKind, long[] fieldIds)
+    private static Task<IReadOnlyList<RuleViolation>> EvaluateAsync(string grainKind, long[] fieldIds)
     {
-        var grains = new InMemoryTableGateway<DatasetGrainRecord>(DatasetRows.Grain(11, VersionId, "loanSeries", grainKind));
-        var grainFields = new InMemoryTableGateway<DatasetGrainFieldRecord>(
-            fieldIds.Select((fieldId, index) => DatasetRows.GrainField(11, index + 1, fieldId)));
-        var rule = new SeriesGrainExcludesTimeFieldRule(grains, grainFields, _bindings, _timeBindings, _fields);
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(
+            fields:
+            [
+                DatasetRows.ColumnField(1, 100, "loanId", "loan_id"),
+                DatasetRows.ColumnField(2, 100, "asOfDate", "as_of_date", DataTypes.Date),
+                DatasetRows.ColumnField(3, 100, "branchCode", "branch_code")
+            ],
+            grains: [DatasetRows.Grain(11, 100, "loanSeries", grainKind)],
+            grainFields: [.. fieldIds.Select((fieldId, index) => DatasetRows.GrainField(11, index + 1, fieldId))],
+            bindings: [DatasetRows.Binding(21, 100, null, BindingKinds.Time, 2), DatasetRows.Binding(22, 100, 81, BindingKinds.Mapped, 3)],
+            timeBindings: [DatasetRows.TimeBinding(21)],
+            roles: [DimensionRows.Role(81, "branch", 7000)]);
+        return new SeriesGrainExcludesTimeFieldRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 }

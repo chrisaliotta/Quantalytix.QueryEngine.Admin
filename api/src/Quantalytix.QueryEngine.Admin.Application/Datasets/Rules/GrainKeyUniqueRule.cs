@@ -1,32 +1,22 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>Requires grain keys to be unique within a dataset version, which is the grain's logical identity (schema section 7).</summary>
-public sealed class GrainKeyUniqueRule(ITableGateway<DatasetGrainRecord> grains) : IPublicationRule
+/// <summary><c>grain_key_unique</c>: no two grains of a version share a key (D4).</summary>
+public sealed class GrainKeyUniqueRule : DatasetRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "grain_key_unique";
+    /// <summary><c>grain_key_unique</c>.</summary>
+    protected override string Code => "grain_key_unique";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports each grain key that more than one grain of the version uses.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>One violation per repeated key.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports every key more than one grain uses, at its second grain.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <returns>One violation per duplicated key.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
-        var rows = await grains.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        return
-        [
-            .. rows
-                .GroupBy(grain => grain.GrainKey, StringComparer.Ordinal)
-                .Where(group => group.Count() > 1)
-                .OrderBy(group => group.Key, StringComparer.Ordinal)
-                .Select(group => new RuleViolation { Code = Code, Message = $"Grain key '{group.Key}' is used by {group.Count()} grains of this version." })
-        ];
+        return snapshot.Grains
+            .GroupBy(grain => grain.GrainKey, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => Violation(DatasetTabs.Grains, $"Grain key '{group.Key}' is used by {group.Count()} grains of this version.", group.ElementAt(1).DatasetGrainId, group.Key));
     }
 }

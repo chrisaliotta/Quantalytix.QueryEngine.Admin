@@ -22,30 +22,6 @@ internal static class ContractAllowList
             "updateSystemTenant",
             "setSystemTenantEnabled"
         ],
-        ["datasets"] =
-        [
-            "listSourceObjects",
-            "getSourceColumns",
-            "listDatasets",
-            "createDataset",
-            "getDataset",
-            "deleteDataset",
-            "checkDeleteDataset",
-            "createDatasetDraft",
-            "getDatasetVersion",
-            "deleteDatasetDraft",
-            "checkDeleteDatasetVersion",
-            "previewDatasetChanges",
-            "commitDatasetChanges",
-            "checkDatasetVersion",
-            "validateDatasetVersion",
-            "publishDatasetVersion",
-            "reopenDatasetVersion",
-            "retireDatasetVersion",
-            "materializeDatasetField",
-            "dematerializeDatasetField",
-            "refreshDatasetFieldMaterialization"
-        ],
         ["mappings"] =
         [
             "listMappingSets",
@@ -132,10 +108,6 @@ internal static class ContractAllowList
             "PUT /api/tenants/{tenantId}/versions/{kind}/{id}/status",
             "POST /api/tenants/{tenantId}/versions/{kind}/{id}/validation"
         ],
-        ["SourceObjects"] =
-        [
-            "GET /api/tenants/{tenantId}/source-objects/{name}/columns"
-        ],
         ["CalculationDimensions"] =
         [
             "GET /api/tenants/{tenantId}/reports/{reportId}/calculation-dimensions",
@@ -196,13 +168,6 @@ internal static class ContractAllowList
             "GET /api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets",
             "PUT /api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets"
         ],
-        ["Measures"] =
-        [
-            "GET /api/tenants/{tenantId}/dataset-versions/{versionId}/measures",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/measures",
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/measures/{measureId}",
-            "DELETE /api/tenants/{tenantId}/dataset-versions/{versionId}/measures/{measureId}"
-        ],
         ["MappingEntries"] =
         [
             "GET /api/tenants/{tenantId}/mapping-versions/{versionId}/entries",
@@ -223,32 +188,6 @@ internal static class ContractAllowList
         ["Lookups"] =
         [
             "GET /api/tenants/{tenantId}/lookups/{kind}"
-        ],
-        ["Datasets"] =
-        [
-            "PUT /api/tenants/{tenantId}/datasets/{datasetId}",
-            "GET /api/tenants/{tenantId}/datasets/{datasetId}/versions"
-        ],
-        ["DatasetVersions"] =
-        [
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}"
-        ],
-        ["Fields"] =
-        [
-            "GET /api/tenants/{tenantId}/dataset-versions/{versionId}/fields",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/fields",
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}",
-            "DELETE /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/from-columns",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialize",
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialized-column"
-        ],
-        ["Grains"] =
-        [
-            "GET /api/tenants/{tenantId}/dataset-versions/{versionId}/grains",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/grains",
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}",
-            "DELETE /api/tenants/{tenantId}/dataset-versions/{versionId}/grains/{datasetGrainId}"
         ],
         ["CalculatedMeasures"] =
         [
@@ -294,13 +233,6 @@ internal static class ContractAllowList
             "GET /api/tenants/{tenantId}/bridges/{bridgeId}/versions",
             "POST /api/tenants/{tenantId}/bridges/{bridgeId}/versions",
             "PUT /api/tenants/{tenantId}/bridge-versions/{versionId}"
-        ],
-        ["Bindings"] =
-        [
-            "GET /api/tenants/{tenantId}/dataset-versions/{versionId}/bindings",
-            "POST /api/tenants/{tenantId}/dataset-versions/{versionId}/bindings",
-            "PUT /api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{dimensionBindingId}",
-            "DELETE /api/tenants/{tenantId}/dataset-versions/{versionId}/bindings/{dimensionBindingId}"
         ]
     };
 }

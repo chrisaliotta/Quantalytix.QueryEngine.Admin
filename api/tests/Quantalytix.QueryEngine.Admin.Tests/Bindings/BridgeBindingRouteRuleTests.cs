@@ -52,7 +52,7 @@ public sealed class BridgeBindingRouteRuleTests
 
         var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 40)));
 
-        Assert.Equal(BridgeBindingRouteRule.Code, violation.Code);
+        Assert.Equal("bridge_binding_route", violation.Code);
         Assert.Equal("Bridge binding 'region' remaps binding 21, which is not a binding of this version.", violation.Message);
     }
 
@@ -91,12 +91,15 @@ public sealed class BridgeBindingRouteRuleTests
         Assert.Equal(["region", "regionAgain"], cycles.Select(violation => violation.Message.Split('\'')[1]));
     }
 
-    /// <summary>Evaluates the rule on the given bindings.</summary>
+    /// <summary>Evaluates the rule on the version holding those of the given bindings that belong to it, as the loader reads them.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
     {
-        var rule = new BridgeBindingRouteRule(
-            new InMemoryTableGateway<DimensionBindingRecord>(bindings), _bridges, new BindingNames(_roles, new InMemoryTableGateway<FieldRecord>()));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(
+            fields: [DatasetRows.ColumnField(1, VersionId, "branchCode", "branch_code")],
+            bindings: [.. bindings.Where(binding => binding.DatasetVersionId == VersionId)],
+            roles: _roles.All,
+            bridges: _bridges.All);
+        return new BridgeBindingRouteRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 
     /// <summary>The source binding 21: a mapped binding of the branch role.</summary>

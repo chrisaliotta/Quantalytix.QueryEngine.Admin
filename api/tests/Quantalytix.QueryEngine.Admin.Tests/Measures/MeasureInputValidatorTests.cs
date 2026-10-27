@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Measures;
 public sealed class MeasureInputValidatorTests
 {
     /// <summary>The validator under test.</summary>
-    private readonly MeasureInputValidator _validator = new();
+    private readonly DatasetMeasureInputValidator _validator = new();
 
     /// <summary>A valid measure of each kind passes.</summary>
     /// <param name="kind">The measure's kind.</param>
@@ -103,7 +103,7 @@ public sealed class MeasureInputValidatorTests
         var withoutField = Measure(MeasureKinds.Aggregate) with { Components = [Component(ComponentRoles.Value, null)] };
 
         _validator.TestValidate(repeated).ShouldHaveValidationErrorFor(measure => measure.Components);
-        Assert.True(HasError(_validator.TestValidate(unknown), "Components[0].ComponentRole"));
+        Assert.True(HasError(_validator.TestValidate(unknown), "Components[0].Role"));
         Assert.True(HasError(_validator.TestValidate(withoutField), "Components[0].FieldId"));
     }
 
@@ -174,7 +174,7 @@ public sealed class MeasureInputValidatorTests
     {
         var result = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { RowFilterExpression = filter });
 
-        Assert.Equal(!valid, HasError(result, nameof(MeasureInput.RowFilterExpression)));
+        Assert.Equal(!valid, HasError(result, nameof(DatasetMeasureInput.RowFilterExpression)));
     }
 
     /// <summary>A specialized measure names its implementation and version, and its configuration must be JSON.</summary>
@@ -227,27 +227,21 @@ public sealed class MeasureInputValidatorTests
 
         var result = _validator.TestValidate(input);
 
-        Assert.Equal(precisionFails, HasError(result, nameof(MeasureInput.OutputPrecision)));
-        Assert.Equal(scaleFails, HasError(result, nameof(MeasureInput.OutputScale)));
+        Assert.Equal(precisionFails, HasError(result, nameof(DatasetMeasureInput.OutputPrecision)));
+        Assert.Equal(scaleFails, HasError(result, nameof(DatasetMeasureInput.OutputScale)));
     }
 
-    /// <summary>
-    /// The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it, both given. A missing precision
-    /// is reported on the precision alone.
-    /// </summary>
+    /// <summary>The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it.</summary>
     [Fact]
     public void Accumulator_MustBeAStarRocksDecimal()
     {
         var outOfRange = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = 39, AccumulatorScale = 40 });
-        var missing = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = null, AccumulatorScale = null });
-        var precisionMissing = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = null });
+        var scaleAbovePrecision = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { AccumulatorPrecision = 18, AccumulatorScale = 20 });
 
         outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
         outOfRange.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
-        missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
-        missing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
-        precisionMissing.ShouldHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
-        precisionMissing.ShouldNotHaveValidationErrorFor(measure => measure.AccumulatorScale);
+        scaleAbovePrecision.ShouldNotHaveValidationErrorFor(measure => measure.AccumulatorPrecision);
+        scaleAbovePrecision.ShouldHaveValidationErrorFor(measure => measure.AccumulatorScale);
     }
 
     /// <summary>
@@ -294,19 +288,27 @@ public sealed class MeasureInputValidatorTests
     [InlineData("ending-balance", false)]
     public void MeasureKey_MustMatchThePattern(string measureKey, bool valid)
     {
-        var result = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { MeasureKey = measureKey });
+        var result = _validator.TestValidate(Measure(MeasureKinds.Aggregate) with { Key = measureKey });
 
-        Assert.Equal(!valid, HasError(result, nameof(MeasureInput.MeasureKey)));
+        Assert.Equal(!valid, HasError(result, nameof(DatasetMeasureInput.Key)));
     }
 
     /// <summary>A valid measure of a kind with the schema's default behaviors and a decimal(20, 2) output.</summary>
-    private static MeasureInput Measure(string kind)
+    private static DatasetMeasureInput Measure(string kind)
     {
-        var measure = new MeasureInput
+        var measure = new DatasetMeasureInput
         {
-            MeasureKey = "endingBalance",
+            Key = "endingBalance",
             DisplayName = "Ending balance",
             MeasureKind = kind,
+            AggregationFunction = null,
+            ExpressionText = null,
+            ImplementationKey = null,
+            ImplementationVersion = null,
+            ConfigurationJson = null,
+            RowFilterExpression = null,
+            UnitKey = null,
+            TimePolicy = null,
             ValueNullBehavior = ValueNullBehaviors.Exclude,
             NegativeWeightBehavior = NegativeWeightBehaviors.Allow,
             EmptySetBehavior = EmptySetBehaviors.Null,
@@ -332,16 +334,19 @@ public sealed class MeasureInputValidatorTests
     }
 
     /// <summary>A component of a role.</summary>
-    private static MeasureComponentInput Component(string role, long? fieldId)
+    private static DatasetMeasureComponent Component(string role, long? fieldId)
     {
-        return new MeasureComponentInput { ComponentRole = role, FieldId = fieldId };
+        return new DatasetMeasureComponent { Role = role, FieldId = fieldId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty };
     }
 
     /// <summary>A time policy that sums every observation by calendar day.</summary>
-    private static MeasureTimePolicyInput TimePolicy()
+    private static DatasetMeasureTimePolicy TimePolicy()
     {
-        return new MeasureTimePolicyInput
+        return new DatasetMeasureTimePolicy
         {
+            RequiredTimeBindingId = null,
+            SelectionDatasetGrainId = null,
+            MaxLookbackSeconds = null,
             ObservationSelection = ObservationSelections.All,
             ValueTimeRole = ValueTimeRoles.Point,
             BoundaryMatch = BoundaryMatches.Exact,
@@ -358,7 +363,7 @@ public sealed class MeasureInputValidatorTests
     }
 
     /// <summary>Whether the result has an error for a property path, however the validator names properties.</summary>
-    private static bool HasError(TestValidationResult<MeasureInput> result, string path)
+    private static bool HasError(TestValidationResult<DatasetMeasureInput> result, string path)
     {
         return result.Errors.Any(error => string.Equals(error.PropertyName, path, StringComparison.OrdinalIgnoreCase));
     }

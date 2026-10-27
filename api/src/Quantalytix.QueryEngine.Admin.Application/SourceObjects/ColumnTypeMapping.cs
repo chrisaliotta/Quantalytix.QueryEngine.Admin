@@ -49,6 +49,29 @@ public static partial class ColumnTypeMapping
         };
     }
 
+    /// <summary>
+    /// The column type, as information_schema writes it, of the column the API creates for a field type; <see cref="Map"/> maps it
+    /// back to the same type, except that <c>timestamp</c> is stored as <c>datetime</c>.
+    /// </summary>
+    /// <param name="dataType">A <c>data_type</c> value.</param>
+    /// <param name="precision">The decimal precision; null unless decimal.</param>
+    /// <param name="scale">The decimal scale; null unless decimal.</param>
+    /// <returns>The column type, such as <c>decimal(18,2)</c>.</returns>
+    public static string ColumnTypeOf(string dataType, int? precision, int? scale)
+    {
+        return dataType switch
+        {
+            DataTypes.Boolean => BooleanColumnType,
+            DataTypes.Int32 => "int(11)",
+            DataTypes.Int64 => "bigint(20)",
+            DataTypes.Decimal => string.Create(CultureInfo.InvariantCulture, $"decimal({precision},{scale})"),
+            DataTypes.String => "varchar(65533)",
+            DataTypes.Date => "date",
+            DataTypes.Json => "json",
+            _ => "datetime"
+        };
+    }
+
     /// <summary>The type's name without its length, display width or modifiers: <c>int(11)</c> is <c>int</c>.</summary>
     private static string BaseName(string type)
     {

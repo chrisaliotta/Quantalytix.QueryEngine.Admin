@@ -1,50 +1,31 @@
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>
-/// Forbids expression fields that reference each other in a cycle, directly or through other expression fields: the query
-/// engine renders a reference by rendering the referenced field, so a cycle never ends.
-/// </summary>
-public sealed class ExpressionFieldAcyclicRule(ITableGateway<FieldRecord> fields) : IPublicationRule
+/// <summary><c>expression_field_acyclic</c>: no expression field reaches itself through its field references (D7).</summary>
+public sealed class ExpressionFieldAcyclicRule : DatasetRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "expression_field_acyclic";
+    /// <summary><c>expression_field_acyclic</c>.</summary>
+    protected override string Code => "expression_field_acyclic";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports each expression field whose references lead back to itself.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>One violation per expression field on a cycle.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports every expression field on a cycle.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <returns>One violation per field on a cycle.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
-        var rows = await fields.ListAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var references = rows
-            .Where(field => field.FieldSourceKind == FieldSourceKinds.Expression)
+        var expressions = snapshot.Fields.Where(field => field.FieldSourceKind == FieldSourceKinds.Expression).ToList();
+        var references = expressions
             .GroupBy(field => field.FieldKey, StringComparer.Ordinal)
-            .ToDictionary(
-                group => group.Key,
-                group => group.SelectMany(field => ExpressionInspector.Inspect(field.ExpressionText!).FieldKeys).ToList(),
-                StringComparer.Ordinal);
-        return
-        [
-            .. references.Keys
-                .Order(StringComparer.Ordinal)
-                .Where(key => ReachesItself(key, references))
-                .Select(key => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"Expression field '{key}' references itself through its field references."
-                })
-        ];
+            .ToDictionary(group => group.Key, group => group.SelectMany(field => ExpressionInspector.Inspect(field.ExpressionText!).FieldKeys).ToList(), StringComparer.Ordinal);
+        return expressions
+            .OrderBy(field => field.FieldKey, StringComparer.Ordinal)
+            .Where(field => ReachesItself(field.FieldKey, references))
+            .Select(field => Violation(DatasetTabs.Fields, $"Expression field '{field.FieldKey}' references itself through its field references.", field.FieldId, field.FieldKey));
     }
 
-    /// <summary>Whether following the references of expression fields from a field leads back to it.</summary>
+    /// <summary>Whether a field's references lead back to it.</summary>
     private static bool ReachesItself(string key, Dictionary<string, List<string>> references)
     {
         var visited = new HashSet<string>(StringComparer.Ordinal);

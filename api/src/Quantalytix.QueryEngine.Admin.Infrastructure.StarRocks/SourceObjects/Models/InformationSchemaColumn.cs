@@ -3,6 +3,9 @@ namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SourceObjects;
 /// <summary>A row of <c>information_schema.columns</c>, limited to the columns the catalog reads.</summary>
 internal sealed record InformationSchemaColumn
 {
+    /// <summary>The column's table or view.</summary>
+    public required string TableName { get; init; }
+
     /// <summary>The column name.</summary>
     public required string ColumnName { get; init; }
 

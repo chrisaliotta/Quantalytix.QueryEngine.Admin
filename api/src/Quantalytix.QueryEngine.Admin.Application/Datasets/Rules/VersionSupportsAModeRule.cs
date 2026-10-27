@@ -1,26 +1,19 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>Requires a dataset version to support aggregate queries, detail queries or both; otherwise no query can use it.</summary>
-public sealed class VersionSupportsAModeRule(ITableGateway<DatasetVersionRecord> versions) : IPublicationRule
+/// <summary><c>version_supports_a_mode</c>: the version supports aggregate queries, detail queries or both.</summary>
+public sealed class VersionSupportsAModeRule : DatasetRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "version_supports_a_mode";
+    /// <summary><c>version_supports_a_mode</c>.</summary>
+    protected override string Code => "version_supports_a_mode";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports a version that supports neither query mode.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>One violation when both modes are off; otherwise none.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports a version that supports neither mode.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <returns>At most one violation.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
-        var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        if (version.SupportsAggregate || version.SupportsDetail) return [];
-        return [new RuleViolation { Code = Code, Message = $"Version v{version.VersionNumber} supports neither aggregate nor detail queries; enable at least one." }];
+        if (snapshot.Version.SupportsAggregate || snapshot.Version.SupportsDetail) yield break;
+        yield return Violation(DatasetTabs.Settings, $"Version v{snapshot.Version.VersionNumber} supports neither aggregate nor detail queries; enable at least one.");
     }
 }
