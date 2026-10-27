@@ -1,0 +1,15 @@
+{
+  "name": "quantalytix-query-engine-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "contract:compose": "node api/openapi/contract/compose.mjs",
+    "contract:lint": "pnpm contract:compose && redocly lint admin --config api/openapi/contract/redocly.yaml",
+    "contract:bundle": "pnpm contract:compose && redocly bundle admin --config api/openapi/contract/redocly.yaml"
+  },
+  "packageManager": "pnpm@11.10.0",
+  "devDependencies": {
+    "@redocly/cli": "^2.71.1",
+    "yaml": "^2.8.1"
+  }
+}

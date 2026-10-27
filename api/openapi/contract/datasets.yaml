@@ -1,0 +1,11 @@
+# Module: datasets (Datasets). Owner: the datasets module agent (C2, then R2).
+# Blueprint: docs/blueprint/11-datasets.md
+# Holds this module's paths and components only; every operation is tagged `datasets`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Datasets
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

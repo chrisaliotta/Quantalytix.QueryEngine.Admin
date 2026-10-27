@@ -1,0 +1,11 @@
+# Module: dimensions (Dimensions). Owner: the dimensions module agent (C3, then the P4 pilot).
+# Blueprint: docs/blueprint/12-dimensions.md
+# Holds this module's paths and components only; every operation is tagged `dimensions`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Dimensions
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

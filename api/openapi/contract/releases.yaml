@@ -1,0 +1,11 @@
+# Module: releases (Releases and assumption sets). Owner: the releases module agent (C5, then R5).
+# Blueprint: docs/blueprint/14-releases-and-assumption-sets.md
+# Holds this module's paths and components only; every operation is tagged `releases`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Releases and assumption sets
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

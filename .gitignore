@@ -27,3 +27,6 @@ pnpm-debug.log*
 .vscode/
 .idea/
 .DS_Store
+
+# Contract composition (api/openapi/contract/compose.mjs)
+api/openapi/contract/.composed.yaml

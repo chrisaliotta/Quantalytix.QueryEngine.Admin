@@ -1,0 +1,37 @@
+# Lint and bundle configuration for the Admin API contract. Run through the repo-root scripts
+# (`pnpm contract:lint`, `pnpm contract:bundle`), which compose .composed.yaml first; see ./README.md.
+plugins:
+  - ./plugins/qe.mjs
+
+apis:
+  admin:
+    root: ./.composed.yaml
+    output: ./bundled.yaml
+
+extends:
+  - recommended
+
+rules:
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-tag-defined: error
+  operation-4xx-response: error
+  operation-summary: error
+  # The only fixed host is the local development one.
+  no-server-example.com: off
+  qe/string-ids: error
+  qe/operation-module-tag: error
+  qe/problem-responses: error
+  rule/property-names-camel-case:
+    subject:
+      type: SchemaProperties
+    message: Property names are camelCase (01, JSON).
+    assertions:
+      casing: camelCase
+  rule/parameter-names-camel-case:
+    subject:
+      type: Parameter
+      property: name
+    message: Parameter names are camelCase (01, JSON).
+    assertions:
+      casing: camelCase

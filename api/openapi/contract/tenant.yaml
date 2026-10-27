@@ -1,0 +1,11 @@
+# Module: tenant (Tenant, session and catalog). Owner: the tenant module agent (C1, then R1).
+# Blueprint: docs/blueprint/10-tenant-session-catalog.md
+# Holds this module's paths and components only; every operation is tagged `tenant`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Tenant, session and catalog
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

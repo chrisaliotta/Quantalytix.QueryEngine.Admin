@@ -1,0 +1,11 @@
+# Module: models (Calculation models). Owner: the models module agent (C6, then R3).
+# Blueprint: docs/blueprint/15-calculation-models.md
+# Holds this module's paths and components only; every operation is tagged `models`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Calculation models
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

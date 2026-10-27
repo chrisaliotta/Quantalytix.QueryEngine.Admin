@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: Quantalytix Query Engine Admin API
+  version: 1.0.0
+  description: |
+    Metadata administration for Query Engine tenants. Conventions (routing, ids, problems, change sets) are defined in
+    docs/blueprint/01-api-conventions.md; each tag's module is specified by the blueprint file named in its description.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Quantalytix-Proprietary
+servers:
+  - url: http://localhost:5180
+    description: Local development host (api/src launch profile "http").
+security:
+  - Bearer: []
+tags:
+  - name: tenant
+    x-displayName: Tenant, session and catalog
+    description: Session, tenant directory, overview, catalog and vocabularies. Blueprint 10-tenant-session-catalog.md.
+  - name: datasets
+    x-displayName: Datasets
+    description: Datasets, dataset versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
+  - name: dimensions
+    x-displayName: Dimensions
+    description: Dimensions, roles, the live and frozen versions, levels, members and range bands. Blueprint 12-dimensions.md.
+  - name: mappings
+    x-displayName: Mapping sets and bridges
+    description: Mapping sets, bridges and their live and frozen versions. Blueprint 13-mappings-and-bridges.md.
+  - name: releases
+    x-displayName: Releases and assumption sets
+    description: Semantic releases, activation and assumption sets. Blueprint 14-releases-and-assumption-sets.md.
+  - name: models
+    x-displayName: Calculation models
+    description: Calculation models, variables, calculated measures, parameters and attributions. Blueprint 15-calculation-models.md.
+  - name: reports
+    x-displayName: Reports
+    description: Reports and their rows, sources, profiles, scenarios, scopes, columns and styles. Blueprint 16-reports.md.
+paths: {}
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'A JWT carrying `sub`, exactly one `tenant_id`, and `role: SystemAdmin` for callers who may reach any tenant (blueprint 01, Authentication and authorization).'
+  schemas:
+    Id:
+      type: string
+      description: Opaque identifier. Tables use BIGINT ids below 2^53; the API serializes them as strings. Inside a change set, an item created by an earlier operation is referenced by its client-generated temporary id, `tmp:<uuid>`.
+      examples:
+        - '1042'
+    Key:
+      type: string
+      pattern: ^[A-Za-z][A-Za-z0-9_]*$
+      description: Natural key, fixed after creation (OI-29, OI-36).
+    DottedKey:
+      type: string
+      pattern: ^[A-Za-z][A-Za-z0-9_.]*$
+      description: Natural key of a mapping set or bridge; also allows `.` (OI-29).
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 UTC timestamp.
+    VersionStatus:
+      type: string
+      enum:
+        - draft
+        - validated
+        - published
+        - retired
+    Problem:
+      type: object
+      description: The one error body (`application/problem+json`) for every 4xx and 5xx response (OI-06). 400 carries `errors`; 409 carries `violations` for delete blockers and `detail` otherwise; 422 carries `violations`; 401, 403 and 404 carry the title only; 500 carries `traceId`.
+      required:
+        - type
+        - title
+        - status
+        - errors
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Stable problem code.
+          examples:
+            - urn:qe:problem:rules-violated
+        title:
+          type: string
+          description: Short, user-facing summary.
+        status:
+          type: integer
+          enum:
+            - 400
+            - 401
+            - 403
+            - 404
+            - 409
+            - 422
+            - 500
+        detail:
+          type: string
+        errors:
+          type: object
+          description: Input path to messages. `''` is the form-level key. Paths are camelCase, dotted and indexed (`components[0].fieldId`); inside a change set they are prefixed by the failing operation (`operations[3].memberKey`).
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        violations:
+          type: array
+          description: Rule violations (422) and delete blockers (409).
+          items:
+            $ref: '#/components/schemas/Violation'
+        traceId:
+          type: string
+    Violation:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+          description: The rule code, snake_case.
+          examples:
+            - member_key_unique
+        message:
+          type: string
+          description: Phrased for display.
+        target:
+          $ref: '#/components/schemas/ViolationTarget'
+    ViolationTarget:
+      type: object
+      description: Where to take the user to fix a violation.
+      required:
+        - area
+      properties:
+        area:
+          type: string
+          description: Module-specific area such as a dataset tab, a dimension tab, a release manifest row or a report section.
+        itemId:
+          $ref: '#/components/schemas/Id'
+        itemKey:
+          type: string
+        filter:
+          type: string
+          description: Search text that narrows a table to the offending rows.
+    DeleteCheck:
+      type: object
+      description: Answer of `GET <resource>/delete-check`; `DELETE <resource>` answers 409 with the same violations when blocked (OI-07).
+      required:
+        - allowed
+        - message
+        - reasons
+      properties:
+        allowed:
+          type: boolean
+        message:
+          type:
+            - string
+            - 'null'
+          description: One-sentence summary when blocked.
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+    ValidationReport:
+      type: object
+      description: Answer of a read-only `check`; never writes.
+      required:
+        - versionId
+        - checkedAt
+        - violations
+      properties:
+        versionId:
+          $ref: '#/components/schemas/Id'
+        checkedAt:
+          $ref: '#/components/schemas/Timestamp'
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+    ChangeSetRequest:
+      type: object
+      description: 'Body of `POST <aggregate>/changes/preview` and `POST <aggregate>/changes` (OI-01). Generic over the aggregate''s operation union: an aggregate specializes it with `allOf` and a narrowed `operations.items` (see README.md).'
+      required:
+        - operations
+      properties:
+        operations:
+          type: array
+          items:
+            description: One operation of the aggregate's union, discriminated by `op`.
+    ChangeSetPreview:
+      type: object
+      description: '200 answer of `POST <aggregate>/changes/preview`: the operations apply. Generic over the aggregate content: an aggregate specializes it with `allOf` and a narrowed `state`.'
+      required:
+        - state
+        - violations
+      properties:
+        state:
+          description: The aggregate content after the operations apply; what the editor renders.
+        violations:
+          type: array
+          description: Publication-rule findings that do not block saving.
+          items:
+            $ref: '#/components/schemas/Violation'
+    ChangeSetCommit:
+      type: object
+      description: '200 answer of `POST <aggregate>/changes`: every operation applied and was written. Generic over the aggregate content: an aggregate specializes it with `allOf` and a narrowed `state`.'
+      required:
+        - state
+        - idMap
+      properties:
+        state:
+          description: The aggregate content as stored after the commit.
+        idMap:
+          type: object
+          description: Temporary id (`tmp:<uuid>`) to the real id of each item the commit created.
+          additionalProperties:
+            $ref: '#/components/schemas/Id'
+    VocabularyTerm:
+      type: object
+      required:
+        - value
+        - label
+      properties:
+        value:
+          type: string
+          description: The schema's value.
+        label:
+          type: string
+        description:
+          type: string
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      description: The tenant directory key.
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: The body, route or query does not bind, or an input validator failed; see `errors`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: No valid bearer token.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: No access to the route tenant, or `SystemAdmin` missing on `/api/system/*`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: An id in the route names no row in the tenant.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: A precondition failed (not a draft, not editable, owned by a report, delete blocked, release not published).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableContent:
+      description: The change would break a rule; see `violations`. Nothing was written.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

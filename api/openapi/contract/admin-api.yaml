@@ -1,0 +1,50 @@
+# Root of the hand-authored Admin API contract (design-first source of truth).
+# Owner: integrator. Module agents never edit this file: each tag below names a module file (<tag>.yaml) whose
+# `paths` compose.mjs references into this root before bundling. See ./README.md.
+openapi: 3.1.0
+info:
+  title: Quantalytix Query Engine Admin API
+  version: 1.0.0
+  description: |
+    Metadata administration for Query Engine tenants. Conventions (routing, ids, problems, change sets) are defined in
+    docs/blueprint/01-api-conventions.md; each tag's module is specified by the blueprint file named in its description.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Quantalytix-Proprietary
+servers:
+  - url: http://localhost:5180
+    description: Local development host (api/src launch profile "http").
+security:
+  - Bearer: []
+tags:
+  - name: tenant
+    x-displayName: Tenant, session and catalog
+    description: Session, tenant directory, overview, catalog and vocabularies. Blueprint 10-tenant-session-catalog.md.
+  - name: datasets
+    x-displayName: Datasets
+    description: Datasets, dataset versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
+  - name: dimensions
+    x-displayName: Dimensions
+    description: Dimensions, roles, the live and frozen versions, levels, members and range bands. Blueprint 12-dimensions.md.
+  - name: mappings
+    x-displayName: Mapping sets and bridges
+    description: Mapping sets, bridges and their live and frozen versions. Blueprint 13-mappings-and-bridges.md.
+  - name: releases
+    x-displayName: Releases and assumption sets
+    description: Semantic releases, activation and assumption sets. Blueprint 14-releases-and-assumption-sets.md.
+  - name: models
+    x-displayName: Calculation models
+    description: Calculation models, variables, calculated measures, parameters and attributions. Blueprint 15-calculation-models.md.
+  - name: reports
+    x-displayName: Reports
+    description: Reports and their rows, sources, profiles, scenarios, scopes, columns and styles. Blueprint 16-reports.md.
+paths: {}
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        A JWT carrying `sub`, exactly one `tenant_id`, and `role: SystemAdmin` for callers who may reach any tenant
+        (blueprint 01, Authentication and authorization).

@@ -1,0 +1,11 @@
+# Module: reports (Reports). Owner: the reports module agent (C7, then R6).
+# Blueprint: docs/blueprint/16-reports.md
+# Holds this module's paths and components only; every operation is tagged `reports`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Reports
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}

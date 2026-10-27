@@ -1,0 +1,11 @@
+# Module: mappings (Mapping sets and bridges). Owner: the mappings module agent (C4, then R4).
+# Blueprint: docs/blueprint/13-mappings-and-bridges.md
+# Holds this module's paths and components only; every operation is tagged `mappings`. Shared types come from
+# ./common.yaml. Composition and naming rules: ./README.md.
+openapi: 3.1.0
+info:
+  title: Mapping sets and bridges
+  version: 1.0.0
+paths: {}
+components:
+  schemas: {}
