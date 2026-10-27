@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Quantalytix.QueryEngine.Admin.WebApi.Development;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
+using Quantalytix.QueryEngine.Admin.WebApi.Json;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
@@ -41,15 +43,16 @@ public static class AdminControllersServiceCollectionExtensions
     }
 
     /// <summary>
-    /// The API's JSON conventions, shared by MVC and by the OpenAPI schema generator: camelCase names, numbers only as JSON
-    /// numbers (so IDs are plain integers in the schema), nullable annotations enforced (a non-nullable property rejects
-    /// null), and enums as camelCase strings.
+    /// The API's JSON conventions, shared by MVC and by the OpenAPI schema generator: camelCase names, ids as strings
+    /// (<see cref="StringIds"/>), every other number only as a JSON number, nullable annotations enforced (a non-nullable
+    /// property rejects null), and enums as camelCase strings.
     /// </summary>
-    private static void ConfigureJson(JsonSerializerOptions options)
+    internal static void ConfigureJson(JsonSerializerOptions options)
     {
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.NumberHandling = JsonNumberHandling.Strict;
         options.RespectNullableAnnotations = true;
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        options.TypeInfoResolver = (options.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver()).WithAddedModifier(StringIds.Modify);
     }
 }

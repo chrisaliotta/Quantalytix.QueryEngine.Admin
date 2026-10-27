@@ -69,8 +69,7 @@
             "description": "The version's surrogate key.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -184,8 +183,7 @@
             "description": "The version's surrogate key.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -797,8 +795,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -859,8 +856,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -955,8 +951,7 @@
             "description": "The report that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -965,8 +960,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1059,8 +1053,7 @@
             "description": "The report that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -1069,8 +1062,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1143,8 +1135,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1205,8 +1196,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1304,8 +1294,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1365,8 +1354,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1461,8 +1449,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1523,8 +1510,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1750,8 +1736,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1809,8 +1794,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1893,8 +1877,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1947,8 +1930,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2043,8 +2025,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2129,8 +2110,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2190,8 +2170,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2286,8 +2265,7 @@
             "description": "The report that owns the source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2296,8 +2274,7 @@
             "description": "The source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2390,8 +2367,7 @@
             "description": "The report that owns the source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2400,8 +2376,7 @@
             "description": "The source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2481,8 +2456,7 @@
             "description": "The report that owns the source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2491,8 +2465,7 @@
             "description": "The source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2587,8 +2560,7 @@
             "description": "The report that owns the source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2597,8 +2569,7 @@
             "description": "The source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2693,8 +2664,7 @@
             "description": "The report that owns the source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2703,8 +2673,7 @@
             "description": "The source.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2777,8 +2746,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -2841,8 +2809,7 @@
             "description": "The report that owns the style.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -2944,8 +2911,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -3027,8 +2993,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3089,8 +3054,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3188,8 +3152,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3250,8 +3213,7 @@
             "description": "The report.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3346,8 +3308,7 @@
             "description": "The report that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -3356,8 +3317,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3450,8 +3410,7 @@
             "description": "The report that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -3460,8 +3419,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3672,8 +3630,7 @@
             "description": "The release.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3731,8 +3688,7 @@
             "description": "The draft release.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3795,8 +3751,7 @@
             "description": "The release.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3857,8 +3812,7 @@
             "description": "The draft release.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -3956,8 +3910,7 @@
             "description": "The published release.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4078,8 +4031,7 @@
             "description": "The dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4140,8 +4092,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4236,8 +4187,7 @@
             "description": "The dataset version that owns the measure.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -4246,8 +4196,7 @@
             "description": "The measure.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4340,8 +4289,7 @@
             "description": "The dataset version that owns the measure.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -4350,8 +4298,7 @@
             "description": "The measure.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4424,8 +4371,7 @@
             "description": "The mapping version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4486,8 +4432,7 @@
             "description": "The draft or published mapping version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4583,8 +4528,7 @@
             "description": "The draft or published mapping version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4679,8 +4623,7 @@
             "description": "The mapping version that owns the entry.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -4689,8 +4632,7 @@
             "description": "The entry.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4783,8 +4725,7 @@
             "description": "The mapping version that owns the entry.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -4793,8 +4734,7 @@
             "description": "The entry.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -4867,8 +4807,7 @@
             "description": "The dimension whose codes the sets map onto.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5015,8 +4954,7 @@
             "description": "The mapping set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5074,8 +5012,7 @@
             "description": "The mapping set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5158,8 +5095,7 @@
             "description": "The mapping set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5222,8 +5158,7 @@
             "description": "The mapping set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5284,8 +5219,7 @@
             "description": "The mapping set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5370,8 +5304,7 @@
             "description": "The mapping version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5429,8 +5362,7 @@
             "description": "The draft mapping version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5501,11 +5433,7 @@
             "in": "query",
             "description": "The owning row's ID; required for child kinds, optional for `mapping-sets`, ignored otherwise.",
             "schema": {
-              "type": [
-                "null",
-                "integer"
-              ],
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -5586,8 +5514,7 @@
             "description": "The dimension version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5648,8 +5575,7 @@
             "description": "The draft or published version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5744,8 +5670,7 @@
             "description": "The dimension version that owns the level.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -5754,8 +5679,7 @@
             "description": "The level.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5848,8 +5772,7 @@
             "description": "The dimension version that owns the level.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -5858,8 +5781,7 @@
             "description": "The level.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5932,8 +5854,7 @@
             "description": "The dimension version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -5994,8 +5915,7 @@
             "description": "The draft or published version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6090,8 +6010,7 @@
             "description": "The dimension version that owns the member.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -6100,8 +6019,7 @@
             "description": "The member.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6194,8 +6112,7 @@
             "description": "The dimension version that owns the member.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -6204,8 +6121,7 @@
             "description": "The member.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6278,8 +6194,7 @@
             "description": "The draft or published version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6377,8 +6292,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6439,8 +6353,7 @@
             "description": "The dimension, the role's template.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6525,8 +6438,7 @@
             "description": "The role's dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -6535,8 +6447,7 @@
             "description": "The role.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6619,8 +6530,7 @@
             "description": "The role's dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -6629,8 +6539,7 @@
             "description": "The role.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6821,8 +6730,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6880,8 +6788,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6974,8 +6881,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7038,8 +6944,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7100,8 +7005,7 @@
             "description": "The dimension.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7196,8 +7100,7 @@
             "description": "The version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7255,8 +7158,7 @@
             "description": "The draft or published version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7349,8 +7251,7 @@
             "description": "The draft version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7413,8 +7314,7 @@
             "description": "The dimension version whose bands are read or replaced.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7485,8 +7385,7 @@
             "description": "The dimension version whose bands are read or replaced.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7555,41 +7454,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
                 }
               }
             }
@@ -7747,8 +7611,7 @@
             "description": "The dataset.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7806,8 +7669,7 @@
             "description": "The dataset.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7890,8 +7752,7 @@
             "description": "The dataset.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -7954,8 +7815,7 @@
             "description": "The dataset.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8016,8 +7876,7 @@
             "description": "The dataset.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8102,8 +7961,7 @@
             "description": "The dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8161,8 +8019,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8255,8 +8112,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8319,8 +8175,7 @@
             "description": "The dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8381,8 +8236,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8477,8 +8331,7 @@
             "description": "The dataset version that owns the field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -8487,8 +8340,7 @@
             "description": "The field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8581,8 +8433,7 @@
             "description": "The dataset version that owns the field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -8591,8 +8442,7 @@
             "description": "The field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8665,8 +8515,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8764,8 +8613,7 @@
             "description": "The dataset version that owns the field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -8774,8 +8622,7 @@
             "description": "The field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8863,8 +8710,7 @@
             "description": "The dataset version that owns the field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -8873,8 +8719,7 @@
             "description": "The field.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -8962,8 +8807,7 @@
             "description": "The dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9024,8 +8868,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9120,8 +8963,7 @@
             "description": "The dataset version that owns the grain.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -9130,8 +8972,7 @@
             "description": "The grain.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9224,8 +9065,7 @@
             "description": "The dataset version that owns the grain.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -9234,8 +9074,7 @@
             "description": "The grain.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9308,8 +9147,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9370,8 +9208,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9466,8 +9303,7 @@
             "description": "The model that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -9476,8 +9312,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9570,8 +9405,7 @@
             "description": "The model that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -9580,8 +9414,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9782,8 +9615,7 @@
             "description": "The model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9841,8 +9673,7 @@
             "description": "The model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9935,8 +9766,7 @@
             "description": "The model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -9999,8 +9829,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10063,8 +9892,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10166,8 +9994,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10239,8 +10066,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10303,8 +10129,7 @@
             "description": "The model that declares the parameter.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10406,8 +10231,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10479,8 +10303,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10541,8 +10364,7 @@
             "description": "The calculation model.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10627,8 +10449,7 @@
             "description": "The model that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10637,8 +10458,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10731,8 +10551,7 @@
             "description": "The model that owns the row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -10741,8 +10560,7 @@
             "description": "The row.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10815,8 +10633,7 @@
             "description": "The bridge version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10877,8 +10694,7 @@
             "description": "The draft or published bridge version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10976,8 +10792,7 @@
             "description": "The dimension the bridges lead into or start from.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11124,8 +10939,7 @@
             "description": "The bridge.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11183,8 +10997,7 @@
             "description": "The bridge.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11277,8 +11090,7 @@
             "description": "The bridge.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11341,8 +11153,7 @@
             "description": "The bridge.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11403,8 +11214,7 @@
             "description": "The bridge.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11499,8 +11309,7 @@
             "description": "The bridge version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11558,8 +11367,7 @@
             "description": "The draft or published bridge version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11652,8 +11460,7 @@
             "description": "The draft bridge version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11716,8 +11523,7 @@
             "description": "The dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11778,8 +11584,7 @@
             "description": "The draft dataset version.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11874,8 +11679,7 @@
             "description": "The dataset version that owns the binding.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -11884,8 +11688,7 @@
             "description": "The binding.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -11978,8 +11781,7 @@
             "description": "The dataset version that owns the binding.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -11988,8 +11790,7 @@
             "description": "The binding.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -12190,8 +11991,7 @@
             "description": "The assumption set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -12249,8 +12049,7 @@
             "description": "The assumption set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -12333,8 +12132,7 @@
             "description": "The historical set.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -12438,31 +12236,27 @@
             "description": "A living `version_kind` value."
           },
           "identityId": {
-            "type": "integer",
-            "description": "The identity, such as a dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The identity, such as a dimension."
           },
           "identityKey": {
             "type": "string",
             "description": "The identity's key, such as its `dimension_key`."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The dimension the identity belongs under: a dimension itself, a mapping set's dimension, or a bridge's target.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dimension the identity belongs under: a dimension itself, a mapping set's dimension, or a bridge's target."
           },
           "reportId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The report whose rows that dimension holds, for a report dimension or a bridge into one: its editor is where the identity\nchanges. Null for every other identity.",
-            "format": "int64"
+            "description": "The report whose rows that dimension holds, for a report dimension or a bridge into one: its editor is where the identity\nchanges. Null for every other identity."
           },
           "versionId": {
-            "type": "integer",
-            "description": "The pinned version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The pinned version."
           },
           "versionNumber": {
             "type": "integer",
@@ -12508,9 +12302,8 @@
         "type": "object",
         "properties": {
           "assumptionSetId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "assumptionSetKey": {
             "type": "string",
@@ -12534,10 +12327,9 @@
           "semanticReleaseId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The `qe_semantic_release.semantic_release_id` a historical set reads dataset versions from: the release that was active when it\nwas captured. Null for the active set, which reads the active release.",
-            "format": "int64"
+            "description": "The `qe_semantic_release.semantic_release_id` a historical set reads dataset versions from: the release that was active when it\nwas captured. Null for the active set, which reads the active release."
           },
           "capturedAt": {
             "type": [
@@ -12658,18 +12450,16 @@
           "dimensionRoleId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The role a direct, mapped, range or bridge binding binds its field to; null for a `time` binding.",
-            "format": "int64"
+            "description": "The role a direct, mapped, range or bridge binding binds its field to; null for a `time` binding."
           },
           "dimensionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The time dimension of a `time` binding; null for every other kind, which classifies into its role's dimension.",
-            "format": "int64"
+            "description": "The time dimension of a `time` binding; null for every other kind, which classifies into its role's dimension."
           },
           "bindingKind": {
             "type": "string",
@@ -12678,34 +12468,30 @@
           "sourceFieldId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The field the binding reads. Required for `direct`, `mapped`, `range` and `time` bindings; optional\nfor `bridge` bindings, which remap the members of their source binding.",
-            "format": "int64"
+            "description": "The field the binding reads. Required for `direct`, `mapped`, `range` and `time` bindings; optional\nfor `bridge` bindings, which remap the members of their source binding."
           },
           "mappingSetId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The source vocabulary of a `mapped` binding; null for every other kind.",
-            "format": "int64"
+            "description": "The source vocabulary of a `mapped` binding; null for every other kind."
           },
           "sourceDimensionBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The binding of the same version that a `bridge` binding remaps; null for every other kind.",
-            "format": "int64"
+            "description": "The binding of the same version that a `bridge` binding remaps; null for every other kind."
           },
           "bridgeId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins.",
-            "format": "int64"
+            "description": "The bridge a `bridge` binding remaps through; null for every other kind. Queries use the version their assumption set pins."
           },
           "raggedBehavior": {
             "type": "string",
@@ -12821,14 +12607,12 @@
         "type": "object",
         "properties": {
           "bridgeMappingId": {
-            "type": "integer",
-            "description": "Surrogate primary key; the version and both member keys are unique together.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key; the version and both member keys are unique together."
           },
           "bridgeVersionId": {
-            "type": "integer",
-            "description": "The owning bridge version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning bridge version."
           },
           "sourceMemberKey": {
             "type": "string",
@@ -12881,18 +12665,16 @@
         "type": "object",
         "properties": {
           "reportId": {
-            "type": "integer",
-            "description": "The report the source belongs to.",
-            "format": "int64"
+            "type": "string",
+            "description": "The report the source belongs to."
           },
           "reportKey": {
             "type": "string",
             "description": "The `report_key` of the report."
           },
           "reportSourceId": {
-            "type": "integer",
-            "description": "The source whose rows the bridge maps.",
-            "format": "int64"
+            "type": "string",
+            "description": "The source whose rows the bridge maps."
           },
           "sourceKey": {
             "type": "string",
@@ -12913,9 +12695,8 @@
         "type": "object",
         "properties": {
           "bridgeId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "bridgeKey": {
             "type": "string",
@@ -12926,14 +12707,12 @@
             "description": "Human-readable name."
           },
           "sourceDimensionId": {
-            "type": "integer",
-            "description": "The canonical source dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical source dimension."
           },
           "targetDimensionId": {
-            "type": "integer",
-            "description": "The canonical target dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical target dimension."
           },
           "isEnabled": {
             "type": "boolean",
@@ -13001,14 +12780,12 @@
         "type": "object",
         "properties": {
           "bridgeVersionId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "bridgeId": {
-            "type": "integer",
-            "description": "The owning bridge.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning bridge."
           },
           "versionNumber": {
             "type": "integer",
@@ -13114,14 +12891,12 @@
         "type": "object",
         "properties": {
           "calculatedMeasureId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "calculationModelId": {
-            "type": "integer",
-            "description": "The owning model.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning model."
           },
           "measureKey": {
             "type": "string",
@@ -13197,9 +12972,8 @@
             "description": "Human-readable name."
           },
           "dimensionRoleId": {
-            "type": "integer",
-            "description": "The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped.",
-            "format": "int64"
+            "type": "string",
+            "description": "The role whose binding each source's dataset classifies rows by; its template is the dimension whose members are grouped."
           },
           "groupingMode": {
             "type": "string",
@@ -13257,14 +13031,12 @@
         "type": "object",
         "properties": {
           "calculationDimensionId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "reportId": {
-            "type": "integer",
-            "description": "The owning report.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report."
           },
           "dimensionKey": {
             "type": "string",
@@ -13275,9 +13047,8 @@
             "description": "Human-readable name."
           },
           "dimensionRoleId": {
-            "type": "integer",
-            "description": "The role every source reads; queries use the version of its dimension their assumption set pins.",
-            "format": "int64"
+            "type": "string",
+            "description": "The role every source reads; queries use the version of its dimension their assumption set pins."
           },
           "groupingMode": {
             "type": "string",
@@ -13367,9 +13138,8 @@
         "type": "object",
         "properties": {
           "calculationModelId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "modelKey": {
             "type": "string",
@@ -13434,10 +13204,9 @@
           "activeSemanticReleaseId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The runtime-active `qe_semantic_release.semantic_release_id`.",
-            "format": "int64"
+            "description": "The runtime-active `qe_semantic_release.semantic_release_id`."
           },
           "updatedAt": {
             "type": "string",
@@ -13490,9 +13259,8 @@
         "type": "object",
         "properties": {
           "datasetId": {
-            "type": "integer",
-            "description": "Surrogate primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key."
           },
           "datasetKey": {
             "type": "string",
@@ -13533,10 +13301,9 @@
           "cloneFromVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A version of the same dataset whose settings and content the new draft copies; null for an empty draft.",
-            "format": "int64"
+            "description": "A version of the same dataset whose settings and content the new draft copies; null for an empty draft."
           },
           "sourceObjectKind": {
             "type": [
@@ -13570,14 +13337,12 @@
         "type": "object",
         "properties": {
           "datasetVersionId": {
-            "type": "integer",
-            "description": "Surrogate primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key."
           },
           "datasetId": {
-            "type": "integer",
-            "description": "The owning logical dataset.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning logical dataset."
           },
           "versionNumber": {
             "type": "integer",
@@ -13607,10 +13372,9 @@
           "defaultTimeBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "Default time binding when a measure or query does not require another.",
-            "format": "int64"
+            "description": "Default time binding when a measure or query does not require another."
           },
           "expressionLanguageVersion": {
             "type": "string",
@@ -13670,10 +13434,9 @@
           "defaultTimeBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The time binding queries use when a measure or query requires no other; a binding of this version.",
-            "format": "int64"
+            "description": "The time binding queries use when a measure or query requires no other; a binding of this version."
           },
           "expressionLanguageVersion": {
             "type": "string",
@@ -13696,52 +13459,6 @@
         },
         "description": "The editable settings of a draft dataset version."
       },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
-      },
       "DimensionBindingRecord": {
         "required": [
           "dimensionBindingId",
@@ -13759,27 +13476,23 @@
         "type": "object",
         "properties": {
           "dimensionBindingId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "datasetVersionId": {
-            "type": "integer",
-            "description": "The dataset version exposing the dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dataset version exposing the dimension."
           },
           "dimensionRoleId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The role the field is bound to, whose key requests name the binding by; null for a time binding.",
-            "format": "int64"
+            "description": "The role the field is bound to, whose key requests name the binding by; null for a time binding."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension: the role's dimension, or the time binding's.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical dimension: the role's dimension, or the time binding's."
           },
           "bindingKind": {
             "type": "string",
@@ -13788,34 +13501,30 @@
           "sourceFieldId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The field whose values the binding classifies.",
-            "format": "int64"
+            "description": "The field whose values the binding classifies."
           },
           "mappingSetId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The source vocabulary when the binding kind is `mapped`.",
-            "format": "int64"
+            "description": "The source vocabulary when the binding kind is `mapped`."
           },
           "sourceDimensionBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The existing source binding when the binding kind is `bridge`.",
-            "format": "int64"
+            "description": "The existing source binding when the binding kind is `bridge`."
           },
           "bridgeId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The bridge when the binding kind is `bridge`; queries use the version their assumption set pins.",
-            "format": "int64"
+            "description": "The bridge when the binding kind is `bridge`; queries use the version their assumption set pins."
           },
           "raggedBehavior": {
             "type": "string",
@@ -13890,14 +13599,12 @@
         "type": "object",
         "properties": {
           "dimensionLevelId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "dimensionVersionId": {
-            "type": "integer",
-            "description": "The owning dimension version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning dimension version."
           },
           "levelKey": {
             "type": "string",
@@ -13936,14 +13643,12 @@
         "type": "object",
         "properties": {
           "dimensionMappingId": {
-            "type": "integer",
-            "description": "Surrogate primary key allocated by the metadata service; no business meaning.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key allocated by the metadata service; no business meaning."
           },
           "mappingVersionId": {
-            "type": "integer",
-            "description": "The mapping version that owns the assignment.",
-            "format": "int64"
+            "type": "string",
+            "description": "The mapping version that owns the assignment."
           },
           "sourceKeyValue": {
             "type": "string",
@@ -13968,14 +13673,12 @@
         "type": "object",
         "properties": {
           "dimensionMemberId": {
-            "type": "integer",
-            "description": "Surrogate primary key, unique across all dimension versions.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key, unique across all dimension versions."
           },
           "dimensionVersionId": {
-            "type": "integer",
-            "description": "The owning dimension version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning dimension version."
           },
           "memberKey": {
             "type": "string",
@@ -13995,18 +13698,16 @@
           "parentDimensionMemberId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "Parent member in the authoritative tree, from the same dimension version.",
-            "format": "int64"
+            "description": "Parent member in the authoritative tree, from the same dimension version."
           },
           "dimensionLevelId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "Optional business level.",
-            "format": "int64"
+            "description": "Optional business level."
           },
           "isAssignable": {
             "type": "boolean",
@@ -14041,9 +13742,8 @@
         "type": "object",
         "properties": {
           "dimensionId": {
-            "type": "integer",
-            "description": "Surrogate primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key."
           },
           "dimensionKey": {
             "type": "string",
@@ -14106,14 +13806,12 @@
         "type": "object",
         "properties": {
           "dimensionRoleId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The template dimension, fixed once created.",
-            "format": "int64"
+            "type": "string",
+            "description": "The template dimension, fixed once created."
           },
           "dimensionRoleKey": {
             "type": "string",
@@ -14156,14 +13854,12 @@
         "type": "object",
         "properties": {
           "dimensionVersionId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The owning dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning dimension."
           },
           "versionNumber": {
             "type": "integer",
@@ -14288,9 +13984,8 @@
         "type": "object",
         "properties": {
           "reportSourceId": {
-            "type": "integer",
-            "description": "The bridge source.",
-            "format": "int64"
+            "type": "string",
+            "description": "The bridge source."
           },
           "itemKey": {
             "type": "string",
@@ -14334,26 +14029,23 @@
           "itemDimensionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The dimension of a bridge source's role, whose members are its items; null for a direct source.",
-            "format": "int64"
+            "description": "The dimension of a bridge source's role, whose members are its items; null for a direct source."
           },
           "itemDimensionVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The published version of the item dimension, whose members the item pickers list; null for a direct source.",
-            "format": "int64"
+            "description": "The published version of the item dimension, whose members the item pickers list; null for a direct source."
           },
           "bridgeVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The one version of a bridge source's bridge, which holds its entries; null for a direct source.",
-            "format": "int64"
+            "description": "The one version of a bridge source's bridge, which holds its entries; null for a direct source."
           },
           "unmappedCount": {
             "type": [
@@ -14388,9 +14080,8 @@
             "$ref": "#/components/schemas/ReportRecord"
           },
           "dimensionVersionId": {
-            "type": "integer",
-            "description": "The report dimension's one version, whose members are the member rows.",
-            "format": "int64"
+            "type": "string",
+            "description": "The report dimension's one version, whose members are the member rows."
           },
           "rows": {
             "type": "array",
@@ -14536,14 +14227,12 @@
         "type": "object",
         "properties": {
           "fieldId": {
-            "type": "integer",
-            "description": "Surrogate primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key."
           },
           "datasetVersionId": {
-            "type": "integer",
-            "description": "The owning dataset version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning dataset version."
           },
           "fieldKey": {
             "type": "string",
@@ -14762,9 +14451,8 @@
         "type": "object",
         "properties": {
           "datasetGrainId": {
-            "type": "integer",
-            "description": "The grain's surrogate key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The grain's surrogate key."
           },
           "grainKey": {
             "type": "string",
@@ -14777,8 +14465,7 @@
           "fieldIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "The component fields, in ordinal order."
           }
@@ -14804,8 +14491,7 @@
           "fieldIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "The grain's fields in component order; stored with ordinals 1 to n."
           }
@@ -14826,8 +14512,7 @@
           "fieldIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "The grain's fields in component order; stored with ordinals 1 to n."
           }
@@ -14874,9 +14559,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "The row's surrogate key, which forms reference.",
-            "format": "int64"
+            "type": "string",
+            "description": "The row's surrogate key, which forms reference."
           },
           "key": {
             "type": "string",
@@ -14889,10 +14573,9 @@
           "parentId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A related row's ID where the kind defines one, such as a member's parent member.",
-            "format": "int64"
+            "description": "A related row's ID where the kind defines one, such as a member's parent member."
           },
           "status": {
             "type": [
@@ -14974,9 +14657,8 @@
         "type": "object",
         "properties": {
           "mappingSetId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "mappingSetKey": {
             "type": "string",
@@ -14987,9 +14669,8 @@
             "description": "Namespace identifying the source vocabulary."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The canonical target dimension.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical target dimension."
           },
           "displayName": {
             "type": "string",
@@ -15008,14 +14689,12 @@
         "type": "object",
         "properties": {
           "mappingVersionId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "mappingSetId": {
-            "type": "integer",
-            "description": "The owning mapping set.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning mapping set."
           },
           "versionNumber": {
             "type": "integer",
@@ -15077,10 +14756,9 @@
           "fieldId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The field of the measure's dataset version that supplies the role; null only until a form chooses one, and rejected.",
-            "format": "int64"
+            "description": "The field of the measure's dataset version that supplies the role; null only until a form chooses one, and rejected."
           }
         },
         "description": "A field a measure reads, in one role (schema section 13)."
@@ -15094,18 +14772,16 @@
         "type": "object",
         "properties": {
           "measureId": {
-            "type": "integer",
-            "description": "The owning measure; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning measure; first part of the primary key."
           },
           "componentRole": {
             "type": "string",
             "description": "A `component_role` value; second part of the primary key."
           },
           "fieldId": {
-            "type": "integer",
-            "description": "The field that supplies the role.",
-            "format": "int64"
+            "type": "string",
+            "description": "The field that supplies the role."
           }
         },
         "description": "A `qe_measure_component` row: associates a source field with a role of a measure."
@@ -15132,8 +14808,7 @@
           "dependencyMeasureIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "The measures of the version the formula references, derived from its expression; empty for other kinds."
           },
@@ -15344,14 +15019,12 @@
         "type": "object",
         "properties": {
           "measureId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "datasetVersionId": {
-            "type": "integer",
-            "description": "The owning dataset version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning dataset version."
           },
           "measureKey": {
             "type": "string",
@@ -15496,18 +15169,16 @@
           "requiredTimeBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The time binding the measure requires; null uses the query's or the dataset's default time binding.",
-            "format": "int64"
+            "description": "The time binding the measure requires; null uses the query's or the dataset's default time binding."
           },
           "selectionDatasetGrainId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The `series` grain observations are selected per; required when the observation selection is not `all`.",
-            "format": "int64"
+            "description": "The `series` grain observations are selected per; required when the observation selection is not `all`."
           },
           "observationSelection": {
             "type": "string",
@@ -15557,25 +15228,22 @@
         "type": "object",
         "properties": {
           "measureId": {
-            "type": "integer",
-            "description": "Primary key; also the owning measure.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key; also the owning measure."
           },
           "requiredTimeBindingId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "Time binding the measure requires; null uses the query or default binding.",
-            "format": "int64"
+            "description": "Time binding the measure requires; null uses the query or default binding."
           },
           "selectionDatasetGrainId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The `series` grain selection runs over before dimensional aggregation.",
-            "format": "int64"
+            "description": "The `series` grain selection runs over before dimensional aggregation."
           },
           "observationSelection": {
             "type": "string",
@@ -15801,18 +15469,16 @@
           "parentDimensionMemberId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The parent member; null for a root. It must belong to the same version, which publication checks.",
-            "format": "int64"
+            "description": "The parent member; null for a root. It must belong to the same version, which publication checks."
           },
           "dimensionLevelId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The business level; null for none. It must belong to the same version, which publication checks.",
-            "format": "int64"
+            "description": "The business level; null for none. It must belong to the same version, which publication checks."
           },
           "isAssignable": {
             "type": "boolean",
@@ -15857,17 +15523,15 @@
         "type": "object",
         "properties": {
           "dimensionMemberId": {
-            "type": "integer",
-            "description": "The member being placed.",
-            "format": "int64"
+            "type": "string",
+            "description": "The member being placed."
           },
           "parentDimensionMemberId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The member's new parent; null for a root.",
-            "format": "int64"
+            "description": "The member's new parent; null for a root."
           },
           "sortOrder": {
             "type": "integer",
@@ -16062,14 +15726,12 @@
             "description": "Stable key, unique across bridges and fixed once created."
           },
           "sourceDimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension the bridge remaps from; fixed once created.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical dimension the bridge remaps from; fixed once created."
           },
           "targetDimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension the bridge remaps to; fixed once created.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical dimension the bridge remaps to; fixed once created."
           },
           "displayName": {
             "type": "string",
@@ -16092,10 +15754,9 @@
           "cloneFromVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A version of the same bridge whose mappings the draft copies; null for an empty draft.",
-            "format": "int64"
+            "description": "A version of the same bridge whose mappings the draft copies; null for an empty draft."
           },
           "cardinality": {
             "type": "string",
@@ -16228,10 +15889,9 @@
           "cloneFromVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for\nan empty draft.",
-            "format": "int64"
+            "description": "A version of the same dimension whose levels, members, range bands and mapping versions the new draft copies; null for\nan empty draft."
           },
           "rangeDataType": {
             "type": [
@@ -16293,9 +15953,8 @@
             "description": "Stable key, unique across mapping sets and fixed once created."
           },
           "dimensionId": {
-            "type": "integer",
-            "description": "The canonical dimension the source codes map onto; fixed once created.",
-            "format": "int64"
+            "type": "string",
+            "description": "The canonical dimension the source codes map onto; fixed once created."
           },
           "sourceNamespace": {
             "type": "string",
@@ -16314,10 +15973,9 @@
           "cloneFromVersionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A version of the same mapping set whose entries the draft copies; null for an empty draft.",
-            "format": "int64"
+            "description": "A version of the same mapping set whose entries the draft copies; null for an empty draft."
           }
         },
         "description": "A new draft version of a mapping set, as `POST mapping-sets/{mappingSetId}/versions` takes it: optionally a version\nwhose entries it copies."
@@ -16349,18 +16007,16 @@
           "parentDimensionMemberId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The parent member; null for a root. It must belong to the same version, which publication checks.",
-            "format": "int64"
+            "description": "The parent member; null for a root. It must belong to the same version, which publication checks."
           },
           "dimensionLevelId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The business level; null for none. It must belong to the same version, which publication checks.",
-            "format": "int64"
+            "description": "The business level; null for none. It must belong to the same version, which publication checks."
           },
           "isAssignable": {
             "type": "boolean",
@@ -16395,17 +16051,15 @@
             "description": "Stable key, unique across reports and fixed once created; the report's own dimension takes it too."
           },
           "calculationModelId": {
-            "type": "integer",
-            "description": "The calculation model whose metrics the report reads; it never changes.",
-            "format": "int64"
+            "type": "string",
+            "description": "The calculation model whose metrics the report reads; it never changes."
           },
           "startFromDimensionId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "A categorical or hierarchical dimension with one root, whose published members and levels the report dimension copies;\nnull for a report dimension with a single root row.",
-            "format": "int64"
+            "description": "A categorical or hierarchical dimension with one root, whose published members and levels the report dimension copies;\nnull for a report dimension with a single root row."
           },
           "displayName": {
             "type": "string",
@@ -16440,9 +16094,8 @@
             "description": "Key, unique among the report's sources and fixed once created; a bridge source's bridge takes it in its key."
           },
           "datasetId": {
-            "type": "integer",
-            "description": "The dataset, which the active release pins; the release a run reads decides its version.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dataset, which the active release pins; the release a run reads decides its version."
           },
           "mappingMethod": {
             "type": "string",
@@ -16451,10 +16104,9 @@
           "dimensionRoleId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "For a bridge source, a role of an analytical dimension that the dataset binds into members: the source's items are that\ndimension's members. Null for a direct source.",
-            "format": "int64"
+            "description": "For a bridge source, a role of an analytical dimension that the dataset binds into members: the source's items are that\ndimension's members. Null for a direct source."
           },
           "fieldKey": {
             "type": [
@@ -16466,10 +16118,9 @@
           "copyFromSourceId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "For a bridge source, another bridge source of the report with the same item dimension whose entries the new bridge starts\nwith, as a copy that is never linked; null to start without entries.",
-            "format": "int64"
+            "description": "For a bridge source, another bridge source of the report with the same item dimension whose entries the new bridge starts\nwith, as a copy that is never linked; null to start without entries."
           },
           "displayName": {
             "type": "string",
@@ -16627,9 +16278,8 @@
         "type": "object",
         "properties": {
           "dimensionMemberId": {
-            "type": "integer",
-            "description": "The member the band assigns source values to.",
-            "format": "int64"
+            "type": "string",
+            "description": "The member the band assigns source values to."
           },
           "lowerDecimal": {
             "type": [
@@ -16701,9 +16351,8 @@
         "type": "object",
         "properties": {
           "dimensionVersionId": {
-            "type": "integer",
-            "description": "The dimension version; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dimension version; first part of the primary key."
           },
           "ordinal": {
             "type": "integer",
@@ -16711,9 +16360,8 @@
             "format": "int32"
           },
           "dimensionMemberId": {
-            "type": "integer",
-            "description": "The member assigned to the band.",
-            "format": "int64"
+            "type": "string",
+            "description": "The member assigned to the band."
           },
           "lowerDecimal": {
             "type": [
@@ -16803,10 +16451,9 @@
           "copyFromSemanticReleaseId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The release whose manifest rows the new draft copies; null starts with an empty manifest.",
-            "format": "int64"
+            "description": "The release whose manifest rows the new draft copies; null starts with an empty manifest."
           }
         },
         "description": "A request to create a draft semantic release, optionally starting from another release's manifest."
@@ -16819,14 +16466,12 @@
         "type": "object",
         "properties": {
           "datasetId": {
-            "type": "integer",
-            "description": "The logical dataset.",
-            "format": "int64"
+            "type": "string",
+            "description": "The logical dataset."
           },
           "datasetVersionId": {
-            "type": "integer",
-            "description": "The version of the dataset that the release pins.",
-            "format": "int64"
+            "type": "string",
+            "description": "The version of the dataset that the release pins."
           }
         },
         "description": "One manifest row: the dataset version a release pins for a dataset."
@@ -16840,19 +16485,16 @@
         "type": "object",
         "properties": {
           "semanticReleaseId": {
-            "type": "integer",
-            "description": "The semantic release; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The semantic release; first part of the primary key."
           },
           "datasetId": {
-            "type": "integer",
-            "description": "The logical dataset; second part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The logical dataset; second part of the primary key."
           },
           "datasetVersionId": {
-            "type": "integer",
-            "description": "The dataset version the release pins.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dataset version the release pins."
           }
         },
         "description": "A `qe_release_dataset` row: pins exactly one structural dataset version per logical dataset in a semantic release."
@@ -16925,10 +16567,9 @@
           "reportColumnId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The column's ID when it already exists, which keeps the formula rows that place values in it; null for a new column.",
-            "format": "int64"
+            "description": "The column's ID when it already exists, which keeps the formula rows that place values in it; null for a new column."
           },
           "columnKey": {
             "type": "string",
@@ -16983,14 +16624,12 @@
         "type": "object",
         "properties": {
           "reportColumnId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "reportId": {
-            "type": "integer",
-            "description": "The owning report.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report."
           },
           "columnKey": {
             "type": "string",
@@ -17092,9 +16731,8 @@
         "type": "object",
         "properties": {
           "reportId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "reportKey": {
             "type": "string",
@@ -17109,14 +16747,12 @@
             "description": "Free-form classification such as `margin_analysis`."
           },
           "reportDimensionId": {
-            "type": "integer",
-            "description": "The report's own dimension, whose members are its rows and into which every source classifies; fixed at creation.",
-            "format": "int64"
+            "type": "string",
+            "description": "The report's own dimension, whose members are its rows and into which every source classifies; fixed at creation."
           },
           "calculationModelId": {
-            "type": "integer",
-            "description": "The calculation model whose metrics the report reads; fixed at creation.",
-            "format": "int64"
+            "type": "string",
+            "description": "The calculation model whose metrics the report reads; fixed at creation."
           },
           "defaultProfileKey": {
             "type": [
@@ -17264,9 +16900,8 @@
         "type": "object",
         "properties": {
           "dimensionRoleId": {
-            "type": "integer",
-            "description": "The role; requests name the scenario by its key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The role; requests name the scenario by its key."
           }
         },
         "description": "A role whose members are alternatives a run of the report reads one at a time."
@@ -17359,14 +16994,12 @@
         "type": "object",
         "properties": {
           "reportSourceId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "reportId": {
-            "type": "integer",
-            "description": "The owning report.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report."
           },
           "sourceKey": {
             "type": "string",
@@ -17377,9 +17010,8 @@
             "description": "Human-readable name."
           },
           "datasetId": {
-            "type": "integer",
-            "description": "The dataset; the active release decides its version. Fixed at creation.",
-            "format": "int64"
+            "type": "string",
+            "description": "The dataset; the active release decides its version. Fixed at creation."
           },
           "mappingMethod": {
             "type": "string",
@@ -17395,18 +17027,16 @@
           "dimensionRoleId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The role whose dataset binding a bridge source starts from.",
-            "format": "int64"
+            "description": "The role whose dataset binding a bridge source starts from."
           },
           "bridgeId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The source's own bridge, from the role's dimension into the report's dimension, for a bridge source.",
-            "format": "int64"
+            "description": "The source's own bridge, from the role's dimension into the report's dimension, for a bridge source."
           },
           "timeFieldKey": {
             "type": "string",
@@ -17424,9 +17054,8 @@
         "type": "object",
         "properties": {
           "reportSourceId": {
-            "type": "integer",
-            "description": "The source; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The source; first part of the primary key."
           },
           "variableKey": {
             "type": "string",
@@ -17559,9 +17188,8 @@
         "type": "object",
         "properties": {
           "reportId": {
-            "type": "integer",
-            "description": "The owning report; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report; first part of the primary key."
           },
           "styleKey": {
             "type": "string",
@@ -17676,9 +17304,8 @@
         "type": "object",
         "properties": {
           "reportId": {
-            "type": "integer",
-            "description": "The owning report; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report; first part of the primary key."
           },
           "variableKey": {
             "type": "string",
@@ -17786,9 +17413,8 @@
         "type": "object",
         "properties": {
           "semanticReleaseId": {
-            "type": "integer",
-            "description": "Surrogate primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Surrogate primary key."
           },
           "releaseKey": {
             "type": "string",
@@ -18024,9 +17650,8 @@
             "description": "The key of the model variable."
           },
           "reportSourceId": {
-            "type": "integer",
-            "description": "The picked source, one of the report's sources that supplies the variable.",
-            "format": "int64"
+            "type": "string",
+            "description": "The picked source, one of the report's sources that supplies the variable."
           }
         },
         "description": "The source a profile picks for one variable."
@@ -18042,14 +17667,12 @@
         "type": "object",
         "properties": {
           "calculationSourceProfileId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "reportId": {
-            "type": "integer",
-            "description": "The owning report.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning report."
           },
           "profileKey": {
             "type": "string",
@@ -18075,18 +17698,16 @@
         "type": "object",
         "properties": {
           "calculationSourceProfileId": {
-            "type": "integer",
-            "description": "The profile; first part of the primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The profile; first part of the primary key."
           },
           "variableKey": {
             "type": "string",
             "description": "The key of the model variable; second part of the primary key."
           },
           "reportSourceId": {
-            "type": "integer",
-            "description": "The picked report source, which supplies the variable.",
-            "format": "int64"
+            "type": "string",
+            "description": "The picked report source, which supplies the variable."
           }
         },
         "description": "A `qe_calculation_source_profile_variable` row: the source one profile picks for one variable."
@@ -18382,10 +18003,9 @@
           "intervalEndFieldId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "The field holding each interval's exclusive end, where the native periodicity cannot derive it.",
-            "format": "int64"
+            "description": "The field holding each interval's exclusive end, where the native periodicity cannot derive it."
           },
           "allowedPeriodicities": {
             "type": "array",
@@ -18425,9 +18045,8 @@
         "type": "object",
         "properties": {
           "dimensionBindingId": {
-            "type": "integer",
-            "description": "Primary key; also the extended dimension binding.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key; also the extended dimension binding."
           },
           "timeValueType": {
             "type": "string",
@@ -18454,10 +18073,9 @@
           "intervalEndFieldId": {
             "type": [
               "null",
-              "integer"
+              "string"
             ],
-            "description": "Exclusive interval-end field when intervals cannot be derived from the native periodicity.",
-            "format": "int64"
+            "description": "Exclusive interval-end field when intervals cannot be derived from the native periodicity."
           },
           "allowedPeriodicitiesJson": {
             "type": "string",
@@ -18574,14 +18192,12 @@
         "type": "object",
         "properties": {
           "variableId": {
-            "type": "integer",
-            "description": "Primary key.",
-            "format": "int64"
+            "type": "string",
+            "description": "Primary key."
           },
           "calculationModelId": {
-            "type": "integer",
-            "description": "The owning model.",
-            "format": "int64"
+            "type": "string",
+            "description": "The owning model."
           },
           "variableKey": {
             "type": "string",
@@ -18638,9 +18254,8 @@
             "description": "A `version_kind` value."
           },
           "id": {
-            "type": "integer",
-            "description": "The version's surrogate key.",
-            "format": "int64"
+            "type": "string",
+            "description": "The version's surrogate key."
           },
           "status": {
             "type": "string",
@@ -18800,9 +18415,6 @@
     },
     {
       "name": "RangeBands"
-    },
-    {
-      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"
