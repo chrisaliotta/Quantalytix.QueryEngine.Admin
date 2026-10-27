@@ -34,6 +34,8 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddScoped<IPublicationRule, EntryMemberAssignableRule>();
 
         services.AddScoped<BridgeService>();
+        services.AddScoped<ILivingVersionCopier, MappingVersionCopier>();
+        services.AddScoped<ILivingVersionCopier, BridgeVersionCopier>();
         services.AddScoped<BridgeVersionService>();
         services.AddScoped<BridgeMappingService>();
         services.AddScoped<BridgeVersionCloner>();

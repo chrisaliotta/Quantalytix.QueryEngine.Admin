@@ -30,6 +30,7 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddScoped<DimensionMemberService>();
         services.AddScoped<RangeBandService>();
         services.AddScoped<DimensionVersionCloner>();
+        services.AddScoped<ILivingVersionCopier, DimensionVersionCopier>();
         services.AddScoped<DimensionVersionRemover>();
         services.AddScoped<DimensionDeleteChecks>();
         services.AddScoped<DimensionConsumers>();

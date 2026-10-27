@@ -11,8 +11,8 @@ public static class AdminApplicationServiceCollectionExtensions
 {
     /// <summary>
     /// Registers tenant listing, lookups, the five version stores, their registry, the version workflow with the publication set
-    /// its rules read, a predecessor retirer for each living kind and the semantic revision, all scoped to the request. The API
-    /// registers the FluentValidation validators by scanning this assembly.
+    /// its rules read, a predecessor retirer for each living kind, the semantic revision and the living kinds' freeze, all scoped
+    /// to the request. The API registers the FluentValidation validators by scanning this assembly.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -32,6 +32,7 @@ public static class AdminApplicationServiceCollectionExtensions
         foreach (var kind in VersionKinds.Living)
             services.AddScoped<IVersionLifecycleHandler>(provider => new PredecessorRetirer(kind, provider.GetRequiredService<VersionStoreRegistry>()));
         services.AddScoped<SemanticRevision>();
+        services.AddScoped<LivingVersionFreezer>();
         return services;
     }
 }
