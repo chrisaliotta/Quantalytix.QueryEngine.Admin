@@ -11,17 +11,6 @@ internal static class ContractAllowList
     /// <summary>Contract operations not implemented yet, by operationId, grouped by the contract tag (module) that owns them.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> NotImplemented = new Dictionary<string, string[]>
     {
-        ["tenant"] =
-        [
-            "getSession",
-            "getVocabularies",
-            "getOverview",
-            "getCatalog",
-            "getPublishedMembers",
-            "getSystemTenant",
-            "updateSystemTenant",
-            "setSystemTenantEnabled"
-        ],
         ["datasets"] =
         [
             "listSourceObjects",

@@ -229,12 +229,223 @@
         }
       }
     },
+    "/api/tenants/{tenantId}/catalog": {
+      "get": {
+        "tags": [
+          "TenantCatalog"
+        ],
+        "summary": "Read the names and ids every picker and cross-module link resolves against.",
+        "operationId": "getCatalog",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The tenant catalog.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenants/{tenantId}/dimensions/{dimensionId}/published-members": {
+      "get": {
+        "tags": [
+          "TenantCatalog"
+        ],
+        "summary": "Read the members of a dimension's published version.",
+        "operationId": "getPublishedMembers",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "description": "The tenant.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimensionId",
+            "in": "path",
+            "description": "The dimension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "The request has no valid bearer token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's token names another tenant and lacks the SystemAdmin role.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The published version's members, in hierarchy order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedMembers"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An id in the route names no row in the tenant.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "errors"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The stable problem code, such as `urn:qe:problem:rules-violated`."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "A short, user-facing summary."
+                    },
+                    "status": {
+                      "type": "integer",
+                      "description": "The HTTP status code.",
+                      "format": "int32"
+                    },
+                    "detail": {
+                      "type": "string",
+                      "description": "What happened, when the title does not say it all; omitted otherwise."
+                    },
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "description": "Input path to messages; `''` is the form-level key. Empty unless the status is 400."
+                    },
+                    "violations": {
+                      "type": "array",
+                      "items": {
+                        "required": [
+                          "code",
+                          "message"
+                        ],
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "description": "A short snake_case code for the rule, such as `closure_mismatch`."
+                          },
+                          "message": {
+                            "type": "string",
+                            "description": "What is wrong, written for the person editing the version or the report."
+                          },
+                          "target": {
+                            "required": [
+                              "area"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "area": {
+                                "type": "string",
+                                "description": "A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section."
+                              },
+                              "itemId": {
+                                "type": "string",
+                                "description": "The offending item; omitted when the violation names no single item."
+                              },
+                              "itemKey": {
+                                "type": "string",
+                                "description": "The offending item's key; omitted when the violation names none."
+                              },
+                              "filter": {
+                                "type": "string",
+                                "description": "Search text that narrows a table to the offending rows; omitted when there is none."
+                              }
+                            },
+                            "description": "Where to take the user to fix a violation: an area of the editor, optionally narrowed to one item or a search."
+                          }
+                        },
+                        "description": "One reason a rule rejects a version, a report, a write or a delete: the contract's `Violation`, and with a\n`DeleteBlockerCode` as its code, a `DeleteBlocker`."
+                      },
+                      "description": "The rule violations (422) or delete blockers (409); omitted otherwise."
+                    },
+                    "traceId": {
+                      "type": "string",
+                      "description": "The request's trace id on a 500; omitted otherwise."
+                    }
+                  },
+                  "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenants": {
       "get": {
         "tags": [
           "Tenants"
         ],
         "summary": "Lists every tenant for a SystemAdmin, otherwise only the caller's own tenant. Connection strings are never included.",
+        "operationId": "listTenants",
         "responses": {
           "401": {
             "description": "The request has no valid bearer token.",
@@ -267,7 +478,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Lists every tenant in the directory, ordered by tenant ID.",
+        "summary": "List every tenant in the directory.",
+        "operationId": "listSystemTenants",
         "responses": {
           "401": {
             "description": "The request has no valid bearer token.",
@@ -290,7 +502,7 @@
             }
           },
           "200": {
-            "description": "The directory entries, ordered by tenant ID, with masked connection strings.",
+            "description": "The directory entries, ordered by tenant id, with masked connection strings.",
             "content": {
               "application/json": {
                 "schema": {
@@ -308,7 +520,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Registers a tenant after verifying that its connection string routes to the tenant's own metadata database.",
+        "summary": "Register a tenant after verifying its connection string.",
+        "operationId": "createSystemTenant",
         "requestBody": {
           "content": {
             "application/json": {
@@ -373,7 +586,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Reads one tenant's directory entry.",
+        "summary": "Read one tenant's directory entry.",
+        "operationId": "getSystemTenant",
         "parameters": [
           {
             "name": "tenantId",
@@ -415,6 +629,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The directory has no such tenant.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       },
@@ -422,7 +646,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Changes a tenant's provider, cache lifetime and, when one is given, its verified connection string.",
+        "summary": "Change a tenant's provider, cache lifetime and connection string.",
+        "operationId": "updateSystemTenant",
         "parameters": [
           {
             "name": "tenantId",
@@ -489,6 +714,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The directory has no such tenant.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       }
@@ -498,7 +733,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Permits or stops query routing for a tenant.",
+        "summary": "Permit or stop query routing for a tenant.",
+        "operationId": "setSystemTenantEnabled",
         "parameters": [
           {
             "name": "tenantId",
@@ -555,6 +791,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The body does not bind.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The directory has no such tenant.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       }
@@ -564,7 +820,8 @@
         "tags": [
           "SystemTenants"
         ],
-        "summary": "Tests a connection string for a tenant without storing it: it must open, and its `qe_database_info` must name\nthe tenant and have the metadata schema version this API supports.",
+        "summary": "Test a connection string for a tenant without storing it.",
+        "operationId": "verifySystemTenantConnection",
         "requestBody": {
           "content": {
             "application/json": {
@@ -612,7 +869,7 @@
             }
           },
           "400": {
-            "description": "The tenant ID or the connection string is missing or too long.",
+            "description": "The tenant id or the connection string is missing or too long.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -746,7 +1003,8 @@
         "tags": [
           "Session"
         ],
-        "summary": "Returns the caller's subject, tenant and SystemAdmin role.",
+        "summary": "Read who the caller is.",
+        "operationId": "getSession",
         "responses": {
           "401": {
             "description": "The request has no valid bearer token.",
@@ -759,7 +1017,7 @@
             }
           },
           "200": {
-            "description": "The caller's session.",
+            "description": "The caller as the API sees its bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7453,7 +7711,8 @@
         "tags": [
           "Overview"
         ],
-        "summary": "Reads the tenant's identity and semantic revision, its active release, its counts and its drafts in progress.",
+        "summary": "Read the tenant's state, counts and work in progress.",
+        "operationId": "getOverview",
         "parameters": [
           {
             "name": "tenantId",
@@ -27668,106 +27927,6 @@
         },
         "description": "A new report source, as `POST reports/{reportId}/sources` takes it: its fixed key, dataset and mapping method, with the\nrole a bridge source starts from or the field a direct source reads row keys from, and its editable attributes."
       },
-      "OverviewCounts": {
-        "required": [
-          "datasets",
-          "dimensions",
-          "mappingSets",
-          "bridges",
-          "releases",
-          "assumptionSets",
-          "calculationModels",
-          "reports",
-          "activeMeasures"
-        ],
-        "type": "object",
-        "properties": {
-          "datasets": {
-            "type": "integer",
-            "description": "The number of datasets.",
-            "format": "int32"
-          },
-          "dimensions": {
-            "type": "integer",
-            "description": "The number of canonical dimensions.",
-            "format": "int32"
-          },
-          "mappingSets": {
-            "type": "integer",
-            "description": "The number of mapping sets.",
-            "format": "int32"
-          },
-          "bridges": {
-            "type": "integer",
-            "description": "The number of bridges.",
-            "format": "int32"
-          },
-          "releases": {
-            "type": "integer",
-            "description": "The number of semantic releases, whatever their status.",
-            "format": "int32"
-          },
-          "assumptionSets": {
-            "type": "integer",
-            "description": "The number of assumption sets: the active one and every historical set.",
-            "format": "int32"
-          },
-          "calculationModels": {
-            "type": "integer",
-            "description": "The number of calculation models.",
-            "format": "int32"
-          },
-          "reports": {
-            "type": "integer",
-            "description": "The number of reports.",
-            "format": "int32"
-          },
-          "activeMeasures": {
-            "type": "integer",
-            "description": "The number of measures of the dataset versions the active release pins: the measures queries can use.",
-            "format": "int32"
-          }
-        },
-        "description": "How much semantic metadata a tenant holds."
-      },
-      "OverviewDrafts": {
-        "required": [
-          "datasetVersions",
-          "dimensionVersions",
-          "mappingVersions",
-          "bridgeVersions",
-          "releases"
-        ],
-        "type": "object",
-        "properties": {
-          "datasetVersions": {
-            "type": "integer",
-            "description": "Draft dataset versions.",
-            "format": "int32"
-          },
-          "dimensionVersions": {
-            "type": "integer",
-            "description": "Draft dimension versions.",
-            "format": "int32"
-          },
-          "mappingVersions": {
-            "type": "integer",
-            "description": "Draft mapping versions.",
-            "format": "int32"
-          },
-          "bridgeVersions": {
-            "type": "integer",
-            "description": "Draft bridge versions.",
-            "format": "int32"
-          },
-          "releases": {
-            "type": "integer",
-            "description": "Draft semantic releases.",
-            "format": "int32"
-          }
-        },
-        "description": "The number of rows in `draft` status per versioned kind: the work in progress."
-      },
       "Problem": {
         "required": [
           "type",
@@ -27817,6 +27976,71 @@
           }
         },
         "description": "The one error body of the API (`application/problem+json`, blueprint 01, OI-06): 400 carries `errors`, 409\ncarries `violations` for delete blockers and `detail` otherwise, 422 carries `violations`, 401, 403 and\n404 carry the title only, and 500 carries `traceId`. Built by `Problems`."
+      },
+      "PublishedMember": {
+        "required": [
+          "key",
+          "displayName",
+          "parentKey",
+          "isAssignable",
+          "levelKey"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The member key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "parentKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The parent member's key; null for a root."
+          },
+          "isAssignable": {
+            "type": "boolean",
+            "description": "Whether bindings and mappings may assign rows to the member."
+          },
+          "levelKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The member's level key; null when it has no level."
+          }
+        },
+        "description": "The contract's `PublishedMember`: a member of a dimension's live version, named by keys."
+      },
+      "PublishedMembers": {
+        "required": [
+          "dimensionId",
+          "versionId",
+          "members"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensionId": {
+            "type": "string",
+            "description": "The dimension."
+          },
+          "versionId": {
+            "type": "string",
+            "description": "The live version."
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublishedMember"
+            },
+            "description": "The members, in hierarchy order."
+          }
+        },
+        "description": "The contract's `PublishedMembers`: the members of a dimension's live version, fetched per picker."
       },
       "ReleaseCreateInput": {
         "required": [
@@ -28787,6 +29011,8 @@
       "SessionInfo": {
         "required": [
           "subject",
+          "displayName",
+          "tenantId",
           "isSystemAdmin"
         ],
         "type": "object",
@@ -28794,6 +29020,13 @@
           "subject": {
             "type": "string",
             "description": "The token's subject."
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The token's name claim; null when it carries none."
           },
           "tenantId": {
             "type": [
@@ -28804,10 +29037,10 @@
           },
           "isSystemAdmin": {
             "type": "boolean",
-            "description": "Whether the caller is a SystemAdmin, who may administer every tenant."
+            "description": "Whether the caller may reach every tenant and the tenant directory."
           }
         },
-        "description": "Who the caller is, as the API sees its bearer token."
+        "description": "The contract's `Session`: who the caller is, as the API sees its bearer token. There are no tenant roles (OI-09)."
       },
       "SourceColumn": {
         "required": [
@@ -29110,6 +29343,414 @@
         },
         "description": "A request to move a version to another lifecycle status."
       },
+      "TenantCatalog": {
+        "required": [
+          "tenant",
+          "datasets",
+          "dimensions",
+          "roles",
+          "mappingSets",
+          "bridges",
+          "models",
+          "reports",
+          "releases",
+          "assumptionSets"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant": {
+            "description": "The tenant's identity and revision, which clients cache the catalog on.",
+            "$ref": "#/components/schemas/TenantInfo"
+          },
+          "datasets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogDataset"
+            },
+            "description": "Every dataset."
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogDimension"
+            },
+            "description": "Every dimension, analytical and report."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogRole"
+            },
+            "description": "Every dimension role."
+          },
+          "mappingSets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogMappingSet"
+            },
+            "description": "Every mapping set."
+          },
+          "bridges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogBridge"
+            },
+            "description": "Every bridge, analytical and report."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogModel"
+            },
+            "description": "Every calculation model."
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogReport"
+            },
+            "description": "Every report."
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogRelease"
+            },
+            "description": "Every release."
+          },
+          "assumptionSets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantCatalogAssumptionSet"
+            },
+            "description": "Every assumption set."
+          }
+        },
+        "description": "The contract's `TenantCatalog`: the names and ids every module's pickers and cross-module links read (OI-13), each list\nby key. Report-owned dimensions and bridges are included only so references resolve (OI-22)."
+      },
+      "TenantCatalogAssumptionSet": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The assumption set's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The assumption set key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "status": {
+            "type": "string",
+            "description": "An `assumption_set_status` value."
+          }
+        },
+        "description": "The contract's `TenantCatalogAssumptionSet`."
+      },
+      "TenantCatalogBridge": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "sourceDimensionId",
+          "targetDimensionId",
+          "ownerReportId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The bridge's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The bridge key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "sourceDimensionId": {
+            "type": "string",
+            "description": "The dimension the bridge maps from."
+          },
+          "targetDimensionId": {
+            "type": "string",
+            "description": "The dimension the bridge maps into."
+          },
+          "ownerReportId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The report that owns a report bridge; null for an analytical bridge."
+          }
+        },
+        "description": "The contract's `TenantCatalogBridge`: an analytical or report bridge."
+      },
+      "TenantCatalogDataset": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "isEnabled",
+          "activeVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The dataset's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The dataset key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the dataset is enabled."
+          },
+          "activeVersionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The dataset version the active release pins; null when it pins none."
+          }
+        },
+        "description": "The contract's `TenantCatalogDataset`."
+      },
+      "TenantCatalogDimension": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "kind",
+          "purpose",
+          "origin",
+          "isEnabled",
+          "publishedVersionId",
+          "publishedVersionNumber",
+          "ownerReportId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The dimension's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The dimension key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "kind": {
+            "type": "string",
+            "description": "A `dimension_kind` value."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "A `dimension_purpose` value."
+          },
+          "origin": {
+            "type": "string",
+            "description": "A `definition_origin` value."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the dimension is enabled."
+          },
+          "publishedVersionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The live version; null when none is published."
+          },
+          "publishedVersionNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The live version's number; null when none is published.",
+            "format": "int32"
+          },
+          "ownerReportId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The report that owns a `report` purpose dimension; null otherwise."
+          }
+        },
+        "description": "The contract's `TenantCatalogDimension`: an analytical or report dimension with its live version."
+      },
+      "TenantCatalogMappingSet": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "dimensionId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The mapping set's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The mapping set key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "dimensionId": {
+            "type": "string",
+            "description": "The dimension the mapping set maps into."
+          }
+        },
+        "description": "The contract's `TenantCatalogMappingSet`."
+      },
+      "TenantCatalogModel": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The model's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The model key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the model is enabled."
+          }
+        },
+        "description": "The contract's `TenantCatalogModel`: a calculation model."
+      },
+      "TenantCatalogRelease": {
+        "required": [
+          "id",
+          "key",
+          "status",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The release's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The release key."
+          },
+          "status": {
+            "type": "string",
+            "description": "A `publication_status` value."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether runtime queries use the release."
+          }
+        },
+        "description": "The contract's `TenantCatalogRelease`: a release has a key and no display name (OI-39)."
+      },
+      "TenantCatalogReport": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "isEnabled",
+          "modelId",
+          "reportDimensionId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The report's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The report key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the report is enabled."
+          },
+          "modelId": {
+            "type": "string",
+            "description": "The calculation model the report evaluates."
+          },
+          "reportDimensionId": {
+            "type": "string",
+            "description": "The report dimension that holds the report's rows."
+          }
+        },
+        "description": "The contract's `TenantCatalogReport`."
+      },
+      "TenantCatalogRole": {
+        "required": [
+          "id",
+          "key",
+          "displayName",
+          "dimensionId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The role's id."
+          },
+          "key": {
+            "type": "string",
+            "description": "The role key."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The display name."
+          },
+          "dimensionId": {
+            "type": "string",
+            "description": "The role's dimension."
+          }
+        },
+        "description": "The contract's `TenantCatalogRole`: a dimension role."
+      },
       "TenantConnectionCheck": {
         "required": [
           "isValid",
@@ -29215,13 +29856,12 @@
         },
         "description": "A request to permit or stop query routing for a tenant."
       },
-      "TenantOverview": {
+      "TenantInfo": {
         "required": [
           "tenantKey",
           "metadataSchemaVersion",
           "semanticRevision",
-          "counts",
-          "drafts"
+          "activeReleaseId"
         ],
         "type": "object",
         "properties": {
@@ -29236,30 +29876,139 @@
           },
           "semanticRevision": {
             "type": "integer",
-            "description": "The revision the query engine keys its metadata cache by.",
+            "description": "Advances once per commit or command that changes what the engine reads.",
             "format": "int64"
           },
-          "activeRelease": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The release runtime queries use; null when the tenant has none.",
-                "$ref": "#/components/schemas/SemanticReleaseRecord"
-              }
-            ]
-          },
+          "activeReleaseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The release runtime queries use; null when the tenant has none."
+          }
+        },
+        "description": "The contract's `TenantInfo`: the tenant database's identity and the revision the engine keys its metadata cache by."
+      },
+      "TenantOverview": {
+        "required": [
+          "counts",
+          "drafts"
+        ],
+        "type": "object",
+        "properties": {
           "counts": {
             "description": "How much metadata the tenant holds.",
-            "$ref": "#/components/schemas/OverviewCounts"
+            "$ref": "#/components/schemas/TenantOverviewCounts"
           },
           "drafts": {
             "description": "The drafts in progress.",
-            "$ref": "#/components/schemas/OverviewDrafts"
+            "$ref": "#/components/schemas/TenantOverviewDrafts"
+          },
+          "tenantKey": {
+            "type": "string",
+            "description": "The tenant-local identity marker, `qe_database_info.tenant_key`."
+          },
+          "metadataSchemaVersion": {
+            "type": "integer",
+            "description": "The database's metadata contract version.",
+            "format": "int32"
+          },
+          "semanticRevision": {
+            "type": "integer",
+            "description": "Advances once per commit or command that changes what the engine reads.",
+            "format": "int64"
+          },
+          "activeReleaseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The release runtime queries use; null when the tenant has none."
           }
         },
-        "description": "A tenant's metadata at a glance: its identity and revision, the active release, its counts and its drafts."
+        "description": "The contract's `TenantOverview`: the tenant info with its counts and its work in progress."
+      },
+      "TenantOverviewCounts": {
+        "required": [
+          "datasets",
+          "dimensions",
+          "mappingSets",
+          "bridges",
+          "releases",
+          "assumptionSets",
+          "models",
+          "reports",
+          "activeMeasures"
+        ],
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "integer",
+            "description": "The datasets.",
+            "format": "int32"
+          },
+          "dimensions": {
+            "type": "integer",
+            "description": "The analytical dimensions; report-owned dimensions are not counted (OI-22).",
+            "format": "int32"
+          },
+          "mappingSets": {
+            "type": "integer",
+            "description": "The mapping sets.",
+            "format": "int32"
+          },
+          "bridges": {
+            "type": "integer",
+            "description": "The analytical bridges; report-owned bridges are not counted (OI-22).",
+            "format": "int32"
+          },
+          "releases": {
+            "type": "integer",
+            "description": "The releases, whatever their status.",
+            "format": "int32"
+          },
+          "assumptionSets": {
+            "type": "integer",
+            "description": "The assumption sets: the active one and every historical set.",
+            "format": "int32"
+          },
+          "models": {
+            "type": "integer",
+            "description": "The calculation models.",
+            "format": "int32"
+          },
+          "reports": {
+            "type": "integer",
+            "description": "The reports.",
+            "format": "int32"
+          },
+          "activeMeasures": {
+            "type": "integer",
+            "description": "The measures of the dataset versions the active release pins: the measures queries can use.",
+            "format": "int32"
+          }
+        },
+        "description": "The contract's `TenantOverviewCounts`: how much metadata the tenant holds."
+      },
+      "TenantOverviewDrafts": {
+        "required": [
+          "datasetVersions",
+          "releases"
+        ],
+        "type": "object",
+        "properties": {
+          "datasetVersions": {
+            "type": "integer",
+            "description": "Draft dataset versions.",
+            "format": "int32"
+          },
+          "releases": {
+            "type": "integer",
+            "description": "Draft releases.",
+            "format": "int32"
+          }
+        },
+        "description": "The contract's `TenantOverviewDrafts`: the work in progress of the kinds that still have a draft status. Dimensions,\nmapping sets and bridges follow the living lifecycle and have no drafts (OI-14)."
       },
       "TenantUpdateInput": {
         "required": [
@@ -29636,8 +30385,11 @@
           "definitionOrigin",
           "dimensionKind",
           "dimensionPurpose",
+          "displayFormat",
           "durationUnit",
+          "editPolicy",
           "emptySetBehavior",
+          "expressionLanguageVersion",
           "fieldSourceKind",
           "fontWeight",
           "formulaLanguageVersion",
@@ -29666,11 +30418,13 @@
           "sourceSelection",
           "subtotalPosition",
           "timeValueType",
+          "timeZone",
           "totalBehavior",
           "unmappedBehavior",
           "valueNullBehavior",
           "valueTimeRole",
-          "variableMissingBehavior"
+          "variableMissingBehavior",
+          "componentRolesByKind"
         ],
         "type": "object",
         "properties": {
@@ -29782,13 +30536,31 @@
               "$ref": "#/components/schemas/VocabularyValue"
             }
           },
+          "displayFormat": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
           "durationUnit": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VocabularyValue"
             }
           },
+          "editPolicy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
           "emptySetBehavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
+          "expressionLanguageVersion": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VocabularyValue"
@@ -29962,6 +30734,12 @@
               "$ref": "#/components/schemas/VocabularyValue"
             }
           },
+          "timeZone": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyValue"
+            }
+          },
           "totalBehavior": {
             "type": "array",
             "items": {
@@ -29991,9 +30769,36 @@
             "items": {
               "$ref": "#/components/schemas/VocabularyValue"
             }
+          },
+          "componentRolesByKind": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/VocabularyComponentRoleRequirement"
+              }
+            }
           }
         },
         "description": "The answer of `GET /api/vocabularies` (the contract's `Vocabularies`, OI-11): every served vocabulary's terms\nunder its key, and every vocabulary relationship under its key, as top-level members. Its OpenAPI schema lists the same\nmembers (`VocabulariesSchemaTransformer`)."
+      },
+      "VocabularyComponentRoleRequirement": {
+        "required": [
+          "role",
+          "required"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "A `component_role` value."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether a measure of the kind must have a component in the role."
+          }
+        },
+        "description": "One item of the contract's `VocabularyComponentRoleRequirements`: a component role a measure kind reads."
       },
       "VocabularyValue": {
         "required": [
@@ -30039,6 +30844,9 @@
     },
     {
       "name": "VersionStatus"
+    },
+    {
+      "name": "TenantCatalog"
     },
     {
       "name": "Tenants"
