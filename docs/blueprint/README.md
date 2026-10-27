@@ -18,7 +18,7 @@ format; the blueprint remains the source for the rules behind it
 
 | Source                                                                                                                                              | Role                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Database schema, design revision 2.26.0](../../../database/srdb_ebm/README.md) (`schema/01_tables`, `docs/schema/Query_Engine_Database_Schema.md`) | **Authoritative.** Tables, columns, allowed values and publication rules. |
+| [Database schema, design revision 2.27.0](../../../database/srdb_ebm/README.md) (`schema/01_tables`, `docs/schema/Query_Engine_Database_Schema.md`) | **Authoritative.** Tables, columns, allowed values and publication rules. |
 | [Query engine README](../../../Quantalytix.QueryEngine/README.md)                                                                                   | What the engine reads, trusts and refuses; report run contract 2.1.       |
 | [Current Admin API README](../../api/README.md), `api/openapi/admin-api.json`, `api/docs/architecture/`                                             | The API being rebuilt: about 160 operations in 43 controllers.            |
 | [Dimensions concept](../concepts/dimensions.md)                                                                                                     | Dimension model, lifecycle and proposed profiles.                         |
@@ -32,7 +32,9 @@ format; the blueprint remains the source for the rules behind it
 1. [00 Architecture](00-architecture.md): the layers, the contract-first rule, who validates, the engine boundary.
 2. [01 API conventions](01-api-conventions.md): routing, ids, errors, concurrency, the change-set commit protocol.
 3. [02 Frontend contract layer](02-frontend-contract-layer.md): the shared kernel, ports, adapters and caching.
-4. Module blueprints:
+4. [03 Module refactor checklist](03-module-refactor-checklist.md): the steps, files and gotchas of moving a module to
+   the contract, from the dimensions pilot.
+5. Module blueprints:
    - [10 Tenant, session and catalog](10-tenant-session-catalog.md)
    - [11 Datasets](11-datasets.md)
    - [12 Dimensions](12-dimensions.md)
@@ -40,7 +42,7 @@ format; the blueprint remains the source for the rules behind it
    - [14 Releases and assumption sets](14-releases-and-assumption-sets.md)
    - [15 Calculation models](15-calculation-models.md)
    - [16 Reports](16-reports.md)
-5. [90 Open issues](90-open-issues.md) and [91 Schema gaps](91-schema-gaps.md).
+6. [90 Open issues](90-open-issues.md) and [91 Schema gaps](91-schema-gaps.md).
 
 ## Status legend
 
