@@ -23,7 +23,7 @@ paths:
           in: query
           required: true
           schema:
-            $ref: '#/components/schemas/DimensionOrigin'
+            $ref: './common.yaml#/components/schemas/DefinitionOrigin'
       responses:
         '200':
           description: The list items, each with its profile, roles and version summaries.
@@ -297,7 +297,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FreezeInput'
+              $ref: './common.yaml#/components/schemas/FreezeInput'
       responses:
         '200':
           description: Frozen; `live` is the new live version.
@@ -432,20 +432,6 @@ components:
   schemas:
     # ───────────── vocabularies ─────────────
 
-    DimensionKind:
-      type: string
-      enum: [categorical, hierarchical, range, time]
-      description: Fixed after creation (M1).
-
-    DimensionOrigin:
-      type: string
-      enum: [system, user]
-
-    DimensionPurpose:
-      type: string
-      enum: [analytical, report]
-      description: Report dimensions are refused by every write of this module and never listed (M8, OI-22).
-
     DimensionEditPolicy:
       type: string
       enum: [open, extend, locked]
@@ -456,11 +442,6 @@ components:
     RangeDataType:
       type: string
       enum: [decimal, date, datetime]
-
-    DimensionPeriodicity:
-      type: string
-      enum: [day, month, quarter, year]
-      description: Periodicity of a time dimension's level.
 
     DimensionTab:
       type: string
@@ -528,7 +509,7 @@ components:
         displayName:
           type: string
         kind:
-          $ref: '#/components/schemas/DimensionKind'
+          $ref: './common.yaml#/components/schemas/DimensionKind'
         owner:
           type: string
           description: The product module that owns the profile.
@@ -584,11 +565,11 @@ components:
         displayName:
           type: string
         kind:
-          $ref: '#/components/schemas/DimensionKind'
+          $ref: './common.yaml#/components/schemas/DimensionKind'
         origin:
-          $ref: '#/components/schemas/DimensionOrigin'
+          $ref: './common.yaml#/components/schemas/DefinitionOrigin'
         purpose:
-          $ref: '#/components/schemas/DimensionPurpose'
+          $ref: './common.yaml#/components/schemas/DimensionPurpose'
         ownerReport:
           description: Set only when purpose is `report`.
           oneOf:
@@ -704,7 +685,7 @@ components:
         periodicity:
           description: Time dimensions only.
           oneOf:
-            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
 
     DimensionMember:
@@ -862,36 +843,16 @@ components:
 
     # ───────────── live-and-frozen versions (shared with mapping sets and bridges) ─────────────
 
-    FreezeInput:
-      type: object
-      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
-      required: [note]
-      properties:
-        note:
-          type: [string, 'null']
-          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
-
-    FreezeResult:
-      type: object
-      description: >-
-        200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic
-        over the version summary: each living kind specializes `live` with `allOf`. When a rule fails the freeze
-        answers 422 instead and changes nothing.
-      required: [report, live]
-      properties:
-        report:
-          $ref: './common.yaml#/components/schemas/ValidationReport'
-        live:
-          description: The new live version.
-
     DimensionFreezeResult:
       allOf:
-        - $ref: '#/components/schemas/FreezeResult'
+        - $ref: './common.yaml#/components/schemas/FreezeResult'
         - type: object
           required: [live]
           properties:
             live:
-              $ref: '#/components/schemas/DimensionVersionSummary'
+              oneOf:
+                - $ref: '#/components/schemas/DimensionVersionSummary'
+                - type: 'null'
 
     # ───────────── inputs ─────────────
 
@@ -904,7 +865,7 @@ components:
         displayName:
           type: string
         kind:
-          $ref: '#/components/schemas/DimensionKind'
+          $ref: './common.yaml#/components/schemas/DimensionKind'
         rangeDataType:
           description: Required for range dimensions; null otherwise.
           oneOf:
@@ -994,7 +955,7 @@ components:
           type: boolean
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
 
     DimensionRoleInput:

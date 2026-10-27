@@ -3,12 +3,11 @@
  * same name in api/openapi/contract/releases.yaml. The UI talks only to `ReleasesApi`; ./mock implements it in memory.
  */
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
+import type { ApiResult, AssumptionSetStatus, BindingKind, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
 
-export type { ApiResult, Id, VersionStatus } from '@/lib/api/contract'
+export type { ApiResult, AssumptionSetStatus, BindingKind, Id, VersionStatus } from '@/lib/api/contract'
 
 export type PinKind = 'dimension' | 'mapping_set' | 'bridge'
-export type ManifestBindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 
 /* ───────────────────────── Releases ───────────────────────── */
 
@@ -147,7 +146,7 @@ export type ReleaseChangeSetCommit = ChangeSetCommit<ReleaseDetail>
 
 export interface ManifestBinding {
   displayName: string
-  kind: ManifestBindingKind
+  kind: BindingKind
   dimensionId: Id
   mappingSetId: Id | null
   bridgeId: Id | null
@@ -197,9 +196,6 @@ export interface PinIdentity {
   versions: PinIdentityVersion[]
 }
 
-/** Kept for `lib/navigation.ts`, which imports `Identity`. */
-export type Identity = PinIdentity
-
 export interface ReleaseReportSource {
   key: string
   datasetId: Id
@@ -223,7 +219,6 @@ export interface ReleaseReportRef {
 
 /* ───────────────────────── Assumption sets ───────────────────────── */
 
-export type AssumptionSetStatus = 'active' | 'historical'
 
 export interface AssumptionSet {
   id: Id

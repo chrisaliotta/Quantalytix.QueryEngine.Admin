@@ -1,5 +1,5 @@
 import { analyzeBands, type BandIssueKind } from '../bands'
-import { USAGE_KIND_LABEL, type DeleteCheck, type DimensionDeleteTarget, type DimensionTab, type DimensionUsageKind, type DimensionUsageReference, type DimensionViolation, type DimensionViolationCode, type Violation } from '../contract'
+import { USAGE_KIND_LABEL, type DeleteBlocker, type DeleteBlockerCode, type DeleteCheck, type DimensionDeleteTarget, type DimensionTab, type DimensionUsageKind, type DimensionUsageReference, type DimensionViolation, type DimensionViolationCode, type Violation } from '../contract'
 import { findCycles } from '../tree'
 import type { Db } from './data'
 
@@ -15,7 +15,7 @@ const REF_PHRASE: Record<DimensionUsageKind, string> = {
   assumption_set: 'pinned by assumption sets',
 }
 
-const blocker = (code: string, message: string): Violation => ({ code, message })
+const blocker = (code: DeleteBlockerCode, message: string): DeleteBlocker => ({ code, message })
 
 /** "it is bound by dataset versions ('loans.details' v3)", one blocker per referencing kind. */
 function refBlockers(refs: DimensionUsageReference[]) {
@@ -24,7 +24,7 @@ function refBlockers(refs: DimensionUsageReference[]) {
   return [...byKind].map(([kind, names]) => blocker(`referenced_by_${kind}`, `${REF_PHRASE[kind]} (${quote(names)})`))
 }
 
-function result(subject: string, reasons: Violation[]): DeleteCheck {
+function result(subject: string, reasons: DeleteBlocker[]): DeleteCheck {
   return reasons.length ? { allowed: false, reasons, message: `${subject} cannot be deleted: ${reasons.map((r) => r.message).join('; ')}.` } : { allowed: true, reasons: [], message: null }
 }
 
@@ -33,14 +33,14 @@ export function checkDelete(db: Db, target: DimensionDeleteTarget): DeleteCheck 
     case 'dimension': {
       const d = db.dimensions.find((x) => x.id === target.dimensionId)!
       if (d.origin === 'system') return result(`Dimension '${d.displayName}'`, [blocker('system_dimension', 'it is a system dimension')])
-      const reasons: Violation[] = []
+      const reasons: DeleteBlocker[] = []
       if (!d.isRemovable) reasons.push(blocker('not_removable', 'it is marked not removable'))
       reasons.push(...refBlockers(db.usage[d.id] ?? []))
       return result(`Dimension '${d.displayName}'`, reasons)
     }
     case 'version': {
       const v = db.versions.find((x) => x.id === target.versionId)!
-      const reasons: Violation[] = []
+      const reasons: DeleteBlocker[] = []
       if (v.status === 'published') reasons.push(blocker('live_version', 'it is the live version'))
       reasons.push(...refBlockers((db.usage[v.dimensionId] ?? []).filter((r) => r.pinsVersion === v.versionNumber)))
       return result(`Version ${v.versionNumber}`, reasons)
@@ -50,7 +50,7 @@ export function checkDelete(db: Db, target: DimensionDeleteTarget): DeleteCheck 
       const m = db.members.find((x) => x.id === target.memberId)!
       const d = db.dimensions.find((x) => x.id === v.dimensionId)!
       const profile = d.profileKey ? db.profiles.find((p) => p.key === d.profileKey) : null
-      const reasons: Violation[] = []
+      const reasons: DeleteBlocker[] = []
       if (profile?.requiredMemberKeys.includes(m.key)) reasons.push(blocker('required_by_profile', `it is required by the ${profile.displayName} profile`))
       const kids = db.members.filter((x) => x.versionId === v.id && x.parentId === m.id)
       if (kids.length) reasons.push(blocker('has_children', `it has child members (${kids.length === 1 ? `'${kids[0].key}'` : `${kids.length}: ${quote(kids.slice(0, 3).map((k) => k.key))}${kids.length > 3 ? ', …' : ''}`})`))
@@ -66,13 +66,13 @@ export function checkDelete(db: Db, target: DimensionDeleteTarget): DeleteCheck 
     case 'level': {
       const l = db.levels.find((x) => x.id === target.levelId)!
       const used = db.members.filter((m) => m.levelId === l.id).length
-      return result(`Level '${l.key}'`, used ? [blocker('used_by_members', `${used} ${used === 1 ? 'member uses' : 'members use'} it`)] : [])
+      return result(`Level '${l.key}'`, used ? [blocker('referenced_by_member', `${used} ${used === 1 ? 'member uses' : 'members use'} it`)] : [])
     }
     case 'role': {
       const r = db.roles.find((x) => x.id === target.roleId)!
       const d = db.dimensions.find((x) => x.id === r.dimensionId)!
       const profile = d.profileKey ? db.profiles.find((p) => p.key === d.profileKey) : null
-      const reasons: Violation[] = []
+      const reasons: DeleteBlocker[] = []
       if (profile?.requiredRoleKeys.includes(r.key)) reasons.push(blocker('required_by_profile', `it is required by the ${profile.displayName} profile`))
       reasons.push(...refBlockers((db.usage[d.id] ?? []).filter((u) => u.roleKey === r.key)))
       return result(`Role '${r.key}'`, reasons)

@@ -132,8 +132,8 @@ paths:
       operationId: checkDeleteDataset
       summary: Tell whether a dataset can be deleted, and why not
       description: >-
-        Never writes. Reasons carry the codes `dataset_version_not_deletable` (a version is published or retired) and
-        `dataset_in_release` (a release lists the dataset).
+        Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and
+        `referenced_by_release` (a release lists the dataset).
       tags: [datasets]
       responses:
         '200':
@@ -497,9 +497,6 @@ components:
     DatasetGrainKind:
       type: string
       enum: [row, series]
-    DatasetBindingKind:
-      type: string
-      enum: [direct, mapped, range, bridge, time]
     DatasetRaggedBehavior:
       type: string
       enum: [self, exclude]
@@ -515,21 +512,12 @@ components:
     DatasetObservationKind:
       type: string
       enum: [instant, snapshot, interval]
-    DatasetPeriodicity:
-      type: string
-      enum: [day, month, quarter, year]
     DatasetCumulativeOrigin:
       type: string
       enum: [output_range_start, fixed_start]
-    DatasetMeasureKind:
-      type: string
-      enum: [aggregate, weighted_sum, weighted_average, period_average, formula, specialized]
     DatasetAggregationFunction:
       type: string
       enum: [sum, avg, min, max, count, count_distinct]
-    DatasetComponentRole:
-      type: string
-      enum: [value, weight, period_days, numerator, denominator]
     DatasetValueNullBehavior:
       type: string
       enum: [exclude, zero]
@@ -548,9 +536,6 @@ components:
     DatasetTotalBehavior:
       type: string
       enum: [recompute, sum_children]
-    DatasetRoundingMode:
-      type: string
-      enum: [half_up, half_even, down, up, truncate]
     DatasetObservationSelection:
       type: string
       enum: [all, first_in_period, last_in_period, at_start, at_end]
@@ -936,14 +921,14 @@ components:
           $ref: '#/components/schemas/DatasetObservationKind'
         nativePeriodicity:
           oneOf:
-            - $ref: '#/components/schemas/DatasetPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
         intervalEndFieldId:
           type: [string, 'null']
         allowedPeriodicities:
           type: array
           items:
-            $ref: '#/components/schemas/DatasetPeriodicity'
+            $ref: './common.yaml#/components/schemas/Periodicity'
         cumulativeOrigin:
           $ref: '#/components/schemas/DatasetCumulativeOrigin'
         cumulativeFixedStart:
@@ -955,7 +940,7 @@ components:
       required: [bindingKind, dimensionRoleId, dimensionId, sourceFieldId, mappingSetId, bridgeId, sourceDimensionBindingId, raggedBehavior, defaultPeriodAlignment, unmappedBehavior, unknownMemberKey, isRequired, isGroupable, isFilterable, isEnabled, time]
       properties:
         bindingKind:
-          $ref: '#/components/schemas/DatasetBindingKind'
+          $ref: './common.yaml#/components/schemas/BindingKind'
         dimensionRoleId:
           type: [string, 'null']
           description: Non-time bindings; the role requests address the binding by.
@@ -1021,7 +1006,7 @@ components:
       required: [role, fieldId]
       properties:
         role:
-          $ref: '#/components/schemas/DatasetComponentRole'
+          $ref: './common.yaml#/components/schemas/ComponentRole'
         fieldId:
           $ref: './common.yaml#/components/schemas/Id'
 
@@ -1060,7 +1045,7 @@ components:
         isEnabled:
           type: boolean
         measureKind:
-          $ref: '#/components/schemas/DatasetMeasureKind'
+          $ref: './common.yaml#/components/schemas/MeasureKind'
         aggregationFunction:
           oneOf:
             - $ref: '#/components/schemas/DatasetAggregationFunction'
@@ -1099,7 +1084,7 @@ components:
         outputScale:
           type: [integer, 'null']
         roundingMode:
-          $ref: '#/components/schemas/DatasetRoundingMode'
+          $ref: './common.yaml#/components/schemas/RoundingMode'
         unitKey:
           type: [string, 'null']
         accumulatorPrecision:

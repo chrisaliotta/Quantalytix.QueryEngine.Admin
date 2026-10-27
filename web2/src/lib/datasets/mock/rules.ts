@@ -1,8 +1,8 @@
-import type { DatasetDependent, DatasetPeriodicity, DatasetSourceColumn, DatasetTab, DatasetViolation } from '../contract'
+import type { DatasetDependent, Periodicity, DatasetSourceColumn, DatasetTab, DatasetViolation } from '../contract'
 import type { TenantCatalog } from '../lookups'
 import { publishedMembers, type StoredVersion } from './data'
 
-const PERIOD_RANK: Record<DatasetPeriodicity, number> = { day: 0, month: 1, quarter: 2, year: 3 }
+const PERIOD_RANK: Record<Periodicity, number> = { day: 0, month: 1, quarter: 2, year: 3 }
 
 export const FIELD_REF = /\[f\.([A-Za-z0-9_]+)\]/g
 export const MEASURE_REF = /\[m\.([A-Za-z0-9_]+)\]/g

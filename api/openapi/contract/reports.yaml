@@ -218,9 +218,6 @@ components:
   schemas:
     # ───────────── vocabularies ─────────────
 
-    ReportPeriodicity:
-      type: string
-      enum: [day, month, quarter, year]
     ReportLayout:
       type: string
       enum: [statement, list]
@@ -241,12 +238,6 @@ components:
       type: string
       description: '`exact` needs a leaf member.'
       enum: [exact, descendants]
-    ReportRuleSelection:
-      type: string
-      enum: [member, descendants]
-    ReportMissingBehavior:
-      type: string
-      enum: ['null', zero]
     ReportStyleRole:
       type: string
       enum: [header, subtotal, total, detail, formula]
@@ -259,128 +250,6 @@ components:
     ReportColumnValueKind:
       type: string
       enum: [variable, calculated]
-
-    # ───────────── grouping and filters ─────────────
-
-    ReportGrouping:
-      description: How a role's members group.
-      oneOf:
-        - $ref: '#/components/schemas/ReportGroupingMember'
-        - $ref: '#/components/schemas/ReportGroupingLevel'
-        - $ref: '#/components/schemas/ReportGroupingAncestor'
-        - $ref: '#/components/schemas/ReportGroupingDepth'
-      discriminator:
-        propertyName: mode
-        mapping:
-          member: '#/components/schemas/ReportGroupingMember'
-          level: '#/components/schemas/ReportGroupingLevel'
-          ancestor: '#/components/schemas/ReportGroupingAncestor'
-          depth: '#/components/schemas/ReportGroupingDepth'
-    ReportGroupingMember:
-      type: object
-      required: [mode]
-      properties:
-        mode: { const: member }
-    ReportGroupingLevel:
-      type: object
-      required: [mode, levelKey]
-      properties:
-        mode: { const: level }
-        levelKey: { type: string }
-    ReportGroupingAncestor:
-      type: object
-      required: [mode, memberKey]
-      properties:
-        mode: { const: ancestor }
-        memberKey: { type: string }
-    ReportGroupingDepth:
-      type: object
-      required: [mode, depth]
-      properties:
-        mode: { const: depth }
-        depth: { type: integer, minimum: 0 }
-
-    ReportFilterNode:
-      description: >-
-        The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and
-        `source_filter_json`. A dimension operand's grouping uses `ReportGrouping`; the server serializes it into the
-        engine's shape (OI-54).
-      oneOf:
-        - $ref: '#/components/schemas/ReportFilterLogical'
-        - $ref: '#/components/schemas/ReportFilterNot'
-        - $ref: '#/components/schemas/ReportFilterComparison'
-        - $ref: '#/components/schemas/ReportFilterIn'
-        - $ref: '#/components/schemas/ReportFilterNullCheck'
-    ReportFilterLogical:
-      type: object
-      required: [operator, operands]
-      properties:
-        operator: { type: string, enum: [and, or] }
-        operands:
-          type: array
-          minItems: 1
-          items: { $ref: '#/components/schemas/ReportFilterNode' }
-    ReportFilterNot:
-      type: object
-      required: [operator, operand]
-      properties:
-        operator: { const: not }
-        operand: { $ref: '#/components/schemas/ReportFilterNode' }
-    ReportFilterComparison:
-      type: object
-      required: [operator, left, right]
-      properties:
-        operator: { type: string, enum: [eq, ne, lt, le, gt, ge] }
-        left: { $ref: '#/components/schemas/ReportFilterOperand' }
-        right: { $ref: '#/components/schemas/ReportFilterOperand' }
-    ReportFilterIn:
-      type: object
-      required: [operator, left, values]
-      properties:
-        operator: { const: in }
-        left: { $ref: '#/components/schemas/ReportFilterOperand' }
-        values:
-          type: array
-          minItems: 1
-          items: { $ref: '#/components/schemas/ReportFilterOperand' }
-    ReportFilterNullCheck:
-      type: object
-      required: [operator, operand]
-      properties:
-        operator: { type: string, enum: [isNull, isNotNull] }
-        operand: { $ref: '#/components/schemas/ReportFilterOperand' }
-    ReportFilterOperand:
-      oneOf:
-        - $ref: '#/components/schemas/ReportFilterReferenceOperand'
-        - $ref: '#/components/schemas/ReportFilterDimensionOperand'
-        - $ref: '#/components/schemas/ReportFilterLiteralOperand'
-      discriminator:
-        propertyName: type
-        mapping:
-          field: '#/components/schemas/ReportFilterReferenceOperand'
-          measure: '#/components/schemas/ReportFilterReferenceOperand'
-          parameter: '#/components/schemas/ReportFilterReferenceOperand'
-          dimension: '#/components/schemas/ReportFilterDimensionOperand'
-          literal: '#/components/schemas/ReportFilterLiteralOperand'
-    ReportFilterReferenceOperand:
-      type: object
-      required: [type, id]
-      properties:
-        type: { type: string, enum: [field, measure, parameter] }
-        id: { type: string, description: 'The field, measure or parameter key.' }
-    ReportFilterDimensionOperand:
-      type: object
-      required: [type, id]
-      properties:
-        type: { const: dimension }
-        id: { type: string, description: The calculation dimension key. }
-        grouping: { $ref: '#/components/schemas/ReportGrouping' }
-    ReportFilterLiteralOperand:
-      type: object
-      required: [type, value]
-      properties:
-        type: { const: literal }
-        value: { type: [string, number, boolean, 'null'] }
 
     # ───────────── read models ─────────────
 
@@ -397,7 +266,7 @@ components:
         isEnabled: { type: boolean }
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
         profileCount: { type: integer, minimum: 0 }
         sourceCount: { type: integer, minimum: 0 }
@@ -412,7 +281,7 @@ components:
         defaultProfileKey: { type: [string, 'null'] }
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
         layout: { $ref: '#/components/schemas/ReportLayout' }
         defaultBreakout:
@@ -422,7 +291,7 @@ components:
         defaultFilter:
           description: Filter over calculation dimension keys.
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: './common.yaml#/components/schemas/FilterNode'
             - type: 'null'
 
     ReportSettingsPatch:
@@ -435,7 +304,7 @@ components:
         defaultProfileKey: { type: [string, 'null'] }
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: './common.yaml#/components/schemas/Periodicity'
             - type: 'null'
         layout: { $ref: '#/components/schemas/ReportLayout' }
         defaultBreakout:
@@ -443,7 +312,7 @@ components:
           items: { type: string }
         defaultFilter:
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: './common.yaml#/components/schemas/FilterNode'
             - type: 'null'
 
     ReportRow:
@@ -485,7 +354,7 @@ components:
       required: [itemKey, selection, factor]
       properties:
         itemKey: { type: string }
-        selection: { $ref: '#/components/schemas/ReportRuleSelection' }
+        selection: { $ref: './common.yaml#/components/schemas/SourceSelection' }
         factor:
           type: number
           description: The only number a rule carries; -1 on an item already included excludes it (OI-52).
@@ -499,12 +368,12 @@ components:
         filter:
           description: Filter over the dataset's filterable fields, applied before aggregation.
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: './common.yaml#/components/schemas/FilterNode'
             - type: 'null'
         missingBehavior:
           description: Replaces the variable's own missing behavior for this source; null keeps the variable's.
           oneOf:
-            - $ref: '#/components/schemas/ReportMissingBehavior'
+            - $ref: './common.yaml#/components/schemas/VariableMissingBehavior'
             - type: 'null'
 
     ReportSourceInput:
@@ -565,7 +434,7 @@ components:
         key: { $ref: './common.yaml#/components/schemas/Key' }
         displayName: { type: string }
         roleId: { $ref: './common.yaml#/components/schemas/Id' }
-        grouping: { $ref: '#/components/schemas/ReportGrouping' }
+        grouping: { $ref: './common.yaml#/components/schemas/Grouping' }
         isGroupable: { type: boolean }
         isFilterable: { type: boolean }
         isEnabled: { type: boolean }

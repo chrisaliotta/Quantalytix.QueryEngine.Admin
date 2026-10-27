@@ -8,8 +8,8 @@ import type {
   ReportDiagnosticsStepName,
   ReportCreateInput,
   ReportDocument,
-  ReportFilterNode,
-  ReportFilterOperand,
+  FilterNode,
+  FilterOperand,
   ReportRow,
   ReportSource,
   ReportSourceCoverage,
@@ -401,9 +401,9 @@ function renameDimension(doc: ReportDocument, key: string, to: string | null) {
 }
 
 /** Null when a removed dimension empties the node. */
-function rewriteFilter(node: ReportFilterNode, key: string, to: string | null): ReportFilterNode | null {
-  const hit = (o: ReportFilterOperand): o is Extract<ReportFilterOperand, { type: 'dimension' }> => o.type === 'dimension' && o.id === key
-  const rename = (o: ReportFilterOperand): ReportFilterOperand => (hit(o) ? { ...o, id: to! } : o)
+function rewriteFilter(node: FilterNode, key: string, to: string | null): FilterNode | null {
+  const hit = (o: FilterOperand): o is Extract<FilterOperand, { type: 'dimension' }> => o.type === 'dimension' && o.id === key
+  const rename = (o: FilterOperand): FilterOperand => (hit(o) ? { ...o, id: to! } : o)
   switch (node.operator) {
     case 'and':
     case 'or': {

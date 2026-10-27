@@ -1,5 +1,6 @@
 # Shared kernel of the Admin API contract: ids, keys, problems, delete checks, rule reports, change-set envelopes,
-# vocabulary terms, the tenant route parameter and the standard error responses.
+# vocabularies read by more than one module, freeze, grouping and filter shapes, vocabulary terms, the tenant route
+# parameter and the standard error responses.
 # Blueprint: docs/blueprint/01-api-conventions.md. Mirrored by web2/src/lib/api/contract.ts.
 # Owner: integrator. Module files reference these components as ./common.yaml#/components/...
 openapi: 3.1.0
@@ -24,7 +25,9 @@ components:
     DottedKey:
       type: string
       pattern: '^[A-Za-z][A-Za-z0-9_.]*$'
-      description: Natural key of a mapping set or bridge; also allows `.` (OI-29).
+      description: >-
+        Natural key of a dataset, calculation model, report, mapping set or bridge; also allows `.`, matching the seed
+        (`bank.balance_monthly`, `bank.margin_model`, `bank.margin_statement`) and report-derived bridge keys (OI-29).
 
     Timestamp:
       type: string
@@ -34,6 +37,53 @@ components:
     VersionStatus:
       type: string
       enum: [draft, validated, published, retired]
+
+    # ───────────── vocabularies read by more than one module (labels: GET /api/vocabularies) ─────────────
+
+    DimensionKind:
+      type: string
+      enum: [categorical, hierarchical, range, time]
+
+    DimensionPurpose:
+      type: string
+      enum: [analytical, report]
+
+    DefinitionOrigin:
+      type: string
+      enum: [system, user]
+
+    AssumptionSetStatus:
+      type: string
+      enum: [active, historical]
+
+    BindingKind:
+      type: string
+      enum: [direct, mapped, range, bridge, time]
+
+    Periodicity:
+      type: string
+      enum: [day, month, quarter, year]
+
+    MeasureKind:
+      type: string
+      enum: [aggregate, weighted_sum, weighted_average, period_average, formula, specialized]
+
+    ComponentRole:
+      type: string
+      enum: [value, weight, period_days, numerator, denominator]
+
+    RoundingMode:
+      type: string
+      enum: [half_even, half_up, down, up, truncate]
+
+    SourceSelection:
+      type: string
+      enum: [member, descendants]
+      description: '`descendants` is used only by report bridges and report rules (B8, OI-28).'
+
+    VariableMissingBehavior:
+      type: string
+      enum: ['null', zero]
 
     Problem:
       type: object
@@ -118,7 +168,43 @@ components:
         reasons:
           type: array
           items:
-            $ref: '#/components/schemas/Violation'
+            $ref: '#/components/schemas/DeleteBlocker'
+
+    DeleteBlocker:
+      description: A reason a delete is refused; a `Violation` whose code is a `DeleteBlockerCode`.
+      allOf:
+        - $ref: '#/components/schemas/Violation'
+        - type: object
+          properties:
+            code:
+              $ref: '#/components/schemas/DeleteBlockerCode'
+
+    DeleteBlockerCode:
+      type: string
+      description: >-
+        One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads
+        the target; the other codes name a state of the target itself.
+      enum:
+        - not_removable
+        - system_dimension
+        - not_draft
+        - live_version
+        - has_published_versions
+        - has_children
+        - required_by_profile
+        - assigned_by_bands
+        - named_by_consumers
+        - owned_by_report
+        - referenced_by_member
+        - referenced_by_dataset_binding
+        - referenced_by_mapping_set
+        - referenced_by_bridge
+        - referenced_by_calculation_dimension
+        - referenced_by_report_scenario
+        - referenced_by_report_source
+        - referenced_by_assumption_set
+        - referenced_by_release
+        - referenced_by_report
 
     ValidationReport:
       type: object
@@ -175,6 +261,149 @@ components:
           description: Temporary id (`tmp:<uuid>`) to the real id of each item the commit created.
           additionalProperties:
             $ref: '#/components/schemas/Id'
+
+    FreezeInput:
+      type: object
+      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
+      required: [note]
+      properties:
+        note:
+          type: [string, 'null']
+          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
+
+    FreezeResult:
+      type: object
+      description: >-
+        200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic
+        over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422
+        and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and
+        errors), which is why the specializations declare it nullable.
+      required: [report, live]
+      properties:
+        report:
+          $ref: '#/components/schemas/ValidationReport'
+        live:
+          description: The new live version.
+
+    Grouping:
+      description: How a role's members group.
+      oneOf:
+        - $ref: '#/components/schemas/GroupingMember'
+        - $ref: '#/components/schemas/GroupingLevel'
+        - $ref: '#/components/schemas/GroupingAncestor'
+        - $ref: '#/components/schemas/GroupingDepth'
+      discriminator:
+        propertyName: mode
+        mapping:
+          member: '#/components/schemas/GroupingMember'
+          level: '#/components/schemas/GroupingLevel'
+          ancestor: '#/components/schemas/GroupingAncestor'
+          depth: '#/components/schemas/GroupingDepth'
+    GroupingMember:
+      type: object
+      required: [mode]
+      properties:
+        mode: { const: member }
+    GroupingLevel:
+      type: object
+      required: [mode, levelKey]
+      properties:
+        mode: { const: level }
+        levelKey: { type: string }
+    GroupingAncestor:
+      type: object
+      required: [mode, memberKey]
+      properties:
+        mode: { const: ancestor }
+        memberKey: { type: string }
+    GroupingDepth:
+      type: object
+      required: [mode, depth]
+      properties:
+        mode: { const: depth }
+        depth: { type: integer, minimum: 0 }
+
+    FilterNode:
+      description: >-
+        The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and
+        `source_filter_json`. A dimension operand's grouping uses `Grouping`; the server serializes it into the engine's
+        shape (OI-54).
+      oneOf:
+        - $ref: '#/components/schemas/FilterLogical'
+        - $ref: '#/components/schemas/FilterNot'
+        - $ref: '#/components/schemas/FilterComparison'
+        - $ref: '#/components/schemas/FilterIn'
+        - $ref: '#/components/schemas/FilterNullCheck'
+    FilterLogical:
+      type: object
+      required: [operator, operands]
+      properties:
+        operator: { type: string, enum: [and, or] }
+        operands:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/FilterNode' }
+    FilterNot:
+      type: object
+      required: [operator, operand]
+      properties:
+        operator: { const: not }
+        operand: { $ref: '#/components/schemas/FilterNode' }
+    FilterComparison:
+      type: object
+      required: [operator, left, right]
+      properties:
+        operator: { type: string, enum: [eq, ne, lt, le, gt, ge] }
+        left: { $ref: '#/components/schemas/FilterOperand' }
+        right: { $ref: '#/components/schemas/FilterOperand' }
+    FilterIn:
+      type: object
+      required: [operator, left, values]
+      properties:
+        operator: { const: in }
+        left: { $ref: '#/components/schemas/FilterOperand' }
+        values:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/FilterOperand' }
+    FilterNullCheck:
+      type: object
+      required: [operator, operand]
+      properties:
+        operator: { type: string, enum: [isNull, isNotNull] }
+        operand: { $ref: '#/components/schemas/FilterOperand' }
+    FilterOperand:
+      oneOf:
+        - $ref: '#/components/schemas/FilterReferenceOperand'
+        - $ref: '#/components/schemas/FilterDimensionOperand'
+        - $ref: '#/components/schemas/FilterLiteralOperand'
+      discriminator:
+        propertyName: type
+        mapping:
+          field: '#/components/schemas/FilterReferenceOperand'
+          measure: '#/components/schemas/FilterReferenceOperand'
+          parameter: '#/components/schemas/FilterReferenceOperand'
+          dimension: '#/components/schemas/FilterDimensionOperand'
+          literal: '#/components/schemas/FilterLiteralOperand'
+    FilterReferenceOperand:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [field, measure, parameter] }
+        id: { type: string, description: 'The field, measure or parameter key.' }
+    FilterDimensionOperand:
+      type: object
+      required: [type, id]
+      properties:
+        type: { const: dimension }
+        id: { type: string, description: The calculation dimension key. }
+        grouping: { $ref: '#/components/schemas/Grouping' }
+    FilterLiteralOperand:
+      type: object
+      required: [type, value]
+      properties:
+        type: { const: literal }
+        value: { type: [string, number, boolean, 'null'] }
 
     VocabularyTerm:
       type: object

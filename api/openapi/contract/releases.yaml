@@ -743,17 +743,13 @@ components:
 
     # ───────────────────────── Projections the release and set screens render ─────────────────────────
 
-    ManifestBindingKind:
-      type: string
-      enum: [direct, mapped, range, bridge, time]
-
     ManifestBinding:
       type: object
       description: A binding of a dataset version, with the identities it resolves through.
       required: [displayName, kind, dimensionId, mappingSetId, bridgeId]
       properties:
         displayName: { type: string }
-        kind: { $ref: '#/components/schemas/ManifestBindingKind' }
+        kind: { $ref: './common.yaml#/components/schemas/BindingKind' }
         dimensionId: { $ref: './common.yaml#/components/schemas/Id' }
         mappingSetId: { type: [string, 'null'] }
         bridgeId: { type: [string, 'null'] }
@@ -875,10 +871,6 @@ components:
       description: Natural key of an assumption set, fixed after creation (R11); requests name the set by it.
       examples: [fy2026_q3_close]
 
-    AssumptionSetStatus:
-      type: string
-      enum: [active, historical]
-
     AssumptionSet:
       type: object
       description: One row of `qe_assumption_set`.
@@ -888,7 +880,7 @@ components:
         key: { $ref: '#/components/schemas/AssumptionSetKey' }
         displayName: { type: string }
         description: { type: [string, 'null'] }
-        status: { $ref: '#/components/schemas/AssumptionSetStatus' }
+        status: { $ref: './common.yaml#/components/schemas/AssumptionSetStatus' }
         releaseId:
           type: [string, 'null']
           description: The captured release; null for the active set, which reads the active release.

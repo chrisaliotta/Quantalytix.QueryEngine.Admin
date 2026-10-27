@@ -246,7 +246,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MappingFreezeInput'
+              $ref: './common.yaml#/components/schemas/FreezeInput'
       responses:
         '200':
           description: Frozen; `live` is the new live version.
@@ -536,7 +536,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BridgeFreezeInput'
+              $ref: './common.yaml#/components/schemas/FreezeInput'
       responses:
         '200':
           description: Frozen; `live` is the new live version.
@@ -611,11 +611,6 @@ components:
       type: string
       enum: [none, partition, replicate]
       description: '`many_to_one` allows `none` only; `many_to_many` allows `partition` or `replicate` (B5).'
-
-    MappingSourceSelection:
-      type: string
-      enum: [member, descendants]
-      description: '`descendants` is used only by report bridges (B8, OI-28).'
 
     MappingDimensionRef:
       type: object
@@ -903,28 +898,16 @@ components:
           type: string
           minLength: 1
 
-    MappingFreezeInput:
-      type: object
-      required: [note]
-      properties:
-        note:
-          type: [string, 'null']
-          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
-
     MappingFreezeResult:
-      type: object
-      description: The rule report of the frozen version, and the new live version.
-      required: [report, live]
-      properties:
-        report:
-          $ref: './common.yaml#/components/schemas/ValidationReport'
-        live:
-          description: >-
-            The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422
-            into `live: null` (01, Results and errors).
-          oneOf:
-            - $ref: '#/components/schemas/MappingVersionSummary'
-            - type: 'null'
+      allOf:
+        - $ref: './common.yaml#/components/schemas/FreezeResult'
+        - type: object
+          required: [live]
+          properties:
+            live:
+              oneOf:
+                - $ref: '#/components/schemas/MappingVersionSummary'
+                - type: 'null'
 
     MappingSetUpdateOperation:
       type: object
@@ -1099,7 +1082,7 @@ components:
         allocationWeight:
           type: number
         sourceSelection:
-          $ref: '#/components/schemas/MappingSourceSelection'
+          $ref: './common.yaml#/components/schemas/SourceSelection'
 
     BridgeVersionSummary:
       type: object
@@ -1279,31 +1262,19 @@ components:
         allocationWeight:
           type: number
         sourceSelection:
-          $ref: '#/components/schemas/MappingSourceSelection'
+          $ref: './common.yaml#/components/schemas/SourceSelection'
           description: Accepted only on report bridges, written by the report editor; absent means `member` (OI-28).
 
-    BridgeFreezeInput:
-      type: object
-      required: [note]
-      properties:
-        note:
-          type: [string, 'null']
-          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
-
     BridgeFreezeResult:
-      type: object
-      description: The rule report of the frozen version, and the new live version.
-      required: [report, live]
-      properties:
-        report:
-          $ref: './common.yaml#/components/schemas/ValidationReport'
-        live:
-          description: >-
-            The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422
-            into `live: null` (01, Results and errors).
-          oneOf:
-            - $ref: '#/components/schemas/BridgeVersionSummary'
-            - type: 'null'
+      allOf:
+        - $ref: './common.yaml#/components/schemas/FreezeResult'
+        - type: object
+          required: [live]
+          properties:
+            live:
+              oneOf:
+                - $ref: '#/components/schemas/BridgeVersionSummary'
+                - type: 'null'
 
     BridgeUpdateOperation:
       type: object

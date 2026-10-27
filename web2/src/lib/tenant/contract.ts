@@ -1,46 +1,67 @@
-import type { Id, VersionStatus, VocabularyTerm } from '@/lib/api/contract'
+import type {
+  AssumptionSetStatus,
+  BindingKind,
+  ComponentRole,
+  DefinitionOrigin,
+  DimensionKind,
+  DimensionPurpose,
+  Id,
+  MeasureKind,
+  Periodicity,
+  RoundingMode,
+  SourceSelection,
+  VariableMissingBehavior,
+  VersionStatus,
+  VocabularyTerm,
+} from '@/lib/api/contract'
 
-export type { Id, VersionStatus, VocabularyTerm } from '@/lib/api/contract'
+export type {
+  AssumptionSetStatus,
+  BindingKind,
+  ComponentRole,
+  DefinitionOrigin,
+  DimensionKind,
+  DimensionPurpose,
+  Id,
+  MeasureKind,
+  Periodicity,
+  RoundingMode,
+  SourceSelection,
+  VariableMissingBehavior,
+  VersionStatus,
+  VocabularyTerm,
+} from '@/lib/api/contract'
 
 /**
  * Tenant contract (blueprint 10): the tenant's state, the one catalog every module's pickers and cross-module links
  * read (OI-13), published members per dimension, and every vocabulary. Object types mirror the schemas of the same
- * name in api/openapi/contract/tenant.yaml. Unions carry the vocabulary's name; the contract's `Vocabulary*` enum
- * schemas carry a prefix only to stay unique across contract files.
+ * name in api/openapi/contract/tenant.yaml. Unions carry the vocabulary's name; the ones more than one module reads
+ * live in the shared kernel.
  */
 
 /* ───────────────────────── Vocabulary values ───────────────────────── */
 
-export type AssumptionSetStatus = 'active' | 'historical'
 export type DataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
 export type MeasureOutputDataType = Exclude<DataType, 'json'>
 export type SourceObjectKind = 'table' | 'view'
 export type FieldSourceKind = 'column' | 'json_path' | 'expression'
 export type GrainKind = 'row' | 'series'
-export type DimensionKind = 'categorical' | 'hierarchical' | 'range' | 'time'
-export type DimensionPurpose = 'analytical' | 'report'
-export type DefinitionOrigin = 'system' | 'user'
 export type RangeDataType = 'decimal' | 'date' | 'datetime'
 export type EditPolicy = 'open' | 'extend' | 'locked'
-export type BindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 export type GroupingMode = 'member' | 'level' | 'ancestor' | 'depth'
 export type RaggedBehavior = 'null' | 'self' | 'exclude'
 export type PeriodAlignment = 'observation' | 'start' | 'end'
 export type UnmappedBehavior = 'null' | 'exclude' | 'unknown'
 export type TimeValueType = 'date' | 'timestamp'
 export type ObservationKind = 'instant' | 'snapshot' | 'interval'
-export type Periodicity = 'day' | 'month' | 'quarter' | 'year'
 export type CumulativeOrigin = 'output_range_start' | 'fixed_start'
-export type MeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized'
 export type AggregationFunction = 'sum' | 'avg' | 'min' | 'max' | 'count' | 'count_distinct'
-export type ComponentRole = 'value' | 'weight' | 'period_days' | 'numerator' | 'denominator'
 export type ValueNullBehavior = 'exclude' | 'zero'
 export type NegativeWeightBehavior = 'allow' | 'exclude'
 export type EmptySetBehavior = 'null' | 'zero'
 export type BridgeFactorBehavior = 'ignore' | 'value'
 export type BridgeAllocationBehavior = 'apply' | 'ignore'
 export type TotalBehavior = 'recompute' | 'sum_children'
-export type RoundingMode = 'half_even' | 'half_up' | 'down' | 'up' | 'truncate'
 export type ObservationSelection = 'all' | 'first_in_period' | 'last_in_period' | 'at_start' | 'at_end'
 export type ValueTimeRole = 'point' | 'interval_open' | 'interval_close'
 export type BoundaryMatch = 'exact' | 'on_or_before' | 'strictly_before'
@@ -49,11 +70,9 @@ export type PartialIntervalBehavior = 'exact_only' | 'uniform_estimate'
 export type MissingPeriodBehavior = 'null' | 'zero'
 export type Cardinality = 'many_to_one' | 'many_to_many'
 export type AllocationMode = 'none' | 'partition' | 'replicate'
-export type SourceSelection = 'member' | 'descendants'
 export type FormulaLanguageVersion = '1.0' | '1.1' | '1.2'
 export type AttributionMethod = 'shapley' | 'sequential'
 export type ParameterValueType = 'number' | 'text'
-export type VariableMissingBehavior = 'null' | 'zero'
 export type DayCountConvention = 'actual_actual' | 'actual_365' | 'actual_360' | 'thirty_360_us' | 'thirty_e_360'
 export type MappingMethod = 'bridge' | 'direct'
 export type SelectionScope = 'exact' | 'descendants'

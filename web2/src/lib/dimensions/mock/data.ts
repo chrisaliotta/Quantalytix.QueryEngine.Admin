@@ -1,4 +1,4 @@
-import type { Dimension, DimensionProfile, DimensionVersion, DimensionLevel, DimensionMember, DimensionPeriodicity, RangeBand, RangeDataType, DimensionRole, DimensionUsageReference, VersionStatus } from '../contract'
+import type { Dimension, DimensionProfile, DimensionVersion, DimensionLevel, DimensionMember, Periodicity, RangeBand, RangeDataType, DimensionRole, DimensionUsageReference, VersionStatus } from '../contract'
 
 export interface Db {
   profiles: DimensionProfile[]
@@ -145,7 +145,7 @@ const PROFILES: DimensionProfile[] = [
 /* ───────────────────────── builders ───────────────────────── */
 
 type MemberSpec = [key: string, displayName: string, parentKey?: string | null, opts?: { level?: string; folder?: boolean; props?: Record<string, unknown>; description?: string }]
-type LevelSpec = [key: string, displayName: string, isLeaf?: boolean, periodicity?: DimensionPeriodicity]
+type LevelSpec = [key: string, displayName: string, isLeaf?: boolean, periodicity?: Periodicity]
 
 interface VersionSpec {
   n: number

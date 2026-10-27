@@ -6,7 +6,25 @@
 /** Opaque id. Inside a change set, items created by an earlier operation carry a temporary `tmp:<uuid>` id. */
 export type Id = string
 
+/** Temporary id of an item created inside a change set; the commit's `idMap` gives its real id. */
+export const newTempId = (): Id => `tmp:${crypto.randomUUID()}`
+
 export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
+
+/* ───────────────────────── Vocabularies read by more than one module ───────────────────────── */
+
+export type DimensionKind = 'categorical' | 'hierarchical' | 'range' | 'time'
+export type DimensionPurpose = 'analytical' | 'report'
+export type DefinitionOrigin = 'system' | 'user'
+export type AssumptionSetStatus = 'active' | 'historical'
+export type BindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
+export type Periodicity = 'day' | 'month' | 'quarter' | 'year'
+export type MeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized'
+export type ComponentRole = 'value' | 'weight' | 'period_days' | 'numerator' | 'denominator'
+export type RoundingMode = 'half_even' | 'half_up' | 'down' | 'up' | 'truncate'
+/** `descendants` is used only by report bridges and report rules (OI-28). */
+export type SourceSelection = 'member' | 'descendants'
+export type VariableMissingBehavior = 'null' | 'zero'
 
 /** The one error body of every failed call (01, Problem body). */
 export interface Problem {
@@ -55,8 +73,66 @@ export interface DeleteCheck {
   allowed: boolean
   /** One-sentence summary when blocked. */
   message: string | null
-  reasons: Violation[]
+  reasons: DeleteBlocker[]
 }
+
+/** One list for every module; `referenced_by_<kind>` names the kind of object that still reads the target (01, Delete checks). */
+export type DeleteBlockerCode =
+  | 'not_removable'
+  | 'system_dimension'
+  | 'not_draft'
+  | 'live_version'
+  | 'has_published_versions'
+  | 'has_children'
+  | 'required_by_profile'
+  | 'assigned_by_bands'
+  | 'named_by_consumers'
+  | 'owned_by_report'
+  | 'referenced_by_member'
+  | 'referenced_by_dataset_binding'
+  | 'referenced_by_mapping_set'
+  | 'referenced_by_bridge'
+  | 'referenced_by_calculation_dimension'
+  | 'referenced_by_report_scenario'
+  | 'referenced_by_report_source'
+  | 'referenced_by_assumption_set'
+  | 'referenced_by_release'
+  | 'referenced_by_report'
+
+export interface DeleteBlocker extends Violation {
+  code: DeleteBlockerCode
+}
+
+/** Body of a freeze for dimensions, mapping sets and bridges (OI-14). */
+export interface FreezeInput {
+  note: string | null
+}
+
+/** The port's freeze answer for any living kind; `live` is null when a rule failed and nothing changed. */
+export interface FreezeResult<V> {
+  report: ValidationReport
+  live: V | null
+}
+
+/** How a role's members group. */
+export type Grouping =
+  | { mode: 'member' }
+  | { mode: 'level'; levelKey: string }
+  | { mode: 'ancestor'; memberKey: string }
+  | { mode: 'depth'; depth: number }
+
+/** The query engine's structured `filterNode`; dimension operands name calculation dimension keys. */
+export type FilterNode =
+  | { operator: 'and' | 'or'; operands: FilterNode[] }
+  | { operator: 'not'; operand: FilterNode }
+  | { operator: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge'; left: FilterOperand; right: FilterOperand }
+  | { operator: 'in'; left: FilterOperand; values: FilterOperand[] }
+  | { operator: 'isNull' | 'isNotNull'; operand: FilterOperand }
+
+export type FilterOperand =
+  | { type: 'field' | 'measure' | 'parameter'; id: string }
+  | { type: 'dimension'; id: string; grouping?: Grouping }
+  | { type: 'literal'; value: string | number | boolean | null }
 
 export interface VocabularyTerm<V extends string = string> {
   value: V

@@ -8,7 +8,7 @@ import type {
   MappingCardinality,
   MappingEntry,
   MappingSet,
-  MappingSourceSelection,
+  SourceSelection,
   MappingVersion,
 } from '../contract'
 
@@ -59,7 +59,7 @@ interface MsSpec {
   bindings?: MappingBindingUsage[]
 }
 
-type MappingSpec = [source: string, target: string, factor?: number, weight?: number, selection?: MappingSourceSelection]
+type MappingSpec = [source: string, target: string, factor?: number, weight?: number, selection?: SourceSelection]
 
 interface BrVersionSpec {
   cardinality: MappingCardinality

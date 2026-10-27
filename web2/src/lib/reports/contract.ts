@@ -1,4 +1,4 @@
-import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, Violation } from '@/lib/api/contract'
+import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, FilterNode, Grouping, Id, Periodicity, SourceSelection, VariableMissingBehavior, Violation } from '@/lib/api/contract'
 import type { ChangeSetPort } from '@/lib/api/changes'
 
 /**
@@ -7,11 +7,10 @@ import type { ChangeSetPort } from '@/lib/api/changes'
  * as `ReportDiagnostics` (OI-05).
  */
 
-export type { ApiResult, Id, Violation } from '@/lib/api/contract'
+export type { ApiResult, FilterNode, FilterOperand, Grouping, Id, Periodicity, SourceSelection, VariableMissingBehavior, Violation } from '@/lib/api/contract'
 
 /* ───────────────────────── vocabularies ───────────────────────── */
 
-export type ReportPeriodicity = 'day' | 'month' | 'quarter' | 'year'
 export type ReportLayout = 'statement' | 'list'
 export type ReportSubtotalPosition = 'above' | 'below'
 /** `data` and `group` rows are report dimension members; `section` and `formula` rows are overlay lines (OI-48). */
@@ -19,33 +18,10 @@ export type ReportRowKind = 'data' | 'group' | 'section' | 'formula'
 export type ReportMappingMethod = 'bridge' | 'direct'
 /** `exact` needs a leaf member. */
 export type ReportSelectionScope = 'exact' | 'descendants'
-export type ReportRuleSelection = 'member' | 'descendants'
-export type ReportMissingBehavior = 'null' | 'zero'
 export type ReportStyleRole = 'header' | 'subtotal' | 'total' | 'detail' | 'formula'
 export type ReportFontWeight = 'normal' | 'medium' | 'semibold' | 'bold'
 export type ReportBorderStyle = 'none' | 'thin' | 'medium' | 'thick' | 'double'
 export type ReportColumnValueKind = 'variable' | 'calculated'
-
-/* ───────────────────────── grouping and filters ───────────────────────── */
-
-export type ReportGrouping =
-  | { mode: 'member' }
-  | { mode: 'level'; levelKey: string }
-  | { mode: 'ancestor'; memberKey: string }
-  | { mode: 'depth'; depth: number }
-
-/** The query engine's structured `filterNode`; dimension operands name calculation dimension keys. */
-export type ReportFilterNode =
-  | { operator: 'and' | 'or'; operands: ReportFilterNode[] }
-  | { operator: 'not'; operand: ReportFilterNode }
-  | { operator: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge'; left: ReportFilterOperand; right: ReportFilterOperand }
-  | { operator: 'in'; left: ReportFilterOperand; values: ReportFilterOperand[] }
-  | { operator: 'isNull' | 'isNotNull'; operand: ReportFilterOperand }
-
-export type ReportFilterOperand =
-  | { type: 'field' | 'measure' | 'parameter'; id: string }
-  | { type: 'dimension'; id: string; grouping?: ReportGrouping }
-  | { type: 'literal'; value: string | number | boolean | null }
 
 /* ───────────────────────── read models ───────────────────────── */
 
@@ -57,7 +33,7 @@ export interface ReportSummary {
   modelId: Id
   modelKey: string
   isEnabled: boolean
-  periodicity: ReportPeriodicity | null
+  periodicity: Periodicity | null
   profileCount: number
   sourceCount: number
 }
@@ -67,12 +43,12 @@ export interface ReportSettings {
   reportType: string
   subtotalPosition: ReportSubtotalPosition
   defaultProfileKey: string | null
-  periodicity: ReportPeriodicity | null
+  periodicity: Periodicity | null
   layout: ReportLayout
   /** Calculation dimension keys. */
   defaultBreakout: string[]
   /** Over calculation dimension keys. */
-  defaultFilter: ReportFilterNode | null
+  defaultFilter: FilterNode | null
 }
 
 export type ReportSettingsPatch = Partial<ReportSettings>
@@ -102,7 +78,7 @@ export interface ReportRowPosition {
 
 export interface ReportSourceRule {
   itemKey: string
-  selection: ReportRuleSelection
+  selection: SourceSelection
   /** The only number a rule carries; -1 on an item already included excludes it (OI-52). */
   factor: number
 }
@@ -111,9 +87,9 @@ export interface ReportSourceVariable {
   variableKey: string
   measureKey: string
   /** Over the dataset's filterable fields, applied before aggregation. */
-  filter: ReportFilterNode | null
+  filter: FilterNode | null
   /** Null keeps the variable's own. */
-  missingBehavior: ReportMissingBehavior | null
+  missingBehavior: VariableMissingBehavior | null
 }
 
 export interface ReportSourceInput {
@@ -150,7 +126,7 @@ export interface ReportCalculationDimension {
   key: string
   displayName: string
   roleId: Id
-  grouping: ReportGrouping
+  grouping: Grouping
   isGroupable: boolean
   isFilterable: boolean
   isEnabled: boolean

@@ -158,7 +158,7 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
     return {
       allowed: false,
       message: `Calculation model '${find(id)!.displayName}' cannot be deleted: ${uses.length} report(s) read it.`,
-      reasons: uses.map((r) => ({ code: 'model_not_in_use', message: `Report '${r.displayName}' reads this model.`, target: { area: 'usedBy', itemId: r.reportId, itemKey: r.reportKey } })),
+      reasons: uses.map((r) => ({ code: 'referenced_by_report' as const, message: `Report '${r.displayName}' reads this model.`, target: { area: 'usedBy', itemId: r.reportId, itemKey: r.reportKey } })),
     }
   }
 

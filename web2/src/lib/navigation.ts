@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useNavigationGuard } from '@/components/shell/changes'
-import type { Identity, ReleaseTab, SetTab } from '@/lib/releases/contract'
+import type { PinIdentity, ReleaseTab, SetTab } from '@/lib/releases/contract'
 import { reportKeyOf } from '@/lib/releases/mock/data'
 import { useEditor } from '@/lib/report/store'
 
@@ -87,7 +87,7 @@ export function useAppNav() {
       release: (id: string, tab?: ReleaseTab) => go(paths.release(id), { tab: tab !== 'manifest' ? tab : null }),
       sets: () => go(paths.sets),
       set: (id: string, tab?: SetTab) => go(paths.set(id), { tab: tab !== 'pins' ? tab : null }),
-      identity: (i: Identity, versionId?: string) => {
+      identity: (i: PinIdentity, versionId?: string) => {
         if (i.reportId) return reportByKey(reportKeyOf(i.reportId))
         if (i.kind === 'dimension') go(paths.dimension(i.id), { version: versionId })
         else if (i.kind === 'mapping_set') go(paths.dimension(i.dimensionId), { tab: 'mappings', ms: i.id, msv: versionId })

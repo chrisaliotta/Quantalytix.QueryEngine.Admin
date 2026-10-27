@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useCatalog, useDatasetsApi, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetComponentRole, DatasetVersion, DatasetMeasureInput, DatasetMeasureKind, DatasetMeasureTimePolicy, Problem } from '@/lib/datasets/contract'
+import type { ComponentRole, DatasetVersion, DatasetMeasureInput, MeasureKind, DatasetMeasureTimePolicy, Problem } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 import { bindingLabel } from './bindings-section'
 import type { SectionProps } from './dataset-detail'
@@ -92,7 +92,7 @@ const NEW_ROW_ID = '__new__'
 const scrollToRow = (id: string) => requestAnimationFrame(() => document.querySelector(`[data-row-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }))
 
 /** Switching kind drops components and kind-specific inputs that no longer apply. */
-function withMeasureKind(x: DatasetMeasureInput, kind: DatasetMeasureKind, allowedRoles: Set<string>): DatasetMeasureInput {
+function withMeasureKind(x: DatasetMeasureInput, kind: MeasureKind, allowedRoles: Set<string>): DatasetMeasureInput {
   return {
     ...x,
     measureKind: kind,
@@ -120,7 +120,7 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
   const kindLabel = (k: string) => vocab?.measureKind.find((t) => t.value === k)?.label ?? k
   const kindOptions = (vocab?.measureKind ?? []).map((t) => ({ value: t.value, label: t.label }))
   const aggOptions = (vocab?.aggregationFunction ?? []).map((t) => ({ value: t.value, label: t.label }))
-  const allowedRoles = (k: DatasetMeasureKind) => new Set<string>((vocab?.componentRolesByKind[k] ?? []).map((r) => r.role))
+  const allowedRoles = (k: MeasureKind) => new Set<string>((vocab?.componentRolesByKind[k] ?? []).map((r) => r.role))
   const focused = editingId ? version.measures.find((m) => m.id === editingId) : undefined
   const patch = (m: DatasetMeasureInput & { id: string }, p: Partial<DatasetMeasureInput>) => run(() => api.saveMeasure(version.id, { ...m, ...p }))
 
@@ -314,7 +314,7 @@ function NewMeasureRow({
   aggOptions: { value: string; label: string }[]
   fieldKey: (id: string) => string
   onChange: (update: (d: DatasetMeasureInput) => DatasetMeasureInput) => void
-  onKindChange: (kind: DatasetMeasureKind) => void
+  onKindChange: (kind: MeasureKind) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -363,7 +363,7 @@ function NewMeasureRow({
         />
       </Td>
       <Td>
-        <InlineSelect aria-label="New measure: kind" value={draft.measureKind} options={kindOptions} onCommit={(k) => onKindChange(k as DatasetMeasureKind)} className="w-32 text-xs" />
+        <InlineSelect aria-label="New measure: kind" value={draft.measureKind} options={kindOptions} onCommit={(k) => onKindChange(k as MeasureKind)} className="w-32 text-xs" />
       </Td>
       <Td>
         {hasAggregation ? (
@@ -452,12 +452,12 @@ function MeasurePanel({
   const p = d.timePolicy
   const policyForced = d.measureKind === 'period_average'
 
-  function changeKind(kind: DatasetMeasureKind) {
+  function changeKind(kind: MeasureKind) {
     const allowed = new Set<string>((vocab?.componentRolesByKind[kind] ?? []).map((r) => r.role))
     setD((x) => withMeasureKind(x, kind, allowed))
   }
 
-  function setComponent(role: DatasetComponentRole, fieldId: string | null) {
+  function setComponent(role: ComponentRole, fieldId: string | null) {
     setD((x) => ({
       ...x,
       components: fieldId ? [...x.components.filter((c) => c.role !== role), { role, fieldId }] : x.components.filter((c) => c.role !== role),

@@ -306,7 +306,7 @@ export interface paths {
         };
         /**
          * Tell whether a dataset can be deleted, and why not
-         * @description Never writes. Reasons carry the codes `dataset_version_not_deletable` (a version is published or retired) and `dataset_in_release` (a release lists the dataset).
+         * @description Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and `referenced_by_release` (a release lists the dataset).
          */
         get: operations["checkDeleteDataset"];
         put?: never;
@@ -2024,7 +2024,7 @@ export interface components {
         Id: string;
         /** @description Natural key, fixed after creation (OI-29, OI-36). */
         Key: string;
-        /** @description Natural key of a mapping set or bridge; also allows `.` (OI-29). */
+        /** @description Natural key of a dataset, calculation model, report, mapping set or bridge; also allows `.`, matching the seed (`bank.balance_monthly`, `bank.margin_model`, `bank.margin_statement`) and report-derived bridge keys (OI-29). */
         DottedKey: string;
         /**
          * Format: date-time
@@ -2033,6 +2033,31 @@ export interface components {
         Timestamp: string;
         /** @enum {string} */
         VersionStatus: "draft" | "validated" | "published" | "retired";
+        /** @enum {string} */
+        DimensionKind: "categorical" | "hierarchical" | "range" | "time";
+        /** @enum {string} */
+        DimensionPurpose: "analytical" | "report";
+        /** @enum {string} */
+        DefinitionOrigin: "system" | "user";
+        /** @enum {string} */
+        AssumptionSetStatus: "active" | "historical";
+        /** @enum {string} */
+        BindingKind: "direct" | "mapped" | "range" | "bridge" | "time";
+        /** @enum {string} */
+        Periodicity: "day" | "month" | "quarter" | "year";
+        /** @enum {string} */
+        MeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
+        /** @enum {string} */
+        ComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
+        /** @enum {string} */
+        RoundingMode: "half_even" | "half_up" | "down" | "up" | "truncate";
+        /**
+         * @description `descendants` is used only by report bridges and report rules (B8, OI-28).
+         * @enum {string}
+         */
+        SourceSelection: "member" | "descendants";
+        /** @enum {string} */
+        VariableMissingBehavior: "null" | "zero";
         /** @description The one error body (`application/problem+json`) for every 4xx and 5xx response (OI-06). 400 carries `errors`; 409 carries `violations` for delete blockers and `detail` otherwise; 422 carries `violations`; 401, 403 and 404 carry the title only; 500 carries `traceId`. */
         Problem: {
             /**
@@ -2078,8 +2103,17 @@ export interface components {
             allowed: boolean;
             /** @description One-sentence summary when blocked. */
             message: string | null;
-            reasons: components["schemas"]["Violation"][];
+            reasons: components["schemas"]["DeleteBlocker"][];
         };
+        /** @description A reason a delete is refused; a `Violation` whose code is a `DeleteBlockerCode`. */
+        DeleteBlocker: components["schemas"]["Violation"] & {
+            code?: components["schemas"]["DeleteBlockerCode"];
+        };
+        /**
+         * @description One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads the target; the other codes name a state of the target itself.
+         * @enum {string}
+         */
+        DeleteBlockerCode: "not_removable" | "system_dimension" | "not_draft" | "live_version" | "has_published_versions" | "has_children" | "required_by_profile" | "assigned_by_bands" | "named_by_consumers" | "owned_by_report" | "referenced_by_member" | "referenced_by_dataset_binding" | "referenced_by_mapping_set" | "referenced_by_bridge" | "referenced_by_calculation_dimension" | "referenced_by_report_scenario" | "referenced_by_report_source" | "referenced_by_assumption_set" | "referenced_by_release" | "referenced_by_report";
         /** @description Answer of a read-only `check`; never writes. */
         ValidationReport: {
             versionId: components["schemas"]["Id"];
@@ -2105,6 +2139,107 @@ export interface components {
             idMap: {
                 [key: string]: components["schemas"]["Id"];
             };
+        };
+        /** @description Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14). */
+        FreezeInput: {
+            /** @description Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15). */
+            note: string | null;
+        };
+        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and errors), which is why the specializations declare it nullable. */
+        FreezeResult: {
+            report: components["schemas"]["ValidationReport"];
+            /** @description The new live version. */
+            live: unknown;
+        };
+        /** @description How a role's members group. */
+        Grouping: components["schemas"]["GroupingMember"] | components["schemas"]["GroupingLevel"] | components["schemas"]["GroupingAncestor"] | components["schemas"]["GroupingDepth"];
+        GroupingMember: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "member";
+        };
+        GroupingLevel: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "level";
+            levelKey: string;
+        };
+        GroupingAncestor: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "ancestor";
+            memberKey: string;
+        };
+        GroupingDepth: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "depth";
+            depth: number;
+        };
+        /** @description The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and `source_filter_json`. A dimension operand's grouping uses `Grouping`; the server serializes it into the engine's shape (OI-54). */
+        FilterNode: components["schemas"]["FilterLogical"] | components["schemas"]["FilterNot"] | components["schemas"]["FilterComparison"] | components["schemas"]["FilterIn"] | components["schemas"]["FilterNullCheck"];
+        FilterLogical: {
+            /** @enum {string} */
+            operator: "and" | "or";
+            operands: components["schemas"]["FilterNode"][];
+        };
+        FilterNot: {
+            /** @constant */
+            operator: "not";
+            operand: components["schemas"]["FilterNode"];
+        };
+        FilterComparison: {
+            /** @enum {string} */
+            operator: "eq" | "ne" | "lt" | "le" | "gt" | "ge";
+            left: components["schemas"]["FilterOperand"];
+            right: components["schemas"]["FilterOperand"];
+        };
+        FilterIn: {
+            /** @constant */
+            operator: "in";
+            left: components["schemas"]["FilterOperand"];
+            values: components["schemas"]["FilterOperand"][];
+        };
+        FilterNullCheck: {
+            /** @enum {string} */
+            operator: "isNull" | "isNotNull";
+            operand: components["schemas"]["FilterOperand"];
+        };
+        FilterOperand: components["schemas"]["FilterReferenceOperand"] | components["schemas"]["FilterDimensionOperand"] | components["schemas"]["FilterLiteralOperand"];
+        FilterReferenceOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "field" | "measure" | "parameter";
+            /** @description The field, measure or parameter key. */
+            id: string;
+        };
+        FilterDimensionOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "dimension";
+            /** @description The calculation dimension key. */
+            id: string;
+            grouping?: components["schemas"]["Grouping"];
+        };
+        FilterLiteralOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "literal";
+            value: string | number | boolean | null;
         };
         VocabularyTerm: {
             /** @description The schema's value. */
@@ -2192,9 +2327,9 @@ export interface components {
             id: components["schemas"]["Id"];
             key: components["schemas"]["Key"];
             displayName: string;
-            kind: components["schemas"]["VocabularyDimensionKind"];
-            purpose: components["schemas"]["VocabularyDimensionPurpose"];
-            origin: components["schemas"]["VocabularyDefinitionOrigin"];
+            kind: components["schemas"]["DimensionKind"];
+            purpose: components["schemas"]["DimensionPurpose"];
+            origin: components["schemas"]["DefinitionOrigin"];
             isEnabled: boolean;
             /** @description The live version; null when none is published. */
             publishedVersionId: string | null;
@@ -2248,7 +2383,7 @@ export interface components {
             id: components["schemas"]["Id"];
             key: string;
             displayName: string;
-            status: components["schemas"]["VocabularyAssumptionSetStatus"];
+            status: components["schemas"]["AssumptionSetStatus"];
         };
         /** @description The members of a dimension's published version, fetched per picker. */
         PublishedMembers: {
@@ -2269,11 +2404,10 @@ export interface components {
                 value: components["schemas"]["VersionStatus"];
             })[];
             assumptionSetStatus: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyAssumptionSetStatus"];
+                value: components["schemas"]["AssumptionSetStatus"];
             })[];
             dataType: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp" | "json";
+                value: components["schemas"]["DatasetDataType"];
             })[];
             /** @description Every `dataType` except `json`. */
             measureOutputDataType: (components["schemas"]["VocabularyTerm"] & {
@@ -2281,38 +2415,32 @@ export interface components {
                 value: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp";
             })[];
             sourceObjectKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "table" | "view";
+                value: components["schemas"]["DatasetSourceObjectKind"];
             })[];
             fieldSourceKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "column" | "json_path" | "expression";
+                value: components["schemas"]["DatasetFieldSourceKind"];
             })[];
             grainKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "row" | "series";
+                value: components["schemas"]["DatasetGrainKind"];
             })[];
             dimensionKind: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyDimensionKind"];
+                value: components["schemas"]["DimensionKind"];
             })[];
             dimensionPurpose: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyDimensionPurpose"];
+                value: components["schemas"]["DimensionPurpose"];
             })[];
             definitionOrigin: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyDefinitionOrigin"];
+                value: components["schemas"]["DefinitionOrigin"];
             })[];
             rangeDataType: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "decimal" | "date" | "datetime";
+                value: components["schemas"]["RangeDataType"];
             })[];
             /** @description How far a dimension profile lets users edit a profiled dimension. */
             editPolicy: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "open" | "extend" | "locked";
+                value: components["schemas"]["DimensionEditPolicy"];
             })[];
             bindingKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "direct" | "mapped" | "range" | "bridge" | "time";
+                value: components["schemas"]["BindingKind"];
             })[];
             groupingMode: (components["schemas"]["VocabularyTerm"] & {
                 /** @enum {string} */
@@ -2323,126 +2451,100 @@ export interface components {
                 value: "null" | "self" | "exclude";
             })[];
             periodAlignment: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "observation" | "start" | "end";
+                value: components["schemas"]["DatasetPeriodAlignment"];
             })[];
             unmappedBehavior: (components["schemas"]["VocabularyTerm"] & {
                 /** @enum {string} */
                 value: "null" | "exclude" | "unknown";
             })[];
             timeValueType: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "date" | "timestamp";
+                value: components["schemas"]["DatasetTimeValueType"];
             })[];
             observationKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "instant" | "snapshot" | "interval";
+                value: components["schemas"]["DatasetObservationKind"];
             })[];
             periodicity: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "day" | "month" | "quarter" | "year";
+                value: components["schemas"]["Periodicity"];
             })[];
             cumulativeOrigin: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "output_range_start" | "fixed_start";
+                value: components["schemas"]["DatasetCumulativeOrigin"];
             })[];
             measureKind: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyMeasureKind"];
+                value: components["schemas"]["MeasureKind"];
             })[];
             aggregationFunction: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "sum" | "avg" | "min" | "max" | "count" | "count_distinct";
+                value: components["schemas"]["DatasetAggregationFunction"];
             })[];
             componentRole: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VocabularyComponentRole"];
+                value: components["schemas"]["ComponentRole"];
             })[];
             /** @description Which component roles each measure kind reads, and which of those are required; every measure kind is a key. */
             componentRolesByKind: {
                 [key: string]: components["schemas"]["VocabularyComponentRoleRequirements"];
             };
             valueNullBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "exclude" | "zero";
+                value: components["schemas"]["DatasetValueNullBehavior"];
             })[];
             negativeWeightBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "allow" | "exclude";
+                value: components["schemas"]["DatasetNegativeWeightBehavior"];
             })[];
             emptySetBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "null" | "zero";
+                value: components["schemas"]["DatasetEmptySetBehavior"];
             })[];
             bridgeFactorBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "ignore" | "value";
+                value: components["schemas"]["DatasetBridgeFactorBehavior"];
             })[];
             bridgeAllocationBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "apply" | "ignore";
+                value: components["schemas"]["DatasetBridgeAllocationBehavior"];
             })[];
             totalBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "recompute" | "sum_children";
+                value: components["schemas"]["DatasetTotalBehavior"];
             })[];
             roundingMode: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "half_even" | "half_up" | "down" | "up" | "truncate";
+                value: components["schemas"]["RoundingMode"];
             })[];
             observationSelection: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "all" | "first_in_period" | "last_in_period" | "at_start" | "at_end";
+                value: components["schemas"]["DatasetObservationSelection"];
             })[];
             valueTimeRole: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "point" | "interval_open" | "interval_close";
+                value: components["schemas"]["DatasetValueTimeRole"];
             })[];
             boundaryMatch: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "exact" | "on_or_before" | "strictly_before";
+                value: components["schemas"]["DatasetBoundaryMatch"];
             })[];
             durationUnit: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "calendar_day" | "elapsed_second";
+                value: components["schemas"]["DatasetDurationUnit"];
             })[];
             partialIntervalBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "exact_only" | "uniform_estimate";
+                value: components["schemas"]["DatasetPartialIntervalBehavior"];
             })[];
             missingPeriodBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "null" | "zero";
+                value: components["schemas"]["DatasetMissingPeriodBehavior"];
             })[];
             /** @description Grammar versions a dataset version's expressions may declare. */
             expressionLanguageVersion: components["schemas"]["VocabularyTerm"][];
             /** @description IANA time zones offered for source and query time zones. */
             timeZone: components["schemas"]["VocabularyTerm"][];
             cardinality: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "many_to_one" | "many_to_many";
+                value: components["schemas"]["MappingCardinality"];
             })[];
             allocationMode: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "none" | "partition" | "replicate";
+                value: components["schemas"]["MappingAllocationMode"];
             })[];
             sourceSelection: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "member" | "descendants";
+                value: components["schemas"]["SourceSelection"];
             })[];
             formulaLanguageVersion: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "1.0" | "1.1" | "1.2";
+                value: components["schemas"]["ModelFormulaLanguage"];
             })[];
             attributionMethod: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "shapley" | "sequential";
+                value: components["schemas"]["AttributionMethod"];
             })[];
             parameterValueType: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "number" | "text";
+                value: components["schemas"]["ModelParameterValueType"];
             })[];
             variableMissingBehavior: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "null" | "zero";
+                value: components["schemas"]["VariableMissingBehavior"];
             })[];
             dayCountConvention: (components["schemas"]["VocabularyTerm"] & {
                 /** @enum {string} */
@@ -2452,39 +2554,31 @@ export interface components {
             displayFormat: components["schemas"]["VocabularyTerm"][];
             /** @description How a report source reaches report rows. */
             mappingMethod: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "bridge" | "direct";
+                value: components["schemas"]["ReportMappingMethod"];
             })[];
             selectionScope: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "exact" | "descendants";
+                value: components["schemas"]["ReportSelectionScope"];
             })[];
             /** @description What a report column evaluates. */
             columnValueKind: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "variable" | "calculated";
+                value: components["schemas"]["ReportColumnValueKind"];
             })[];
             subtotalPosition: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "above" | "below";
+                value: components["schemas"]["ReportSubtotalPosition"];
             })[];
             /** @description The row role a report style applies to by default. */
             styleRole: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "header" | "subtotal" | "total" | "detail" | "formula";
+                value: components["schemas"]["ReportStyleRole"];
             })[];
             fontWeight: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "normal" | "medium" | "semibold" | "bold";
+                value: components["schemas"]["ReportFontWeight"];
             })[];
             borderStyle: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "none" | "thin" | "medium" | "thick" | "double";
+                value: components["schemas"]["ReportBorderStyle"];
             })[];
             /** @description Report layouts. */
             layout: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "statement" | "list";
+                value: components["schemas"]["ReportLayout"];
             })[];
             /** @description Registered tenant database providers, the values of a directory entry's `providerId`. */
             provider: (components["schemas"]["VocabularyTerm"] & {
@@ -2492,22 +2586,10 @@ export interface components {
             })[];
         };
         /** @enum {string} */
-        VocabularyAssumptionSetStatus: "active" | "historical";
-        /** @enum {string} */
-        VocabularyDimensionKind: "categorical" | "hierarchical" | "range" | "time";
-        /** @enum {string} */
-        VocabularyDimensionPurpose: "analytical" | "report";
-        /** @enum {string} */
-        VocabularyDefinitionOrigin: "system" | "user";
-        /** @enum {string} */
-        VocabularyMeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
-        /** @enum {string} */
-        VocabularyComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
-        /** @enum {string} */
         VocabularyProvider: "starrocks";
         /** @description The component roles a measure kind reads. */
         VocabularyComponentRoleRequirements: {
-            role: components["schemas"]["VocabularyComponentRole"];
+            role: components["schemas"]["ComponentRole"];
             required: boolean;
         }[];
         /** @description A `query_control.qe_tenant_directory` row; the connection string's password is masked. */
@@ -2561,8 +2643,6 @@ export interface components {
         /** @enum {string} */
         DatasetGrainKind: "row" | "series";
         /** @enum {string} */
-        DatasetBindingKind: "direct" | "mapped" | "range" | "bridge" | "time";
-        /** @enum {string} */
         DatasetRaggedBehavior: "self" | "exclude";
         /** @enum {string} */
         DatasetPeriodAlignment: "observation" | "start" | "end";
@@ -2573,15 +2653,9 @@ export interface components {
         /** @enum {string} */
         DatasetObservationKind: "instant" | "snapshot" | "interval";
         /** @enum {string} */
-        DatasetPeriodicity: "day" | "month" | "quarter" | "year";
-        /** @enum {string} */
         DatasetCumulativeOrigin: "output_range_start" | "fixed_start";
         /** @enum {string} */
-        DatasetMeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
-        /** @enum {string} */
         DatasetAggregationFunction: "sum" | "avg" | "min" | "max" | "count" | "count_distinct";
-        /** @enum {string} */
-        DatasetComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
         /** @enum {string} */
         DatasetValueNullBehavior: "exclude" | "zero";
         /** @enum {string} */
@@ -2594,8 +2668,6 @@ export interface components {
         DatasetBridgeAllocationBehavior: "apply" | "ignore";
         /** @enum {string} */
         DatasetTotalBehavior: "recompute" | "sum_children";
-        /** @enum {string} */
-        DatasetRoundingMode: "half_up" | "half_even" | "down" | "up" | "truncate";
         /** @enum {string} */
         DatasetObservationSelection: "all" | "first_in_period" | "last_in_period" | "at_start" | "at_end";
         /** @enum {string} */
@@ -2776,15 +2848,15 @@ export interface components {
             sourceTimeZone: string | null;
             defaultQueryTimeZone: string;
             observationKind: components["schemas"]["DatasetObservationKind"];
-            nativePeriodicity: components["schemas"]["DatasetPeriodicity"] | null;
+            nativePeriodicity: components["schemas"]["Periodicity"] | null;
             intervalEndFieldId: string | null;
-            allowedPeriodicities: components["schemas"]["DatasetPeriodicity"][];
+            allowedPeriodicities: components["schemas"]["Periodicity"][];
             cumulativeOrigin: components["schemas"]["DatasetCumulativeOrigin"];
             /** Format: date */
             cumulativeFixedStart: string | null;
         };
         DatasetBindingDefinition: {
-            bindingKind: components["schemas"]["DatasetBindingKind"];
+            bindingKind: components["schemas"]["BindingKind"];
             /** @description Non-time bindings; the role requests address the binding by. */
             dimensionRoleId: string | null;
             /** @description Time bindings; the time-kind dimension. */
@@ -2812,7 +2884,7 @@ export interface components {
             id?: components["schemas"]["Id"];
         };
         DatasetMeasureComponent: {
-            role: components["schemas"]["DatasetComponentRole"];
+            role: components["schemas"]["ComponentRole"];
             fieldId: components["schemas"]["Id"];
         };
         DatasetMeasureTimePolicy: {
@@ -2831,7 +2903,7 @@ export interface components {
             key: components["schemas"]["Key"];
             displayName: string;
             isEnabled: boolean;
-            measureKind: components["schemas"]["DatasetMeasureKind"];
+            measureKind: components["schemas"]["MeasureKind"];
             aggregationFunction: components["schemas"]["DatasetAggregationFunction"] | null;
             /** @description Formula measures; composes other measures (`[m.key]`). */
             expressionText: string | null;
@@ -2849,7 +2921,7 @@ export interface components {
             outputDataType: components["schemas"]["DatasetDataType"];
             outputPrecision: number | null;
             outputScale: number | null;
-            roundingMode: components["schemas"]["DatasetRoundingMode"];
+            roundingMode: components["schemas"]["RoundingMode"];
             unitKey: string | null;
             accumulatorPrecision: number;
             accumulatorScale: number;
@@ -3024,29 +3096,12 @@ export interface components {
             state: components["schemas"]["DatasetVersion"];
         };
         /**
-         * @description Fixed after creation (M1).
-         * @enum {string}
-         */
-        DimensionKind: "categorical" | "hierarchical" | "range" | "time";
-        /** @enum {string} */
-        DimensionOrigin: "system" | "user";
-        /**
-         * @description Report dimensions are refused by every write of this module and never listed (M8, OI-22).
-         * @enum {string}
-         */
-        DimensionPurpose: "analytical" | "report";
-        /**
          * @description `locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).
          * @enum {string}
          */
         DimensionEditPolicy: "open" | "extend" | "locked";
         /** @enum {string} */
         RangeDataType: "decimal" | "date" | "datetime";
-        /**
-         * @description Periodicity of a time dimension's level.
-         * @enum {string}
-         */
-        DimensionPeriodicity: "day" | "month" | "quarter" | "year";
         /**
          * @description Areas of the dimension editor; the values of `ViolationTarget.area` in this module.
          * @enum {string}
@@ -3107,7 +3162,7 @@ export interface components {
             key: components["schemas"]["Key"];
             displayName: string;
             kind: components["schemas"]["DimensionKind"];
-            origin: components["schemas"]["DimensionOrigin"];
+            origin: components["schemas"]["DefinitionOrigin"];
             purpose: components["schemas"]["DimensionPurpose"];
             /** @description Set only when purpose is `report`. */
             ownerReport: components["schemas"]["DimensionOwnerReport"] | null;
@@ -3168,7 +3223,7 @@ export interface components {
             ordinal: number;
             isLeaf: boolean;
             /** @description Time dimensions only. */
-            periodicity: components["schemas"]["DimensionPeriodicity"] | null;
+            periodicity: components["schemas"]["Periodicity"] | null;
         };
         DimensionMember: {
             id: components["schemas"]["Id"];
@@ -3236,19 +3291,8 @@ export interface components {
             /** @description The live version 1. */
             versionId: components["schemas"]["Id"];
         };
-        /** @description Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14). */
-        FreezeInput: {
-            /** @description Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15). */
-            note: string | null;
-        };
-        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. When a rule fails the freeze answers 422 instead and changes nothing. */
-        FreezeResult: {
-            report: components["schemas"]["ValidationReport"];
-            /** @description The new live version. */
-            live: unknown;
-        };
         DimensionFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["DimensionVersionSummary"];
+            live: components["schemas"]["DimensionVersionSummary"] | null;
         };
         CreateDimensionInput: {
             key: components["schemas"]["Key"];
@@ -3296,7 +3340,7 @@ export interface components {
             key: components["schemas"]["Key"];
             displayName: string;
             isLeaf: boolean;
-            periodicity: components["schemas"]["DimensionPeriodicity"] | null;
+            periodicity: components["schemas"]["Periodicity"] | null;
         };
         DimensionRoleInput: {
             /** @description A stored id updates that role; absent or `tmp:<uuid>` creates one. */
@@ -3455,11 +3499,6 @@ export interface components {
          * @enum {string}
          */
         MappingAllocationMode: "none" | "partition" | "replicate";
-        /**
-         * @description `descendants` is used only by report bridges (B8, OI-28).
-         * @enum {string}
-         */
-        MappingSourceSelection: "member" | "descendants";
         /** @description A read-only slice of a dimension, enough to label it and to state which version keys resolve against. */
         MappingDimensionRef: {
             id: components["schemas"]["Id"];
@@ -3597,14 +3636,7 @@ export interface components {
             sourceKeyValue: string;
             memberKey: string;
         };
-        MappingFreezeInput: {
-            /** @description Why the version was frozen, e.g. `FY26 close` (OI-15). */
-            note: string | null;
-        };
-        /** @description The rule report of the frozen version, and the new live version. */
-        MappingFreezeResult: {
-            report: components["schemas"]["ValidationReport"];
-            /** @description The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors). */
+        MappingFreezeResult: components["schemas"]["FreezeResult"] & {
             live: components["schemas"]["MappingVersionSummary"] | null;
         };
         MappingSetUpdateOperation: {
@@ -3697,7 +3729,7 @@ export interface components {
             /** @description Affects only measures with `bridge_factor_behavior = value` (B7). */
             factor: number;
             allocationWeight: number;
-            sourceSelection: components["schemas"]["MappingSourceSelection"];
+            sourceSelection: components["schemas"]["SourceSelection"];
         };
         BridgeVersionSummary: {
             id: components["schemas"]["Id"];
@@ -3777,16 +3809,9 @@ export interface components {
             factor: number;
             allocationWeight: number;
             /** @description Accepted only on report bridges, written by the report editor; absent means `member` (OI-28). */
-            sourceSelection?: components["schemas"]["MappingSourceSelection"];
+            sourceSelection?: components["schemas"]["SourceSelection"];
         };
-        BridgeFreezeInput: {
-            /** @description Why the version was frozen, e.g. `FY26 close` (OI-15). */
-            note: string | null;
-        };
-        /** @description The rule report of the frozen version, and the new live version. */
-        BridgeFreezeResult: {
-            report: components["schemas"]["ValidationReport"];
-            /** @description The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors). */
+        BridgeFreezeResult: components["schemas"]["FreezeResult"] & {
             live: components["schemas"]["BridgeVersionSummary"] | null;
         };
         BridgeUpdateOperation: {
@@ -3983,12 +4008,10 @@ export interface components {
         ReleaseChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
             state: components["schemas"]["ReleaseDetail"];
         };
-        /** @enum {string} */
-        ManifestBindingKind: "direct" | "mapped" | "range" | "bridge" | "time";
         /** @description A binding of a dataset version, with the identities it resolves through. */
         ManifestBinding: {
             displayName: string;
-            kind: components["schemas"]["ManifestBindingKind"];
+            kind: components["schemas"]["BindingKind"];
             dimensionId: components["schemas"]["Id"];
             mappingSetId: string | null;
             bridgeId: string | null;
@@ -4065,8 +4088,6 @@ export interface components {
          * @example fy2026_q3_close
          */
         AssumptionSetKey: string;
-        /** @enum {string} */
-        AssumptionSetStatus: "active" | "historical";
         /** @description One row of `qe_assumption_set`. */
         AssumptionSet: {
             id: components["schemas"]["Id"];
@@ -4173,11 +4194,7 @@ export interface components {
         /** @enum {string} */
         AttributionMethod: "shapley" | "sequential";
         /** @enum {string} */
-        ModelMissingBehavior: "null" | "zero";
-        /** @enum {string} */
         ModelParameterValueType: "number" | "text";
-        /** @enum {string} */
-        ModelRoundingMode: "half_even" | "half_up" | "down" | "up" | "truncate";
         /** @enum {string} */
         ModelOutputDataType: "decimal" | "int64" | "int32";
         /** @description The model's own settings (`qe_calculation_model`). */
@@ -4201,7 +4218,7 @@ export interface components {
             /** @example currency */
             displayFormat: string;
             unitKey: string | null;
-            missingBehavior: components["schemas"]["ModelMissingBehavior"];
+            missingBehavior: components["schemas"]["VariableMissingBehavior"];
         };
         /** @description A calculated measure (`qe_calculated_measure`); `formula` is `expression_text`. */
         ModelMeasure: {
@@ -4212,7 +4229,7 @@ export interface components {
             outputDataType: components["schemas"]["ModelOutputDataType"];
             outputPrecision: number | null;
             outputScale: number | null;
-            roundingMode: components["schemas"]["ModelRoundingMode"] | null;
+            roundingMode: components["schemas"]["RoundingMode"] | null;
             unitKey: string | null;
             /** @example percent */
             displayFormat: string;
@@ -4394,8 +4411,6 @@ export interface components {
             state: components["schemas"]["ModelDocument"];
         };
         /** @enum {string} */
-        ReportPeriodicity: "day" | "month" | "quarter" | "year";
-        /** @enum {string} */
         ReportLayout: "statement" | "list";
         /** @enum {string} */
         ReportSubtotalPosition: "above" | "below";
@@ -4415,10 +4430,6 @@ export interface components {
          */
         ReportSelectionScope: "exact" | "descendants";
         /** @enum {string} */
-        ReportRuleSelection: "member" | "descendants";
-        /** @enum {string} */
-        ReportMissingBehavior: "null" | "zero";
-        /** @enum {string} */
         ReportStyleRole: "header" | "subtotal" | "total" | "detail" | "formula";
         /** @enum {string} */
         ReportFontWeight: "normal" | "medium" | "semibold" | "bold";
@@ -4426,96 +4437,6 @@ export interface components {
         ReportBorderStyle: "none" | "thin" | "medium" | "thick" | "double";
         /** @enum {string} */
         ReportColumnValueKind: "variable" | "calculated";
-        /** @description How a role's members group. */
-        ReportGrouping: components["schemas"]["ReportGroupingMember"] | components["schemas"]["ReportGroupingLevel"] | components["schemas"]["ReportGroupingAncestor"] | components["schemas"]["ReportGroupingDepth"];
-        ReportGroupingMember: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "member";
-        };
-        ReportGroupingLevel: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "level";
-            levelKey: string;
-        };
-        ReportGroupingAncestor: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "ancestor";
-            memberKey: string;
-        };
-        ReportGroupingDepth: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "depth";
-            depth: number;
-        };
-        /** @description The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and `source_filter_json`. A dimension operand's grouping uses `ReportGrouping`; the server serializes it into the engine's shape (OI-54). */
-        ReportFilterNode: components["schemas"]["ReportFilterLogical"] | components["schemas"]["ReportFilterNot"] | components["schemas"]["ReportFilterComparison"] | components["schemas"]["ReportFilterIn"] | components["schemas"]["ReportFilterNullCheck"];
-        ReportFilterLogical: {
-            /** @enum {string} */
-            operator: "and" | "or";
-            operands: components["schemas"]["ReportFilterNode"][];
-        };
-        ReportFilterNot: {
-            /** @constant */
-            operator: "not";
-            operand: components["schemas"]["ReportFilterNode"];
-        };
-        ReportFilterComparison: {
-            /** @enum {string} */
-            operator: "eq" | "ne" | "lt" | "le" | "gt" | "ge";
-            left: components["schemas"]["ReportFilterOperand"];
-            right: components["schemas"]["ReportFilterOperand"];
-        };
-        ReportFilterIn: {
-            /** @constant */
-            operator: "in";
-            left: components["schemas"]["ReportFilterOperand"];
-            values: components["schemas"]["ReportFilterOperand"][];
-        };
-        ReportFilterNullCheck: {
-            /** @enum {string} */
-            operator: "isNull" | "isNotNull";
-            operand: components["schemas"]["ReportFilterOperand"];
-        };
-        ReportFilterOperand: components["schemas"]["ReportFilterReferenceOperand"] | components["schemas"]["ReportFilterDimensionOperand"] | components["schemas"]["ReportFilterLiteralOperand"];
-        ReportFilterReferenceOperand: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "field" | "measure" | "parameter";
-            /** @description The field, measure or parameter key. */
-            id: string;
-        };
-        ReportFilterDimensionOperand: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "dimension";
-            /** @description The calculation dimension key. */
-            id: string;
-            grouping?: components["schemas"]["ReportGrouping"];
-        };
-        ReportFilterLiteralOperand: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "literal";
-            value: string | number | boolean | null;
-        };
         ReportSummary: {
             id: components["schemas"]["Id"];
             key: components["schemas"]["Key"];
@@ -4524,7 +4445,7 @@ export interface components {
             modelId: components["schemas"]["Id"];
             modelKey: string;
             isEnabled: boolean;
-            periodicity: components["schemas"]["ReportPeriodicity"] | null;
+            periodicity: components["schemas"]["Periodicity"] | null;
             profileCount: number;
             sourceCount: number;
         };
@@ -4533,12 +4454,12 @@ export interface components {
             reportType: string;
             subtotalPosition: components["schemas"]["ReportSubtotalPosition"];
             defaultProfileKey: string | null;
-            periodicity: components["schemas"]["ReportPeriodicity"] | null;
+            periodicity: components["schemas"]["Periodicity"] | null;
             layout: components["schemas"]["ReportLayout"];
             /** @description Calculation dimension keys. */
             defaultBreakout: string[];
             /** @description Filter over calculation dimension keys. */
-            defaultFilter: components["schemas"]["ReportFilterNode"] | null;
+            defaultFilter: components["schemas"]["FilterNode"] | null;
         };
         /** @description The settings to change; absent properties keep their value. */
         ReportSettingsPatch: {
@@ -4546,10 +4467,10 @@ export interface components {
             reportType?: string;
             subtotalPosition?: components["schemas"]["ReportSubtotalPosition"];
             defaultProfileKey?: string | null;
-            periodicity?: components["schemas"]["ReportPeriodicity"] | null;
+            periodicity?: components["schemas"]["Periodicity"] | null;
             layout?: components["schemas"]["ReportLayout"];
             defaultBreakout?: string[];
-            defaultFilter?: components["schemas"]["ReportFilterNode"] | null;
+            defaultFilter?: components["schemas"]["FilterNode"] | null;
         };
         ReportRow: {
             key: components["schemas"]["Key"];
@@ -4576,7 +4497,7 @@ export interface components {
         };
         ReportSourceRule: {
             itemKey: string;
-            selection: components["schemas"]["ReportRuleSelection"];
+            selection: components["schemas"]["SourceSelection"];
             /** @description The only number a rule carries; -1 on an item already included excludes it (OI-52). */
             factor: number;
         };
@@ -4584,9 +4505,9 @@ export interface components {
             variableKey: string;
             measureKey: string;
             /** @description Filter over the dataset's filterable fields, applied before aggregation. */
-            filter: components["schemas"]["ReportFilterNode"] | null;
+            filter: components["schemas"]["FilterNode"] | null;
             /** @description Replaces the variable's own missing behavior for this source; null keeps the variable's. */
-            missingBehavior: components["schemas"]["ReportMissingBehavior"] | null;
+            missingBehavior: components["schemas"]["VariableMissingBehavior"] | null;
         };
         ReportSourceInput: {
             key: components["schemas"]["Key"];
@@ -4623,7 +4544,7 @@ export interface components {
             key: components["schemas"]["Key"];
             displayName: string;
             roleId: components["schemas"]["Id"];
-            grouping: components["schemas"]["ReportGrouping"];
+            grouping: components["schemas"]["Grouping"];
             isGroupable: boolean;
             isFilterable: boolean;
             isEnabled: boolean;
@@ -5945,7 +5866,7 @@ export interface operations {
     listDimensions: {
         parameters: {
             query: {
-                origin: components["schemas"]["DimensionOrigin"];
+                origin: components["schemas"]["DefinitionOrigin"];
             };
             header?: never;
             path: {
@@ -6701,7 +6622,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MappingFreezeInput"];
+                "application/json": components["schemas"]["FreezeInput"];
             };
         };
         responses: {
@@ -7041,7 +6962,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BridgeFreezeInput"];
+                "application/json": components["schemas"]["FreezeInput"];
             };
         };
         responses: {
@@ -7870,7 +7791,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
-            /** @description A report reads the model; `violations` carry `model_not_in_use` per report. */
+            /** @description A report reads the model; `violations` carry `referenced_by_report` per report. */
             409: components["responses"]["Conflict"];
         };
     };

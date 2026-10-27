@@ -14,6 +14,7 @@ import {
   type BridgeVersion,
   type BridgeVersionContent,
   type BridgeVersionSummary,
+  type DeleteBlocker,
   type DeleteCheck,
   type MappingAssumptionPin,
   type MappingDimensionRef,
@@ -56,7 +57,7 @@ const invalid = <T,>(errors: Record<string, string[]>) => fail<T>(400, 'Check th
 const frozen = <T,>() => fail<T>(409, 'Version is frozen', { detail: 'Frozen versions are read-only. Edit the live version instead.' })
 const blocked = <T,>(title: string, check: DeleteCheck) => fail<T>(409, title, { detail: check.message!, violations: check.reasons })
 
-const deleteCheck = (message: string, reasons: Violation[]): DeleteCheck => (reasons.length ? { allowed: false, message, reasons } : { allowed: true, message: null, reasons: [] })
+const deleteCheck = (message: string, reasons: DeleteBlocker[]): DeleteCheck => (reasons.length ? { allowed: false, message, reasons } : { allowed: true, message: null, reasons: [] })
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 type LivingVersion = MappingVersion | BridgeVersion
@@ -175,15 +176,15 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
   }
 
   function versionDeleteCheck(v: LivingVersion): DeleteCheck {
-    const reasons: Violation[] = historicalPinsOn(v.id).map((a) => ({ code: 'pinned_by_assumption_set', message: `Pinned by the ${a.displayName} assumption set.` }))
-    if (v.status === 'published') reasons.unshift({ code: 'version_live', message: `v${v.versionNumber} is the live version; only frozen versions can be deleted.` })
+    const reasons: DeleteBlocker[] = historicalPinsOn(v.id).map((a) => ({ code: 'referenced_by_assumption_set' as const, message: `Pinned by the ${a.displayName} assumption set.` }))
+    if (v.status === 'published') reasons.unshift({ code: 'live_version', message: `v${v.versionNumber} is the live version; only frozen versions can be deleted.` })
     return deleteCheck(`v${v.versionNumber} cannot be deleted.`, reasons)
   }
 
   function identityDeleteCheck(objectId: string, label: string): DeleteCheck {
-    const reasons: Violation[] = [
-      ...db.bindings[objectId].map((b) => ({ code: 'bound_by_dataset', message: `${b.datasetKey} v${b.datasetVersionNumber} binds ${b.fieldKey} → ${b.roleKey}` })),
-      ...db.assumptionSets.filter((a) => !a.isActive && a.pins[objectId]).map((a) => ({ code: 'pinned_by_assumption_set', message: `Pinned by the ${a.displayName} assumption set` })),
+    const reasons: DeleteBlocker[] = [
+      ...db.bindings[objectId].map((b) => ({ code: 'referenced_by_dataset_binding' as const, message: `${b.datasetKey} v${b.datasetVersionNumber} binds ${b.fieldKey} → ${b.roleKey}` })),
+      ...db.assumptionSets.filter((a) => !a.isActive && a.pins[objectId]).map((a) => ({ code: 'referenced_by_assumption_set' as const, message: `Pinned by the ${a.displayName} assumption set` })),
     ]
     return deleteCheck(`This ${label} is in use (${plural(reasons.length, 'reference')}). Remove them first.`, reasons)
   }

@@ -154,7 +154,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `calculation-models/{id}` | | `ModelDocument` | 404 | `getModel` |
 | POST | `calculation-models/{id}/formula-check` | `{ formula, selfKey }` | `FormulaCheck` | 404 | `checkFormula` |
 | GET | `calculation-models/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteModel` |
-| DELETE | `calculation-models/{id}` | | `204` | 409 `model_not_in_use` | `deleteModel` |
+| DELETE | `calculation-models/{id}` | | `204` | 409 `referenced_by_report` | `deleteModel` |
 | POST | `calculation-models/{id}/changes/preview` | `ChangeSetRequest<ModelOperation>` | `ChangeSetPreview<ModelDocument>` | 400, 422 refused | edits |
 | POST | `calculation-models/{id}/changes` | `ChangeSetRequest<ModelOperation>` | `ChangeSetCommit<ModelDocument>` | 400, 422 | `commitChanges` |
 
@@ -184,7 +184,7 @@ A commit that changes a model read by an enabled report advances `semantic_revis
 Model rules (current API): `formula_references_resolve`, `formulas_acyclic`, `formulas_fit_language`,
 `formula_parameters_resolve`, `attribution_references_resolve`, `attribution_drivers`,
 `attribution_weight_variable`. Report rules re-run for every enabled report over the model
-([16](16-reports.md#rule-codes)). Commands: `model_not_in_use`.
+([16](16-reports.md#rule-codes)). Delete blockers: `referenced_by_report` ([01](01-api-conventions.md#delete-checks-agreed-oi-07)).
 
 Mapping from `web2` (confirm each against the API's rule implementations during the refactor): `parameters_resolve` → `formula_parameters_resolve`; `parameter_filter_clash` →
 `report_defaults_resolve` (a parameter key colliding with a default filter field); `parameter_allowed_values` →

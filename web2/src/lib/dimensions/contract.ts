@@ -4,8 +4,13 @@ import type {
   ChangeSetCommit,
   ChangeSetPreview,
   ChangeSetRequest,
+  DefinitionOrigin,
   DeleteCheck,
+  DimensionKind,
+  DimensionPurpose,
+  FreezeResult,
   Id,
+  Periodicity,
   Problem,
   ValidationReport,
   VersionStatus,
@@ -19,19 +24,12 @@ import type {
  * adapter in ./mock implements it in memory, and an HTTP adapter can replace it without touching the UI.
  */
 
-export type { ApiResult, DeleteCheck, Id, Problem, ValidationReport, VersionStatus, Violation }
-
-/** @deprecated Use `Problem`. Kept while lib/mappings imports it from here. */
-export type ProblemDetails = Problem
+export type { ApiResult, DefinitionOrigin, DeleteBlocker, DeleteBlockerCode, DeleteCheck, DimensionKind, DimensionPurpose, FreezeInput, FreezeResult, Id, Periodicity, Problem, ValidationReport, VersionStatus, Violation } from '@/lib/api/contract'
 
 /* ───────────────────────── vocabularies ───────────────────────── */
 
-export type DimensionKind = 'categorical' | 'hierarchical' | 'range' | 'time'
-export type DimensionOrigin = 'system' | 'user'
-export type DimensionPurpose = 'analytical' | 'report'
 export type DimensionEditPolicy = 'open' | 'extend' | 'locked'
 export type RangeDataType = 'decimal' | 'date' | 'datetime'
-export type DimensionPeriodicity = 'day' | 'month' | 'quarter' | 'year'
 
 export type DimensionTab = 'properties' | 'members' | 'levels' | 'bands' | 'roles' | 'mappings' | 'bridges' | 'usage'
 
@@ -106,7 +104,7 @@ export interface Dimension {
   key: string
   displayName: string
   kind: DimensionKind
-  origin: DimensionOrigin
+  origin: DefinitionOrigin
   purpose: DimensionPurpose
   /** Set only when purpose is `report`. Links go to this report in the editor, never to the dimension. */
   ownerReport: DimensionOwnerReport | null
@@ -160,7 +158,7 @@ export interface DimensionLevel {
   displayName: string
   ordinal: number
   isLeaf: boolean
-  periodicity: DimensionPeriodicity | null
+  periodicity: Periodicity | null
 }
 
 export interface DimensionMember {
@@ -236,17 +234,6 @@ export interface DimensionCreated {
 
 /* ───────────────────────── live-and-frozen versions ───────────────────────── */
 
-/** Body of a freeze for dimensions, mapping sets and bridges. */
-export interface FreezeInput {
-  note: string | null
-}
-
-/** The port's freeze answer for any living kind; `live` is null when a rule failed and nothing changed. */
-export interface FreezeResult<V> {
-  report: ValidationReport
-  live: V | null
-}
-
 export interface DimensionFreezeResult extends FreezeResult<DimensionVersionSummary> {
   report: DimensionValidationReport
 }
@@ -292,7 +279,7 @@ export interface DimensionLevelInput {
   key: string
   displayName: string
   isLeaf: boolean
-  periodicity: DimensionPeriodicity | null
+  periodicity: Periodicity | null
 }
 
 export interface DimensionRoleInput {
@@ -356,7 +343,7 @@ export type DimensionChangeSetCommit = ChangeSetCommit<DimensionEditState>
 /** Edits stage into the dimension's change set and apply on `commitChanges`; see lib/api/changes.ts. */
 export interface DimensionsApi extends ChangeSetPort {
   /** Analytical dimensions only; report-owned dimensions are reached from their report. */
-  listDimensions(origin: DimensionOrigin): Promise<DimensionListItem[]>
+  listDimensions(origin: DefinitionOrigin): Promise<DimensionListItem[]>
   /** @deprecated Moves to the tenant catalog (OI-13). Kept while lib/mappings resolves dimensions through it. */
   listAllDimensions(): Promise<DimensionListItem[]>
   listAvailableProfiles(): Promise<AvailableDimensionProfile[]>

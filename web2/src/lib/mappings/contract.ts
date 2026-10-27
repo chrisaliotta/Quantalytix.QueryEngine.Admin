@@ -5,21 +5,21 @@
  */
 
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, DeleteCheck, Id, Problem, ValidationReport, VersionStatus, Violation } from '@/lib/api/contract'
+import type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, FreezeResult, Id, Problem, SourceSelection, ValidationReport, VersionStatus, Violation } from '@/lib/api/contract'
 
-export type { ApiResult, DeleteCheck, Id, Problem, ValidationReport, VersionStatus, Violation }
+export type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, FreezeResult, Id, Problem, SourceSelection, ValidationReport, VersionStatus, Violation }
+export { newTempId } from '@/lib/api/contract'
 
 export type MappingCardinality = 'many_to_one' | 'many_to_many'
 export type MappingAllocationMode = 'none' | 'partition' | 'replicate'
-export type MappingSourceSelection = 'member' | 'descendants'
 
 /** A read-only slice of a dimension: enough to label it and to state which version keys resolve against. */
 export interface MappingDimensionRef {
   id: Id
   key: string
   displayName: string
-  kind: 'categorical' | 'hierarchical' | 'range' | 'time'
-  purpose: 'analytical' | 'report'
+  kind: DimensionKind
+  purpose: DimensionPurpose
   publishedVersionId: Id | null
   publishedVersionNumber: number | null
 }
@@ -162,11 +162,6 @@ export interface MappingEntryInput {
   memberKey: string
 }
 
-/** Shared with dimensions: the rule report, and the new live version when the rules passed. */
-export interface FreezeResult<V> {
-  report: ValidationReport
-  live: V | null
-}
 export type MappingFreezeResult = FreezeResult<MappingVersionSummary>
 
 export type MappingOperation =
@@ -215,7 +210,7 @@ export interface BridgeMapping {
   targetMemberKey: string
   factor: number
   allocationWeight: number
-  sourceSelection: MappingSourceSelection
+  sourceSelection: SourceSelection
 }
 
 export interface BridgeVersionSummary {
@@ -290,7 +285,7 @@ export interface BridgeMappingInput {
   factor: number
   allocationWeight: number
   /** Report bridges only, written by the report editor. */
-  sourceSelection?: MappingSourceSelection
+  sourceSelection?: SourceSelection
 }
 
 export type BridgeFreezeResult = FreezeResult<BridgeVersionSummary>
@@ -366,9 +361,6 @@ export const MAPPINGS_COMMANDS = [
 ] as const satisfies readonly (keyof MappingsApi)[]
 
 /* ───────────────────────── shared module rules ───────────────────────── */
-
-/** Temporary id of an item created inside a change set; the commit's `idMap` gives its real id. */
-export const newTempId = (): Id => `tmp:${crypto.randomUUID()}`
 
 export const CARDINALITY_LABEL: Record<MappingCardinality, string> = { many_to_one: 'Many to one', many_to_many: 'Many to many' }
 export const CARDINALITY_HELP: Record<MappingCardinality, string> = {

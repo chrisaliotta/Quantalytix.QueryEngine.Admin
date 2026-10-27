@@ -370,9 +370,9 @@ components:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { $ref: './common.yaml#/components/schemas/Key' }
         displayName: { type: string }
-        kind: { $ref: '#/components/schemas/VocabularyDimensionKind' }
-        purpose: { $ref: '#/components/schemas/VocabularyDimensionPurpose' }
-        origin: { $ref: '#/components/schemas/VocabularyDefinitionOrigin' }
+        kind: { $ref: './common.yaml#/components/schemas/DimensionKind' }
+        purpose: { $ref: './common.yaml#/components/schemas/DimensionPurpose' }
+        origin: { $ref: './common.yaml#/components/schemas/DefinitionOrigin' }
         isEnabled: { type: boolean }
         publishedVersionId:
           type: [string, 'null']
@@ -451,7 +451,7 @@ components:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { type: string }
         displayName: { type: string }
-        status: { $ref: '#/components/schemas/VocabularyAssumptionSetStatus' }
+        status: { $ref: './common.yaml#/components/schemas/AssumptionSetStatus' }
 
     PublishedMembers:
       type: object
@@ -552,13 +552,13 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyAssumptionSetStatus' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/AssumptionSetStatus' } } }
         dataType:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [boolean, int32, int64, decimal, string, date, datetime, timestamp, json] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetDataType' } } }
         measureOutputDataType:
           type: array
           description: Every `dataType` except `json`.
@@ -571,56 +571,56 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [table, view] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetSourceObjectKind' } } }
         fieldSourceKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [column, json_path, expression] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetFieldSourceKind' } } }
         grainKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [row, series] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetGrainKind' } } }
         dimensionKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyDimensionKind' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/DimensionKind' } } }
         dimensionPurpose:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyDimensionPurpose' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/DimensionPurpose' } } }
         definitionOrigin:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyDefinitionOrigin' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/DefinitionOrigin' } } }
         rangeDataType:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [decimal, date, datetime] } } }
+              - { required: [value], properties: { value: { $ref: './dimensions.yaml#/components/schemas/RangeDataType' } } }
         editPolicy:
           type: array
           description: How far a dimension profile lets users edit a profiled dimension.
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [open, extend, locked] } } }
+              - { required: [value], properties: { value: { $ref: './dimensions.yaml#/components/schemas/DimensionEditPolicy' } } }
         bindingKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [direct, mapped, range, bridge, time] } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/BindingKind' } } }
         groupingMode:
           type: array
           items:
@@ -638,7 +638,7 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [observation, start, end] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetPeriodAlignment' } } }
         unmappedBehavior:
           type: array
           items:
@@ -650,126 +650,126 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [date, timestamp] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetTimeValueType' } } }
         observationKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [instant, snapshot, interval] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetObservationKind' } } }
         periodicity:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [day, month, quarter, year] } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/Periodicity' } } }
         cumulativeOrigin:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [output_range_start, fixed_start] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetCumulativeOrigin' } } }
         measureKind:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyMeasureKind' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/MeasureKind' } } }
         aggregationFunction:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [sum, avg, min, max, count, count_distinct] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetAggregationFunction' } } }
         componentRole:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyComponentRole' } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/ComponentRole' } } }
         componentRolesByKind:
           type: object
           description: Which component roles each measure kind reads, and which of those are required; every measure kind is a key.
-          propertyNames: { $ref: '#/components/schemas/VocabularyMeasureKind' }
+          propertyNames: { $ref: './common.yaml#/components/schemas/MeasureKind' }
           additionalProperties: { $ref: '#/components/schemas/VocabularyComponentRoleRequirements' }
         valueNullBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [exclude, zero] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetValueNullBehavior' } } }
         negativeWeightBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [allow, exclude] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetNegativeWeightBehavior' } } }
         emptySetBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['null', zero] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetEmptySetBehavior' } } }
         bridgeFactorBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [ignore, value] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetBridgeFactorBehavior' } } }
         bridgeAllocationBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [apply, ignore] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetBridgeAllocationBehavior' } } }
         totalBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [recompute, sum_children] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetTotalBehavior' } } }
         roundingMode:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [half_even, half_up, down, up, truncate] } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/RoundingMode' } } }
         observationSelection:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [all, first_in_period, last_in_period, at_start, at_end] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetObservationSelection' } } }
         valueTimeRole:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [point, interval_open, interval_close] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetValueTimeRole' } } }
         boundaryMatch:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [exact, on_or_before, strictly_before] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetBoundaryMatch' } } }
         durationUnit:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [calendar_day, elapsed_second] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetDurationUnit' } } }
         partialIntervalBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [exact_only, uniform_estimate] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetPartialIntervalBehavior' } } }
         missingPeriodBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['null', zero] } } }
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetMissingPeriodBehavior' } } }
         expressionLanguageVersion:
           type: array
           description: Grammar versions a dataset version's expressions may declare.
@@ -783,43 +783,43 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [many_to_one, many_to_many] } } }
+              - { required: [value], properties: { value: { $ref: './mappings.yaml#/components/schemas/MappingCardinality' } } }
         allocationMode:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [none, partition, replicate] } } }
+              - { required: [value], properties: { value: { $ref: './mappings.yaml#/components/schemas/MappingAllocationMode' } } }
         sourceSelection:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [member, descendants] } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/SourceSelection' } } }
         formulaLanguageVersion:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['1.0', '1.1', '1.2'] } } }
+              - { required: [value], properties: { value: { $ref: './models.yaml#/components/schemas/ModelFormulaLanguage' } } }
         attributionMethod:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [shapley, sequential] } } }
+              - { required: [value], properties: { value: { $ref: './models.yaml#/components/schemas/AttributionMethod' } } }
         parameterValueType:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [number, text] } } }
+              - { required: [value], properties: { value: { $ref: './models.yaml#/components/schemas/ModelParameterValueType' } } }
         variableMissingBehavior:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: ['null', zero] } } }
+              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/VariableMissingBehavior' } } }
         dayCountConvention:
           type: array
           items:
@@ -836,52 +836,52 @@ components:
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [bridge, direct] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportMappingMethod' } } }
         selectionScope:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [exact, descendants] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportSelectionScope' } } }
         columnValueKind:
           type: array
           description: What a report column evaluates.
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [variable, calculated] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportColumnValueKind' } } }
         subtotalPosition:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [above, below] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportSubtotalPosition' } } }
         styleRole:
           type: array
           description: The row role a report style applies to by default.
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [header, subtotal, total, detail, formula] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportStyleRole' } } }
         fontWeight:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [normal, medium, semibold, bold] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportFontWeight' } } }
         borderStyle:
           type: array
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [none, thin, medium, thick, double] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportBorderStyle' } } }
         layout:
           type: array
           description: Report layouts.
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { type: string, enum: [statement, list] } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportLayout' } } }
         provider:
           type: array
           description: Registered tenant database providers, the values of a directory entry's `providerId`.
@@ -891,30 +891,6 @@ components:
               - { required: [value], properties: { value: { $ref: '#/components/schemas/VocabularyProvider' } } }
 
     # Enumerations that more than one schema of this file reads.
-
-    VocabularyAssumptionSetStatus:
-      type: string
-      enum: [active, historical]
-
-    VocabularyDimensionKind:
-      type: string
-      enum: [categorical, hierarchical, range, time]
-
-    VocabularyDimensionPurpose:
-      type: string
-      enum: [analytical, report]
-
-    VocabularyDefinitionOrigin:
-      type: string
-      enum: [system, user]
-
-    VocabularyMeasureKind:
-      type: string
-      enum: [aggregate, weighted_sum, weighted_average, period_average, formula, specialized]
-
-    VocabularyComponentRole:
-      type: string
-      enum: [value, weight, period_days, numerator, denominator]
 
     VocabularyProvider:
       type: string
@@ -927,7 +903,7 @@ components:
         type: object
         required: [role, required]
         properties:
-          role: { $ref: '#/components/schemas/VocabularyComponentRole' }
+          role: { $ref: './common.yaml#/components/schemas/ComponentRole' }
           required: { type: boolean }
 
     # ───────────── System tenant directory ─────────────

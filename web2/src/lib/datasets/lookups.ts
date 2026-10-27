@@ -1,27 +1,27 @@
 import type { Id, VersionStatus, VocabularyTerm } from '@/lib/api/contract'
 import type {
   DatasetAggregationFunction,
-  DatasetBindingKind,
+  BindingKind,
   DatasetBoundaryMatch,
   DatasetBridgeAllocationBehavior,
   DatasetBridgeFactorBehavior,
-  DatasetComponentRole,
+  ComponentRole,
   DatasetCumulativeOrigin,
   DatasetDataType,
   DatasetDurationUnit,
   DatasetEmptySetBehavior,
   DatasetFieldSourceKind,
   DatasetGrainKind,
-  DatasetMeasureKind,
+  MeasureKind,
   DatasetMissingPeriodBehavior,
   DatasetNegativeWeightBehavior,
   DatasetObservationKind,
   DatasetObservationSelection,
   DatasetPartialIntervalBehavior,
   DatasetPeriodAlignment,
-  DatasetPeriodicity,
+  Periodicity,
   DatasetRaggedBehavior,
-  DatasetRoundingMode,
+  RoundingMode,
   DatasetSourceObjectKind,
   DatasetTimeValueType,
   DatasetTotalBehavior,
@@ -42,26 +42,26 @@ export interface Vocabularies {
   fieldSourceKind: VocabularyTerm<DatasetFieldSourceKind>[]
   dataType: VocabularyTerm<DatasetDataType>[]
   grainKind: VocabularyTerm<DatasetGrainKind>[]
-  bindingKind: VocabularyTerm<DatasetBindingKind>[]
+  bindingKind: VocabularyTerm<BindingKind>[]
   raggedBehavior: VocabularyTerm<DatasetRaggedBehavior>[]
   periodAlignment: VocabularyTerm<DatasetPeriodAlignment>[]
   unmappedBehavior: VocabularyTerm<DatasetUnmappedBehavior>[]
   timeValueType: VocabularyTerm<DatasetTimeValueType>[]
   observationKind: VocabularyTerm<DatasetObservationKind>[]
-  periodicity: VocabularyTerm<DatasetPeriodicity>[]
+  periodicity: VocabularyTerm<Periodicity>[]
   cumulativeOrigin: VocabularyTerm<DatasetCumulativeOrigin>[]
-  measureKind: VocabularyTerm<DatasetMeasureKind>[]
+  measureKind: VocabularyTerm<MeasureKind>[]
   aggregationFunction: VocabularyTerm<DatasetAggregationFunction>[]
-  componentRole: VocabularyTerm<DatasetComponentRole>[]
+  componentRole: VocabularyTerm<ComponentRole>[]
   /** Which component roles each measure kind reads, and which of those are required. */
-  componentRolesByKind: Record<DatasetMeasureKind, { role: DatasetComponentRole; required: boolean }[]>
+  componentRolesByKind: Record<MeasureKind, { role: ComponentRole; required: boolean }[]>
   valueNullBehavior: VocabularyTerm<DatasetValueNullBehavior>[]
   negativeWeightBehavior: VocabularyTerm<DatasetNegativeWeightBehavior>[]
   emptySetBehavior: VocabularyTerm<DatasetEmptySetBehavior>[]
   bridgeFactorBehavior: VocabularyTerm<DatasetBridgeFactorBehavior>[]
   bridgeAllocationBehavior: VocabularyTerm<DatasetBridgeAllocationBehavior>[]
   totalBehavior: VocabularyTerm<DatasetTotalBehavior>[]
-  roundingMode: VocabularyTerm<DatasetRoundingMode>[]
+  roundingMode: VocabularyTerm<RoundingMode>[]
   observationSelection: VocabularyTerm<DatasetObservationSelection>[]
   valueTimeRole: VocabularyTerm<DatasetValueTimeRole>[]
   boundaryMatch: VocabularyTerm<DatasetBoundaryMatch>[]

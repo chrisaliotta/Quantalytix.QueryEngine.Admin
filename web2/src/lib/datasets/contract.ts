@@ -1,7 +1,7 @@
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, DeleteCheck, Id, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
+import type { ApiResult, BindingKind, ComponentRole, DeleteCheck, Id, MeasureKind, Periodicity, RoundingMode, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
 
-export type { ApiResult, DeleteCheck, Id, Problem, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
+export type { ApiResult, BindingKind, ComponentRole, DeleteBlocker, DeleteCheck, Id, MeasureKind, Periodicity, Problem, RoundingMode, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
 
 /**
  * Business contract for the dataset manager. Every type mirrors the schema of the same name in
@@ -18,24 +18,19 @@ export type DatasetSourceObjectKind = 'table' | 'view'
 export type DatasetFieldSourceKind = 'column' | 'json_path' | 'expression'
 export type DatasetDataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
 export type DatasetGrainKind = 'row' | 'series'
-export type DatasetBindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 export type DatasetRaggedBehavior = 'self' | 'exclude'
 export type DatasetPeriodAlignment = 'observation' | 'start' | 'end'
 export type DatasetUnmappedBehavior = 'exclude' | 'unknown'
 export type DatasetTimeValueType = 'date' | 'timestamp'
 export type DatasetObservationKind = 'instant' | 'snapshot' | 'interval'
-export type DatasetPeriodicity = 'day' | 'month' | 'quarter' | 'year'
 export type DatasetCumulativeOrigin = 'output_range_start' | 'fixed_start'
-export type DatasetMeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized'
 export type DatasetAggregationFunction = 'sum' | 'avg' | 'min' | 'max' | 'count' | 'count_distinct'
-export type DatasetComponentRole = 'value' | 'weight' | 'period_days' | 'numerator' | 'denominator'
 export type DatasetValueNullBehavior = 'exclude' | 'zero'
 export type DatasetNegativeWeightBehavior = 'allow' | 'exclude'
 export type DatasetEmptySetBehavior = 'null' | 'zero'
 export type DatasetBridgeFactorBehavior = 'ignore' | 'value'
 export type DatasetBridgeAllocationBehavior = 'apply' | 'ignore'
 export type DatasetTotalBehavior = 'recompute' | 'sum_children'
-export type DatasetRoundingMode = 'half_up' | 'half_even' | 'down' | 'up' | 'truncate'
 export type DatasetObservationSelection = 'all' | 'first_in_period' | 'last_in_period' | 'at_start' | 'at_end'
 export type DatasetValueTimeRole = 'point' | 'interval_open' | 'interval_close'
 export type DatasetBoundaryMatch = 'exact' | 'on_or_before' | 'strictly_before'
@@ -228,15 +223,15 @@ export interface DatasetTimeBinding {
   sourceTimeZone: string | null
   defaultQueryTimeZone: string
   observationKind: DatasetObservationKind
-  nativePeriodicity: DatasetPeriodicity | null
+  nativePeriodicity: Periodicity | null
   intervalEndFieldId: Id | null
-  allowedPeriodicities: DatasetPeriodicity[]
+  allowedPeriodicities: Periodicity[]
   cumulativeOrigin: DatasetCumulativeOrigin
   cumulativeFixedStart: string | null
 }
 
 export interface DatasetBindingDefinition {
-  bindingKind: DatasetBindingKind
+  bindingKind: BindingKind
   /** Non-time bindings: the role requests address the binding by. */
   dimensionRoleId: Id | null
   /** Time bindings: the time-kind dimension. */
@@ -268,7 +263,7 @@ export interface DatasetBindingInput extends DatasetBindingDefinition {
 /* ───────────────────────── Measures ───────────────────────── */
 
 export interface DatasetMeasureComponent {
-  role: DatasetComponentRole
+  role: ComponentRole
   fieldId: Id
 }
 
@@ -288,7 +283,7 @@ export interface DatasetMeasureDefinition {
   key: string
   displayName: string
   isEnabled: boolean
-  measureKind: DatasetMeasureKind
+  measureKind: MeasureKind
   aggregationFunction: DatasetAggregationFunction | null
   expressionText: string | null
   implementationKey: string | null
@@ -305,7 +300,7 @@ export interface DatasetMeasureDefinition {
   outputDataType: DatasetDataType
   outputPrecision: number | null
   outputScale: number | null
-  roundingMode: DatasetRoundingMode
+  roundingMode: RoundingMode
   unitKey: string | null
   accumulatorPrecision: number
   accumulatorScale: number

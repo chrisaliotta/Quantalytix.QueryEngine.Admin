@@ -3,15 +3,13 @@
  * api/openapi/contract/models.yaml.
  */
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, DeleteCheck, Id } from '@/lib/api/contract'
+import type { ApiResult, DeleteCheck, Id, RoundingMode, VariableMissingBehavior } from '@/lib/api/contract'
 
-export type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, DeleteCheck, Id, Problem, Violation } from '@/lib/api/contract'
+export type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, DeleteCheck, Id, Problem, RoundingMode, VariableMissingBehavior, Violation } from '@/lib/api/contract'
 
 export type ModelFormulaLanguage = '1.0' | '1.1' | '1.2'
 export type AttributionMethod = 'shapley' | 'sequential'
-export type ModelMissingBehavior = 'null' | 'zero'
 export type ModelParameterValueType = 'number' | 'text'
-export type ModelRoundingMode = 'half_even' | 'half_up' | 'down' | 'up' | 'truncate'
 export type ModelOutputDataType = 'decimal' | 'int64' | 'int32'
 
 export interface CalcModel {
@@ -31,7 +29,7 @@ export interface ModelVariable {
   displayName: string
   displayFormat: string
   unitKey: string | null
-  missingBehavior: ModelMissingBehavior
+  missingBehavior: VariableMissingBehavior
 }
 
 export interface ModelMeasure {
@@ -41,7 +39,7 @@ export interface ModelMeasure {
   outputDataType: ModelOutputDataType
   outputPrecision: number | null
   outputScale: number | null
-  roundingMode: ModelRoundingMode | null
+  roundingMode: RoundingMode | null
   unitKey: string | null
   displayFormat: string
 }
@@ -146,7 +144,6 @@ export type ModelRuleCode =
   | 'attribution_references_resolve'
   | 'attribution_drivers'
   | 'attribution_weight_variable'
-  | 'model_not_in_use'
 
 /**
  * Edits are staged per model (one change set per model) and refused by preview when they introduce a model-rule or

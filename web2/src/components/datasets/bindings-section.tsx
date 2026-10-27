@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useCatalog, useDatasetsApi, usePublishedMembers, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { DatasetBindingInput, DatasetBinding, DatasetVersion, DatasetPeriodicity, DatasetTimeBinding, Problem } from '@/lib/datasets/contract'
+import type { DatasetBindingInput, DatasetBinding, DatasetVersion, Periodicity, DatasetTimeBinding, Problem } from '@/lib/datasets/contract'
 import type { TenantCatalog } from '@/lib/datasets/lookups'
 import { cn } from '@/lib/utils'
 import type { SectionProps } from './dataset-detail'
@@ -26,7 +26,7 @@ import {
   useApiCall,
 } from './shared'
 
-const PERIOD_ORDER: DatasetPeriodicity[] = ['day', 'month', 'quarter', 'year']
+const PERIOD_ORDER: Periodicity[] = ['day', 'month', 'quarter', 'year']
 
 export function bindingDimensionId(b: Pick<DatasetBinding, 'bindingKind' | 'dimensionId' | 'dimensionRoleId'>, catalog: TenantCatalog | undefined) {
   if (b.bindingKind === 'time') return b.dimensionId

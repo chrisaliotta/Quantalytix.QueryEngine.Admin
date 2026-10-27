@@ -445,7 +445,7 @@ paths:
     get:
       operationId: checkDeleteDataset
       summary: Tell whether a dataset can be deleted, and why not
-      description: Never writes. Reasons carry the codes `dataset_version_not_deletable` (a version is published or retired) and `dataset_in_release` (a release lists the dataset).
+      description: Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and `referenced_by_release` (a release lists the dataset).
       tags:
         - datasets
       responses:
@@ -845,7 +845,7 @@ paths:
           in: query
           required: true
           schema:
-            $ref: '#/components/schemas/DimensionOrigin'
+            $ref: '#/components/schemas/DefinitionOrigin'
       responses:
         '200':
           description: The list items, each with its profile, roles and version summaries.
@@ -1447,7 +1447,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MappingFreezeInput'
+              $ref: '#/components/schemas/FreezeInput'
       responses:
         '200':
           description: Frozen; `live` is the new live version.
@@ -1732,7 +1732,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BridgeFreezeInput'
+              $ref: '#/components/schemas/FreezeInput'
       responses:
         '200':
           description: Frozen; `live` is the new live version.
@@ -2427,7 +2427,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: A report reads the model; `violations` carry `model_not_in_use` per report.
+          description: A report reads the model; `violations` carry `referenced_by_report` per report.
   /api/tenants/{tenantId}/calculation-models/{modelId}/delete-check:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -2796,7 +2796,7 @@ components:
     DottedKey:
       type: string
       pattern: ^[A-Za-z][A-Za-z0-9_.]*$
-      description: Natural key of a mapping set or bridge; also allows `.` (OI-29).
+      description: Natural key of a dataset, calculation model, report, mapping set or bridge; also allows `.`, matching the seed (`bank.balance_monthly`, `bank.margin_model`, `bank.margin_statement`) and report-derived bridge keys (OI-29).
     Timestamp:
       type: string
       format: date-time
@@ -2808,6 +2808,79 @@ components:
         - validated
         - published
         - retired
+    DimensionKind:
+      type: string
+      enum:
+        - categorical
+        - hierarchical
+        - range
+        - time
+    DimensionPurpose:
+      type: string
+      enum:
+        - analytical
+        - report
+    DefinitionOrigin:
+      type: string
+      enum:
+        - system
+        - user
+    AssumptionSetStatus:
+      type: string
+      enum:
+        - active
+        - historical
+    BindingKind:
+      type: string
+      enum:
+        - direct
+        - mapped
+        - range
+        - bridge
+        - time
+    Periodicity:
+      type: string
+      enum:
+        - day
+        - month
+        - quarter
+        - year
+    MeasureKind:
+      type: string
+      enum:
+        - aggregate
+        - weighted_sum
+        - weighted_average
+        - period_average
+        - formula
+        - specialized
+    ComponentRole:
+      type: string
+      enum:
+        - value
+        - weight
+        - period_days
+        - numerator
+        - denominator
+    RoundingMode:
+      type: string
+      enum:
+        - half_even
+        - half_up
+        - down
+        - up
+        - truncate
+    SourceSelection:
+      type: string
+      enum:
+        - member
+        - descendants
+      description: '`descendants` is used only by report bridges and report rules (B8, OI-28).'
+    VariableMissingBehavior:
+      type: string
+      enum:
+        - 'null'
+        - zero
     Problem:
       type: object
       description: The one error body (`application/problem+json`) for every 4xx and 5xx response (OI-06). 400 carries `errors`; 409 carries `violations` for delete blockers and `detail` otherwise; 422 carries `violations`; 401, 403 and 404 carry the title only; 500 carries `traceId`.
@@ -2903,7 +2976,39 @@ components:
         reasons:
           type: array
           items:
-            $ref: '#/components/schemas/Violation'
+            $ref: '#/components/schemas/DeleteBlocker'
+    DeleteBlocker:
+      description: A reason a delete is refused; a `Violation` whose code is a `DeleteBlockerCode`.
+      allOf:
+        - $ref: '#/components/schemas/Violation'
+        - type: object
+          properties:
+            code:
+              $ref: '#/components/schemas/DeleteBlockerCode'
+    DeleteBlockerCode:
+      type: string
+      description: One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads the target; the other codes name a state of the target itself.
+      enum:
+        - not_removable
+        - system_dimension
+        - not_draft
+        - live_version
+        - has_published_versions
+        - has_children
+        - required_by_profile
+        - assigned_by_bands
+        - named_by_consumers
+        - owned_by_report
+        - referenced_by_member
+        - referenced_by_dataset_binding
+        - referenced_by_mapping_set
+        - referenced_by_bridge
+        - referenced_by_calculation_dimension
+        - referenced_by_report_scenario
+        - referenced_by_report_source
+        - referenced_by_assumption_set
+        - referenced_by_release
+        - referenced_by_report
     ValidationReport:
       type: object
       description: Answer of a read-only `check`; never writes.
@@ -2958,6 +3063,218 @@ components:
           description: Temporary id (`tmp:<uuid>`) to the real id of each item the commit created.
           additionalProperties:
             $ref: '#/components/schemas/Id'
+    FreezeInput:
+      type: object
+      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
+      required:
+        - note
+      properties:
+        note:
+          type:
+            - string
+            - 'null'
+          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
+    FreezeResult:
+      type: object
+      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and errors), which is why the specializations declare it nullable.'
+      required:
+        - report
+        - live
+      properties:
+        report:
+          $ref: '#/components/schemas/ValidationReport'
+        live:
+          description: The new live version.
+    Grouping:
+      description: How a role's members group.
+      oneOf:
+        - $ref: '#/components/schemas/GroupingMember'
+        - $ref: '#/components/schemas/GroupingLevel'
+        - $ref: '#/components/schemas/GroupingAncestor'
+        - $ref: '#/components/schemas/GroupingDepth'
+      discriminator:
+        propertyName: mode
+        mapping:
+          member: '#/components/schemas/GroupingMember'
+          level: '#/components/schemas/GroupingLevel'
+          ancestor: '#/components/schemas/GroupingAncestor'
+          depth: '#/components/schemas/GroupingDepth'
+    GroupingMember:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          const: member
+    GroupingLevel:
+      type: object
+      required:
+        - mode
+        - levelKey
+      properties:
+        mode:
+          const: level
+        levelKey:
+          type: string
+    GroupingAncestor:
+      type: object
+      required:
+        - mode
+        - memberKey
+      properties:
+        mode:
+          const: ancestor
+        memberKey:
+          type: string
+    GroupingDepth:
+      type: object
+      required:
+        - mode
+        - depth
+      properties:
+        mode:
+          const: depth
+        depth:
+          type: integer
+          minimum: 0
+    FilterNode:
+      description: The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and `source_filter_json`. A dimension operand's grouping uses `Grouping`; the server serializes it into the engine's shape (OI-54).
+      oneOf:
+        - $ref: '#/components/schemas/FilterLogical'
+        - $ref: '#/components/schemas/FilterNot'
+        - $ref: '#/components/schemas/FilterComparison'
+        - $ref: '#/components/schemas/FilterIn'
+        - $ref: '#/components/schemas/FilterNullCheck'
+    FilterLogical:
+      type: object
+      required:
+        - operator
+        - operands
+      properties:
+        operator:
+          type: string
+          enum:
+            - and
+            - or
+        operands:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FilterNode'
+    FilterNot:
+      type: object
+      required:
+        - operator
+        - operand
+      properties:
+        operator:
+          const: not
+        operand:
+          $ref: '#/components/schemas/FilterNode'
+    FilterComparison:
+      type: object
+      required:
+        - operator
+        - left
+        - right
+      properties:
+        operator:
+          type: string
+          enum:
+            - eq
+            - ne
+            - lt
+            - le
+            - gt
+            - ge
+        left:
+          $ref: '#/components/schemas/FilterOperand'
+        right:
+          $ref: '#/components/schemas/FilterOperand'
+    FilterIn:
+      type: object
+      required:
+        - operator
+        - left
+        - values
+      properties:
+        operator:
+          const: in
+        left:
+          $ref: '#/components/schemas/FilterOperand'
+        values:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FilterOperand'
+    FilterNullCheck:
+      type: object
+      required:
+        - operator
+        - operand
+      properties:
+        operator:
+          type: string
+          enum:
+            - isNull
+            - isNotNull
+        operand:
+          $ref: '#/components/schemas/FilterOperand'
+    FilterOperand:
+      oneOf:
+        - $ref: '#/components/schemas/FilterReferenceOperand'
+        - $ref: '#/components/schemas/FilterDimensionOperand'
+        - $ref: '#/components/schemas/FilterLiteralOperand'
+      discriminator:
+        propertyName: type
+        mapping:
+          field: '#/components/schemas/FilterReferenceOperand'
+          measure: '#/components/schemas/FilterReferenceOperand'
+          parameter: '#/components/schemas/FilterReferenceOperand'
+          dimension: '#/components/schemas/FilterDimensionOperand'
+          literal: '#/components/schemas/FilterLiteralOperand'
+    FilterReferenceOperand:
+      type: object
+      required:
+        - type
+        - id
+      properties:
+        type:
+          type: string
+          enum:
+            - field
+            - measure
+            - parameter
+        id:
+          type: string
+          description: The field, measure or parameter key.
+    FilterDimensionOperand:
+      type: object
+      required:
+        - type
+        - id
+      properties:
+        type:
+          const: dimension
+        id:
+          type: string
+          description: The calculation dimension key.
+        grouping:
+          $ref: '#/components/schemas/Grouping'
+    FilterLiteralOperand:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          const: literal
+        value:
+          type:
+            - string
+            - number
+            - boolean
+            - 'null'
     VocabularyTerm:
       type: object
       required:
@@ -3186,11 +3503,11 @@ components:
         displayName:
           type: string
         kind:
-          $ref: '#/components/schemas/VocabularyDimensionKind'
+          $ref: '#/components/schemas/DimensionKind'
         purpose:
-          $ref: '#/components/schemas/VocabularyDimensionPurpose'
+          $ref: '#/components/schemas/DimensionPurpose'
         origin:
-          $ref: '#/components/schemas/VocabularyDefinitionOrigin'
+          $ref: '#/components/schemas/DefinitionOrigin'
         isEnabled:
           type: boolean
         publishedVersionId:
@@ -3334,7 +3651,7 @@ components:
         displayName:
           type: string
         status:
-          $ref: '#/components/schemas/VocabularyAssumptionSetStatus'
+          $ref: '#/components/schemas/AssumptionSetStatus'
     PublishedMembers:
       type: object
       description: The members of a dimension's published version, fetched per picker.
@@ -3456,7 +3773,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyAssumptionSetStatus'
+                    $ref: '#/components/schemas/AssumptionSetStatus'
         dataType:
           type: array
           items:
@@ -3466,17 +3783,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - boolean
-                      - int32
-                      - int64
-                      - decimal
-                      - string
-                      - date
-                      - datetime
-                      - timestamp
-                      - json
+                    $ref: '#/components/schemas/DatasetDataType'
         measureOutputDataType:
           type: array
           description: Every `dataType` except `json`.
@@ -3506,10 +3813,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - table
-                      - view
+                    $ref: '#/components/schemas/DatasetSourceObjectKind'
         fieldSourceKind:
           type: array
           items:
@@ -3519,11 +3823,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - column
-                      - json_path
-                      - expression
+                    $ref: '#/components/schemas/DatasetFieldSourceKind'
         grainKind:
           type: array
           items:
@@ -3533,10 +3833,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - row
-                      - series
+                    $ref: '#/components/schemas/DatasetGrainKind'
         dimensionKind:
           type: array
           items:
@@ -3546,7 +3843,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyDimensionKind'
+                    $ref: '#/components/schemas/DimensionKind'
         dimensionPurpose:
           type: array
           items:
@@ -3556,7 +3853,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyDimensionPurpose'
+                    $ref: '#/components/schemas/DimensionPurpose'
         definitionOrigin:
           type: array
           items:
@@ -3566,7 +3863,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyDefinitionOrigin'
+                    $ref: '#/components/schemas/DefinitionOrigin'
         rangeDataType:
           type: array
           items:
@@ -3576,11 +3873,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - decimal
-                      - date
-                      - datetime
+                    $ref: '#/components/schemas/RangeDataType'
         editPolicy:
           type: array
           description: How far a dimension profile lets users edit a profiled dimension.
@@ -3591,11 +3884,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - open
-                      - extend
-                      - locked
+                    $ref: '#/components/schemas/DimensionEditPolicy'
         bindingKind:
           type: array
           items:
@@ -3605,13 +3894,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - direct
-                      - mapped
-                      - range
-                      - bridge
-                      - time
+                    $ref: '#/components/schemas/BindingKind'
         groupingMode:
           type: array
           items:
@@ -3650,11 +3933,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - observation
-                      - start
-                      - end
+                    $ref: '#/components/schemas/DatasetPeriodAlignment'
         unmappedBehavior:
           type: array
           items:
@@ -3678,10 +3957,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - date
-                      - timestamp
+                    $ref: '#/components/schemas/DatasetTimeValueType'
         observationKind:
           type: array
           items:
@@ -3691,11 +3967,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - instant
-                      - snapshot
-                      - interval
+                    $ref: '#/components/schemas/DatasetObservationKind'
         periodicity:
           type: array
           items:
@@ -3705,12 +3977,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - day
-                      - month
-                      - quarter
-                      - year
+                    $ref: '#/components/schemas/Periodicity'
         cumulativeOrigin:
           type: array
           items:
@@ -3720,10 +3987,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - output_range_start
-                      - fixed_start
+                    $ref: '#/components/schemas/DatasetCumulativeOrigin'
         measureKind:
           type: array
           items:
@@ -3733,7 +3997,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyMeasureKind'
+                    $ref: '#/components/schemas/MeasureKind'
         aggregationFunction:
           type: array
           items:
@@ -3743,14 +4007,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - sum
-                      - avg
-                      - min
-                      - max
-                      - count
-                      - count_distinct
+                    $ref: '#/components/schemas/DatasetAggregationFunction'
         componentRole:
           type: array
           items:
@@ -3760,12 +4017,12 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/VocabularyComponentRole'
+                    $ref: '#/components/schemas/ComponentRole'
         componentRolesByKind:
           type: object
           description: Which component roles each measure kind reads, and which of those are required; every measure kind is a key.
           propertyNames:
-            $ref: '#/components/schemas/VocabularyMeasureKind'
+            $ref: '#/components/schemas/MeasureKind'
           additionalProperties:
             $ref: '#/components/schemas/VocabularyComponentRoleRequirements'
         valueNullBehavior:
@@ -3777,10 +4034,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - exclude
-                      - zero
+                    $ref: '#/components/schemas/DatasetValueNullBehavior'
         negativeWeightBehavior:
           type: array
           items:
@@ -3790,10 +4044,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - allow
-                      - exclude
+                    $ref: '#/components/schemas/DatasetNegativeWeightBehavior'
         emptySetBehavior:
           type: array
           items:
@@ -3803,10 +4054,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - 'null'
-                      - zero
+                    $ref: '#/components/schemas/DatasetEmptySetBehavior'
         bridgeFactorBehavior:
           type: array
           items:
@@ -3816,10 +4064,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - ignore
-                      - value
+                    $ref: '#/components/schemas/DatasetBridgeFactorBehavior'
         bridgeAllocationBehavior:
           type: array
           items:
@@ -3829,10 +4074,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - apply
-                      - ignore
+                    $ref: '#/components/schemas/DatasetBridgeAllocationBehavior'
         totalBehavior:
           type: array
           items:
@@ -3842,10 +4084,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - recompute
-                      - sum_children
+                    $ref: '#/components/schemas/DatasetTotalBehavior'
         roundingMode:
           type: array
           items:
@@ -3855,13 +4094,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - half_even
-                      - half_up
-                      - down
-                      - up
-                      - truncate
+                    $ref: '#/components/schemas/RoundingMode'
         observationSelection:
           type: array
           items:
@@ -3871,13 +4104,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - all
-                      - first_in_period
-                      - last_in_period
-                      - at_start
-                      - at_end
+                    $ref: '#/components/schemas/DatasetObservationSelection'
         valueTimeRole:
           type: array
           items:
@@ -3887,11 +4114,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - point
-                      - interval_open
-                      - interval_close
+                    $ref: '#/components/schemas/DatasetValueTimeRole'
         boundaryMatch:
           type: array
           items:
@@ -3901,11 +4124,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - exact
-                      - on_or_before
-                      - strictly_before
+                    $ref: '#/components/schemas/DatasetBoundaryMatch'
         durationUnit:
           type: array
           items:
@@ -3915,10 +4134,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - calendar_day
-                      - elapsed_second
+                    $ref: '#/components/schemas/DatasetDurationUnit'
         partialIntervalBehavior:
           type: array
           items:
@@ -3928,10 +4144,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - exact_only
-                      - uniform_estimate
+                    $ref: '#/components/schemas/DatasetPartialIntervalBehavior'
         missingPeriodBehavior:
           type: array
           items:
@@ -3941,10 +4154,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - 'null'
-                      - zero
+                    $ref: '#/components/schemas/DatasetMissingPeriodBehavior'
         expressionLanguageVersion:
           type: array
           description: Grammar versions a dataset version's expressions may declare.
@@ -3964,10 +4174,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - many_to_one
-                      - many_to_many
+                    $ref: '#/components/schemas/MappingCardinality'
         allocationMode:
           type: array
           items:
@@ -3977,11 +4184,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - none
-                      - partition
-                      - replicate
+                    $ref: '#/components/schemas/MappingAllocationMode'
         sourceSelection:
           type: array
           items:
@@ -3991,10 +4194,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - member
-                      - descendants
+                    $ref: '#/components/schemas/SourceSelection'
         formulaLanguageVersion:
           type: array
           items:
@@ -4004,11 +4204,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - '1.0'
-                      - '1.1'
-                      - '1.2'
+                    $ref: '#/components/schemas/ModelFormulaLanguage'
         attributionMethod:
           type: array
           items:
@@ -4018,10 +4214,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - shapley
-                      - sequential
+                    $ref: '#/components/schemas/AttributionMethod'
         parameterValueType:
           type: array
           items:
@@ -4031,10 +4224,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - number
-                      - text
+                    $ref: '#/components/schemas/ModelParameterValueType'
         variableMissingBehavior:
           type: array
           items:
@@ -4044,10 +4234,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - 'null'
-                      - zero
+                    $ref: '#/components/schemas/VariableMissingBehavior'
         dayCountConvention:
           type: array
           items:
@@ -4079,10 +4266,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - bridge
-                      - direct
+                    $ref: '#/components/schemas/ReportMappingMethod'
         selectionScope:
           type: array
           items:
@@ -4092,10 +4276,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - exact
-                      - descendants
+                    $ref: '#/components/schemas/ReportSelectionScope'
         columnValueKind:
           type: array
           description: What a report column evaluates.
@@ -4106,10 +4287,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - variable
-                      - calculated
+                    $ref: '#/components/schemas/ReportColumnValueKind'
         subtotalPosition:
           type: array
           items:
@@ -4119,10 +4297,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - above
-                      - below
+                    $ref: '#/components/schemas/ReportSubtotalPosition'
         styleRole:
           type: array
           description: The row role a report style applies to by default.
@@ -4133,13 +4308,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - header
-                      - subtotal
-                      - total
-                      - detail
-                      - formula
+                    $ref: '#/components/schemas/ReportStyleRole'
         fontWeight:
           type: array
           items:
@@ -4149,12 +4318,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - normal
-                      - medium
-                      - semibold
-                      - bold
+                    $ref: '#/components/schemas/ReportFontWeight'
         borderStyle:
           type: array
           items:
@@ -4164,13 +4328,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - none
-                      - thin
-                      - medium
-                      - thick
-                      - double
+                    $ref: '#/components/schemas/ReportBorderStyle'
         layout:
           type: array
           description: Report layouts.
@@ -4181,10 +4339,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - statement
-                      - list
+                    $ref: '#/components/schemas/ReportLayout'
         provider:
           type: array
           description: Registered tenant database providers, the values of a directory entry's `providerId`.
@@ -4196,45 +4351,6 @@ components:
                 properties:
                   value:
                     $ref: '#/components/schemas/VocabularyProvider'
-    VocabularyAssumptionSetStatus:
-      type: string
-      enum:
-        - active
-        - historical
-    VocabularyDimensionKind:
-      type: string
-      enum:
-        - categorical
-        - hierarchical
-        - range
-        - time
-    VocabularyDimensionPurpose:
-      type: string
-      enum:
-        - analytical
-        - report
-    VocabularyDefinitionOrigin:
-      type: string
-      enum:
-        - system
-        - user
-    VocabularyMeasureKind:
-      type: string
-      enum:
-        - aggregate
-        - weighted_sum
-        - weighted_average
-        - period_average
-        - formula
-        - specialized
-    VocabularyComponentRole:
-      type: string
-      enum:
-        - value
-        - weight
-        - period_days
-        - numerator
-        - denominator
     VocabularyProvider:
       type: string
       enum:
@@ -4249,7 +4365,7 @@ components:
           - required
         properties:
           role:
-            $ref: '#/components/schemas/VocabularyComponentRole'
+            $ref: '#/components/schemas/ComponentRole'
           required:
             type: boolean
     TenantDirectoryEntry:
@@ -4374,14 +4490,6 @@ components:
       enum:
         - row
         - series
-    DatasetBindingKind:
-      type: string
-      enum:
-        - direct
-        - mapped
-        - range
-        - bridge
-        - time
     DatasetRaggedBehavior:
       type: string
       enum:
@@ -4409,27 +4517,11 @@ components:
         - instant
         - snapshot
         - interval
-    DatasetPeriodicity:
-      type: string
-      enum:
-        - day
-        - month
-        - quarter
-        - year
     DatasetCumulativeOrigin:
       type: string
       enum:
         - output_range_start
         - fixed_start
-    DatasetMeasureKind:
-      type: string
-      enum:
-        - aggregate
-        - weighted_sum
-        - weighted_average
-        - period_average
-        - formula
-        - specialized
     DatasetAggregationFunction:
       type: string
       enum:
@@ -4439,14 +4531,6 @@ components:
         - max
         - count
         - count_distinct
-    DatasetComponentRole:
-      type: string
-      enum:
-        - value
-        - weight
-        - period_days
-        - numerator
-        - denominator
     DatasetValueNullBehavior:
       type: string
       enum:
@@ -4477,14 +4561,6 @@ components:
       enum:
         - recompute
         - sum_children
-    DatasetRoundingMode:
-      type: string
-      enum:
-        - half_up
-        - half_even
-        - down
-        - up
-        - truncate
     DatasetObservationSelection:
       type: string
       enum:
@@ -4981,7 +5057,7 @@ components:
           $ref: '#/components/schemas/DatasetObservationKind'
         nativePeriodicity:
           oneOf:
-            - $ref: '#/components/schemas/DatasetPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
         intervalEndFieldId:
           type:
@@ -4990,7 +5066,7 @@ components:
         allowedPeriodicities:
           type: array
           items:
-            $ref: '#/components/schemas/DatasetPeriodicity'
+            $ref: '#/components/schemas/Periodicity'
         cumulativeOrigin:
           $ref: '#/components/schemas/DatasetCumulativeOrigin'
         cumulativeFixedStart:
@@ -5019,7 +5095,7 @@ components:
         - time
       properties:
         bindingKind:
-          $ref: '#/components/schemas/DatasetBindingKind'
+          $ref: '#/components/schemas/BindingKind'
         dimensionRoleId:
           type:
             - string
@@ -5097,7 +5173,7 @@ components:
         - fieldId
       properties:
         role:
-          $ref: '#/components/schemas/DatasetComponentRole'
+          $ref: '#/components/schemas/ComponentRole'
         fieldId:
           $ref: '#/components/schemas/Id'
     DatasetMeasureTimePolicy:
@@ -5174,7 +5250,7 @@ components:
         isEnabled:
           type: boolean
         measureKind:
-          $ref: '#/components/schemas/DatasetMeasureKind'
+          $ref: '#/components/schemas/MeasureKind'
         aggregationFunction:
           oneOf:
             - $ref: '#/components/schemas/DatasetAggregationFunction'
@@ -5227,7 +5303,7 @@ components:
             - integer
             - 'null'
         roundingMode:
-          $ref: '#/components/schemas/DatasetRoundingMode'
+          $ref: '#/components/schemas/RoundingMode'
         unitKey:
           type:
             - string
@@ -5548,25 +5624,6 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/DatasetVersion'
-    DimensionKind:
-      type: string
-      enum:
-        - categorical
-        - hierarchical
-        - range
-        - time
-      description: Fixed after creation (M1).
-    DimensionOrigin:
-      type: string
-      enum:
-        - system
-        - user
-    DimensionPurpose:
-      type: string
-      enum:
-        - analytical
-        - report
-      description: Report dimensions are refused by every write of this module and never listed (M8, OI-22).
     DimensionEditPolicy:
       type: string
       enum:
@@ -5580,14 +5637,6 @@ components:
         - decimal
         - date
         - datetime
-    DimensionPeriodicity:
-      type: string
-      enum:
-        - day
-        - month
-        - quarter
-        - year
-      description: Periodicity of a time dimension's level.
     DimensionTab:
       type: string
       enum:
@@ -5758,7 +5807,7 @@ components:
         kind:
           $ref: '#/components/schemas/DimensionKind'
         origin:
-          $ref: '#/components/schemas/DimensionOrigin'
+          $ref: '#/components/schemas/DefinitionOrigin'
         purpose:
           $ref: '#/components/schemas/DimensionPurpose'
         ownerReport:
@@ -5921,7 +5970,7 @@ components:
         periodicity:
           description: Time dimensions only.
           oneOf:
-            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
     DimensionMember:
       type: object
@@ -6104,28 +6153,6 @@ components:
         versionId:
           $ref: '#/components/schemas/Id'
           description: The live version 1.
-    FreezeInput:
-      type: object
-      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
-      required:
-        - note
-      properties:
-        note:
-          type:
-            - string
-            - 'null'
-          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
-    FreezeResult:
-      type: object
-      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. When a rule fails the freeze answers 422 instead and changes nothing.'
-      required:
-        - report
-        - live
-      properties:
-        report:
-          $ref: '#/components/schemas/ValidationReport'
-        live:
-          description: The new live version.
     DimensionFreezeResult:
       allOf:
         - $ref: '#/components/schemas/FreezeResult'
@@ -6134,7 +6161,9 @@ components:
             - live
           properties:
             live:
-              $ref: '#/components/schemas/DimensionVersionSummary'
+              oneOf:
+                - $ref: '#/components/schemas/DimensionVersionSummary'
+                - type: 'null'
     CreateDimensionInput:
       type: object
       required:
@@ -6257,7 +6286,7 @@ components:
           type: boolean
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/DimensionPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
     DimensionRoleInput:
       type: object
@@ -6556,12 +6585,6 @@ components:
         - partition
         - replicate
       description: '`many_to_one` allows `none` only; `many_to_many` allows `partition` or `replicate` (B5).'
-    MappingSourceSelection:
-      type: string
-      enum:
-        - member
-        - descendants
-      description: '`descendants` is used only by report bridges (B8, OI-28).'
     MappingDimensionRef:
       type: object
       description: A read-only slice of a dimension, enough to label it and to state which version keys resolve against.
@@ -6922,30 +6945,17 @@ components:
         memberKey:
           type: string
           minLength: 1
-    MappingFreezeInput:
-      type: object
-      required:
-        - note
-      properties:
-        note:
-          type:
-            - string
-            - 'null'
-          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
     MappingFreezeResult:
-      type: object
-      description: The rule report of the frozen version, and the new live version.
-      required:
-        - report
-        - live
-      properties:
-        report:
-          $ref: '#/components/schemas/ValidationReport'
-        live:
-          description: 'The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors).'
-          oneOf:
-            - $ref: '#/components/schemas/MappingVersionSummary'
-            - type: 'null'
+      allOf:
+        - $ref: '#/components/schemas/FreezeResult'
+        - type: object
+          required:
+            - live
+          properties:
+            live:
+              oneOf:
+                - $ref: '#/components/schemas/MappingVersionSummary'
+                - type: 'null'
     MappingSetUpdateOperation:
       type: object
       required:
@@ -7153,7 +7163,7 @@ components:
         allocationWeight:
           type: number
         sourceSelection:
-          $ref: '#/components/schemas/MappingSourceSelection'
+          $ref: '#/components/schemas/SourceSelection'
     BridgeVersionSummary:
       type: object
       required:
@@ -7364,32 +7374,19 @@ components:
         allocationWeight:
           type: number
         sourceSelection:
-          $ref: '#/components/schemas/MappingSourceSelection'
+          $ref: '#/components/schemas/SourceSelection'
           description: Accepted only on report bridges, written by the report editor; absent means `member` (OI-28).
-    BridgeFreezeInput:
-      type: object
-      required:
-        - note
-      properties:
-        note:
-          type:
-            - string
-            - 'null'
-          description: Why the version was frozen, e.g. `FY26 close` (OI-15).
     BridgeFreezeResult:
-      type: object
-      description: The rule report of the frozen version, and the new live version.
-      required:
-        - report
-        - live
-      properties:
-        report:
-          $ref: '#/components/schemas/ValidationReport'
-        live:
-          description: 'The new live version. Over HTTP a failed rule answers 422, so a 200 always carries it; the port turns the 422 into `live: null` (01, Results and errors).'
-          oneOf:
-            - $ref: '#/components/schemas/BridgeVersionSummary'
-            - type: 'null'
+      allOf:
+        - $ref: '#/components/schemas/FreezeResult'
+        - type: object
+          required:
+            - live
+          properties:
+            live:
+              oneOf:
+                - $ref: '#/components/schemas/BridgeVersionSummary'
+                - type: 'null'
     BridgeUpdateOperation:
       type: object
       required:
@@ -7844,14 +7841,6 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/ReleaseDetail'
-    ManifestBindingKind:
-      type: string
-      enum:
-        - direct
-        - mapped
-        - range
-        - bridge
-        - time
     ManifestBinding:
       type: object
       description: A binding of a dataset version, with the identities it resolves through.
@@ -7865,7 +7854,7 @@ components:
         displayName:
           type: string
         kind:
-          $ref: '#/components/schemas/ManifestBindingKind'
+          $ref: '#/components/schemas/BindingKind'
         dimensionId:
           $ref: '#/components/schemas/Id'
         mappingSetId:
@@ -8065,11 +8054,6 @@ components:
       description: Natural key of an assumption set, fixed after creation (R11); requests name the set by it.
       examples:
         - fy2026_q3_close
-    AssumptionSetStatus:
-      type: string
-      enum:
-        - active
-        - historical
     AssumptionSet:
       type: object
       description: One row of `qe_assumption_set`.
@@ -8357,24 +8341,11 @@ components:
       enum:
         - shapley
         - sequential
-    ModelMissingBehavior:
-      type: string
-      enum:
-        - 'null'
-        - zero
     ModelParameterValueType:
       type: string
       enum:
         - number
         - text
-    ModelRoundingMode:
-      type: string
-      enum:
-        - half_even
-        - half_up
-        - down
-        - up
-        - truncate
     ModelOutputDataType:
       type: string
       enum:
@@ -8438,7 +8409,7 @@ components:
             - string
             - 'null'
         missingBehavior:
-          $ref: '#/components/schemas/ModelMissingBehavior'
+          $ref: '#/components/schemas/VariableMissingBehavior'
     ModelMeasure:
       type: object
       description: A calculated measure (`qe_calculated_measure`); `formula` is `expression_text`.
@@ -8473,7 +8444,7 @@ components:
             - 'null'
         roundingMode:
           oneOf:
-            - $ref: '#/components/schemas/ModelRoundingMode'
+            - $ref: '#/components/schemas/RoundingMode'
             - type: 'null'
         unitKey:
           type:
@@ -8883,13 +8854,6 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/ModelDocument'
-    ReportPeriodicity:
-      type: string
-      enum:
-        - day
-        - month
-        - quarter
-        - year
     ReportLayout:
       type: string
       enum:
@@ -8920,16 +8884,6 @@ components:
       enum:
         - exact
         - descendants
-    ReportRuleSelection:
-      type: string
-      enum:
-        - member
-        - descendants
-    ReportMissingBehavior:
-      type: string
-      enum:
-        - 'null'
-        - zero
     ReportStyleRole:
       type: string
       enum:
@@ -8958,196 +8912,6 @@ components:
       enum:
         - variable
         - calculated
-    ReportGrouping:
-      description: How a role's members group.
-      oneOf:
-        - $ref: '#/components/schemas/ReportGroupingMember'
-        - $ref: '#/components/schemas/ReportGroupingLevel'
-        - $ref: '#/components/schemas/ReportGroupingAncestor'
-        - $ref: '#/components/schemas/ReportGroupingDepth'
-      discriminator:
-        propertyName: mode
-        mapping:
-          member: '#/components/schemas/ReportGroupingMember'
-          level: '#/components/schemas/ReportGroupingLevel'
-          ancestor: '#/components/schemas/ReportGroupingAncestor'
-          depth: '#/components/schemas/ReportGroupingDepth'
-    ReportGroupingMember:
-      type: object
-      required:
-        - mode
-      properties:
-        mode:
-          const: member
-    ReportGroupingLevel:
-      type: object
-      required:
-        - mode
-        - levelKey
-      properties:
-        mode:
-          const: level
-        levelKey:
-          type: string
-    ReportGroupingAncestor:
-      type: object
-      required:
-        - mode
-        - memberKey
-      properties:
-        mode:
-          const: ancestor
-        memberKey:
-          type: string
-    ReportGroupingDepth:
-      type: object
-      required:
-        - mode
-        - depth
-      properties:
-        mode:
-          const: depth
-        depth:
-          type: integer
-          minimum: 0
-    ReportFilterNode:
-      description: The query engine's structured `filterNode`, as the schema stores it in `default_filter_json` and `source_filter_json`. A dimension operand's grouping uses `ReportGrouping`; the server serializes it into the engine's shape (OI-54).
-      oneOf:
-        - $ref: '#/components/schemas/ReportFilterLogical'
-        - $ref: '#/components/schemas/ReportFilterNot'
-        - $ref: '#/components/schemas/ReportFilterComparison'
-        - $ref: '#/components/schemas/ReportFilterIn'
-        - $ref: '#/components/schemas/ReportFilterNullCheck'
-    ReportFilterLogical:
-      type: object
-      required:
-        - operator
-        - operands
-      properties:
-        operator:
-          type: string
-          enum:
-            - and
-            - or
-        operands:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/ReportFilterNode'
-    ReportFilterNot:
-      type: object
-      required:
-        - operator
-        - operand
-      properties:
-        operator:
-          const: not
-        operand:
-          $ref: '#/components/schemas/ReportFilterNode'
-    ReportFilterComparison:
-      type: object
-      required:
-        - operator
-        - left
-        - right
-      properties:
-        operator:
-          type: string
-          enum:
-            - eq
-            - ne
-            - lt
-            - le
-            - gt
-            - ge
-        left:
-          $ref: '#/components/schemas/ReportFilterOperand'
-        right:
-          $ref: '#/components/schemas/ReportFilterOperand'
-    ReportFilterIn:
-      type: object
-      required:
-        - operator
-        - left
-        - values
-      properties:
-        operator:
-          const: in
-        left:
-          $ref: '#/components/schemas/ReportFilterOperand'
-        values:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/ReportFilterOperand'
-    ReportFilterNullCheck:
-      type: object
-      required:
-        - operator
-        - operand
-      properties:
-        operator:
-          type: string
-          enum:
-            - isNull
-            - isNotNull
-        operand:
-          $ref: '#/components/schemas/ReportFilterOperand'
-    ReportFilterOperand:
-      oneOf:
-        - $ref: '#/components/schemas/ReportFilterReferenceOperand'
-        - $ref: '#/components/schemas/ReportFilterDimensionOperand'
-        - $ref: '#/components/schemas/ReportFilterLiteralOperand'
-      discriminator:
-        propertyName: type
-        mapping:
-          field: '#/components/schemas/ReportFilterReferenceOperand'
-          measure: '#/components/schemas/ReportFilterReferenceOperand'
-          parameter: '#/components/schemas/ReportFilterReferenceOperand'
-          dimension: '#/components/schemas/ReportFilterDimensionOperand'
-          literal: '#/components/schemas/ReportFilterLiteralOperand'
-    ReportFilterReferenceOperand:
-      type: object
-      required:
-        - type
-        - id
-      properties:
-        type:
-          type: string
-          enum:
-            - field
-            - measure
-            - parameter
-        id:
-          type: string
-          description: The field, measure or parameter key.
-    ReportFilterDimensionOperand:
-      type: object
-      required:
-        - type
-        - id
-      properties:
-        type:
-          const: dimension
-        id:
-          type: string
-          description: The calculation dimension key.
-        grouping:
-          $ref: '#/components/schemas/ReportGrouping'
-    ReportFilterLiteralOperand:
-      type: object
-      required:
-        - type
-        - value
-      properties:
-        type:
-          const: literal
-        value:
-          type:
-            - string
-            - number
-            - boolean
-            - 'null'
     ReportSummary:
       type: object
       required:
@@ -9178,7 +8942,7 @@ components:
           type: boolean
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
         profileCount:
           type: integer
@@ -9210,7 +8974,7 @@ components:
             - 'null'
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
         layout:
           $ref: '#/components/schemas/ReportLayout'
@@ -9222,7 +8986,7 @@ components:
         defaultFilter:
           description: Filter over calculation dimension keys.
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: '#/components/schemas/FilterNode'
             - type: 'null'
     ReportSettingsPatch:
       type: object
@@ -9240,7 +9004,7 @@ components:
             - 'null'
         periodicity:
           oneOf:
-            - $ref: '#/components/schemas/ReportPeriodicity'
+            - $ref: '#/components/schemas/Periodicity'
             - type: 'null'
         layout:
           $ref: '#/components/schemas/ReportLayout'
@@ -9250,7 +9014,7 @@ components:
             type: string
         defaultFilter:
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: '#/components/schemas/FilterNode'
             - type: 'null'
     ReportRow:
       type: object
@@ -9326,7 +9090,7 @@ components:
         itemKey:
           type: string
         selection:
-          $ref: '#/components/schemas/ReportRuleSelection'
+          $ref: '#/components/schemas/SourceSelection'
         factor:
           type: number
           description: The only number a rule carries; -1 on an item already included excludes it (OI-52).
@@ -9345,12 +9109,12 @@ components:
         filter:
           description: Filter over the dataset's filterable fields, applied before aggregation.
           oneOf:
-            - $ref: '#/components/schemas/ReportFilterNode'
+            - $ref: '#/components/schemas/FilterNode'
             - type: 'null'
         missingBehavior:
           description: Replaces the variable's own missing behavior for this source; null keeps the variable's.
           oneOf:
-            - $ref: '#/components/schemas/ReportMissingBehavior'
+            - $ref: '#/components/schemas/VariableMissingBehavior'
             - type: 'null'
     ReportSourceInput:
       type: object
@@ -9451,7 +9215,7 @@ components:
         roleId:
           $ref: '#/components/schemas/Id'
         grouping:
-          $ref: '#/components/schemas/ReportGrouping'
+          $ref: '#/components/schemas/Grouping'
         isGroupable:
           type: boolean
         isFilterable:

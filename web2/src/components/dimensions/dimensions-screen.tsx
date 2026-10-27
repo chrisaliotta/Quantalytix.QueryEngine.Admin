@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Segmented } from '@/components/report/shared/segmented'
 import { useDimensionList, useDimensionsApi } from '@/lib/dimensions/client'
 import { useAppNav, useSearchParam } from '@/lib/navigation'
-import { KIND_LABEL, type DimensionKind, type DimensionListItem, type DimensionOrigin } from '@/lib/dimensions/contract'
+import { KIND_LABEL, type DimensionKind, type DimensionListItem, type DefinitionOrigin } from '@/lib/dimensions/contract'
 import { useMappingCountsByDimension, type DimensionMappingCounts } from '@/lib/mappings/client'
 import { canHaveBridges, canHaveMappingSets } from '@/lib/mappings/contract'
 import { cn } from '@/lib/utils'
@@ -28,15 +28,15 @@ export function DimensionsScreen({ dimensionId }: { dimensionId: string | null }
   return <DimensionList />
 }
 
-const TABS: DimensionOrigin[] = ['user', 'system']
-const TAB_LABEL: Record<DimensionOrigin, string> = { user: 'User dimensions', system: 'System dimensions' }
+const TABS: DefinitionOrigin[] = ['user', 'system']
+const TAB_LABEL: Record<DefinitionOrigin, string> = { user: 'User dimensions', system: 'System dimensions' }
 
 type KindFilter = 'all' | DimensionKind
 type StatusFilter = 'any' | 'frozen' | 'disabled'
 
 function DimensionList() {
   const [listParam, setListParam] = useSearchParam('dimList')
-  const origin: DimensionOrigin = listParam === 'system' ? 'system' : 'user'
+  const origin: DefinitionOrigin = listParam === 'system' ? 'system' : 'user'
   const { data, isLoading } = useDimensionList(origin)
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
@@ -135,7 +135,7 @@ function DimensionList() {
   )
 }
 
-function DimensionTable({ rows, origin, loading }: { rows: DimensionListItem[]; origin: DimensionOrigin; loading: boolean }) {
+function DimensionTable({ rows, origin, loading }: { rows: DimensionListItem[]; origin: DefinitionOrigin; loading: boolean }) {
   const system = origin === 'system'
   const cols = system ? 14 : 11
   const { data: counts } = useMappingCountsByDimension()

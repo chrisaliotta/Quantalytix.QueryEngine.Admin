@@ -1,6 +1,6 @@
 import { sampleReports } from '@/lib/report/mockData'
 import type { BreakoutDimension, DimMember, Filter, ReportState, RowNode, Source } from '@/lib/report/types'
-import type { Id, ReportDocument, ReportFilterNode, ReportGrouping, ReportRow, ReportRowKind, ReportSource, ReportSourceRule } from '../contract'
+import type { Id, ReportDocument, FilterNode, Grouping, ReportRow, ReportRowKind, ReportSource, ReportSourceRule } from '../contract'
 
 /** An item of a role's dimension that a bridge rule can name. */
 export interface ItemNode {
@@ -146,8 +146,8 @@ function toSource(source: Source, reportId: Id, folders: Set<string>): ReportSou
 
 const COMPARISON = { '=': 'eq', '!=': 'ne', '>': 'gt', '<': 'lt' } as const
 
-function toFilter(filters: Filter[]): ReportFilterNode | null {
-  const nodes = filters.map((f): ReportFilterNode => {
+function toFilter(filters: Filter[]): FilterNode | null {
+  const nodes = filters.map((f): FilterNode => {
     const left = { type: 'field' as const, id: f.field }
     if (f.op === 'in') return { operator: 'in', left, values: f.value.split(',').map((v) => ({ type: 'literal', value: v.trim() })) }
     return { operator: COMPARISON[f.op], left, right: { type: 'literal', value: f.value } }
@@ -156,7 +156,7 @@ function toFilter(filters: Filter[]): ReportFilterNode | null {
   return nodes.length === 1 ? nodes[0] : { operator: 'and', operands: nodes }
 }
 
-function toGrouping(g: BreakoutDimension['grouping']): ReportGrouping {
+function toGrouping(g: BreakoutDimension['grouping']): Grouping {
   switch (g.kind) {
     case 'member':
       return { mode: 'member' }

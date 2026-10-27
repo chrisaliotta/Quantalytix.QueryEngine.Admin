@@ -20,6 +20,7 @@ import type {
   DatasetVersion,
   DatasetVersionSettings,
   DatasetVersionSummary,
+  DeleteBlocker,
   DeleteCheck,
   Problem,
   Violation,
@@ -189,13 +190,13 @@ export function createMockDatasetsApi(): DatasetsApi {
   const isPinned = (versionId: string) => catalog.releases.some((r) => pinsOf(r.id).some((p) => p.versionId === versionId))
 
   const deleteCheck = (d: Dataset): DeleteCheck => {
-    const reasons: Violation[] = [
+    const reasons: DeleteBlocker[] = [
       ...versions
         .filter((v) => v.datasetId === d.id && (v.status === 'published' || v.status === 'retired'))
-        .map((v) => ({ code: 'dataset_version_not_deletable', message: `Version ${v.versionNumber} is ${v.status}.` })),
+        .map((v) => ({ code: 'has_published_versions' as const, message: `Version ${v.versionNumber} is ${v.status}.` })),
       ...catalog.releases
         .filter((r) => pinsOf(r.id).some((p) => p.datasetId === d.id))
-        .map((r) => ({ code: 'dataset_in_release', message: `Release ${r.key} lists it.` })),
+        .map((r) => ({ code: 'referenced_by_release' as const, message: `Release ${r.key} lists it.` })),
     ]
     return { allowed: reasons.length === 0, message: reasons.length ? `Dataset '${d.displayName}' cannot be deleted.` : null, reasons }
   }

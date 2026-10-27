@@ -113,12 +113,42 @@ export interface DeleteCheck {
   allowed: boolean
   /** One-sentence summary, e.g. "Dimension 'Purpose' cannot be deleted: ..." */
   message: string | null
-  reasons: Violation[]   // web2 today: string[]
+  reasons: DeleteBlocker[]
+}
+
+export interface DeleteBlocker extends Violation {
+  code: DeleteBlockerCode
 }
 ```
 
 - `GET <resource>/delete-check` returns `DeleteCheck` and never writes.
 - `DELETE <resource>` re-runs the same check and answers `409` with the same `violations` when blocked.
+- Every module draws its reasons from one snake_case list, `DeleteBlockerCode` in `common.yaml`. A code names either a
+  state of the target or, as `referenced_by_<kind>`, the kind of object that still reads it; the message names the
+  objects.
+
+| Code | Blocks deleting |
+|---|---|
+| `not_removable` | A dimension marked not removable. |
+| `system_dimension` | A system dimension. |
+| `not_draft` | A dataset version or release that is not a draft. |
+| `live_version` | The live version of a dimension, mapping set or bridge; only frozen versions can be deleted. |
+| `has_published_versions` | A dataset with published or retired versions. |
+| `has_children` | A member with child members. |
+| `required_by_profile` | A member or role the dimension's profile requires. |
+| `assigned_by_bands` | A member that range bands assign. |
+| `named_by_consumers` | A live member that a consumer names by key (mapping entry, bridge mapping, report rule). |
+| `owned_by_report` | A report-owned bridge; the report source owns it. |
+| `referenced_by_member` | A level that members use. |
+| `referenced_by_dataset_binding` | A dimension, role, mapping set or bridge that a dataset binding reads. |
+| `referenced_by_mapping_set` | A dimension that a mapping set targets. |
+| `referenced_by_bridge` | A dimension that a bridge joins. |
+| `referenced_by_calculation_dimension` | A dimension or role that a report calculation dimension groups by. |
+| `referenced_by_report_scenario` | A dimension or role a report uses as a scenario. |
+| `referenced_by_report_source` | A dimension or role a report source reads. |
+| `referenced_by_assumption_set` | A version, mapping set or bridge that a historical assumption set pins. |
+| `referenced_by_release` | A dataset or dataset version that a release manifest lists. |
+| `referenced_by_report` | A calculation model that a report reads. |
 
 ## Vocabularies (Agreed, OI-11)
 

@@ -9,7 +9,7 @@ generated `api/openapi/admin-api.json` drifts from it ([blueprint 00](../../../d
 | File | Owner | Holds |
 |---|---|---|
 | `admin-api.yaml` | integrator | Root: info, servers, bearer security, the tag list. No paths or schemas. |
-| `common.yaml` | integrator | Shared kernel from [blueprint 01](../../../docs/blueprint/01-api-conventions.md): `Id`, `Key`, `DottedKey`, `Timestamp`, `VersionStatus`, `Problem`, `Violation`, `ViolationTarget`, `DeleteCheck`, `ValidationReport`, the `ChangeSet*` envelopes, `VocabularyTerm`, the `TenantId` parameter and the 400/401/403/404/409/422 responses. |
+| `common.yaml` | integrator | Shared kernel from [blueprint 01](../../../docs/blueprint/01-api-conventions.md): `Id`, `Key`, `DottedKey`, `Timestamp`, `VersionStatus`, `Problem`, `Violation`, `ViolationTarget`, `DeleteCheck`, `DeleteBlocker`, `DeleteBlockerCode`, `ValidationReport`, the `ChangeSet*` envelopes, `FreezeInput`, `FreezeResult`, `Grouping`, `FilterNode`, the vocabularies more than one module reads (`DimensionKind`, `DimensionPurpose`, `DefinitionOrigin`, `AssumptionSetStatus`, `BindingKind`, `Periodicity`, `MeasureKind`, `ComponentRole`, `RoundingMode`, `SourceSelection`, `VariableMissingBehavior`), `VocabularyTerm`, the `TenantId` parameter and the 400/401/403/404/409/422 responses. |
 | `tenant.yaml`, `datasets.yaml`, `dimensions.yaml`, `mappings.yaml`, `releases.yaml`, `models.yaml`, `reports.yaml` | that module's agent | The module's paths and components. |
 | `redocly.yaml`, `plugins/qe.mjs` | integrator | Lint rules. |
 | `compose.mjs` | integrator | Builds `.composed.yaml` (gitignored) from the root and the module files. |
@@ -38,6 +38,8 @@ never generically (`ListItem`, `VersionSummary`).
 - **Operations** carry `operationId` (camelCase, globally unique, named after the port method it serves), `summary`,
   and exactly one tag: the module's.
 - **References:** own components as `#/components/schemas/X`; shared ones as `./common.yaml#/components/schemas/X`.
+  A value list or shape that a second module needs moves to `common.yaml`; a single read of another module's
+  schema (tenant's vocabularies, releases' `TenantInfo`) references that module's file directly.
 - **Errors:** every 4xx response is `application/problem+json` with the common `Problem`. Reuse the common responses
   and override only the description: `'409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }`.
   Every write (`post`, `put`, `patch`, `delete`) declares `400`.

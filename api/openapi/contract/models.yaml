@@ -68,7 +68,7 @@ paths:
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409':
           $ref: './common.yaml#/components/responses/Conflict'
-          description: A report reads the model; `violations` carry `model_not_in_use` per report.
+          description: A report reads the model; `violations` carry `referenced_by_report` per report.
 
   /api/tenants/{tenantId}/calculation-models/{modelId}/delete-check:
     parameters:
@@ -179,17 +179,9 @@ components:
       type: string
       enum: [shapley, sequential]
 
-    ModelMissingBehavior:
-      type: string
-      enum: ['null', zero]
-
     ModelParameterValueType:
       type: string
       enum: [number, text]
-
-    ModelRoundingMode:
-      type: string
-      enum: [half_even, half_up, down, up, truncate]
 
     ModelOutputDataType:
       type: string
@@ -220,7 +212,7 @@ components:
         displayName: { type: string }
         displayFormat: { type: string, examples: [currency] }
         unitKey: { type: [string, 'null'] }
-        missingBehavior: { $ref: '#/components/schemas/ModelMissingBehavior' }
+        missingBehavior: { $ref: './common.yaml#/components/schemas/VariableMissingBehavior' }
 
     ModelMeasure:
       type: object
@@ -235,7 +227,7 @@ components:
         outputScale: { type: [integer, 'null'] }
         roundingMode:
           oneOf:
-            - $ref: '#/components/schemas/ModelRoundingMode'
+            - $ref: './common.yaml#/components/schemas/RoundingMode'
             - type: 'null'
         unitKey: { type: [string, 'null'] }
         displayFormat: { type: string, examples: [percent] }

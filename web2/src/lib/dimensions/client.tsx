@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { unwrap } from '@/lib/api/contract'
-import { DIMENSION_COMMANDS, DIMENSION_EDITS, type DimensionDeleteTarget, type DimensionOrigin, type DimensionsApi } from './contract'
+import { DIMENSION_COMMANDS, DIMENSION_EDITS, type DimensionDeleteTarget, type DefinitionOrigin, type DimensionsApi } from './contract'
 import { createMockDimensionsApi } from './mock/adapter'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 
@@ -37,14 +37,14 @@ export function DimensionEditScope({ dimensionId, label, children }: { dimension
 const OPTS = { revalidateOnFocus: false }
 
 export const dimKeys = {
-  list: (origin: DimensionOrigin) => ['dim', 'list', origin] as const,
+  list: (origin: DefinitionOrigin) => ['dim', 'list', origin] as const,
   profiles: ['dim', 'profiles'] as const,
   dimension: (id: string) => ['dim', 'dimension', id] as const,
   version: (id: string) => ['dim', 'version', id] as const,
   deleteCheck: (t: DimensionDeleteTarget) => ['dim', 'deleteCheck', JSON.stringify(t)] as const,
 }
 
-export function useDimensionList(origin: DimensionOrigin) {
+export function useDimensionList(origin: DefinitionOrigin) {
   const api = useDimensionsApi()
   return useSWR(dimKeys.list(origin), () => api.listDimensions(origin), OPTS)
 }
