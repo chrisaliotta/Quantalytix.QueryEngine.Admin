@@ -300,6 +300,183 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
           description: The directory has no such tenant.
+  /api/tenants/{tenantId}/calculation-models:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: listModels
+      summary: List the tenant's calculation models with their metric counts and the reports that read them.
+      tags:
+        - models
+      responses:
+        '200':
+          description: Every model of the tenant.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelListItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createModel
+      summary: Create a disabled, empty calculation model (command).
+      tags:
+        - models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalcModelCreateInput'
+      responses:
+        '201':
+          description: The created model.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalcModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The model key is taken.
+  /api/tenants/{tenantId}/calculation-models/{modelId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelId'
+    get:
+      operationId: getModel
+      summary: Read one model with its variables, measures, parameters, attributions, effective drivers and readers.
+      tags:
+        - models
+      responses:
+        '200':
+          description: The model document.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDocument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteModel
+      summary: Delete a model that no report reads (command, C8).
+      tags:
+        - models
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: A report reads the model; `violations` carry `model_not_in_use` per report.
+  /api/tenants/{tenantId}/calculation-models/{modelId}/delete-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelId'
+    get:
+      operationId: checkDeleteModel
+      summary: Whether the model can be deleted, and the reports that block it.
+      tags:
+        - models
+      responses:
+        '200':
+          description: The delete check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/calculation-models/{modelId}/formula-check:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelId'
+    post:
+      operationId: checkFormula
+      summary: Parse a formula against the saved model and report errors, reads, parameters and the language it needs (OI-43).
+      tags:
+        - models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelFormulaCheckRequest'
+      responses:
+        '200':
+          description: The check result; never writes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelFormulaCheck'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tenants/{tenantId}/calculation-models/{modelId}/changes/preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelId'
+    post:
+      operationId: previewModelChanges
+      summary: Apply the staged operations in memory and run the model gate; never writes (OI-42).
+      tags:
+        - models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelChangeSetRequest'
+      responses:
+        '200':
+          description: The operations apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelChangeSetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: The last operation introduces a violation of a model rule or of a report rule of an enabled report over the model; it is refused.
+  /api/tenants/{tenantId}/calculation-models/{modelId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelId'
+    post:
+      operationId: commitModelChanges
+      summary: Re-run the model gate over the staged operations and write them as one batch.
+      tags:
+        - models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelChangeSetRequest'
+      responses:
+        '200':
+          description: Every operation applied and was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelChangeSetCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+          description: An operation introduces a model-rule or enabled-report violation; nothing was written.
 components:
   securitySchemes:
     Bearer:
@@ -1870,6 +2047,544 @@ components:
         message:
           type: string
           description: What the connection reached, or why it is rejected.
+    ModelFormulaLanguage:
+      type: string
+      enum:
+        - '1.0'
+        - '1.1'
+        - '1.2'
+      description: 1.1 adds `POWER`; 1.2 adds `@param`, text comparisons and `YEARFRAC(convention)` (C3).
+    AttributionMethod:
+      type: string
+      enum:
+        - shapley
+        - sequential
+    ModelMissingBehavior:
+      type: string
+      enum:
+        - 'null'
+        - zero
+    ModelParameterValueType:
+      type: string
+      enum:
+        - number
+        - text
+    ModelRoundingMode:
+      type: string
+      enum:
+        - half_even
+        - half_up
+        - down
+        - up
+        - truncate
+    ModelOutputDataType:
+      type: string
+      enum:
+        - decimal
+        - int64
+        - int32
+    CalcModel:
+      type: object
+      description: The model's own settings (`qe_calculation_model`).
+      required:
+        - id
+        - key
+        - displayName
+        - currencyCode
+        - calendarKey
+        - formulaLanguage
+        - attributionMethod
+        - isEnabled
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        key:
+          $ref: '#/components/schemas/DottedKey'
+          description: Fixed after creation (C9).
+        displayName:
+          type: string
+        currencyCode:
+          type: string
+          examples:
+            - USD
+        calendarKey:
+          type: string
+          examples:
+            - gregorian
+        formulaLanguage:
+          $ref: '#/components/schemas/ModelFormulaLanguage'
+        attributionMethod:
+          $ref: '#/components/schemas/AttributionMethod'
+        isEnabled:
+          type: boolean
+    ModelVariable:
+      type: object
+      description: An input metric read from the report's sources (`qe_variable`). Its key shares the model's metric namespace (C1).
+      required:
+        - key
+        - displayName
+        - displayFormat
+        - unitKey
+        - missingBehavior
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        displayFormat:
+          type: string
+          examples:
+            - currency
+        unitKey:
+          type:
+            - string
+            - 'null'
+        missingBehavior:
+          $ref: '#/components/schemas/ModelMissingBehavior'
+    ModelMeasure:
+      type: object
+      description: A calculated measure (`qe_calculated_measure`); `formula` is `expression_text`.
+      required:
+        - key
+        - displayName
+        - formula
+        - outputDataType
+        - outputPrecision
+        - outputScale
+        - roundingMode
+        - unitKey
+        - displayFormat
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        formula:
+          type: string
+          examples:
+            - '[m.INTEREST_INCOME] - [m.INTEREST_EXPENSE]'
+        outputDataType:
+          $ref: '#/components/schemas/ModelOutputDataType'
+        outputPrecision:
+          type:
+            - integer
+            - 'null'
+        outputScale:
+          type:
+            - integer
+            - 'null'
+        roundingMode:
+          oneOf:
+            - $ref: '#/components/schemas/ModelRoundingMode'
+            - type: 'null'
+        unitKey:
+          type:
+            - string
+            - 'null'
+        displayFormat:
+          type: string
+          examples:
+            - percent
+    ModelParameter:
+      type: object
+      description: A model parameter (`qe_model_parameter`, language 1.2). It sets exactly the default its type names; only text parameters have allowed values, and they include the default (C5).
+      required:
+        - key
+        - displayName
+        - valueType
+        - allowedValues
+        - defaultNumber
+        - defaultText
+        - description
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+        displayName:
+          type: string
+        valueType:
+          $ref: '#/components/schemas/ModelParameterValueType'
+        allowedValues:
+          type:
+            - array
+            - 'null'
+          description: Null means any value.
+          items:
+            type: string
+        defaultNumber:
+          type:
+            - number
+            - 'null'
+        defaultText:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+    AttributionDriver:
+      type: object
+      description: One driver of an attribution; its position in the list is `sort_order`.
+      required:
+        - key
+        - displayName
+        - inputs
+      properties:
+        key:
+          $ref: '#/components/schemas/Key'
+          description: Never `residual`.
+        displayName:
+          type: string
+        inputs:
+          type: array
+          description: Metric keys and day parameters (`@periodDays`, `@yearDays`) the driver owns (`input_keys_json`).
+          items:
+            type: string
+    Attribution:
+      type: object
+      description: An explicit attribution row (`qe_metric_attribution` and its drivers). A metric without one uses default drivers, listed in `ModelDocument.effectiveDrivers` (C6).
+      required:
+        - metricKey
+        - expression
+        - weightVariableKey
+        - drivers
+      properties:
+        metricKey:
+          $ref: '#/components/schemas/Key'
+        expression:
+          type:
+            - string
+            - 'null'
+          description: Required for a variable; null on a calculated measure splits its own formula.
+        weightVariableKey:
+          type:
+            - string
+            - 'null'
+        drivers:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/AttributionDriver'
+    ModelReportUse:
+      type: object
+      description: A report that reads the model (`qe_report.calculation_model_id`, OI-44).
+      required:
+        - reportId
+        - reportKey
+        - displayName
+        - isEnabled
+      properties:
+        reportId:
+          $ref: '#/components/schemas/Id'
+        reportKey:
+          type: string
+        displayName:
+          type: string
+        isEnabled:
+          type: boolean
+    ModelListItem:
+      allOf:
+        - $ref: '#/components/schemas/CalcModel'
+        - type: object
+          required:
+            - variableCount
+            - measureCount
+            - usedBy
+          properties:
+            variableCount:
+              type: integer
+            measureCount:
+              type: integer
+            usedBy:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelReportUse'
+    ModelDocument:
+      allOf:
+        - $ref: '#/components/schemas/CalcModel'
+        - type: object
+          description: The whole model; the change-set state of a model.
+          required:
+            - variables
+            - measures
+            - parameters
+            - attributions
+            - effectiveDrivers
+            - usedBy
+          properties:
+            variables:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelVariable'
+            measures:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelMeasure'
+            parameters:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelParameter'
+            attributions:
+              type: array
+              description: Explicit attribution rows only.
+              items:
+                $ref: '#/components/schemas/Attribution'
+            effectiveDrivers:
+              type: object
+              description: Server-computed drivers in effect per metric key, explicit or default. A metric that cannot be attributed (a variable without an attribution) has no entry.
+              additionalProperties:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttributionDriver'
+            usedBy:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelReportUse'
+    CalcModelCreateInput:
+      type: object
+      required:
+        - key
+        - displayName
+        - currencyCode
+        - formulaLanguage
+        - attributionMethod
+      properties:
+        key:
+          $ref: '#/components/schemas/DottedKey'
+        displayName:
+          type: string
+          minLength: 1
+        currencyCode:
+          type: string
+          minLength: 1
+        formulaLanguage:
+          $ref: '#/components/schemas/ModelFormulaLanguage'
+        attributionMethod:
+          $ref: '#/components/schemas/AttributionMethod'
+    CalcModelPatch:
+      type: object
+      description: The model settings an `updateModel` operation changes; absent properties are kept.
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        currencyCode:
+          type: string
+          minLength: 1
+        calendarKey:
+          type: string
+          minLength: 1
+        formulaLanguage:
+          $ref: '#/components/schemas/ModelFormulaLanguage'
+        attributionMethod:
+          $ref: '#/components/schemas/AttributionMethod'
+        isEnabled:
+          type: boolean
+    ModelFormulaCheckRequest:
+      type: object
+      required:
+        - formula
+        - selfKey
+      properties:
+        formula:
+          type: string
+        selfKey:
+          type:
+            - string
+            - 'null'
+          description: The key of the metric that owns the formula, so self-reads are reported; null for a new metric.
+    ModelFormulaError:
+      type: object
+      required:
+        - message
+        - start
+        - end
+      properties:
+        message:
+          type: string
+        start:
+          type: integer
+          description: Zero-based character offset where the error starts.
+        end:
+          type: integer
+          description: Zero-based character offset just past the error.
+    ModelFormulaCheck:
+      type: object
+      required:
+        - errors
+        - reads
+        - parameters
+        - requiresLanguage
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelFormulaError'
+        reads:
+          type: array
+          description: Metric keys the formula reads, in order of first use.
+          items:
+            type: string
+        parameters:
+          type: array
+          description: Declared parameter keys (`@param`) the formula reads; never `periodDays` or `yearDays`.
+          items:
+            type: string
+        requiresLanguage:
+          $ref: '#/components/schemas/ModelFormulaLanguage'
+    ModelUpdateModelOperation:
+      type: object
+      required:
+        - op
+        - patch
+      properties:
+        op:
+          const: updateModel
+        patch:
+          $ref: '#/components/schemas/CalcModelPatch'
+    ModelSaveVariableOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveVariable
+        input:
+          $ref: '#/components/schemas/ModelVariable'
+        originalKey:
+          type: string
+          description: Present when an existing variable is edited; a key differing from it is refused (keys are fixed).
+    ModelDeleteVariableOperation:
+      type: object
+      required:
+        - op
+        - key
+      properties:
+        op:
+          const: deleteVariable
+        key:
+          type: string
+    ModelSaveMeasureOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveMeasure
+        input:
+          $ref: '#/components/schemas/ModelMeasure'
+        originalKey:
+          type: string
+          description: Present when an existing measure is edited; a key differing from it is refused (keys are fixed).
+    ModelDeleteMeasureOperation:
+      type: object
+      required:
+        - op
+        - key
+      properties:
+        op:
+          const: deleteMeasure
+        key:
+          type: string
+    ModelSaveParameterOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: saveParameter
+        input:
+          $ref: '#/components/schemas/ModelParameter'
+        originalKey:
+          type: string
+          description: Present when an existing parameter is edited; a key differing from it is refused (keys are fixed).
+    ModelDeleteParameterOperation:
+      type: object
+      required:
+        - op
+        - key
+      properties:
+        op:
+          const: deleteParameter
+        key:
+          type: string
+    ModelSetAttributionOperation:
+      type: object
+      required:
+        - op
+        - input
+      properties:
+        op:
+          const: setAttribution
+        input:
+          $ref: '#/components/schemas/Attribution'
+    ModelClearAttributionOperation:
+      type: object
+      required:
+        - op
+        - metricKey
+      properties:
+        op:
+          const: clearAttribution
+        metricKey:
+          type: string
+    ModelOperation:
+      description: One edit of a model change set, named after the `ModelsApi` edit method it records.
+      oneOf:
+        - $ref: '#/components/schemas/ModelUpdateModelOperation'
+        - $ref: '#/components/schemas/ModelSaveVariableOperation'
+        - $ref: '#/components/schemas/ModelDeleteVariableOperation'
+        - $ref: '#/components/schemas/ModelSaveMeasureOperation'
+        - $ref: '#/components/schemas/ModelDeleteMeasureOperation'
+        - $ref: '#/components/schemas/ModelSaveParameterOperation'
+        - $ref: '#/components/schemas/ModelDeleteParameterOperation'
+        - $ref: '#/components/schemas/ModelSetAttributionOperation'
+        - $ref: '#/components/schemas/ModelClearAttributionOperation'
+      discriminator:
+        propertyName: op
+        mapping:
+          updateModel: '#/components/schemas/ModelUpdateModelOperation'
+          saveVariable: '#/components/schemas/ModelSaveVariableOperation'
+          deleteVariable: '#/components/schemas/ModelDeleteVariableOperation'
+          saveMeasure: '#/components/schemas/ModelSaveMeasureOperation'
+          deleteMeasure: '#/components/schemas/ModelDeleteMeasureOperation'
+          saveParameter: '#/components/schemas/ModelSaveParameterOperation'
+          deleteParameter: '#/components/schemas/ModelDeleteParameterOperation'
+          setAttribution: '#/components/schemas/ModelSetAttributionOperation'
+          clearAttribution: '#/components/schemas/ModelClearAttributionOperation'
+    ModelChangeSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetRequest'
+        - type: object
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModelOperation'
+    ModelChangeSetPreview:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetPreview'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/ModelDocument'
+    ModelChangeSetCommit:
+      allOf:
+        - $ref: '#/components/schemas/ChangeSetCommit'
+        - type: object
+          required:
+            - state
+          properties:
+            state:
+              $ref: '#/components/schemas/ModelDocument'
   parameters:
     TenantId:
       name: tenantId
@@ -1878,6 +2593,13 @@ components:
       description: The tenant directory key.
       schema:
         type: string
+    ModelId:
+      name: modelId
+      in: path
+      required: true
+      description: The calculation model id.
+      schema:
+        $ref: '#/components/schemas/Id'
   responses:
     BadRequest:
       description: The body, route or query does not bind, or an input validator failed; see `errors`.
