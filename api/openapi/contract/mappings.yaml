@@ -905,9 +905,7 @@ components:
           required: [live]
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/MappingVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/MappingVersionSummary'
 
     MappingSetUpdateOperation:
       type: object
@@ -1272,9 +1270,7 @@ components:
           required: [live]
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/BridgeVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/BridgeVersionSummary'
 
     BridgeUpdateOperation:
       type: object

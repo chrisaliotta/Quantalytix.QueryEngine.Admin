@@ -2170,7 +2170,7 @@ export interface components {
             /** @description Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15). */
             note: string | null;
         };
-        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and errors), which is why the specializations declare it nullable. */
+        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web2 HTTP adapter turns the 422 into the port's `live: null` (01, Results and errors). */
         FreezeResult: {
             report: components["schemas"]["ValidationReport"];
             /** @description The new live version. */
@@ -3321,7 +3321,7 @@ export interface components {
             versionId: components["schemas"]["Id"];
         };
         DimensionFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["DimensionVersionSummary"] | null;
+            live: components["schemas"]["DimensionVersionSummary"];
         };
         CreateDimensionInput: {
             key: components["schemas"]["Key"];
@@ -3666,7 +3666,7 @@ export interface components {
             memberKey: string;
         };
         MappingFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["MappingVersionSummary"] | null;
+            live: components["schemas"]["MappingVersionSummary"];
         };
         MappingSetUpdateOperation: {
             /**
@@ -3841,7 +3841,7 @@ export interface components {
             sourceSelection?: components["schemas"]["SourceSelection"];
         };
         BridgeFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["BridgeVersionSummary"] | null;
+            live: components["schemas"]["BridgeVersionSummary"];
         };
         BridgeUpdateOperation: {
             /**

@@ -3099,7 +3099,7 @@ components:
           description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
     FreezeResult:
       type: object
-      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and errors), which is why the specializations declare it nullable.'
+      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web2 HTTP adapter turns the 422 into the port''s `live: null` (01, Results and errors).'
       required:
         - report
         - live
@@ -6176,9 +6176,7 @@ components:
             - live
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/DimensionVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/DimensionVersionSummary'
     CreateDimensionInput:
       type: object
       required:
@@ -6968,9 +6966,7 @@ components:
             - live
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/MappingVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/MappingVersionSummary'
     MappingSetUpdateOperation:
       type: object
       required:
@@ -7399,9 +7395,7 @@ components:
             - live
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/BridgeVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/BridgeVersionSummary'
     BridgeUpdateOperation:
       type: object
       required:

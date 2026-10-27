@@ -850,9 +850,7 @@ components:
           required: [live]
           properties:
             live:
-              oneOf:
-                - $ref: '#/components/schemas/DimensionVersionSummary'
-                - type: 'null'
+              $ref: '#/components/schemas/DimensionVersionSummary'
 
     # ───────────── inputs ─────────────
 

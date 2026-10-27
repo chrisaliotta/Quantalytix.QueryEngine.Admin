@@ -276,8 +276,8 @@ components:
       description: >-
         200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic
         over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422
-        and changes nothing, so a 200 always carries `live`; the port turns the 422 into `live: null` (01, Results and
-        errors), which is why the specializations declare it nullable.
+        and changes nothing, so a 200 always carries a non-null `live`; the web2 HTTP adapter turns the 422 into the
+        port's `live: null` (01, Results and errors).
       required: [report, live]
       properties:
         report:
