@@ -43,7 +43,7 @@ public sealed class HierarchyAcyclicRuleTests
             Member(4, VersionId, "D", parentId: 1));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(HierarchyAcyclicRule.Code, violation.Rule);
+        Assert.Equal(HierarchyAcyclicRule.Code, violation.Code);
         Assert.Equal("Members 'A' -> 'B' -> 'C' -> 'A' form a parent cycle.", violation.Message);
     }
 

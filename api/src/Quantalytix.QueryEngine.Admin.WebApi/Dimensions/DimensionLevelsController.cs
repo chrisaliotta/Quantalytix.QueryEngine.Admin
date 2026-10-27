@@ -14,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 [ApiController]
 [Route("api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/levels")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DimensionLevelsController(DimensionLevelService levels) : ControllerBase
 {
     /// <summary>Lists a version's levels.</summary>
@@ -51,7 +51,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Create(
         string tenantId,
         long dimensionVersionId,
@@ -76,7 +76,7 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionLevelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionLevelRecord>> Update(
         string tenantId,
         [FromRoute] LevelReference level,
@@ -100,11 +100,11 @@ public sealed class DimensionLevelsController(DimensionLevelService levels) : Co
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] LevelReference level, CancellationToken cancellationToken)
     {
         var conflict = await levels.DeleteAsync(level, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

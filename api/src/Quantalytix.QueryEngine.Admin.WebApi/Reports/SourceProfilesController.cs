@@ -11,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/profiles")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class SourceProfilesController(IReportContent<SourceProfile, SourceProfileInput> profiles, ReportChanges changes) : ControllerBase
 {
     /// <summary>Lists a report's source profiles.</summary>
@@ -44,13 +44,13 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     [HttpPost]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<SourceProfile>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<SourceProfile>> Create(string tenantId, long reportId, SourceProfileInput input, CancellationToken cancellationToken)
     {
         var created = profiles.Compose(reportId, null, input);
         var violations = await changes.ApplyAsync(reportId, report => profiles.Put(report, created), () => profiles.InsertAsync(created, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(created);
     }
 
@@ -68,8 +68,8 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     [HttpPut("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<SourceProfile>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<SourceProfile>> Update(
         string tenantId,
         [FromRoute] ReportItemReference<SourceProfile> profile,
@@ -79,7 +79,7 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
         var updated = profiles.Compose(profile.ReportId, profile.ItemId, input);
         var violations = await changes.ApplyAsync(
             profile.ReportId, report => profiles.Put(report, updated), () => profiles.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, profile.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(profile.ReportId, violations);
         return Ok(updated);
     }
 
@@ -97,9 +97,9 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     [HttpDelete("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ReportItemReference<SourceProfile> profile, CancellationToken cancellationToken)
     {
         string? conflict = null;
@@ -108,8 +108,8 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
             report => profiles.Without(report, profile.ItemId),
             async () => conflict = await profiles.DeleteAsync(profile.ItemId, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, profile.ReportId, violations);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(profile.ReportId, violations);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

@@ -29,7 +29,7 @@ public sealed class MemberKeyUniqueRule(ITableGateway<DimensionMemberRecord> mem
                 .GroupBy(member => member.MemberKey, StringComparer.Ordinal)
                 .Where(group => group.Count() > 1)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
-                .Select(group => new RuleViolation { Rule = Code, Message = $"Member key '{group.Key}' is used by {group.Count()} members." })
+                .Select(group => new RuleViolation { Code = Code, Message = $"Member key '{group.Key}' is used by {group.Count()} members." })
         ];
     }
 }

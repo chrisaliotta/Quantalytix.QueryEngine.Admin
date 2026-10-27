@@ -9,6 +9,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.ReportEditor.ReportEditorFixture;
 
@@ -47,7 +48,7 @@ public sealed class RequireAnalyticalFilterTests
         if (!refused) return;
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(StatusCodes.Status409Conflict, result.StatusCode);
-        Assert.EndsWith($"{id} belongs to report 'balance_sheet'; only the report's editor changes it.", Assert.IsType<ProblemDetails>(result.Value).Detail);
+        Assert.EndsWith($"{id} belongs to report 'balance_sheet'; only the report's editor changes it.", Assert.IsType<Problem>(result.Value).Detail);
     }
 
     /// <summary>Runs the guard around a write, reporting whether the write ran.</summary>
@@ -60,7 +61,7 @@ public sealed class RequireAnalyticalFilterTests
         var action = new ActionContext(new DefaultHttpContext { RequestServices = services }, routeData, new ActionDescriptor());
         var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), new object());
         var ownership = new ReportOwnership(_fixture.Dimensions, _fixture.DimensionVersions, _fixture.Bridges, _fixture.BridgeVersions, _fixture.Reports);
-        var filter = new RequireAnalyticalFilter(target, "id", ownership, services.GetRequiredService<ProblemDetailsFactory>());
+        var filter = new RequireAnalyticalFilter(target, "id", ownership);
         var ran = false;
         await filter.OnActionExecutionAsync(context, () =>
         {

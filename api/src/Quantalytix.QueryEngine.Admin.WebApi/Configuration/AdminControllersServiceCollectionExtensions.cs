@@ -14,7 +14,8 @@ public static class AdminControllersServiceCollectionExtensions
 {
     /// <summary>
     /// Registers controllers with the global <see cref="ValidationFilter"/>, binding errors keyed like its errors
-    /// (<see cref="BindingErrorResults"/>), JSON as the only body format, camelCase JSON (also used for OpenAPI schemas),
+    /// (<see cref="BindingErrorResults"/>), bodiless client errors left to the status code pages so they answer a
+    /// <see cref="Problem"/> like every other error, JSON as the only body format, camelCase JSON (also used for OpenAPI schemas),
     /// camelCase FluentValidation paths, and, outside Development, removes the Development controllers.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -34,7 +35,11 @@ public static class AdminControllersServiceCollectionExtensions
                 options.InputFormatters.OfType<SystemTextJsonInputFormatter>().Single().SupportedMediaTypes.Remove("text/json");
             })
             .AddJsonOptions(options => ConfigureJson(options.JsonSerializerOptions))
-            .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = BindingErrorResults.Create)
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = BindingErrorResults.Create;
+                options.SuppressMapClientErrors = true;
+            })
             .ConfigureApplicationPartManager(manager =>
             {
                 if (!environment.IsDevelopment()) manager.FeatureProviders.Add(new DevelopmentControllerFeatureProvider());

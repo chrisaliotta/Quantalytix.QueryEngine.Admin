@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Releases;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Releases;
 
@@ -15,8 +16,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Releases;
 [ApiController]
 [Route("api/tenants/{tenantId}/releases")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReleasesController(ReleaseService releases, ReleaseActivator activator) : ControllerBase
 {
     /// <summary>Lists the tenant's releases, newest first, with whether each is active and how many datasets it pins.</summary>
@@ -44,7 +45,7 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<SemanticReleaseRecord>> Create(string tenantId, ReleaseCreateInput input, CancellationToken cancellationToken)
     {
         var release = await releases.CreateAsync(input, cancellationToken);
@@ -113,7 +114,7 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     [HttpPut("{semanticReleaseId:long}/datasets")]
     [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
     [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ReplaceDatasets(
         string tenantId,
         long semanticReleaseId,
@@ -137,14 +138,14 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <response code="409">The release is not published, so nothing changed; the detail names its status.</response>
     [HttpPost("{semanticReleaseId:long}/activate")]
     [ProducesResponseType<DatabaseInfoRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<ActionResult<DatabaseInfoRecord>> Activate(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
     {
         var result = await activator.ActivateAsync(semanticReleaseId, cancellationToken);
         if (!result.Activated)
         {
             var detail = $"{VersionKinds.SemanticRelease} {semanticReleaseId} is {result.Release.Status}; only published releases can be activated.";
-            return Problem(detail, statusCode: StatusCodes.Status409Conflict, title: "Release is not published");
+            return Problems.Conflict("Release is not published", detail).ToResult();
         }
 
         return Ok(result.DatabaseInfo);

@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/calculation-dimensions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class CalculationDimensionsController(
     IReportContent<CalculationDimensionRecord, CalculationDimensionInput> dimensions,
     ReportChanges changes) : ControllerBase
@@ -47,13 +47,13 @@ public sealed class CalculationDimensionsController(
     [HttpPost]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<CalculationDimensionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculationDimensionRecord>> Create(string tenantId, long reportId, CalculationDimensionInput input, CancellationToken cancellationToken)
     {
         var created = dimensions.Compose(reportId, null, input);
         var violations = await changes.ApplyAsync(reportId, report => dimensions.Put(report, created), () => dimensions.InsertAsync(created, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(created);
     }
 
@@ -71,8 +71,8 @@ public sealed class CalculationDimensionsController(
     [HttpPut("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<CalculationDimensionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculationDimensionRecord>> Update(
         string tenantId,
         [FromRoute] ReportItemReference<CalculationDimensionRecord> dimension,
@@ -82,7 +82,7 @@ public sealed class CalculationDimensionsController(
         var updated = dimensions.Compose(dimension.ReportId, dimension.ItemId, input);
         var violations = await changes.ApplyAsync(
             dimension.ReportId, report => dimensions.Put(report, updated), () => dimensions.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, dimension.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(dimension.ReportId, violations);
         return Ok(updated);
     }
 
@@ -99,8 +99,8 @@ public sealed class CalculationDimensionsController(
     [HttpDelete("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ReportItemReference<CalculationDimensionRecord> dimension, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
@@ -108,7 +108,7 @@ public sealed class CalculationDimensionsController(
             report => dimensions.Without(report, dimension.ItemId),
             () => dimensions.DeleteAsync(dimension.ItemId, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, dimension.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(dimension.ReportId, violations);
         return NoContent();
     }
 }

@@ -29,7 +29,7 @@ public sealed class SourceKeyUniqueRule(ITableGateway<DimensionMappingRecord> en
                 .GroupBy(entry => entry.SourceKeyValue, StringComparer.Ordinal)
                 .Where(group => group.Count() > 1)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
-                .Select(group => new RuleViolation { Rule = Code, Message = $"Source key '{group.Key}' appears in {group.Count()} entries." })
+                .Select(group => new RuleViolation { Code = Code, Message = $"Source key '{group.Key}' appears in {group.Count()} entries." })
         ];
     }
 }

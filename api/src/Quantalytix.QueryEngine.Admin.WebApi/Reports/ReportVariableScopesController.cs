@@ -14,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/variable-scopes")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportVariableScopesController(ReportVariableScopeService scopes) : ControllerBase
 {
     /// <summary>Lists a report's variable scopes.</summary>
@@ -50,8 +50,8 @@ public sealed class ReportVariableScopesController(ReportVariableScopeService sc
     [HttpPut]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<IReadOnlyList<ReportVariableScopeRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ReportVariableScopeRecord>>> Replace(
         string tenantId,
         long reportId,
@@ -59,7 +59,7 @@ public sealed class ReportVariableScopesController(ReportVariableScopeService sc
         CancellationToken cancellationToken)
     {
         var violations = await scopes.ReplaceAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(await scopes.ListAsync(reportId, cancellationToken));
     }
 }

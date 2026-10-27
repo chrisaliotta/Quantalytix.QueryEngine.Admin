@@ -6,6 +6,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 
@@ -13,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 [ApiController]
 [Route("api/tenants/{tenantId}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DimensionVersionsController(DimensionVersionService versions) : ControllerBase
 {
     /// <summary>Lists a dimension's versions with their status; the published one is the version the active assumption set pins.</summary>
@@ -51,7 +52,7 @@ public sealed class DimensionVersionsController(DimensionVersionService versions
     [HttpPost("dimensions/{dimensionId:long}/versions")]
     [RequireAnalytical(AnalyticalTarget.Dimension, "dimensionId")]
     [ProducesResponseType<DimensionVersionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionVersionRecord>> Create(
         string tenantId,
         long dimensionId,
@@ -91,7 +92,7 @@ public sealed class DimensionVersionsController(DimensionVersionService versions
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionVersionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionVersionRecord>> Update(
         string tenantId,
         long dimensionVersionId,

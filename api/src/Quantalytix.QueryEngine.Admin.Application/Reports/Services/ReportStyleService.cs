@@ -83,7 +83,7 @@ public sealed class ReportStyleService(
         var rows = (await memberOptions.ListAsync(style, cancellationToken)).Select(option => option.MemberKey)
             .Concat((await lines.ListAsync(style, cancellationToken)).Select(line => line.LineKey));
         var blockers = new DeleteBlockers($"Style '{styleKey}'");
-        blockers.AddNamed("shown by rows", rows.Select(row => $"'{row}'"));
+        blockers.AddNamed("referenced_by_report_row", "shown by rows", rows.Select(row => $"'{row}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
         await styles.DeleteAsync(style, cancellationToken);

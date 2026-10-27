@@ -34,7 +34,7 @@ public sealed class FormulaReferencesKnownMeasuresRule(ITableGateway<MeasureReco
                     .Where(key => !keys.Contains(key))
                     .Select(key => new RuleViolation
                     {
-                        Rule = Code,
+                        Code = Code,
                         Message = $"Formula measure '{formula.MeasureKey}' references measure '{key}', which is not a measure of this version."
                     }))
         ];

@@ -30,7 +30,7 @@ public sealed class FieldKeyUniqueRuleTests
         var violations = await new FieldKeyUniqueRule(fields).EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(FieldKeyUniqueRule.Code, violation.Rule);
+        Assert.Equal(FieldKeyUniqueRule.Code, violation.Code);
         Assert.Contains("'branchCode'", violation.Message, StringComparison.Ordinal);
     }
 

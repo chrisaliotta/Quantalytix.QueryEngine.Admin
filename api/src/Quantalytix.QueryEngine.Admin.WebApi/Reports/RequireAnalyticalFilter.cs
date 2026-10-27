@@ -1,9 +1,9 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
@@ -14,12 +14,10 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 /// <param name="target">What the route value names.</param>
 /// <param name="routeKey">The route value holding the object's ID.</param>
 /// <param name="ownership">Finds the owning report.</param>
-/// <param name="problems">Creates the 409 problem details.</param>
 internal sealed class RequireAnalyticalFilter(
     AnalyticalTarget target,
     string routeKey,
-    ReportOwnership ownership,
-    ProblemDetailsFactory problems) : IAsyncActionFilter
+    ReportOwnership ownership) : IAsyncActionFilter
 {
     /// <summary>The title of the 409 problem.</summary>
     public const string Title = "Owned by a report";
@@ -48,8 +46,7 @@ internal sealed class RequireAnalyticalFilter(
         }
 
         var detail = $"{Label(named!.Value)} {id} belongs to report '{owner.ReportKey}'; only the report's editor changes it.";
-        var problem = problems.CreateProblemDetails(context.HttpContext, StatusCodes.Status409Conflict, Title, detail: detail);
-        context.Result = new ObjectResult(problem) { StatusCode = StatusCodes.Status409Conflict };
+        context.Result = Problems.Conflict(Title, detail).ToResult();
     }
 
     /// <summary>What the route names: the target, or for a routed version the kind the route gives when a report can own it.</summary>

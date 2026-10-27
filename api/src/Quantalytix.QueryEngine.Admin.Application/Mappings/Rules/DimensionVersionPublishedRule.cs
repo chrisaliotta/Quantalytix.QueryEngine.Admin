@@ -32,6 +32,6 @@ public sealed class DimensionVersionPublishedRule(
         var published = await dimensionVersions.ListAsync(new { set.DimensionId, Status = PublicationStatuses.Published }, cancellationToken);
         if (published.Count == 1) return [];
         var dimension = await dimensions.GetAsync(new { set.DimensionId }, cancellationToken);
-        return [new RuleViolation { Rule = Code, Message = $"Dimension '{dimension.DimensionKey}' has no published version for the entries to resolve in; publish one first." }];
+        return [new RuleViolation { Code = Code, Message = $"Dimension '{dimension.DimensionKey}' has no published version for the entries to resolve in; publish one first." }];
     }
 }

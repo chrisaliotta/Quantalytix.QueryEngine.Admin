@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.SystemTenants;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.SystemTenants;
 
@@ -12,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.SystemTenants;
 [ApiController]
 [Route("api/system/tenants")]
 [Authorize(Policy = AdminPolicies.SystemAdmin)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class SystemTenantsController(SystemTenantService tenants, TenantConnectionVerification verification) : ControllerBase
 {
     /// <summary>Lists every tenant in the directory, ordered by tenant ID.</summary>
@@ -53,7 +54,7 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<TenantDirectoryEntry>> Create(TenantCreateInput input, CancellationToken cancellationToken)
     {
         var entry = await tenants.CreateAsync(input, cancellationToken);
@@ -71,7 +72,7 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpPut("{tenantId}")]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<TenantDirectoryEntry>> Update(string tenantId, TenantUpdateInput input, CancellationToken cancellationToken)
     {
         return Ok(await tenants.UpdateAsync(tenantId, input, cancellationToken));
@@ -105,7 +106,7 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpPost("verify")]
     [ProducesResponseType<TenantConnectionCheck>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<TenantConnectionCheck>> Verify(TenantVerifyInput input, CancellationToken cancellationToken)
     {
         return Ok(await verification.CheckAsync(input.TenantId, input.ConnectionString, cancellationToken));

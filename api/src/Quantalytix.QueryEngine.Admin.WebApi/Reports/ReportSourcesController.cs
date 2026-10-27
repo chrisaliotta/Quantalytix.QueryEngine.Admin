@@ -13,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/sources")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportSourcesController(
     ReportSourceService sources,
     ReportSourceVariableService variables,
@@ -39,12 +39,12 @@ public sealed class ReportSourcesController(
     [HttpPost]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> Create(string tenantId, long reportId, NewReportSourceInput input, CancellationToken cancellationToken)
     {
         var violations = await sources.CreateAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(await reader.ReadAsync(reportId, cancellationToken));
     }
 
@@ -62,8 +62,8 @@ public sealed class ReportSourcesController(
     [HttpPut("{sourceId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> Update(
         string tenantId,
         [FromRoute] ReportSourceReference source,
@@ -71,7 +71,7 @@ public sealed class ReportSourcesController(
         CancellationToken cancellationToken)
     {
         var violations = await sources.UpdateAsync(source.ReportId, source.SourceId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, source.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(source.ReportId, violations);
         return Ok(await reader.ReadAsync(source.ReportId, cancellationToken));
     }
 
@@ -88,12 +88,12 @@ public sealed class ReportSourcesController(
     [HttpDelete("{sourceId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> Delete(string tenantId, [FromRoute] ReportSourceReference source, CancellationToken cancellationToken)
     {
         var violations = await sources.DeleteAsync(source.ReportId, source.SourceId, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, source.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(source.ReportId, violations);
         return Ok(await reader.ReadAsync(source.ReportId, cancellationToken));
     }
 
@@ -114,8 +114,8 @@ public sealed class ReportSourcesController(
     [HttpPut("{sourceId:long}/variables")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> ReplaceVariables(
         string tenantId,
         [FromRoute] ReportSourceReference source,
@@ -123,7 +123,7 @@ public sealed class ReportSourcesController(
         CancellationToken cancellationToken)
     {
         var violations = await variables.ReplaceAsync(source.ReportId, source.SourceId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, source.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(source.ReportId, violations);
         return Ok(await reader.ReadAsync(source.ReportId, cancellationToken));
     }
 
@@ -145,8 +145,8 @@ public sealed class ReportSourcesController(
     [HttpPut("{sourceId:long}/items")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> ReplaceItems(
         string tenantId,
         [FromRoute] ReportSourceReference source,
@@ -154,7 +154,7 @@ public sealed class ReportSourcesController(
         CancellationToken cancellationToken)
     {
         var violations = await items.ReplaceAsync(source.ReportId, source.SourceId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, source.ReportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(source.ReportId, violations);
         return Ok(await reader.ReadAsync(source.ReportId, cancellationToken));
     }
 
@@ -169,7 +169,7 @@ public sealed class ReportSourcesController(
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{sourceId:long}/unmapped")]
     [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<string>>> Unmapped(string tenantId, [FromRoute] ReportSourceReference source, CancellationToken cancellationToken)
     {
         return Ok(await coverage.UnmappedAsync(source.SourceId, cancellationToken));

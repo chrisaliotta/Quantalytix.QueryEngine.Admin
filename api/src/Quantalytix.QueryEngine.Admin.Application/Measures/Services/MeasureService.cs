@@ -85,7 +85,7 @@ public sealed class MeasureService(
         var formulas = await measures.ListAsync(new { MeasureId = dependents }, cancellationToken);
 
         var blockers = new DeleteBlockers($"Measure '{measure.MeasureKey}'");
-        blockers.AddNamed("it is referenced by the formulas of measures", formulas.Select(formula => $"'{formula.MeasureKey}'"));
+        blockers.AddNamed("referenced_by_measure", "it is referenced by the formulas of measures", formulas.Select(formula => $"'{formula.MeasureKey}'"));
         if (blockers.Detail() is { } detail) return detail;
 
         await components.DeleteAsync(new { reference.MeasureId }, cancellationToken);

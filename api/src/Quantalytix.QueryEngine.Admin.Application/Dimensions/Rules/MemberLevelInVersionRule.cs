@@ -33,7 +33,7 @@ public sealed class MemberLevelInVersionRule(
                 .OrderBy(member => member.MemberKey, StringComparer.Ordinal)
                 .Select(member => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Member '{member.MemberKey}' has level {member.DimensionLevelId}, which is not a level of this version."
                 })
         ];

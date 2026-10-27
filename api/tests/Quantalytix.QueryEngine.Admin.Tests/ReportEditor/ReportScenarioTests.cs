@@ -25,7 +25,7 @@ public sealed class ReportScenarioTests
 
         var violation = Assert.Single(await fixture.ScenarioService().ReplaceAsync(ReportRows.ReportId, input, cancellationToken));
 
-        Assert.Equal(ScenarioRolesDistinctRule.Code, violation.Rule);
+        Assert.Equal(ScenarioRolesDistinctRule.Code, violation.Code);
         Assert.Empty(fixture.Scenarios.All);
 
         await fixture.SetEnabledAsync(false);

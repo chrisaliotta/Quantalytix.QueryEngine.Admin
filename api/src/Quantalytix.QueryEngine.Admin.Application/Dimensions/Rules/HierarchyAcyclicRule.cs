@@ -51,6 +51,6 @@ public sealed class HierarchyAcyclicRule(ITableGateway<DimensionMemberRecord> me
     private static RuleViolation Cycle(List<long> cycle, Dictionary<long, DimensionMemberRecord> byId)
     {
         var keys = cycle.Append(cycle[0]).Select(dimensionMemberId => $"'{byId[dimensionMemberId].MemberKey}'");
-        return new RuleViolation { Rule = Code, Message = $"Members {string.Join(" -> ", keys)} form a parent cycle." };
+        return new RuleViolation { Code = Code, Message = $"Members {string.Join(" -> ", keys)} form a parent cycle." };
     }
 }

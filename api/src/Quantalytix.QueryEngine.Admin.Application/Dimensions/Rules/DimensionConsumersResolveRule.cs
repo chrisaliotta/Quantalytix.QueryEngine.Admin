@@ -34,7 +34,7 @@ public sealed class DimensionConsumersResolveRule(
                 .Where(reference => !keys.Has(reference))
                 .Select(reference => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"{reference.Consumer} names {(reference.IsLevel ? "level" : "member")} '{reference.Key}', which v{version.VersionNumber} lacks."
                 })
         ];

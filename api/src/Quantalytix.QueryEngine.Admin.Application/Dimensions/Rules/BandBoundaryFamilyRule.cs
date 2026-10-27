@@ -33,7 +33,7 @@ public sealed class BandBoundaryFamilyRule(RangeBandSetReader reader) : IPublica
                 .Where(check => check.Foreign.Count > 0)
                 .Select(check => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"{set.Describe(check.Band)} sets {string.Join(" and ", check.Foreign)} bounds, but the version's range_data_type is {family}."
                 })
         ];

@@ -32,7 +32,7 @@ public sealed class PinnedDatasetVersionPublishedRuleTests
         var violations = await EvaluateAsync(Pin(1, 12), Pin(2, 21));
 
         var violation = Assert.Single(violations);
-        Assert.Equal("pinned_version_published", violation.Rule);
+        Assert.Equal("pinned_version_published", violation.Code);
         Assert.Equal("Dataset 'loans' pins v2, which is draft; a release pins only published versions.", violation.Message);
     }
 

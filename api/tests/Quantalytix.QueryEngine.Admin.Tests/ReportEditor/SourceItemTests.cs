@@ -85,7 +85,7 @@ public sealed class SourceItemTests
         var half = new SourceItemsInput { RowKey = "CASH", Items = [Item("1002", 0.5m)] };
 
         var violation = Assert.Single(await fixture.Items().ReplaceAsync(ReportRows.ReportId, SourceId, half, cancellationToken));
-        Assert.Equal(ReportFactorsApplyRule.Code, violation.Rule);
+        Assert.Equal(ReportFactorsApplyRule.Code, violation.Code);
         Assert.Equal([("1001", "LOANS", 1m), ("1002", "CASH", 1m)], Mappings(fixture));
 
         var balance = Assert.Single(fixture.Measures.All);

@@ -59,8 +59,8 @@ public sealed class BindingErrorResultsTests
     }
 
     /// <summary>The errors of a 400 result.</summary>
-    private static IDictionary<string, string[]> Errors(IActionResult result)
+    private static IReadOnlyDictionary<string, string[]> Errors(IActionResult result)
     {
-        return ((ValidationProblemDetails)((BadRequestObjectResult)result).Value!).Errors;
+        return ((Problem)((ObjectResult)result).Value!).Errors;
     }
 }

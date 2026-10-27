@@ -32,7 +32,7 @@ public sealed class ReportFactorsApplyRule : IReportRule
                 .OrderBy(variable => variable.VariableKey, StringComparer.Ordinal))
                 yield return new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Report '{report.ReportKey}' source '{source.SourceKey}' adds items into rows with factors other than 1, but variable " +
                         $"'{variable.VariableKey}' reads '{variable.MeasureKey}' of '{dataset.DatasetKey}', which ignores bridge factors."
                 };

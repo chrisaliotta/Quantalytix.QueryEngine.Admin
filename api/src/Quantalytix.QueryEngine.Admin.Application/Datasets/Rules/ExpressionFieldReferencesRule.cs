@@ -34,7 +34,7 @@ public sealed class ExpressionFieldReferencesRule(ITableGateway<FieldRecord> fie
                     .Where(key => !keys.Contains(key))
                     .Select(key => new RuleViolation
                     {
-                        Rule = Code,
+                        Code = Code,
                         Message = $"Expression field '{field.FieldKey}' references '{key}', which is not a field of this version."
                     }))
         ];

@@ -29,7 +29,7 @@ public static class FormulasFitLanguageRule
                 .Where(use => !FormulaLanguageVersions.Includes(version, use.Version))
                 .Select(use => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"{formula.Subject} {use.What}, which formula language {version} lacks; the model needs formula language {use.Version}."
                 }));
     }

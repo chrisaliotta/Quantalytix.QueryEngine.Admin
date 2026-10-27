@@ -6,6 +6,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 
@@ -13,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 [ApiController]
 [Route("api/tenants/{tenantId}/bridge-versions/{versionId:long}/mappings")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgeMappingsController(BridgeMappingService mappings) : ControllerBase
 {
     /// <summary>Lists every mapping of a bridge version.</summary>
@@ -47,7 +48,7 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
     [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
     [RequireAnalytical(AnalyticalTarget.BridgeVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<BridgeMappingRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<BridgeMappingRecord>>> Replace(
         string tenantId,
         long versionId,

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.Overview;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Overview;
 
@@ -9,8 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Overview;
 [ApiController]
 [Route("api/tenants/{tenantId}/overview")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class OverviewController(OverviewService overview) : ControllerBase
 {
     /// <summary>Reads the tenant's identity and semantic revision, its active release, its counts and its drafts in progress.</summary>

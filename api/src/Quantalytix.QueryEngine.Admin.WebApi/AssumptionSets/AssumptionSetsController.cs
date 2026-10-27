@@ -15,8 +15,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.AssumptionSets;
 [ApiController]
 [Route("api/tenants/{tenantId}/assumption-sets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class AssumptionSetsController(AssumptionSetService sets) : ControllerBase
 {
     /// <summary>Lists the tenant's assumption sets: the active one, then historical sets, most recently captured first.</summary>
@@ -44,7 +44,7 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<AssumptionSetRecord>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<AssumptionSetRecord>> Capture(string tenantId, AssumptionCaptureInput input, CancellationToken cancellationToken)
     {
         var set = await sets.CaptureAsync(input, cancellationToken);
@@ -78,7 +78,7 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{assumptionSetId:long}")]
     [ProducesResponseType<AssumptionSetRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<AssumptionSetRecord>> Update(
         string tenantId,
         long assumptionSetId,
@@ -99,11 +99,11 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <response code="409">Nothing was deleted: the set is the active set, which holds the default versions.</response>
     [HttpDelete("{assumptionSetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long assumptionSetId, CancellationToken cancellationToken)
     {
         var conflict = await sets.DeleteAsync(assumptionSetId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

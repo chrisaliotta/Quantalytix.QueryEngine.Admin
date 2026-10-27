@@ -58,7 +58,7 @@ public sealed class DefaultTimeBindingInVersionRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(defaultTimeBindingId));
 
-        Assert.Equal(DefaultTimeBindingInVersionRule.Code, violation.Rule);
+        Assert.Equal(DefaultTimeBindingInVersionRule.Code, violation.Code);
     }
 
     /// <summary>Evaluates the rule on the version with the given default time binding.</summary>

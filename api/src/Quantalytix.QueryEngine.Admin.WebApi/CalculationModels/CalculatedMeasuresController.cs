@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/calculated-measures")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasureRecord, CalculatedMeasureInput> calculatedMeasures, ModelChanges changes)
     : ControllerBase
 {
@@ -46,14 +46,14 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     [HttpPost]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Create(string tenantId, long calculationModelId, CalculatedMeasureInput input, CancellationToken cancellationToken)
     {
         var created = calculatedMeasures.Compose(calculationModelId, null, input);
         var violations = await changes.ApplyAsync(
             calculationModelId, model => calculatedMeasures.Put(model, created), () => calculatedMeasures.InsertAsync(created, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
         return Ok(created);
     }
 
@@ -71,8 +71,8 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     [HttpPut("{itemId:long}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculatedMeasureRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculatedMeasureRecord>> Update(
         string tenantId,
         [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure,
@@ -82,7 +82,7 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
         var updated = calculatedMeasures.Compose(measure.CalculationModelId, measure.ItemId, input);
         var violations = await changes.ApplyAsync(
             measure.CalculationModelId, model => calculatedMeasures.Put(model, updated), () => calculatedMeasures.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.CalculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(measure.CalculationModelId, violations);
         return Ok(updated);
     }
 
@@ -99,8 +99,8 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
     [HttpDelete("{itemId:long}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<CalculatedMeasureRecord> measure, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
@@ -108,7 +108,7 @@ public sealed class CalculatedMeasuresController(IModelContent<CalculatedMeasure
             model => calculatedMeasures.Without(model, measure.ItemId),
             () => calculatedMeasures.DeleteAsync(measure.ItemId, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, measure.CalculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(measure.CalculationModelId, violations);
         return NoContent();
     }
 }

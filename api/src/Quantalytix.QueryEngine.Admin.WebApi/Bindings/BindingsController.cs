@@ -15,8 +15,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bindings;
 [ApiController]
 [Route("api/tenants/{tenantId}/dataset-versions/{versionId:long}/bindings")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BindingsController(BindingService bindings) : ControllerBase
 {
     /// <summary>Lists the bindings of a dataset version, each with its time extension.</summary>
@@ -48,7 +48,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BindingDetail>> Create(string tenantId, long versionId, BindingInput input, CancellationToken cancellationToken)
     {
         return Ok(await bindings.CreateAsync(versionId, input, cancellationToken));
@@ -71,7 +71,7 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     [HttpPut("{dimensionBindingId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<BindingDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BindingDetail>> Update(
         string tenantId,
         [FromRoute] BindingReference reference,
@@ -97,11 +97,11 @@ public sealed class BindingsController(BindingService bindings) : ControllerBase
     [HttpDelete("{dimensionBindingId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] BindingReference reference, CancellationToken cancellationToken)
     {
         var conflict = await bindings.DeleteAsync(reference, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

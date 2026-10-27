@@ -94,7 +94,7 @@ public sealed class SourceProfileService(
         var profile = await profiles.GetAsync(new { CalculationSourceProfileId = itemId }, cancellationToken);
         var report = await reports.GetAsync(new { profile.ReportId }, cancellationToken);
         var blockers = new DeleteBlockers($"Source profile '{profile.ProfileKey}'");
-        if (report.DefaultProfileKey == profile.ProfileKey) blockers.Add("it is the default profile of its report");
+        if (report.DefaultProfileKey == profile.ProfileKey) blockers.Add("default_profile", "it is the default profile of its report");
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
         await remover.RemoveProfilesAsync([itemId], cancellationToken);

@@ -33,7 +33,7 @@ public sealed class ExpressionFieldReferencesRuleTests
         var violations = await new ExpressionFieldReferencesRule(fields).EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(ExpressionFieldReferencesRule.Code, violation.Rule);
+        Assert.Equal(ExpressionFieldReferencesRule.Code, violation.Code);
         Assert.Contains("'interestShare'", violation.Message, StringComparison.Ordinal);
         Assert.Contains("'creditLimit'", violation.Message, StringComparison.Ordinal);
     }

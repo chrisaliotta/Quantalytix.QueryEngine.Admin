@@ -42,7 +42,7 @@ public sealed class TimePolicyTimeBindingInVersionRule(
                 .Where(policy => !timeBindingIds.Contains(policy.RequiredTimeBindingId!.Value))
                 .Select(policy => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"The time policy of measure '{measureKeys[policy.MeasureId]}' requires binding {policy.RequiredTimeBindingId}, " +
                         "which is not a time binding of this version."
                 })

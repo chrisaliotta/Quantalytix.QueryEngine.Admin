@@ -30,7 +30,7 @@ public sealed class EntryMemberAssignableRule(MappingEntrySetReader reader) : IP
                 .Where(entry => dimension.UnassignableMemberKeys.Contains(entry.MemberKey))
                 .Select(entry => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Source key '{entry.SourceKeyValue}' maps to member '{entry.MemberKey}', which is not assignable."
                 })
         ];

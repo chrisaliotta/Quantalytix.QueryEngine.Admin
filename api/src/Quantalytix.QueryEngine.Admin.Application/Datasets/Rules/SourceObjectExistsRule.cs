@@ -22,6 +22,6 @@ public sealed class SourceObjectExistsRule(ITableGateway<DatasetVersionRecord> v
     {
         var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
         if (await sourceObjects.ExistsAsync(version.SourceObjectKind, version.SourceObject, cancellationToken)) return [];
-        return [new RuleViolation { Rule = Code, Message = $"The {version.SourceObjectKind} '{version.SourceObject}' does not exist in the tenant database." }];
+        return [new RuleViolation { Code = Code, Message = $"The {version.SourceObjectKind} '{version.SourceObject}' does not exist in the tenant database." }];
     }
 }

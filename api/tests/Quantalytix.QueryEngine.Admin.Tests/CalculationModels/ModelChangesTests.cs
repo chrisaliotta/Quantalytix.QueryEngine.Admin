@@ -49,7 +49,7 @@ public sealed class ModelChangesTests
     {
         var violations = await UpdateMeasureAsync(Calculated(61, "yield", expressionText));
 
-        Assert.Equal([rule], violations.Select(violation => violation.Rule));
+        Assert.Equal([rule], violations.Select(violation => violation.Code));
         Assert.Equal("[m.balance] / 2", Assert.Single(_fixture.CalculatedMeasures.All).ExpressionText);
     }
 
@@ -65,7 +65,7 @@ public sealed class ModelChangesTests
 
         var violations = await DeleteVariableAsync(51);
 
-        Assert.Equal([ReportMetricsResolveRule.Code], violations.Select(violation => violation.Rule).Distinct());
+        Assert.Equal([ReportMetricsResolveRule.Code], violations.Select(violation => violation.Code).Distinct());
         Assert.Single(_fixture.Variables.All);
     }
 
@@ -124,7 +124,7 @@ public sealed class ModelChangesTests
         var refused = await ReplaceAttributionAsync(Attribution("yield", null, Driver("volume", 1, "balance"), Driver("income", 2, "income")));
         var written = await ReplaceAttributionAsync(Attribution("yield", null, Driver("volume", 1, "balance")) with { WeightVariableKey = "balance" });
 
-        Assert.Equal([AttributionReferencesResolveRule.Code, AttributionDriversRule.Code], refused.Select(violation => violation.Rule));
+        Assert.Equal([AttributionReferencesResolveRule.Code, AttributionDriversRule.Code], refused.Select(violation => violation.Code));
         Assert.Empty(written);
         var stored = Assert.Single(await _fixture.AttributionService().ListAsync(CalculationModelId, TestContext.Current.CancellationToken));
         Assert.Equal(("yield", "balance"), (stored.MetricKey, stored.WeightVariableKey));
@@ -164,7 +164,7 @@ public sealed class ModelChangesTests
         var violations = await _fixture.Changes().ApplyAsync(
             CalculationModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
 
-        Assert.Equal([FormulasFitLanguageRule.Code], violations.Select(violation => violation.Rule));
+        Assert.Equal([FormulasFitLanguageRule.Code], violations.Select(violation => violation.Code));
         Assert.Equal(FormulaLanguageVersions.Version11, Assert.Single(_fixture.Models.All).FormulaLanguageVersion);
     }
 

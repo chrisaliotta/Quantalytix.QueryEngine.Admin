@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/variables")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class VariablesController(IModelContent<VariableRecord, VariableInput> variables, ModelChanges changes) : ControllerBase
 {
     /// <summary>Lists a model's variables.</summary>
@@ -44,7 +44,7 @@ public sealed class VariablesController(IModelContent<VariableRecord, VariableIn
     [HttpPost]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<VariableRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Create(string tenantId, long calculationModelId, VariableInput input, CancellationToken cancellationToken)
     {
         var created = variables.Compose(calculationModelId, null, input);
@@ -66,8 +66,8 @@ public sealed class VariablesController(IModelContent<VariableRecord, VariableIn
     [HttpPut("{itemId:long}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<VariableRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<VariableRecord>> Update(
         string tenantId,
         [FromRoute] ModelItemReference<VariableRecord> variable,
@@ -77,7 +77,7 @@ public sealed class VariablesController(IModelContent<VariableRecord, VariableIn
         var updated = variables.Compose(variable.CalculationModelId, variable.ItemId, input);
         var violations = await changes.ApplyAsync(
             variable.CalculationModelId, model => variables.Put(model, updated), () => variables.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, variable.CalculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(variable.CalculationModelId, violations);
         return Ok(updated);
     }
 
@@ -94,13 +94,13 @@ public sealed class VariablesController(IModelContent<VariableRecord, VariableIn
     [HttpDelete("{itemId:long}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] ModelItemReference<VariableRecord> variable, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
             variable.CalculationModelId, model => variables.Without(model, variable.ItemId), () => variables.DeleteAsync(variable.ItemId, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, variable.CalculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(variable.CalculationModelId, violations);
         return NoContent();
     }
 }

@@ -58,7 +58,7 @@ public sealed class IntervalEstimatesForFinerPeriodsRule(
                 .OrderBy(use => use.Measure.MeasureKey, StringComparer.Ordinal)
                 .Select(use => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Measure '{use.Measure.MeasureKey}' aggregates on time binding '{named[use.DimensionBindingId!.Value]}', whose interval rows " +
                         "may be read at a periodicity finer than their native one, so its time policy must set partial_interval_behavior to uniform_estimate."
                 })

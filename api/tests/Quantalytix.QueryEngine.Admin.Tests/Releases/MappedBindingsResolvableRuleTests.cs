@@ -45,7 +45,7 @@ public sealed class MappedBindingsResolvableRuleTests
         var violations = await EvaluateAsync([MappedBinding()], [MappingVersion(71, PublicationStatuses.Draft)]);
 
         var violation = Assert.Single(violations);
-        Assert.Equal("mapped_bindings_resolvable", violation.Rule);
+        Assert.Equal("mapped_bindings_resolvable", violation.Code);
         Assert.Equal("Binding 'branch' of dataset 'loans' maps through mapping set 'core_branch', which has no published version.", violation.Message);
     }
 

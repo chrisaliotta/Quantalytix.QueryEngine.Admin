@@ -30,13 +30,13 @@ public sealed class MappingMembersInEndpointVersionsRule(BridgeMappingSetReader 
             if (set.Source is { } source && !source.MemberKeys.Contains(mapping.SourceMemberKey))
             {
                 var message = $"Mapping {BridgeMappingSet.Describe(mapping)} has a source member that the published source dimension version lacks.";
-                violations.Add(new RuleViolation { Rule = Code, Message = message });
+                violations.Add(new RuleViolation { Code = Code, Message = message });
             }
 
             if (set.Target is { } target && !target.MemberKeys.Contains(mapping.TargetMemberKey))
             {
                 var message = $"Mapping {BridgeMappingSet.Describe(mapping)} has a target member that the published target dimension version lacks.";
-                violations.Add(new RuleViolation { Rule = Code, Message = message });
+                violations.Add(new RuleViolation { Code = Code, Message = message });
             }
         }
 

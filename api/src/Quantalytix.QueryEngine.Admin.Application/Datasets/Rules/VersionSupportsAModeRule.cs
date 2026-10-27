@@ -21,6 +21,6 @@ public sealed class VersionSupportsAModeRule(ITableGateway<DatasetVersionRecord>
     {
         var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
         if (version.SupportsAggregate || version.SupportsDetail) return [];
-        return [new RuleViolation { Rule = Code, Message = $"Version v{version.VersionNumber} supports neither aggregate nor detail queries; enable at least one." }];
+        return [new RuleViolation { Code = Code, Message = $"Version v{version.VersionNumber} supports neither aggregate nor detail queries; enable at least one." }];
     }
 }

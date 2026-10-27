@@ -11,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 [ApiController]
 [Route("api/tenants/{tenantId}/versions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class VersionStatusController(VersionWorkflow workflow) : ControllerBase
 {
     /// <summary>
@@ -34,9 +34,9 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     [HttpPut("{kind}/{id:long}/status")]
     [RequireAnalytical(AnalyticalTarget.RoutedVersion, "id")]
     [ProducesResponseType<VersionState>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<VersionState>> ChangeStatus(
         string tenantId,
         [FromRoute] VersionReference version,
@@ -47,11 +47,11 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
         if (result.Outcome == TransitionOutcome.NotAllowed)
         {
             var detail = $"{version.Kind} {version.Id} is {result.State.Status}; it cannot move to {input.Status}.";
-            return Problem(detail, statusCode: StatusCodes.Status409Conflict, title: "Transition not allowed");
+            return Problems.Conflict("Transition not allowed", detail).ToResult();
         }
 
         if (result.Outcome == TransitionOutcome.Rejected)
-            return RuleViolationResults.Create(HttpContext, $"{version.Kind} {version.Id} cannot become {input.Status}.", result.Violations);
+            return Problems.RulesViolated($"{version.Kind} {version.Id} cannot become {input.Status}.", result.Violations).ToResult();
         return Ok(result.State);
     }
 
@@ -69,7 +69,7 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{kind}/{id:long}/validation")]
     [ProducesResponseType<VersionCheck>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<VersionCheck>> Check(string tenantId, [FromRoute] VersionReference version, CancellationToken cancellationToken)
     {
         return Ok(new VersionCheck { Violations = await workflow.CheckAsync(version.Kind, version.Id, cancellationToken) });

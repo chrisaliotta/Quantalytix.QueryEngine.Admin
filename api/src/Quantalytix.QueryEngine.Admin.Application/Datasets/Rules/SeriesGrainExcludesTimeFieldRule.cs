@@ -48,7 +48,7 @@ public sealed class SeriesGrainExcludesTimeFieldRule(
                 .ThenBy(component => component.Ordinal)
                 .Select(component => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Series grain '{grainKeys[component.DatasetGrainId]}' includes '{FieldName(fieldKeys, component.FieldId)}', " +
                         "the observation-time field of a time binding; a series grain leaves it out."
                 })

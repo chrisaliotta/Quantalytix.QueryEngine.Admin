@@ -105,7 +105,7 @@ public sealed class VersionWorkflowTests
     [Fact]
     public async Task Violation_KeepsTheDraft()
     {
-        var violation = new RuleViolation { Rule = "closure_mismatch", Message = "The closure table does not match the member tree." };
+        var violation = new RuleViolation { Code = "closure_mismatch", Message = "The closure table does not match the member tree." };
         var workflow = Workflow([Rule(VersionKinds.DimensionVersion, violation)], []);
 
         var result = await workflow.TransitionAsync(
@@ -195,7 +195,7 @@ public sealed class VersionWorkflowTests
     [Fact]
     public async Task Check_ReportsViolationsWithoutChangingTheVersion()
     {
-        var violation = new RuleViolation { Rule = "dimension_consumers_resolve", Message = "Binding 'Branch' of dataset 'loans' names member 'BR09', which v1 lacks." };
+        var violation = new RuleViolation { Code = "dimension_consumers_resolve", Message = "Binding 'Branch' of dataset 'loans' names member 'BR09', which v1 lacks." };
         var workflow = Workflow([Rule(VersionKinds.DimensionVersion, violation)], [Handler(VersionKinds.DimensionVersion)]);
 
         var violations = await workflow.CheckAsync(VersionKinds.DimensionVersion, PublishedDimensionVersionId, TestContext.Current.CancellationToken);

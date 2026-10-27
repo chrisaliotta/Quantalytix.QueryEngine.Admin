@@ -45,7 +45,7 @@ public static class FormulaParametersResolveRule
             .OrderBy(formula => formula.Subject, StringComparer.Ordinal)
             .SelectMany(formula => Problems(ExpressionParser.Parse(formula.Expression), parameters)
                 .Distinct(StringComparer.Ordinal)
-                .Select(problem => new RuleViolation { Rule = Code, Message = $"{formula.Subject} {problem}." }));
+                .Select(problem => new RuleViolation { Code = Code, Message = $"{formula.Subject} {problem}." }));
     }
 
     /// <summary>A formula's problems: the names it reads that no parameter answers to, then the values read out of place.</summary>

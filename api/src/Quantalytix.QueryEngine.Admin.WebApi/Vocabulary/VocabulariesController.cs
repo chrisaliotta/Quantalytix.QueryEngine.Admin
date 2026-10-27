@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using VocabularyDefinition = Quantalytix.QueryEngine.Admin.Application.Vocabulary.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Vocabulary;
 
 /// <summary>Serves the controlled vocabularies every select list and validator uses.</summary>
 [ApiController]
 [Route("api/vocabularies")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 public sealed class VocabulariesController : ControllerBase
 {
     /// <summary>Lists every vocabulary with its allowed values and their definitions.</summary>

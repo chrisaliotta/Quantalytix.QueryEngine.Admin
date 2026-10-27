@@ -13,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 [ApiController]
 [Route("api/tenants/{tenantId}/bridges")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgesController(BridgeService bridges) : ControllerBase
 {
     /// <summary>
@@ -31,7 +31,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<BridgeSummary>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<BridgeSummary>>> List(
         string tenantId, [FromQuery, BindRequired] long dimensionId, CancellationToken cancellationToken)
     {
@@ -49,7 +49,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeRecord>> Create(string tenantId, NewBridgeInput input, CancellationToken cancellationToken)
     {
         return Ok(await bridges.CreateAsync(input, cancellationToken));
@@ -83,7 +83,7 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     [HttpPut("{bridgeId:long}")]
     [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<BridgeRecord>> Update(string tenantId, long bridgeId, BridgeInput input, CancellationToken cancellationToken)
     {
         return Ok(await bridges.UpdateAsync(bridgeId, input, cancellationToken));
@@ -103,11 +103,11 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     [HttpDelete("{bridgeId:long}")]
     [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long bridgeId, CancellationToken cancellationToken)
     {
         var conflict = await bridges.DeleteAsync(bridgeId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

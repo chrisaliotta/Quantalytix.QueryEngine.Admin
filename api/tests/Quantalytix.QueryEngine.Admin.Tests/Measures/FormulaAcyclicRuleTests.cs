@@ -40,7 +40,7 @@ public sealed class FormulaAcyclicRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Edge(1, 2), Edge(2, 1)));
 
-        Assert.Equal(FormulaAcyclicRule.Code, violation.Rule);
+        Assert.Equal(FormulaAcyclicRule.Code, violation.Code);
         Assert.Equal("Formula measures 'a', 'b' depend on each other in a cycle.", violation.Message);
     }
 

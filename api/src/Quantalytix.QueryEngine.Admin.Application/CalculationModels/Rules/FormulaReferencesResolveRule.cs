@@ -22,7 +22,7 @@ public static class FormulaReferencesResolveRule
         return model.CalculatedMeasures.OrderBy(measure => measure.MeasureKey, StringComparer.Ordinal).SelectMany(measure =>
             Unresolved(keys, measure.ExpressionText).Select(key => new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"Calculated measure '{measure.MeasureKey}' reads [m.{key}], which is no variable or calculated measure of the model."
             }));
     }

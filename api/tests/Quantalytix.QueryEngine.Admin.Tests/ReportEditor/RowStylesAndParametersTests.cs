@@ -130,7 +130,7 @@ public sealed class RowStylesAndParametersTests
 
         Assert.Equal("Style 'subtotals' cannot be deleted: shown by rows 'TOTAL'.", (await DeleteStyleAsync("subtotals")).Conflict);
         await _fixture.SetEnabledAsync(true);
-        Assert.Equal([ReportStylesResolveRule.Code], (await DeleteStyleAsync("notes")).Violations.Select(violation => violation.Rule));
+        Assert.Equal([ReportStylesResolveRule.Code], (await DeleteStyleAsync("notes")).Violations.Select(violation => violation.Code));
         await _fixture.Styles.InsertAsync(Style("unused", null), cancellationToken);
         var unused = await DeleteStyleAsync("unused");
         Assert.Null(unused.Conflict);

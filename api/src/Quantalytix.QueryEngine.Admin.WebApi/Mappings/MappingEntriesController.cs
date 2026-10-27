@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 
@@ -12,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 [ApiController]
 [Route("api/tenants/{tenantId}/mapping-versions/{versionId:long}/entries")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingEntriesController(MappingEntryService entries) : ControllerBase
 {
     /// <summary>Lists every entry of a mapping version.</summary>
@@ -45,7 +46,7 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     [HttpPut]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<DimensionMappingRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<DimensionMappingRecord>>> Replace(
         string tenantId,
         long versionId,
@@ -69,7 +70,7 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     [HttpPost]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
     [ProducesResponseType<DimensionMappingRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMappingRecord>> Create(
         string tenantId,
         long versionId,
@@ -93,7 +94,7 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     [HttpPut("{entryId:long}")]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
     [ProducesResponseType<DimensionMappingRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMappingRecord>> Update(
         string tenantId,
         [FromRoute] MappingEntryReference entry,
@@ -116,7 +117,7 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     [HttpDelete("{entryId:long}")]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] MappingEntryReference entry, CancellationToken cancellationToken)
     {
         await entries.DeleteAsync(entry, cancellationToken);

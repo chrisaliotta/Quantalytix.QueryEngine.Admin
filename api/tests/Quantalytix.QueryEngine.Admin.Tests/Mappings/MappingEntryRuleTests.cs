@@ -64,7 +64,7 @@ public sealed class MappingEntryRuleTests
         var violations = await rule.EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(SourceKeyUniqueRule.Code, violation.Rule);
+        Assert.Equal(SourceKeyUniqueRule.Code, violation.Code);
         Assert.Equal("Source key '06' appears in 2 entries.", violation.Message);
     }
 
@@ -78,7 +78,7 @@ public sealed class MappingEntryRuleTests
         var violations = await rule.EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(EntryMemberInVersionRule.Code, violation.Rule);
+        Assert.Equal(EntryMemberInVersionRule.Code, violation.Code);
         Assert.Equal("Source key '48' maps to member 'TX', which is not a member of v1, the published version of the set's dimension.", violation.Message);
     }
 
@@ -98,7 +98,7 @@ public sealed class MappingEntryRuleTests
         var violations = await rule.EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(EntryMemberAssignableRule.Code, violation.Rule);
+        Assert.Equal(EntryMemberAssignableRule.Code, violation.Code);
         Assert.Equal("Source key '00' maps to member 'US', which is not assignable.", violation.Message);
     }
 
@@ -115,7 +115,7 @@ public sealed class MappingEntryRuleTests
         var published = new DimensionVersionPublishedRule(MappingVersions(), Sets(), versions, new InMemoryTableGateway<DimensionRecord>(Dimension(DimensionId, DimensionKinds.Categorical)));
 
         var violation = Assert.Single(await published.EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken));
-        Assert.Equal(DimensionVersionPublishedRule.Code, violation.Rule);
+        Assert.Equal(DimensionVersionPublishedRule.Code, violation.Code);
         Assert.Empty(await new EntryMemberInVersionRule(reader).EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken));
         Assert.Empty(await new EntryMemberAssignableRule(reader).EvaluateAsync(MappingVersionId, TestContext.Current.CancellationToken));
     }

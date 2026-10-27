@@ -52,7 +52,7 @@ public sealed class FieldService(ITableGateway<FieldRecord> fields, FieldUsage u
     {
         var field = await fields.GetAsync(new { reference.FieldId }, cancellationToken);
         var blockers = new DeleteBlockers($"Field '{field.FieldKey}'");
-        blockers.AddNamed("it is used by", await usage.ListAsync(field.FieldId, cancellationToken));
+        blockers.AddNamed("field_in_use", "it is used by", await usage.ListAsync(field.FieldId, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

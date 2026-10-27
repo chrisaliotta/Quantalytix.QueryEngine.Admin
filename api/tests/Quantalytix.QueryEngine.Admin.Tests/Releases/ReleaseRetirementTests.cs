@@ -55,7 +55,7 @@ public sealed class ReleaseRetirementTests
             VersionKinds.SemanticRelease, ActiveSemanticReleaseId, PublicationStatuses.Retired, TestContext.Current.CancellationToken);
 
         Assert.Equal(TransitionOutcome.Rejected, result.Outcome);
-        Assert.Equal("release_not_active", Assert.Single(result.Violations).Rule);
+        Assert.Equal("release_not_active", Assert.Single(result.Violations).Code);
         Assert.Equal(PublicationStatuses.Published, _releases.All.Single(row => row.SemanticReleaseId == ActiveSemanticReleaseId).Status);
     }
 

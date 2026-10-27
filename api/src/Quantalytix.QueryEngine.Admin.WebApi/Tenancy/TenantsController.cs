@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
 /// <summary>Lists the tenants the caller may administer.</summary>
 [ApiController]
 [Route("api/tenants")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 public sealed class TenantsController(AccessibleTenantsService tenants, CallerFactory callers) : ControllerBase
 {
     /// <summary>Lists every tenant for a SystemAdmin, otherwise only the caller's own tenant. Connection strings are never included.</summary>

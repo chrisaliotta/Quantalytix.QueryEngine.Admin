@@ -89,7 +89,7 @@ public sealed class CalculationModelService(
     {
         var model = await GetAsync(calculationModelId, cancellationToken);
         var blockers = new DeleteBlockers($"Calculation model '{model.ModelKey}'");
-        blockers.AddNamed("read by", await reports.ModelReadersAsync(calculationModelId, cancellationToken));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByReport, "read by", await reports.ModelReadersAsync(calculationModelId, cancellationToken));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

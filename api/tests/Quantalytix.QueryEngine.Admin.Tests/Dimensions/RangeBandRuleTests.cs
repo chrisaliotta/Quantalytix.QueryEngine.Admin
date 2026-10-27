@@ -55,7 +55,7 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 2, 2, 10m, 20m));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(BandsNonOverlappingRule.Code, violation.Rule);
+        Assert.Equal(BandsNonOverlappingRule.Code, violation.Code);
         Assert.Equal("Band 2 (member 'MID') overlaps Band 1 (member 'LOW'): each band must start after the previous one ends.", violation.Message);
     }
 
@@ -69,7 +69,7 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 1, 1, 0m, null),
             DecimalBand(VersionId, 2, 2, 100m, 200m));
 
-        Assert.Equal([BandsNonOverlappingRule.Code], violations.Select(violation => violation.Rule));
+        Assert.Equal([BandsNonOverlappingRule.Code], violations.Select(violation => violation.Code));
     }
 
     /// <summary>Date versions compare the date bounds.</summary>
@@ -110,7 +110,7 @@ public sealed class RangeBandRuleTests
             DecimalBand(VersionId, 2, 2, 10m, null) with { UpperDate = Utc(2026, 1, 1) });
 
         var violation = Assert.Single(violations);
-        Assert.Equal(BandBoundaryFamilyRule.Code, violation.Rule);
+        Assert.Equal(BandBoundaryFamilyRule.Code, violation.Code);
         Assert.Equal("Band 2 (member 'MID') sets date bounds, but the version's range_data_type is decimal.", violation.Message);
     }
 

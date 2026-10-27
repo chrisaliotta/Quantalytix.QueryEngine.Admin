@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Datasets;
 [ApiController]
 [Route("api/tenants/{tenantId}/dataset-versions/{versionId:long}/grains")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class GrainsController(GrainService grains) : ControllerBase
 {
     /// <summary>Lists the grains of a dataset version, each with its fields in ordinal order.</summary>
@@ -45,7 +45,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<GrainDetail>> Create(string tenantId, long versionId, GrainInput input, CancellationToken cancellationToken)
     {
         return Ok(await grains.CreateAsync(versionId, input, cancellationToken));
@@ -65,7 +65,7 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     [HttpPut("{datasetGrainId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<GrainDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<GrainDetail>> Update(
         string tenantId,
         [FromRoute] GrainReference reference,
@@ -88,11 +88,11 @@ public sealed class GrainsController(GrainService grains) : ControllerBase
     [HttpDelete("{datasetGrainId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] GrainReference reference, CancellationToken cancellationToken)
     {
         var conflict = await grains.DeleteAsync(reference, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

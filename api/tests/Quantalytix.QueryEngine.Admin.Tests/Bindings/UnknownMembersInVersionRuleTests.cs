@@ -60,7 +60,7 @@ public sealed class UnknownMembersInVersionRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Binding(memberKey), Published()));
 
-        Assert.Equal(UnknownMembersInVersionRule.Code, violation.Rule);
+        Assert.Equal(UnknownMembersInVersionRule.Code, violation.Code);
         Assert.Equal(
             $"Binding 'region' routes unmapped rows to member '{memberKey}', which is not a member of v2, the published version of its dimension.",
             violation.Message);

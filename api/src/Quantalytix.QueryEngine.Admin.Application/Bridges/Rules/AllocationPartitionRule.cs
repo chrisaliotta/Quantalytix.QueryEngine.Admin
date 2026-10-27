@@ -30,7 +30,7 @@ public sealed class AllocationPartitionRule(BridgeMappingSetReader reader) : IPu
             .Where(source => source.Sum != 1m)
             .Select(source => new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"Source member '{source.SourceMemberKey}' has allocation weights summing to {DecimalText.Of(source.Sum)}; "
                     + "partition requires exactly 1."
             });

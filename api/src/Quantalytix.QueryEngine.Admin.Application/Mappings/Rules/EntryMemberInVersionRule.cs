@@ -30,7 +30,7 @@ public sealed class EntryMemberInVersionRule(MappingEntrySetReader reader) : IPu
                 .Where(entry => !dimension.MemberKeys.Contains(entry.MemberKey))
                 .Select(entry => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Source key '{entry.SourceKeyValue}' maps to member '{entry.MemberKey}', which is not a member of v{dimension.Version.VersionNumber}, the published version of the set's dimension."
                 })
         ];

@@ -52,6 +52,6 @@ public sealed class RangeBindingDimensionKindRule(
     /// <summary>A violation of this rule.</summary>
     private static RuleViolation Violation(string message)
     {
-        return new RuleViolation { Rule = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message };
     }
 }

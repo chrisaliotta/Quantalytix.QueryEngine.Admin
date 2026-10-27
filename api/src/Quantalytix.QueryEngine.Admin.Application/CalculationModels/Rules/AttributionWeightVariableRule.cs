@@ -22,7 +22,7 @@ public static class AttributionWeightVariableRule
             .OrderBy(attribution => attribution.MetricKey, StringComparer.Ordinal)
             .Select(attribution => new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"The attribution of '{attribution.MetricKey}' weighs members by '{attribution.WeightVariableKey}', which is no variable of the model."
             });
     }

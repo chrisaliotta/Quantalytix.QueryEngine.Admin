@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
@@ -16,7 +16,7 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 /// <param name="routeKey">The route value that holds the version's ID, such as <c>dimensionVersionId</c>.</param>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class RequireDraftAttribute(string kind, string routeKey)
-    : ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json"), IFilterFactory
+    : ProducesResponseTypeAttribute(typeof(Problem), StatusCodes.Status409Conflict, "application/problem+json"), IFilterFactory
 {
     /// <summary>False: the filter uses request-scoped services, so MVC creates one per request.</summary>
     public bool IsReusable { get; }
@@ -29,7 +29,6 @@ public sealed class RequireDraftAttribute(string kind, string routeKey)
         return new RequireDraftFilter(
             kind,
             routeKey,
-            serviceProvider.GetRequiredService<VersionStoreRegistry>(),
-            serviceProvider.GetRequiredService<ProblemDetailsFactory>());
+            serviceProvider.GetRequiredService<VersionStoreRegistry>());
     }
 }

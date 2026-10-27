@@ -10,8 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportEditorController(ReportEditorReader reader, ReportRowService rows) : ControllerBase
 {
     /// <summary>
@@ -48,12 +48,12 @@ public sealed class ReportEditorController(ReportEditorReader reader, ReportRowS
     [HttpPut("rows")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<EditorView>> ReplaceRows(string tenantId, long reportId, ReportRowsInput input, CancellationToken cancellationToken)
     {
         var violations = await rows.ReplaceAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(await reader.ReadAsync(reportId, cancellationToken));
     }
 }

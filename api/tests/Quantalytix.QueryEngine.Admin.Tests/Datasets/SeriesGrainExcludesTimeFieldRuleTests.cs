@@ -40,7 +40,7 @@ public sealed class SeriesGrainExcludesTimeFieldRuleTests
         var violations = await EvaluateAsync(GrainKinds.Series, fieldIds: [1, 2]);
 
         var violation = Assert.Single(violations);
-        Assert.Equal(SeriesGrainExcludesTimeFieldRule.Code, violation.Rule);
+        Assert.Equal(SeriesGrainExcludesTimeFieldRule.Code, violation.Code);
         Assert.Contains("'loanSeries'", violation.Message, StringComparison.Ordinal);
         Assert.Contains("'asOfDate'", violation.Message, StringComparison.Ordinal);
     }

@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 [ApiController]
 [Route("api/tenants/{tenantId}/mapping-sets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingSetsController(MappingSetService mappingSets) : ControllerBase
 {
     /// <summary>Lists the mapping sets of one dimension, which the dimension's page shows.</summary>
@@ -27,7 +27,7 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<MappingSetRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<MappingSetRecord>>> List(
         string tenantId, [FromQuery, BindRequired] long dimensionId, CancellationToken cancellationToken)
     {
@@ -45,7 +45,7 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<MappingSetRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MappingSetRecord>> Create(string tenantId, NewMappingSetInput input, CancellationToken cancellationToken)
     {
         return Ok(await mappingSets.CreateAsync(input, cancellationToken));
@@ -78,7 +78,7 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{mappingSetId:long}")]
     [ProducesResponseType<MappingSetRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MappingSetRecord>> Update(
         string tenantId,
         long mappingSetId,
@@ -102,11 +102,11 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <response code="409">Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.</response>
     [HttpDelete("{mappingSetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long mappingSetId, CancellationToken cancellationToken)
     {
         var conflict = await mappingSets.DeleteAsync(mappingSetId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

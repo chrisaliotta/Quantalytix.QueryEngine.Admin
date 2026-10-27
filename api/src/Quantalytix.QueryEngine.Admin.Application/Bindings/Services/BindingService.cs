@@ -87,10 +87,10 @@ public sealed class BindingService(
         var named = await names.OfAsync([binding, .. bridged], cancellationToken);
 
         var blockers = new DeleteBlockers($"Binding '{named[binding.DimensionBindingId]}'");
-        if (binding.IsRequired) blockers.Add("it is a required binding of the dataset");
-        blockers.AddNamed("it is the source binding of bridge bindings", bridged.Select(row => $"'{named[row.DimensionBindingId]}'"));
-        blockers.AddNamed("it is the required time binding of measures", requiring.Select(measure => $"'{measure.MeasureKey}'"));
-        if (version.DefaultTimeBindingId == reference.DimensionBindingId) blockers.Add("it is the version's default time binding");
+        if (binding.IsRequired) blockers.Add("required_binding", "it is a required binding of the dataset");
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByDatasetBinding, "it is the source binding of bridge bindings", bridged.Select(row => $"'{named[row.DimensionBindingId]}'"));
+        blockers.AddNamed("referenced_by_measure", "it is the required time binding of measures", requiring.Select(measure => $"'{measure.MeasureKey}'"));
+        if (version.DefaultTimeBindingId == reference.DimensionBindingId) blockers.Add("default_time_binding", "it is the version's default time binding");
         if (blockers.Detail() is { } detail) return detail;
 
         await timeBindings.DeleteAsync(new { reference.DimensionBindingId }, cancellationToken);

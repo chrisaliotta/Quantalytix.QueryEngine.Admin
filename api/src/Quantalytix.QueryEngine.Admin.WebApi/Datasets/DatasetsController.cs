@@ -11,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Datasets;
 [ApiController]
 [Route("api/tenants/{tenantId}/datasets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DatasetsController(DatasetService datasets, DatasetVersionService versions) : ControllerBase
 {
     /// <summary>Lists every dataset of the tenant.</summary>
@@ -40,7 +40,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Create(string tenantId, DatasetInput input, CancellationToken cancellationToken)
     {
         return Ok(await datasets.CreateAsync(input, cancellationToken));
@@ -73,7 +73,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{datasetId:long}")]
     [ProducesResponseType<DatasetRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetRecord>> Update(
         string tenantId,
         long datasetId,
@@ -94,11 +94,11 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="409">A version is validated, published or retired, or a release lists the dataset; the detail names them.</response>
     [HttpDelete("{datasetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
         var conflict = await datasets.DeleteAsync(datasetId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 
@@ -135,7 +135,7 @@ public sealed class DatasetsController(DatasetService datasets, DatasetVersionSe
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{datasetId:long}/versions")]
     [ProducesResponseType<DatasetVersionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DatasetVersionRecord>> CreateVersion(
         string tenantId,
         long datasetId,

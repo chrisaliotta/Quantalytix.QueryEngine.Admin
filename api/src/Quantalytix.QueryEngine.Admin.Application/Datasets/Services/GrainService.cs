@@ -71,7 +71,7 @@ public sealed class GrainService(
         var policies = await timePolicies.ListAsync(new { SelectionDatasetGrainId = reference.DatasetGrainId }, cancellationToken);
         var selecting = await measures.ListAsync(new { MeasureId = policies.Select(policy => policy.MeasureId).ToArray() }, cancellationToken);
         var blockers = new DeleteBlockers($"Grain '{grain.GrainKey}'");
-        blockers.AddNamed("it is the selection grain of the time policies of measures", selecting.Select(measure => $"'{measure.MeasureKey}'"));
+        blockers.AddNamed("referenced_by_measure", "it is the selection grain of the time policies of measures", selecting.Select(measure => $"'{measure.MeasureKey}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

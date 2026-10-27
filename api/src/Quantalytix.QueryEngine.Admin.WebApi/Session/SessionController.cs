@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Session;
 
 /// <summary>Describes the signed-in caller.</summary>
 [ApiController]
 [Route("api/me")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 public sealed class SessionController(CallerFactory callers) : ControllerBase
 {
     /// <summary>Returns the caller's subject, tenant and SystemAdmin role.</summary>

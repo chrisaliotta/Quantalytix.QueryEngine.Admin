@@ -38,7 +38,7 @@ public sealed class BridgeBindingsResolvableRule(
                 .Where(pinned => !published.Contains(pinned.Binding.BridgeId!.Value))
                 .Select(pinned => new RuleViolation
                 {
-                    Rule = "bridge_bindings_resolvable",
+                    Code = "bridge_bindings_resolvable",
                     Message = $"Binding '{pinned.Name}' of dataset '{pinned.DatasetKey}' maps through bridge '{bridgeKeys[pinned.Binding.BridgeId!.Value]}', which has no published version."
                 })
         ];

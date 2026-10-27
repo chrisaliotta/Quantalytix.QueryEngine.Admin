@@ -36,7 +36,7 @@ public sealed class ReportSourcesResolveRuleTests
 
         var violation = Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), SemanticReleaseId));
 
-        Assert.Equal(ReportSourcesResolveRule.Code, violation.Rule);
+        Assert.Equal(ReportSourcesResolveRule.Code, violation.Code);
         Assert.Equal("Report 'balance_sheet' source 'loans' reads dataset 'loans', which the release does not pin.", violation.Message);
         Assert.Equal(violation.Message, Assert.Single(await _fixture.EvaluateAsync(new ReportSourcesResolveRule())).Message);
     }

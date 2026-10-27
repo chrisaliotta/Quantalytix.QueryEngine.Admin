@@ -52,7 +52,7 @@ public sealed class BridgeBindingRouteRuleTests
 
         var violation = Assert.Single(await EvaluateAsync(otherVersionSource, BridgeBinding(sourceDimensionBindingId: 21, bridgeId: 40)));
 
-        Assert.Equal(BridgeBindingRouteRule.Code, violation.Rule);
+        Assert.Equal(BridgeBindingRouteRule.Code, violation.Code);
         Assert.Equal("Bridge binding 'region' remaps binding 21, which is not a binding of this version.", violation.Message);
     }
 

@@ -32,7 +32,7 @@ public sealed class ModelParameterChangesTests
 
         Assert.Equal(
             [(FormulaParametersResolveRule.Code, "Calculated measure 'yield' reads @dayCount, which is no parameter of the model, @periodDays or @yearDays.")],
-            violations.Select(violation => (violation.Rule, violation.Message)));
+            violations.Select(violation => (violation.Code, violation.Message)));
         Assert.Single(_fixture.Parameters.All);
     }
 
@@ -51,7 +51,7 @@ public sealed class ModelParameterChangesTests
 
         Assert.Equal(
             [(ReportRowParametersResolveRule.Code, "Report 'balance_sheet' row 'assets' sets 'dayCount', which is no parameter of the report's model.")],
-            violations.Select(violation => (violation.Rule, violation.Message)));
+            violations.Select(violation => (violation.Code, violation.Message)));
         Assert.Single(_fixture.Parameters.All);
     }
 
@@ -70,7 +70,7 @@ public sealed class ModelParameterChangesTests
         Assert.Equal(
             [(FormulaParametersResolveRule.Code, "Calculated measure 'yield' calls YEARFRAC with something other than a day count convention, which it takes in quotes, such as 'actual_360', or from a text parameter whose allowed values are conventions."),
              (ReportRowParametersResolveRule.Code, "Report 'balance_sheet' row 'assets' sets parameter 'dayCount', which is a number parameter, so its value must be a number.")],
-            violations.Select(violation => (violation.Rule, violation.Message)));
+            violations.Select(violation => (violation.Code, violation.Message)));
         Assert.Equal(ParameterValueTypes.Text, Assert.Single(_fixture.Parameters.All).ValueType);
     }
 
@@ -89,7 +89,7 @@ public sealed class ModelParameterChangesTests
 
         var violations = await PutAsync(DayCount() with { AllowedValues = allowedValues });
 
-        Assert.Equal([rule], violations.Select(violation => violation.Rule));
+        Assert.Equal([rule], violations.Select(violation => violation.Code));
         Assert.Equal(DayCount().AllowedValues, Assert.Single(await _fixture.ParameterService().ListAsync(CalculationModelId, TestContext.Current.CancellationToken)).AllowedValues);
     }
 
@@ -107,7 +107,7 @@ public sealed class ModelParameterChangesTests
 
         var violations = await PutAsync(NumberParameter("scale", 1000m));
 
-        Assert.Equal([ReportDefaultsResolveRule.Code], violations.Select(violation => violation.Rule));
+        Assert.Equal([ReportDefaultsResolveRule.Code], violations.Select(violation => violation.Code));
         Assert.Empty(_fixture.Parameters.All);
     }
 
@@ -142,7 +142,7 @@ public sealed class ModelParameterChangesTests
         var violations = await _fixture.Changes().ApplyAsync(
             CalculationModelId, model => model with { Model = downgraded }, () => _fixture.Models.UpdateAsync(downgraded, cancellationToken), cancellationToken);
 
-        Assert.Equal([FormulasFitLanguageRule.Code, FormulasFitLanguageRule.Code], violations.Select(violation => violation.Rule));
+        Assert.Equal([FormulasFitLanguageRule.Code, FormulasFitLanguageRule.Code], violations.Select(violation => violation.Code));
         Assert.Equal(FormulaLanguageVersions.Version12, Assert.Single(_fixture.Models.All).FormulaLanguageVersion);
     }
 

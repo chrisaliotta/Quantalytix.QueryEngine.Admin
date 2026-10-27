@@ -29,7 +29,7 @@ public sealed class PinnedVersionBelongsToDatasetRule(ReleaseManifestReader read
                 .Where(dataset => !owned.Contains((dataset.Row.DatasetId, dataset.Row.DatasetVersionId)))
                 .Select(dataset => new RuleViolation
                 {
-                    Rule = "pinned_version_belongs_to_dataset",
+                    Code = "pinned_version_belongs_to_dataset",
                     Message = $"Dataset '{dataset.DatasetKey}' pins dataset version {dataset.Row.DatasetVersionId}, which is not one of its versions."
                 })
         ];

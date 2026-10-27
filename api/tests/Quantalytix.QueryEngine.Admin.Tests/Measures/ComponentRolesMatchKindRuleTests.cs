@@ -29,7 +29,7 @@ public sealed class ComponentRolesMatchKindRuleTests
 
         var violation = Assert.Single(await rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken));
 
-        Assert.Equal(ComponentRolesMatchKindRule.Code, violation.Rule);
+        Assert.Equal(ComponentRolesMatchKindRule.Code, violation.Code);
         Assert.Equal("Measure 'balance': 'aggregate' measures need a 'value' component.", violation.Message);
     }
 

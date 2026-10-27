@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Binding;
 using Quantalytix.QueryEngine.Admin.Application.Lookups;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Lookups;
 
@@ -10,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Lookups;
 [ApiController]
 [Route("api/tenants/{tenantId}/lookups")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class LookupsController(LookupService lookups) : ControllerBase
 {
     /// <summary>Lists the items of one picker, such as the versions of a dimension.</summary>
@@ -28,7 +29,7 @@ public sealed class LookupsController(LookupService lookups) : ControllerBase
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{kind}")]
     [ProducesResponseType<IReadOnlyList<LookupItem>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<LookupItem>>> List(
         string tenantId,
         [FromRouteAndQuery] LookupQuery query,

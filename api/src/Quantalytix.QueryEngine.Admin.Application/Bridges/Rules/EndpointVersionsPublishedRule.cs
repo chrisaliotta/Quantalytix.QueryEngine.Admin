@@ -28,7 +28,7 @@ public sealed class EndpointVersionsPublishedRule(BridgeMappingSetReader reader)
                 .Where(endpoint => endpoint.Item2 is null)
                 .Select(endpoint => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"The bridge's {endpoint.Item1} dimension has no published version for the mappings to resolve in; publish one first."
                 })
         ];

@@ -40,7 +40,7 @@ public sealed class BoundRolesDistinctRuleTests
             DatasetRows.Binding(21, VersionId, 81, BindingKinds.Direct, 1),
             DatasetRows.Binding(22, VersionId, 81, BindingKinds.Direct, 1) with { IsEnabled = false }));
 
-        Assert.Equal(BoundRolesDistinctRule.Code, violation.Rule);
+        Assert.Equal(BoundRolesDistinctRule.Code, violation.Code);
         Assert.Equal("Role 'originationBranch' is bound 2 times; a version binds each role at most once, so its key names one binding.", violation.Message);
     }
 

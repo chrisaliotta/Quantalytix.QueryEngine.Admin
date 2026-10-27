@@ -41,19 +41,20 @@ public sealed class DimensionDeleteChecks(
         CancellationToken cancellationToken)
     {
         var blockers = new DeleteBlockers($"Dimension '{dimension.DimensionKey}'");
-        if (!dimension.IsRemovable) blockers.Add("it is not removable");
+        if (!dimension.IsRemovable) blockers.Add(DeleteBlockerCodes.NotRemovable, "it is not removable");
         blockers.AddNamed(
+            DeleteBlockerCodes.HasPublishedVersions,
             "it has non-draft versions",
             dimensionVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { dimension.DimensionId }, cancellationToken);
-        blockers.AddNamed("bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByDatasetBinding, "bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
         var sets = await mappingSets.ListAsync(new { dimension.DimensionId }, cancellationToken);
-        blockers.AddNamed("referenced by mapping sets", sets.Select(set => $"'{set.MappingSetKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByMappingSet, "referenced by mapping sets", sets.Select(set => $"'{set.MappingSetKey}'"));
         var bridgesFrom = await bridges.ListAsync(new { SourceDimensionId = dimension.DimensionId }, cancellationToken);
         var bridgesTo = await bridges.ListAsync(new { TargetDimensionId = dimension.DimensionId }, cancellationToken);
-        blockers.AddNamed("referenced by bridges", bridgesFrom.Concat(bridgesTo).Select(bridge => $"'{bridge.BridgeKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByBridge, "referenced by bridges", bridgesFrom.Concat(bridgesTo).Select(bridge => $"'{bridge.BridgeKey}'"));
         var reportsOn = await reports.ListAsync(new { ReportDimensionId = dimension.DimensionId }, cancellationToken);
-        blockers.AddNamed("the report dimension of reports", reportsOn.Select(report => $"'{report.ReportKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByReport, "the report dimension of reports", reportsOn.Select(report => $"'{report.ReportKey}'"));
         var roleIds = (await roles.ListAsync(new { dimension.DimensionId }, cancellationToken)).Select(role => role.DimensionRoleId).ToArray();
         await AddReportUsesAsync(blockers, roleIds, cancellationToken);
         return blockers.Detail();
@@ -67,7 +68,7 @@ public sealed class DimensionDeleteChecks(
     {
         var blockers = new DeleteBlockers($"Role '{role.DimensionRoleKey}'");
         var boundBy = await bindings.ListAsync(new { role.DimensionRoleId }, cancellationToken);
-        blockers.AddNamed("bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByDatasetBinding, "bound by dataset versions", await DatasetVersionNamesAsync(boundBy, cancellationToken));
         await AddReportUsesAsync(blockers, [role.DimensionRoleId], cancellationToken);
         return blockers.Detail();
     }
@@ -88,9 +89,9 @@ public sealed class DimensionDeleteChecks(
             .. naming.Select(scenario => scenario.ReportId)
         ];
         var names = await reportNames.OfIdsAsync(reportIds, cancellationToken);
-        blockers.AddNamed("read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportId]}"));
-        blockers.AddNamed("bridged from by report sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportId]}"));
-        blockers.AddNamed("named as a scenario by", naming.Select(scenario => names[scenario.ReportId]));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByCalculationDimension, "read by calculation dimensions", reading.Select(dimension => $"'{dimension.DimensionKey}' of {names[dimension.ReportId]}"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByReportSource, "bridged from by report sources", bridging.Select(source => $"'{source.SourceKey}' of {names[source.ReportId]}"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByReportScenario, "named as a scenario by", naming.Select(scenario => names[scenario.ReportId]));
     }
 
     /// <summary>Names the dataset versions that hold bindings, like <c>'loans.details' v2</c>.</summary>
@@ -111,8 +112,8 @@ public sealed class DimensionDeleteChecks(
     {
         var blockers = new DeleteBlockers($"Level '{level.LevelKey}'");
         var users = await members.ListAsync(new { level.DimensionLevelId }, cancellationToken);
-        blockers.AddNamed("used by members", users.Select(member => $"'{member.MemberKey}'"));
-        blockers.AddNamed("named by", await LiveConsumersAsync(level.DimensionVersionId, isLevel: true, level.LevelKey, cancellationToken));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByMember, "used by members", users.Select(member => $"'{member.MemberKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.NamedByConsumers, "named by", await LiveConsumersAsync(level.DimensionVersionId, isLevel: true, level.LevelKey, cancellationToken));
         return blockers.Detail();
     }
 
@@ -127,10 +128,10 @@ public sealed class DimensionDeleteChecks(
     {
         var blockers = new DeleteBlockers($"Member '{member.MemberKey}'");
         var children = await members.ListAsync(new { ParentDimensionMemberId = member.DimensionMemberId }, cancellationToken);
-        blockers.AddNamed("it has child members", children.Select(child => $"'{child.MemberKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.HasChildren, "it has child members", children.Select(child => $"'{child.MemberKey}'"));
         var bandsOfMember = await bands.ListAsync(new { member.DimensionMemberId }, cancellationToken);
-        blockers.AddNamed("used by range bands", bandsOfMember.Select(band => $"#{band.Ordinal}"));
-        blockers.AddNamed("named by", await LiveConsumersAsync(member.DimensionVersionId, isLevel: false, member.MemberKey, cancellationToken));
+        blockers.AddNamed(DeleteBlockerCodes.AssignedByBands, "used by range bands", bandsOfMember.Select(band => $"#{band.Ordinal}"));
+        blockers.AddNamed(DeleteBlockerCodes.NamedByConsumers, "named by", await LiveConsumersAsync(member.DimensionVersionId, isLevel: false, member.MemberKey, cancellationToken));
         return blockers.Detail();
     }
 

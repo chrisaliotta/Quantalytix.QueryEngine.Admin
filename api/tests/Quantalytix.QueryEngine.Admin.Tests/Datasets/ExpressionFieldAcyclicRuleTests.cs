@@ -33,7 +33,7 @@ public sealed class ExpressionFieldAcyclicRuleTests
 
         var violations = await new ExpressionFieldAcyclicRule(fields).EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
 
-        Assert.All(violations, violation => Assert.Equal(ExpressionFieldAcyclicRule.Code, violation.Rule));
+        Assert.All(violations, violation => Assert.Equal(ExpressionFieldAcyclicRule.Code, violation.Code));
         Assert.Equal(
             ["Expression field 'gross' references itself through its field references.",
              "Expression field 'net' references itself through its field references.",

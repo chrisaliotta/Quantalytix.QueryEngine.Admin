@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.SourceObjects;
 
@@ -9,8 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.SourceObjects;
 [ApiController]
 [Route("api/tenants/{tenantId}/source-objects")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class SourceObjectsController(SourceObjectService sourceObjects) : ControllerBase
 {
     /// <summary>Lists the tables and views datasets can query; the query engine's <c>qe_*</c> and <c>vw_qe_*</c> objects are left out.</summary>

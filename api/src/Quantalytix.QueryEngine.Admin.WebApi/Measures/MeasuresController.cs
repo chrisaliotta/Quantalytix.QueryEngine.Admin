@@ -15,8 +15,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Measures;
 [ApiController]
 [Route("api/tenants/{tenantId}/dataset-versions/{versionId:long}/measures")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MeasuresController(MeasureService measures) : ControllerBase
 {
     /// <summary>Lists the measures of a dataset version with their components, formula dependencies and time policies.</summary>
@@ -48,7 +48,7 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MeasureDetail>> Create(string tenantId, long versionId, MeasureInput input, CancellationToken cancellationToken)
     {
         return Ok(await measures.CreateAsync(versionId, input, cancellationToken));
@@ -71,7 +71,7 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     [HttpPut("{measureId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<MeasureDetail>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<MeasureDetail>> Update(
         string tenantId,
         [FromRoute] MeasureReference reference,
@@ -94,11 +94,11 @@ public sealed class MeasuresController(MeasureService measures) : ControllerBase
     [HttpDelete("{measureId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] MeasureReference reference, CancellationToken cancellationToken)
     {
         var conflict = await measures.DeleteAsync(reference, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

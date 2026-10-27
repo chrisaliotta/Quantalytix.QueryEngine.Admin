@@ -13,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/attributions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MetricAttributionsController(MetricAttributionService attributions, ModelChanges changes) : ControllerBase
 {
     /// <summary>Lists a model's attributions, each with its drivers.</summary>
@@ -51,8 +51,8 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     [HttpPut("{metricKey}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<MetricAttribution>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<MetricAttribution>> Replace(
         string tenantId,
         long calculationModelId,
@@ -66,7 +66,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
             model => MetricAttributionService.Put(model, attribution),
             () => attributions.ReplaceAsync(calculationModelId, attribution, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
         return Ok(attribution);
     }
 
@@ -86,7 +86,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
     [HttpDelete("{metricKey}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long calculationModelId, string metricKey, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
@@ -94,7 +94,7 @@ public sealed class MetricAttributionsController(MetricAttributionService attrib
             model => MetricAttributionService.Without(model, metricKey),
             () => attributions.DeleteAsync(calculationModelId, metricKey, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
         return NoContent();
     }
 }

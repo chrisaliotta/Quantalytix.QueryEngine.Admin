@@ -29,7 +29,7 @@ public sealed class MeasureKeyUniqueRule(ITableGateway<MeasureRecord> measures) 
                 .GroupBy(measure => measure.MeasureKey, StringComparer.Ordinal)
                 .Where(group => group.Count() > 1)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
-                .Select(group => new RuleViolation { Rule = Code, Message = $"Measure key '{group.Key}' is used by {group.Count()} measures of this version." })
+                .Select(group => new RuleViolation { Code = Code, Message = $"Measure key '{group.Key}' is used by {group.Count()} measures of this version." })
         ];
     }
 }

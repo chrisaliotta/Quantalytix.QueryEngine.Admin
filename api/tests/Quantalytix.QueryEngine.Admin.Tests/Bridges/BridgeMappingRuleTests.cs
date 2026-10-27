@@ -71,7 +71,7 @@ public sealed class BridgeMappingRuleTests
                 Mapping(VersionId, "LOAN_B", "WEST", 1m))));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(AllocationPartitionRule.Code, violation.Rule);
+        Assert.Equal(AllocationPartitionRule.Code, violation.Code);
         Assert.Equal("Source member 'LOAN_A' has allocation weights summing to 0.9; partition requires exactly 1.", violation.Message);
     }
 
@@ -125,7 +125,7 @@ public sealed class BridgeMappingRuleTests
                 Mapping(VersionId, "LOAN_A", "WEST", 1m),
                 Mapping(VersionId, "LOAN_B", "WEST", 0.5m))));
 
-        Assert.All(violations, violation => Assert.Equal(AllocationNoneRule.Code, violation.Rule));
+        Assert.All(violations, violation => Assert.Equal(AllocationNoneRule.Code, violation.Code));
         Assert.Equal(
             [
                 "Source member 'LOAN_A' maps to 2 targets ('EAST', 'WEST'); allocation mode none allows one.",
@@ -146,7 +146,7 @@ public sealed class BridgeMappingRuleTests
                 Mapping(VersionId, "LOAN_B", "WEST", 1m))));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(CardinalityManyToOneRule.Code, violation.Rule);
+        Assert.Equal(CardinalityManyToOneRule.Code, violation.Code);
         Assert.Equal("Source member 'LOAN_A' maps to 2 targets ('EAST', 'WEST'); cardinality many_to_one allows one.", violation.Message);
     }
 
@@ -174,7 +174,7 @@ public sealed class BridgeMappingRuleTests
                 Mapping(VersionId, "LOAN_B", "SOUTH", 1m))));
 
         var violation = Assert.Single(violations);
-        Assert.Equal(MappingMembersInEndpointVersionsRule.Code, violation.Rule);
+        Assert.Equal(MappingMembersInEndpointVersionsRule.Code, violation.Code);
         Assert.Equal("Mapping 'LOAN_B' -> 'SOUTH' has a target member that the published target dimension version lacks.", violation.Message);
     }
 

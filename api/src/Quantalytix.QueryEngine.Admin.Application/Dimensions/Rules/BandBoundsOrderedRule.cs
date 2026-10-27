@@ -24,7 +24,7 @@ public sealed class BandBoundsOrderedRule(RangeBandSetReader reader) : IPublicat
         [
             .. set.Bands
                 .Where(band => RangeBandBounds.Of(band, family) is { Lower: { } lower, Upper: { } upper } && lower.CompareTo(upper) >= 0)
-                .Select(band => new RuleViolation { Rule = Code, Message = $"{set.Describe(band)} has a lower bound that is not below its upper bound." })
+                .Select(band => new RuleViolation { Code = Code, Message = $"{set.Describe(band)} has a lower bound that is not below its upper bound." })
         ];
     }
 }

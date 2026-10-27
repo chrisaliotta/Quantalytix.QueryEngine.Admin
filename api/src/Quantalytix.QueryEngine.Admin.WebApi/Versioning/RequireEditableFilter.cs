@@ -1,9 +1,9 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
@@ -15,13 +15,11 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 /// <param name="routeKey">The route value holding the version's ID.</param>
 /// <param name="stores">The version stores.</param>
 /// <param name="semanticRevision">The revision a live edit advances.</param>
-/// <param name="problems">Creates the 409 problem details.</param>
 internal sealed class RequireEditableFilter(
     string kind,
     string routeKey,
     VersionStoreRegistry stores,
-    SemanticRevision semanticRevision,
-    ProblemDetailsFactory problems) : IAsyncActionFilter
+    SemanticRevision semanticRevision) : IAsyncActionFilter
 {
     /// <summary>The title of the 409 problem.</summary>
     public const string Title = "Version is not editable";
@@ -37,8 +35,7 @@ internal sealed class RequireEditableFilter(
         if (state.Status is not (PublicationStatuses.Draft or PublicationStatuses.Published))
         {
             var detail = $"{kind} {id} is {state.Status}; only a draft or the published version can be edited.";
-            var problem = problems.CreateProblemDetails(context.HttpContext, StatusCodes.Status409Conflict, Title, detail: detail);
-            context.Result = new ObjectResult(problem) { StatusCode = StatusCodes.Status409Conflict };
+            context.Result = Problems.Conflict(Title, detail).ToResult();
             return;
         }
 

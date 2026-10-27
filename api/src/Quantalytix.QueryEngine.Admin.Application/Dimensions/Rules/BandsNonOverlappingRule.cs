@@ -32,7 +32,7 @@ public sealed class BandsNonOverlappingRule(RangeBandSetReader reader) : IPublic
             if (RangeBandBounds.StartsAfter(RangeBandBounds.Of(band, family), RangeBandBounds.Of(previous, family))) continue;
             violations.Add(new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"{set.Describe(band)} overlaps {set.Describe(previous)}: each band must start after the previous one ends."
             });
         }

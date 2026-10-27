@@ -12,8 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 [ApiController]
 [Route("api/tenants/{tenantId}/dimensions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DimensionsController(DimensionService dimensions) : ControllerBase
 {
     /// <summary>Lists every dimension of the tenant.</summary>
@@ -41,7 +41,7 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<DimensionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRecord>> Create(string tenantId, NewDimensionInput input, CancellationToken cancellationToken)
     {
         return Ok(await dimensions.CreateAsync(input, cancellationToken));
@@ -78,7 +78,7 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
     [HttpPut("{dimensionId:long}")]
     [RequireAnalytical(AnalyticalTarget.Dimension, "dimensionId")]
     [ProducesResponseType<DimensionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRecord>> Update(
         string tenantId,
         long dimensionId,
@@ -102,11 +102,11 @@ public sealed class DimensionsController(DimensionService dimensions) : Controll
     /// <response code="409">Nothing was deleted; the detail names what blocks the delete.</response>
     [HttpDelete("{dimensionId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long dimensionId, CancellationToken cancellationToken)
     {
         var conflict = await dimensions.DeleteAsync(dimensionId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

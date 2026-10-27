@@ -82,11 +82,12 @@ public sealed class MappingSetService(
         var setVersions = await versions.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
         var blockers = new DeleteBlockers($"Mapping set '{mappingSet.MappingSetKey}'");
         blockers.AddNamed(
+            DeleteBlockerCodes.HasPublishedVersions,
             "it has non-draft versions",
             setVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
         var boundBy = await bindings.ListAsync(new { MappingSetId = mappingSetId }, cancellationToken);
         var bound = await bindingNames.OfAsync(boundBy, cancellationToken);
-        blockers.AddNamed("referenced by bindings", boundBy.Select(binding => $"'{bound[binding.DimensionBindingId]}'"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByDatasetBinding, "referenced by bindings", boundBy.Select(binding => $"'{bound[binding.DimensionBindingId]}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 
@@ -15,7 +15,7 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 /// <param name="routeKey">The route value that holds the object's ID, such as <c>dimensionVersionId</c>.</param>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class RequireAnalyticalAttribute(AnalyticalTarget target, string routeKey)
-    : ProducesResponseTypeAttribute(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json"), IFilterFactory
+    : ProducesResponseTypeAttribute(typeof(Problem), StatusCodes.Status409Conflict, "application/problem+json"), IFilterFactory
 {
     /// <summary>False: the filter uses request-scoped services, so MVC creates one per request.</summary>
     public bool IsReusable { get; }
@@ -28,7 +28,6 @@ public sealed class RequireAnalyticalAttribute(AnalyticalTarget target, string r
         return new RequireAnalyticalFilter(
             target,
             routeKey,
-            serviceProvider.GetRequiredService<ReportOwnership>(),
-            serviceProvider.GetRequiredService<ProblemDetailsFactory>());
+            serviceProvider.GetRequiredService<ReportOwnership>());
     }
 }

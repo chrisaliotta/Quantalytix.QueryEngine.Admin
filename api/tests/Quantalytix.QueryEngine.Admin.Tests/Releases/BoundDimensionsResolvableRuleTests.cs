@@ -41,7 +41,7 @@ public sealed class BoundDimensionsResolvableRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Binding(32, DatasetVersionId, ProductRoleId, 200, BindingKinds.Direct)));
 
-        Assert.Equal("bound_dimensions_resolvable", violation.Rule);
+        Assert.Equal("bound_dimensions_resolvable", violation.Code);
         Assert.Equal("Binding 'product' of dataset 'loans' binds dimension 'Product', which has no published version.", violation.Message);
     }
 

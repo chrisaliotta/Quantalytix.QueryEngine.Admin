@@ -29,7 +29,7 @@ public sealed class PinnedDatasetVersionPublishedRule(ReleaseManifestReader read
                 .Where(pin => pin.Version.Status != PublicationStatuses.Published)
                 .Select(pin => new RuleViolation
                 {
-                    Rule = "pinned_version_published",
+                    Code = "pinned_version_published",
                     Message = $"Dataset '{pin.DatasetKey}' pins v{pin.Version.VersionNumber}, which is {pin.Version.Status}; a release pins only published versions."
                 })
         ];

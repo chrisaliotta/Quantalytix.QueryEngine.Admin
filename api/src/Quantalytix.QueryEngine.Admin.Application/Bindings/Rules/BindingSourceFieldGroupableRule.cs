@@ -37,7 +37,7 @@ public sealed class BindingSourceFieldGroupableRule(ITableGateway<DimensionBindi
                 .OrderBy(pair => pair.Name, StringComparer.Ordinal)
                 .Select(pair => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Binding '{pair.Name}' is groupable, but its source field '{pair.Field.FieldKey}' is not; " +
                         "make the field groupable or the binding not groupable."
                 })

@@ -31,7 +31,7 @@ public sealed class ReleaseNotActiveRule(ITableGateway<DatabaseInfoRecord> datab
         [
             new RuleViolation
             {
-                Rule = "release_not_active",
+                Code = "release_not_active",
                 Message = $"Release '{release.ReleaseKey}' is the active release; activate another release before retiring it."
             }
         ];

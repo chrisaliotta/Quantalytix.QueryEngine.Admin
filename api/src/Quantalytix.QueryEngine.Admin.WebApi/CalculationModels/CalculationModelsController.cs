@@ -11,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class CalculationModelsController(CalculationModelService models, ModelChanges changes) : ControllerBase
 {
     /// <summary>Lists every calculation model of the tenant.</summary>
@@ -40,7 +40,7 @@ public sealed class CalculationModelsController(CalculationModelService models, 
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<CalculationModelRecord>> Create(string tenantId, NewCalculationModelInput input, CancellationToken cancellationToken)
     {
         return Ok(await models.CreateAsync(input, cancellationToken));
@@ -79,8 +79,8 @@ public sealed class CalculationModelsController(CalculationModelService models, 
     [HttpPut("{calculationModelId:long}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<CalculationModelRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<CalculationModelRecord>> Update(
         string tenantId,
         long calculationModelId,
@@ -90,7 +90,7 @@ public sealed class CalculationModelsController(CalculationModelService models, 
         var updated = await models.ComposeAsync(calculationModelId, input, cancellationToken);
         var violations = await changes.ApplyAsync(
             calculationModelId, model => model with { Model = updated }, () => models.UpdateAsync(updated, cancellationToken), cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
         return Ok(updated);
     }
 
@@ -105,11 +105,11 @@ public sealed class CalculationModelsController(CalculationModelService models, 
     /// <response code="409">Nothing was deleted; the detail names the reports that read the model.</response>
     [HttpDelete("{calculationModelId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long calculationModelId, CancellationToken cancellationToken)
     {
         var conflict = await models.DeleteAsync(calculationModelId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

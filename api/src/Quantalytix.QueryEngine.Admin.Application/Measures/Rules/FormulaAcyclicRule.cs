@@ -39,7 +39,7 @@ public sealed class FormulaAcyclicRule(ITableGateway<MeasureRecord> measures, IT
             if (reported.Contains(measureId)) continue;
             var cycle = onCycle.Where(other => reachable[measureId].Contains(other) && reachable[other].Contains(measureId)).ToList();
             reported.UnionWith(cycle);
-            violations.Add(new RuleViolation { Rule = Code, Message = CycleMessage(cycle.Select(member => keys[member]).ToList()) });
+            violations.Add(new RuleViolation { Code = Code, Message = CycleMessage(cycle.Select(member => keys[member]).ToList()) });
         }
 
         return violations;

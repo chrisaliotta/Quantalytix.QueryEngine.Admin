@@ -14,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 [ApiController]
 [Route("api/tenants/{tenantId}/dimensions/{dimensionId:long}/roles")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DimensionRolesController(DimensionRoleService roles) : ControllerBase
 {
     /// <summary>Lists the roles of a dimension.</summary>
@@ -45,7 +45,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<DimensionRoleRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRoleRecord>> Create(
         string tenantId,
         long dimensionId,
@@ -68,7 +68,7 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{dimensionRoleId:long}")]
     [ProducesResponseType<DimensionRoleRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionRoleRecord>> Update(
         string tenantId,
         long dimensionId,
@@ -91,11 +91,11 @@ public sealed class DimensionRolesController(DimensionRoleService roles) : Contr
     /// <response code="409">Nothing was deleted; the detail names the bindings, calculation dimensions, report sources and report scenarios that name the role.</response>
     [HttpDelete("{dimensionRoleId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long dimensionId, long dimensionRoleId, CancellationToken cancellationToken)
     {
         var conflict = await roles.DeleteAsync(dimensionRoleId, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

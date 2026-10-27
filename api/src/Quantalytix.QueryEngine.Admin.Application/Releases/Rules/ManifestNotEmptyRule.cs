@@ -18,6 +18,6 @@ public sealed class ManifestNotEmptyRule(ITableGateway<ReleaseDatasetRecord> man
     {
         var rows = await manifest.ListAsync(new { SemanticReleaseId = versionId }, cancellationToken);
         if (rows.Count > 0) return [];
-        return [new RuleViolation { Rule = "manifest_not_empty", Message = "The release pins no dataset versions." }];
+        return [new RuleViolation { Code = "manifest_not_empty", Message = "The release pins no dataset versions." }];
     }
 }

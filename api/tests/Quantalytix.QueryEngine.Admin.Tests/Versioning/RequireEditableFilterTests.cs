@@ -97,8 +97,7 @@ public sealed class RequireEditableFilterTests
             VersionKinds.DimensionVersion,
             "versionId",
             new VersionStoreRegistry([new DimensionVersionStore(_versions)]),
-            new SemanticRevision(_databaseInfo, new FakeTimeProvider()),
-            services.GetRequiredService<ProblemDetailsFactory>());
+            new SemanticRevision(_databaseInfo, new FakeTimeProvider()));
         var ran = false;
         await filter.OnActionExecutionAsync(context, () =>
         {

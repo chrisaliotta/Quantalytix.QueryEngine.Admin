@@ -23,7 +23,7 @@ public sealed class BandMemberInVersionRule(RangeBandSetReader reader) : IPublic
         [
             .. set.Bands
                 .Where(band => !set.MemberKeys.ContainsKey(band.DimensionMemberId))
-                .Select(band => new RuleViolation { Rule = Code, Message = $"{set.Describe(band)} assigns a member that is not a member of this version." })
+                .Select(band => new RuleViolation { Code = Code, Message = $"{set.Describe(band)} assigns a member that is not a member of this version." })
         ];
     }
 }

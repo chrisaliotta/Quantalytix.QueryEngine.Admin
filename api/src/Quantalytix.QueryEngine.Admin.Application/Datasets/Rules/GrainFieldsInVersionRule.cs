@@ -35,7 +35,7 @@ public sealed class GrainFieldsInVersionRule(
                 .ThenBy(component => component.Ordinal)
                 .Select(component => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Grain '{grainKeys[component.DatasetGrainId]}' includes field {component.FieldId}, which is not a field of this version."
                 })
         ];

@@ -83,9 +83,10 @@ public sealed class DatasetService(
         var listing = await releases.ListAsync(new { SemanticReleaseId = memberships.Select(row => row.SemanticReleaseId).ToArray() }, cancellationToken);
         var blockers = new DeleteBlockers($"Dataset '{dataset.DatasetKey}'");
         blockers.AddNamed(
+            DeleteBlockerCodes.HasPublishedVersions,
             "it has non-draft versions",
             datasetVersions.Where(version => version.Status != PublicationStatuses.Draft).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        blockers.AddNamed("listed by releases", listing.Select(release => $"'{release.ReleaseKey}'"));
+        blockers.AddNamed(DeleteBlockerCodes.ReferencedByRelease, "listed by releases", listing.Select(release => $"'{release.ReleaseKey}'"));
         var conflict = blockers.Detail();
         if (conflict is not null) return conflict;
 

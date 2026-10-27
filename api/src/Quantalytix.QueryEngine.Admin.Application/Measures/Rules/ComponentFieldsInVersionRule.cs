@@ -37,7 +37,7 @@ public sealed class ComponentFieldsInVersionRule(
                 .ThenBy(component => component.ComponentRole, StringComparer.Ordinal)
                 .Select(component => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Measure '{measureKeys[component.MeasureId]}' reads field {component.FieldId} as its {component.ComponentRole} component, " +
                         "which is not a field of this version."
                 })

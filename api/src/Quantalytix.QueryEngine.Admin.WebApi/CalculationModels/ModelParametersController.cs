@@ -13,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.CalculationModels;
 [ApiController]
 [Route("api/tenants/{tenantId}/calculation-models/{calculationModelId:long}/parameters")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ModelParametersController(ModelParameterService parameters, ModelChanges changes) : ControllerBase
 {
     /// <summary>Lists a model's parameters.</summary>
@@ -51,8 +51,8 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     [HttpPut("{parameterKey}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType<ModelParameter>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<ModelParameter>> Replace(
         string tenantId,
         [FromRoute] ModelParameterReference parameter,
@@ -65,7 +65,7 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
             model => ModelParameterService.Put(model, stored),
             () => parameters.ReplaceAsync(parameter.CalculationModelId, stored, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, parameter.CalculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(parameter.CalculationModelId, violations);
         return Ok(stored);
     }
 
@@ -82,7 +82,7 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
     [HttpDelete("{parameterKey}")]
     [AdvancesModelRevision("calculationModelId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, long calculationModelId, string parameterKey, CancellationToken cancellationToken)
     {
         var violations = await changes.ApplyAsync(
@@ -90,7 +90,7 @@ public sealed class ModelParametersController(ModelParameterService parameters, 
             model => ModelParameterService.Without(model, parameterKey),
             () => parameters.DeleteAsync(calculationModelId, parameterKey, cancellationToken),
             cancellationToken);
-        if (violations.Count > 0) return ModelWriteResults.Rejected(HttpContext, calculationModelId, violations);
+        if (violations.Count > 0) return ModelWriteResults.Rejected(calculationModelId, violations);
         return NoContent();
     }
 }

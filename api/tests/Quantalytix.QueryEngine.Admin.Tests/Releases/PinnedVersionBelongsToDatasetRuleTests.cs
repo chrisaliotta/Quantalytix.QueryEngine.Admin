@@ -32,7 +32,7 @@ public sealed class PinnedVersionBelongsToDatasetRuleTests
         var violations = await EvaluateAsync(Pin(1, 21), Pin(2, 21));
 
         var violation = Assert.Single(violations);
-        Assert.Equal("pinned_version_belongs_to_dataset", violation.Rule);
+        Assert.Equal("pinned_version_belongs_to_dataset", violation.Code);
         Assert.Equal("Dataset 'loans' pins dataset version 21, which is not one of its versions.", violation.Message);
     }
 

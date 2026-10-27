@@ -23,7 +23,7 @@ public static class FormulasAcyclicRule
             StringComparer.Ordinal);
         return reads.Keys.Order(StringComparer.Ordinal).Where(key => Reaches(key, key, reads, [])).Select(key => new RuleViolation
         {
-            Rule = Code,
+            Code = Code,
             Message = $"Calculated measure '{key}' reads itself through the calculated measures its formula reads."
         });
     }

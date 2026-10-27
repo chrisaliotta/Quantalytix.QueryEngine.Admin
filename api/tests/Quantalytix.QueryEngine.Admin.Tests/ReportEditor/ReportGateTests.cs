@@ -24,7 +24,7 @@ public sealed class ReportGateTests
 
         var violation = Assert.Single(await fixture.Statuses().SetAsync(ReportRows.ReportId, new ReportStatusInput { IsEnabled = true }, cancellationToken));
 
-        Assert.Equal(ColumnKeysDistinctRule.Code, violation.Rule);
+        Assert.Equal(ColumnKeysDistinctRule.Code, violation.Code);
         Assert.False(Assert.Single(fixture.Reports.All).IsEnabled);
 
         await fixture.Columns.InsertAsync(ReportRows.Column(1, "amount", ReportValueKinds.Variable, "balance", 1), cancellationToken);
@@ -43,7 +43,7 @@ public sealed class ReportGateTests
 
         var violation = Assert.Single(await fixture.ColumnService().ReplaceAsync(ReportRows.ReportId, new ReportColumnsInput { Columns = [] }, cancellationToken));
 
-        Assert.Equal(ColumnKeysDistinctRule.Code, violation.Rule);
+        Assert.Equal(ColumnKeysDistinctRule.Code, violation.Code);
         Assert.Equal(["amount"], fixture.Columns.All.Select(column => column.ColumnKey));
 
         await fixture.SetEnabledAsync(false);

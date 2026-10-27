@@ -38,7 +38,7 @@ public sealed class ExpressionFieldAcyclicRule(ITableGateway<FieldRecord> fields
                 .Where(key => ReachesItself(key, references))
                 .Select(key => new RuleViolation
                 {
-                    Rule = Code,
+                    Code = Code,
                     Message = $"Expression field '{key}' references itself through its field references."
                 })
         ];

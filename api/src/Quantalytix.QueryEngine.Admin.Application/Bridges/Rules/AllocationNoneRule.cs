@@ -28,7 +28,7 @@ public sealed class AllocationNoneRule(BridgeMappingSetReader reader) : IPublica
             .Where(group => group.Count() > 1)
             .Select(group => new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"Source member '{group.Key}' maps to {group.Count()} targets ({BridgeMappingSet.DescribeTargets(group)}); "
                     + "allocation mode none allows one."
             });
@@ -36,7 +36,7 @@ public sealed class AllocationNoneRule(BridgeMappingSetReader reader) : IPublica
             .Where(mapping => mapping.AllocationWeight != 1m)
             .Select(mapping => new RuleViolation
             {
-                Rule = Code,
+                Code = Code,
                 Message = $"Mapping {BridgeMappingSet.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; "
                     + "allocation mode none requires exactly 1."
             });

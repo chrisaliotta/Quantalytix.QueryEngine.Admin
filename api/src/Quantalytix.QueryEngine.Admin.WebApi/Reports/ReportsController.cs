@@ -15,8 +15,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportsController(ReportService reports, ReportStatusService statuses) : ControllerBase
 {
     /// <summary>Lists every report of the tenant.</summary>
@@ -48,7 +48,7 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<ReportRecord>> Create(string tenantId, NewReportInput input, CancellationToken cancellationToken)
     {
         return Ok(await reports.CreateAsync(input, cancellationToken));
@@ -82,7 +82,7 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     [HttpPut("{reportId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<ReportRecord>> Update(string tenantId, long reportId, ReportInput input, CancellationToken cancellationToken)
     {
         return Ok(await reports.UpdateAsync(reportId, input, cancellationToken));
@@ -102,12 +102,12 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     [HttpPut("{reportId:long}/settings")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<ReportRecord>> UpdateSettings(string tenantId, long reportId, ReportSettingsInput input, CancellationToken cancellationToken)
     {
         var violations = await reports.UpdateSettingsAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(await reports.GetAsync(reportId, cancellationToken));
     }
 
@@ -127,11 +127,11 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     [HttpPut("{reportId:long}/status")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<ReportRecord>> ChangeStatus(string tenantId, long reportId, ReportStatusInput input, CancellationToken cancellationToken)
     {
         var violations = await statuses.SetAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.NotEnabled(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.NotEnabled(reportId, violations);
         return Ok(await reports.GetAsync(reportId, cancellationToken));
     }
 

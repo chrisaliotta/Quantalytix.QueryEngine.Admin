@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Errors;
@@ -16,22 +15,27 @@ public static class BindingErrorResults
     /// <summary>The root of every System.Text.Json path.</summary>
     private const string JsonRoot = "$";
 
+    /// <summary>The message of a model-state error that carries none.</summary>
+    private const string InvalidValue = "The value is not valid.";
+
     /// <summary>Creates the 400 answer; MVC calls it as <see cref="ApiBehaviorOptions.InvalidModelStateResponseFactory"/>.</summary>
     /// <param name="context">The action's context, holding the model state the binding errors are in.</param>
-    /// <returns>A 400 ValidationProblemDetails result.</returns>
+    /// <returns>The 400 <see cref="Problem"/> result.</returns>
     public static IActionResult Create(ActionContext context)
     {
-        var problems = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
-        var problem = problems.CreateValidationProblemDetails(context.HttpContext, context.ModelState);
         var bodyParameters = context.ActionDescriptor.Parameters
             .Where(parameter => parameter.BindingInfo?.BindingSource == BindingSource.Body)
             .Select(parameter => parameter.Name)
             .ToHashSet(StringComparer.Ordinal);
-        var dropsBodyEntries = problem.Errors.Count > 1;
-        problem.Errors = problem.Errors
+        var invalid = context.ModelState.Where(entry => entry.Value!.Errors.Count > 0).ToList();
+        var dropsBodyEntries = invalid.Count > 1;
+        var errors = invalid
             .Where(entry => !(dropsBodyEntries && bodyParameters.Contains(entry.Key)))
-            .ToDictionary(entry => FieldKey(entry.Key), entry => entry.Value, StringComparer.Ordinal);
-        return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
+            .ToDictionary(
+                entry => FieldKey(entry.Key),
+                entry => entry.Value!.Errors.Select(error => error.ErrorMessage is "" ? InvalidValue : error.ErrorMessage).ToArray(),
+                StringComparer.Ordinal);
+        return Problems.Invalid(errors).ToResult();
     }
 
     /// <summary>The key <see cref="ValidationFilter"/> would use for a model-state key: a JSON path without its root.</summary>

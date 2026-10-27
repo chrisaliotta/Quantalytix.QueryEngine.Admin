@@ -14,8 +14,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Dimensions;
 [ApiController]
 [Route("api/tenants/{tenantId}/dimension-versions/{dimensionVersionId:long}/members")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class DimensionMembersController(DimensionMemberService members) : ControllerBase
 {
     /// <summary>Lists every member of a version; parent links make the tree.</summary>
@@ -51,7 +51,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Create(
         string tenantId,
         long dimensionVersionId,
@@ -76,7 +76,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<DimensionMemberRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<DimensionMemberRecord>> Update(
         string tenantId,
         [FromRoute] MemberReference member,
@@ -101,7 +101,7 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType<IReadOnlyList<DimensionMemberRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<DimensionMemberRecord>>> Reorder(
         string tenantId,
         long dimensionVersionId,
@@ -125,11 +125,11 @@ public sealed class DimensionMembersController(DimensionMemberService members) :
     [RequireEditable(VersionKinds.DimensionVersion, "dimensionVersionId")]
     [RequireAnalytical(AnalyticalTarget.DimensionVersion, "dimensionVersionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] MemberReference member, CancellationToken cancellationToken)
     {
         var conflict = await members.DeleteAsync(member, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 }

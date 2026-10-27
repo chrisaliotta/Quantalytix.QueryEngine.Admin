@@ -11,8 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/columns")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportColumnsController(ReportColumnService columns) : ControllerBase
 {
     /// <summary>Lists a report's columns in display order.</summary>
@@ -47,8 +47,8 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
     [HttpPut]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<IReadOnlyList<ReportColumnRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    [ProducesResponseType<RuleViolationProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ReportColumnRecord>>> Replace(
         string tenantId,
         long reportId,
@@ -56,7 +56,7 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
         CancellationToken cancellationToken)
     {
         var violations = await columns.ReplaceAsync(reportId, input, cancellationToken);
-        if (violations.Count > 0) return ReportWriteResults.Rejected(HttpContext, reportId, violations);
+        if (violations.Count > 0) return ReportWriteResults.Rejected(reportId, violations);
         return Ok(await columns.ListAsync(reportId, cancellationToken));
     }
 }

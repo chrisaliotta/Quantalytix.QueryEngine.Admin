@@ -38,7 +38,7 @@ public sealed class MappedBindingsResolvableRule(
                 .Where(pinned => !published.Contains(pinned.Binding.MappingSetId!.Value))
                 .Select(pinned => new RuleViolation
                 {
-                    Rule = "mapped_bindings_resolvable",
+                    Code = "mapped_bindings_resolvable",
                     Message = $"Binding '{pinned.Name}' of dataset '{pinned.DatasetKey}' maps through mapping set '{mappingSetKeys[pinned.Binding.MappingSetId!.Value]}', which has no published version."
                 })
         ];

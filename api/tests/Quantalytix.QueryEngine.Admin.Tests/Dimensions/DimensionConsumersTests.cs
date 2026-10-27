@@ -69,7 +69,7 @@ public sealed class DimensionConsumersTests
 
         var violations = await rule.EvaluateAsync(DraftVersionId, TestContext.Current.CancellationToken);
 
-        Assert.All(violations, violation => Assert.Equal(DimensionConsumersResolveRule.Code, violation.Rule));
+        Assert.All(violations, violation => Assert.Equal(DimensionConsumersResolveRule.Code, violation.Code));
         Assert.Equal(
             ["Bridge 'zz_map_bridge_70' names member 'BR02', which v2 lacks.",
              "Calculation dimension 'branch' of report 'balance_sheet' names member 'BR04', which v2 lacks."],

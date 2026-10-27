@@ -1,9 +1,9 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 
@@ -11,8 +11,7 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 /// <param name="kind">The <c>version_kind</c> of the version.</param>
 /// <param name="routeKey">The route value holding the version's ID.</param>
 /// <param name="stores">The version stores.</param>
-/// <param name="problems">Creates the 409 problem details.</param>
-internal sealed class RequireDraftFilter(string kind, string routeKey, VersionStoreRegistry stores, ProblemDetailsFactory problems) : IAsyncActionFilter
+internal sealed class RequireDraftFilter(string kind, string routeKey, VersionStoreRegistry stores) : IAsyncActionFilter
 {
     /// <summary>The title of the 409 problem.</summary>
     public const string Title = "Version is not a draft";
@@ -28,8 +27,7 @@ internal sealed class RequireDraftFilter(string kind, string routeKey, VersionSt
         if (state.Status != PublicationStatuses.Draft)
         {
             var detail = $"{kind} {id} is {state.Status}; only drafts can be edited.";
-            var problem = problems.CreateProblemDetails(context.HttpContext, StatusCodes.Status409Conflict, Title, detail: detail);
-            context.Result = new ObjectResult(problem) { StatusCode = StatusCodes.Status409Conflict };
+            context.Result = Problems.Conflict(Title, detail).ToResult();
             return;
         }
 

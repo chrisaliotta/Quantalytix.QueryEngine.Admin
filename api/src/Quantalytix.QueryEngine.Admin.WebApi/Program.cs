@@ -3,6 +3,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Authentication;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 using Quantalytix.QueryEngine.Admin.WebApi.Development;
+using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Quantalytix.QueryEngine.Admin.Application.Configuration;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Configuration;
 
@@ -13,7 +14,6 @@ builder.Services.AddAdminAuthorization();
 builder.Services.AddAdminTenancy();
 builder.Services.AddAdminControllers(builder.Environment);
 builder.Services.AddValidatorsFromAssemblyContaining(typeof(AdminApplicationServiceCollectionExtensions));
-builder.Services.AddProblemDetails();
 builder.Services.AddAdminOpenApi();
 builder.Services.AddAdminCors();
 builder.Services.AddHealthChecks();
@@ -28,8 +28,8 @@ builder.Services.AddCalculationModelsAndReportsFeature();
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+app.UseExceptionHandler(new ExceptionHandlerOptions { ExceptionHandler = ProblemWriter.WriteInternalAsync });
+app.UseStatusCodePages(ProblemWriter.WriteStatusAsync);
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

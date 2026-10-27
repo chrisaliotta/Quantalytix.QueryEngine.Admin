@@ -30,6 +30,6 @@ public sealed class DefaultTimeBindingInVersionRule(
         var inVersion = await bindings.ListAsync(new { DimensionBindingId = dimensionBindingId, DatasetVersionId = versionId }, cancellationToken);
         var extensions = await timeBindings.ListAsync(new { DimensionBindingId = dimensionBindingId }, cancellationToken);
         if (inVersion.Count == 1 && extensions.Count == 1) return [];
-        return [new RuleViolation { Rule = Code, Message = $"Default time binding {dimensionBindingId} is not a time binding of this version." }];
+        return [new RuleViolation { Code = Code, Message = $"Default time binding {dimensionBindingId} is not a time binding of this version." }];
     }
 }

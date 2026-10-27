@@ -28,7 +28,7 @@ public sealed class ReportFactorsApplyRuleTests
 
         var violation = Assert.Single(await _fixture.EvaluateAsync(new ReportFactorsApplyRule()));
 
-        Assert.Equal(ReportFactorsApplyRule.Code, violation.Rule);
+        Assert.Equal(ReportFactorsApplyRule.Code, violation.Code);
         Assert.Equal(
             "Report 'balance_sheet' source 'gl' adds items into rows with factors other than 1, but variable 'balance' reads 'balance' of 'gl', which ignores bridge factors.",
             violation.Message);

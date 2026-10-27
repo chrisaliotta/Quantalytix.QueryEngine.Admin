@@ -13,8 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Datasets;
 [ApiController]
 [Route("api/tenants/{tenantId}/dataset-versions/{versionId:long}/fields")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class FieldsController(
     FieldService fields,
     FieldsFromColumnsService fieldsFromColumns,
@@ -49,7 +49,7 @@ public sealed class FieldsController(
     [HttpPost]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Create(string tenantId, long versionId, FieldInput input, CancellationToken cancellationToken)
     {
         return Ok(await fields.CreateAsync(versionId, input, cancellationToken));
@@ -71,7 +71,7 @@ public sealed class FieldsController(
     [HttpPut("{fieldId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<FieldRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<FieldRecord>> Update(
         string tenantId,
         [FromRoute] FieldReference reference,
@@ -94,11 +94,11 @@ public sealed class FieldsController(
     [HttpDelete("{fieldId:long}")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Delete(string tenantId, [FromRoute] FieldReference reference, CancellationToken cancellationToken)
     {
         var conflict = await fields.DeleteAsync(reference, cancellationToken);
-        if (conflict is not null) return Problem(conflict, statusCode: StatusCodes.Status409Conflict, title: DeleteBlockedProblem.Title);
+        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
         return NoContent();
     }
 
@@ -119,7 +119,7 @@ public sealed class FieldsController(
     [HttpPost("from-columns")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType<IReadOnlyList<FieldRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<FieldRecord>>> CreateFromColumns(
         string tenantId,
         long versionId,
@@ -146,7 +146,7 @@ public sealed class FieldsController(
     [HttpPost("{fieldId:long}/materialize")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> Materialize(
         string tenantId,
         [FromRoute] FieldReference reference,
@@ -154,7 +154,7 @@ public sealed class FieldsController(
         CancellationToken cancellationToken)
     {
         var refusal = await materializedColumns.MaterializeAsync(reference, input, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Field cannot be materialized");
+        if (refusal is not null) return Problems.Conflict("Field cannot be materialized", refusal).ToResult();
         return NoContent();
     }
 
@@ -172,7 +172,7 @@ public sealed class FieldsController(
     [HttpPut("{fieldId:long}/materialized-column")]
     [RequireDraft(VersionKinds.DatasetVersion, "versionId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<IActionResult> SetMaterializedColumn(
         string tenantId,
         [FromRoute] FieldReference reference,
@@ -180,7 +180,7 @@ public sealed class FieldsController(
         CancellationToken cancellationToken)
     {
         var refusal = await materializedColumns.SetAsync(reference, input, cancellationToken);
-        if (refusal is not null) return Problem(refusal, statusCode: StatusCodes.Status409Conflict, title: "Materialized column refused");
+        if (refusal is not null) return Problems.Conflict("Materialized column refused", refusal).ToResult();
         return NoContent();
     }
 }
