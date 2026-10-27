@@ -26,6 +26,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
     IIdGenerator ids,
     SemanticRevision semanticRevision)
     where TOperation : notnull
+    where TState : notnull
 {
     /// <summary>Applies the operations in memory and writes nothing.</summary>
     /// <param name="aggregateId">The aggregate root's id.</param>
@@ -41,7 +42,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         if (applied.Refusal is { } refusal) return Outcome<ChangeSetPreview<TState>>.Refused(refusal);
         return Outcome<ChangeSetPreview<TState>>.Success(new ChangeSetPreview<TState>
         {
-            State = await aggregate.ReadAsync(applied.After, cancellationToken),
+            State = await aggregate.ReadAsync(applied.After, applied.Ids.Present, cancellationToken),
             Violations = await EvaluateAsync(RuleStage.Publication, applied.After, cancellationToken)
         });
     }
@@ -64,7 +65,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         if (aggregate.IsEngineVisible(applied.Before, applied.After)) await semanticRevision.AdvanceAsync(cancellationToken);
         return Outcome<ChangeSetCommit<TState>>.Success(new ChangeSetCommit<TState>
         {
-            State = await aggregate.ReadAsync(await aggregate.LoadAsync(aggregateId, cancellationToken), cancellationToken),
+            State = await aggregate.ReadAsync(await aggregate.LoadAsync(aggregateId, cancellationToken), TemporaryIds.PresentStored, cancellationToken),
             IdMap = applied.Ids.Map
         });
     }

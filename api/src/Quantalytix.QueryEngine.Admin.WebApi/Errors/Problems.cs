@@ -61,7 +61,10 @@ public static class Problems
         };
     }
 
-    /// <summary>The problem of an Application refusal: 400 with its errors, 409 with its detail, or 422 with its violations.</summary>
+    /// <summary>
+    /// The problem of an Application refusal: 400 with its errors, 409 with its detail or its delete blockers, or 422 with its
+    /// violations.
+    /// </summary>
     /// <param name="refusal">Why a change set or command wrote nothing.</param>
     /// <returns>The problem.</returns>
     public static Problem From(Refusal refusal)
@@ -70,6 +73,7 @@ public static class Problems
         {
             RefusalKind.Invalid => Invalid(refusal.Errors),
             RefusalKind.Conflict => Conflict(refusal.Title!, refusal.Detail!),
+            RefusalKind.DeleteBlocked => DeleteBlocked(new DeleteCheck { Allowed = false, Message = refusal.Detail, Reasons = refusal.Violations }),
             _ => RulesViolated(refusal.Detail, refusal.Violations)
         };
     }

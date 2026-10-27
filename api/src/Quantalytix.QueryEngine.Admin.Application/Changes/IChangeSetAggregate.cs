@@ -10,6 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 /// <typeparam name="TOperation">The aggregate's operation union.</typeparam>
 /// <typeparam name="TState">The content read model the editor renders.</typeparam>
 public interface IChangeSetAggregate<TSnapshot, in TOperation, TState>
+    where TState : notnull
 {
     /// <summary>Reads the aggregate as stored.</summary>
     /// <param name="aggregateId">The aggregate root's id, such as the dimension version id.</param>
@@ -41,7 +42,11 @@ public interface IChangeSetAggregate<TSnapshot, in TOperation, TState>
 
     /// <summary>The read model of a snapshot: the pending content for a preview, the stored content after a commit.</summary>
     /// <param name="snapshot">The aggregate.</param>
+    /// <param name="presentId">
+    /// Writes each id of the read model: <see cref="TemporaryIds.Present"/> in a preview, so items the change set created keep their
+    /// temporary ids; <see cref="TemporaryIds.PresentStored"/> after a commit.
+    /// </param>
     /// <param name="cancellationToken">Cancels any reads the read model needs beyond the snapshot.</param>
     /// <returns>The read model.</returns>
-    Task<TState> ReadAsync(TSnapshot snapshot, CancellationToken cancellationToken);
+    Task<TState> ReadAsync(TSnapshot snapshot, Func<long, string> presentId, CancellationToken cancellationToken);
 }

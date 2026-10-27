@@ -54,14 +54,18 @@ public static class AdminControllersServiceCollectionExtensions
     /// <summary>
     /// The API's JSON conventions, shared by MVC and by the OpenAPI schema generator: camelCase names, ids as strings
     /// (<see cref="StringIds"/>), every other number only as a JSON number, nullable annotations enforced (a non-nullable
-    /// property rejects null), and enums as camelCase strings.
+    /// property rejects null), enums as camelCase strings, and a union's discriminator (a change-set operation's <c>op</c>)
+    /// read wherever it stands in the object and required (<see cref="UnionDiscriminators"/>).
     /// </summary>
     internal static void ConfigureJson(JsonSerializerOptions options)
     {
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.AllowOutOfOrderMetadataProperties = true;
         options.NumberHandling = JsonNumberHandling.Strict;
         options.RespectNullableAnnotations = true;
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-        options.TypeInfoResolver = (options.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver()).WithAddedModifier(StringIds.Modify);
+        options.TypeInfoResolver = (options.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver())
+            .WithAddedModifier(StringIds.Modify)
+            .WithAddedModifier(UnionDiscriminators.Modify);
     }
 }

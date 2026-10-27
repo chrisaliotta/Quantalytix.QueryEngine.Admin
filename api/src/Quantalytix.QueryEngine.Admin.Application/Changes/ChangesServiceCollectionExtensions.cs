@@ -15,6 +15,7 @@ public static class ChangesServiceCollectionExtensions
     public static IServiceCollection AddChangeSetAggregate<TAggregate, TSnapshot, TOperation, TState>(this IServiceCollection services)
         where TAggregate : class, IChangeSetAggregate<TSnapshot, TOperation, TState>
         where TOperation : notnull
+        where TState : notnull
     {
         services.AddScoped<IChangeSetAggregate<TSnapshot, TOperation, TState>, TAggregate>();
         services.AddScoped<ChangeSetPipeline<TSnapshot, TOperation, TState>>();

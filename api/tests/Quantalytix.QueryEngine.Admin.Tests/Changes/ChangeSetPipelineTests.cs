@@ -293,9 +293,10 @@ public sealed class ChangeSetPipelineTests
 
         /// <summary>The member keys, in order.</summary>
         /// <param name="snapshot">The list.</param>
+        /// <param name="presentId">Unused; the read model holds keys.</param>
         /// <param name="cancellationToken">Unused.</param>
         /// <returns>The keys.</returns>
-        public Task<IReadOnlyList<string>> ReadAsync(MemberList snapshot, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<string>> ReadAsync(MemberList snapshot, Func<long, string> presentId, CancellationToken cancellationToken)
         {
             IReadOnlyList<string> keys = [.. snapshot.Members.Select(member => member.MemberKey).Order(StringComparer.Ordinal)];
             return Task.FromResult(keys);

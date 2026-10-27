@@ -9,6 +9,9 @@ public enum RefusalKind
     /// <summary>A precondition failed (409): <see cref="Refusal.Detail"/> says which.</summary>
     Conflict,
 
+    /// <summary>A delete is blocked (409): <see cref="Refusal.Violations"/> are the blockers, <see cref="Refusal.Detail"/> names them.</summary>
+    DeleteBlocked,
+
     /// <summary>The result would break rules (422): <see cref="Refusal.Violations"/> lists them.</summary>
     RulesViolated
 }

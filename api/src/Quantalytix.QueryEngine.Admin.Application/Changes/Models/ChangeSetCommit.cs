@@ -3,6 +3,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 /// <summary>The 200 answer of <c>POST &lt;aggregate&gt;/changes</c>: every operation applied and was written.</summary>
 /// <typeparam name="TState">The aggregate's content read model.</typeparam>
 public sealed record ChangeSetCommit<TState>
+    where TState : notnull
 {
     /// <summary>The aggregate's content as stored after the commit.</summary>
     public required TState State { get; init; }

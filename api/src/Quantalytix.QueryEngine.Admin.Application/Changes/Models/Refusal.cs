@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Changes;
@@ -17,7 +18,7 @@ public sealed record Refusal
     /// <summary>Input path to messages, for <see cref="RefusalKind.Invalid"/>; empty otherwise.</summary>
     public IReadOnlyDictionary<string, string[]> Errors { get; init; } = new Dictionary<string, string[]>();
 
-    /// <summary>The broken rules, for <see cref="RefusalKind.RulesViolated"/>; empty otherwise.</summary>
+    /// <summary>The broken rules, for <see cref="RefusalKind.RulesViolated"/>, or the blockers, for <see cref="RefusalKind.DeleteBlocked"/>; empty otherwise.</summary>
     public IReadOnlyList<RuleViolation> Violations { get; init; } = [];
 
     /// <summary>An input refusal.</summary>
@@ -35,6 +36,14 @@ public sealed record Refusal
     public static Refusal Conflict(string title, string detail)
     {
         return new Refusal { Kind = RefusalKind.Conflict, Title = title, Detail = detail };
+    }
+
+    /// <summary>A blocked delete.</summary>
+    /// <param name="check">A delete check that does not allow the delete.</param>
+    /// <returns>The refusal.</returns>
+    public static Refusal DeleteBlocked(DeleteCheck check)
+    {
+        return new Refusal { Kind = RefusalKind.DeleteBlocked, Detail = check.Message, Violations = check.Reasons };
     }
 
     /// <summary>A rule refusal.</summary>
