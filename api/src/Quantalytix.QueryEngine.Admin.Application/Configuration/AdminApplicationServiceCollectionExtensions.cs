@@ -30,7 +30,7 @@ public static class AdminApplicationServiceCollectionExtensions
         services.AddScoped<PublicationSet>();
         services.AddScoped<VersionWorkflow>();
         foreach (var kind in VersionKinds.Living)
-            services.AddScoped<IVersionLifecycleHandler>(provider => new PredecessorRetirer(kind, provider.GetRequiredService<VersionStoreRegistry>()));
+            services.AddScoped<IVersionLifecycleHandler>(provider => new PredecessorRetirer(kind, provider.GetRequiredService<VersionStoreRegistry>(), provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<SemanticRevision>();
         services.AddScoped<LivingVersionFreezer>();
         return services;

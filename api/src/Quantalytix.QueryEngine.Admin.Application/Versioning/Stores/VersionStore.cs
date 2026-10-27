@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
@@ -24,16 +25,21 @@ public abstract class VersionStore<TRecord>(ITableGateway<TRecord> gateway, stri
         return ToState(record);
     }
 
-    /// <summary>Writes a version's status and publication time, keeping every other column.</summary>
+    /// <summary>
+    /// Writes a version's status, keeping every other column: publishing stamps the publication time, retiring the retirement
+    /// time; any other status keeps the publication time.
+    /// </summary>
     /// <param name="id">The version's surrogate key.</param>
     /// <param name="status">The new status.</param>
-    /// <param name="publishedAt">The publication time (UTC) to store.</param>
+    /// <param name="changedAt">When the status changes (UTC).</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>A task that completes when the status is written.</returns>
-    public async Task SetStatusAsync(long id, string status, DateTime? publishedAt, CancellationToken cancellationToken)
+    public async Task SetStatusAsync(long id, string status, DateTime changedAt, CancellationToken cancellationToken)
     {
         var record = await Gateway.GetAsync(Key(id), cancellationToken);
-        await Gateway.UpdateAsync(WithStatus(record, status, publishedAt), cancellationToken);
+        var publishedAt = status == PublicationStatuses.Published ? changedAt : ToState(record).PublishedAt;
+        DateTime? retiredAt = status == PublicationStatuses.Retired ? changedAt : null;
+        await Gateway.UpdateAsync(WithStatus(record, status, publishedAt, retiredAt), cancellationToken);
     }
 
     /// <summary>The gateway key of a version, such as <c>new { DatasetVersionId = id }</c>.</summary>
@@ -46,10 +52,11 @@ public abstract class VersionStore<TRecord>(ITableGateway<TRecord> gateway, stri
     /// <returns>The version's state.</returns>
     protected abstract VersionState ToState(TRecord record);
 
-    /// <summary>A copy of a record with a new status and publication time.</summary>
+    /// <summary>A copy of a record with a new status, publication time and, where the table has one, retirement time.</summary>
     /// <param name="record">The version's row.</param>
     /// <param name="status">The new status.</param>
     /// <param name="publishedAt">The publication time (UTC) to store.</param>
+    /// <param name="retiredAt">The retirement time (UTC) to store; null unless the version retires.</param>
     /// <returns>The changed row.</returns>
-    protected abstract TRecord WithStatus(TRecord record, string status, DateTime? publishedAt);
+    protected abstract TRecord WithStatus(TRecord record, string status, DateTime? publishedAt, DateTime? retiredAt);
 }

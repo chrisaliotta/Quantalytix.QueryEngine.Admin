@@ -70,6 +70,7 @@ public sealed class OverviewTests
     /// <summary>One draft mapping version.</summary>
     private readonly InMemoryTableGateway<MappingVersionRecord> _mappingVersions = new(new MappingVersionRecord
     {
+        CreatedAt = DateTime.UnixEpoch,
         MappingVersionId = 71,
         MappingSetId = 61,
         VersionNumber = 1,
@@ -90,6 +91,7 @@ public sealed class OverviewTests
     /// <summary>One published bridge version.</summary>
     private readonly InMemoryTableGateway<BridgeVersionRecord> _bridgeVersions = new(new BridgeVersionRecord
     {
+        CreatedAt = DateTime.UnixEpoch,
         BridgeVersionId = 82,
         BridgeId = 81,
         VersionNumber = 1,
@@ -223,6 +225,7 @@ public sealed class OverviewTests
     {
         return new DatasetVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = datasetVersionId,
             DatasetId = datasetId,
             VersionNumber = (int)(datasetVersionId % 10),
@@ -280,6 +283,7 @@ public sealed class OverviewTests
     {
         return new DimensionVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DimensionVersionId = dimensionVersionId,
             DimensionId = dimensionVersionId / 100 * 100,
             VersionNumber = (int)(dimensionVersionId % 100),

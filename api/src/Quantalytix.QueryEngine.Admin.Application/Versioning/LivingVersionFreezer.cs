@@ -6,10 +6,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 /// <summary>
 /// The freeze of a living kind (dimension, mapping and bridge versions, OI-14): the live version n must pass every rule of its
 /// kind; then it is copied to n+1 and n+1 is published through <see cref="VersionWorkflow.PublishAsync"/>, whose handlers retire
-/// n (<see cref="PredecessorRetirer"/>), repoint the active assumption set (<c>ActiveSetPinner</c>), rebuild derived rows (the
-/// dimension closure) and advance the semantic revision. A version that breaks a rule is refused and nothing changes.
+/// n with its retirement time (<see cref="PredecessorRetirer"/>), repoint the active assumption set (<c>ActiveSetPinner</c>),
+/// rebuild derived rows (the dimension closure) and advance the semantic revision; then n keeps the freeze note. A version that
+/// breaks a rule is refused and nothing changes.
 /// </summary>
-/// <param name="stores">Reads the version's status.</param>
+/// <param name="stores">Reads the version's status and records its note.</param>
 /// <param name="workflow">Runs the rules and publishes the copy.</param>
 /// <param name="copiers">One copier per living kind.</param>
 /// <param name="time">Stamps the report.</param>
@@ -41,7 +42,7 @@ public sealed class LivingVersionFreezer(
 
         var liveVersionId = await copiers.Single(copier => copier.Kind == kind).CopyAsync(versionId, cancellationToken);
         await workflow.PublishAsync(kind, liveVersionId, cancellationToken);
-        // TODO(G2, SG-04/SG-05): store note as version n's freeze_note, and its retired_at, once qe_<kind> has the columns.
+        await stores.GetLiving(kind).SetFreezeNoteAsync(versionId, note, cancellationToken);
         return Outcome<FrozenVersion>.Success(new FrozenVersion
         {
             Report = new ValidationReport { VersionId = versionId, CheckedAt = checkedAt, Violations = [] },

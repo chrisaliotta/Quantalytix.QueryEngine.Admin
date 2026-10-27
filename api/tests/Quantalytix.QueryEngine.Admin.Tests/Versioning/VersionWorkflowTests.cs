@@ -125,7 +125,7 @@ public sealed class VersionWorkflowTests
     [Fact]
     public async Task PublishingLivingVersion_RetiresItsPredecessorAndAdvancesTheRevision()
     {
-        var workflow = Workflow([], [new PredecessorRetirer(VersionKinds.DimensionVersion, _stores), Handler(VersionKinds.DimensionVersion)]);
+        var workflow = Workflow([], [new PredecessorRetirer(VersionKinds.DimensionVersion, _stores, _time), Handler(VersionKinds.DimensionVersion)]);
 
         var result = await workflow.TransitionAsync(
             VersionKinds.DimensionVersion, ValidatedDimensionVersionId, PublicationStatuses.Published, TestContext.Current.CancellationToken);
@@ -246,6 +246,6 @@ public sealed class VersionWorkflowTests
     /// <summary>A version of dimension 100.</summary>
     private static DimensionVersionRecord DimensionVersion(long dimensionVersionId, int versionNumber, string status)
     {
-        return new DimensionVersionRecord { DimensionVersionId = dimensionVersionId, DimensionId = 100, VersionNumber = versionNumber, Status = status };
+        return new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = dimensionVersionId, DimensionId = 100, VersionNumber = versionNumber, Status = status };
     }
 }

@@ -20,7 +20,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Support;
 /// <code>
 /// var versions = new InMemoryTableGateway&lt;DimensionVersionRecord&gt;(draft, published);
 /// var store = new DimensionVersionStore(versions);
-/// await store.SetStatusAsync(draft.DimensionVersionId, PublicationStatuses.Validated, null, cancellationToken);
+/// await store.SetStatusAsync(draft.DimensionVersionId, PublicationStatuses.Validated, DateTime.UnixEpoch, cancellationToken);
 /// Assert.Equal(PublicationStatuses.Validated, versions.All.Single(row => row.DimensionVersionId == draft.DimensionVersionId).Status);
 /// </code>
 /// </example>

@@ -9,7 +9,8 @@ public sealed class DimensionVersionService(
     ITableGateway<DimensionVersionRecord> versions,
     DimensionVersionCloner cloner,
     DimensionVersionRemover remover,
-    IIdGenerator ids)
+    IIdGenerator ids,
+    TimeProvider time)
 {
     /// <summary>Lists a dimension's versions.</summary>
     /// <param name="dimensionId">The dimension.</param>
@@ -51,7 +52,8 @@ public sealed class DimensionVersionService(
             DimensionId = dimensionId,
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
             Status = PublicationStatuses.Draft,
-            RangeDataType = rangeDataType
+            RangeDataType = rangeDataType,
+            CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await versions.InsertAsync(version, cancellationToken);
         if (input.CloneFromVersionId is { } cloneFromVersionId) await cloner.CloneAsync(cloneFromVersionId, version, cancellationToken);

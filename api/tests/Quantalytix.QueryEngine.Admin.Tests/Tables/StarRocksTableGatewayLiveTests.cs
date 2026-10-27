@@ -133,6 +133,7 @@ public sealed class StarRocksTableGatewayLiveTests
     {
         return new DatasetVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = datasetVersionId,
             DatasetId = datasetId,
             VersionNumber = versionNumber,

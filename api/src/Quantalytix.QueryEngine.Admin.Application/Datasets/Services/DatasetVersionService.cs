@@ -11,7 +11,8 @@ public sealed class DatasetVersionService(
     ITableGateway<SemanticReleaseRecord> releases,
     DatasetVersionContentStore content,
     DatasetVersionCloner cloner,
-    IIdGenerator ids)
+    IIdGenerator ids,
+    TimeProvider time)
 {
     /// <summary>The expression grammar version of a new empty version: the one the query engine parses.</summary>
     private const string ExpressionLanguageVersion = "1.0";
@@ -60,7 +61,8 @@ public sealed class DatasetVersionService(
             SourceObject = input.SourceObject!,
             SupportsAggregate = true,
             SupportsDetail = true,
-            ExpressionLanguageVersion = ExpressionLanguageVersion
+            ExpressionLanguageVersion = ExpressionLanguageVersion,
+            CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await versions.InsertAsync(version, cancellationToken);
         return version;

@@ -445,7 +445,8 @@ internal sealed class ReportEditorFixture
             DimensionVersions,
             new DimensionVersionCloner(Levels, Members, bands, _ids),
             new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands),
-            _ids);
+            _ids,
+            _time);
         var checks = Checks(bands);
         var members = new DimensionMemberService(Members, checks, new ClosureBuilder(Members, Closure), _ids);
         return new DimensionService(
@@ -478,7 +479,7 @@ internal sealed class ReportEditorFixture
     /// <summary>The bridge version service.</summary>
     private BridgeVersionService BridgeVersionService()
     {
-        return new BridgeVersionService(BridgeVersions, BridgeMappings, new BridgeVersionCloner(BridgeMappings, _ids), _ids);
+        return new BridgeVersionService(BridgeVersions, BridgeMappings, new BridgeVersionCloner(BridgeMappings, _ids), _ids, _time);
     }
 
     /// <summary>The bridge mapping service.</summary>

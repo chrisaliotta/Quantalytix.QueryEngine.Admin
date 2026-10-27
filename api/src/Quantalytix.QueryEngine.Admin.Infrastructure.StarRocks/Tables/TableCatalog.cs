@@ -14,9 +14,11 @@ public static class TableCatalog
         [typeof(SemanticReleaseRecord)] = Tenant("qe_semantic_release", [nameof(SemanticReleaseRecord.SemanticReleaseId)], []),
         [typeof(ReleaseDatasetRecord)] = Tenant(
             "qe_release_dataset", [nameof(ReleaseDatasetRecord.SemanticReleaseId), nameof(ReleaseDatasetRecord.DatasetId)], []),
+        [typeof(ReleaseActivationRecord)] = Tenant("qe_release_activation", [nameof(ReleaseActivationRecord.ReleaseActivationId)], []),
         [typeof(DatasetRecord)] = Tenant("qe_dataset", [nameof(DatasetRecord.DatasetId)], []),
         [typeof(DatasetVersionRecord)] = Tenant(
             "qe_dataset_version", [nameof(DatasetVersionRecord.DatasetVersionId)], [nameof(DatasetVersionRecord.Properties)]),
+        [typeof(ManagedSourceObjectRecord)] = Tenant("qe_managed_source_object", [nameof(ManagedSourceObjectRecord.ManagedSourceObjectId)], []),
         [typeof(FieldRecord)] = Tenant("qe_field", [nameof(FieldRecord.FieldId)], []),
         [typeof(DatasetGrainRecord)] = Tenant("qe_dataset_grain", [nameof(DatasetGrainRecord.DatasetGrainId)], []),
         [typeof(DatasetGrainFieldRecord)] = Tenant(
@@ -72,6 +74,8 @@ public static class TableCatalog
             "qe_report_source_variable",
             [nameof(ReportSourceVariableRecord.ReportSourceId), nameof(ReportSourceVariableRecord.VariableKey)],
             [nameof(ReportSourceVariableRecord.SourceFilterJson)]),
+        [typeof(ReportSourceLeftOutRecord)] = Tenant(
+            "qe_report_source_left_out", [nameof(ReportSourceLeftOutRecord.ReportSourceId), nameof(ReportSourceLeftOutRecord.MemberKey)], []),
         [typeof(SourceProfileRecord)] = Tenant("qe_calculation_source_profile", [nameof(SourceProfileRecord.CalculationSourceProfileId)], []),
         [typeof(SourceProfileVariableRecord)] = Tenant(
             "qe_calculation_source_profile_variable",

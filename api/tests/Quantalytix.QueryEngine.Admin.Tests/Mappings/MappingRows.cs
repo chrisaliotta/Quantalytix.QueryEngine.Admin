@@ -23,6 +23,7 @@ internal static class MappingRows
     {
         return new MappingVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             MappingVersionId = mappingVersionId,
             MappingSetId = mappingSetId,
             VersionNumber = versionNumber,

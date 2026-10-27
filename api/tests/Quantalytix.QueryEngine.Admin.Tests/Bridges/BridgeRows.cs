@@ -28,6 +28,7 @@ internal static class BridgeRows
     {
         return new BridgeVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             BridgeVersionId = bridgeVersionId,
             BridgeId = bridgeId,
             VersionNumber = versionNumber,

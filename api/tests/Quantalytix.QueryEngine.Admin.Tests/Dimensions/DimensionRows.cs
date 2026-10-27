@@ -33,6 +33,7 @@ internal static class DimensionRows
     {
         return new DimensionVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DimensionVersionId = versionId,
             DimensionId = dimensionId,
             VersionNumber = versionNumber,

@@ -25189,7 +25189,8 @@
           "versionNumber",
           "cardinality",
           "allocationMode",
-          "status"
+          "status",
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -25225,6 +25226,26 @@
             ],
             "description": "Publication time (UTC).",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "retiredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the version was retired (UTC); null until then.",
+            "format": "date-time"
+          },
+          "freezeNote": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the version was frozen, such as `FY26 close`; null while live or when frozen without a note."
           }
         },
         "description": "A `qe_bridge_version` row: the cardinality, allocation semantics and assignments of a bridge, of which at most one version is published."
@@ -25746,7 +25767,8 @@
           "sourceObject",
           "supportsAggregate",
           "supportsDetail",
-          "expressionLanguageVersion"
+          "expressionLanguageVersion",
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -25815,6 +25837,26 @@
             ],
             "description": "Publication time (UTC).",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "retiredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the version was retired (UTC); null until then.",
+            "format": "date-time"
+          },
+          "clonedFromDatasetVersionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The version this draft was cloned from; null for a version created empty."
           }
         },
         "description": "A `qe_dataset_version` row: the immutable physical and logical definition of a dataset."
@@ -26186,6 +26228,13 @@
           "dimensionPurpose": {
             "type": "string",
             "description": "A `dimension_purpose` value: `report` for the dimension whose members are one report's rows."
+          },
+          "dimensionProfileKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The code-registry profile of a system dimension, such as `branch`; null for a user or report dimension."
           }
         },
         "description": "A `qe_dimension` row: the stable identity of a canonical business dimension."
@@ -26263,7 +26312,8 @@
           "dimensionVersionId",
           "dimensionId",
           "versionNumber",
-          "status"
+          "status",
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -26298,6 +26348,26 @@
             ],
             "description": "Publication time (UTC).",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "retiredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the version was retired (UTC); null until then.",
+            "format": "date-time"
+          },
+          "freezeNote": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the version was frozen, such as `FY26 close`; null while live or when frozen without a note."
           }
         },
         "description": "A `qe_dimension_version` row: a version of one canonical dimension, of which at most one is published."
@@ -27098,7 +27168,8 @@
           "mappingVersionId",
           "mappingSetId",
           "versionNumber",
-          "status"
+          "status",
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -27126,6 +27197,26 @@
             ],
             "description": "Publication time (UTC).",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "retiredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the version was retired (UTC); null until then.",
+            "format": "date-time"
+          },
+          "freezeNote": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the version was frozen, such as `FY26 close`; null while live or when frozen without a note."
           }
         },
         "description": "A `qe_mapping_version` row: source-key mapping content of a mapping set, of which at most one version is published."

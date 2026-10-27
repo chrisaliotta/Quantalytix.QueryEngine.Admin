@@ -35,8 +35,9 @@ public sealed class VersionWorkflow(
             return new TransitionResult { Outcome = TransitionOutcome.Rejected, State = current, Violations = violations };
 
         var publishing = targetStatus == PublicationStatuses.Published;
-        var publishedAt = publishing ? time.GetUtcNow().UtcDateTime : current.PublishedAt;
-        await stores.Get(kind).SetStatusAsync(id, targetStatus, publishedAt, cancellationToken);
+        var changedAt = time.GetUtcNow().UtcDateTime;
+        var publishedAt = publishing ? changedAt : current.PublishedAt;
+        await stores.Get(kind).SetStatusAsync(id, targetStatus, changedAt, cancellationToken);
         if (publishing)
         {
             foreach (var handler in HandlersOf(kind)) await handler.OnPublishedAsync(id, cancellationToken);

@@ -9,7 +9,8 @@ public sealed class MappingVersionService(
     ITableGateway<MappingVersionRecord> versions,
     ITableGateway<DimensionMappingRecord> entries,
     MappingVersionCloner cloner,
-    IIdGenerator ids)
+    IIdGenerator ids,
+    TimeProvider time)
 {
     /// <summary>Lists a mapping set's versions.</summary>
     /// <param name="mappingSetId">The mapping set.</param>
@@ -46,7 +47,8 @@ public sealed class MappingVersionService(
             MappingVersionId = ids.NextId(),
             MappingSetId = mappingSetId,
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
-            Status = PublicationStatuses.Draft
+            Status = PublicationStatuses.Draft,
+            CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await versions.InsertAsync(version, cancellationToken);
         if (input.CloneFromVersionId is { } sourceVersionId) await cloner.CloneAsync(sourceVersionId, version, cancellationToken);

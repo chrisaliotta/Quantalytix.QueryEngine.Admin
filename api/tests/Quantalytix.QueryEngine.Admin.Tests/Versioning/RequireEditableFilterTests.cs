@@ -116,6 +116,6 @@ public sealed class RequireEditableFilterTests
     /// <summary>A version of dimension 100.</summary>
     private static DimensionVersionRecord Version(long dimensionVersionId, string status)
     {
-        return new DimensionVersionRecord { DimensionVersionId = dimensionVersionId, DimensionId = 100, VersionNumber = (int)dimensionVersionId, Status = status };
+        return new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = dimensionVersionId, DimensionId = 100, VersionNumber = (int)dimensionVersionId, Status = status };
     }
 }

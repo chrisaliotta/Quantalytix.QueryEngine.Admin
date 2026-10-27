@@ -28,6 +28,17 @@ public abstract class LivingVersionStore<TRecord>(ITableGateway<TRecord> gateway
         return [.. published.Select(record => ToState(record).Id).Where(siblingId => siblingId != id)];
     }
 
+    /// <summary>Records why a frozen version was frozen, keeping every other column.</summary>
+    /// <param name="id">The frozen version's surrogate key.</param>
+    /// <param name="note">The note, or null.</param>
+    /// <param name="cancellationToken">Cancels the read and the write.</param>
+    /// <returns>A task that completes when the note is written.</returns>
+    public async Task SetFreezeNoteAsync(long id, string? note, CancellationToken cancellationToken)
+    {
+        var record = await Gateway.GetAsync(Key(id), cancellationToken);
+        await Gateway.UpdateAsync(WithFreezeNote(record, note), cancellationToken);
+    }
+
     /// <summary>The identity a version row belongs to, such as its <c>DimensionId</c>.</summary>
     /// <param name="record">The version's row.</param>
     /// <returns>The identity's surrogate key.</returns>
@@ -37,4 +48,10 @@ public abstract class LivingVersionStore<TRecord>(ITableGateway<TRecord> gateway
     /// <param name="identityId">The identity's surrogate key.</param>
     /// <returns>An anonymous object of record property values to match.</returns>
     protected abstract object PublishedOf(long identityId);
+
+    /// <summary>A copy of a version row with a freeze note.</summary>
+    /// <param name="record">The version's row.</param>
+    /// <param name="note">The note, or null.</param>
+    /// <returns>The changed row.</returns>
+    protected abstract TRecord WithFreezeNote(TRecord record, string? note);
 }

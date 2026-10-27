@@ -59,6 +59,7 @@ internal static class ReleaseRows
     {
         return new DatasetVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = datasetVersionId,
             DatasetId = datasetId,
             VersionNumber = versionNumber,
@@ -135,6 +136,7 @@ internal static class ReleaseRows
     {
         return new DimensionVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DimensionVersionId = dimensionVersionId,
             DimensionId = dimensionId,
             VersionNumber = versionNumber,

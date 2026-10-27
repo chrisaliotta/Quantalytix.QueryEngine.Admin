@@ -204,7 +204,7 @@ public sealed class DimensionRoleTests
             _dimensions,
             versions,
             _roles,
-            new DimensionVersionService(versions, new DimensionVersionCloner(levels, members, bands, ids), remover, ids),
+            new DimensionVersionService(versions, new DimensionVersionCloner(levels, members, bands, ids), remover, ids, TimeProvider.System),
             RoleService(),
             new DimensionMemberService(members, Checks(), new ClosureBuilder(members, closure), ids),
             remover,

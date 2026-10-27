@@ -23,4 +23,13 @@ public sealed record BridgeVersionRecord
 
     /// <summary>Publication time (UTC).</summary>
     public DateTime? PublishedAt { get; init; }
+
+    /// <summary>Creation time (UTC).</summary>
+    public required DateTime CreatedAt { get; init; }
+
+    /// <summary>When the version was retired (UTC); null until then.</summary>
+    public DateTime? RetiredAt { get; init; }
+
+    /// <summary>Why the version was frozen, such as <c>FY26 close</c>; null while live or when frozen without a note.</summary>
+    public string? FreezeNote { get; init; }
 }

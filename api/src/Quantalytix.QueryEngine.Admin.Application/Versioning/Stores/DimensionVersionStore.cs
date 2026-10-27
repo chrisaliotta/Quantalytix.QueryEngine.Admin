@@ -39,13 +39,23 @@ public sealed class DimensionVersionStore(ITableGateway<DimensionVersionRecord> 
         return new { DimensionId = identityId, Status = PublicationStatuses.Published };
     }
 
-    /// <summary>A copy of a dimension version row with a new status and publication time.</summary>
-    /// <param name="record">The dimension version row.</param>
+    /// <summary>A copy of a version row with a new status, publication time and retirement time.</summary>
+    /// <param name="record">The version row.</param>
     /// <param name="status">The new status.</param>
     /// <param name="publishedAt">The publication time (UTC) to store.</param>
+    /// <param name="retiredAt">The retirement time (UTC) to store.</param>
     /// <returns>The changed row.</returns>
-    protected override DimensionVersionRecord WithStatus(DimensionVersionRecord record, string status, DateTime? publishedAt)
+    protected override DimensionVersionRecord WithStatus(DimensionVersionRecord record, string status, DateTime? publishedAt, DateTime? retiredAt)
     {
-        return record with { Status = status, PublishedAt = publishedAt };
+        return record with { Status = status, PublishedAt = publishedAt, RetiredAt = retiredAt };
+    }
+
+    /// <summary>A copy of a dimension version row with a freeze note.</summary>
+    /// <param name="record">The version row.</param>
+    /// <param name="note">The note, or null.</param>
+    /// <returns>The changed row.</returns>
+    protected override DimensionVersionRecord WithFreezeNote(DimensionVersionRecord record, string? note)
+    {
+        return record with { FreezeNote = note };
     }
 }

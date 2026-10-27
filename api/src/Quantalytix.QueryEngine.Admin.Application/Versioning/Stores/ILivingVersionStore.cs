@@ -17,4 +17,11 @@ public interface ILivingVersionStore : IVersionStore
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The sibling versions' surrogate keys; at most one, the version a publish replaces.</returns>
     Task<IReadOnlyList<long>> PublishedSiblingIdsAsync(long id, CancellationToken cancellationToken);
+
+    /// <summary>Records why a frozen version was frozen.</summary>
+    /// <param name="id">The frozen version's surrogate key.</param>
+    /// <param name="note">The note, such as <c>FY26 close</c>, or null.</param>
+    /// <param name="cancellationToken">Cancels the read and the write.</param>
+    /// <returns>A task that completes when the note is written.</returns>
+    Task SetFreezeNoteAsync(long id, string? note, CancellationToken cancellationToken);
 }

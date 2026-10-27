@@ -41,4 +41,13 @@ public sealed record DatasetVersionRecord
 
     /// <summary>Publication time (UTC).</summary>
     public DateTime? PublishedAt { get; init; }
+
+    /// <summary>Creation time (UTC).</summary>
+    public required DateTime CreatedAt { get; init; }
+
+    /// <summary>When the version was retired (UTC); null until then.</summary>
+    public DateTime? RetiredAt { get; init; }
+
+    /// <summary>The version this draft was cloned from; null for a version created empty.</summary>
+    public long? ClonedFromDatasetVersionId { get; init; }
 }

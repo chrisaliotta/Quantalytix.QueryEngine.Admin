@@ -12,7 +12,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 public sealed class DatasetVersionCloner(
     ITableGateway<DatasetVersionRecord> versions,
     DatasetVersionContentStore content,
-    IIdGenerator ids)
+    IIdGenerator ids,
+    TimeProvider time)
 {
     /// <summary>Creates a draft copy of a version's settings and content.</summary>
     /// <param name="sourceVersionId">The version to copy.</param>
@@ -32,7 +33,10 @@ public sealed class DatasetVersionCloner(
             VersionNumber = versionNumber,
             Status = PublicationStatuses.Draft,
             DefaultTimeBindingId = remap.MapOptional(source.DefaultTimeBindingId),
-            PublishedAt = null
+            PublishedAt = null,
+            CreatedAt = time.GetUtcNow().UtcDateTime,
+            RetiredAt = null,
+            ClonedFromDatasetVersionId = sourceVersionId
         };
         await versions.InsertAsync(clone, cancellationToken);
         await content.InsertAsync(Remap(sourceContent, clone.DatasetVersionId, remap), cancellationToken);

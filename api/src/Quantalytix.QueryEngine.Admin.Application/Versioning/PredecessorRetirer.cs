@@ -4,11 +4,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
 /// Retires the version a living kind's publish replaces: the identity's other published version. A living version is never
-/// retired by hand, so this is how it retires; it keeps its publication time and never changes again.
+/// retired by hand, so this is how it retires; it keeps its publication time, is stamped with its retirement time and never
+/// changes again.
 /// </summary>
 /// <param name="kind">The living <c>version_kind</c> the retirer serves.</param>
 /// <param name="stores">The version stores.</param>
-public sealed class PredecessorRetirer(string kind, VersionStoreRegistry stores) : IVersionLifecycleHandler
+/// <param name="time">Stamps the retirement.</param>
+public sealed class PredecessorRetirer(string kind, VersionStoreRegistry stores, TimeProvider time) : IVersionLifecycleHandler
 {
     /// <summary>The living kind whose publishes the retirer follows.</summary>
     public string Kind { get; } = kind;
@@ -29,10 +31,8 @@ public sealed class PredecessorRetirer(string kind, VersionStoreRegistry stores)
     public async Task OnPublishedAsync(long versionId, CancellationToken cancellationToken)
     {
         var store = stores.GetLiving(Kind);
+        var retiredAt = time.GetUtcNow().UtcDateTime;
         foreach (var siblingId in await store.PublishedSiblingIdsAsync(versionId, cancellationToken))
-        {
-            var sibling = await store.GetAsync(siblingId, cancellationToken);
-            await store.SetStatusAsync(siblingId, PublicationStatuses.Retired, sibling.PublishedAt, cancellationToken);
-        }
+            await store.SetStatusAsync(siblingId, PublicationStatuses.Retired, retiredAt, cancellationToken);
     }
 }

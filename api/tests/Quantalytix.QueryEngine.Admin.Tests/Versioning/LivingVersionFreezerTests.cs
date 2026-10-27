@@ -44,12 +44,15 @@ public sealed class LivingVersionFreezerTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 17,
+        MetadataSchemaVersion = 18,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
-    /// <summary>A passing freeze publishes the copy as live, retires n and advances the revision.</summary>
+    /// <summary>
+    /// A passing freeze publishes the copy as live, retires n with its retirement time and note (SG-04, SG-05), and advances the
+    /// revision.
+    /// </summary>
     /// <returns>A task that completes when the freeze is checked.</returns>
     [Fact]
     public async Task Freeze_PublishesTheCopyAndRetiresTheLiveVersion()
@@ -60,7 +63,10 @@ public sealed class LivingVersionFreezerTests
         Assert.Equal(CopyVersionId, outcome.Value.LiveVersionId);
         Assert.Equal(LiveVersionId, outcome.Value.Report.VersionId);
         Assert.Empty(outcome.Value.Report.Violations);
-        Assert.Equal(PublicationStatuses.Retired, Status(LiveVersionId));
+        var frozen = _versions.All.Single(row => row.DimensionVersionId == LiveVersionId);
+        Assert.Equal(PublicationStatuses.Retired, frozen.Status);
+        Assert.Equal(_time.GetUtcNow().UtcDateTime, frozen.RetiredAt);
+        Assert.Equal("FY26 close", frozen.FreezeNote);
         Assert.Equal(PublicationStatuses.Published, Status(CopyVersionId));
         Assert.Equal(StartingRevision + 1, Assert.Single(_databaseInfo.All).SemanticRevision);
     }
@@ -101,7 +107,7 @@ public sealed class LivingVersionFreezerTests
             stores,
             [new RecordingPublicationRule(VersionKinds.DimensionVersion, _log, violations)],
             [],
-            [new PredecessorRetirer(VersionKinds.DimensionVersion, stores)],
+            [new PredecessorRetirer(VersionKinds.DimensionVersion, stores, _time)],
             new PublicationSet(),
             new SemanticRevision(_databaseInfo, _time),
             _time);
@@ -117,7 +123,7 @@ public sealed class LivingVersionFreezerTests
     /// <summary>A version of dimension 100.</summary>
     private static DimensionVersionRecord Version(long id, int number, string status)
     {
-        return new DimensionVersionRecord { DimensionVersionId = id, DimensionId = 100, VersionNumber = number, Status = status };
+        return new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = id, DimensionId = 100, VersionNumber = number, Status = status };
     }
 
     /// <summary>A copier that stores n+1 as a draft of the same dimension, as a module's copier does with its content.</summary>

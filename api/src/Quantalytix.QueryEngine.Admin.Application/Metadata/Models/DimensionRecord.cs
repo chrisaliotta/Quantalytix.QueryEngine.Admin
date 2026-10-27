@@ -26,4 +26,7 @@ public sealed record DimensionRecord
 
     /// <summary>A <c>dimension_purpose</c> value: <c>report</c> for the dimension whose members are one report's rows.</summary>
     public required string DimensionPurpose { get; init; }
+
+    /// <summary>The code-registry profile of a system dimension, such as <c>branch</c>; null for a user or report dimension.</summary>
+    public string? DimensionProfileKey { get; init; }
 }

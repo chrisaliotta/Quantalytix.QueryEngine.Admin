@@ -9,7 +9,8 @@ public sealed class BridgeVersionService(
     ITableGateway<BridgeVersionRecord> versions,
     ITableGateway<BridgeMappingRecord> mappings,
     BridgeVersionCloner cloner,
-    IIdGenerator ids)
+    IIdGenerator ids,
+    TimeProvider time)
 {
     /// <summary>Lists a bridge's versions.</summary>
     /// <param name="bridgeId">The bridge.</param>
@@ -48,7 +49,8 @@ public sealed class BridgeVersionService(
             VersionNumber = VersionNumbers.Next(existing.Select(row => row.VersionNumber)),
             Cardinality = input.Cardinality,
             AllocationMode = input.AllocationMode,
-            Status = PublicationStatuses.Draft
+            Status = PublicationStatuses.Draft,
+            CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await versions.InsertAsync(version, cancellationToken);
         if (input.CloneFromVersionId is { } sourceVersionId) await cloner.CloneAsync(sourceVersionId, version, cancellationToken);

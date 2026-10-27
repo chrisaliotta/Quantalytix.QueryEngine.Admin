@@ -37,9 +37,9 @@ lifecycle, and the sequence of each key write.
 - The .NET 10 SDK.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`, at design revision 2.26.0. The tests read its generated schema build script,
-  `ddl_srdb_bi_v2_26.sql`.
-- A tenant database at metadata schema version 17 with its active assumption set, as the seed kit's build script creates
+- The seed kit, `database/srdb_ebm`, at design revision 2.27.0. The tests read its generated schema build script,
+  `ddl_srdb_bi_v2_27.sql`.
+- A tenant database at metadata schema version 18 with its active assumption set, as the seed kit's build script creates
   it. Tenant verification refuses a database without exactly one active set.
 - Network access to the StarRocks cluster, for every endpoint that reads or writes metadata.
 

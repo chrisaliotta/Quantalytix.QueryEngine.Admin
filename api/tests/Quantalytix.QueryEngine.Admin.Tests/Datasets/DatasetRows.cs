@@ -11,6 +11,7 @@ internal static class DatasetRows
     {
         return new DatasetVersionRecord
         {
+            CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = versionId,
             DatasetId = 10,
             VersionNumber = 1,

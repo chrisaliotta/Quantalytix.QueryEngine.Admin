@@ -68,7 +68,7 @@ public sealed class MappedBindingsResolvableRuleTests
     /// <summary>A version of the mapping set.</summary>
     private static MappingVersionRecord MappingVersion(long mappingVersionId, string status)
     {
-        return new MappingVersionRecord { MappingVersionId = mappingVersionId, MappingSetId = MappingSetId, VersionNumber = 1, Status = status };
+        return new MappingVersionRecord { CreatedAt = DateTime.UnixEpoch, MappingVersionId = mappingVersionId, MappingSetId = MappingSetId, VersionNumber = 1, Status = status };
     }
 
     /// <summary>Evaluates the rule with the given bindings of the pinned version and mapping versions of the set.</summary>

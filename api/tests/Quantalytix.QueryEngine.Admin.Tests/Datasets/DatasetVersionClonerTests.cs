@@ -189,7 +189,7 @@ public sealed class DatasetVersionClonerTests
     {
         var content = new DatasetVersionContentStore(
             _fields, _grains, _grainFields, _bindings, _timeBindings, _measures, _components, _dependencies, _timePolicies);
-        var cloner = new DatasetVersionCloner(_versions, content, new SequentialIdGenerator(FirstNewId));
+        var cloner = new DatasetVersionCloner(_versions, content, new SequentialIdGenerator(FirstNewId), TimeProvider.System);
         return cloner.CloneAsync(SourceVersionId, 10, 4, TestContext.Current.CancellationToken);
     }
 }

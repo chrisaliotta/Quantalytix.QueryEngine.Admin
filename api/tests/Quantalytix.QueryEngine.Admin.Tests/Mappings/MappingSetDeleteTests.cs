@@ -34,7 +34,7 @@ public sealed class MappingSetDeleteTests
             versions,
             new InMemoryTableGateway<DimensionBindingRecord>(DatasetRows.Binding(21, 11, 81, BindingKinds.Mapped, 1) with { MappingSetId = 62 }),
             new BindingNames(roles, new InMemoryTableGateway<FieldRecord>()),
-            new MappingVersionService(versions, new InMemoryTableGateway<DimensionMappingRecord>(), new MappingVersionCloner(new InMemoryTableGateway<DimensionMappingRecord>(), ids), ids),
+            new MappingVersionService(versions, new InMemoryTableGateway<DimensionMappingRecord>(), new MappingVersionCloner(new InMemoryTableGateway<DimensionMappingRecord>(), ids), ids, TimeProvider.System),
             new SemanticRevision(new InMemoryTableGateway<DatabaseInfoRecord>(), new FakeTimeProvider()),
             ids);
 

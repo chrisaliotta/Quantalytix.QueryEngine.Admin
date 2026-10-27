@@ -12,11 +12,11 @@ public interface IVersionStore
     /// <returns>The version's state.</returns>
     Task<VersionState> GetAsync(long id, CancellationToken cancellationToken);
 
-    /// <summary>Writes a version's status and publication time.</summary>
+    /// <summary>Writes a version's status; publishing stamps its publication time and retiring its retirement time.</summary>
     /// <param name="id">The version's surrogate key.</param>
     /// <param name="status">The new status.</param>
-    /// <param name="publishedAt">The publication time (UTC) to store.</param>
+    /// <param name="changedAt">When the status changes (UTC).</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the status is written.</returns>
-    Task SetStatusAsync(long id, string status, DateTime? publishedAt, CancellationToken cancellationToken);
+    Task SetStatusAsync(long id, string status, DateTime changedAt, CancellationToken cancellationToken);
 }

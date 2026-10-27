@@ -26,7 +26,7 @@ public sealed class RouteResourceFilterTests
     private const string MemberTemplate = "api/tenants/{tenantId}/dimension-versions/{versionId:long}/members/{memberId:long}";
 
     /// <summary>The stored dimension versions.</summary>
-    private readonly InMemoryTableGateway<DimensionVersionRecord> _versions = new(new DimensionVersionRecord { DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "draft" });
+    private readonly InMemoryTableGateway<DimensionVersionRecord> _versions = new(new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "draft" });
 
     /// <summary>The stored members.</summary>
     private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new(new DimensionMemberRecord { DimensionMemberId = 20, DimensionVersionId = 10, MemberKey = "CA", DisplayName = "CA", IsAssignable = true, SortOrder = 1 });

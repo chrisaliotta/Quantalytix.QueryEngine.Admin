@@ -23,12 +23,13 @@ public sealed class SemanticReleaseStore(ITableGateway<SemanticReleaseRecord> ga
         return new VersionState { Kind = Kind, Id = record.SemanticReleaseId, Status = record.Status, PublishedAt = record.PublishedAt };
     }
 
-    /// <summary>A copy of a semantic release row with a new status and publication time.</summary>
+    /// <summary>A copy of a release row with a new status and publication time; a release row has no retirement time.</summary>
     /// <param name="record">The release row.</param>
     /// <param name="status">The new status.</param>
     /// <param name="publishedAt">The publication time (UTC) to store.</param>
+    /// <param name="retiredAt">Unused.</param>
     /// <returns>The changed row.</returns>
-    protected override SemanticReleaseRecord WithStatus(SemanticReleaseRecord record, string status, DateTime? publishedAt)
+    protected override SemanticReleaseRecord WithStatus(SemanticReleaseRecord record, string status, DateTime? publishedAt, DateTime? retiredAt)
     {
         return record with { Status = status, PublishedAt = publishedAt };
     }

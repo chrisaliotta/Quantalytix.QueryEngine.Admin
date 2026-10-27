@@ -27,7 +27,7 @@ public sealed class ChangeSetPipelineTests
 
     /// <summary>The dimension version the aggregate is.</summary>
     private readonly InMemoryTableGateway<DimensionVersionRecord> _versions = new(
-        new DimensionVersionRecord { DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "published" });
+        new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "published" });
 
     /// <summary>The version's members.</summary>
     private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new(WritePlanTests.Member(1, "CA"), WritePlanTests.Member(2, "NY"));
@@ -37,7 +37,7 @@ public sealed class ChangeSetPipelineTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 17,
+        MetadataSchemaVersion = 18,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });

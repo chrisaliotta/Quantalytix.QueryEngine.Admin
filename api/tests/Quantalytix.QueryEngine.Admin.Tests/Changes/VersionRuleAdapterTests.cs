@@ -24,7 +24,7 @@ public sealed class VersionRuleAdapterTests
         var log = new List<string>();
         var violation = new RuleViolation { Code = "hierarchy_acyclic", Message = "Members A -> B -> A form a parent cycle." };
         var versions = new InMemoryTableGateway<DimensionVersionRecord>(
-            new DimensionVersionRecord { DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = PublicationStatuses.Draft });
+            new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = PublicationStatuses.Draft });
         var databaseInfo = new InMemoryTableGateway<DatabaseInfoRecord>();
         var workflow = new VersionWorkflow(
             new VersionStoreRegistry([new DimensionVersionStore(versions)]),

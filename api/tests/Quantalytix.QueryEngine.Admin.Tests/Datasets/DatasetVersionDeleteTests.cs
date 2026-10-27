@@ -60,6 +60,6 @@ public sealed class DatasetVersionDeleteTests
             new InMemoryTableGateway<MeasureDependencyRecord>(),
             new InMemoryTableGateway<MeasureTimePolicyRecord>());
         var ids = new SequentialIdGenerator(1000);
-        return new DatasetVersionService(_versions, _manifest, _releases, content, new DatasetVersionCloner(_versions, content, ids), ids);
+        return new DatasetVersionService(_versions, _manifest, _releases, content, new DatasetVersionCloner(_versions, content, ids, TimeProvider.System), ids, TimeProvider.System);
     }
 }
