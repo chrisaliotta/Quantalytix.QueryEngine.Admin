@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -315,6 +316,30 @@ public sealed class ReportChangeSetTests
         Assert.Equal(("ok", "gl"), (stored.Resolution["base"]["balance"].Status, stored.Resolution["base"]["balance"].SourceKey));
         Assert.Equal(["CASH"], pending.Resolution["base"]["balance"].RowGaps);
         Assert.Equal("gap", pending.Resolution["base"]["balance"].Status);
+    }
+
+    /// <summary>
+    /// A direct source's items are the values of its field in the active release's dataset version: a value that names no data row is
+    /// unmapped, and a data row no value names is a gap of the profile that picks the source. A field with more values than the read's
+    /// limit reports no gaps, since the values it did not read may name the row.
+    /// </summary>
+    /// <returns>A task that completes when the diagnostics are checked.</returns>
+    [Fact]
+    public async Task Diagnostics_ReadADirectSourcesFieldValues()
+    {
+        var source = _fixture.Sources.All.Single();
+        await _fixture.Sources.UpdateAsync(
+            source with { MappingMethod = ReportMappingMethods.Direct, FieldKey = "gl_account", DimensionRoleId = null, BridgeId = null }, Token);
+        _fixture.Catalog.Values[(GlTable, "gl_account", null)] = ["LOANS", "OTHER"];
+
+        var diagnostics = await _fixture.Queries().DiagnosticsAsync(ReportId, Token);
+        _fixture.Catalog.Values[(GlTable, "gl_account", null)] = ["LOANS", .. Enumerable.Range(0, DatasetFieldValues.Limit).Select(index => $"V{index:D4}")];
+        var truncated = await _fixture.Queries().DiagnosticsAsync(ReportId, Token);
+
+        Assert.Equal(["OTHER"], diagnostics.Coverage["gl"].Unmapped);
+        Assert.Equal("gap", diagnostics.Resolution["base"]["balance"].Status);
+        Assert.Equal(["CASH"], diagnostics.Resolution["base"]["balance"].RowGaps);
+        Assert.Equal("ok", truncated.Resolution["base"]["balance"].Status);
     }
 
     /// <summary>A change set of the operations.</summary>

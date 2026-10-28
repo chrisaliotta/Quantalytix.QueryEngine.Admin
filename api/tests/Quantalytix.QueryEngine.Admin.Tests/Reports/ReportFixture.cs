@@ -4,6 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -12,6 +13,7 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
+using Quantalytix.QueryEngine.Admin.Tests.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
@@ -47,6 +49,9 @@ internal sealed class ReportFixture
 
     /// <summary>The GL version the active release pins.</summary>
     public const long GlVersionId = 11;
+
+    /// <summary>The table GL version 11 reads.</summary>
+    public const string GlTable = "gl_balances";
 
     /// <summary>The bridge source.</summary>
     public const long SourceId = 70;
@@ -187,6 +192,13 @@ internal sealed class ReportFixture
     /// <summary>The GL dataset.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"));
 
+    /// <summary>GL version 11, published, over the table <c>gl_balances</c>.</summary>
+    public InMemoryTableGateway<DatasetVersionRecord> DatasetVersions { get; } = new(
+        DatasetRows.Version(GlVersionId) with { DatasetId = GlDatasetId, Status = PublicationStatuses.Published, SourceObject = GlTable });
+
+    /// <summary>The tenant database's objects and the values their columns hold; none at first.</summary>
+    public FixedSourceObjectCatalog Catalog { get; } = new();
+
     /// <summary>GL's fields: the account code, the as-of date, and a disabled memo.</summary>
     public InMemoryTableGateway<FieldRecord> Fields { get; } = new(
         DatasetRows.ColumnField(1, GlVersionId, "gl_account", "gl_account"),
@@ -307,7 +319,8 @@ internal sealed class ReportFixture
     /// <summary>The diagnostics builder.</summary>
     private ReportDiagnosticsBuilder Diagnostics()
     {
-        return new ReportDiagnosticsBuilder(Roles, PublishedDimensions(), Variables, CalculatedMeasures);
+        return new ReportDiagnosticsBuilder(
+            Roles, PublishedDimensions(), Variables, CalculatedMeasures, ReleaseDatasets(), new DatasetFieldValues(DatasetVersions, Catalog));
     }
 
     /// <summary>Every report rule.</summary>

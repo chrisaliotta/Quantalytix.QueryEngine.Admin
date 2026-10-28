@@ -30,7 +30,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddRouteResource<DatasetVersionRecord>("dataset-versions", id => new { DatasetVersionId = id });
         services.AddRouteResource<FieldRecord>("fields", (value, route) => new { FieldId = Id(value), DatasetVersionId = Id(route["versionId"]) });
 
-        services.AddSingleton<SourceStatisticsCache>();
+        services.AddSingleton(typeof(SourceReadCache<>));
         services.AddScoped<ISourceObjectCatalog, SourceObjectCatalog>();
         services.AddScoped<IManagedTables, StarRocksManagedTables>();
         services.AddScoped<IMaterializedViews, StarRocksMaterializedViews>();
@@ -46,6 +46,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddScoped<DatasetChanges>();
         services.AddScoped<DatasetSchemaChanges>();
         services.AddScoped<DatasetMaterializations>();
+        services.AddScoped<DatasetFieldValues>();
 
         services.AddChangeSetAggregate<DatasetAggregate, DatasetSnapshot, DatasetOperation, DatasetVersion>();
         services.AddSnapshotRule<DatasetSnapshot, SourceObjectExistsRule>();

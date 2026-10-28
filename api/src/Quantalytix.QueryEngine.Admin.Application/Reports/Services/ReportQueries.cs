@@ -77,7 +77,8 @@ public sealed class ReportQueries(
     /// <returns>The item keys; null when the report has no such source.</returns>
     public async Task<IReadOnlyList<string>?> UnmappedAsync(long reportId, string sourceKey, CancellationToken cancellationToken)
     {
-        var source = (await DocumentAsync(reportId, cancellationToken)).Sources.FirstOrDefault(candidate => candidate.Key == sourceKey);
-        return source is null ? null : (await diagnostics.CoverageAsync(source, cancellationToken)).Unmapped;
+        var document = await DocumentAsync(reportId, cancellationToken);
+        var source = document.Sources.FirstOrDefault(candidate => candidate.Key == sourceKey);
+        return source is null ? null : (await diagnostics.CoverageAsync(document, source, cancellationToken)).Unmapped;
     }
 }

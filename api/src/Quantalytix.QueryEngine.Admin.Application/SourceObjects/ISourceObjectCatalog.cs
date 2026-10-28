@@ -26,4 +26,11 @@ public interface ISourceObjectCatalog
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The statistics of each measured object, by object name.</returns>
     Task<IReadOnlyDictionary<string, DatasetSourceObjectStats>> ListStatisticsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Reads the distinct non-null values of a column or JSON path, cached briefly.</summary>
+    /// <param name="source">The object, column and JSON path.</param>
+    /// <param name="limit">The most values to read.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The values as text in ordinal order, and whether they are all there are.</returns>
+    Task<FieldValues> ListDistinctValuesAsync(FieldValueSource source, int limit, CancellationToken cancellationToken);
 }

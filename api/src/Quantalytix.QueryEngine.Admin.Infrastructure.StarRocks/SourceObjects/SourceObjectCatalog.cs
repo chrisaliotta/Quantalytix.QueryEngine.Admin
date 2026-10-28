@@ -1,13 +1,26 @@
+using System.Globalization;
 using Dapper;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Connections;
+using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SchemaChanges;
 
 namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SourceObjects;
 
-/// <summary>Reads the tables, views, columns and storage statistics of the request tenant's database from its <c>information_schema</c>.</summary>
-public sealed class SourceObjectCatalog(IStarRocksConnectionFactory connections, ITenantContext tenant, SourceStatisticsCache statistics) : ISourceObjectCatalog
+/// <summary>
+/// Reads the tables, views, columns and storage statistics of the request tenant's database from its <c>information_schema</c>, and
+/// the distinct values of a field from its object.
+/// </summary>
+/// <param name="connections">Opens the tenant database.</param>
+/// <param name="tenant">The request tenant, which keys the cached reads.</param>
+/// <param name="statistics">Keeps the statistics briefly.</param>
+/// <param name="values">Keeps the distinct values briefly.</param>
+public sealed class SourceObjectCatalog(
+    IStarRocksConnectionFactory connections,
+    ITenantContext tenant,
+    SourceReadCache<IReadOnlyDictionary<string, DatasetSourceObjectStats>> statistics,
+    SourceReadCache<FieldValues> values) : ISourceObjectCatalog
 {
     /// <summary>The tables and views of the connection's database, with the statistics StarRocks keeps.</summary>
     private const string ObjectsSql = """
@@ -70,12 +83,33 @@ public sealed class SourceObjectCatalog(IStarRocksConnectionFactory connections,
     /// <returns>The statistics of each object StarRocks has measured, by name.</returns>
     public Task<IReadOnlyDictionary<string, DatasetSourceObjectStats>> ListStatisticsAsync(CancellationToken cancellationToken)
     {
-        return statistics.GetAsync(tenant.TenantId, async measuredAt => (await TablesAsync(cancellationToken))
+        return statistics.GetAsync(tenant.TenantId, async measuredAt => (IReadOnlyDictionary<string, DatasetSourceObjectStats>)(await TablesAsync(cancellationToken))
             .Where(row => row.TableRows is not null)
             .ToDictionary(
                 row => row.TableName,
                 row => new DatasetSourceObjectStats { RowCount = row.TableRows!.Value, SizeBytes = row.DataLength ?? 0, MeasuredAt = measuredAt },
                 StringComparer.Ordinal));
+    }
+
+    /// <summary>Reads the distinct non-null values of a column or JSON path as text, one more than the limit to tell whether there are more.</summary>
+    /// <param name="source">The object, column and JSON path.</param>
+    /// <param name="limit">The most values to answer.</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The values in ordinal order, and whether they are all there are.</returns>
+    public Task<FieldValues> ListDistinctValuesAsync(FieldValueSource source, int limit, CancellationToken cancellationToken)
+    {
+        var key = string.Join('|', tenant.TenantId, source.ObjectName, source.ColumnName, source.JsonPath, limit.ToString(CultureInfo.InvariantCulture));
+        return values.GetAsync(key, async _ =>
+        {
+            var column = StarRocksDdl.Quote(source.ColumnName);
+            var value = source.JsonPath is null ? $"CAST({column} AS VARCHAR)" : $"get_json_string({column}, '{source.JsonPath}')";
+            var sql = string.Create(
+                CultureInfo.InvariantCulture,
+                $"SELECT DISTINCT {value} AS value FROM {StarRocksDdl.Quote(source.ObjectName)} WHERE {value} IS NOT NULL ORDER BY value LIMIT {limit + 1}");
+            await using var connection = await connections.OpenTenantAsync(cancellationToken);
+            var rows = (await connection.QueryAsync<string>(new CommandDefinition(sql, cancellationToken: cancellationToken))).ToList();
+            return new FieldValues { Values = [.. rows.Take(limit)], IsComplete = rows.Count <= limit };
+        });
     }
 
     /// <summary>Reads <c>information_schema.tables</c>.</summary>

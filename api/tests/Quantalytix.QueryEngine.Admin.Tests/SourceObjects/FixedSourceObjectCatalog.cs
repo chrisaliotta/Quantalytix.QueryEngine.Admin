@@ -14,6 +14,9 @@ internal sealed class FixedSourceObjectCatalog : ISourceObjectCatalog
     /// <summary>The columns of each table or view, by name.</summary>
     private readonly Dictionary<string, List<PhysicalColumn>> _columns = new(StringComparer.Ordinal);
 
+    /// <summary>The values each column or JSON path holds, by object, column and path.</summary>
+    public Dictionary<(string ObjectName, string ColumnName, string? JsonPath), IReadOnlyList<string>> Values { get; } = [];
+
     /// <summary>The statistics StarRocks reports, by name.</summary>
     public Dictionary<string, DatasetSourceObjectStats> Statistics { get; } = new(StringComparer.Ordinal);
 
@@ -80,5 +83,16 @@ internal sealed class FixedSourceObjectCatalog : ISourceObjectCatalog
     public Task<IReadOnlyDictionary<string, DatasetSourceObjectStats>> ListStatisticsAsync(CancellationToken cancellationToken)
     {
         return Task.FromResult<IReadOnlyDictionary<string, DatasetSourceObjectStats>>(new Dictionary<string, DatasetSourceObjectStats>(Statistics));
+    }
+
+    /// <summary>Returns the distinct values of a column or JSON path in ordinal order, up to the limit; none for an unknown one.</summary>
+    /// <param name="source">The object, column and path.</param>
+    /// <param name="limit">The most values to answer.</param>
+    /// <param name="cancellationToken">Unused.</param>
+    /// <returns>The values.</returns>
+    public Task<FieldValues> ListDistinctValuesAsync(FieldValueSource source, int limit, CancellationToken cancellationToken)
+    {
+        string[] values = [.. Values.GetValueOrDefault((source.ObjectName, source.ColumnName, source.JsonPath), []).Distinct().Order(StringComparer.Ordinal)];
+        return Task.FromResult(new FieldValues { Values = [.. values.Take(limit)], IsComplete = values.Length <= limit });
     }
 }
