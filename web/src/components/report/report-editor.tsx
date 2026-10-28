@@ -1,6 +1,5 @@
 import { useEditor } from '@/lib/report/store'
 import { ColumnsTab } from './columns/columns-tab'
-import { PreviewTab } from './preview/preview-tab'
 import { DataTab } from './data/data-tab'
 import { EditorNav } from './editor-nav'
 import { ReportHeader } from './report-header'
@@ -28,8 +27,6 @@ export function ReportEditor() {
                 <DataTab />
               ) : ui.tab === 'styles' ? (
                 <StylesTab />
-              ) : ui.tab === 'preview' ? (
-                <PreviewTab />
               ) : (
                 <ColumnsTab />
               )}

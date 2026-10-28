@@ -4,7 +4,7 @@ import { useHistory } from '@/components/shell/history'
 import { sampleReports } from './mockData'
 import type { Mapping, ReportState } from './types'
 
-export type Tab = 'rows' | 'data' | 'columns' | 'styles' | 'preview'
+export type Tab = 'rows' | 'data' | 'columns' | 'styles'
 export type SettingsSectionId = 'defaults' | 'profiles' | 'breakout' | 'scenarios' | 'scopes' | 'publish'
 
 export type DialogState =
