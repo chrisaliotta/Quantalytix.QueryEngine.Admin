@@ -82,6 +82,7 @@ public static class DatasetReadModels
         var view = views.GetValueOrDefault(MaterializedViewNames.ViewOf(snapshot.Version.SourceObject));
         return new DatasetVersion(
             Summary(snapshot.Version, snapshot.Surroundings.Releases),
+            Identity(snapshot.Dataset),
             Settings(snapshot.Version, presentId),
             [.. snapshot.Fields.OrderBy(field => field.FieldKey, StringComparer.OrdinalIgnoreCase).Select(field => Field(field, snapshot.Version.SourceObject, view, presentId))],
             [.. snapshot.Grains.OrderBy(grain => grain.GrainKey, StringComparer.OrdinalIgnoreCase).Select(grain => Grain(grain, snapshot.GrainFields, presentId))],

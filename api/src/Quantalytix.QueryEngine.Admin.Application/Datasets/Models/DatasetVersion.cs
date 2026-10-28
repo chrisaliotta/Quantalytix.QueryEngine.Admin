@@ -9,6 +9,7 @@ public sealed record DatasetVersion : DatasetVersionSummary
 {
     /// <summary>A summary with the version's content.</summary>
     /// <param name="summary">The summary.</param>
+    /// <param name="dataset">The dataset identity.</param>
     /// <param name="settings">The settings.</param>
     /// <param name="fields">The fields.</param>
     /// <param name="grains">The grains.</param>
@@ -18,6 +19,7 @@ public sealed record DatasetVersion : DatasetVersionSummary
     [SetsRequiredMembers]
     public DatasetVersion(
         DatasetVersionSummary summary,
+        Dataset dataset,
         DatasetVersionSettings settings,
         IReadOnlyList<DatasetField> fields,
         IReadOnlyList<DatasetGrain> grains,
@@ -26,6 +28,7 @@ public sealed record DatasetVersion : DatasetVersionSummary
         IReadOnlyDictionary<string, IReadOnlyList<DatasetDependent>> dependents)
         : base(summary)
     {
+        Dataset = dataset;
         Settings = settings;
         Fields = fields;
         Grains = grains;
@@ -33,6 +36,9 @@ public sealed record DatasetVersion : DatasetVersionSummary
         Measures = measures;
         Dependents = dependents;
     }
+
+    /// <summary>The dataset identity as the change set leaves it, so a preview shows a staged <c>updateDataset</c>.</summary>
+    public required Dataset Dataset { get; init; }
 
     /// <summary>The version row's settings.</summary>
     public required DatasetVersionSettings Settings { get; init; }

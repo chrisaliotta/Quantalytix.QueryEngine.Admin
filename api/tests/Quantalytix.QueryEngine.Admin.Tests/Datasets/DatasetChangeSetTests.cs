@@ -75,6 +75,18 @@ public sealed class DatasetChangeSetTests
         Assert.Equal(DatasetFixture.StartingRevision + 1, _fixture.Revision);
     }
 
+    /// <summary>The change-set state carries the dataset identity, so a preview shows a staged identity edit before it is written.</summary>
+    /// <returns>A task that completes when the preview is checked.</returns>
+    [Fact]
+    public async Task Preview_ShowsTheStagedIdentity()
+    {
+        var preview = await _fixture.Pipeline().PreviewAsync(
+            Draft, Request(new DatasetUpdateDatasetOperation { Patch = new DatasetPatch { DisplayName = "Loans daily" } }), Token);
+
+        Assert.Equal("Loans daily", preview.Value!.State.Dataset.DisplayName);
+        Assert.NotEqual("Loans daily", _fixture.Datasets.All.Single().DisplayName);
+    }
+
     /// <summary>A second field with a taken key is refused as input on the operation's <c>input.key</c>, and nothing is written.</summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]

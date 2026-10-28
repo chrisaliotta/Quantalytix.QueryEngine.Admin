@@ -139,6 +139,8 @@ export interface DatasetDependent {
 }
 
 export interface DatasetVersion extends DatasetVersionSummary {
+  /** The dataset identity as the change set leaves it. */
+  dataset: Dataset
   settings: DatasetVersionSettings
   fields: DatasetField[]
   grains: DatasetGrain[]

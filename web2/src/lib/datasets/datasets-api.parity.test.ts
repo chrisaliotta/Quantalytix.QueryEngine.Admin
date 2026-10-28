@@ -108,6 +108,20 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     expect(stored.grains.find((g) => g.key === 'parityRow')!.fieldIds).toEqual([storedId(field.id)])
   })
 
+  /** An identity edit is staged with the version's content: reads show the pending display name until the commit stores it. */
+  it('stages an identity edit until commit', async () => {
+    const { dataset, versionId } = await draftDataset()
+
+    api.beginChanges()
+    const pending = await unwrap(api.updateDataset(dataset.id, { displayName: 'Parity renamed' }))
+    expect(pending.displayName).toBe('Parity renamed')
+    expect((await unwrap(api.getVersion(versionId))).dataset.displayName).toBe('Parity renamed')
+    expect((await unwrap(api.getDataset(dataset.id))).displayName).toBe('Parity renamed')
+
+    await unwrap(api.commitChanges())
+    expect((await unwrap(api.getDataset(dataset.id))).displayName).toBe('Parity renamed')
+  })
+
   /** Discard drops every pending edit; nothing reaches the stored version. */
   it('discards pending edits', async () => {
     const { versionId } = await draftDataset()

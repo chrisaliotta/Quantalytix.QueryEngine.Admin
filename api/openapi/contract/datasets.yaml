@@ -773,8 +773,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/DatasetVersionSummary'
         - type: object
-          required: [settings, fields, grains, bindings, measures, dependents]
+          required: [dataset, settings, fields, grains, bindings, measures, dependents]
           properties:
+            dataset:
+              $ref: '#/components/schemas/Dataset'
+              description: The dataset identity as the change set leaves it, so a preview shows a staged `updateDataset`.
             settings:
               $ref: '#/components/schemas/DatasetVersionSettings'
             fields:

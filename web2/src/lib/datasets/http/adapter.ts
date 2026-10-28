@@ -8,7 +8,6 @@ import type {
   DatasetField,
   DatasetListItem,
   DatasetOperation,
-  DatasetPatch,
   DatasetsApi,
   DatasetValidationReport,
   DatasetVersion,
@@ -50,26 +49,22 @@ function reportOf(versionId: Id, result: ApiResult<unknown>): ApiResult<DatasetV
 
 const byId = <T extends { id: Id }>(items: T[], id: Id) => items.find((item) => item.id === id)!
 
-const identity = ({ id, key, displayName, isEnabled }: Dataset): Dataset => ({ id, key, displayName, isEnabled })
-
 /** `http` is a tenant client: paths are relative to `/api/tenants/{tenantId}`. */
 export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
   const changes = createHttpChangeSet<DatasetOperation, DatasetVersion>(http)
-  // The change set's state is one version's content; the dataset it belongs to, and the patch staged on it, are kept here.
+  // The change set's state is one version's content and its dataset's identity; the rest of the dataset is kept here.
   const datasets = new Map<Id, DatasetListItem>()
-  const staged = { datasetId: null as Id | null, patch: {} as DatasetPatch }
 
   function remember(item: DatasetListItem) {
     datasets.set(item.id, item)
     return item
   }
 
-  /** A dataset as the pending change set leaves it: the staged patch over the identity, the pending version over its summary. */
+  /** A dataset as the pending change set leaves it: the pending identity, the pending version over its summary. */
   function pendingItem(item: DatasetListItem): DatasetListItem {
     const pending = changes.pending()?.state
     if (!pending || pending.datasetId !== item.id) return item
-    const patched = staged.datasetId === item.id ? { ...item, ...staged.patch } : item
-    return { ...patched, versions: patched.versions.map((v) => (v.id === pending.id ? summaryOf(pending) : v)) }
+    return { ...item, ...pending.dataset, versions: item.versions.map((v) => (v.id === pending.id ? summaryOf(pending) : v)) }
   }
 
   const summaryOf = ({ id, datasetId, versionNumber, status, sourceObject, createdAt, publishedAt, clonedFromVersionId, releases }: DatasetVersion): DatasetVersionSummary => ({
@@ -113,25 +108,6 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
 
   return {
     ...changes,
-    captureState: () => ({ changes: changes.captureState(), staged: structuredClone(staged) }),
-    restoreState(state) {
-      const captured = state as { changes: unknown; staged: typeof staged }
-      changes.restoreState(captured.changes)
-      Object.assign(staged, structuredClone(captured.staged))
-    },
-    async discardChanges() {
-      staged.datasetId = null
-      staged.patch = {}
-      await changes.discardChanges()
-    },
-    async commitChanges() {
-      const result = await changes.commitChanges()
-      if (result.ok) {
-        staged.datasetId = null
-        staged.patch = {}
-      }
-      return result
-    },
 
     listSourceObjects: () => unwrap(http.get<Schemas['DatasetSourceObject'][]>('/source-objects')),
     getSourceColumns: (kind, name) => http.get<Schemas['DatasetSourceColumn'][]>(`/source-objects/${kind}/${encodeURIComponent(name)}/columns`),
@@ -151,13 +127,7 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
     checkDeleteDataset: async (datasetId) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(`${datasetPath(datasetId)}/delete-check`))),
     checkDeleteVersion: async (versionId) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(`${versionPath(versionId)}/delete-check`))),
 
-    async updateDataset(datasetId, patch) {
-      const result = await stage(editableVersionOf(datasetId), { op: 'updateDataset', patch })
-      if (!result.ok) return result
-      staged.datasetId = datasetId
-      staged.patch = { ...staged.patch, ...patch }
-      return { ok: true, data: identity({ ...datasets.get(datasetId)!, ...staged.patch }) }
-    },
+    updateDataset: (datasetId, patch) => edit(editableVersionOf(datasetId), { op: 'updateDataset', patch }, ({ state }): Dataset => state.dataset),
     saveSettings: (versionId, settings) =>
       edit(versionId, { op: 'saveSettings', settings }, ({ state, violations }) => ({
         settings: state.settings,

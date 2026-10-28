@@ -151,6 +151,7 @@ export function createMockDatasetsApi(): DatasetsApi {
 
   const detail = (v: StoredVersion): DatasetVersion => ({
     ...summary(v),
+    dataset: { ...datasets.find((d) => d.id === v.datasetId)! },
     settings: v.settings,
     fields: v.fields,
     grains: v.grains,

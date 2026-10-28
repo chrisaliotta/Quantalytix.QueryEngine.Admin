@@ -2807,6 +2807,8 @@ export interface components {
         };
         /** @description The whole editable content of one version; the state of its change set. */
         DatasetVersion: components["schemas"]["DatasetVersionSummary"] & {
+            /** @description The dataset identity as the change set leaves it, so a preview shows a staged `updateDataset`. */
+            dataset: components["schemas"]["Dataset"];
             settings: components["schemas"]["DatasetVersionSettings"];
             fields: components["schemas"]["DatasetField"][];
             grains: components["schemas"]["DatasetGrain"][];
