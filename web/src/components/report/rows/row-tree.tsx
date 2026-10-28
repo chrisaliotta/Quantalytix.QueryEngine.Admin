@@ -1,118 +1,377 @@
-import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, ChevronRightIcon, EyeOffIcon, IndentIcon, OutdentIcon, PlusIcon, Trash2Icon } from 'lucide-react'
-import { useState } from 'react'
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  ChevronDownIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
+  DownloadIcon,
+  FileStackIcon,
+  PlusIcon,
+  UploadIcon,
+} from 'lucide-react'
+import { Fragment, useMemo, useState, type KeyboardEvent } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import type { ReportRow, ReportRowKind, Violation } from '@/lib/reports/contract'
-import { cn } from '@/lib/utils'
-import { useReportEditor } from '../editor-state'
-import { KIND_LABEL, KeyText, KindGlyph, Refusal } from '../shared/bits'
-import { childrenOf, depthOf, indexOf, isMemberKind, newRow } from './row-model'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { KIND_LABEL, KindGlyph } from '../shared/bits'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { readSourcesOnRow, rowGaps } from '@/lib/report/profiles'
+import { useEditor } from '@/lib/report/store'
+import { ProfileSwitcher, useActiveProfile } from '../shared/profile-switcher'
+import { allRows, flatten, locate, type FlatRow } from '@/lib/report/tree'
+import type { RowKind } from '@/lib/report/types'
+import { PendingRow, RowItem } from './row-item'
+import { focusRow, useRowActions } from './use-row-actions'
 
-/** The row tree in hierarchy order, with the commands that add, move, indent and delete rows. */
+const ADD_LINE_TYPES: { kind: RowKind; hint: string }[] = [
+  { kind: 'line', hint: 'Shows mapped ledger data' },
+  { kind: 'subtotal', hint: 'Totals the rows nested under it' },
+  { kind: 'heading', hint: 'Labels a group, shows no values' },
+  { kind: 'formula', hint: 'Calculated from other rows' },
+]
+
+const INDENT = 18
+
+interface Pending {
+  parentKey: string | null
+  index: number
+  kind: RowKind
+  afterKey: string | null
+}
+
+function project(items: FlatRow[], activeId: string, overId: string, offsetX: number) {
+  const activeIndex = items.findIndex((i) => i.node.key === activeId)
+  const overIndex = items.findIndex((i) => i.node.key === overId)
+  if (activeIndex < 0 || overIndex < 0) return null
+  const moved = arrayMove(items, activeIndex, overIndex)
+  const prev = moved[overIndex - 1]
+  const next = moved[overIndex + 1]
+  const wanted = items[activeIndex].depth + Math.round(offsetX / INDENT)
+  const maxDepth = prev ? prev.depth + 1 : 0
+  const minDepth = next ? next.depth : 0
+  const depth = Math.max(minDepth, Math.min(maxDepth, wanted))
+
+  let parentKey: string | null = null
+  if (depth > 0 && prev) {
+    if (depth > prev.depth) parentKey = prev.node.key
+    else if (depth === prev.depth) parentKey = prev.parentKey
+    else parentKey = moved.slice(0, overIndex).reverse().find((i) => i.depth === depth)?.parentKey ?? null
+  }
+  const index = moved.slice(0, overIndex).filter((i) => i.parentKey === parentKey && i.depth === depth).length
+  return { depth, parentKey, index }
+}
+
 export function RowTree() {
-  const { reportId, report, model, ui, setUi, run } = useReportEditor()
-  const [refusal, setRefusal] = useState<Violation[] | null>(null)
-  const selected = report.rows.find((r) => r.key === ui.selectedRowKey) ?? report.rows[0]
-  const hidden = (row: ReportRow) => {
-    for (let parent = row.parentKey; parent !== null; parent = report.rows.find((r) => r.key === parent)!.parentKey)
-      if (ui.collapsed.includes(parent)) return true
-    return false
-  }
-  const edit = async (call: Parameters<typeof run>[0]) => setRefusal(await run(call))
-  const move = (row: ReportRow, parentKey: string | null, index: number) => edit((api) => api.moveRow(reportId, row.key, { parentKey, index }))
+  const { report, ui, setUi, openDialog } = useEditor()
+  const { key: profileKey, dimming } = useActiveProfile()
+  const actions = useRowActions()
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [drag, setDrag] = useState<{ activeId: string; overId: string; offsetX: number } | null>(null)
 
-  /** Rows a new row of a kind may sit under: members under members, nothing under a formula row. */
-  const add = async (kind: ReportRowKind) => {
-    const parent = isMemberKind(kind) && !isMemberKind(selected.kind) ? report.rows.find((r) => r.key === selected.parentKey)! : selected
-    const under = parent.kind === 'formula' ? report.rows.find((r) => r.key === parent.parentKey)! : parent
-    const row = newRow(report, kind, under.key, model?.measures[0]?.key ?? null)
-    const violations = await run((api) => api.saveRow(reportId, { ...row, index: childrenOf(report, under.key).length }))
-    setRefusal(violations)
-    if (!violations) setUi({ selectedRowKey: row.key })
+  const collapsed = useMemo(() => new Set(ui.collapsed), [ui.collapsed])
+  const items = useMemo(
+    () => flatten(report.rows, drag ? new Set([...collapsed, drag.activeId]) : collapsed),
+    [report.rows, collapsed, drag],
+  )
+  const projection = drag ? project(items, drag.activeId, drag.overId, drag.offsetX) : null
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  const select = (key: string) => setUi({ selectedRowKey: key })
+  const toggle = (key: string) =>
+    setUi((u) => ({ collapsed: u.collapsed.includes(key) ? u.collapsed.filter((k) => k !== key) : [...u.collapsed, key] }))
+
+  const startAdd = (fromKey: string | null, kind: RowKind) => {
+    setRenaming(null)
+    const loc = fromKey ? locate(report.rows, fromKey) : null
+    setPending(
+      loc
+        ? { parentKey: loc.parent?.key ?? null, index: loc.index + 1, kind, afterKey: fromKey }
+        : { parentKey: null, index: report.rows.length, kind, afterKey: items.at(-1)?.node.key ?? null },
+    )
   }
 
-  const siblings = childrenOf(report, selected.parentKey)
-  const at = indexOf(report, selected)
-  const previous = siblings[at - 1]
-  const parent = report.rows.find((r) => r.key === selected.parentKey)
-  const canIndent = !!previous && previous.kind !== 'formula' && (!isMemberKind(selected.kind) || isMemberKind(previous.kind))
-  const canOutdent = !!parent && parent.parentKey !== null && (!isMemberKind(selected.kind) || isMemberKind(parent.kind))
+  const commitPending = (label: string) => {
+    if (!pending) return
+    const key = actions.create(pending.parentKey, pending.index, pending.kind, label)
+    if (pending.kind === 'formula') setUi({ selectedRowKey: key, rowPanelTab: 'properties' })
+    setPending(null)
+  }
+
+  const cancelPending = () => {
+    const back = pending?.afterKey ?? ui.selectedRowKey
+    setPending(null)
+    if (back) focusRow(back)
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>, flat: FlatRow, at: number) => {
+    const key = flat.node.key
+    const go = (target?: FlatRow) => {
+      if (!target) return
+      select(target.node.key)
+      focusRow(target.node.key)
+    }
+    const hasChildren = flat.node.children.length > 0
+    const loc = locate(report.rows, key)
+
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'ArrowUp': {
+        e.preventDefault()
+        const delta = e.key === 'ArrowDown' ? 1 : -1
+        if (e.altKey) actions.move(key, delta)
+        else go(items[at + delta])
+        break
+      }
+      case 'Home':
+        e.preventDefault()
+        go(items[0])
+        break
+      case 'End':
+        e.preventDefault()
+        go(items.at(-1))
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        if (hasChildren && collapsed.has(key)) toggle(key)
+        else if (hasChildren) go(items[at + 1])
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        if (hasChildren && !collapsed.has(key)) toggle(key)
+        else go(items.find((i) => i.node.key === flat.parentKey))
+        break
+      case 'Tab':
+        if (e.shiftKey ? !loc?.parent : !loc || loc.index === 0) return
+        e.preventDefault()
+        if (e.shiftKey) actions.outdent(key)
+        else actions.indent(key)
+        break
+      case 'Enter':
+        e.preventDefault()
+        startAdd(key, 'line')
+        break
+      case 'F2':
+        e.preventDefault()
+        setPending(null)
+        setRenaming(key)
+        break
+      case 'Delete':
+      case 'Backspace':
+        e.preventDefault()
+        openDialog({ type: 'deleteRow', rowKey: key })
+        break
+    }
+  }
+
+  const onDragStart = ({ active }: DragStartEvent) => {
+    setPending(null)
+    setRenaming(null)
+    select(String(active.id))
+    setDrag({ activeId: String(active.id), overId: String(active.id), offsetX: 0 })
+  }
+  const onDragMove = ({ delta }: DragMoveEvent) => setDrag((d) => (d ? { ...d, offsetX: delta.x } : d))
+  const onDragOver = ({ over }: DragOverEvent) => setDrag((d) => (d && over ? { ...d, overId: String(over.id) } : d))
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const result = drag && over ? project(items, String(active.id), String(over.id), drag.offsetX) : null
+    setDrag(null)
+    if (!result) return
+    const loc = locate(report.rows, String(active.id))
+    const sameSpot = loc && (loc.parent?.key ?? null) === result.parentKey && loc.index === result.index
+    if (!sameSpot) actions.moveTo(String(active.id), result.parentKey, result.index)
+    focusRow(String(active.id))
+  }
+
+  const pendingAt = useMemo(() => {
+    if (!pending) return -1
+    if (!pending.afterKey) return -1
+    const start = items.findIndex((i) => i.node.key === pending.afterKey)
+    if (start < 0) return items.length - 1
+    let end = start
+    while (end + 1 < items.length && items[end + 1].depth > items[start].depth) end++
+    return end
+  }, [pending, items])
+
+  const pendingDepth = pending ? (pending.parentKey ? (items.find((i) => i.node.key === pending.parentKey)?.depth ?? -1) + 1 : 0) : 0
+
+  const renderPending = () =>
+    pending && (
+      <PendingRow depth={pendingDepth} kind={pending.kind} onCommit={commitPending} onCancel={cancelPending} />
+    )
 
   return (
-    <div className="flex flex-col">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-card px-3 py-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
-            <PlusIcon /> Add row
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {(['data', 'group', 'section', 'formula'] as const).map((kind) => (
-              <DropdownMenuItem key={kind} onClick={() => void add(kind)}>
-                <KindGlyph kind={kind} /> {KIND_LABEL[kind]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <span className="ml-auto flex items-center gap-0.5">
-          <Button size="icon-sm" variant="ghost" aria-label="Move up" disabled={at <= 0} onClick={() => void move(selected, selected.parentKey, at - 1)}>
-            <ArrowUpIcon />
-          </Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Move down" disabled={at < 0 || at >= siblings.length - 1} onClick={() => void move(selected, selected.parentKey, at + 1)}>
-            <ArrowDownIcon />
-          </Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Indent" disabled={!canIndent} onClick={() => void move(selected, previous!.key, childrenOf(report, previous!.key).length)}>
-            <IndentIcon />
-          </Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Outdent" disabled={!canOutdent} onClick={() => void move(selected, parent!.parentKey, indexOf(report, parent!) + 1)}>
-            <OutdentIcon />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h2 className="font-medium">Rows</h2>
+          <ProfileSwitcher />
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Expand all"
+            onClick={() => setUi({ collapsed: [] })}
+          >
+            <ChevronsUpDownIcon />
           </Button>
           <Button
-            size="icon-sm"
             variant="ghost"
-            aria-label="Delete row"
-            disabled={selected.parentKey === null}
-            onClick={() => void edit((api) => api.deleteRow(reportId, selected.key)).then(() => setUi({ selectedRowKey: selected.parentKey }))}
+            size="icon-sm"
+            aria-label="Collapse all"
+            onClick={() => setUi({ collapsed: allRows(report.rows).filter((r) => r.children.length).map((r) => r.key) })}
           >
-            <Trash2Icon />
+            <ChevronsDownUpIcon />
           </Button>
-        </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+              <FileStackIcon />
+              Import/Export
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Hierarchy &amp; mappings</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toast('Import is coming soon')} className="items-start">
+                  <UploadIcon className="mt-0.5 size-4" />
+                  <span className="flex flex-col">
+                    <span>Import…</span>
+                    <span className="text-xs text-muted-foreground">Replace rows and mappings from a file</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast('Export is coming soon')} className="items-start">
+                  <DownloadIcon className="mt-0.5 size-4" />
+                  <span className="flex flex-col">
+                    <span>Export…</span>
+                    <span className="text-xs text-muted-foreground">Download rows and mappings as a file</span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+              <PlusIcon data-icon="inline-start" />
+              Add line
+              <ChevronDownIcon data-icon="inline-end" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuGroup>
+                {ADD_LINE_TYPES.map((t) => (
+                  <DropdownMenuItem key={t.kind} onClick={() => startAdd(ui.selectedRowKey, t.kind)} className="items-start">
+                    <KindGlyph kind={t.kind} className="mt-0.5 size-4" />
+                    <span className="flex flex-col">
+                      <span>{KIND_LABEL[t.kind]}</span>
+                      <span className="text-xs text-muted-foreground">{t.hint}</span>
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      <div className="px-3 pt-2">
-        <Refusal violations={refusal} />
+
+      {items.length === 0 && !pending ? (
+        <EmptyRows onAdd={() => startAdd(null, 'line')} />
+      ) : (
+        <ScrollArea className="min-h-0 flex-1">
+          <DndContext
+            id="row-tree-dnd"
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={onDragStart}
+            onDragMove={onDragMove}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            onDragCancel={() => setDrag(null)}
+          >
+            <SortableContext items={items.map((i) => i.node.key)} strategy={verticalListSortingStrategy}>
+              <div role="tree" aria-label="Report rows" className="flex flex-col p-2">
+                {pendingAt === -1 && renderPending()}
+                {items.map((flat, at) => {
+                  const siblings = locate(report.rows, flat.node.key)?.siblings ?? []
+                  const isLine = flat.node.kind === 'line'
+                  const split = isLine ? readSourcesOnRow(report, flat.node.key, profileKey) : null
+                  return (
+                    <Fragment key={flat.node.key}>
+                      <RowItem
+                        row={flat.node}
+                        depth={drag?.activeId === flat.node.key && projection ? projection.depth : flat.depth}
+                        level={flat.depth + 1}
+                        posInSet={siblings.indexOf(flat.node) + 1}
+                        setSize={siblings.length}
+                        selected={ui.selectedRowKey === flat.node.key}
+                        collapsed={collapsed.has(flat.node.key)}
+                        advanced={ui.advanced}
+                        sourceCount={
+                          split ? (dimming ? split.read.length : split.read.length + split.unread.length) : 0
+                        }
+                        unreadCount={split && dimming ? split.unread.length : 0}
+                        gapCount={isLine ? rowGaps(report, flat.node.key, profileKey).length : 0}
+                        profileKey={profileKey}
+                        renaming={renaming === flat.node.key}
+                        actions={actions}
+                        onSelect={() => select(flat.node.key)}
+                        onToggle={() => toggle(flat.node.key)}
+                        onKeyDown={(e) => onKeyDown(e, flat, at)}
+                        onAdd={(kind) => startAdd(flat.node.key, kind)}
+                        onStartRename={() => {
+                          setPending(null)
+                          setRenaming(flat.node.key)
+                        }}
+                        onEndRename={() => {
+                          setRenaming(null)
+                          focusRow(flat.node.key)
+                        }}
+                      />
+                      {pendingAt === at && renderPending()}
+                    </Fragment>
+                  )
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </ScrollArea>
+      )}
+
+      <p className="shrink-0 border-t px-3 py-2 text-xs text-muted-foreground">
+        <kbd className="font-mono">Enter</kbd> adds a line · <kbd className="font-mono">F2</kbd> renames ·{' '}
+        <kbd className="font-mono">Tab</kbd> nests · <kbd className="font-mono">Alt ↑↓</kbd> moves
+      </p>
+    </div>
+  )
+}
+
+export function EmptyRows({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="flex flex-col gap-1">
+        <p className="font-medium">No rows yet</p>
+        <p className="max-w-60 text-pretty text-muted-foreground">
+          Rows are the lines of the statement. Add a line, then map data onto it.
+        </p>
       </div>
-      <ul role="tree" aria-label="Rows" className="flex flex-col py-1">
-        {report.rows
-          .filter((row) => !hidden(row))
-          .map((row) => {
-            const hasChildren = report.rows.some((r) => r.parentKey === row.key)
-            const collapsed = ui.collapsed.includes(row.key)
-            return (
-              <li key={row.key} role="treeitem" aria-selected={row.key === selected.key} aria-expanded={hasChildren ? !collapsed : undefined}>
-                <div
-                  className={cn('flex cursor-pointer items-center gap-1.5 py-1 pr-3 text-sm hover:bg-muted/50', row.key === selected.key && 'bg-accent')}
-                  style={{ paddingLeft: `${0.75 + depthOf(report, row) * 1.1}rem` }}
-                  onClick={() => setUi({ selectedRowKey: row.key })}
-                >
-                  <button
-                    type="button"
-                    aria-label={collapsed ? 'Expand' : 'Collapse'}
-                    className={cn('text-muted-foreground', !hasChildren && 'invisible')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setUi({ collapsed: collapsed ? ui.collapsed.filter((k) => k !== row.key) : [...ui.collapsed, row.key] })
-                    }}
-                  >
-                    {collapsed ? <ChevronRightIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
-                  </button>
-                  <KindGlyph kind={row.kind} />
-                  <span className={cn('truncate', row.kind !== 'data' && 'font-medium', !row.isVisible && 'text-muted-foreground')}>{row.label}</span>
-                  {!row.isVisible && <EyeOffIcon aria-label="Hidden" className="size-3.5 text-muted-foreground" />}
-                  <KeyText className="ml-auto truncate">{row.key}</KeyText>
-                </div>
-              </li>
-            )
-          })}
-      </ul>
+      <Button onClick={onAdd}>
+        <PlusIcon data-icon="inline-start" />
+        Add your first line
+      </Button>
     </div>
   )
 }

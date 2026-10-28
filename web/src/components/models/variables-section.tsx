@@ -6,31 +6,28 @@ import { Segmented } from '@/components/report/shared/segmented'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { CommitInput, InlineSelect, InlineText, PanelSection, PropertiesPanel, SplitView, focusRowClass, keyFromName, usePanelDraft } from '@/components/shell/inline-table'
 import { FormRow, RowEditActions, SectionHeader, Td, Th } from '@/components/datasets/shared'
-import type { ModelDocument, ModelVariable, VariableMissingBehavior, Violation } from '@/lib/models/contract'
-import { attributionOf } from '@/lib/models/metrics'
+import type { CalcModel, MissingValue, ModelVariable, RuleViolation } from '@/lib/model/types'
+import type { DisplayFormat } from '@/lib/report/types'
 import { cn } from '@/lib/utils'
 import { AttributionChip } from './attribution-editor'
 import { RefusalAlert } from './refusal-alert'
 import { FORMAT_OPTIONS, MISSING_OPTIONS, NEW_ROW_ID, PanelRefusal, metricKeyError, pendingRowKeys, rowInputClass, scrollToRow, type ModelSectionProps } from './table-kit'
-import { useModelEdit } from './use-model-edit'
 
-const blankVariable = (): ModelVariable => ({ key: '', displayName: '', displayFormat: 'currency', unitKey: 'USD', missingBehavior: 'zero' })
+const blankVariable = (): ModelVariable => ({ key: '', name: '', format: 'currency', unit: 'USD', missing: 'zero' })
 
-function variableErrors(v: ModelVariable, isNew: boolean) {
+function variableErrors(model: CalcModel, v: ModelVariable, isNew: boolean) {
+  const taken = [...model.variables, ...model.measures].map((m) => m.key)
   return {
-    key: isNew ? metricKeyError(v.key) : null,
-    name: v.displayName.trim() ? null : 'Enter a name.',
+    key: isNew ? metricKeyError(v.key, taken) : null,
+    name: v.name.trim() ? null : 'Enter a name.',
   }
 }
 
-const tidy = (v: ModelVariable): ModelVariable => ({ ...v, displayName: v.displayName.trim(), unitKey: v.unitKey?.trim() || null })
-
-export function VariablesSection({ model, focusKey, onFocus, onAttribution }: ModelSectionProps) {
-  const run = useModelEdit()
+export function VariablesSection({ model, focusKey, onFocus, apply, onAttribution }: ModelSectionProps<CalcModel>) {
   const [newDraft, setNewDraftState] = useState<ModelVariable | null>(null)
   const [keyTouched, setKeyTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [refusal, setRefusal] = useState<Violation[] | null>(null)
+  const [refusal, setRefusal] = useState<RuleViolation[] | null>(null)
   const newRef = useRef(newDraft)
   const focused = focusKey ? model.variables.find((v) => v.key === focusKey) : undefined
 
@@ -42,7 +39,7 @@ export function VariablesSection({ model, focusKey, onFocus, onAttribution }: Mo
     const cur = newRef.current
     if (!cur) return
     const next = { ...cur, ...p }
-    if (p.displayName !== undefined && !keyTouched && !('key' in p)) next.key = keyFromName(p.displayName)
+    if (p.name !== undefined && !keyTouched && !('key' in p)) next.key = keyFromName(p.name)
     setNewDraft(next)
   }
   const cancelNew = () => {
@@ -66,9 +63,9 @@ export function VariablesSection({ model, focusKey, onFocus, onAttribution }: Mo
     const v = newRef.current
     if (!v) return false
     setSubmitted(true)
-    const errs = variableErrors(v, true)
+    const errs = variableErrors(model, v, true)
     if (errs.key || errs.name) return false
-    const violations = await run((api) => api.saveVariable(model.id, tidy(v)))
+    const violations = apply((d) => void d.variables.push({ ...v, name: v.name.trim() }))
     if (violations) {
       setRefusal(violations)
       return false
@@ -77,11 +74,15 @@ export function VariablesSection({ model, focusKey, onFocus, onAttribution }: Mo
     scrollToRow(v.key)
     return true
   }
-  const update = async (variable: ModelVariable, patch: Partial<ModelVariable>) => {
-    setRefusal(await run((api) => api.saveVariable(model.id, { ...tidy({ ...variable, ...patch }), originalKey: variable.key })))
+  const update = (key: string, patch: Partial<ModelVariable>) => {
+    const violations = apply((d) => {
+      const x = d.variables.find((y) => y.key === key)
+      if (x) Object.assign(x, patch)
+    })
+    setRefusal(violations)
   }
 
-  const newErrors = newDraft ? variableErrors(newDraft, true) : null
+  const newErrors = newDraft ? variableErrors(model, newDraft, true) : null
   const panel = newDraft ? (
     <VariablePanel
       key="new"
@@ -95,7 +96,15 @@ export function VariablesSection({ model, focusKey, onFocus, onAttribution }: Mo
       }}
     />
   ) : focused ? (
-    <VariablePanel key={focused.key} model={model} variable={focused} seed={focused} onClose={() => onFocus(null)} onAttribution={() => onAttribution(focused.key)} />
+    <VariablePanel
+      key={focused.key}
+      model={model}
+      variable={focused}
+      seed={focused}
+      apply={apply}
+      onClose={() => onFocus(null)}
+      onAttribution={() => onAttribution(focused.key)}
+    />
   ) : null
 
   return (
@@ -123,22 +132,22 @@ export function VariablesSection({ model, focusKey, onFocus, onAttribution }: Mo
               {model.variables.map((v) => (
                 <tr key={v.key} data-row-id={v.key} aria-selected={v.key === focusKey} onClick={() => focus(v.key)} className={focusRowClass(v.key === focusKey)}>
                   <Td>
-                    <InlineText aria-label={`Name of ${v.key}`} value={v.displayName} onCommit={(name) => name.trim() && update(v, { displayName: name })} />
+                    <InlineText aria-label={`Name of ${v.key}`} value={v.name} onCommit={(name) => name.trim() && update(v.key, { name: name.trim() })} />
                   </Td>
                   <Td className="font-mono text-xs">{v.key}</Td>
                   <Td>
-                    <InlineSelect aria-label={`Format of ${v.key}`} value={v.displayFormat} options={FORMAT_OPTIONS} onCommit={(f) => update(v, { displayFormat: f })} className="w-32 text-xs" />
+                    <InlineSelect aria-label={`Format of ${v.key}`} value={v.format} options={FORMAT_OPTIONS} onCommit={(f) => update(v.key, { format: f as DisplayFormat })} className="w-32 text-xs" />
                   </Td>
                   <Td>
-                    <InlineText aria-label={`Unit of ${v.key}`} value={v.unitKey ?? ''} placeholder="—" onCommit={(unit) => update(v, { unitKey: unit })} className="w-20" />
+                    <InlineText aria-label={`Unit of ${v.key}`} value={v.unit} placeholder="—" onCommit={(unit) => update(v.key, { unit: unit.trim() })} className="w-20" />
                   </Td>
                   <Td>
                     <InlineSelect
                       aria-label={`Missing values of ${v.key}`}
-                      value={v.missingBehavior}
+                      value={v.missing}
                       options={MISSING_OPTIONS}
-                      onCommit={(m) => update(v, { missingBehavior: m as VariableMissingBehavior })}
-                      className={cn('w-24 font-mono text-xs', v.missingBehavior === 'null' && 'text-warning-foreground')}
+                      onCommit={(m) => update(v.key, { missing: m as MissingValue })}
+                      className={cn('w-24 font-mono text-xs', v.missing === 'null' && 'text-warning-foreground')}
                     />
                   </Td>
                   <Td>
@@ -194,10 +203,10 @@ function NewVariableRow({
         <input
           autoFocus
           aria-label="New variable: name"
-          value={draft.displayName}
+          value={draft.name}
           placeholder="Name"
           aria-invalid={!!errors?.name}
-          onChange={(e) => onChange({ displayName: e.target.value })}
+          onChange={(e) => onChange({ name: e.target.value })}
           onKeyDown={onKeyDown}
           className={cn(rowInputClass, 'min-w-40')}
         />
@@ -214,26 +223,13 @@ function NewVariableRow({
         />
       </Td>
       <Td>
-        <InlineSelect aria-label="New variable: format" value={draft.displayFormat} options={FORMAT_OPTIONS} onCommit={(f) => onChange({ displayFormat: f })} className="w-32 text-xs" />
+        <InlineSelect aria-label="New variable: format" value={draft.format} options={FORMAT_OPTIONS} onCommit={(f) => onChange({ format: f as DisplayFormat })} className="w-32 text-xs" />
       </Td>
       <Td>
-        <input
-          aria-label="New variable: unit"
-          value={draft.unitKey ?? ''}
-          placeholder="Unit"
-          onChange={(e) => onChange({ unitKey: e.target.value })}
-          onKeyDown={onKeyDown}
-          className={cn(rowInputClass, 'w-20')}
-        />
+        <input aria-label="New variable: unit" value={draft.unit} placeholder="Unit" onChange={(e) => onChange({ unit: e.target.value })} onKeyDown={onKeyDown} className={cn(rowInputClass, 'w-20')} />
       </Td>
       <Td>
-        <InlineSelect
-          aria-label="New variable: missing values"
-          value={draft.missingBehavior}
-          options={MISSING_OPTIONS}
-          onCommit={(m) => onChange({ missingBehavior: m as VariableMissingBehavior })}
-          className="w-24 font-mono text-xs"
-        />
+        <InlineSelect aria-label="New variable: missing values" value={draft.missing} options={MISSING_OPTIONS} onCommit={(m) => onChange({ missing: m as MissingValue })} className="w-24 font-mono text-xs" />
       </Td>
       <Td>
         <span role={messages.length ? 'alert' : undefined} className={cn('block pt-1.5 text-xs text-pretty', messages.length ? 'text-destructive' : 'text-muted-foreground')}>
@@ -249,39 +245,42 @@ function VariablePanel({
   variable,
   seed,
   errors,
+  apply,
   onClose,
   onAttribution,
   onDraftCommit,
 }: {
-  model: ModelDocument
+  model: CalcModel
   variable?: ModelVariable
   seed: ModelVariable
   errors?: { key: string | null; name: string | null } | null
+  apply?: ModelSectionProps<CalcModel>['apply']
   onClose: () => void
   onAttribution?: () => void
   /** New variables only: panel edits update the pending row's draft instead of staging. */
   onDraftCommit?: (draft: ModelVariable) => void
 }) {
-  const run = useModelEdit()
-  const [refusal, setRefusal] = useState<Violation[] | null>(null)
+  const [refusal, setRefusal] = useState<RuleViolation[] | null>(null)
   const { draft, setDraft, pending, bodyProps } = usePanelDraft(seed, async (next) => {
     if (!variable) {
       onDraftCommit?.(next)
       return true
     }
-    if (variableErrors(next, false).name) return false
-    const violations = await run((api) => api.saveVariable(model.id, { ...tidy(next), originalKey: variable.key }))
-    setRefusal(violations)
+    if (variableErrors(model, next, false).name) return false
+    const violations = apply?.((d) => {
+      const i = d.variables.findIndex((x) => x.key === variable.key)
+      if (i >= 0) d.variables[i] = { ...next, name: next.name.trim(), attribution: d.variables[i].attribution }
+    })
+    setRefusal(violations ?? null)
     return !violations
   })
-  const shown = errors ?? (variable ? variableErrors(draft, false) : null)
-  const attributed = variable ? !!attributionOf(model, variable.key) : false
+  const shown = errors ?? (variable ? variableErrors(model, draft, false) : null)
 
   return (
     <PropertiesPanel
       label="Variable properties"
       title={<span className="font-mono">{draft.key || 'New variable'}</span>}
-      subtitle={!variable ? 'Not added yet · needs a key and a name.' : pending && (refusal || shown?.name) ? <span className="text-destructive">Not applied — fix the highlighted inputs.</span> : draft.displayName}
+      subtitle={!variable ? 'Not added yet · needs a key and a name.' : pending && (refusal || shown?.name) ? <span className="text-destructive">Not applied — fix the highlighted inputs.</span> : draft.name}
       onClose={onClose}
       bodyProps={bodyProps}
       actions={
@@ -291,8 +290,8 @@ function VariablePanel({
             size="icon-xs"
             aria-label={`Delete ${variable.key}`}
             title="Delete variable"
-            onClick={async () => {
-              const violations = await run((api) => api.deleteVariable(model.id, variable.key))
+            onClick={() => {
+              const violations = apply?.((d) => void (d.variables = d.variables.filter((x) => x.key !== variable.key)))
               if (violations) setRefusal(violations)
               else {
                 toast.success(`Deleted ${variable.key}`, { description: 'Takes effect when you save.' })
@@ -311,36 +310,31 @@ function VariablePanel({
           <CommitInput id="var-key" value={draft.key} disabled={!!variable} onCommit={(k) => setDraft((d) => ({ ...d, key: k.toUpperCase() }))} className="font-mono" aria-invalid={!!shown?.key} />
         </FormRow>
         <FormRow label="Name" htmlFor="var-name" errors={shown?.name ? [shown.name] : undefined}>
-          <CommitInput id="var-name" value={draft.displayName} onCommit={(displayName) => setDraft((d) => ({ ...d, displayName }))} aria-invalid={!!shown?.name} />
+          <CommitInput id="var-name" value={draft.name} onCommit={(name) => setDraft((d) => ({ ...d, name }))} aria-invalid={!!shown?.name} />
         </FormRow>
       </PanelSection>
       <PanelSection title="Display">
         <div className="grid grid-cols-2 gap-4">
           <FormRow label="Format" htmlFor="var-format">
-            <SimpleSelect id="var-format" value={draft.displayFormat} onChange={(displayFormat) => setDraft((d) => ({ ...d, displayFormat }))} options={FORMAT_OPTIONS} />
+            <SimpleSelect id="var-format" value={draft.format} onChange={(f) => setDraft((d) => ({ ...d, format: f as DisplayFormat }))} options={FORMAT_OPTIONS} />
           </FormRow>
           <FormRow label="Unit" htmlFor="var-unit">
-            <CommitInput id="var-unit" value={draft.unitKey ?? ''} onCommit={(unitKey) => setDraft((d) => ({ ...d, unitKey }))} />
+            <CommitInput id="var-unit" value={draft.unit} onCommit={(unit) => setDraft((d) => ({ ...d, unit: unit.trim() }))} />
           </FormRow>
         </div>
       </PanelSection>
       <PanelSection title="Missing values" description="Zero makes a missing value 0; null leaves it empty.">
-        <Segmented<VariableMissingBehavior>
-          aria-label="Missing values"
-          value={draft.missingBehavior}
-          onChange={(missingBehavior) => setDraft((d) => ({ ...d, missingBehavior }))}
-          options={MISSING_OPTIONS}
-        />
+        <Segmented<MissingValue> aria-label="Missing values" value={draft.missing} onChange={(missing) => setDraft((d) => ({ ...d, missing }))} options={MISSING_OPTIONS} />
       </PanelSection>
       {variable && (
         <PanelSection
           title="Attribution"
-          description={attributed ? 'How a change in this variable splits across its drivers.' : 'A variable has no formula to split until you give it an identity expression.'}
+          description={variable.attribution ? 'How a change in this variable splits across its drivers.' : 'A variable has no formula to split until you give it an identity expression.'}
         >
           <div className="flex items-center gap-2">
             <AttributionChip model={model} metric={{ ...variable, type: 'variable' }} onOpen={() => onAttribution?.()} />
             <Button variant="outline" size="sm" onClick={onAttribution}>
-              {attributed ? 'Edit attribution' : 'Add attribution'}
+              {variable.attribution ? 'Edit attribution' : 'Add attribution'}
             </Button>
           </div>
         </PanelSection>

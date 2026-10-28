@@ -1,13 +1,13 @@
 import { CircleCheckIcon, OctagonXIcon, XIcon } from 'lucide-react'
-import type { Violation } from '@/lib/models/contract'
+import type { RuleViolation } from '@/lib/model/types'
 import { cn } from '@/lib/utils'
 
-export function RuleList({ violations }: { violations: Violation[] }) {
+export function RuleList({ violations }: { violations: RuleViolation[] }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {violations.map((v, i) => (
-        <li key={`${v.code}-${i}`} className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
-          <code className="shrink-0 font-mono text-xs font-medium">{v.code}</code>
+        <li key={`${v.rule}-${i}`} className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+          <code className="shrink-0 font-mono text-xs font-medium">{v.rule}</code>
           <span className="text-pretty">{v.message}</span>
         </li>
       ))}
@@ -21,7 +21,7 @@ export function RefusalAlert({
   onDismiss,
   className,
 }: {
-  violations: Violation[]
+  violations: RuleViolation[]
   title?: string
   onDismiss?: () => void
   className?: string

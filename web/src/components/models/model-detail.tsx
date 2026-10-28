@@ -3,13 +3,15 @@ import { useState, type ReactNode } from 'react'
 import { DetailShell } from '@/components/shell/page-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ModelEditScope, useModelDocument, useModelsApi, useRefreshModels } from '@/lib/models/client'
-import type { ModelDocument, ModelListItem, Violation } from '@/lib/models/contract'
-import { attributionOf, findMetric, metricsOf, type ModelMetric } from '@/lib/models/metrics'
+import { driversOf, findMetric, metricsOf, type Metric } from '@/lib/model/rules'
+import { useModels } from '@/lib/model/store'
+import type { CalcModel, RuleViolation } from '@/lib/model/types'
 import { cn } from '@/lib/utils'
 import { AttributionEditor } from './attribution-editor'
 import { FormulaText } from './formula-editor'
 import { METHOD_LABEL } from './method-explainer'
+import { toast } from 'sonner'
+import { ChangeScopeProvider, type ChangeScope } from '@/components/shell/changes'
 import { MeasuresSection } from './measures-section'
 import { ModelGeneralSection } from './model-general-section'
 import { VariablesSection } from './variables-section'
@@ -17,7 +19,6 @@ import { ModelHeader } from './model-header'
 import { MODEL_SECTION_LABEL, ModelNav, type ModelSection } from './model-nav'
 import { ParametersTab } from './parameters-tab'
 import { RefusalAlert } from './refusal-alert'
-import { refusalOf } from './use-model-edit'
 
 export function EnabledBadge({ enabled }: { enabled: boolean }) {
   return enabled ? (
@@ -65,32 +66,17 @@ function SectionHeader({ tab, action }: { tab: DetailTab; action?: ReactNode }) 
 }
 
 interface ModelDetailProps {
-  /** The saved model, as the list shows it. */
-  model: ModelListItem
+  model: CalcModel
   onBack: () => void
   onOpenReport: (key: string) => void
 }
 
-/** One model's editor: every edit stages in the model's change set, which preview refuses when it introduces a violation (OI-42). */
-export function ModelDetail({ model, onBack, onOpenReport }: ModelDetailProps) {
-  return (
-    <ModelEditScope modelId={model.id} label={model.displayName}>
-      <ModelEditor saved={model} onBack={onBack} onOpenReport={onOpenReport} />
-    </ModelEditScope>
-  )
-}
-
-function ModelEditor({ saved, onBack, onOpenReport }: { saved: ModelListItem; onBack: () => void; onOpenReport: (key: string) => void }) {
-  const { data: model } = useModelDocument(saved.id)
-  const api = useModelsApi()
-  const refresh = useRefreshModels()
-  const [refusal, setRefusal] = useState<Violation[] | null>(null)
+export function ModelDetail({ model: saved, onBack, onOpenReport }: ModelDetailProps) {
+  const { edit, usedBy, removeModel, getDraft, isDirty, saveModel, discardModel } = useModels()
+  const model = getDraft(saved.key) ?? saved
+  const [refusal, setRefusal] = useState<RuleViolation[] | null>(null)
   const [tab, setTabState] = useState<DetailTab>('variables')
   const [attrKey, setAttrKeyState] = useState<string | null>(null)
-  const [focusKey, setFocusKey] = useState<string | null>(null)
-  const [attrFilter, setAttrFilter] = useState<'all' | ModelMetric['type']>('all')
-  if (!model) return null
-
   const setTab = (next: DetailTab) => {
     setTabState(next)
     setAttrKeyState(null)
@@ -103,58 +89,105 @@ function ModelEditor({ saved, onBack, onOpenReport }: { saved: ModelListItem; on
       setRefusal(null)
     }
   }
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  const [attrFilter, setAttrFilter] = useState<'all' | Metric['type']>('all')
+  const reports = usedBy(model.key)
 
-  const handleDelete = async () => {
-    const result = await api.deleteModel(model.id)
-    if (!result.ok) {
-      setRefusal(refusalOf(result.problem))
+  const handleDelete = () => {
+    if (reports.length) {
+      setRefusal([
+        {
+          rule: 'model_not_in_use',
+          message: `${reports.length} report${reports.length > 1 ? 's read' : ' reads'} this model (${reports.map((r) => r.key).join(', ')}); point ${reports.length > 1 ? 'them' : 'it'} at another model first.`,
+        },
+      ])
       return
     }
-    await refresh()
+    removeModel(model.key)
     onBack()
+  }
+
+  const apply = (fn: (d: CalcModel) => void) => {
+    const result = edit(model.key, fn)
+    if (result.ok) {
+      setRefusal(null)
+      return true
+    }
+    setRefusal(result.violations)
+    return false
+  }
+
+  const applyOrViolations = (fn: (d: CalcModel) => void) => {
+    const result = edit(model.key, fn)
+    return result.ok ? null : result.violations
   }
 
   const attrMetric = attrKey ? (findMetric(model, attrKey) ?? null) : null
   const allMetrics = metricsOf(model)
-  const attributionRows = allMetrics.filter((m) => attrFilter === 'all' || m.type === attrFilter)
+  const attributionRows = [...allMetrics.filter((m) => m.type === 'variable'), ...allMetrics.filter((m) => m.type === 'measure')].filter(
+    (m) => attrFilter === 'all' || m.type === attrFilter,
+  )
   const attrCounts = {
     all: allMetrics.length,
     variable: model.variables.length,
     measure: model.measures.length,
   }
 
+  const scope: ChangeScope = {
+    id: `model:${model.key}`,
+    label: model.name,
+    count: isDirty(model.key) ? 1 : 0,
+    saving: false,
+    save: async () => {
+      const enabledChanged = model.enabled !== saved.enabled
+      saveModel(model.key)
+      toast.success('Changes saved', {
+        description: enabledChanged ? (model.enabled ? `${model.name} is now enabled.` : `${model.name} is disabled.`) : undefined,
+      })
+      return true
+    },
+    discard: async () => discardModel(model.key),
+  }
+
   return (
+    <ChangeScopeProvider scope={scope}>
     <DetailShell
-      header={<ModelHeader model={model} savedEnabled={saved.isEnabled} onBack={onBack} onDelete={handleDelete} onRefused={setRefusal} />}
+      header={<ModelHeader model={model} saved={saved} onBack={onBack} onDelete={handleDelete} />}
       nav={<ModelNav model={model} active={tab} onSelect={setTab} />}
     >
-      <div key={attrMetric ? `attr-${attrMetric.key}` : tab} className="contents">
-        {refusal && <RefusalAlert violations={refusal} onDismiss={() => setRefusal(null)} />}
+          <div key={attrMetric ? `attr-${attrMetric.key}` : tab} className="contents">
+          {refusal && <RefusalAlert violations={refusal} onDismiss={() => setRefusal(null)} />}
 
-        {attrMetric && (
-          <>
-            <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground" onClick={() => setAttrKey(null)}>
-              <ArrowLeftIcon /> All attributions
-            </Button>
-            <AttributionEditor model={model} metric={attrMetric} onClose={() => setAttrKey(null)} onRefused={setRefusal} />
-          </>
-        )}
+          {attrMetric && (
+            <>
+              <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground" onClick={() => setAttrKey(null)}>
+                <ArrowLeftIcon /> All attributions
+              </Button>
+              <AttributionEditor model={model} metric={attrMetric} onClose={() => setAttrKey(null)} onRefused={setRefusal} />
+            </>
+          )}
 
-        {tab === 'parameters' && <ParametersTab model={model} focusKey={focusKey} onFocus={setFocusKey} />}
+          {tab === 'parameters' && (
+            <ParametersTab model={model} apply={applyOrViolations} focusKey={focusKey} onFocus={setFocusKey} />
+          )}
 
-        {tab === 'general' && (
-          <>
-            <SectionHeader tab="general" />
-            <ModelGeneralSection model={model} onRefused={setRefusal} onOpenReport={onOpenReport} />
-          </>
-        )}
+          {tab === 'general' && (
+            <>
+              <SectionHeader tab="general" />
+              <ModelGeneralSection model={model} reports={reports} apply={apply} onOpenReport={onOpenReport} />
+            </>
+          )}
 
-        {tab === 'variables' && !attrMetric && <VariablesSection model={model} focusKey={focusKey} onFocus={setFocusKey} onAttribution={setAttrKey} />}
+          {tab === 'variables' && !attrMetric && (
+            <VariablesSection model={model} focusKey={focusKey} onFocus={setFocusKey} apply={applyOrViolations} onAttribution={setAttrKey} />
+          )}
 
-        {tab === 'measures' && !attrMetric && <MeasuresSection model={model} focusKey={focusKey} onFocus={setFocusKey} onAttribution={setAttrKey} />}
+          {tab === 'measures' && !attrMetric && (
+            <MeasuresSection model={model} focusKey={focusKey} onFocus={setFocusKey} apply={applyOrViolations} onAttribution={setAttrKey} />
+          )}
 
-        {tab === 'attribution' && !attrMetric && (
-          <>
+          {tab === 'attribution' && !attrMetric && (
+            <>
             <SectionHeader tab="attribution" />
             <div role="radiogroup" aria-label="Filter by category" className="flex w-fit items-center gap-1 rounded-lg border bg-card p-1 text-sm">
               {(
@@ -206,29 +239,29 @@ function ModelEditor({ saved, onBack, onOpenReport }: { saved: ModelListItem; on
               </table>
             </div>
             <p className="text-xs text-muted-foreground">Variables without an attribution have no formula to split until you add one.</p>
-          </>
-        )}
-      </div>
+            </>
+          )}
+          </div>
     </DetailShell>
+    </ChangeScopeProvider>
   )
 }
 
-function AttributionRow({ model, metric, onOpen }: { model: ModelDocument; metric: ModelMetric; onOpen: () => void }) {
+function AttributionRow({ model, metric, onOpen }: { model: CalcModel; metric: Metric; onOpen: () => void }) {
   const isVariable = metric.type === 'variable'
-  const own = attributionOf(model, metric.key)
   const category = (
     <span className="rounded-sm border px-1.5 py-0.5 text-xs whitespace-nowrap text-muted-foreground">{isVariable ? 'Variable' : 'Calculated measure'}</span>
   )
   const nameCell = (
     <Td>
       <button type="button" onClick={onOpen} className="flex flex-col text-left hover:underline">
-        <span>{metric.displayName}</span>
+        <span>{metric.name}</span>
         <span className="font-mono text-xs text-muted-foreground">{metric.key}</span>
       </button>
     </Td>
   )
 
-  if (isVariable && !own) {
+  if (isVariable && !metric.attribution) {
     return (
       <tr className="hover:bg-muted/40">
         {nameCell}
@@ -246,14 +279,18 @@ function AttributionRow({ model, metric, onOpen }: { model: ModelDocument; metri
     )
   }
 
-  const drivers = model.effectiveDrivers[metric.key] ?? []
-  const weight = own?.weightVariableKey ? findMetric(model, own.weightVariableKey) : undefined
+  const drivers = driversOf(model, metric) ?? []
+  const weight = metric.attribution?.weight ? findMetric(model, metric.attribution.weight) : undefined
   return (
     <tr className="hover:bg-muted/40">
       {nameCell}
       <Td>{category}</Td>
       <Td className="max-w-80">
-        {own?.expression ? <FormulaText formula={own.expression} className="line-clamp-2" /> : <span className="text-muted-foreground">Own formula</span>}
+        {metric.attribution?.expression ? (
+          <FormulaText formula={metric.attribution.expression} className="line-clamp-2" />
+        ) : (
+          <span className="text-muted-foreground">Own formula</span>
+        )}
       </Td>
       <Td>
         <ol className="flex flex-wrap items-center gap-1">
@@ -265,8 +302,8 @@ function AttributionRow({ model, metric, onOpen }: { model: ModelDocument; metri
           ))}
         </ol>
       </Td>
-      <Td>{weight ? weight.displayName : <span className="text-muted-foreground">—</span>}</Td>
-      <Td className="text-muted-foreground">{METHOD_LABEL[model.attributionMethod]} (model)</Td>
+      <Td>{weight ? weight.name : <span className="text-muted-foreground">—</span>}</Td>
+      <Td className="text-muted-foreground">{METHOD_LABEL[model.method]} (model)</Td>
     </tr>
   )
 }

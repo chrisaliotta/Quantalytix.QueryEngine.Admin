@@ -5,23 +5,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { EditableLabel } from '@/components/report/shared/editable-label'
-import type { CalcModelPatch, ModelDocument, Violation } from '@/lib/models/contract'
-import { useModelEdit } from './use-model-edit'
+import { useModels } from '@/lib/model/store'
+import type { CalcModel } from '@/lib/model/types'
 
 interface ModelHeaderProps {
-  model: ModelDocument
-  /** Whether the saved model is enabled, so a pending change shows that it takes effect on save. */
-  savedEnabled: boolean
+  model: CalcModel
+  saved: CalcModel
   onBack: () => void
   onDelete: () => void
-  onRefused: (violations: Violation[] | null) => void
 }
 
 /** Save/Discard/⌘S come from the ChangeScope provided by ModelDetail, rendered by DetailHeader. */
-export function ModelHeader({ model, savedEnabled, onBack, onDelete, onRefused }: ModelHeaderProps) {
-  const run = useModelEdit()
-  const enabledChanged = model.isEnabled !== savedEnabled
-  const update = async (patch: CalcModelPatch) => onRefused(await run((api) => api.updateModel(model.id, patch)))
+export function ModelHeader({ model, saved, onBack, onDelete }: ModelHeaderProps) {
+  const { edit } = useModels()
+  const enabledChanged = model.enabled !== saved.enabled
 
   return (
     <DetailHeader
@@ -30,9 +27,9 @@ export function ModelHeader({ model, savedEnabled, onBack, onDelete, onRefused }
       title={
         <EditableLabel
           aria-label="Model name"
-          value={model.displayName}
+          value={model.name}
           onCommit={(v) => {
-            if (v) void update({ displayName: v })
+            if (v) edit(model.key, (d) => void (d.name = v))
           }}
           showIcon
           className="text-sm font-semibold"
@@ -42,9 +39,9 @@ export function ModelHeader({ model, savedEnabled, onBack, onDelete, onRefused }
         <>
           <DetailKey>{model.key}</DetailKey>
           <div className="ml-2 flex items-center gap-2">
-            <Switch id="model-enabled" checked={model.isEnabled} onCheckedChange={(isEnabled) => void update({ isEnabled })} />
+            <Switch id="model-enabled" checked={model.enabled} onCheckedChange={(next) => edit(model.key, (d) => void (d.enabled = next))} />
             <Label htmlFor="model-enabled" className="text-xs text-muted-foreground">
-              {model.isEnabled ? 'Enabled' : 'Disabled'}
+              {model.enabled ? 'Enabled' : 'Disabled'}
               {enabledChanged && <span className="sr-only"> (takes effect when you save)</span>}
               {enabledChanged && <span aria-hidden className="size-1.5 rounded-full bg-warning" title="Takes effect when you save" />}
             </Label>

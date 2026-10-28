@@ -1,21 +1,21 @@
 import { CalculatorIcon, FolderIcon, HeadingIcon, MinusIcon, SigmaIcon } from 'lucide-react'
 import type { ComponentProps } from 'react'
-import type { ReportRowKind, Violation } from '@/lib/reports/contract'
+import type { RowKind } from '@/lib/report/types'
 import { cn } from '@/lib/utils'
 
-export const KIND_LABEL: Record<ReportRowKind, string> = {
-  data: 'Data',
-  group: 'Group',
-  section: 'Section',
+export const KIND_LABEL: Record<RowKind, string> = {
+  line: 'Line',
+  subtotal: 'Subtotal',
+  heading: 'Heading',
   formula: 'Formula',
 }
 
-export function KindGlyph({ kind, className }: { kind: ReportRowKind; className?: string }) {
-  const Icon = { data: MinusIcon, group: SigmaIcon, section: HeadingIcon, formula: CalculatorIcon }[kind]
+export function KindGlyph({ kind, className }: { kind: RowKind; className?: string }) {
+  const Icon = { line: MinusIcon, subtotal: SigmaIcon, heading: HeadingIcon, formula: CalculatorIcon }[kind]
   return (
     <Icon
       aria-label={KIND_LABEL[kind]}
-      className={cn('size-3.5 shrink-0', kind === 'data' ? 'text-muted-foreground/60' : 'text-muted-foreground', className)}
+      className={cn('size-3.5 shrink-0', kind === 'line' ? 'text-muted-foreground/60' : 'text-muted-foreground', className)}
     />
   )
 }
@@ -28,13 +28,13 @@ export function FolderGlyph({ className }: { className?: string }) {
   return <FolderIcon aria-hidden className={cn('size-3.5 shrink-0 text-muted-foreground', className)} />
 }
 
-export function StatusDot({ status, className }: { status: 'ok' | 'warn' | 'fail'; className?: string }) {
+export function StatusDot({ status, className }: { status: 'pass' | 'warn' | 'fail'; className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
         'inline-block size-2 shrink-0 rounded-full',
-        status === 'ok' && 'bg-primary',
+        status === 'pass' && 'bg-primary',
         status === 'warn' && 'bg-warning',
         status === 'fail' && 'bg-destructive',
         className,
@@ -53,16 +53,4 @@ export function factorLabel(factor: number) {
   if (factor === -1) return 'excluded'
   if (factor === 1) return 'x1'
   return `x${factor}`
-}
-
-/** The server's refusal of an edit, listed under the control that made it. */
-export function Refusal({ violations }: { violations: Violation[] | null }) {
-  if (!violations?.length) return null
-  return (
-    <ul role="alert" className="flex flex-col gap-1 text-xs text-destructive">
-      {violations.map((v, i) => (
-        <li key={i}>{v.message}</li>
-      ))}
-    </ul>
-  )
 }

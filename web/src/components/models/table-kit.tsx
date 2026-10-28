@@ -1,16 +1,8 @@
 import type { KeyboardEvent } from 'react'
-import { KEY_PATTERN } from '@/lib/api/contract'
-import type { ModelDocument, RoundingMode, VariableMissingBehavior, Violation } from '@/lib/models/contract'
+import { FORMAT_LABEL } from '@/components/report/columns/column-dialog'
+import type { MissingValue, Rounding, RuleViolation } from '@/lib/model/types'
+import type { DisplayFormat } from '@/lib/report/types'
 import { RuleList } from './refusal-alert'
-
-type DisplayFormat = 'currency' | 'percent' | 'number' | 'basisPoints'
-
-const FORMAT_LABEL: Record<DisplayFormat, string> = {
-  currency: 'Currency',
-  percent: 'Percent',
-  number: 'Number',
-  basisPoints: 'Basis points',
-}
 
 export const NEW_ROW_ID = '__new__'
 
@@ -21,22 +13,22 @@ export const rowInputClass =
   'h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-ring focus:ring-2 focus:ring-ring/30 aria-invalid:border-destructive'
 
 export const FORMAT_OPTIONS = (Object.keys(FORMAT_LABEL) as DisplayFormat[]).map((f) => ({ value: f, label: FORMAT_LABEL[f] }))
-export const ROUNDING_OPTIONS: { value: RoundingMode; label: string }[] = [
+export const ROUNDING_OPTIONS: { value: Rounding; label: string }[] = [
   { value: 'half_even', label: 'Half even' },
   { value: 'half_up', label: 'Half up' },
   { value: 'down', label: 'Down' },
-  { value: 'up', label: 'Up' },
-  { value: 'truncate', label: 'Truncate' },
 ]
-export const MISSING_OPTIONS: { value: VariableMissingBehavior; label: string }[] = [
+export const MISSING_OPTIONS: { value: MissingValue; label: string }[] = [
   { value: 'null', label: 'Null' },
   { value: 'zero', label: 'Zero' },
 ]
 
-/** The form's own check of a new metric key; whether the model already has it is the server's answer. */
-export function metricKeyError(key: string) {
+const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/
+
+export function metricKeyError(key: string, taken: string[]) {
   if (!key.trim()) return 'Enter a key.'
-  if (!KEY_PATTERN.test(key)) return 'Use letters, digits and underscores; start with a letter.'
+  if (!KEY_PATTERN.test(key)) return 'Use letters, digits, dots and underscores; start with a letter.'
+  if (taken.includes(key)) return 'This key is already used.'
   return null
 }
 
@@ -55,7 +47,7 @@ export function pendingRowKeys(onSubmit: () => void, onCancel: () => void) {
   }
 }
 
-export function PanelRefusal({ violations, onDismiss }: { violations: Violation[]; onDismiss: () => void }) {
+export function PanelRefusal({ violations, onDismiss }: { violations: RuleViolation[]; onDismiss: () => void }) {
   return (
     <div role="alert" className="flex flex-col gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
@@ -70,9 +62,10 @@ export function PanelRefusal({ violations, onDismiss }: { violations: Violation[
 }
 
 /** Shared props for the row-based model sections. */
-export interface ModelSectionProps {
-  model: ModelDocument
+export interface ModelSectionProps<M> {
+  model: M
   focusKey: string | null
   onFocus: (key: string | null) => void
+  apply: (fn: (d: M) => void) => RuleViolation[] | null
   onAttribution: (key: string) => void
 }

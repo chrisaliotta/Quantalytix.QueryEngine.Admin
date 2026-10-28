@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { useNavigationGuard } from '@/components/shell/changes'
 import type { PinIdentity, ReleaseTab, SetTab } from '@/lib/releases/contract'
 import { reportKeyOf } from '@/lib/releases/mock/data'
-import { useReportList } from '@/lib/reports/client'
+import { useEditor } from '@/lib/report/store'
 
 export const paths = {
   reports: '/reports',
@@ -60,13 +60,13 @@ export function useSearchParam(name: string): [string | null, (value: string | n
 export function useAppNav() {
   const navigate = useNavigate()
   const guard = useNavigationGuard()
-  const { data: reports } = useReportList()
+  const { library } = useEditor()
 
   return useMemo(() => {
     const go = (path: string, values?: SearchValues) => guard(() => navigate(withQuery(path, values)))
 
     const reportByKey = (key: string) => {
-      const item = reports?.find((r) => r.key === key)
+      const item = library.find((l) => l.report.settings.key === key)
       if (item) return go(paths.report(item.id))
       go(paths.reports)
       toast.message(`Report ${key} is not in this workspace.`)
@@ -94,5 +94,5 @@ export function useAppNav() {
         else go(paths.dimension(i.dimensionId), { tab: 'bridges', br: i.id, brv: versionId })
       },
     }
-  }, [navigate, guard, reports])
+  }, [navigate, guard, library])
 }

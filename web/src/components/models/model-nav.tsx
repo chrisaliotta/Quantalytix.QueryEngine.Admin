@@ -1,6 +1,6 @@
 import { BracesIcon, FunctionSquareIcon, GitBranchIcon, SettingsIcon, SlidersHorizontalIcon, type LucideIcon } from 'lucide-react'
 import { SectionNav, type NavGroup } from '@/components/shell/page-shell'
-import type { ModelDocument } from '@/lib/models/contract'
+import type { CalcModel } from '@/lib/model/types'
 
 const SECTION_ICON: Record<ModelSection, LucideIcon> = {
   variables: BracesIcon,
@@ -22,7 +22,7 @@ export const MODEL_SECTION_LABEL: Record<ModelSection, string> = {
 
 interface NavItem {
   key: ModelSection
-  count?: (m: ModelDocument) => number
+  count?: (m: CalcModel) => number
 }
 
 const GROUPS: { label: string; items: NavItem[] }[] = [
@@ -36,7 +36,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   },
   {
     label: 'Analysis',
-    items: [{ key: 'attribution', count: (m) => Object.keys(m.effectiveDrivers).length }],
+    items: [{ key: 'attribution', count: (m) => m.variables.filter((v) => v.attribution).length + m.measures.length }],
   },
   {
     label: 'Model',
@@ -44,7 +44,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   },
 ]
 
-export function ModelNav({ model, active, onSelect }: { model: ModelDocument; active: ModelSection; onSelect: (s: ModelSection) => void }) {
+export function ModelNav({ model, active, onSelect }: { model: CalcModel; active: ModelSection; onSelect: (s: ModelSection) => void }) {
   const groups: NavGroup<ModelSection>[] = GROUPS.map((g) => ({
     label: g.label,
     items: g.items.map((item) => ({ id: item.key, label: MODEL_SECTION_LABEL[item.key], icon: SECTION_ICON[item.key], badge: item.count?.(model) })),
