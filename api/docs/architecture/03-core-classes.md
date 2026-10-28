@@ -1,490 +1,203 @@
 # Core classes
 
-[Diagram index](README.md) · [Architecture](01-architecture.md) · [Request pipeline](02-request-pipeline.md) · [Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
+[Index](README.md) · [High-level architecture](01-architecture.md) · [Request pipeline](02-request-pipeline.md) ·
+[Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
-## Authentication and tenancy
+The shared machinery lives in `Application/Changes` (change sets), `Application/Metadata` (records, gateways, delete
+checks) and `Application/Versioning` (lifecycle, described in [Version lifecycle](04-version-lifecycle.md)).
 
-The drawing shows how a validated token becomes a `Caller`, how the `TenantAccess` policy admits that caller to the route's tenant, and how the route's values reach Application code. It matters because every tenant-scoped read and write trusts these classes for its tenant.
+## The change-set pipeline
 
-```mermaid
-classDiagram
-    direction LR
-    class AdminAuthentication {
-        <<static>>
-        +RoleClaimType
-        +SystemAdminRole
-        +AddAdminAuthentication(services)
-    }
-    class AdminAuthenticationOptions {
-        <<record>>
-        +string TenantClaimType
-    }
-    class AdminAuthorization {
-        <<static>>
-        +AddAdminAuthorization(services)
-    }
-    class AdminPolicies {
-        <<static>>
-        +TenantAccess
-        +SystemAdmin
-    }
-    class Caller {
-        <<record>>
-        +string Subject
-        +string TenantId
-        +bool IsSystemAdmin
-    }
-    class CallerFactory {
-        +Create(principal) Caller
-    }
-    class TenantAccessRequirement
-    class TenantAccessHandler {
-        HandleRequirementAsync(context, requirement)
-    }
-    class ITenantContext {
-        <<interface>>
-        +string TenantId
-    }
-    class RouteTenantContext {
-        +RouteKey
-        +string TenantId
-    }
-    class IRequestRoute {
-        <<interface>>
-        +Id(placeholder) long
-    }
-    class RequestRoute
-    class AccessibleTenantsService {
-        +ListAsync(caller, cancellationToken) Task~IReadOnlyList~AccessibleTenant~~
-    }
-    class ITableGateway~TRecord~ {
-        <<interface>>
-    }
-    AdminAuthorization ..> AdminPolicies : policy names
-    AdminAuthorization ..> TenantAccessRequirement : TenantAccess policy
-    AdminAuthorization ..> AdminAuthentication : SystemAdmin role
-    CallerFactory --> AdminAuthenticationOptions : tenant claim type
-    CallerFactory ..> Caller : creates
-    TenantAccessHandler --> CallerFactory
-    TenantAccessHandler ..> TenantAccessRequirement : handles
-    TenantAccessHandler ..> RouteTenantContext : RouteKey
-    ITenantContext <|.. RouteTenantContext
-    IRequestRoute <|.. RequestRoute
-    StarRocksConnectionFactory --> ITenantContext
-    TenantUpdateInputValidator --> ITenantContext
-    DatasetVersionInputValidator --> IRequestRoute
-    TenantsController --> AccessibleTenantsService
-    TenantsController --> CallerFactory
-    SessionController --> CallerFactory
-    AccessibleTenantsService ..> Caller
-    AccessibleTenantsService --> ITableGateway : TenantDirectoryRecord
-```
+Every editable aggregate (a dataset version, a dimension, a mapping set, an analytical bridge, a draft release, a
+calculation model, a report) is edited through one protocol ([blueprint 01](../../../docs/blueprint/01-api-conventions.md#change-set-protocol-agreed-oi-01)).
+The client holds the pending operations and posts all of them on every edit:
 
-`CallerFactory` reads `sub` as `Subject`, the claim `AdminAuthenticationOptions.TenantClaimType` names (`tenant_id` by default) as `TenantId` only when the token carries exactly one non-blank value, and the `SystemAdmin` role through the `role` claim. `TenantAccessHandler` succeeds when the caller is a SystemAdmin or its `TenantId` equals the route's `tenantId` by ordinal comparison; the `SystemAdmin` policy only requires the role. `RouteTenantContext` and `RequestRoute` are scoped and read the current request's route values: `StarRocksConnectionFactory` routes tenant connections by `ITenantContext.TenantId`, and `TenantUpdateInputValidator` reads it as the edited tenant. `IRequestRoute.Id` lets an input validator compare a body value with the route; `DatasetVersionInputValidator`, `NewDimensionVersionInputValidator`, `NewMappingVersionInputValidator` and `NewBridgeVersionInputValidator` use it to check that a clone source belongs to the route's owner. `AccessibleTenantsService` lists every directory row for a SystemAdmin and only the caller's own otherwise, never with connection strings.
+- `POST <aggregate>/changes/preview` with `{ operations }` answers `200 { state, violations }` or a problem, and writes
+  nothing.
+- `POST <aggregate>/changes` with the same body applies the operations to the aggregate as stored now, writes the result,
+  and answers `200 { state, idMap }` or a problem with nothing written.
 
-**Sources:** [AdminAuthentication.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authentication/AdminAuthentication.cs), [AdminAuthenticationOptions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authentication/Models/AdminAuthenticationOptions.cs), [AdminAuthorization.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/AdminAuthorization.cs), [AdminPolicies.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/AdminPolicies.cs), [CallerFactory.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/CallerFactory.cs), [TenantAccessHandler.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/TenantAccessHandler.cs), [TenantAccessRequirement.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/TenantAccessRequirement.cs), [Caller.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Tenancy/Models/Caller.cs), [ITenantContext.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Tenancy/ITenantContext.cs), [RouteTenantContext.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Tenancy/RouteTenantContext.cs), [IRequestRoute.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Tenancy/IRequestRoute.cs), [RequestRoute.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Tenancy/RequestRoute.cs), [AdminTenancyServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminTenancyServiceCollectionExtensions.cs), [AccessibleTenantsService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Tenancy/Services/AccessibleTenantsService.cs), [TenantsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Tenancy/TenantsController.cs), [SessionController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Session/SessionController.cs), [StarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/StarRocksConnectionFactory.cs), [TenantUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/Validators/TenantUpdateInputValidator.cs), [DatasetVersionInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/Validators/DatasetVersionInputValidator.cs).
-
-## Persistence
-
-The drawing shows the one persistence port, `ITableGateway<TRecord>`, and how its StarRocks implementation turns a record type into SQL and a connection. It matters because every service reads and writes metadata through it, one statement per call.
+Some aggregates extend the preview envelope: the report preview adds the pending report's diagnostics, and the release
+preview adds the rules' report over the pending manifest and its difference from the active release.
 
 ```mermaid
 classDiagram
-    direction TB
-    class ITableGateway~TRecord~ {
+    class IChangeSetAggregate~TSnapshot,TOperation,TState~ {
         <<interface>>
-        +ListAsync(filter, cancellationToken) Task~IReadOnlyList~TRecord~~
-        +GetAsync(key, cancellationToken) Task~TRecord~
-        +InsertAsync(record, cancellationToken) Task
-        +InsertManyAsync(records, cancellationToken) Task
-        +UpdateAsync(record, cancellationToken) Task
-        +DeleteAsync(filter, cancellationToken) Task
+        +LoadAsync(aggregateId) TSnapshot
+        +Apply(snapshot, operation, context) TSnapshot
+        +Plan(before, after, plan)
+        +IsEngineVisible(before, after) bool
+        +ReadAsync(snapshot, presentId) TState
     }
-    class StarRocksTableGateway~TRecord~ {
-        -int InsertChunkSize
-        -OpenAsync(cancellationToken)
+    class ChangeSetPipeline~TSnapshot,TOperation,TState~ {
+        +PreviewAsync(aggregateId, request) Outcome
+        +CommitAsync(aggregateId, request) Outcome
     }
-    class TableSql~TRecord~ {
-        <<static>>
-        +TableDefinition Table
-        +string Update
-        +Select(filter) string
-        +Insert(rowCount) string
-        +InsertParameters(rows)
-        +Delete(filter) string
-    }
-    class TableCatalog {
-        <<static>>
-        +Tables
-        +For() TableDefinition
-    }
-    class TableDefinition {
-        <<record>>
-        +string Name
-        +TableDatabase Database
-        +KeyProperties
-        +JsonProperties
-    }
-    class TableDatabase {
-        <<enumeration>>
-        ControlPlane
-        Tenant
-    }
-    class TableFilter {
-        <<static>>
-        +PropertiesOf(filter)
-        +IsCollection(property) bool
-        +MatchesNothing(filter) bool
-    }
-    class IStarRocksConnectionFactory {
+    class ISnapshotRule~TSnapshot~ {
         <<interface>>
-        +OpenControlPlaneAsync(cancellationToken)
-        +OpenTenantAsync(cancellationToken)
-        +OpenAsync(connectionString, cancellationToken)
+        +Stage RuleStage
+        +EvaluateAsync(snapshot) RuleViolation[]
     }
-    class StarRocksConnectionFactory
-    class StarRocksOptions {
-        <<record>>
-        +int CommandTimeoutSeconds
+    class ChangeContext {
+        +Ids TemporaryIds
+        +Reject(path, message)
+        +Conflict(title, detail)
+        +Blocked(deleteCheck)
+        +Refused bool
     }
-    class ITenantContext {
-        <<interface>>
-        +string TenantId
+    class WritePlan {
+        +Insert / Update / Delete / Sync
+        +Schema(statement)
+        +Call(kind, depth, write)
+        +Ordered() PlannedWrite[]
     }
-    class IIdGenerator {
-        <<interface>>
-        +NextId() long
+    class TemporaryIds {
+        +Resolve(id) long
+        +NewId() long
+        +Present(id) string
+        +PresentStored(id)$ string
+        +Map
     }
-    class IdGenerator
-    class DatasetRecord {
-        <<record>>
-        +long DatasetId
-        +string DatasetKey
-        +string DisplayName
-        +bool IsEnabled
-    }
-    class DatasetVersionRecord {
-        <<record>>
-        +long DatasetVersionId
-        +long DatasetId
-        +int VersionNumber
-        +string Status
-        +string SourceObject
-        +string Properties
-        +DateTime PublishedAt
-    }
-    class TenantDirectoryRecord {
-        <<record>>
-        +string TenantId
-        +string ProviderId
-        +string ConnectionString
-        +bool IsEnabled
-    }
-    ITableGateway <|.. StarRocksTableGateway
-    StarRocksTableGateway --> IStarRocksConnectionFactory
-    StarRocksTableGateway ..> TableSql : statements
-    StarRocksTableGateway ..> TableFilter : empty collections
-    TableSql ..> TableCatalog : table of TRecord
-    TableSql ..> TableFilter : conditions
-    TableCatalog --> TableDefinition : one per record
-    TableDefinition --> TableDatabase
-    IStarRocksConnectionFactory <|.. StarRocksConnectionFactory
-    StarRocksConnectionFactory --> StarRocksOptions
-    StarRocksConnectionFactory --> ITenantContext
-    IIdGenerator <|.. IdGenerator
-    TableCatalog ..> DatasetRecord : tenant table
-    TableCatalog ..> DatasetVersionRecord : tenant table
-    TableCatalog ..> TenantDirectoryRecord : control plane table
+    ChangeSetPipeline --> IChangeSetAggregate
+    ChangeSetPipeline --> ISnapshotRule
+    ChangeSetPipeline ..> ChangeContext : creates per request
+    ChangeSetPipeline ..> WritePlan : creates on commit
+    ChangeSetPipeline --> SemanticRevision
+    ChangeContext --> TemporaryIds
 ```
 
-A filter is an anonymous object whose property names are record property names: a value becomes `column = @Property`, a collection other than a string becomes `column IN @Property`, which Dapper expands, and an empty collection matches nothing, so `ListAsync` returns an empty list and `DeleteAsync` returns without reaching the database. `DeleteAsync` requires a filter, so no call empties a table. `GetAsync` takes every key property and expects exactly one row. `UpdateAsync` sets every non-key column of the row the record's key names. `InsertAsync` and `InsertManyAsync` are upserts into StarRocks primary-key tables, one multi-row `INSERT` per 500 rows. `TableSql<TRecord>` builds the column list from the record's properties in declaration order, converted to snake_case, and writes JSON columns through `PARSE_JSON`; `TableCatalog.For<TRecord>()` gives its table. The catalog maps 46 records, each mirroring one `qe_*` table: `TenantDirectoryRecord` in `query_control`, the other 45 in the tenant's database. `IdGenerator` returns random IDs in [1, 2^53), so every ID stays exact as a JSON number in browsers; metadata keys are plain BIGINT columns without auto-increment.
+A module implements `IChangeSetAggregate` over an immutable **snapshot**: records of every row the aggregate owns, plus
+a `Surroundings` record of everything outside it that operations, rules and read models consult (usage, other keys,
+sibling versions). A snapshot loader reads it once per request, because operations are synchronous and cannot read. The
+module registers the aggregate with `AddChangeSetAggregate<TAggregate, TSnapshot, TOperation, TState>()`, which also
+registers `ChangeSetPipeline<…>`, and its rules with `AddSnapshotRule<TSnapshot, TRule>()`. A small service per module
+(`DimensionChanges`, `BridgeChanges`, `ReleaseChanges`, …) wraps the pipeline for refusals that apply before any operation
+(a report-owned dimension or bridge, a release that is not a draft) and for envelope extensions.
 
-**Sources:** [ITableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/ITableGateway.cs), [StarRocksTableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/StarRocksTableGateway.cs), [TableSql.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableSql.cs), [TableCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableCatalog.cs), [TableDefinition.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/Models/TableDefinition.cs), [TableDatabase.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/Enums/TableDatabase.cs), [TableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableFilter.cs), [DeclaredProperties.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/DeclaredProperties.cs), [SnakeCase.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/SnakeCase.cs), [IStarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/IStarRocksConnectionFactory.cs), [StarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/StarRocksConnectionFactory.cs), [StarRocksOptions.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/Models/StarRocksOptions.cs), [IIdGenerator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/IIdGenerator.cs), [IdGenerator.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Identifiers/IdGenerator.cs), [records](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Models), [StarRocksInfrastructureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Configuration/StarRocksInfrastructureServiceCollectionExtensions.cs).
+**Preview** (`PreviewAsync`):
 
-## Versioning
+1. Load the snapshot.
+2. For each operation in order: run its validators (`IValidator<TOperation>`); a failure refuses with 400 and the error
+   keys prefixed `operations[n]`. Then `Apply` it in memory. An operation that cannot apply calls
+   `context.Reject(path, message)` (400), `context.Conflict(title, detail)` (409) or `context.Blocked(deleteCheck)`
+   (409 with the coded blockers), and the pipeline stops.
+3. Run the `Gate` rules on the result; any violation refuses with 422.
+4. Answer `ReadAsync(after, ids.Present)` as `state`, and the `Publication` and `Commit` rule violations as `violations`.
 
-The drawing shows the classes that move a versioned object through its lifecycle and the extension points feature slices plug into. It matters because every status change, for all five kinds, goes through `VersionWorkflow`, and every content write to a version goes through `RequireDraftFilter` or `RequireEditableFilter` first.
+**Commit** (`CommitAsync`) repeats steps 1 to 3 on the aggregate as stored at commit time, then:
 
-```mermaid
-classDiagram
-    direction TB
-    class VersionStatusController {
-        +ChangeStatus(tenantId, version, input, cancellationToken)
-        +Check(tenantId, version, cancellationToken)
-    }
-    class VersionWorkflow {
-        +TransitionAsync(kind, id, targetStatus, cancellationToken) Task~TransitionResult~
-        +PublishAsync(kind, id, cancellationToken) Task
-        +CheckAsync(kind, id, cancellationToken) Task~IReadOnlyList~RuleViolation~~
-    }
-    class VersionTransitions {
-        <<static>>
-        +IsAllowed(kind, from, to) bool
-        +RunsPublicationRules(from, to) bool
-        +RunsRetirementRules(from, to) bool
-    }
-    class VersionStoreRegistry {
-        +Get(kind) IVersionStore
-        +GetLiving(kind) ILivingVersionStore
-    }
-    class IVersionStore {
-        <<interface>>
-        +string Kind
-        +GetAsync(id, cancellationToken) Task~VersionState~
-        +SetStatusAsync(id, status, publishedAt, cancellationToken) Task
-    }
-    class ILivingVersionStore {
-        <<interface>>
-        +IdentityIdAsync(id, cancellationToken) Task~long~
-        +PublishedSiblingIdsAsync(id, cancellationToken) Task~IReadOnlyList~long~~
-    }
-    class VersionStore~TRecord~ {
-        <<abstract>>
-        Key(id) object
-        ToState(record) VersionState
-        WithStatus(record, status, publishedAt) TRecord
-    }
-    class LivingVersionStore~TRecord~ {
-        <<abstract>>
-        IdentityOf(record) long
-        PublishedOf(identityId) object
-    }
-    class IVersionRule {
-        <<interface>>
-        +string Kind
-        +EvaluateAsync(versionId, cancellationToken) Task~IReadOnlyList~RuleViolation~~
-    }
-    class IPublicationRule {
-        <<interface>>
-    }
-    class IRetirementRule {
-        <<interface>>
-    }
-    class IVersionLifecycleHandler {
-        <<interface>>
-        +string Kind
-        +OnValidatingAsync(versionId, cancellationToken) Task
-        +OnPublishedAsync(versionId, cancellationToken) Task
-    }
-    class PredecessorRetirer {
-        +OnPublishedAsync(versionId, cancellationToken) Task
-    }
-    class SemanticRevision {
-        +AdvanceAsync(cancellationToken) Task
-    }
-    class PublicationSet {
-        +Add(kind, identityId, versionId)
-        +Clear()
-        +CountingAsPublished(kind, versions, identityOf, idOf, statusOf) IReadOnlyList~TVersion~
-    }
-    class TransitionResult {
-        <<record>>
-        +TransitionOutcome Outcome
-        +VersionState State
-        +Violations
-    }
-    class TransitionOutcome {
-        <<enumeration>>
-        Applied
-        NotAllowed
-        Rejected
-    }
-    class VersionState {
-        <<record>>
-        +string Kind
-        +long Id
-        +string Status
-        +DateTime PublishedAt
-    }
-    class RuleViolation {
-        <<record>>
-        +string Rule
-        +string Message
-    }
-    class IdRemap {
-        +Map(sourceId) long
-        +MapOptional(sourceId) long
-        +Contains(sourceId) bool
-    }
-    class VersionNumbers {
-        <<static>>
-        +Next(existing) int
-    }
-    class RequireDraftFilter {
-        +OnActionExecutionAsync(context, next)
-    }
-    class RequireEditableFilter {
-        +OnActionExecutionAsync(context, next)
-    }
-    class ITableGateway~TRecord~ {
-        <<interface>>
-    }
-    class IIdGenerator {
-        <<interface>>
-    }
-    VersionStatusController --> VersionWorkflow
-    VersionWorkflow --> VersionStoreRegistry
-    VersionWorkflow --> IPublicationRule : every registered rule
-    VersionWorkflow --> IRetirementRule : every registered rule
-    VersionWorkflow --> IVersionLifecycleHandler : every registered handler
-    VersionWorkflow --> SemanticRevision
-    VersionWorkflow --> PublicationSet : the version whose rules run
-    VersionWorkflow --> TimeProvider
-    VersionWorkflow ..> VersionTransitions
-    VersionWorkflow ..> TransitionResult : returns
-    TransitionResult --> TransitionOutcome
-    TransitionResult --> VersionState
-    TransitionResult --> RuleViolation
-    VersionStoreRegistry --> IVersionStore : one per kind
-    IVersionStore <|-- ILivingVersionStore
-    IVersionStore <|.. VersionStore
-    ILivingVersionStore <|.. LivingVersionStore
-    VersionStore <|-- LivingVersionStore
-    VersionStore <|-- DatasetVersionStore
-    VersionStore <|-- SemanticReleaseStore
-    LivingVersionStore <|-- DimensionVersionStore
-    LivingVersionStore <|-- MappingVersionStore
-    LivingVersionStore <|-- BridgeVersionStore
-    VersionStore --> ITableGateway : versioned record
-    IVersionRule <|-- IPublicationRule
-    IVersionRule <|-- IRetirementRule
-    IVersionRule ..> RuleViolation : reports
-    IVersionLifecycleHandler <|.. PredecessorRetirer
-    PredecessorRetirer --> VersionStoreRegistry
-    SemanticRevision --> ITableGateway : DatabaseInfoRecord
-    IdRemap --> IIdGenerator
-    RequireDraftFilter --> VersionStoreRegistry
-    RequireEditableFilter --> VersionStoreRegistry
-    RequireEditableFilter --> SemanticRevision
-```
+5. Runs the `Commit` rules; any violation refuses with 422.
+6. Calls `Plan(before, after, plan)` and executes `plan.Ordered()`.
+7. Advances `qe_database_info.semantic_revision` once when `IsEngineVisible(before, after)` is true.
+8. Reloads the aggregate and answers it with stored ids as `state`, plus `idMap` from temporary to real ids.
 
-`VersionWorkflow` takes `VersionStoreRegistry`, every registered `IPublicationRule`, `IRetirementRule` and `IVersionLifecycleHandler`, `SemanticRevision` and `TimeProvider`; it filters rules and handlers by the version's `Kind` and runs them in registration order. While a version's rules run, `PublicationSet` counts a version of a living kind as its identity's published version, so rules that read published content see the content it is about to publish. `CheckAsync` runs the publication rules alone and writes nothing; `VersionStatusController.Check` serves it as the Validate check of a published living version. `PublishAsync` runs both transitions of a new draft, for the report dimension and bridges the report editor creates published. The five stores, one per `version_kind`, derive from `VersionStore<TRecord>`, which reads a row with `GetAsync` and writes its status and publication time with `UpdateAsync`; the three living ones derive from `LivingVersionStore<TRecord>`, which also finds a version's identity and the identity's other published versions, so `PredecessorRetirer` and `ActiveSetPinner` serve every living kind through `VersionStoreRegistry.GetLiving`. `[RequireDraft(kind, routeKey)]` creates a `RequireDraftFilter` per request, which answers 409 unless the version named by the route value is a draft; `[RequireEditable(kind, routeKey)]` creates a `RequireEditableFilter`, which also lets the published version through and advances the revision after a successful write to it. `SemanticRevision` adds one to `qe_database_info.semantic_revision` and stamps `updated_at`. `IdRemap` and `VersionNumbers` serve the version services and cloners rather than the workflow: an `IdRemap`, one per clone, gives each source ID one new ID so references inside a clone point at the copies, and `VersionNumbers.Next` returns the highest existing version number plus one.
+Concurrency is last write wins: there is no revision token, so a commit replays the operations onto whatever is stored, and
+an operation whose target another author deleted fails with the usual 400, 409 or 422.
 
-**Sources:** [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/VersionStatusController.cs), [VersionWorkflow.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionWorkflow.cs), [VersionTransitions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionTransitions.cs), [IVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/IVersionStore.cs), [ILivingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/ILivingVersionStore.cs), [VersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/VersionStore.cs), [LivingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/LivingVersionStore.cs), [VersionStoreRegistry.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionStoreRegistry.cs), [DatasetVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/DatasetVersionStore.cs), [DimensionVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/DimensionVersionStore.cs), [MappingVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/MappingVersionStore.cs), [BridgeVersionStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/BridgeVersionStore.cs), [SemanticReleaseStore.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Stores/SemanticReleaseStore.cs), [PublicationSet.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PublicationSet.cs), [IVersionRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Rules/IVersionRule.cs), [IPublicationRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Rules/IPublicationRule.cs), [IRetirementRule.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Rules/IRetirementRule.cs), [IVersionLifecycleHandler.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IVersionLifecycleHandler.cs), [PredecessorRetirer.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/PredecessorRetirer.cs), [TransitionResult.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/TransitionResult.cs), [TransitionOutcome.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Enums/TransitionOutcome.cs), [VersionState.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionState.cs), [VersionCheck.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/VersionCheck.cs), [RuleViolation.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/Models/RuleViolation.cs), [SemanticRevision.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/SemanticRevision.cs), [IdRemap.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/IdRemap.cs), [VersionNumbers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Versioning/VersionNumbers.cs), [RequireDraftAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/RequireDraftAttribute.cs), [RequireDraftFilter.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/RequireDraftFilter.cs), [RequireEditableAttribute.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/RequireEditableAttribute.cs), [RequireEditableFilter.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/RequireEditableFilter.cs), [AdminApplicationServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Configuration/AdminApplicationServiceCollectionExtensions.cs).
+### Rule stages
 
-## Errors and validation
+`ISnapshotRule<TSnapshot>.Stage` decides when a rule's violations block:
 
-The drawing shows the classes that turn bad input, rule violations and blocked deletes into problem responses, and the shared validation rules and read services every slice reuses. It matters because input checks live in the API and nowhere else: the web SPA shows these responses on its fields rather than validating on its own.
+| Stage | Preview | Commit | Validate, publish, freeze | Used for |
+|---|---|---|---|---|
+| `Gate` | refused with 422 | refused with 422 | blocks | What the engine would read as saved: member and level key uniqueness, parents and levels in the version, hierarchy acyclic, consumers resolve, profile-required keys (dimensions); the report gate; the model gate; manifest pins that must resolve (releases) |
+| `Publication` | reported in `violations` | allowed | blocks | Findings that matter only for leaving draft, freezing or enabling: every dataset rule, band and property rules of dimensions, findings of a disabled report, model findings |
+| `Commit` | reported in `violations` | refused with 422 | blocks | Content that is live as soon as it is saved: every mapping set rule (`MappingRule`) and analytical bridge rule (`BridgeRule`) |
 
-```mermaid
-classDiagram
-    direction TB
-    class ValidationFilter {
-        +OnActionExecutionAsync(context, next)
-    }
-    class IValidator~T~ {
-        <<interface>>
-    }
-    class AbstractValidator~T~ {
-        <<abstract>>
-    }
-    class JsonPropertyPaths {
-        <<static>>
-        +Resolve(type, member, expression) string
-    }
-    class BindingErrorResults {
-        <<static>>
-        +Create(context) IActionResult
-    }
-    class RuleViolationResults {
-        <<static>>
-        +Title
-        +Create(httpContext, detail, violations) ObjectResult
-    }
-    class ProblemDetails
-    class ValidationProblemDetails
-    class RuleViolationProblemDetails {
-        +Violations
-    }
-    class DeleteBlockers {
-        +Add(reason)
-        +AddNamed(label, names)
-        +Detail() string
-    }
-    class DeleteBlockedProblem {
-        <<static>>
-        +Title
-    }
-    class KeyRuleExtensions {
-        <<static>>
-        +MustBeKey(rule, maxLength)
-    }
-    class UtcRuleExtensions {
-        <<static>>
-        +MustBeUtc(rule)
-    }
-    class JsonRuleExtensions {
-        <<static>>
-        +MustBeJson(rule)
-    }
-    class VarcharRuleExtensions {
-        <<static>>
-        +MustFitVarchar(rule, length)
-    }
-    class DecimalRuleExtensions {
-        <<static>>
-        +MustBeDecimalPrecision(rule)
-        +MustBeDecimalScale(rule, precision, precisionName)
-    }
-    class VocabularyRuleExtensions {
-        <<static>>
-        +MustBeIn(rule, vocabulary)
-    }
-    class ExpressionRuleExtensions {
-        <<static>>
-        +MustBeValidExpression(rule)
-        +MustBeModelFormula(rule)
-        +MustBeFilterOver(rule, operandType, reads)
-    }
-    class FilterNodes {
-        <<static>>
-        +Inspect(json) FilterInspection
-    }
-    class ExpressionInspector {
-        <<static>>
-        +Inspect(text) ExpressionInspection
-    }
-    class VocabularyCatalog {
-        <<static>>
-        +All
-        +Find(name) Vocabulary
-    }
-    class LookupService {
-        +ListAsync(kind, parentId, cancellationToken)
-    }
-    class CalculationLookups {
-        +ListAsync(kind, parentId, cancellationToken)
-    }
-    ValidationFilter ..> IValidator : one per bound argument
-    ValidationFilter ..> ValidationProblemDetails : 400
-    BindingErrorResults ..> ValidationProblemDetails : 400
-    ProblemDetails <|-- ValidationProblemDetails
-    ProblemDetails <|-- RuleViolationProblemDetails
-    RuleViolationResults ..> RuleViolationProblemDetails : 422
-    RuleViolationProblemDetails --> RuleViolation
-    IValidator <|.. AbstractValidator
-    AbstractValidator ..> JsonPropertyPaths : property names
-    AbstractValidator <|-- MeasureUpdateInputValidator
-    AbstractValidator <|-- AssumptionCaptureInputValidator
-    MeasureUpdateInputValidator ..> VarcharRuleExtensions
-    MeasureUpdateInputValidator ..> VocabularyRuleExtensions
-    MeasureUpdateInputValidator ..> DecimalRuleExtensions
-    MeasureUpdateInputValidator ..> JsonRuleExtensions
-    MeasureUpdateInputValidator ..> ExpressionRuleExtensions
-    MeasureUpdateInputValidator ..> ExpressionInspector
-    AssumptionCaptureInputValidator ..> KeyRuleExtensions
-    AssumptionCaptureInputValidator ..> VarcharRuleExtensions
-    ExpressionRuleExtensions ..> ExpressionInspector
-    ExpressionRuleExtensions ..> FilterNodes
-    ExpressionInspector ..> ExpressionParser : engine Domain
-    VocabularyRuleExtensions ..> Vocabulary
-    VocabularyCatalog --> Vocabulary : every vocabulary
-    LookupService --> ITableGateway : 18 records
-    LookupService --> CalculationLookups : calculation and report kinds
-    CalculationLookups --> ITableGateway : 9 records
-    DeleteBlockedProblem ..> DeleteBlockers : title for its detail
-```
+Releases register only `ReleaseGateRule` as a snapshot rule; it runs the `Gate`-stage release rules (`IReleaseRule`), and
+`ReleaseChanges` adds the full release rules' report to the preview itself. Rules run in registration order. A rule targets the offending item with its stored id; the pipeline rewrites ids of items
+the change set created to their temporary ids, so findings match the preview's `state`. To run the same rules on stored
+versions, each module also registers one `IPublicationRule` (`DatasetVersionRules`, `DimensionVersionRules`,
+`MappingVersionRules`, `BridgeVersionRules`, `ReleaseVersionRules`) that loads the stored snapshot and runs its rules; the
+version workflow and `LivingVersionFreezer` call it.
 
-`ValidationFilter` resolves the `IValidator<T>` of every bound argument, runs it, and answers 400 with every failure; `AddAdminControllers` sets `JsonPropertyPaths.Resolve` as FluentValidation's property and display name resolver, so failures are keyed `components[0].fieldId`, and `BindingErrorResults` keys binding errors the same way. `RuleViolationResults` builds the 422 for `VersionStatusController`, and through `ReportWriteResults` for the report writes the report rules refuse. A service that refuses a delete fills a `DeleteBlockers` with the rows still referencing the target and returns its `Detail()`; the controller answers 409 with `DeleteBlockedProblem.Title`. The shared rule extensions keep text within the VARCHAR byte length (`MustFitVarchar`), keys to a letter followed by letters, digits or underscores (`MustBeKey`), times in UTC (`MustBeUtc`), JSON parseable (`MustBeJson`), decimals within 38 digits (`MustBeDecimalPrecision`, `MustBeDecimalScale`), values within a vocabulary (`MustBeIn`), dataset expressions parseable by the engine's own parser in expression language 1.0, so with no request parameters, no `POWER` and no `YEARFRAC` (`MustBeValidExpression`), model formulas, calculated measures' formulas and attribution expressions, that read only `[m.KEY]` references and `@name` parameters (`MustBeModelFormula`; whether each parameter is `@periodDays`, `@yearDays` or a declared one read where its type belongs is the model rule `formula_parameters_resolve`, and whether the model's formula language has what they use is `formulas_fit_language`), and filters in the query contract's structured `filterNode` form whose operands are all of one type, such as fields (`MustBeFilterOver`, through `FilterNodes`). The two validators shown are examples; feature-specific extensions such as `MustBeSourceObject` and `MustRouteToTenant` sit beside their slices. `ExpressionInspector` and `VocabularyCatalog` are static; `LookupService` is the scoped service behind the web SPA's pickers: it reads 18 tenant tables and hands the calculation-model and report kinds to `CalculationLookups`, which reads 9 more.
+### The write plan
 
-**Sources:** [ValidationFilter.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/ValidationFilter.cs), [JsonPropertyPaths.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/JsonPropertyPaths.cs), [BindingErrorResults.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/BindingErrorResults.cs), [RuleViolationResults.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/RuleViolationResults.cs), [RuleViolationProblemDetails.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/Models/RuleViolationProblemDetails.cs), [DeleteBlockers.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/DeleteBlockers.cs), [DeleteBlockedProblem.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Errors/DeleteBlockedProblem.cs), [AdminControllersServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminControllersServiceCollectionExtensions.cs), [KeyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Extensions/KeyRuleExtensions.cs), [UtcRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Extensions/UtcRuleExtensions.cs), [JsonRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Extensions/JsonRuleExtensions.cs), [VarcharRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Extensions/VarcharRuleExtensions.cs), [DecimalRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Metadata/Extensions/DecimalRuleExtensions.cs), [VocabularyRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/Extensions/VocabularyRuleExtensions.cs), [ExpressionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/Extensions/ExpressionRuleExtensions.cs), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs), [VocabularyCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Vocabulary/VocabularyCatalog.cs), [LookupService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Lookups/Services/LookupService.cs), [MeasureUpdateInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Measures/Validators/MeasureUpdateInputValidator.cs), [AssumptionCaptureInputValidator.cs](../../src/Quantalytix.QueryEngine.Admin.Application/AssumptionSets/Validators/AssumptionCaptureInputValidator.cs), [SourceObjectRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SourceObjects/Extensions/SourceObjectRuleExtensions.cs), [TenantConnectionRuleExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/SystemTenants/Extensions/TenantConnectionRuleExtensions.cs).
+StarRocks rejects `UPDATE` and `DELETE` inside transactions, so a commit has no transaction. `WritePlan` collects every write
+first and orders them so a commit that stops midway leaves a harmless residue:
+
+1. **Schema statements** (`plan.Schema(statement)`): DDL such as a managed table's new columns or a materialized view's
+   redefinition. DDL cannot be rolled back, and rows that depend on it must not be stored without it. Modules derive DDL
+   from the before and after snapshots, so a replay after a partial commit plans none.
+2. **Child deletes**, deepest first.
+3. **Child updates**, shallowest first.
+4. **Child inserts**, shallowest first.
+5. **The root row's writes** (depth `WritePlan.Root`, 0) last: deletes, updates, then inserts.
+
+Writes at the same depth and kind keep the order they were added. `plan.Sync(gateway, depth, before, after, keyOf)` compares
+one table's stored and changed rows by key and adds a delete per row gone, an update per row changed and one multi-row
+insert of the new rows. Derived rows (the dimension closure) are deleted and re-inserted at the deepest depth when their
+source rows change. `plan.Call(kind, depth, write)` adds a write that is not one gateway call, such as another module's
+public service, and places it where a row write of that kind and depth would run. The report commit uses it for report
+bridges through `ReportBridges` ([Key actions](06-key-actions.md#report-commit-with-report-bridges)).
+
+### Temporary ids
+
+Items created inside a change set carry client ids of the form `tmp:<uuid>`; later operations may reference them.
+`context.Ids.Resolve(id)` turns a stored id (decimal digits) into its `long`, and a temporary id into a real id allocated on
+first use; `context.Ids.NewId()` allocates for an item an input creates without an id. A preview presents created items by
+their temporary ids (`TemporaryIds.Present`), because the real ids it allocated are discarded and the next preview must find
+the items by the same names; the commit presents stored ids (`TemporaryIds.PresentStored`) and returns the `idMap`. For this
+reason every id a preview's read model can carry is a `string` in the Application models. The report, model and release change sets
+allocate no temporary ids, so their read models carry stored ids only.
+
+### Outcomes and refusals
+
+Services return `Outcome<T>` (a value or a `Refusal`) or `Refusal?` for commands without a value. `Refusal` has four kinds:
+`Invalid` (errors by input path), `Conflict` (title and detail), `DeleteBlocked` (the blockers and their sentence) and
+`RulesViolated` (violations). The WebApi maps them with `Problems.From` ([Request pipeline](02-request-pipeline.md#the-problem-shape)).
+Lifecycle commands (create, delete, validate, publish, reopen, retire, freeze, activate, enable, capture) are services on
+stored state and are never staged; the client blocks them while a change set is open.
+
+## Delete checks
+
+`GET <resource>/delete-check` returns a `DeleteCheck` (`allowed`, a one-sentence `message`, and `reasons`) and never writes.
+`DELETE <resource>` runs the same check and answers 409 `delete-blocked` with the same reasons as `violations` when it is not
+allowed. Each module has one pure delete-rules class over its snapshot (`DatasetDeleteRules`, `DimensionDeleteRules`,
+`MappingDeleteRules`, `BridgeDeleteRules`, `ModelDeleteRules`) that both paths share, and deletes inside a change set
+(members, levels, roles) use the same class through `context.Blocked`.
+
+`DeleteBlockers(subject)` collects coded reasons and builds the check: `Add(code, reason)` adds one, and
+`AddNamed(code, label, names)` adds one naming up to ten blocking objects. Codes come from `DeleteBlockerCodes`, which
+mirrors the contract's `DeleteBlockerCode`: state codes (`not_removable`, `system_dimension`, `published_version`,
+`live_version`, `has_published_versions`, `has_children`, `required_by_profile`, `assigned_by_bands`, `named_by_consumers`,
+`owned_by_report`) and usage codes `referenced_by_<usage>` (`member`, `dataset_binding`, `mapping_set`, `bridge`,
+`calculation_dimension`, `report_scenario`, `report_source`, `assumption_set`, `release`, `report`). A historical assumption
+set's pin blocks a delete; the active set's pin goes with the deleted identity (`AssumptionPins.Unpin…`).
+
+## Table gateways and infrastructure
+
+`ITableGateway<TRecord>` is the only way Application touches a table: `ListAsync(filter)`, `GetAsync(key)`, `InsertAsync`,
+`InsertManyAsync` (one statement per 500 rows), `UpdateAsync` and `DeleteAsync(filter)` (a filter is required). Filters are
+anonymous objects of record property values. `StarRocksTableGateway<TRecord>` implements it from `TableCatalog`, which maps
+each record (`Application/Metadata/Models`) to its table, key and JSON columns, and to the control-plane or tenant database.
+Each call opens its own connection and runs one statement; an insert into a primary-key table is an upsert.
+
+Other Infrastructure seams: `IdGenerator` allocates random ids in [1, 2^53); `SourceObjectCatalog` reads
+`information_schema` (objects, columns, statistics, a field's distinct values, briefly cached in `SourceReadCache`);
+`StarRocksManagedTables` runs managed-table DDL and waits for `ALTER TABLE ... ADD COLUMN` jobs; `StarRocksMaterializedViews`
+manages the asynchronous materialized views of JSON path fields; `TenantDatabaseVerifier` probes a candidate connection
+string; `StarRocksConnectionFactory` resolves the request tenant's connection through the control plane once per request.
+
+## Tenant schema check
+
+The API reads and writes tenant metadata schema 2.27.0, which records metadata schema version 18 in `qe_database_info`.
+`TenantConnectionVerification` (run by the create and update validators of `/api/system/tenants` and by
+`POST /api/system/tenants/verify`) refuses a
+connection string whose database names another tenant, has a `metadata_schema_version` other than
+`SupportedSchemaVersion = 18`, or does not have exactly one active assumption set.
+
+## Contract conformance
+
+`ContractConformanceTests` (`api/tests/.../Contract`) loads the bundled contract (`bundled.yaml`) and the generated
+document (`admin-api.json`) from the test output and matches operations by method and path, ignoring parameter names:
+
+- `ContractOperations_AreGeneratedAndConform`: every contract operation exists in the generated document, and
+  `OpenApiShapes.Differences` finds no difference in status codes or body schemas (property names, types, nullability,
+  union members).
+- `GeneratedOperations_AreInTheContract`: every generated operation exists in the contract.
+
+There is no allow-list in either direction, so the API implements exactly the contract. Other tests use
+`Support/InMemoryTableGateway` and `FixedTenantContext` to run services and pipelines without a database; the live tests
+(`QE_ADMIN_LIVE_GATEWAY=true`, `Support/LiveTenant`) run the real registrations against tenant `development`.

@@ -1,166 +1,140 @@
 # High-level architecture
 
-[Diagram index](README.md) · [Request pipeline](02-request-pipeline.md) · [Core classes](03-core-classes.md) · [Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
+[Index](README.md) · [Request pipeline](02-request-pipeline.md) · [Core classes](03-core-classes.md) ·
+[Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
-## Runtime components
-
-The drawing follows a change from the browser through the API's three layers into StarRocks, and shows where the query engine later picks it up. The API writes the `qe_*` tables of a tenant's database directly; the engine loads metadata only through the `vw_qe_*` views, which keep published rows.
-
-```mermaid
-flowchart TB
-    Spa["Web SPA: React and Vite"]
-    subgraph AdminHost [Admin API host]
-        Api["Admin.WebApi: controllers, filters, authentication, authorization"]
-        App["Admin.Application: services, validators, rules, VersionWorkflow"]
-        Infra["Admin.Infrastructure.StarRocks: table gateways, source objects, schema changes, tenant verification"]
-    end
-    subgraph Cluster [StarRocks]
-        Control[("query_control: qe_tenant_directory")]
-        RouteView["vw_qe_tenant_route"]
-        subgraph TenantDatabase [Tenant database]
-            QeTables[("qe_* metadata tables")]
-            SourceTables[("Source tables and views")]
-            Views["vw_qe_* views of published rows"]
-        end
-    end
-    Engine["Query engine"]
-    Spa -->|"JSON over HTTP with a bearer token"| Api
-    Api --> App
-    App -->|"interfaces Application declares"| Infra
-    Infra -->|"tenant routing and the tenant directory"| Control
-    Infra -->|"one statement per gateway call"| QeTables
-    Infra -->|"information_schema reads, ALTER TABLE ADD COLUMN"| SourceTables
-    Control --> RouteView
-    QeTables --> Views
-    Engine -->|"tenant route"| RouteView
-    Engine -->|"metadata"| Views
-    Engine -->|"query statements"| SourceTables
-    Engine -->|"member, mapping, closure, band, bridge and date rows of the versions an assumption set pins"| QeTables
-```
-
-The SPA calls `/api/...` with a bearer token. In development the Vite dev server proxies `/api` and `/development` to the API's `http` profile on `http://localhost:5180`, so the browser calls its own origin. `Admin.WebApi` authenticates and authorizes the request, binds and validates its input, and calls an Application service. Application services reach StarRocks only through interfaces Application declares (`ITableGateway<TRecord>`, `ISourceObjectCatalog`, `ISchemaChangeExecutor`, `ITenantDatabaseVerifier`, `IConnectionStringMasker`, `IIdGenerator`), which `Admin.Infrastructure.StarRocks` implements with Dapper and MySqlConnector. A request that touches a tenant table first reads that tenant's connection string from `query_control.qe_tenant_directory`, then opens the tenant's database. Verifying a tenant connection opens the candidate connection string instead and reads that database's `qe_database_info`. Materializing a `json_path` field is the one change the API makes to a source table: it adds a generated column.
-
-The engine resolves its route through `vw_qe_tenant_route` and loads metadata through the `vw_qe_*` views. It reads dimension, mapping and bridge versions through an assumption set: the active one, which pins every published version, unless a query names a historical one. Reports always run on the active set, and only while they are enabled, with their calculation model as it stands. Its query statements read the dataset's source table and join the `qe_*` member, mapping, closure, range-band, bridge-mapping and date rows by the version IDs of that set. Drafts and validated versions therefore never reach a query; a published version of a living kind is live, so its edits reach the next query; and dataset versions reach one only through the release that `qe_database_info.active_semantic_release_id` points at.
-
-**Sources:** [Program.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Program.cs), [StarRocksConnectionFactory.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Connections/StarRocksConnectionFactory.cs), [StarRocksTableGateway.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/StarRocksTableGateway.cs), [SourceObjectCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/SourceObjects/SourceObjectCatalog.cs), [SchemaChangeExecutor.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/SchemaChanges/SchemaChangeExecutor.cs), [MaterializedColumnService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Datasets/Services/MaterializedColumnService.cs), [TenantDatabaseVerifier.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/TenantVerification/TenantDatabaseVerifier.cs), [vite.config.ts](../../../web/vite.config.ts), [API README](../../README.md); in the query engine checkout: [ControlPlaneQueries.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.ControlPlane.StarRocks/Readers/ControlPlaneQueries.cs), [MetadataQueries.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Metadata.StarRocks/Readers/MetadataQueries.cs), [SemanticTables.cs](../../../../Quantalytix.QueryEngine/src/Quantalytix.QueryEngine.Provider.StarRocks/Compilation/SemanticTables.cs).
-
-## Project dependencies
-
-Arrows in this drawing mean project reference, not runtime call; it shows that Application depends on no infrastructure and borrows only the engine's Domain project. Names omit the common `Quantalytix.QueryEngine.` prefix.
-
-```mermaid
-flowchart TB
-    Tests["Admin.Tests"]
-    Api["Admin.WebApi"]
-    Infra["Admin.Infrastructure.StarRocks"]
-    App["Admin.Application"]
-    Domain["Domain, in the query engine checkout"]
-    Tests --> Api
-    Tests --> Infra
-    Tests --> App
-    Api --> App
-    Api --> Infra
-    Infra --> App
-    App -->|"through the QueryEngineRoot MSBuild property"| Domain
-```
-
-`Directory.Build.props` defaults `QueryEngineRoot` to `../../Quantalytix.QueryEngine` from `api/`; an environment variable of the same name overrides it. Application references `$(QueryEngineRoot)src/Quantalytix.QueryEngine.Domain/Quantalytix.QueryEngine.Domain.csproj` for `ExpressionParser` and `ExpressionTree`, so the API accepts exactly the expressions the engine parses. The test project also copies the seed kit's `ddl_srdb_bi_v2_27.sql` from `SeedKitRoot`, which defaults to `../../database/srdb_ebm` from `api/`, and Application, Infrastructure.StarRocks and Api make their internals visible to it.
-
-| Project | Main packages | Holds |
-| --- | --- | --- |
-| `Admin.WebApi` | FluentValidation.DependencyInjectionExtensions, Microsoft.AspNetCore.Authentication.JwtBearer, Microsoft.AspNetCore.OpenApi, Microsoft.Extensions.ApiDescription.Server, Microsoft.OpenApi | Controllers, authentication, authorization, filters, error results, feature registration; writes `openapi/admin-api.json` at build |
-| `Admin.Application` | FluentValidation, Microsoft.Extensions.DependencyInjection.Abstractions | Feature services, input validators, publication and retirement rules, the version workflow, the 51 records and the interfaces Infrastructure implements |
-| `Admin.Infrastructure.StarRocks` | Dapper, MySqlConnector, Microsoft.Extensions.Options.ConfigurationExtensions, Microsoft.Extensions.DependencyInjection.Abstractions | Table gateways, connections, ID generation, source-object introspection, schema changes, tenant verification |
-| `Admin.Tests` | xunit.v3, Microsoft.AspNetCore.Mvc.Testing, Microsoft.Extensions.TimeProvider.Testing | Tests on Microsoft.Testing.Platform |
-
-**Sources:** [Directory.Build.props](../../Directory.Build.props), [Quantalytix.QueryEngine.Admin.slnx](../../Quantalytix.QueryEngine.Admin.slnx), [Api project](../../src/Quantalytix.QueryEngine.Admin.WebApi/Quantalytix.QueryEngine.Admin.WebApi.csproj), [Application project](../../src/Quantalytix.QueryEngine.Admin.Application/Quantalytix.QueryEngine.Admin.Application.csproj), [Infrastructure.StarRocks project](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.csproj), [Tests project](../../tests/Quantalytix.QueryEngine.Admin.Tests/Quantalytix.QueryEngine.Admin.Tests.csproj), [ExpressionInspector.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Expressions/ExpressionInspector.cs).
-
-## Composition root
-
-The drawing shows the order in which `Program.cs` registers services and then builds the request pipeline. The middleware order matters: errors are turned into problem details outside everything else, and authentication runs before authorization, which runs before any controller.
+## Layers
 
 ```mermaid
 flowchart LR
-    subgraph HostServices [Host services]
-        direction TB
-        S1["1 AddAdminAuthentication"] --> S2["2 AddDevelopmentTokens, Development only"]
-        S2 --> S3["3 AddAdminAuthorization"]
-        S3 --> S4["4 AddAdminTenancy"]
-        S4 --> S5["5 AddAdminControllers"]
-        S5 --> S6["6 AddValidatorsFromAssemblyContaining"]
-        S6 --> S7["7 AddProblemDetails"]
-        S7 --> S8["8 AddAdminOpenApi"]
-        S8 --> S9["9 AddAdminCors"]
-        S9 --> S10["10 AddHealthChecks"]
+    Contract["OpenAPI contract, api/openapi/contract"]
+    subgraph Web2 [web2]
+        Screens --> Port["Module port, lib/module/contract.ts"]
+        Port --> Http["HTTP adapter"]
+        Port --> Mock["Mock adapter"]
     end
-    subgraph LayerServices [Layers and features]
-        direction TB
-        S11["11 AddAdminApplication"] --> S12["12 AddStarRocksInfrastructure"]
-        S12 --> S13["13 AddDatasetsFeature"]
-        S13 --> S14["14 AddDimensionsFeature"]
-        S14 --> S15["15 AddMappingsAndBridgesFeature"]
-        S15 --> S16["16 AddBindingsAndMeasuresFeature"]
-        S16 --> S17["17 AddReleasesAndSystemFeature"]
-        S17 --> S18["18 AddCalculationModelsAndReportsFeature"]
+    subgraph Host [Admin API host]
+        Api["WebApi: controllers, filters, problems"]
+        App["Application: aggregates, rules, commands, workflow"]
+        Infra["Infrastructure.StarRocks: gateways, catalog, DDL"]
     end
-    subgraph Pipeline [Middleware and endpoints]
-        direction TB
-        M1["UseExceptionHandler"] --> M2["UseStatusCodePages"]
-        M2 --> M3["UseCors"]
-        M3 --> M4["UseAuthentication"]
-        M4 --> M5["UseAuthorization"]
-        M5 --> M6["MapOpenApi"]
-        M6 --> M7["MapControllers"]
-        M7 --> M8["MapHealthChecks /health, AllowAnonymous"]
-    end
-    HostServices --> LayerServices
-    LayerServices -->|"builder.Build()"| Pipeline
+    Http -->|"JSON over HTTP, bearer token"| Api
+    Api --> App
+    App -->|"interfaces Application declares"| Infra
+    Infra --> Control[("query_control: qe_tenant_directory")]
+    Infra --> Tenant[("Tenant database: qe_* tables, source tables")]
+    Tenant --> Views["vw_qe_* views"]
+    Engine["Query engine"] --> Views
+    Contract -. "DTOs written to match" .-> Api
+    Contract -. "schema.d.ts generated" .-> Http
+    Contract -. "mirrored by hand" .-> Port
 ```
 
-Every feature service, rule, handler and store is scoped to the request. Rules and lifecycle handlers of one kind run in registration order, so the order of the six feature calls is also the order of a dataset version's rules: Datasets, then Bindings, then Measures. `MapOpenApi` and `MapControllers` endpoints without their own `[Authorize]` fall under the fallback policy; only `/health` and `POST /development/token` (`[AllowAnonymous]`) answer without a token.
+| Layer | Owns | Does not |
+|---|---|---|
+| WebApi | Routing, authentication, tenant access, binding, the 404 existence check, input validators, mapping refusals to problems | Hold business rules |
+| Application | Read models, change-set aggregates and operations, snapshot rules, lifecycle commands, the version workflow, delete checks | Write SQL |
+| Infrastructure.StarRocks | Table gateways, id generation, `information_schema` reads, managed-table and materialized-view DDL, tenant routing and verification | Hold rules |
 
-| Order | Call | Defined in | Registers |
-| --- | --- | --- | --- |
-| 1 | `AddAdminAuthentication` | `AdminAuthentication` | `AdminAuthenticationOptions`; JWT bearer with `MapInboundClaims = false`, role claim `role`, and issuer, audience, lifetime and signing-key validation |
-| 2 | `AddDevelopmentTokens` | `DevelopmentTokenExtensions` | `DevelopmentTokenIssuer`, and a post-configuration of the bearer options that calls `DevelopmentTokenIssuer.Trust` |
-| 3 | `AddAdminAuthorization` | `AdminAuthorization` | `CallerFactory`, `TenantAccessHandler`, the fallback policy (an authenticated user), and the `TenantAccess` and `SystemAdmin` policies |
-| 4 | `AddAdminTenancy` | `AdminTenancyServiceCollectionExtensions` | `ITenantContext` as `RouteTenantContext` and `IRequestRoute` as `RequestRoute` |
-| 5 | `AddAdminControllers` | `AdminControllersServiceCollectionExtensions` | Controllers with the global `ValidationFilter`, JSON-only camelCase formatters, `BindingErrorResults.Create` for binding errors, `JsonPropertyPaths.Resolve` as FluentValidation's name resolver, and `DevelopmentControllerFeatureProvider` outside Development |
-| 6 | `AddValidatorsFromAssemblyContaining` | FluentValidation | Every public validator in the Application assembly; Development startup refuses a registered service it cannot construct, which `StartupTests` checks |
-| 7 | `AddProblemDetails` | ASP.NET Core | The problem details service the exception handler and status code pages write with |
-| 8 | `AddAdminOpenApi` | `AdminOpenApiServiceCollectionExtensions` | The OpenAPI document with `BearerSecuritySchemeTransformer`, `CamelCaseParameterNamesTransformer`, `RequestBodyDescriptionTransformer` and `ScalarValueSchemaTransformer`, which types `JsonElement` values (report row parameter values, band bounds) as number or string, and `UnionMemberSchemaTransformer`, which types each change-set operation as an object requiring `op` |
-| 9 | `AddAdminCors` | `AdminCorsServiceCollectionExtensions` | `AdminCorsOptions` and a default policy for `Cors:AllowedOrigins`, any header and method, no credentials |
-| 10 | `AddHealthChecks` | ASP.NET Core | The health check service behind `/health` |
-| 11 | `AddAdminApplication` | `AdminApplicationServiceCollectionExtensions` | `AccessibleTenantsService`, `LookupService`, `CalculationLookups`, the five `IVersionStore` implementations, `VersionStoreRegistry`, `VersionWorkflow`, a `PredecessorRetirer` per living kind, `SemanticRevision` |
-| 12 | `AddStarRocksInfrastructure` | `StarRocksInfrastructureServiceCollectionExtensions` | Dapper's underscore name matching, `StarRocksOptions`, `IStarRocksConnectionFactory`, `ITableGateway<>` as `StarRocksTableGateway<>`, `IIdGenerator` (singleton), `TimeProvider.System` |
-| 13 to 18 | The six feature calls | `*FeatureServiceCollectionExtensions` | Each slice's services, publication and retirement rules, lifecycle handlers and Infrastructure seams; see [Feature classes](05-feature-classes.md) |
+Application reaches StarRocks only through interfaces it declares: `ITableGateway<TRecord>`, `IIdGenerator`,
+`ISourceObjectCatalog`, `IManagedTables`, `IMaterializedViews`, `ITenantDatabaseVerifier` and `IConnectionStringMasker`.
+A request to a tenant route reads the tenant's connection string from `query_control.qe_tenant_directory` and opens that
+tenant's database. The engine loads metadata through the `vw_qe_*` views, caches it by tenant and
+`qe_database_info.semantic_revision`, and reads dataset versions only through the active release.
 
-**Sources:** [Program.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Program.cs), [AdminAuthentication.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authentication/AdminAuthentication.cs), [DevelopmentTokenExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Development/DevelopmentTokenExtensions.cs), [DevelopmentControllerFeatureProvider.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Development/DevelopmentControllerFeatureProvider.cs), [AdminAuthorization.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Authorization/AdminAuthorization.cs), [AdminTenancyServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminTenancyServiceCollectionExtensions.cs), [AdminControllersServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminControllersServiceCollectionExtensions.cs), [AdminOpenApiServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminOpenApiServiceCollectionExtensions.cs), [AdminCorsServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration/AdminCorsServiceCollectionExtensions.cs), [AdminApplicationServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Configuration/AdminApplicationServiceCollectionExtensions.cs), [StarRocksInfrastructureServiceCollectionExtensions.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Configuration/StarRocksInfrastructureServiceCollectionExtensions.cs), [feature registrations](../../src/Quantalytix.QueryEngine.Admin.WebApi/Configuration), [DevelopmentTokenController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Development/DevelopmentTokenController.cs).
+## Projects
+
+Names omit the common `Quantalytix.QueryEngine.` prefix. Arrows are project references.
+
+```mermaid
+flowchart TB
+    Tests["Admin.Tests"] --> Api["Admin.WebApi"]
+    Tests --> Infra["Admin.Infrastructure.StarRocks"]
+    Tests --> App["Admin.Application"]
+    Api --> App
+    Api --> Infra
+    Infra --> App
+    App -->|"QueryEngineRoot"| Domain["Domain, in the query engine checkout"]
+```
+
+Application references the engine's `Domain` project for `ExpressionParser`, so the API accepts exactly the expressions the
+engine parses. The test project copies the seed kit's `ddl_srdb_bi_v2_27.sql` from `SeedKitRoot` and the two OpenAPI
+documents into its output.
+
+## The contract-first rule
+
+1. The hand-authored contract in [`api/openapi/contract/`](../../openapi/contract/README.md) is the source of truth: a root
+   `admin-api.yaml`, the shared kernel `common.yaml`, and one file per module (`tenant`, `datasets`, `dimensions`,
+   `mappings`, `releases`, `models`, `reports`). `pnpm contract:bundle` composes and bundles them into `bundled.yaml`.
+2. C# request and response types are written by hand to match the contract's schemas by name, property, type and
+   nullability. No server code is generated.
+3. The build generates `api/openapi/admin-api.json` from the C# code, with transformers that apply the API's conventions
+   (string ids, derived 401/403/404 responses, union members; see [Request pipeline](02-request-pipeline.md#openapi-generation)).
+4. `ContractConformanceTests` compares the two documents exactly: every contract operation must be generated and conform,
+   and every generated operation must be in the contract. There is no allow-list.
+5. `web2` generates `src/lib/api/schema.d.ts` from the bundle with `pnpm contract:types`. Only HTTP adapters import it.
+
+## Composition root
+
+`Program.cs` registers the host services, then the layers and features, then builds the pipeline:
+
+| Order | Call | Registers |
+|---|---|---|
+| 1 | `AddAdminAuthentication` | JWT bearer requiring signed, unexpired tokens, with `role` as the role claim and `AdminAuthenticationOptions` (the tenant claim type) |
+| 2 | `AddDevelopmentTokens` (Development only) | `DevelopmentTokenIssuer`, whose key the bearer options trust |
+| 3 | `AddAdminAuthorization` | The fallback policy (an authenticated user), `TenantAccess` and `SystemAdmin` |
+| 4 | `AddAdminTenancy` | `ITenantContext` from the route's `tenantId` |
+| 5 | `AddAdminControllers` | Controllers with `RouteResourceFilter` then `ValidationFilter`, JSON-only formatters, the JSON conventions, `BindingErrorResults` |
+| 6 | `AddValidatorsFromAssemblyContaining` | Every FluentValidation validator in Application |
+| 7 | `AddAdminOpenApi` | The OpenAPI document and its transformers |
+| 8 | `AddAdminCors` | A default policy for `Cors:AllowedOrigins` |
+| 9 | `AddHealthChecks` | `/health` |
+| 10 | `AddAdminApplication` | The version stores, `VersionStoreRegistry`, `PublicationSet`, `VersionWorkflow`, a `PredecessorRetirer` per living kind, `SemanticRevision`, `LivingVersionFreezer` |
+| 11 | `AddStarRocksInfrastructure` | Connections, `ITableGateway<>`, `IIdGenerator`, `TimeProvider` |
+| 12 to 18 | `AddTenantFeature`, `AddDatasetsFeature`, `AddDimensionsFeature`, `AddMappingsAndBridgesFeature`, `AddBindingsAndMeasuresFeature`, `AddReleasesAndSystemFeature`, `AddCalculationModelsAndReportsFeature` | Each module's route resources, services, change-set aggregate, snapshot rules, publication rules, lifecycle handlers and copiers |
+
+The middleware runs `UseExceptionHandler` and `UseStatusCodePages` (both write a `Problem`), then `UseCors`,
+`UseAuthentication`, `UseAuthorization`, and maps OpenAPI, the controllers and `/health`. Services are scoped to the request.
+Snapshot rules and lifecycle handlers run in registration order.
 
 ## Feature map
 
-The table lists each feature area with the routes it serves, the services behind them and the tables they write; prefixes after the first in a row are relative to `api/tenants/{tenantId}`. Routes under `api/tenants/{tenantId}` require the `TenantAccess` policy, and `api/system/tenants` requires `SystemAdmin`.
+Paths after the first in a row are relative to `/api/tenants/{tenantId}`. Tenant routes require `TenantAccess`;
+`/api/system/tenants` requires `SystemAdmin`.
 
-| Feature area | Route prefix | Main services | Main tables |
-| --- | --- | --- | --- |
-| Datasets | `api/tenants/{tenantId}/datasets`, `dataset-versions`, and under `dataset-versions/{versionId:long}`: `fields`, `grains` | `DatasetService`, `DatasetVersionService`, `DatasetVersionCloner`, `DatasetVersionContentStore`, `FieldService`, `FieldsFromColumnsService`, `MaterializedColumnService`, `GrainService` | `qe_dataset`, `qe_dataset_version`, `qe_field`, `qe_dataset_grain`, `qe_dataset_grain_field` |
-| Source objects | `api/tenants/{tenantId}/source-objects` | `SourceObjectService` over `ISourceObjectCatalog`; `ISchemaChangeExecutor` for materialized columns | `information_schema`; source tables (generated columns) |
-| Dimensions | `api/tenants/{tenantId}/dimensions`, `dimensions/{dimensionId:long}/roles`, `dimensions/{dimensionId:long}/versions`, `dimension-versions/{dimensionVersionId:long}` and its `levels`, `members`, `range-bands` | `DimensionService`, `DimensionRoleService`, `DimensionVersionService`, `DimensionLevelService`, `DimensionMemberService`, `RangeBandService` | `qe_dimension`, `qe_dimension_role`, `qe_dimension_version`, `qe_dimension_level`, `qe_dimension_member`, `qe_dimension_closure`, `qe_range_band` |
-| Mappings | `api/tenants/{tenantId}/mapping-sets`, listed by `dimensionId`, `mapping-sets/{mappingSetId:long}/versions`, `mapping-versions/{versionId:long}` and its `entries` | `MappingSetService`, `MappingVersionService`, `MappingEntryService` | `qe_mapping_set`, `qe_mapping_version`, `qe_dimension_mapping` |
-| Bridges | `api/tenants/{tenantId}/bridges`, listed by the `dimensionId` they lead into or start from, `bridges/{bridgeId:long}/versions`, `bridge-versions/{versionId:long}` and its `mappings` | `BridgeService`, `BridgeVersionService`, `BridgeMappingService` | `qe_bridge`, `qe_bridge_version`, `qe_bridge_mapping` |
-| Bindings | `api/tenants/{tenantId}/dataset-versions/{versionId:long}/bindings` | `BindingService` | `qe_dimension_binding`, `qe_time_binding` |
-| Measures | `api/tenants/{tenantId}/dataset-versions/{versionId:long}/measures` | `MeasureService`, `MeasureDependencyDeriver` | `qe_measure`, `qe_measure_component`, `qe_measure_dependency`, `qe_measure_time_policy` |
-| Releases | `api/tenants/{tenantId}/releases`, and under `releases/{semanticReleaseId:long}`: `datasets`, `activate` | `ReleaseService`, `ReleaseActivator` | `qe_semantic_release`, `qe_release_dataset`, `qe_database_info` |
-| Calculation models | `api/tenants/{tenantId}/calculation-models`, and under `calculation-models/{calculationModelId:long}`: `variables`, `calculated-measures`, `attributions`, `parameters` | `CalculationModelService`, `ModelChanges`, one `IModelContent<TItem, TInput>` service per content kind, `MetricAttributionService`, `ModelParameterService` | `qe_calculation_model`, `qe_variable`, `qe_calculated_measure`, `qe_metric_attribution`, `qe_metric_attribution_driver`, `qe_model_parameter` |
-| Reports | `api/tenants/{tenantId}/reports`, and under `reports/{reportId:long}`: `settings`, `status`, `validation`, `profiles`, `calculation-dimensions`, `scenarios`, `variable-scopes`, `columns`, `styles` | `ReportService`, `ReportStatusService`, `ReportChanges` over `ReportRules`, one `IReportContent<TItem, TInput>` service per itemized content kind, `ReportScenarioService`, `ReportVariableScopeService`, `ReportColumnService`, `ReportStyleService` | `qe_report`, `qe_calculation_source_profile`, `qe_calculation_source_profile_variable`, `qe_calculation_dimension`, `qe_report_scenario`, `qe_report_variable_scope`, `qe_report_column`, `qe_report_style`; creating and deleting a report also writes its report dimension |
-| Report editor | under `reports/{reportId:long}`: `editor`, `rows`, `sources`, and under `sources/{sourceId:long}`: `variables`, `items`, `unmapped` | `ReportEditorReader`, `ReportRowService`, `ReportSourceService`, `ReportSourceVariableService`, `SourceItemService`, `SourceCoverageReader` | `qe_dimension_member`, `qe_dimension_closure`, `qe_report_line`, `qe_report_member_option`, `qe_report_row_parameter`, `qe_report_source`, `qe_report_source_variable`, `qe_bridge`, `qe_bridge_version`, `qe_bridge_mapping`, and the active set's pins of a source's bridge |
-| Overview | `api/tenants/{tenantId}/overview` | `OverviewService` | Reads 15 tables, writes none |
-| Assumption sets | `api/tenants/{tenantId}/assumption-sets` | `AssumptionSetService`, `AssumptionPins`, and `ActiveSetPinner` on every living publish | `qe_assumption_set`, `qe_assumption_set_dimension`, `qe_assumption_set_mapping`, `qe_assumption_set_bridge` |
-| System tenants | `api/system/tenants` | `SystemTenantService`, `TenantConnectionVerification` | `query_control.qe_tenant_directory`; reads a candidate database's `qe_database_info` |
-| Version status | `api/tenants/{tenantId}/versions/{kind}/{id:long}/status` and `.../validation` | `VersionWorkflow` | The status and `published_at` of the five versioned tables, the rows lifecycle handlers derive, the active assumption set's pins, and `qe_database_info.semantic_revision` |
-| Lookups | `api/tenants/{tenantId}/lookups/{kind}` | `LookupService`, which hands the calculation and report kinds to `CalculationLookups` | Reads 26 tables, writes none |
-| Vocabularies | `api/vocabularies` | `VocabularyCatalog` (static) | None |
-| Tenants and session | `api/tenants`, `api/me` | `AccessibleTenantsService`, `CallerFactory` | Reads `query_control.qe_tenant_directory` |
-| Development | `development/token`, Development hosts only | `DevelopmentTokenIssuer` | None |
+| Module | Routes | Aggregate root of the change set |
+|---|---|---|
+| Session and tenants | `/api/me`, `/api/tenants`, `/api/vocabularies`, `catalog`, `dimensions/{id}/published-members`, `overview` | none |
+| System tenants | `/api/system/tenants` | none |
+| Source objects | `source-objects`, `source-objects/{kind}/{name}/columns` | none |
+| Datasets | `datasets`, `datasets/{id}/versions`, `dataset-versions/{id}` with `changes`, `check`, `validate`, `publish`, `reopen`, `retire`, `fields/{id}/materialization` | dataset version (with its bindings and measures) |
+| Dimensions | `dimensions`, `dimension-profiles`, `dimension-roles/{id}/delete-check`, `dimension-versions/{id}` with `check`, `freeze`, member and level delete checks | dimension with its live version |
+| Mappings | `mapping-sets`, `mapping-versions/{id}` with `check`, `freeze` | mapping set with its live version |
+| Bridges | `bridges`, `bridge-versions/{id}` with `check`, `freeze` | analytical bridge with its live version |
+| Releases | `releases`, `releases/diff`, `releases/{id}` with `check`, `validate`, `publish`, `reopen`, `retire`, `activate`; `manifest-datasets`, `identities`, `report-reads` | draft release manifest |
+| Assumption sets | `assumption-sets`, `assumption-sets/capture-preview`, `assumption-sets/compare` | none |
+| Calculation models | `calculation-models`, `calculation-models/{id}/formula-check` | calculation model |
+| Reports | `reports`, `reports/{id}/diagnostics`, `reports/{id}/sources/{sourceKey}/unmapped`, `reports/{id}/enabled` | report |
 
-**Sources:** [Datasets controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/Datasets), [SourceObjectsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/SourceObjects/SourceObjectsController.cs), [Dimensions controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/Dimensions), [Mappings controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/Mappings), [Bridges controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/Bridges), [BindingsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Bindings/BindingsController.cs), [MeasuresController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Measures/MeasuresController.cs), [ReleasesController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Releases/ReleasesController.cs), [CalculationModels controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/CalculationModels), [Reports controllers](../../src/Quantalytix.QueryEngine.Admin.WebApi/Reports), [OverviewController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Overview/OverviewController.cs), [AssumptionSetsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/AssumptionSets/AssumptionSetsController.cs), [SystemTenantsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/SystemTenants/SystemTenantsController.cs), [VersionStatusController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Versioning/VersionStatusController.cs), [LookupsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Lookups/LookupsController.cs), [LookupService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Lookups/Services/LookupService.cs), [CalculationLookups.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Lookups/CalculationLookups.cs), [VocabulariesController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Vocabulary/VocabulariesController.cs), [TenantsController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Tenancy/TenantsController.cs), [SessionController.cs](../../src/Quantalytix.QueryEngine.Admin.WebApi/Session/SessionController.cs), [OverviewService.cs](../../src/Quantalytix.QueryEngine.Admin.Application/Overview/Services/OverviewService.cs), [TableCatalog.cs](../../src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks/Tables/TableCatalog.cs).
+Every aggregate has `POST .../changes/preview` and `POST .../changes`. Datasets, dataset versions, dimensions, dimension
+versions, mapping sets, mapping versions, bridges, bridge versions and calculation models have `GET .../delete-check` next
+to their `DELETE`, and roles, members and levels have a delete check for the delete operation of their change set.
+[Feature classes](05-feature-classes.md) describes each module.
+
+## How web2 consumes the API
+
+`web2` keeps screens behind one port per module ([blueprint 02](../../../docs/blueprint/02-frontend-contract-layer.md)):
+
+- `web2/src/lib/<module>/contract.ts` declares the module's read models, inputs, operations and port interface, mirroring
+  the contract's schemas by name. Screens depend only on the port and on the shared kernel `lib/api/contract.ts`.
+- `lib/<module>/http/adapter.ts` implements the port over `HttpClient` (`lib/api/http.ts`), which resolves every call to an
+  `ApiResult` and parses error bodies as `Problem`. It is the only code that imports `lib/api/schema.d.ts`.
+- `lib/<module>/mock/adapter.ts` implements the same port in memory.
+- `lib/<module>/client.tsx` picks the adapter with `apiMode` (`mock` or `http`, from `VITE_API_MODE`) in
+  `lib/api/session.ts`, which also mints a development token.
+- Edits are staged with `createHttpChangeSet` (`lib/api/changes.ts`): each edit appends an operation and posts all
+  operations so far to `<aggregate>/changes/preview`; reads answer from the last preview's `state`; Save posts the same
+  operations to `<aggregate>/changes`; discard is local. A refused edit is dropped and the `operations[n].` prefix is
+  stripped from the problem's error keys.
+- Each module has a parity suite, `lib/<module>/<module>-api.parity.test.ts`, that runs the same port-level tests on the
+  mock adapter and, with `QE_LIVE_API=1`, on the HTTP adapter against a running API (`lib/api/live-http.ts`).
