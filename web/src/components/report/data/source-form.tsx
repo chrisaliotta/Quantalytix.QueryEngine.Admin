@@ -4,16 +4,11 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SOURCE_DIMENSION_ROLES } from '@/lib/report/dimensions'
 import { uid, useEditor } from '@/lib/report/store'
 import type { Dataset, Source, SourceMethod } from '@/lib/report/types'
 import { SearchCombobox } from '../shared/search-combobox'
 import { Segmented } from '../shared/segmented'
-
-const DIMENSION_ROLES = [
-  { value: 'account', label: 'Account', hint: 'account' },
-  { value: 'product', label: 'Product', hint: 'product' },
-  { value: 'costCenter', label: 'Cost center', hint: 'costCenter' },
-]
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]*$/
 
@@ -112,7 +107,7 @@ function SourceFields({ idPrefix, values, errors, datasets, onChange, onKeyBlur 
       {values.method === 'mapped' ? (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={id('dimension')}>Dimension role</Label>
-          <SearchCombobox id={id('dimension')} value={values.dimension} onChange={(v) => onChange('dimension', v)} options={DIMENSION_ROLES} />
+          <SearchCombobox id={id('dimension')} value={values.dimension} onChange={(v) => onChange('dimension', v)} options={SOURCE_DIMENSION_ROLES} />
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">

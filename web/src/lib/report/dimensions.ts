@@ -140,6 +140,16 @@ export const ROLES: RoleInfo[] = [
 
 export const SCENARIO_ROLES = ROLES.filter((r) => r.scenario)
 
+/** Roles a bridge source can read its items from. */
+export const SOURCE_DIMENSION_ROLES = [
+  { value: 'account', label: 'Account', hint: 'account' },
+  { value: 'product', label: 'Product', hint: 'product' },
+  { value: 'costCenter', label: 'Cost center', hint: 'costCenter' },
+]
+
+/** The published dimension of each role, by role key; filled from the tenant in http mode (http-catalog.ts), empty in mock mode. */
+export const PUBLISHED_DIMENSIONS = new Map<string, Dimension>()
+
 export function roleInfo(role: string) {
   return ROLES.find((r) => r.role === role)
 }
@@ -151,6 +161,8 @@ export function roleDefaults(role: string) {
 }
 
 export function dimensionForRole(state: ReportState, role: string): Dimension | undefined {
+  const published = PUBLISHED_DIMENSIONS.get(role)
+  if (published) return published
   const key = ROLES.find((r) => r.role === role)?.dimension
   if (key === 'branch') return BRANCH
   if (key === 'officer') return OFFICER

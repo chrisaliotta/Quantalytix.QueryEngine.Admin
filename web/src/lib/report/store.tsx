@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMatch } from 'react-router'
+import { toast } from 'sonner'
 import { useHistory } from '@/components/shell/history'
-import { sampleReports } from './mockData'
+import { reportPersistence } from './persistence'
 import type { Mapping, ReportState } from './types'
 
 export type Tab = 'rows' | 'data' | 'columns' | 'styles'
@@ -70,7 +71,8 @@ interface EditorContextValue {
   saved: ReportState
   savedAt: Date | null
   dirty: boolean
-  save: () => void
+  /** Stores the report; resolves with the refusal messages when the store refuses it. */
+  save: () => Promise<string[] | null>
   discard: () => void
   ui: UiState
   /** Applies a draft edit and records it for undo/redo; `label` names the step in undo toasts. */
@@ -118,13 +120,11 @@ function uiForReport(report: ReportState): Partial<UiState> {
   }
 }
 
-const initialReport = sampleReports[0]
-
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = useState<ReportEntry[]>(() =>
-    sampleReports.map((r, i) => ({ id: `report_${i + 1}`, report: r, saved: r, savedAt: null })),
-  )
-  const [activeId, setActiveId] = useState('report_1')
+  const [persistence] = useState(reportPersistence)
+  const initialReport = persistence.reports[0].report
+  const [entries, setEntries] = useState<ReportEntry[]>(() => persistence.reports.map(({ id, report }) => ({ id, report, saved: report, savedAt: null })))
+  const [activeId, setActiveId] = useState(persistence.reports[0].id)
   const active = entries.find((e) => e.id === activeId) ?? entries[0]
   const { report, saved, savedAt } = active
   const dirty = useMemo(() => isDirty(active), [active])
@@ -164,7 +164,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     tab: 'rows',
     view: 'editor',
     settingsSection: 'defaults',
-    selectedRowKey: 'LOANS',
+    selectedRowKey: persistence.initialRowKey,
     rowPanelTab: 'mapping',
     collapsed: [],
     activeProfile: initialReport.settings.defaultProfile,
@@ -184,10 +184,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setUiState((prev) => ({ ...prev, ...uiForReport(routedEntry.report) }))
   }
 
-  const save = useCallback(() => {
-    updateActive((e) => ({ ...e, saved: e.report, savedAt: new Date() }))
-    history.forget(`report:${activeId}`)
-  }, [updateActive, history, activeId])
+  const save = useCallback(async () => {
+    const id = activeId
+    const entry = entriesRef.current.find((e) => e.id === id)!
+    const refusal = await persistence.save(id, entry.saved, entry.report)
+    if (refusal) return refusal
+    updateEntry(id, (e) => ({ ...e, saved: entry.report, savedAt: new Date() }))
+    if (entriesRef.current.find((e) => e.id === id)!.report === entry.report) history.forget(`report:${id}`)
+    return null
+  }, [persistence, updateEntry, history, activeId])
   const discard = useCallback(() => {
     updateActive((e) => ({ ...e, report: e.saved }))
     history.forget(`report:${activeId}`)
@@ -227,9 +232,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       patch(copy)
       const id = uid('report')
       commitEntries([...entriesRef.current, { id, report: copy, saved: copy, savedAt: new Date() }])
+      void persistence.copy(id, fromId, copy).then((result) => {
+        if (result.ok) return updateEntry(id, (e) => ({ ...e, report: result.value, saved: result.value }))
+        commitEntries(entriesRef.current.filter((e) => e.id !== id))
+        toast.error(`${copy.settings.name} was not created`, { description: result.messages.join(' ') })
+      })
       return id
     },
-    [entries, commitEntries],
+    [entries, commitEntries, persistence, updateEntry],
   )
 
   const createReport = useCallback(
@@ -259,11 +269,17 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const deleteReport = useCallback(
     (id: string) => {
       if (entries.length <= 1) return
+      const removed = entries.find((e) => e.id === id)!
       const rest = entries.filter((e) => e.id !== id)
       commitEntries(rest)
       history.forget(`report:${id}`)
+      void persistence.remove(id).then((refusal) => {
+        if (!refusal) return
+        commitEntries([...entriesRef.current, removed])
+        toast.error(`${removed.report.settings.name} was not deleted`, { description: refusal.join(' ') })
+      })
     },
-    [entries, commitEntries, history],
+    [entries, commitEntries, history, persistence],
   )
 
   const openDialog = useCallback((dialog: DialogState) => setUi({ dialog }), [setUi])

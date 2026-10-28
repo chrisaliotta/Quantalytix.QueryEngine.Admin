@@ -2,13 +2,14 @@ import { SplitIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppNav } from '@/lib/navigation'
 import { useReportBridge } from '@/lib/mappings/client'
+import { reportPersistence } from '@/lib/report/persistence'
 import { useEditor } from '@/lib/report/store'
 
 /** The report bridge a mapped source writes its row mappings to, with a jump to view it under its dimension. */
 export function ReportBridgeLine({ sourceKey }: { sourceKey: string }) {
-  const { report } = useEditor()
+  const { report, activeId } = useEditor()
   const nav = useAppNav()
-  const { data: bridge } = useReportBridge(report.settings.key, sourceKey)
+  const { data: bridge } = useReportBridge(reportPersistence().bridgeOwnerId(activeId, report), sourceKey)
   if (!bridge) return null
   const live = bridge.versions.find((v) => v.status === 'published')
   const draft = bridge.versions.find((v) => v.status === 'draft' || v.status === 'validated')

@@ -137,7 +137,7 @@ export function ReportHeader() {
   const handleSave = () => void commit()
   const onSaveShortcut = useEffectEvent(handleSave)
 
-  function commit() {
+  async function commit() {
     if (!dirty) return true
     if (report.enabled && !publish.canEnable) {
       toast.error("Can't save an enabled report with failing checks", {
@@ -148,7 +148,11 @@ export function ReportHeader() {
       return false
     }
     const enabledChanged = report.enabled !== saved.enabled
-    save()
+    const refusal = await save()
+    if (refusal) {
+      toast.error("Couldn't save the report", { description: refusal.join(' ') })
+      return false
+    }
     toast.success('Changes saved', {
       description: enabledChanged
         ? report.enabled
