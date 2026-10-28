@@ -44,7 +44,7 @@ public sealed class UnknownMembersInVersionRule(PublishedDimensionReader dimensi
             {
                 Code = Code,
                 Message = message,
-                Target = new ViolationTarget { Area = DatasetTabs.Bindings, ItemId = binding.DimensionBindingId, ItemKey = name }
+                Target = new ViolationTarget { Area = DatasetTabs.Bindings, ItemId = TemporaryIds.PresentStored(binding.DimensionBindingId), ItemKey = name }
             });
         }
 

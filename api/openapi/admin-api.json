@@ -408,7 +408,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -1177,7 +1177,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -1367,7 +1367,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -1568,7 +1568,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -1745,7 +1745,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -1905,7 +1905,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -2098,7 +2098,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -2255,7 +2255,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -2447,7 +2447,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -2607,7 +2607,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -2800,7 +2800,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3085,7 +3085,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3265,7 +3265,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3413,7 +3413,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3605,7 +3605,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3787,7 +3787,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -3944,7 +3944,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -4136,7 +4136,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -4337,7 +4337,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -4521,7 +4521,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -4722,7 +4722,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -4923,7 +4923,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5102,7 +5102,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5262,7 +5262,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5463,7 +5463,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5640,7 +5640,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5800,7 +5800,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -5993,7 +5993,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -6153,7 +6153,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -6343,7 +6343,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -6544,7 +6544,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -6731,7 +6731,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7016,7 +7016,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7174,7 +7174,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7334,7 +7334,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7527,7 +7527,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7694,7 +7694,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -7906,7 +7906,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -8099,7 +8099,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -8289,7 +8289,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -8490,7 +8490,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -8667,7 +8667,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -8971,7 +8971,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9151,7 +9151,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9309,7 +9309,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9469,7 +9469,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9649,7 +9649,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9806,7 +9806,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -9964,7 +9964,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -10428,7 +10428,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -10576,7 +10576,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -10713,7 +10713,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -10895,7 +10895,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11077,7 +11077,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11214,7 +11214,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11351,7 +11351,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11499,7 +11499,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11646,7 +11646,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11828,7 +11828,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -11965,7 +11965,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -12111,7 +12111,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -12257,7 +12257,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -12552,7 +12552,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -12720,7 +12720,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -12877,7 +12877,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13069,7 +13069,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13226,7 +13226,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13394,7 +13394,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13551,7 +13551,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13753,7 +13753,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -13955,7 +13955,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -14122,7 +14122,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -14309,7 +14309,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -14496,7 +14496,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -14673,7 +14673,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -14860,7 +14860,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15046,7 +15046,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15230,7 +15230,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15416,7 +15416,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15661,7 +15661,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15809,7 +15809,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -15946,7 +15946,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -16108,7 +16108,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -16280,7 +16280,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -16452,7 +16452,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -16612,7 +16612,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -16805,7 +16805,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17109,7 +17109,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17299,7 +17299,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17457,7 +17457,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17617,7 +17617,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17807,7 +17807,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -17964,7 +17964,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -18154,7 +18154,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -18312,7 +18312,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -18597,7 +18597,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -18777,7 +18777,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -18935,7 +18935,7 @@
                               },
                               "itemId": {
                                 "type": "string",
-                                "description": "The offending item; omitted when the violation names no single item."
+                                "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
                               },
                               "itemKey": {
                                 "type": "string",
@@ -27155,7 +27155,7 @@
           },
           "itemId": {
             "type": "string",
-            "description": "The offending item; omitted when the violation names no single item."
+            "description": "The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;\nomitted when the violation names no single item."
           },
           "itemKey": {
             "type": "string",

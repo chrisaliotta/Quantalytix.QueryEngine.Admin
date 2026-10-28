@@ -8,9 +8,12 @@ public sealed record ViolationTarget
     /// <summary>A module-specific area, such as a dataset tab, a dimension tab, a release manifest row or a report section.</summary>
     public required string Area { get; init; }
 
-    /// <summary>The offending item; omitted when the violation names no single item.</summary>
+    /// <summary>
+    /// The offending item, as a stored id's digits or, in a change-set preview, the temporary id of an item the change set created;
+    /// omitted when the violation names no single item.
+    /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public long? ItemId { get; init; }
+    public string? ItemId { get; init; }
 
     /// <summary>The offending item's key; omitted when the violation names none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -101,7 +101,10 @@ public sealed class ChangeSetPipelineTests
         Assert.Equal("CA", _members.All.Single(row => row.DimensionMemberId == 1).MemberKey);
     }
 
-    /// <summary>A result that breaks a gate refuses with 422, in commit and in preview alike; nothing is written.</summary>
+    /// <summary>
+    /// A result that breaks a gate refuses with 422, in commit and in preview alike; nothing is written. The violation names the member
+    /// the change set created by its temporary id, the only id the client knows it by.
+    /// </summary>
     /// <returns>A task that completes when the commit and preview are checked.</returns>
     [Fact]
     public async Task GateViolation_RefusesWithRulesViolated()
@@ -113,6 +116,8 @@ public sealed class ChangeSetPipelineTests
 
         Assert.Equal([KeysUniqueGate.Code], commit.Refusal!.Violations.Select(violation => violation.Code));
         Assert.Equal(RefusalKind.RulesViolated, preview.Refusal!.Kind);
+        Assert.Equal("tmp:a", Assert.Single(commit.Refusal.Violations).Target!.ItemId);
+        Assert.Equal("tmp:a", Assert.Single(preview.Refusal.Violations).Target!.ItemId);
         Assert.Equal(2, _members.All.Count);
     }
 
@@ -196,7 +201,7 @@ public sealed class ChangeSetPipelineTests
         /// <summary>A gate.</summary>
         public RuleStage Stage => RuleStage.Gate;
 
-        /// <summary>One violation per repeated key.</summary>
+        /// <summary>One violation per repeated key, on its last member.</summary>
         /// <param name="snapshot">The member list.</param>
         /// <param name="cancellationToken">Unused.</param>
         /// <returns>The violations.</returns>
@@ -205,7 +210,12 @@ public sealed class ChangeSetPipelineTests
             IReadOnlyList<RuleViolation> violations =
             [
                 .. snapshot.Members.GroupBy(member => member.MemberKey).Where(group => group.Count() > 1)
-                    .Select(group => new RuleViolation { Code = Code, Message = $"Key '{group.Key}' is used twice." })
+                    .Select(group => new RuleViolation
+                    {
+                        Code = Code,
+                        Message = $"Key '{group.Key}' is used twice.",
+                        Target = new ViolationTarget { Area = "members", ItemId = TemporaryIds.PresentStored(group.Last().DimensionMemberId) }
+                    })
             ];
             return Task.FromResult(violations);
         }

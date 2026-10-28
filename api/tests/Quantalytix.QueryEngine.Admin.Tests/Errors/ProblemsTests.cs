@@ -70,7 +70,7 @@ public sealed class ProblemsTests
     [Fact]
     public void ViolationTarget_WritesItsIdAsAString()
     {
-        var violation = new RuleViolation { Code = "c", Message = "m", Target = new ViolationTarget { Area = "members", ItemId = 42 } };
+        var violation = new RuleViolation { Code = "c", Message = "m", Target = new ViolationTarget { Area = "members", ItemId = "42" } };
 
         var json = JsonSerializer.SerializeToNode(violation, Options)!.AsObject();
 

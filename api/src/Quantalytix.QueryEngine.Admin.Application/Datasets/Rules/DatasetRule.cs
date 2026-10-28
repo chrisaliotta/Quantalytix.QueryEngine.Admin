@@ -38,6 +38,6 @@ public abstract class DatasetRule : ISnapshotRule<DatasetSnapshot>
     /// <returns>The violation.</returns>
     protected RuleViolation Violation(string area, string message, long? itemId = null, string? itemKey = null)
     {
-        return new RuleViolation { Code = Code, Message = message, Target = new ViolationTarget { Area = area, ItemId = itemId, ItemKey = itemKey } };
+        return new RuleViolation { Code = Code, Message = message, Target = new ViolationTarget { Area = area, ItemId = itemId is { } id ? TemporaryIds.PresentStored(id) : null, ItemKey = itemKey } };
     }
 }

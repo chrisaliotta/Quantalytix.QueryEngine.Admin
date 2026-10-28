@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentValidation;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -9,7 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 /// load the aggregate as stored, then for each operation in order validate its input and apply it in memory, then run the gates
 /// on the result. A preview stops there and reports the publication findings. A commit plans the row writes, makes them in
 /// <see cref="WritePlan"/> order, advances the semantic revision once when the engine reads the change, and answers the
-/// aggregate as stored with the real ids of the temporary ones. Any refusal writes nothing.
+/// aggregate as stored with the real ids of the temporary ones. Any refusal writes nothing. Findings name the items the change set
+/// created by their temporary ids, like the preview's state.
 /// </summary>
 /// <typeparam name="TSnapshot">The aggregate's in-memory content.</typeparam>
 /// <typeparam name="TOperation">The aggregate's operation union.</typeparam>
@@ -43,7 +45,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         return Outcome<ChangeSetPreview<TState>>.Success(new ChangeSetPreview<TState>
         {
             State = await aggregate.ReadAsync(applied.After, applied.Ids.Present, cancellationToken),
-            Violations = await EvaluateAsync(RuleStage.Publication, applied.After, cancellationToken)
+            Violations = await EvaluateAsync(RuleStage.Publication, applied.After, applied.Ids, cancellationToken)
         });
     }
 
@@ -86,7 +88,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
             if (context.Raised() is { } refused) return new Applied(before, after, temporaryIds, refused);
         }
 
-        var gates = await EvaluateAsync(RuleStage.Gate, after, cancellationToken);
+        var gates = await EvaluateAsync(RuleStage.Gate, after, temporaryIds, cancellationToken);
         var refusal = gates.Count > 0 ? Refusal.RulesViolated("The change would break rules; nothing was written.", gates) : null;
         return new Applied(before, after, temporaryIds, refusal);
     }
@@ -110,12 +112,19 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         return Refusal.Invalid(errors.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray(), StringComparer.Ordinal));
     }
 
-    /// <summary>The violations of every rule of a stage, in registration order.</summary>
-    private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(RuleStage stage, TSnapshot snapshot, CancellationToken cancellationToken)
+    /// <summary>The violations of every rule of a stage, in registration order, each target item presented as the client names it.</summary>
+    private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(RuleStage stage, TSnapshot snapshot, TemporaryIds temporaryIds, CancellationToken cancellationToken)
     {
         var violations = new List<RuleViolation>();
         foreach (var rule in rules.Where(rule => rule.Stage == stage)) violations.AddRange(await rule.EvaluateAsync(snapshot, cancellationToken));
-        return violations;
+        return [.. violations.Select(violation => Presented(violation, temporaryIds))];
+    }
+
+    /// <summary>A violation whose target item, which a rule names by its digits, is written by the temporary id it was allocated for.</summary>
+    private static RuleViolation Presented(RuleViolation violation, TemporaryIds temporaryIds)
+    {
+        if (violation.Target is not { ItemId: { } itemId } target) return violation;
+        return violation with { Target = target with { ItemId = temporaryIds.Present(long.Parse(itemId, NumberStyles.None, CultureInfo.InvariantCulture)) } };
     }
 
     /// <summary>The aggregate before and after the operations, the change set's ids, and the refusal that stopped it, if any.</summary>
