@@ -29,17 +29,17 @@ public sealed class ReportRowParametersResolveRule : IReportRule
         foreach (var value in values)
         {
             if (!rowKeys.Contains(value.RowKey))
-                yield return Violation($"{subject} sets '{value.ParameterKey}' on '{value.RowKey}', which is no row of the report.");
+                yield return Violation($"{subject} sets '{value.ParameterKey}' on '{value.RowKey}', which is no row of the report.", value.RowKey);
             if (!parameters.TryGetValue(value.ParameterKey, out var parameter))
-                yield return Violation($"{subject} row '{value.RowKey}' sets '{value.ParameterKey}', which is no parameter of the report's model.");
+                yield return Violation($"{subject} row '{value.RowKey}' sets '{value.ParameterKey}', which is no parameter of the report's model.", value.RowKey);
             else if (ParameterValues.Problem(parameter, value.NumberValue, value.TextValue) is { } problem)
-                yield return Violation($"{subject} row '{value.RowKey}' sets parameter '{value.ParameterKey}', which {problem}.");
+                yield return Violation($"{subject} row '{value.RowKey}' sets parameter '{value.ParameterKey}', which {problem}.", value.RowKey);
         }
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, string rowKey)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Rows, rowKey) };
     }
 }

@@ -51,6 +51,9 @@ public sealed record ReportGraph
     /// <summary>The rules of the report's bridge sources: the entries of their bridges.</summary>
     public required IReadOnlyList<ReportSourceItem> SourceItems { get; init; }
 
+    /// <summary>The items the report's bridge sources leave out on purpose.</summary>
+    public required IReadOnlyList<ReportSourceLeftOutRecord> LeftOut { get; init; }
+
     /// <summary>The report's calculation dimensions, enabled or not.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
 

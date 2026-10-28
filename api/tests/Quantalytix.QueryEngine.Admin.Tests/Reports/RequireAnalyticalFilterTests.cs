@@ -8,22 +8,21 @@ using Microsoft.Extensions.DependencyInjection;
 using Quantalytix.QueryEngine.Admin.WebApi.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.ReportEditor;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 using Xunit;
-using static Quantalytix.QueryEngine.Admin.Tests.ReportEditor.ReportEditorFixture;
+using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportFixture;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms that generic dimension and bridge writes refuse what a report owns: its report dimension and the bridges of its sources,
-/// and their versions. Only the report editor keeps them consistent with the report's rows and sources, so a generic write answers
+/// and their versions. Only the report change set keeps them consistent with the report's rows and sources, so a generic write answers
 /// 409 naming the report and does not run. Analytical dimensions and bridges, and versions of kinds no report owns, pass.
 /// </summary>
 public sealed class RequireAnalyticalFilterTests
 {
     /// <summary>The report's tables, whose account dimension is analytical.</summary>
-    private readonly ReportEditorFixture _fixture = new();
+    private readonly ReportFixture _fixture = new();
 
     /// <summary>Writes to report-owned objects are refused, naming the report; writes to analytical ones run.</summary>
     /// <param name="target">What the route names.</param>
@@ -60,7 +59,7 @@ public sealed class RequireAnalyticalFilterTests
         if (kind is not null) routeData.Values["kind"] = kind;
         var action = new ActionContext(new DefaultHttpContext { RequestServices = services }, routeData, new ActionDescriptor());
         var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), new object());
-        var ownership = new ReportOwnership(_fixture.Dimensions, _fixture.DimensionVersions, _fixture.Bridges, _fixture.BridgeVersions, _fixture.Reports);
+        var ownership = _fixture.Ownership();
         var filter = new RequireAnalyticalFilter(target, "id", ownership);
         var ran = false;
         await filter.OnActionExecutionAsync(context, () =>

@@ -33,6 +33,6 @@ public sealed class ReportDefaultsResolveRule : IReportRule
     /// <summary>A violation of this rule.</summary>
     private static RuleViolation Violation(string message)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Settings) };
     }
 }

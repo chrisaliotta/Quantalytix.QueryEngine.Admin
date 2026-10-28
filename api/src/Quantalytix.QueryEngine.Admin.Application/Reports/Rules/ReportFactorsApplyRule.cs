@@ -34,7 +34,8 @@ public sealed class ReportFactorsApplyRule : IReportRule
                 {
                     Code = Code,
                     Message = $"Report '{report.ReportKey}' source '{source.SourceKey}' adds items into rows with factors other than 1, but variable " +
-                        $"'{variable.VariableKey}' reads '{variable.MeasureKey}' of '{dataset.DatasetKey}', which ignores bridge factors."
+                        $"'{variable.VariableKey}' reads '{variable.MeasureKey}' of '{dataset.DatasetKey}', which ignores bridge factors.",
+                    Target = ReportAreas.Target(ReportAreas.Sources, source.SourceKey)
                 };
         }
     }

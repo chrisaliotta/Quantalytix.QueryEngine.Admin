@@ -34,16 +34,16 @@ public sealed class ProfilesCompleteRule : IReportRule
             foreach (var variable in read)
             {
                 if (!picked.TryGetValue((profile.CalculationSourceProfileId, variable), out var sourceId))
-                    yield return Violation($"{subject} picks no source for variable '{variable}'.");
+                    yield return Violation($"{subject} picks no source for variable '{variable}'.", profile.ProfileKey);
                 else if (!supplied.Contains((sourceId, variable)))
-                    yield return Violation($"{subject} picks a source that does not supply variable '{variable}'.");
+                    yield return Violation($"{subject} picks a source that does not supply variable '{variable}'.", profile.ProfileKey);
             }
         }
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, string profileKey)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Profiles, profileKey) };
     }
 }

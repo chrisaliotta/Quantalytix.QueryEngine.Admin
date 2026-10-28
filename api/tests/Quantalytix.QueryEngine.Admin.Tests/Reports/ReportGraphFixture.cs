@@ -104,6 +104,9 @@ internal sealed class ReportGraphFixture
     /// <summary>The GL source.</summary>
     public InMemoryTableGateway<ReportSourceRecord> Sources { get; } = new(Source(GlSourceId, "gl", GlDatasetId));
 
+    /// <summary>No left-out items.</summary>
+    public InMemoryTableGateway<ReportSourceLeftOutRecord> LeftOut { get; } = new();
+
     /// <summary>The GL source's supply of the balance variable.</summary>
     public InMemoryTableGateway<ReportSourceVariableRecord> SourceVariables { get; } = new(SourceVariable(GlSourceId, "balance"));
 
@@ -196,7 +199,7 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables,
+            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables, LeftOut,
             BridgeMappings, Dimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
     }
 
@@ -263,8 +266,12 @@ internal sealed class ReportGraphFixture
     /// <param name="rule">The rule.</param>
     /// <param name="semanticReleaseId">The release being validated.</param>
     /// <returns>The rule's violations.</returns>
-    public Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long semanticReleaseId)
+    public async Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long semanticReleaseId)
     {
-        return new ReportConsumerRule(rule, Reader()).EvaluateAsync(semanticReleaseId, Xunit.TestContext.Current.CancellationToken);
+        var cancellationToken = Xunit.TestContext.Current.CancellationToken;
+        var reader = Reader();
+        var reports = await reader.EnabledAsync(cancellationToken);
+        var scope = await reader.ScopeAsync(reports, semanticReleaseId, cancellationToken);
+        return [.. reports.SelectMany(report => rule.Evaluate(report, scope))];
     }
 }
