@@ -1,137 +1,266 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
-using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Releases;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Application.Tenancy;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Releases;
 
 /// <summary>
-/// Creates semantic releases, edits their manifests of pinned dataset versions, and activates them. Validating and
-/// publishing a release go through the version status endpoint with kind <c>semantic_release</c>.
+/// Semantic releases (blueprint 14): the list, a release, the diff of two releases, the manifest change set, the rule check, the
+/// strict lifecycle (validate, publish, reopen, retire), activation and deleting a draft.
 /// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/releases")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-public sealed class ReleasesController(ReleaseService releases, ReleaseActivator activator) : ControllerBase
+public sealed class ReleasesController(ReleaseQueries queries, ReleaseCommands commands, ReleaseChanges changes, CallerFactory callers) : ControllerBase
 {
-    /// <summary>Lists the tenant's releases, newest first, with whether each is active and how many datasets it pins.</summary>
-    /// <param name="tenantId">The tenant that owns the releases.</param>
+    /// <summary>Lists every release, newest first, with its activity and its difference from the active release.</summary>
+    /// <param name="tenantId">The tenant.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The release summaries.</returns>
-    /// <response code="200">The release summaries, newest first.</response>
+    /// <returns>The releases.</returns>
+    /// <response code="200">Every release, newest first.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ReleaseSummary>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ReleaseSummary>>> List(string tenantId, CancellationToken cancellationToken)
+    [ProducesResponseType<IReadOnlyList<ReleaseListItem>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ReleaseListItem>>> List(string tenantId, CancellationToken cancellationToken)
     {
-        return Ok(await releases.ListAsync(cancellationToken));
+        return Ok(await queries.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a draft release, copying the manifest of <c>copyFromSemanticReleaseId</c> when it is given.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="input">The release key and the optional release to copy.</param>
+    /// <summary>Creates a draft release, empty or copying another release's manifest.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="input">The key and the release to copy.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The new draft release.</returns>
-    /// <response code="201">The release was created; the body is the new draft.</response>
-    /// <response code="400">The key is malformed or taken, or the release to copy does not exist.</response>
+    /// <returns>The new draft.</returns>
+    /// <response code="201">The new draft.</response>
+    /// <response code="400">The key is malformed or the release to copy does not exist.</response>
+    /// <response code="409">The key is taken.</response>
     [HttpPost]
-    [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status201Created)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<SemanticReleaseRecord>> Create(string tenantId, ReleaseCreateInput input, CancellationToken cancellationToken)
+    [ProducesResponseType<Release>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<ActionResult<Release>> Create(string tenantId, CreateReleaseInput input, CancellationToken cancellationToken)
     {
-        var release = await releases.CreateAsync(input, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { tenantId, semanticReleaseId = release.SemanticReleaseId }, release);
+        var outcome = await commands.CreateAsync(input, cancellationToken);
+        if (!outcome.Succeeded) return Problems.From(outcome.Refusal).ToResult();
+        return CreatedAtAction(nameof(Get), new { tenantId, releaseId = outcome.Value.Id }, outcome.Value);
     }
 
-    /// <summary>Reads one release.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="semanticReleaseId">The release.</param>
+    /// <summary>Compares the manifests of two releases.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="from">The release compared from.</param>
+    /// <param name="to">The release compared to.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The difference.</returns>
+    /// <response code="200">What changes going from <c>from</c> to <c>to</c>; removals name the enabled reports that read them.</response>
+    /// <response code="404"><c>from</c> or <c>to</c> names no release.</response>
+    [HttpGet("diff")]
+    [ProducesResponseType<ReleaseDiff>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status404NotFound, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ReleaseDiff>> Diff(
+        string tenantId,
+        [FromQuery, BindRequired] long from,
+        [FromQuery, BindRequired] long to,
+        CancellationToken cancellationToken)
+    {
+        return await queries.DiffAsync(from, to, cancellationToken) is { } diff ? Ok(diff) : Problems.OfStatus(StatusCodes.Status404NotFound).ToResult();
+    }
+
+    /// <summary>Reads a release with its manifest and activation history.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The release.</returns>
     /// <response code="200">The release.</response>
-    [HttpGet("{semanticReleaseId:long}")]
-    [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<SemanticReleaseRecord>> Get(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
+    [HttpGet("{releaseId:long}")]
+    [ProducesResponseType<ReleaseDetail>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ReleaseDetail>> Get(string tenantId, long releaseId, CancellationToken cancellationToken)
     {
-        return Ok(await releases.GetAsync(semanticReleaseId, cancellationToken));
+        return Ok(await queries.GetAsync(releaseId, cancellationToken));
     }
 
     /// <summary>Deletes a draft release and its manifest.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="semanticReleaseId">The draft release.</param>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The draft.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
-    /// <response code="204">The release and its manifest are deleted.</response>
-    /// <response code="409">The release is not a draft.</response>
-    [HttpDelete("{semanticReleaseId:long}")]
-    [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
+    /// <response code="204">Deleted.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not a draft.</response>
+    [HttpDelete("{releaseId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Delete(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<IActionResult> Delete(string tenantId, long releaseId, CancellationToken cancellationToken)
     {
-        await releases.DeleteAsync(semanticReleaseId, cancellationToken);
-        return NoContent();
+        return await commands.DeleteAsync(releaseId, cancellationToken) is { } refusal ? Problems.From(refusal).ToResult() : NoContent();
     }
 
-    /// <summary>Lists a release's manifest: the dataset version it pins for each dataset.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="semanticReleaseId">The release.</param>
+    /// <summary>Applies staged manifest operations in memory, then checks and diffs the result; writes nothing.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The draft.</param>
+    /// <param name="request">The operations so far.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The manifest rows, ordered by dataset.</returns>
-    /// <response code="200">The manifest rows, ordered by dataset.</response>
-    [HttpGet("{semanticReleaseId:long}/datasets")]
-    [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ListDatasets(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
-    {
-        return Ok(await releases.ListDatasetsAsync(semanticReleaseId, cancellationToken));
-    }
-
-    /// <summary>Replaces a draft release's manifest.</summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="semanticReleaseId">The draft release.</param>
-    /// <param name="input">The complete manifest, one row per dataset.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The stored manifest rows.</returns>
-    /// <response code="200">The stored manifest rows, ordered by dataset.</response>
-    /// <response code="400">A dataset does not exist, or a dataset or dataset version appears more than once.</response>
-    /// <response code="409">The release is not a draft.</response>
-    [HttpPut("{semanticReleaseId:long}/datasets")]
-    [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
-    [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ReplaceDatasets(
+    /// <returns>The pending release, its report and its difference from the active release.</returns>
+    /// <response code="200">The operations apply.</response>
+    /// <response code="400">An operation's input is invalid; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="409">Not a draft, or a pinned dataset no longer exists.</response>
+    /// <response code="422">A pinned version is not one of its dataset's versions or is not published.</response>
+    [HttpPost("{releaseId:long}/changes/preview")]
+    [ProducesResponseType<ReleaseChangeSetPreview>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ReleaseChangeSetPreview>> Preview(
         string tenantId,
-        long semanticReleaseId,
-        ReleaseManifestInput input,
+        long releaseId,
+        ChangeSetRequest<ReleaseOperation> request,
         CancellationToken cancellationToken)
     {
-        return Ok(await releases.ReplaceDatasetsAsync(semanticReleaseId, input, cancellationToken));
+        return OkOrProblem(await changes.PreviewAsync(releaseId, request, cancellationToken));
+    }
+
+    /// <summary>Applies staged manifest operations to the draft as stored now and writes them.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The draft.</param>
+    /// <param name="request">Every operation of the change set.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The stored release.</returns>
+    /// <response code="200">Every operation applied and was written.</response>
+    /// <response code="400">An operation's input is invalid; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="409">Not a draft, or a pinned dataset no longer exists.</response>
+    /// <response code="422">A pinned version is not one of its dataset's versions or is not published; nothing was written.</response>
+    [HttpPost("{releaseId:long}/changes")]
+    [ProducesResponseType<ChangeSetCommit<ReleaseDetail>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ChangeSetCommit<ReleaseDetail>>> Commit(
+        string tenantId,
+        long releaseId,
+        ChangeSetRequest<ReleaseOperation> request,
+        CancellationToken cancellationToken)
+    {
+        return OkOrProblem(await changes.CommitAsync(releaseId, request, cancellationToken));
+    }
+
+    /// <summary>Runs every release rule over the saved manifest and changes nothing.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The release.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The report.</returns>
+    /// <response code="200">The findings; <c>unsaved</c> is false.</response>
+    /// <response code="400">The route does not bind.</response>
+    [HttpPost("{releaseId:long}/check")]
+    [ProducesResponseType<ReleaseCheckReport>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ReleaseCheckReport>> Check(string tenantId, long releaseId, CancellationToken cancellationToken)
+    {
+        return Ok(await queries.CheckAsync(releaseId, cancellationToken));
+    }
+
+    /// <summary>Moves a draft to validated when every release rule passes.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The draft.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The validated release and its report.</returns>
+    /// <response code="200">Validated; the report has no violations.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not a draft.</response>
+    /// <response code="422">A release rule fails; nothing was written.</response>
+    [HttpPost("{releaseId:long}/validate")]
+    [ProducesResponseType<ReleaseTransitionResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ReleaseTransitionResult>> Validate(string tenantId, long releaseId, CancellationToken cancellationToken)
+    {
+        return OkOrProblem(await commands.ValidateAsync(releaseId, cancellationToken));
+    }
+
+    /// <summary>Publishes a validated release and computes its content hash; activates and retires nothing.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The validated release.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The published release and its report.</returns>
+    /// <response code="200">Published; <c>release.contentHash</c> is set.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not validated.</response>
+    /// <response code="422">A release rule fails; nothing was written.</response>
+    [HttpPost("{releaseId:long}/publish")]
+    [ProducesResponseType<ReleaseTransitionResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ReleaseTransitionResult>> Publish(string tenantId, long releaseId, CancellationToken cancellationToken)
+    {
+        return OkOrProblem(await commands.PublishAsync(releaseId, cancellationToken));
+    }
+
+    /// <summary>Returns a validated release to draft.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The validated release.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The draft.</returns>
+    /// <response code="200">A draft again.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not validated.</response>
+    [HttpPost("{releaseId:long}/reopen")]
+    [ProducesResponseType<Release>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<ActionResult<Release>> Reopen(string tenantId, long releaseId, CancellationToken cancellationToken)
+    {
+        return OkOrProblem(await commands.ReopenAsync(releaseId, cancellationToken));
+    }
+
+    /// <summary>Retires a published release that is not the active one.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The published release.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The retired release.</returns>
+    /// <response code="200">Retired.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not published.</response>
+    /// <response code="422"><c>release_not_active</c>: the release is the active one.</response>
+    [HttpPost("{releaseId:long}/retire")]
+    [ProducesResponseType<Release>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<Release>> Retire(string tenantId, long releaseId, CancellationToken cancellationToken)
+    {
+        return OkOrProblem(await commands.RetireAsync(releaseId, cancellationToken));
     }
 
     /// <summary>
-    /// Makes a published release the one runtime queries use: sets <c>qe_database_info.active_semantic_release_id</c> and
-    /// <c>updated_at</c>, and advances the semantic revision.
+    /// Makes a published release the active one: re-checks every enabled report against it, sets the tenant's active release, advances
+    /// the semantic revision and logs the activation. Activating an older release is a rollback.
     /// </summary>
-    /// <param name="tenantId">The tenant that owns the release.</param>
-    /// <param name="semanticReleaseId">The published release.</param>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="releaseId">The published release.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The tenant's database info after the activation.</returns>
-    /// <response code="200">The release is active; the body is the updated database info.</response>
-    /// <response code="409">The release is not published, so nothing changed; the detail names its status.</response>
-    [HttpPost("{semanticReleaseId:long}/activate")]
-    [ProducesResponseType<DatabaseInfoRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<ActionResult<DatabaseInfoRecord>> Activate(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
+    /// <returns>The tenant state the activation produced.</returns>
+    /// <response code="200">The new <c>activeReleaseId</c> and the advanced <c>semanticRevision</c>.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Not published.</response>
+    /// <response code="422">An enabled report's rules fail on the release; nothing was written.</response>
+    [HttpPost("{releaseId:long}/activate")]
+    [ProducesResponseType<TenantInfo>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<TenantInfo>> Activate(string tenantId, long releaseId, CancellationToken cancellationToken)
     {
-        var result = await activator.ActivateAsync(semanticReleaseId, cancellationToken);
-        if (!result.Activated)
-        {
-            var detail = $"{VersionKinds.SemanticRelease} {semanticReleaseId} is {result.Release.Status}; only published releases can be activated.";
-            return Problems.Conflict("Release is not published", detail).ToResult();
-        }
+        return OkOrProblem(await commands.ActivateAsync(releaseId, callers.Create(User).Subject, cancellationToken));
+    }
 
-        return Ok(result.DatabaseInfo);
+    /// <summary>200 with the value, or the refusal's problem.</summary>
+    private ActionResult<T> OkOrProblem<T>(Outcome<T> outcome) where T : class
+    {
+        return outcome.Succeeded ? Ok(outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 }

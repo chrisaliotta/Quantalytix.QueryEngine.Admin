@@ -38,13 +38,15 @@ public sealed class AssumptionPins(
     /// <returns>The pins, kind by kind.</returns>
     public async Task<IReadOnlyList<PinnedVersion>> ListAsync(long assumptionSetId, CancellationToken cancellationToken)
     {
-        var filter = new { AssumptionSetId = assumptionSetId };
-        return
-        [
-            .. (await dimensions.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.DimensionVersion, pin.DimensionId, pin.DimensionVersionId)),
-            .. (await mappings.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.MappingVersion, pin.MappingSetId, pin.MappingVersionId)),
-            .. (await bridges.ListAsync(filter, cancellationToken)).Select(pin => new PinnedVersion(VersionKinds.BridgeVersion, pin.BridgeId, pin.BridgeVersionId))
-        ];
+        return [.. (await ReadAsync(new { AssumptionSetId = assumptionSetId }, cancellationToken)).Select(pin => pin.Pin)];
+    }
+
+    /// <summary>Lists the pins of every set.</summary>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The pins by set, kind by kind.</returns>
+    public async Task<ILookup<long, PinnedVersion>> ListAllAsync(CancellationToken cancellationToken)
+    {
+        return (await ReadAsync(null, cancellationToken)).ToLookup(pin => pin.AssumptionSetId, pin => pin.Pin);
     }
 
     /// <summary>Writes pins into a set, replacing the pins of the same identities.</summary>
@@ -93,6 +95,17 @@ public sealed class AssumptionPins(
         await dimensions.DeleteAsync(filter, cancellationToken);
         await mappings.DeleteAsync(filter, cancellationToken);
         await bridges.DeleteAsync(filter, cancellationToken);
+    }
+
+    /// <summary>The pins a filter selects, with their sets, kind by kind.</summary>
+    private async Task<IReadOnlyList<(long AssumptionSetId, PinnedVersion Pin)>> ReadAsync(object? filter, CancellationToken cancellationToken)
+    {
+        return
+        [
+            .. (await dimensions.ListAsync(filter, cancellationToken)).Select(pin => (pin.AssumptionSetId, new PinnedVersion(VersionKinds.DimensionVersion, pin.DimensionId, pin.DimensionVersionId))),
+            .. (await mappings.ListAsync(filter, cancellationToken)).Select(pin => (pin.AssumptionSetId, new PinnedVersion(VersionKinds.MappingVersion, pin.MappingSetId, pin.MappingVersionId))),
+            .. (await bridges.ListAsync(filter, cancellationToken)).Select(pin => (pin.AssumptionSetId, new PinnedVersion(VersionKinds.BridgeVersion, pin.BridgeId, pin.BridgeVersionId)))
+        ];
     }
 
     /// <summary>The pins of one kind.</summary>

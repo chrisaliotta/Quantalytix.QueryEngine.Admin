@@ -3,12 +3,17 @@ import useSWR, { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 import { unwrap, type Problem } from '@/lib/api/contract'
+import { apiMode, tenantHttp } from '@/lib/api/session'
 import { RELEASE_COMMANDS, RELEASE_EDITS, type ApiResult, type ManifestDataset, type PinIdentity, type ReleaseListItem, type ReleaseReportRef, type ReleasesApi } from './contract'
+import { createHttpReleasesApi } from './http/adapter'
 import { createMockReleasesApi } from './mock/adapter'
 
-/** One in-memory store for the whole session, so the header chip, lists and pages agree. */
+/**
+ * One adapter for the whole session, so the header chip, lists and pages agree: the HTTP adapter in http mode, else the in-memory
+ * mock. Activation answers the tenant state, which the tenant module's reads refresh from.
+ */
 let shared: ReleasesApi | null = null
-const defaultApi = () => (shared ??= createMockReleasesApi())
+const defaultApi = () => (shared ??= apiMode === 'http' ? createHttpReleasesApi(tenantHttp) : createMockReleasesApi())
 
 const ApiContext = createContext<ReleasesApi | null>(null)
 
