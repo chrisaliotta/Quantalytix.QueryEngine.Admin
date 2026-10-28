@@ -59,7 +59,8 @@ worked example; every step names its files.
   `context.Conflict(title, detail)` (409), `context.Blocked(deleteCheck)` (409 with the coded blockers), and stop with
   `if (context.Refused) return snapshot;`.
 - Validate input shape in one `AbstractValidator<TOperation>` using `RuleFor(op => op).SetInheritanceValidator(...)`
-  (ids with `MustBeChangeSetId`, keys with `MustBeKey`, text with `MustFitVarchar`, vocabularies with `MustBeIn`);
+  (ids with `MustBeChangeSetId`, keys with `MustBeKey` or `MustBeDottedKey` (the contract's `DottedKey`), text with
+  `MustFitVarchar`, vocabularies with `MustBeIn`);
   decide meaning (taken keys, parents outside the version) in the operation.
 - `Plan`: `plan.Sync(gateway, depth, before, after, row => new { row.KeyColumns })` per table, root row at
   `WritePlan.Root`; derived rows (closure) are deleted and re-inserted at the deepest depth when their source changed.
@@ -72,7 +73,8 @@ worked example; every step names its files.
 - Migrate each `IPublicationRule` to an `ISnapshotRule<TSnapshot>` (base class `DimensionRule` shows the pattern):
   `Stage` is `Gate` when the engine reads the change as saved (keys, parents, consumers resolve) and `Publication` for
   findings that block only validate/publish/freeze. Publication findings come back in `preview.violations` and reflect
-  the pending edits.
+  the pending edits. Content that is live once saved (mapping sets, bridges, B11) uses `Commit`: a preview finding that
+  also refuses the commit with 422, in the same run of the operations.
 - Register in reporting order with `AddSnapshotRule`, plus one `IPublicationRule` bridge (`DimensionVersionRules`) so
   the version workflow (freeze, publish) runs the same rules on stored versions. Remove the old `IPublicationRule`s.
 - Give violations a `Target` with your module's tab/area and the item id as stored digits
@@ -108,8 +110,8 @@ worked example; every step names its files.
 - Delete the old controllers, services, inputs and validators, and their entries in `ContractAllowList.Legacy`.
 - Other modules that called your old services get a public hook in your folder (`ReportDimensions` replaced
   `DimensionService` for reports); edit the caller minimally and say so in your report.
-- If the generic `VersionStatusController` moved your kind, refuse it in `VersionReferenceValidator` (integrator file;
-  request it).
+- `VersionReferenceValidator` refuses every version kind since Wave B, so the generic `VersionStatusController` is dead
+  and goes in P6 with its `Legacy` entries, `VersionReference`, `StatusChangeInput` and `AnalyticalTarget.RoutedVersion`.
 
 ### 8. web2
 
@@ -149,22 +151,35 @@ main checkout, which it reads from the worktree's `.git` file, so `dotnet build`
 `~/.cursor/worktrees/...`. To build against other checkouts, export `QueryEngineRoot` and `SeedKitRoot` (absolute paths).
 `pnpm install` once in the worktree root and in `web2/` before the contract and `web2` checks.
 
-## Follow-ups for Waves B and C (from Wave A)
+## Wave C (R6 reports): starting point and follow-ups
 
-- **Releases (R5):** read the tenant catalog and answer `TenantInfo` through the public `Tenancy/TenantInfoReader`
-  (no second reader of `qe_database_info`). Retiring a release depends on `Releases/Rules/ReleaseNotActiveRule`; keep it
-  as the retire gate when the release commands move.
-- **Releases (R5):** refuse `semantic_release` in `VersionReferenceValidator` once releases move through their own
-  lifecycle endpoints (request it; add it to `OwnEndpoints`). Mappings and bridges (R4) do the same for
-  `mapping_version` and `bridge_version`.
-- **Mappings (R4):** read dimension references and published members from `TenantApi` (`getCatalog`,
-  `getPublishedMembers`, OI-13) in `lib/mappings/directory.ts`, then delete the deprecated
-  `DimensionsApi.listAllDimensions` from the dimensions port and both adapters (integrator-approved edit of
-  `lib/dimensions`).
-- **Reports (R6):** move every `lib/model` import (`lib/report/*`, `components/report/*`, `components/reports/*`,
+Wave B (mappings and bridges, releases and assumption sets) is merged at contract `contract-v1.2`; the Wave A follow-ups
+for R4 and R5 are done. Only the reports operations remain in `ContractAllowList.NotImplemented`, and `Legacy` holds the
+old report endpoints, `VersionStatus` (P6) and `Lookups` (P6).
+
+- **Report bridges:** write them only through the public `Bridges/Services/ReportBridges` service (B9): `CreateAsync`
+  (live version 1, empty or copying another report bridge's rules; its publish advances the revision), `RenameAsync`,
+  `ReplaceRowAsync` (one row's rules), `RemoveRowsAsync` (rows the report dropped) and `DeleteAsync` (pins, version,
+  bridge). The writes are immediate, not staged: plan them in the report commit after the report's own rows, so a partial
+  commit leaves a harmless residue, and let the report change advance the revision. A bridge counts as a report bridge
+  when its target is a report dimension (`BridgeSnapshot.IsReportBridge`; its rules then allow descendant items), and
+  the bridges module refuses the change set and deletes of a bridge a report source owns (`qe_report_source.bridge_id`,
+  `BridgeOwnerReader`). The callers mappings
+  edited minimally (`ReportSourceService`, `SourceItemService`, `ReportRowService`, `ReportContentRemover`,
+  `ReportEditor/BridgeEntries`, `ReportEditorFixture`, `ReportLiveTests`) are yours to rewrite.
+- **Releases:** release checks run `report_sources_resolve` and `report_factors_apply` through
+  `Releases/Rules/ReleaseReportChecks` over the stored manifest only, so a release preview (`unsaved: true`) lacks them.
+  Add an unsaved-manifest scope hook in your folder, such as `ReportGraphReader.ScopeAsync(graphs, versionsByDataset)`
+  next to today's `ScopeAsync(graphs, semanticReleaseId)`, and request the releases change that calls it from the
+  preview. Put the source's key on report rule violation targets so the release screen can link the source. Once releases
+  run the report checks themselves, drop `AddConsumerRule` and `ReportConsumerRule` from
+  `CalculationModelsAndReportsFeatureServiceCollectionExtensions`.
+- **Models:** move every `lib/model` import (`lib/report/*`, `components/report/*`, `components/reports/*`,
   `app/AppLayout.tsx`'s `ModelsProvider`) to `lib/models/client`, then delete `lib/model`. Keep the model gate's rule
   dependencies (`ModelGateRule`, `ModelFindingsRule` over `ModelChecks`). Instead of picking rules out of
   `ModelChecks`, request a public hook in `CalculationModels` that checks a report against a model's content.
+- **Pins:** a report dimension or bridge going away takes its pins through `AssumptionPins.UnpinDimensionAsync` and
+  `UnpinBridgeAsync` (`ReportBridges.DeleteAsync` already does the bridge's).
 - **Datasets:** dropping the managed table when a dataset created over it is deleted is a pending product decision;
   until then the table and its `qe_managed_source_object` row stay.
 
