@@ -14,6 +14,10 @@ Each module's frontend contract and HTTP API are transcribed into the hand-autho
 format; the blueprint remains the source for the rules behind it
 ([00, the contract-first rule](00-architecture.md#the-contract-first-rule-agreed)).
 
+**Status:** phases 0 to 6 complete on `feature/web2-refactor` (2026-10-27). The API serves exactly the contract, with no
+allow-list; the old `web` app is retired. Checks against a live tenant are pending:
+[04 Live verification](04-live-verification.md).
+
 ## Sources
 
 | Source                                                                                                                                              | Role                                                                      |
@@ -34,7 +38,8 @@ format; the blueprint remains the source for the rules behind it
 3. [02 Frontend contract layer](02-frontend-contract-layer.md): the shared kernel, ports, adapters and caching.
 4. [03 Module refactor checklist](03-module-refactor-checklist.md): the steps, files and gotchas of moving a module to
    the contract, from the dimensions pilot.
-5. Module blueprints:
+5. [04 Live verification](04-live-verification.md): what still needs a live tenant, and the open items from integration.
+6. Module blueprints:
    - [10 Tenant, session and catalog](10-tenant-session-catalog.md)
    - [11 Datasets](11-datasets.md)
    - [12 Dimensions](12-dimensions.md)
@@ -42,7 +47,7 @@ format; the blueprint remains the source for the rules behind it
    - [14 Releases and assumption sets](14-releases-and-assumption-sets.md)
    - [15 Calculation models](15-calculation-models.md)
    - [16 Reports](16-reports.md)
-6. [90 Open issues](90-open-issues.md) and [91 Schema gaps](91-schema-gaps.md).
+7. [90 Open issues](90-open-issues.md) and [91 Schema gaps](91-schema-gaps.md).
 
 ## Status legend
 
@@ -72,7 +77,7 @@ Each module file follows the same outline so the two refactors can be planned si
 
 ## Current API coverage
 
-Every controller of the current API and the blueprint file that decides its fate (each module file's "Deltas from the
+Every controller of the API before the refactor and the blueprint file that decided its fate (each module file's "Deltas from the
 current API" table says keep, change, new or remove).
 
 | Current controller | Blueprint |

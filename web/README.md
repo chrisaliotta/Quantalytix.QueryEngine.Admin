@@ -1,5 +1,9 @@
 # Query Engine Admin web
 
+> **Retired.** This app targets the admin API before contract-v1.2 and no longer works against it: the endpoints it calls
+> were replaced by the change-set API. [`web2`](../web2) is the admin API's client. The code stays for reference only; it is
+> not built, tested or deployed, and the API build does not depend on it.
+
 A React 19 single-page app, built with Vite and TypeScript, for the Query Engine Admin API. It edits one tenant's
 semantic metadata at a time under `/t/:tenantId/...`, and lets system administrators switch tenants and edit the tenant
 directory. It builds to static files for a static host.
