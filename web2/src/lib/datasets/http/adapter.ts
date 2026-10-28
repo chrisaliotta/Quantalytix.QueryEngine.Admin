@@ -12,7 +12,6 @@ import type {
   DatasetValidationReport,
   DatasetVersion,
   DatasetVersionSummary,
-  DeleteCheck,
   Id,
   Problem,
 } from '../contract'
@@ -24,11 +23,10 @@ const versionPath = (id: Id) => `/dataset-versions/${id}`
 const fieldPath = (versionId: Id, fieldId: Id) => `${versionPath(versionId)}/fields/${fieldId}/materialization`
 
 /**
- * The contract's `ValidationReport`, `DeleteBlocker` and read models are generic where this module's are narrow (dataset tabs as
- * areas, coded blockers, an omitted `roundingMode` for measures that name none); one cast each narrows them.
+ * The contract's `ValidationReport` and read models are generic where this module's are narrow (dataset tabs as areas, the
+ * module's vocabularies as unions); one cast each narrows them.
  */
 const asReport = (report: Schemas['ValidationReport']) => report as DatasetValidationReport
-const asDeleteCheck = (check: Schemas['DeleteCheck']) => check as DeleteCheck
 const asVersion = (version: Schemas['DatasetVersion']) => version as DatasetVersion
 const asListItem = (item: Schemas['DatasetListItem']) => item as DatasetListItem
 
@@ -124,8 +122,8 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
       const result = await http.post<Schemas['ValidationReport']>(`${versionPath(versionId)}/check`)
       return result.ok ? { ok: true, data: asReport(result.data) } : result
     },
-    checkDeleteDataset: async (datasetId) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(`${datasetPath(datasetId)}/delete-check`))),
-    checkDeleteVersion: async (versionId) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(`${versionPath(versionId)}/delete-check`))),
+    checkDeleteDataset: (datasetId) => unwrap(http.get<Schemas['DeleteCheck']>(`${datasetPath(datasetId)}/delete-check`)),
+    checkDeleteVersion: (versionId) => unwrap(http.get<Schemas['DeleteCheck']>(`${versionPath(versionId)}/delete-check`)),
 
     updateDataset: (datasetId, patch) => edit(editableVersionOf(datasetId), { op: 'updateDataset', patch }, ({ state }): Dataset => state.dataset),
     saveSettings: (versionId, settings) =>

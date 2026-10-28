@@ -304,7 +304,7 @@ export interface DatasetMeasureDefinition {
   outputDataType: DatasetDataType
   outputPrecision: number | null
   outputScale: number | null
-  roundingMode: RoundingMode
+  roundingMode: RoundingMode | null
   unitKey: string | null
   accumulatorPrecision: number
   accumulatorScale: number

@@ -2,14 +2,12 @@ import { createHttpChangeSet } from '@/lib/api/changes'
 import { unwrap } from '@/lib/api/contract'
 import type { HttpClient } from '@/lib/api/http'
 import type { components } from '@/lib/api/schema'
-import type { ApiResult, CalcModel, DeleteCheck, Id, ModelDocument, ModelOperation, ModelsApi, Problem } from '../contract'
+import type { ApiResult, CalcModel, Id, ModelDocument, ModelOperation, ModelsApi, Problem } from '../contract'
 
 type Schemas = components['schemas']
 
 const modelPath = (id: Id) => `/calculation-models/${id}`
 
-/** The contract's `DeleteBlocker.code` is optional in the generated types; this module's blockers always carry one. */
-const asDeleteCheck = (check: Schemas['DeleteCheck']) => check as DeleteCheck
 
 const INPUT_PREFIX = /^(input|patch)\./
 
@@ -52,7 +50,7 @@ export function createHttpModelsApi(http: HttpClient): ModelsApi {
     },
     checkFormula: (id, formula, selfKey) =>
       unwrap(http.post<Schemas['ModelFormulaCheck']>(`${modelPath(id)}/formula-check`, { formula, selfKey } satisfies Schemas['ModelFormulaCheckRequest'])),
-    checkDeleteModel: async (id) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(`${modelPath(id)}/delete-check`))),
+    checkDeleteModel: (id) => unwrap(http.get<Schemas['DeleteCheck']>(`${modelPath(id)}/delete-check`)),
 
     updateModel: (id, patch) => edit(id, { op: 'updateModel', patch }, settingsOf),
     saveVariable: (id, { originalKey, ...input }) => edit(id, { op: 'saveVariable', input, originalKey }, (s) => byKey(s.variables, input.key)),

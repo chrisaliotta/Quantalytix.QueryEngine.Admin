@@ -810,7 +810,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       checkVocab(errors, 'bridgeAllocationBehavior', 'bridgeAllocationBehavior', input.bridgeAllocationBehavior)
       checkVocab(errors, 'totalBehavior', 'totalBehavior', input.totalBehavior)
       checkVocab(errors, 'outputDataType', 'dataType', input.outputDataType)
-      checkVocab(errors, 'roundingMode', 'roundingMode', input.roundingMode)
+      checkVocab(errors, 'roundingMode', 'roundingMode', input.roundingMode, true)
       if (input.outputDataType === 'decimal') checkPrecision(errors, 'output', input.outputPrecision, input.outputScale)
       else {
         next.outputPrecision = null

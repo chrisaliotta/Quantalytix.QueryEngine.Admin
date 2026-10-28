@@ -1065,7 +1065,10 @@ components:
         outputScale:
           type: [integer, 'null']
         roundingMode:
-          $ref: './common.yaml#/components/schemas/RoundingMode'
+          oneOf:
+            - $ref: './common.yaml#/components/schemas/RoundingMode'
+            - type: 'null'
+          description: Null when the measure names none, which the engine reads as no rounding.
         unitKey:
           type: [string, 'null']
         accumulatorPrecision:

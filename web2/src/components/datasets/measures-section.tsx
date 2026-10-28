@@ -676,7 +676,7 @@ function MeasurePanel({
                 </>
               )}
               <FormRow label="Rounding" htmlFor="m-round" errors={errorsFor('roundingMode')} className="@md:col-span-2">
-                <VocabSelect id="m-round" terms={vocab?.roundingMode} value={d.roundingMode} onChange={(v) => v && set('roundingMode', v)} />
+                <VocabSelect id="m-round" terms={vocab?.roundingMode} value={d.roundingMode} onChange={(v) => set('roundingMode', v)} noneLabel="No rounding" />
               </FormRow>
               <FormRow label="Unit" htmlFor="m-unit" errors={errorsFor('unitKey')} className="@md:col-span-2">
                 <Input id="m-unit" value={d.unitKey ?? ''} onChange={(e) => set('unitKey', e.target.value || null)} placeholder="USD, percent…" />

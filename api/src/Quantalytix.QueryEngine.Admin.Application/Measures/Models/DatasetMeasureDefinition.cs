@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 
 /// <summary>The contract's <c>DatasetMeasureDefinition</c>: the writable content of a measure (<c>qe_measure</c>), its components and time policy.</summary>
@@ -65,9 +63,8 @@ public abstract record DatasetMeasureDefinition
     /// <summary>The output's decimal scale.</summary>
     public required int? OutputScale { get; init; }
 
-    /// <summary>A <c>rounding_mode</c> value; absent when the measure names none, which the engine reads as no rounding.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? RoundingMode { get; init; }
+    /// <summary>A <c>rounding_mode</c> value; null when the measure names none, which the engine reads as no rounding.</summary>
+    public required string? RoundingMode { get; init; }
 
     /// <summary>The unit, currency or rate label.</summary>
     public required string? UnitKey { get; init; }

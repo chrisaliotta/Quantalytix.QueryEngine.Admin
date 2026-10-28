@@ -2132,7 +2132,7 @@ export interface components {
         };
         /** @description A reason a delete is refused; a `Violation` whose code is a `DeleteBlockerCode`. */
         DeleteBlocker: components["schemas"]["Violation"] & {
-            code?: components["schemas"]["DeleteBlockerCode"];
+            code: components["schemas"]["DeleteBlockerCode"];
         };
         /**
          * @description One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads the target; the other codes name a state of the target itself.
@@ -2952,7 +2952,8 @@ export interface components {
             outputDataType: components["schemas"]["DatasetDataType"];
             outputPrecision: number | null;
             outputScale: number | null;
-            roundingMode: components["schemas"]["RoundingMode"];
+            /** @description Null when the measure names none, which the engine reads as no rounding. */
+            roundingMode: components["schemas"]["RoundingMode"] | null;
             unitKey: string | null;
             accumulatorPrecision: number;
             accumulatorScale: number;

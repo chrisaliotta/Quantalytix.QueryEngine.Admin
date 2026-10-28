@@ -44151,6 +44151,7 @@
           "outputDataType",
           "outputPrecision",
           "outputScale",
+          "roundingMode",
           "unitKey",
           "accumulatorPrecision",
           "accumulatorScale",
@@ -44272,8 +44273,11 @@
             "format": "int32"
           },
           "roundingMode": {
-            "type": "string",
-            "description": "A `rounding_mode` value; absent when the measure names none, which the engine reads as no rounding."
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value; null when the measure names none, which the engine reads as no rounding."
           },
           "unitKey": {
             "type": [
@@ -44346,6 +44350,7 @@
           "outputDataType",
           "outputPrecision",
           "outputScale",
+          "roundingMode",
           "unitKey",
           "accumulatorPrecision",
           "accumulatorScale",
@@ -44467,8 +44472,11 @@
             "format": "int32"
           },
           "roundingMode": {
-            "type": "string",
-            "description": "A `rounding_mode` value; absent when the measure names none, which the engine reads as no rounding."
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `rounding_mode` value; null when the measure names none, which the engine reads as no rounding."
           },
           "unitKey": {
             "type": [

@@ -307,6 +307,7 @@ public sealed class MeasureInputValidatorTests
             ImplementationVersion = null,
             ConfigurationJson = null,
             RowFilterExpression = null,
+            RoundingMode = null,
             UnitKey = null,
             TimePolicy = null,
             ValueNullBehavior = ValueNullBehaviors.Exclude,

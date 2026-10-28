@@ -5,7 +5,6 @@ import type { components } from '@/lib/api/schema'
 import type {
   ApiResult,
   DefinitionOrigin,
-  DeleteCheck,
   Dimension,
   DimensionCreated,
   DimensionDeleteTarget,
@@ -40,9 +39,8 @@ function deleteCheckPath(target: DimensionDeleteTarget) {
   }
 }
 
-/** The contract's `ValidationReport` and `DeleteBlocker` are generic; this module's codes and areas narrow them. */
+/** The contract's `ValidationReport` is generic; this module's areas narrow it. */
 const asReport = (report: Schemas['ValidationReport']) => report as DimensionValidationReport
-const asDeleteCheck = (check: Schemas['DeleteCheck']) => check as DeleteCheck
 
 const INPUT_PREFIX = /^(input|patch)\./
 
@@ -125,7 +123,7 @@ export function createHttpDimensionsApi(http: HttpClient): DimensionsApi {
       const result = await http.post<Schemas['ValidationReport']>(`${versionPath(versionId)}/check`)
       return result.ok ? { ok: true, data: asReport(result.data) } : result
     },
-    checkDelete: async (target) => asDeleteCheck(await unwrap(http.get<Schemas['DeleteCheck']>(deleteCheckPath(target)))),
+    checkDelete: (target) => unwrap(http.get<Schemas['DeleteCheck']>(deleteCheckPath(target))),
 
     updateDimension: (id, patch) => edit(id, { op: 'updateDimension', patch }, (s) => dimensionFields(s.dimension)),
     updateVersion: (versionId, patch) => editVersion({ op: 'updateVersion', versionId, patch }, (s) => s.content.version),

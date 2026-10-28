@@ -3199,6 +3199,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/Violation'
         - type: object
+          required:
+            - code
           properties:
             code:
               $ref: '#/components/schemas/DeleteBlockerCode'
@@ -5516,7 +5518,10 @@ components:
             - integer
             - 'null'
         roundingMode:
-          $ref: '#/components/schemas/RoundingMode'
+          oneOf:
+            - $ref: '#/components/schemas/RoundingMode'
+            - type: 'null'
+          description: Null when the measure names none, which the engine reads as no rounding.
         unitKey:
           type:
             - string
