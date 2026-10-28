@@ -12,8 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 /// </summary>
 public sealed class SourceItemService(
     ITableGateway<ReportSourceRecord> sources,
-    BridgeMappingService bridgeMappings,
-    OwnedVersions owned,
+    ReportBridges bridges,
     ReportChanges changes)
 {
     /// <summary>Replaces a row's rules in a bridge source.</summary>
@@ -25,13 +24,6 @@ public sealed class SourceItemService(
     public async Task<IReadOnlyList<RuleViolation>> ReplaceAsync(long reportId, long sourceId, SourceItemsInput input, CancellationToken cancellationToken)
     {
         var source = await sources.GetAsync(new { ReportSourceId = sourceId }, cancellationToken);
-        var bridgeVersionId = (await owned.BridgesAsync([source], cancellationToken))[sourceId].BridgeVersionId;
-        var entries = await bridgeMappings.ListAsync(bridgeVersionId, cancellationToken);
-        BridgeMappingInput[] replaced =
-        [
-            .. entries.Where(entry => entry.TargetMemberKey != input.RowKey).Select(BridgeEntries.Kept),
-            .. input.Items.Select(item => BridgeEntries.ToRow(item, input.RowKey))
-        ];
         ReportSourceItem[] rowItems =
         [
             .. input.Items.Select(item => new ReportSourceItem
@@ -49,7 +41,7 @@ public sealed class SourceItemService(
             {
                 SourceItems = [.. report.SourceItems.Where(item => item.ReportSourceId != sourceId || item.RowKey != input.RowKey), .. rowItems]
             },
-            () => bridgeMappings.ReplaceAsync(bridgeVersionId, new BridgeMappingsInput { Mappings = replaced }, cancellationToken),
+            () => bridges.ReplaceRowAsync(source.BridgeId!.Value, input.RowKey, [.. input.Items.Select(BridgeEntries.Rule)], cancellationToken),
             cancellationToken);
     }
 }

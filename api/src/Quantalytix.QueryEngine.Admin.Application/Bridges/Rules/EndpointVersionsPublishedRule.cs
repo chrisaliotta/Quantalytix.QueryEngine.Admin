@@ -1,36 +1,25 @@
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// <c>endpoint_versions_published</c>: the bridge's source and target dimensions each have a published version, because the
-/// active assumption set pins them and the engine resolves the mappings' member keys in them.
+/// <c>endpoint_versions_published</c>: the bridge's source and target dimensions each have a live version, because the active
+/// assumption set pins them and the engine resolves the mappings' member keys in them.
 /// </summary>
-public sealed class EndpointVersionsPublishedRule(BridgeMappingSetReader reader) : IPublicationRule
+public sealed class EndpointVersionsPublishedRule : BridgeRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "endpoint_versions_published";
+    /// <summary><c>endpoint_versions_published</c>.</summary>
+    protected override string Code => "endpoint_versions_published";
 
-    /// <summary>The kind the rule checks: bridge versions.</summary>
-    public string Kind { get; } = VersionKinds.BridgeVersion;
-
-    /// <summary>Reports each endpoint dimension that has no published version.</summary>
-    /// <param name="versionId">The bridge version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>Up to two violations, source first.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports each endpoint dimension without a live version, source first.</summary>
+    /// <param name="snapshot">The bridge version.</param>
+    /// <returns>Up to two violations.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(BridgeSnapshot snapshot)
     {
-        var set = await reader.ReadAsync(versionId, cancellationToken);
-        return
-        [
-            .. new[] { ("source", set.Source), ("target", set.Target) }
-                .Where(endpoint => endpoint.Item2 is null)
-                .Select(endpoint => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"The bridge's {endpoint.Item1} dimension has no published version for the mappings to resolve in; publish one first."
-                })
-        ];
+        var surroundings = snapshot.Surroundings;
+        if (surroundings.SourcePublished is null)
+            yield return OnVersion($"The source dimension '{surroundings.Source.DimensionKey}' has no live version for the mappings to resolve in.");
+        if (surroundings.TargetPublished is null)
+            yield return OnVersion($"The target dimension '{surroundings.Target.DimensionKey}' has no live version for the mappings to resolve in.");
     }
 }

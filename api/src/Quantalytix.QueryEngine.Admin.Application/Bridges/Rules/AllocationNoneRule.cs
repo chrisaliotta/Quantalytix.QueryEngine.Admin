@@ -4,42 +4,29 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// <c>allocation_none</c>: with allocation mode <c>none</c>, each source member maps to at most one target with an
-/// allocation weight of exactly 1 (schema section 10), because the source's full value moves to that one target.
+/// <c>allocation_none</c>: with allocation mode <c>none</c>, each source member maps to at most one target with an allocation weight of
+/// exactly 1 (B5), because the source's full value moves to that one target. Under <c>many_to_one</c>, the one-target half is
+/// <c>cardinality_many_to_one</c>'s finding, so a source is not reported twice.
 /// </summary>
-public sealed class AllocationNoneRule(BridgeMappingSetReader reader) : IPublicationRule
+public sealed class AllocationNoneRule : BridgeRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "allocation_none";
+    /// <summary><c>allocation_none</c>.</summary>
+    protected override string Code => "allocation_none";
 
-    /// <summary>The kind the rule checks: bridge versions.</summary>
-    public string Kind { get; } = VersionKinds.BridgeVersion;
-
-    /// <summary>Reports every source member with several targets and every weight other than 1; other modes have nothing to check.</summary>
-    /// <param name="versionId">The bridge version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The violations: source members with several targets first, then mappings whose weight is not 1.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports source members with several targets, then mappings whose weight is not 1; other modes have nothing to check.</summary>
+    /// <param name="snapshot">The bridge version.</param>
+    /// <returns>The violations.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(BridgeSnapshot snapshot)
     {
-        var set = await reader.ReadAsync(versionId, cancellationToken);
-        if (set.Version.AllocationMode != AllocationModes.None) return [];
-        var severalTargets = set.Mappings
-            .GroupBy(mapping => mapping.SourceMemberKey)
-            .Where(group => group.Count() > 1)
-            .Select(group => new RuleViolation
-            {
-                Code = Code,
-                Message = $"Source member '{group.Key}' maps to {group.Count()} targets ({BridgeMappingSet.DescribeTargets(group)}); "
-                    + "allocation mode none allows one."
-            });
-        var weightsOtherThanOne = set.Mappings
+        if (snapshot.Version.AllocationMode != AllocationModes.None) return [];
+        IEnumerable<RuleViolation> severalTargets = snapshot.Version.Cardinality == Cardinalities.ManyToOne
+            ? []
+            : BySource(snapshot)
+                .Where(group => group.Count() > 1)
+                .Select(group => OnSource(group.Key, $"Source member '{group.Key}' maps to {group.Count()} targets ({DescribeTargets(group)}); allocation mode none allows one."));
+        var weightsOtherThanOne = snapshot.Mappings
             .Where(mapping => mapping.AllocationWeight != 1m)
-            .Select(mapping => new RuleViolation
-            {
-                Code = Code,
-                Message = $"Mapping {BridgeMappingSet.Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; "
-                    + "allocation mode none requires exactly 1."
-            });
+            .Select(mapping => OnMapping(mapping, $"Mapping {Describe(mapping)} has allocation weight {DecimalText.Of(mapping.AllocationWeight)}; allocation mode none requires exactly 1."));
         return [.. severalTargets, .. weightsOtherThanOne];
     }
 }

@@ -191,11 +191,6 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       )
     },
 
-    async listAllDimensions() {
-      await wait()
-      return clone(db.dimensions.filter(resolvable).map(listItem))
-    },
-
     async listAvailableProfiles() {
       await wait()
       return clone(

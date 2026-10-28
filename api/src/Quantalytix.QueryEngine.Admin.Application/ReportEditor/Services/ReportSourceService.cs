@@ -17,11 +17,7 @@ public sealed class ReportSourceService(
     ITableGateway<ReportRecord> reports,
     ITableGateway<ReportSourceRecord> sources,
     ITableGateway<DimensionRoleRecord> roles,
-    BridgeService bridges,
-    BridgeVersionService bridgeVersions,
-    BridgeMappingService bridgeMappings,
-    OwnedVersions owned,
-    VersionWorkflow workflow,
+    ReportBridges bridges,
     ReportContentRemover remover,
     ReportChanges changes,
     IIdGenerator ids)
@@ -71,7 +67,7 @@ public sealed class ReportSourceService(
             {
                 await sources.UpdateAsync(updated, cancellationToken);
                 if (updated.BridgeId is { } bridgeId && updated.DisplayName != source.DisplayName)
-                    await bridges.UpdateAsync(bridgeId, new BridgeInput { DisplayName = updated.DisplayName, IsEnabled = true }, cancellationToken);
+                    await bridges.RenameAsync(bridgeId, updated.DisplayName, cancellationToken);
             },
             cancellationToken);
     }
@@ -98,35 +94,23 @@ public sealed class ReportSourceService(
     }
 
     /// <summary>
-    /// Creates a bridge source's bridge from its role's dimension into the report dimension, with a version that replicates each
-    /// item into every row its rules name, starting from a copy of a sibling's rules, and publishes the version.
+    /// Creates a bridge source's bridge from its role's dimension into the report dimension, with a live version that replicates each
+    /// item into every row its rules name, starting from a copy of a sibling's rules.
     /// </summary>
     private async Task<long> CreateBridgeAsync(ReportSourceRecord source, long dimensionRoleId, long? copyFromSourceId, CancellationToken cancellationToken)
     {
         var report = await reports.GetAsync(new { source.ReportId }, cancellationToken);
         var role = await roles.GetAsync(new { DimensionRoleId = dimensionRoleId }, cancellationToken);
-        var bridge = await bridges.CreateAsync(
-            new NewBridgeInput
+        long? template = copyFromSourceId is { } siblingId ? (await sources.GetAsync(new { ReportSourceId = siblingId }, cancellationToken)).BridgeId : null;
+        return await bridges.CreateAsync(
+            new ReportBridgeInput
             {
-                BridgeKey = ReportSourceKeys.Bridge(report.ReportKey, source.SourceKey),
+                Key = ReportSourceKeys.Bridge(report.ReportKey, source.SourceKey),
                 DisplayName = source.DisplayName,
                 SourceDimensionId = role.DimensionId,
-                TargetDimensionId = report.ReportDimensionId,
-                IsEnabled = true
+                ReportDimensionId = report.ReportDimensionId,
+                CopyFromBridgeId = template
             },
             cancellationToken);
-        var version = await bridgeVersions.CreateAsync(
-            bridge.BridgeId,
-            new NewBridgeVersionInput { Cardinality = Cardinalities.ManyToMany, AllocationMode = AllocationModes.Replicate },
-            cancellationToken);
-        if (copyFromSourceId is { } siblingId)
-        {
-            var sibling = await sources.GetAsync(new { ReportSourceId = siblingId }, cancellationToken);
-            var template = (await owned.BridgesAsync([sibling], cancellationToken))[siblingId];
-            var copied = (await bridgeMappings.ListAsync(template.BridgeVersionId, cancellationToken)).Select(BridgeEntries.Kept);
-            await bridgeMappings.ReplaceAsync(version.BridgeVersionId, new BridgeMappingsInput { Mappings = [.. copied] }, cancellationToken);
-        }
-        await workflow.PublishAsync(VersionKinds.BridgeVersion, version.BridgeVersionId, cancellationToken);
-        return bridge.BridgeId;
     }
 }

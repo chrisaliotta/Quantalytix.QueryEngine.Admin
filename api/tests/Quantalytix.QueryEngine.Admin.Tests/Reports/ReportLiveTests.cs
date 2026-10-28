@@ -45,8 +45,8 @@ public sealed class ReportLiveTests
         }
 
         var marginStatement = enabled.Single(report => report.ReportKey == "bank.margin_statement");
-        var reportBridges = await scope.ServiceProvider.GetRequiredService<BridgeService>()
-            .ListAsync(marginStatement.ReportDimensionId, cancellationToken);
+        var reportBridges = await scope.ServiceProvider.GetRequiredService<BridgeQueries>()
+            .ListAsync(new BridgeListQuery { DimensionId = marginStatement.ReportDimensionId }, cancellationToken);
         Assert.All(reportBridges, bridge => Assert.NotNull(bridge.Owner));
         Assert.Contains(reportBridges, bridge => bridge.Owner!.SourceKey == "gl_daily");
     }
@@ -129,7 +129,7 @@ public sealed class ReportLiveTests
             await reports.DeleteAsync(report.ReportId, cancellationToken);
         }
 
-        var bridges = await provider.GetRequiredService<BridgeService>().ListAsync(report.ReportDimensionId, cancellationToken);
+        var bridges = await provider.GetRequiredService<BridgeQueries>().ListAsync(new BridgeListQuery { DimensionId = report.ReportDimensionId }, cancellationToken);
         Assert.DoesNotContain(await reports.ListAsync(cancellationToken), other => other.ReportId == report.ReportId);
         Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken));
         Assert.Empty(bridges);

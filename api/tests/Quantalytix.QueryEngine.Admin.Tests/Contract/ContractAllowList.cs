@@ -11,33 +11,6 @@ internal static class ContractAllowList
     /// <summary>Contract operations not implemented yet, by operationId, grouped by the contract tag (module) that owns them.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> NotImplemented = new Dictionary<string, string[]>
     {
-        ["mappings"] =
-        [
-            "listMappingSets",
-            "createMappingSet",
-            "getMappingSet",
-            "deleteMappingSet",
-            "checkDeleteMappingSet",
-            "previewMappingSetChanges",
-            "commitMappingSetChanges",
-            "getMappingVersion",
-            "deleteMappingVersion",
-            "checkMappingVersion",
-            "freezeMappingVersion",
-            "checkDeleteMappingVersion",
-            "listBridges",
-            "createBridge",
-            "getBridge",
-            "deleteBridge",
-            "checkDeleteBridge",
-            "previewBridgeChanges",
-            "commitBridgeChanges",
-            "getBridgeVersion",
-            "deleteBridgeVersion",
-            "checkBridgeVersion",
-            "freezeBridgeVersion",
-            "checkDeleteBridgeVersion"
-        ],
         ["reports"] =
         [
             "listReports",
@@ -115,41 +88,9 @@ internal static class ContractAllowList
             "PUT /api/tenants/{tenantId}/reports/{reportId}/profiles/{itemId}",
             "DELETE /api/tenants/{tenantId}/reports/{reportId}/profiles/{itemId}"
         ],
-        ["MappingEntries"] =
-        [
-            "GET /api/tenants/{tenantId}/mapping-versions/{versionId}/entries",
-            "PUT /api/tenants/{tenantId}/mapping-versions/{versionId}/entries",
-            "POST /api/tenants/{tenantId}/mapping-versions/{versionId}/entries",
-            "PUT /api/tenants/{tenantId}/mapping-versions/{versionId}/entries/{entryId}",
-            "DELETE /api/tenants/{tenantId}/mapping-versions/{versionId}/entries/{entryId}"
-        ],
-        ["MappingSets"] =
-        [
-            "PUT /api/tenants/{tenantId}/mapping-sets/{mappingSetId}"
-        ],
-        ["MappingVersions"] =
-        [
-            "GET /api/tenants/{tenantId}/mapping-sets/{mappingSetId}/versions",
-            "POST /api/tenants/{tenantId}/mapping-sets/{mappingSetId}/versions"
-        ],
         ["Lookups"] =
         [
             "GET /api/tenants/{tenantId}/lookups/{kind}"
-        ],
-        ["BridgeMappings"] =
-        [
-            "GET /api/tenants/{tenantId}/bridge-versions/{versionId}/mappings",
-            "PUT /api/tenants/{tenantId}/bridge-versions/{versionId}/mappings"
-        ],
-        ["Bridges"] =
-        [
-            "PUT /api/tenants/{tenantId}/bridges/{bridgeId}"
-        ],
-        ["BridgeVersions"] =
-        [
-            "GET /api/tenants/{tenantId}/bridges/{bridgeId}/versions",
-            "POST /api/tenants/{tenantId}/bridges/{bridgeId}/versions",
-            "PUT /api/tenants/{tenantId}/bridge-versions/{versionId}"
         ]
     };
 }

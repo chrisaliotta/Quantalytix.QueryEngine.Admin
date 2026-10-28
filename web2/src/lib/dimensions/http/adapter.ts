@@ -112,10 +112,6 @@ export function createHttpDimensionsApi(http: HttpClient): DimensionsApi {
   return {
     ...changes,
     listDimensions,
-    async listAllDimensions() {
-      const [user, system] = await Promise.all([listDimensions('user'), listDimensions('system')])
-      return [...user, ...system]
-    },
     listAvailableProfiles: () => unwrap(http.get<Schemas['AvailableDimensionProfile'][]>('/dimension-profiles', { available: true })),
     getDimension,
     getVersion,

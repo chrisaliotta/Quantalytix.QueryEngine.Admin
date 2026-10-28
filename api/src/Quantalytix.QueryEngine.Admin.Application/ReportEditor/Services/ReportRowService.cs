@@ -23,7 +23,7 @@ public sealed class ReportRowService(
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<ReportColumnRecord> columns,
     ITableGateway<ReportSourceRecord> sources,
-    BridgeMappingService bridgeMappings,
+    ReportBridges bridges,
     OwnedVersions owned,
     ClosureBuilder closure,
     ReportChanges changes,
@@ -100,14 +100,8 @@ public sealed class ReportRowService(
     private async Task RemoveEntriesToAsync(long reportId, IReadOnlySet<string> removedKeys, CancellationToken cancellationToken)
     {
         if (removedKeys.Count == 0) return;
-        var bridgeVersions = await owned.BridgesAsync(await sources.ListAsync(new { ReportId = reportId }, cancellationToken), cancellationToken);
-        foreach (var bridgeVersion in bridgeVersions.Values)
-        {
-            var entries = await bridgeMappings.ListAsync(bridgeVersion.BridgeVersionId, cancellationToken);
-            if (!entries.Any(entry => removedKeys.Contains(entry.TargetMemberKey))) continue;
-            var kept = entries.Where(entry => !removedKeys.Contains(entry.TargetMemberKey)).Select(BridgeEntries.Kept);
-            await bridgeMappings.ReplaceAsync(bridgeVersion.BridgeVersionId, new BridgeMappingsInput { Mappings = [.. kept] }, cancellationToken);
-        }
+        foreach (var bridgeId in (await sources.ListAsync(new { ReportId = reportId }, cancellationToken)).Select(source => source.BridgeId).OfType<long>())
+            await bridges.RemoveRowsAsync(bridgeId, removedKeys, cancellationToken);
     }
 
     /// <summary>The overlay row a row of the tree describes, with its style, keeping a stored row's ID and pass-through payload, filter and settings.</summary>

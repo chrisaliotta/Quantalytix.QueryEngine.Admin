@@ -343,8 +343,6 @@ export type DimensionChangeSetCommit = ChangeSetCommit<DimensionEditState>
 export interface DimensionsApi extends ChangeSetPort {
   /** Analytical dimensions only; report-owned dimensions are reached from their report. */
   listDimensions(origin: DefinitionOrigin): Promise<DimensionListItem[]>
-  /** @deprecated Moves to the tenant catalog (OI-13). Kept until lib/mappings/directory.ts switches to `TenantApi` in P5. */
-  listAllDimensions(): Promise<DimensionListItem[]>
   listAvailableProfiles(): Promise<AvailableDimensionProfile[]>
   getDimension(id: Id): Promise<ApiResult<DimensionDetail>>
   getVersion(versionId: Id): Promise<ApiResult<DimensionVersionContent>>

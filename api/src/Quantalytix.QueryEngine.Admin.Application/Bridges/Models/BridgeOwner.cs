@@ -1,17 +1,14 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>The report source that owns a report bridge.</summary>
+/// <summary>The contract's <c>BridgeOwner</c>: the report source a report bridge belongs to (B9, OI-31).</summary>
 public sealed record BridgeOwner
 {
     /// <summary>The report the source belongs to.</summary>
     public required long ReportId { get; init; }
 
-    /// <summary>The <c>report_key</c> of the report.</summary>
+    /// <summary>The report key.</summary>
     public required string ReportKey { get; init; }
 
-    /// <summary>The source whose rows the bridge maps.</summary>
-    public required long ReportSourceId { get; init; }
-
-    /// <summary>The <c>source_key</c> of the source.</summary>
+    /// <summary>The key of the source whose rows the bridge maps.</summary>
     public required string SourceKey { get; init; }
 }

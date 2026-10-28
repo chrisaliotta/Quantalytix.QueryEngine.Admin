@@ -250,7 +250,7 @@ internal sealed class ReportEditorFixture
     public ReportRowService Rows()
     {
         return new ReportRowService(
-            Reports, Members, Lines, MemberOptions, RowParameters, Scopes, Columns, Sources, Mappings(), Owned(), new ClosureBuilder(Members, Closure), Changes(), _ids);
+            Reports, Members, Lines, MemberOptions, RowParameters, Scopes, Columns, Sources, ReportBridges(), Owned(), new ClosureBuilder(Members, Closure), Changes(), _ids);
     }
 
     /// <summary>The row tree validator, for a request to report 60.</summary>
@@ -279,7 +279,7 @@ internal sealed class ReportEditorFixture
     /// <returns>The service over these tables.</returns>
     public ReportSourceService SourceService()
     {
-        return new ReportSourceService(Reports, Sources, Roles, BridgeService(), BridgeVersionService(), Mappings(), Owned(), Workflow(), Remover(), Changes(), _ids);
+        return new ReportSourceService(Reports, Sources, Roles, ReportBridges(), Remover(), Changes(), _ids);
     }
 
     /// <summary>The new source validator, for a request to report 60.</summary>
@@ -307,7 +307,7 @@ internal sealed class ReportEditorFixture
     /// <returns>The service over these tables.</returns>
     public SourceItemService Items()
     {
-        return new SourceItemService(Sources, Mappings(), Owned(), Changes());
+        return new SourceItemService(Sources, ReportBridges(), Changes());
     }
 
     /// <summary>The item validator, for a request to the report's source.</summary>
@@ -338,12 +338,12 @@ internal sealed class ReportEditorFixture
         return new ReportScenarioService(Scenarios, Roles, Changes());
     }
 
-    /// <summary>The bridge service.</summary>
-    /// <returns>The service over these tables.</returns>
-    public BridgeService BridgeService()
+    /// <summary>The mappings module's hook that writes report bridges.</summary>
+    /// <returns>The hook over these tables.</returns>
+    public ReportBridges ReportBridges()
     {
-        return new BridgeService(
-            Bridges, BridgeVersions, Dimensions, Bindings, Sources, Reports, new BindingNames(Roles, Fields), BridgeVersionService(), Revision(), _ids);
+        var store = new BridgeStore(Bridges, BridgeVersions, BridgeMappings, new BridgeDrafts(BridgeVersions, BridgeMappings, _ids, _time), Workflow(), Pins());
+        return new ReportBridges(Bridges, BridgeVersions, BridgeMappings, store, _ids);
     }
 
     /// <summary>Sets whether the report is enabled, as the status endpoint would once its rules pass.</summary>
@@ -411,8 +411,8 @@ internal sealed class ReportEditorFixture
     private ReportContentRemover Remover()
     {
         return new ReportContentRemover(
-            Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Scenarios, Columns, Lines, MemberOptions, RowParameters, Styles, Owned(),
-            BridgeService(), Pins());
+            Sources, SourceVariables, Profiles, Picks, CalculationDimensions, Scopes, Scenarios, Columns, Lines, MemberOptions, RowParameters, Styles,
+            ReportBridges());
     }
 
     /// <summary>The assumption set pins.</summary>
@@ -443,18 +443,6 @@ internal sealed class ReportEditorFixture
         var bands = new InMemoryTableGateway<RangeBandRecord>();
         var drafts = new DimensionDrafts(DimensionVersions, new DimensionVersionCloner(Levels, Members, bands, _ids), _ids, _time);
         return new ReportDimensions(Dimensions, Roles, Members, drafts, new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands), _ids);
-    }
-
-    /// <summary>The bridge version service.</summary>
-    private BridgeVersionService BridgeVersionService()
-    {
-        return new BridgeVersionService(BridgeVersions, BridgeMappings, new BridgeVersionCloner(BridgeMappings, _ids), _ids, _time);
-    }
-
-    /// <summary>The bridge mapping service.</summary>
-    private BridgeMappingService Mappings()
-    {
-        return new BridgeMappingService(BridgeMappings, _ids);
     }
 
     /// <summary>The semantic revision.</summary>

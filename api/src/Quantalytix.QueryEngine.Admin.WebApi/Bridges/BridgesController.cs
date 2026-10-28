@@ -1,101 +1,145 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
-using Quantalytix.QueryEngine.Admin.WebApi.Reports;
-using Quantalytix.QueryEngine.Admin.Application.Bridges;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 
-/// <summary>Lists, creates, edits and deletes bridges: the semantic remappings from one canonical dimension to another.</summary>
+/// <summary>
+/// Bridges (blueprint 13): the list of analytical and report bridges, create an analytical bridge with an empty live version 1, the
+/// detail, delete and its check, and the analytical bridge change set. Report bridges are read here and answer 409 to writes (B9).
+/// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/bridges")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-public sealed class BridgesController(BridgeService bridges) : ControllerBase
+public sealed class BridgesController(BridgeQueries queries, BridgeCommands commands, BridgeChanges changes) : ControllerBase
 {
-    /// <summary>
-    /// Lists the bridges into and out of one dimension, which the dimension's page shows, with their purpose: <c>analytical</c>, or
-    /// <c>report</c> for a bridge a report source owns, with that source and its report.
-    /// </summary>
-    /// <param name="tenantId">The tenant that owns the bridges.</param>
-    /// <param name="dimensionId">The dimension the bridges lead into or start from.</param>
+    /// <summary>Lists every bridge, those starting or ending at one dimension, or the one bridge of a report source.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="query">The filters.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The bridges by key.</returns>
-    /// <response code="200">The dimension's bridges by key, ignoring case.</response>
-    /// <response code="400">The request names no dimension.</response>
+    /// <returns>The list items.</returns>
+    /// <response code="200">Analytical bridges first, then report bridges, each ordered by key.</response>
+    /// <response code="400">The filters do not bind or do not go together.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<BridgeSummary>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<IReadOnlyList<BridgeSummary>>> List(
-        string tenantId, [FromQuery, BindRequired] long dimensionId, CancellationToken cancellationToken)
+    [ProducesResponseType<IReadOnlyList<BridgeListItem>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    public async Task<ActionResult<IReadOnlyList<BridgeListItem>>> List(string tenantId, [FromQuery] BridgeListQuery query, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.ListAsync(dimensionId, cancellationToken));
+        return Ok(await queries.ListAsync(query, cancellationToken));
     }
 
-    /// <summary>Creates a bridge between two dimensions; it has no versions until one is created.</summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
-    /// <param name="input">The new bridge's key, endpoint dimensions, display name and availability.</param>
+    /// <summary>Creates an analytical bridge with an empty live version 1, <c>many_to_one</c> / <c>none</c> (OI-27).</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="input">The new bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created bridge.</returns>
-    /// <response code="200">The created bridge.</response>
-    /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
+    /// <returns>The bridge and its version.</returns>
+    /// <response code="201">Created, with its live version 1.</response>
+    /// <response code="400">The input breaks a field rule, or an endpoint does not exist.</response>
+    /// <response code="409">The key is taken, or the endpoints break B4 (equal, time, report dimension).</response>
     [HttpPost]
-    [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<BridgeRecord>> Create(string tenantId, NewBridgeInput input, CancellationToken cancellationToken)
+    [ProducesResponseType<BridgeCreated>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<ActionResult<BridgeCreated>> Create(string tenantId, CreateBridgeInput input, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.CreateAsync(input, cancellationToken));
+        var outcome = await commands.CreateAsync(input, cancellationToken);
+        return outcome.Succeeded ? StatusCode(StatusCodes.Status201Created, outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads one bridge with its purpose and, for a report bridge, the report source that owns it.</summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
+    /// <summary>Reads a bridge with its bindings and assumption set pins.</summary>
+    /// <param name="tenantId">The tenant.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The bridge's summary.</returns>
-    /// <response code="200">The bridge's summary.</response>
+    /// <returns>The detail.</returns>
+    /// <response code="200">The detail read model.</response>
     [HttpGet("{bridgeId:long}")]
-    [ProducesResponseType<BridgeSummary>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BridgeSummary>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
+    [ProducesResponseType<BridgeDetail>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BridgeDetail>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
     {
-        return Ok(await bridges.SummaryAsync(bridgeId, cancellationToken));
+        return Ok(await queries.DetailAsync(bridgeId, cancellationToken));
     }
 
-    /// <summary>Edits a bridge's display name and availability; a change advances the semantic revision.</summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
-    /// <param name="bridgeId">The bridge.</param>
-    /// <param name="input">The new identity attributes.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The stored bridge.</returns>
-    /// <response code="200">The stored bridge.</response>
-    /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    [HttpPut("{bridgeId:long}")]
-    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
-    [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<BridgeRecord>> Update(string tenantId, long bridgeId, BridgeInput input, CancellationToken cancellationToken)
-    {
-        return Ok(await bridges.UpdateAsync(bridgeId, input, cancellationToken));
-    }
-
-    /// <summary>
-    /// Deletes a bridge whose versions are all drafts and that no binding uses, together with its drafts and their mappings.
-    /// </summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
+    /// <summary>Deletes an analytical bridge and every version when no binding uses it and no historical set pins it (B12).</summary>
+    /// <param name="tenantId">The tenant.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when something blocks the delete.</returns>
-    /// <response code="204">The bridge and its drafts are deleted.</response>
-    /// <response code="409">Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.</response>
+    /// <returns>No content.</returns>
+    /// <response code="204">Deleted.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">Blocked (<c>violations</c> as in the delete check), or owned by a report.</response>
     [HttpDelete("{bridgeId:long}")]
-    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
     public async Task<IActionResult> Delete(string tenantId, long bridgeId, CancellationToken cancellationToken)
     {
-        var conflict = await bridges.DeleteAsync(bridgeId, cancellationToken);
-        if (conflict is not null) return Problems.DeleteBlocked(conflict).ToResult();
-        return NoContent();
+        return await commands.DeleteAsync(bridgeId, cancellationToken) is { } refusal ? Problems.From(refusal).ToResult() : NoContent();
+    }
+
+    /// <summary>Checks whether a bridge can be deleted; a report bridge never can here.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeId">The bridge.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The delete check.</returns>
+    /// <response code="200">Whether the delete is allowed, and why not.</response>
+    [HttpGet("{bridgeId:long}/delete-check")]
+    [ProducesResponseType<DeleteCheck>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<DeleteCheck>> CheckDelete(string tenantId, long bridgeId, CancellationToken cancellationToken)
+    {
+        return Ok(await queries.BridgeDeleteCheckAsync(bridgeId, cancellationToken));
+    }
+
+    /// <summary>Previews an analytical bridge change set: applies the operations in memory and writes nothing; broken mappings come back as findings.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeId">The bridge.</param>
+    /// <param name="request">The operations so far.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The pending state and its findings.</returns>
+    /// <response code="200">The operations apply.</response>
+    /// <response code="400">An operation's input is invalid; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="409">The bridge is owned by a report, or an operation targets a frozen version or a mapping that is gone.</response>
+    /// <response code="422">The result would break a rule.</response>
+    [HttpPost("{bridgeId:long}/changes/preview")]
+    [ProducesResponseType<ChangeSetPreview<BridgeEditState>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ChangeSetPreview<BridgeEditState>>> Preview(
+        string tenantId,
+        long bridgeId,
+        ChangeSetRequest<BridgeOperation> request,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await changes.PreviewAsync(bridgeId, request, cancellationToken);
+        return outcome.Succeeded ? Ok(outcome.Value) : Problems.From(outcome.Refusal).ToResult();
+    }
+
+    /// <summary>Commits an analytical bridge change set; refused while any finding remains (B11), and advances the semantic revision once.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeId">The bridge.</param>
+    /// <param name="request">Every operation of the change set.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The stored state and the real id of each temporary id.</returns>
+    /// <response code="200">Every operation applied and was written.</response>
+    /// <response code="400">An operation's input is invalid; errors are keyed by <c>operations[n]</c>.</response>
+    /// <response code="409">The bridge is owned by a report, or an operation targets a frozen version or a mapping that is gone.</response>
+    /// <response code="422">The live version would break a rule; see <c>violations</c>. Nothing was written.</response>
+    [HttpPost("{bridgeId:long}/changes")]
+    [ProducesResponseType<ChangeSetCommit<BridgeEditState>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ChangeSetCommit<BridgeEditState>>> Commit(
+        string tenantId,
+        long bridgeId,
+        ChangeSetRequest<BridgeOperation> request,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await changes.CommitAsync(bridgeId, request, cancellationToken);
+        return outcome.Succeeded ? Ok(outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 }
