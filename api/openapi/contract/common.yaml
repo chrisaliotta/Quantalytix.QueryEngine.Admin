@@ -1,7 +1,7 @@
 # Shared kernel of the Admin API contract: ids, keys, problems, delete checks, rule reports, change-set envelopes,
 # vocabularies read by more than one module, freeze, grouping and filter shapes, vocabulary terms, the tenant route
 # parameter and the standard error responses.
-# Blueprint: docs/blueprint/01-api-conventions.md. Mirrored by web2/src/lib/api/contract.ts.
+# Blueprint: docs/blueprint/01-api-conventions.md. Mirrored by web/src/lib/api/contract.ts.
 # Owner: integrator. Module files reference these components as ./common.yaml#/components/...
 openapi: 3.1.0
 info:
@@ -277,7 +277,7 @@ components:
       description: >-
         200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic
         over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422
-        and changes nothing, so a 200 always carries a non-null `live`; the web2 HTTP adapter turns the 422 into the
+        and changes nothing, so a 200 always carries a non-null `live`; the web HTTP adapter turns the 422 into the
         port's `live: null` (01, Results and errors).
       required: [report, live]
       properties:

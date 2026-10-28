@@ -12,7 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Errors;
 /// Confirms that every problem serializes to the contract's one <c>Problem</c> shape (common.yaml, blueprint 01 "Problem body"):
 /// <c>type</c>, <c>title</c>, <c>status</c> and <c>errors</c> always present, and <c>detail</c>, <c>violations</c> and
 /// <c>traceId</c> present only for the statuses that carry them, never as <c>null</c>. Clients branch on these members, so a
-/// stray <c>null</c> or a missing <c>errors</c> breaks the web2 HTTP adapters.
+/// stray <c>null</c> or a missing <c>errors</c> breaks the web HTTP adapters.
 /// </summary>
 public sealed class ProblemsTests
 {

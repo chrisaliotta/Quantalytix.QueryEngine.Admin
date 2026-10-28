@@ -12,10 +12,10 @@ worked example; every step names its files.
   passes (it fails on a stale entry, so remove an entry the moment its operation conforms or its endpoint is deleted).
 - The old controllers, their Application services, inputs and validators, and their tests are deleted. Rule tests stay,
   rewritten over snapshots.
-- `web2` runs the module's screens against the live API through `lib/<m>/http/adapter.ts`, and the port parity suite
+- `web` runs the module's screens against the live API through `lib/<m>/http/adapter.ts`, and the port parity suite
   passes on the mock (and on the live API with `QE_LIVE_API=1`).
 - Checks: `dotnet build` and `dotnet test` in `api/`; `pnpm contract:lint` at the root; `pnpm build`, `pnpm lint`,
-  `pnpm test` in `web2/`.
+  `pnpm test` in `web/`.
 
 ## Steps
 
@@ -113,9 +113,9 @@ worked example; every step names its files.
 - `VersionReferenceValidator` refuses every version kind since Wave B, so the generic `VersionStatusController` is dead
   and goes in P6 with its `Legacy` entries, `VersionReference`, `StatusChangeInput` and `AnalyticalTarget.RoutedVersion`.
 
-### 8. web2
+### 8. web
 
-- `web2/src/lib/<m>/http/adapter.ts`: implement the port over `HttpClient` (tenant client) and
+- `web/src/lib/<m>/http/adapter.ts`: implement the port over `HttpClient` (tenant client) and
   `createHttpChangeSet<Op, State>`; edits `stage(aggregatePath, { op, ...args })` and derive their return value from the
   preview state; assign `newTempId()` to inputs without an id; strip the `input.`/`patch.` prefix from error keys so
   forms see the mock's keys; convert a 422 of `validate`/`publish`/`freeze` into the port's data shape.
@@ -149,7 +149,7 @@ worked example; every step names its files.
 `api/Directory.Build.props` finds the sibling repositories (`Quantalytix.QueryEngine`, `database/srdb_ebm`) next to the
 main checkout, which it reads from the worktree's `.git` file, so `dotnet build` works unchanged in
 `~/.cursor/worktrees/...`. To build against other checkouts, export `QueryEngineRoot` and `SeedKitRoot` (absolute paths).
-`pnpm install` once in the worktree root and in `web2/` before the contract and `web2` checks.
+`pnpm install` once in the worktree root and in `web/` before the contract and `web` checks.
 
 ## Wave C (R6 reports): starting point and follow-ups
 

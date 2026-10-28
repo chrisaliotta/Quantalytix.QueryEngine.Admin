@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
-/// <summary>Registers the CORS policy that lets the <c>web2</c> dev server call the API.</summary>
+/// <summary>Registers the CORS policy that lets the <c>web</c> dev server call the API.</summary>
 public static class AdminCorsServiceCollectionExtensions
 {
     /// <summary>

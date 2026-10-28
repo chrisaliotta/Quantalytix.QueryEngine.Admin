@@ -8,7 +8,7 @@
 ```mermaid
 flowchart LR
     Contract["OpenAPI contract, api/openapi/contract"]
-    subgraph Web2 [web2]
+    subgraph Web2 [web]
         Screens --> Port["Module port, lib/module/contract.ts"]
         Port --> Http["HTTP adapter"]
         Port --> Mock["Mock adapter"]
@@ -72,7 +72,7 @@ documents into its output.
    (string ids, derived 401/403/404 responses, union members; see [Request pipeline](02-request-pipeline.md#openapi-generation)).
 4. `ContractConformanceTests` compares the two documents exactly: every contract operation must be generated and conform,
    and every generated operation must be in the contract. There is no allow-list.
-5. `web2` generates `src/lib/api/schema.d.ts` from the bundle with `pnpm contract:types`. Only HTTP adapters import it.
+5. `web` generates `src/lib/api/schema.d.ts` from the bundle with `pnpm contract:types`. Only HTTP adapters import it.
 
 ## Composition root
 
@@ -121,11 +121,11 @@ versions, mapping sets, mapping versions, bridges, bridge versions and calculati
 to their `DELETE`, and roles, members and levels have a delete check for the delete operation of their change set.
 [Feature classes](05-feature-classes.md) describes each module.
 
-## How web2 consumes the API
+## How web consumes the API
 
-`web2` keeps screens behind one port per module ([blueprint 02](../../../docs/blueprint/02-frontend-contract-layer.md)):
+`web` keeps screens behind one port per module ([blueprint 02](../../../docs/blueprint/02-frontend-contract-layer.md)):
 
-- `web2/src/lib/<module>/contract.ts` declares the module's read models, inputs, operations and port interface, mirroring
+- `web/src/lib/<module>/contract.ts` declares the module's read models, inputs, operations and port interface, mirroring
   the contract's schemas by name. Screens depend only on the port and on the shared kernel `lib/api/contract.ts`.
 - `lib/<module>/http/adapter.ts` implements the port over `HttpClient` (`lib/api/http.ts`), which resolves every call to an
   `ApiResult` and parses error bodies as `Problem`. It is the only code that imports `lib/api/schema.d.ts`.

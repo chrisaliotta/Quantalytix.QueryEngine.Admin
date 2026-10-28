@@ -1,6 +1,6 @@
 # 02 Frontend contract layer
 
-How `web2` talks to the API. The prototype already has the right shape for four modules (a port per module, a mock
+How `web` talks to the API. The prototype already has the right shape for four modules (a port per module, a mock
 adapter behind it, SWR hooks in a `client.tsx`); this file makes it uniform, adds the HTTP adapters and brings reports
 and models into the same pattern.
 
@@ -8,7 +8,7 @@ and models into the same pattern.
 
 The hand-authored OpenAPI contract in [`api/openapi/contract/`](../../api/openapi/contract/README.md) defines every
 read model, input, operation union and error the frontend sees ([00](00-architecture.md#the-contract-first-rule-agreed)).
-The `web2` side follows it in two ways:
+The `web` side follows it in two ways:
 
 - **Ports mirror it by hand.** Each `lib/<module>/contract.ts` declares the contract's schemas under the same names
   and the port methods that use them. A port type that differs from its schema in more than presentation-only
@@ -22,7 +22,7 @@ The `web2` side follows it in two ways:
 ## Folder layout (Agreed)
 
 ```
-web2/src/lib/
+web/src/lib/
   api/
     contract.ts        shared kernel: ApiResult, Problem, Violation, DeleteCheck, VersionStatus, Vocabulary, ids
     http.ts            fetch wrapper: base URL, tenant prefix, bearer token, problem parsing, 401 handling
@@ -103,7 +103,7 @@ export type DimensionViolationCode = 'member_key_unique' | 'level_key_unique' | 
 export interface DimensionViolation extends Violation { code: DimensionViolationCode }
 ```
 
-**Delta:** `web2` violation codes are camelCase in dimensions (`duplicateMemberKey`, `bandOverlap`) and snake_case in
+**Delta:** `web` violation codes are camelCase in dimensions (`duplicateMemberKey`, `bandOverlap`) and snake_case in
 mappings and releases. The API's rule codes are snake_case. Contracts adopt the API codes (OI-11).
 
 ## Ports
@@ -165,7 +165,7 @@ atomic and the blueprint does not make them so; a failed save stops the sequence
 
 ## Adapting each module
 
-| Module | Today in `web2` | Target |
+| Module | Today in `web` | Target |
 |---|---|---|
 | Datasets | Port + `ChangeSetPort` + staged proxy | Keep; add HTTP adapter; move `createDataset` from edits to commands (it creates an aggregate, it does not edit one) |
 | Dimensions | Port + `ChangeSetPort` + staged proxy | Keep; HTTP adapter; `freezeVersion` on the living lifecycle; `listHiddenDimensions` removed (OI-14, OI-22) |

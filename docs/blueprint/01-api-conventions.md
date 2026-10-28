@@ -25,12 +25,12 @@ These rules apply to every module file. A module file states only its exceptions
 - Every tenant route is open to any caller with tenant access. There are no tenant-level roles: releases, activation,
   capture, system dimension definition and every editor are available to every tenant user.
 - `/api/system/*` (the tenant directory) requires `SystemAdmin`.
-- `web2`'s `report_author` role (`lib/session/viewer.ts`) has no counterpart and is removed.
+- `web`'s `report_author` role (`lib/session/viewer.ts`) has no counterpart and is removed.
 
 ## Ids, keys and names
 
 - **Ids are strings (Agreed, OI-04).** Every id in a URL or JSON body is a string. Tables use BIGINT ids below 2^53;
-  the API serializes them as strings so ids stay opaque and `web2`'s `string` ids are unchanged.
+  the API serializes them as strings so ids stay opaque and `web`'s `string` ids are unchanged.
 - **Keys are fixed after creation (Agreed)** for datasets (OI-36), fields, grains, measures, dimensions, roles,
   members, levels, mapping sets, bridges, releases, assumption sets, models and metrics and parameters (OI-45),
   reports (OI-47), rows (OI-48), sources, profiles, columns and styles.
@@ -103,7 +103,7 @@ export interface ViolationTarget {
 
 Rule reports: `check` always answers `200` with a `ValidationReport` (`{ versionId, checkedAt, violations }`) and never
 writes. `validate`, `publish` and `freeze` answer `200` with the new state when every rule passes and `422` with
-`violations` when one fails, writing nothing. `web2` ports that expect a failed run to come back as data
+`violations` when one fails, writing nothing. `web` ports that expect a failed run to come back as data
 (`publishVersion`, `freezeVersion`, `validateRelease`) have HTTP adapters that convert the 422 into that shape, so the
 ports stay as they are.
 
@@ -175,7 +175,7 @@ as a whole.
 
 ## Change-set protocol (Agreed, OI-01)
 
-`web2`'s universal editing rule (`lib/changes.ts`): every edit stays pending until the user saves; reads see pending
+`web`'s universal editing rule (`lib/changes.ts`): every edit stays pending until the user saves; reads see pending
 state; commit applies the batch at once; discard drops it; lifecycle commands never run while a change set is open.
 Every module implements it with this protocol.
 

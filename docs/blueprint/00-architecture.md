@@ -18,8 +18,8 @@ flowchart LR
 
 | Layer | Owns | Never does |
 |---|---|---|
-| Screens (`web2/src/components`) | Rendering, local UI state, URL state | Calls `fetch`, imports a DTO, decides whether input is valid |
-| Module port (`web2/src/lib/<module>/contract.ts`) | The frontend contract: read models, inputs, results, the port interface, mirroring the OpenAPI contract | Knows about HTTP or the mock |
+| Screens (`web/src/components`) | Rendering, local UI state, URL state | Calls `fetch`, imports a DTO, decides whether input is valid |
+| Module port (`web/src/lib/<module>/contract.ts`) | The frontend contract: read models, inputs, results, the port interface, mirroring the OpenAPI contract | Knows about HTTP or the mock |
 | Adapters (`lib/<module>/http`, `lib/<module>/mock`) | Translating the port to a transport | Holds business rules the server does not also hold |
 | Admin Web API (controllers) | Routing, authentication, tenant access, binding, problem responses | Business rules |
 | Application | Feature services, input validators, publication rules, gates, change-set application | SQL |
@@ -41,11 +41,11 @@ flowchart LR
    `ContractConformanceTests` (`api/tests`) loads the bundled contract and `admin-api.json` and fails on any difference
    in paths, methods, status codes, schema property names, types or nullability. Operations not yet implemented are
    listed in its allow-list, which only shrinks and is empty when the refactor ends.
-5. `web2/src/lib/api/schema.d.ts` is generated from the bundled contract and imported only inside the HTTP adapters,
+5. `web/src/lib/api/schema.d.ts` is generated from the bundled contract and imported only inside the HTTP adapters,
    which map generated types to port types.
 6. Each adapter must pass the same port-level test suite, so the mock and HTTP adapters cannot drift (parity rule).
 
-The removed `web` client re-exported generated schema types into screens. `web2` must not; its prototype already
+The removed earlier client re-exported generated schema types into screens. `web` must not; its prototype already
 isolates screens behind ports, and the blueprint keeps that boundary.
 
 ## Where validation lives (Agreed, OI-05)
@@ -57,7 +57,7 @@ isolates screens behind ports, and the blueprint keeps that boundary.
   back from the API in the shapes [01](01-api-conventions.md) defines. A screen may disable a control from a read
   model flag (for example `isVersionEditable`) but does not compute validity.
 - **Client-side helpers stay presentational.** Parsing a pasted table into rows, highlighting a formula, or grouping a
-  list is presentation; deciding that a row is invalid is not. `web2` currently runs real rules in the browser:
+  list is presentation; deciding that a row is invalid is not. `web` currently runs real rules in the browser:
   `lib/mappings/rules.ts`, `lib/model/rules.ts` and the report's `coverage.ts`, `profiles.ts` and `scenarios.ts`. Those
   move behind check endpoints and read-model diagnostics; formulas are checked by `formula-check` (OI-43).
 - **Validate once, at the boundary.** Input validators run when a request enters the Application; publication rules

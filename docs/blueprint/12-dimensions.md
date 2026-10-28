@@ -6,7 +6,7 @@ The dimension manager authors reusable member sets: a dimension's roles, and its
 bands. It also lists usage and defines system dimensions from profiles. Report-owned dimensions are not listed here;
 they are reached only from their report (OI-22).
 
-Sources: [`web2/src/lib/dimensions/contract.ts`](../../web2/src/lib/dimensions/contract.ts) and its mock
+Sources: [`web/src/lib/dimensions/contract.ts`](../../web/src/lib/dimensions/contract.ts) and its mock
 (`mock/adapter.ts`, `mock/rules.ts`); [dimensions concept](../concepts/dimensions.md);
 [dimension manager brief](../requirements/dimension-manager-prototype.md); current `DimensionsController`,
 `DimensionRolesController`, `DimensionVersionsController`, `DimensionLevelsController`, `DimensionMembersController`,
@@ -110,7 +110,7 @@ export interface DimensionsApi extends ChangeSetPort {
 }
 ```
 
-Read models stay as in `web2`: `DimensionListItem` (dimension + profile + roles + version summaries + published
+Read models stay as in `web`: `DimensionListItem` (dimension + profile + roles + version summaries + published
 member count), `DimensionDetail` (+ usage), `DimensionVersionContent` (version + levels + members + bands).
 
 `DimensionDetail.usage` is computed by the server from bindings, mapping sets, bridges, calculation dimensions, report
@@ -184,7 +184,7 @@ From the current API: `range_data_type_matches_kind`, `level_key_unique`, `membe
 `band_bounds_ordered`, `bands_non_overlapping`, `band_member_in_version`, `dimension_consumers_resolve`. New:
 `profile_required_keys_present`, `profile_properties_valid` (OI-18), `band_open_bounds_at_ends`.
 
-Mapping from `web2` codes: `duplicateMemberKey` → `member_key_unique`, `duplicateLevelKey` → `level_key_unique`,
+Mapping from `web` codes: `duplicateMemberKey` → `member_key_unique`, `duplicateLevelKey` → `level_key_unique`,
 `cycle` → `hierarchy_acyclic`, `rangeType` → `range_data_type_matches_kind`, `bandOverlap` →
 `bands_non_overlapping`, `bandOrder` → `band_bounds_ordered`, `bandMember` → `band_member_in_version`,
 `bandOpenBound` → `band_open_bounds_at_ends`, `requiredMember`/`requiredRole` → `profile_required_keys_present`,

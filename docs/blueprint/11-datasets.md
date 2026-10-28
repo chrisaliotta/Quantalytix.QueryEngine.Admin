@@ -6,7 +6,7 @@ The dataset manager describes a tenant table or view so the engine can read it: 
 (with time bindings) and measures (with components and time policies), versioned strictly and released through
 semantic releases.
 
-Sources: [`web2/src/lib/datasets/contract.ts`](../../web2/src/lib/datasets/contract.ts) and its mock
+Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contract.ts) and its mock
 (`mock/adapter.ts`, `mock/rules.ts`); current `DatasetsController`, `DatasetVersionsController`, `FieldsController`,
 `GrainsController`, `BindingsController`, `MeasuresController`, `SourceObjectsController`; schema `dataset/`,
 `binding/`, `measure/`; schema doc §18 rules 1–3, 17, 22, 26–35.
@@ -132,7 +132,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization/refresh` | | `DatasetField` | 409 | `refreshMaterialization` |
 | DELETE | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` | 409 | `dematerializeField` |
 
-`publishVersion` validates first when called on a draft (`web2` offers Publish from draft); a failed run answers 422
+`publishVersion` validates first when called on a draft (`web` offers Publish from draft); a failed run answers 422
 and the adapter returns the report as data.
 
 ## JSON field materialization (Agreed, OI-32)
@@ -149,7 +149,7 @@ A JSON path field is materialized into a StarRocks asynchronous materialized vie
   view when no column is left).
 - Deleting a dataset over an ordinary (unmanaged) table leaves the table's view as it is, deleted fields' columns
   included; the next `materializeField` or `dematerializeField` on the table redefines it (decided 2026-10-27).
-- These are commands: storage is physical and allowed on any non-retired version, as the `web2` contract says.
+- These are commands: storage is physical and allowed on any non-retired version, as the `web` contract says.
 
 ## Managed tables on dataset delete (Agreed, OI-33)
 
@@ -163,7 +163,7 @@ reads:
 - The drops are planned from what StarRocks still holds, so a retry after a delete that stopped midway drops nothing
   twice and finishes the row deletes. StarRocks keeps a dropped table in its recycle bin for the catalog's retention,
   where `RECOVER TABLE` restores it.
-- The delete check is unchanged: its `message` is a summary of what blocks a delete. `web2`'s confirmation names the
+- The delete check is unchanged: its `message` is a summary of what blocks a delete. `web`'s confirmation names the
   tables the delete drops (`lib/datasets/managed-tables.ts`), from the source objects' `isManaged` and the versions'
   `sourceObject`.
 

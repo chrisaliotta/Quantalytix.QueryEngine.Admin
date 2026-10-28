@@ -8,7 +8,7 @@ reasons; these pages describe the code that implements them. Endpoint-level deta
 
 | Page | Covers |
 |---|---|
-| [High-level architecture](01-architecture.md) | Layers and projects, the contract-first rule, the composition root, the feature map, how `web2` consumes the API |
+| [High-level architecture](01-architecture.md) | Layers and projects, the contract-first rule, the composition root, the feature map, how `web` consumes the API |
 | [Request pipeline](02-request-pipeline.md) | Middleware, authentication and tenancy, the route existence check, input validation, JSON and string ids, the problem shape, OpenAPI generation, vocabularies |
 | [Core classes](03-core-classes.md) | The change-set pipeline, snapshot rules and their stages, the write plan, temporary ids, refusals, delete checks, table gateways, the conformance test |
 | [Version lifecycle](04-version-lifecycle.md) | Strict and living kinds, the version workflow, publication and retirement rules, freeze, the active assumption set and release, the semantic revision |

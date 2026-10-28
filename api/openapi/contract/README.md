@@ -1,7 +1,7 @@
 # Admin API contract
 
 The hand-authored OpenAPI 3.1 description of the Admin API. It is the source of truth (design-first): C# DTOs are
-written to match it, `web2` types are generated from it, and `ContractConformanceTests` fails the build when the
+written to match it, `web` types are generated from it, and `ContractConformanceTests` fails the build when the
 generated `api/openapi/admin-api.json` drifts from it ([blueprint 00](../../../docs/blueprint/00-architecture.md#the-contract-first-rule-agreed)).
 
 ## Files
@@ -91,13 +91,13 @@ pnpm contract:lint      # compose, then lint
 pnpm contract:bundle    # compose, then write api/openapi/contract/bundled.yaml
 ```
 
-From `web2/`:
+From `web/`:
 
 ```sh
 pnpm contract:types     # contract:bundle, then generate src/lib/api/schema.d.ts
-pnpm build              # type-checks schema.d.ts with the rest of web2
+pnpm build              # type-checks schema.d.ts with the rest of web
 ```
 
-`bundled.yaml` and `web2/src/lib/api/schema.d.ts` are committed, so the conformance test and the `web2` build run
+`bundled.yaml` and `web/src/lib/api/schema.d.ts` are committed, so the conformance test and the `web` build run
 without Node tooling. Regenerate both whenever a contract file changes; on a merge conflict in either, take any side
 and regenerate.

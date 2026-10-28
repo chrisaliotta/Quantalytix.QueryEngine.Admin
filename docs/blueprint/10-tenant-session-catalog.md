@@ -6,7 +6,7 @@ The cross-module surface every screen needs: who the caller is, which tenants th
 enumerations selects render, and one catalog of names and ids for pickers and cross-module links.
 
 Sources: current `SessionController`, `TenantsController`, `SystemTenantsController`, `VocabulariesController`,
-`OverviewController`, `LookupsController`; `web2` `lib/session/viewer.ts`, `ReleasesApi.getCatalog`,
+`OverviewController`, `LookupsController`; `web` `lib/session/viewer.ts`, `ReleasesApi.getCatalog`,
 `DatasetsApi.getVocabularies` / `getTenantCatalog`, `MappingsApi.listDimensionRefs` / `getPublishedMembers`,
 `DimensionsApi.listAllDimensions`.
 
@@ -35,7 +35,7 @@ export interface SessionApi {
 
 ### Tenant overview and catalog (`lib/tenant/contract.ts`)
 
-Three `web2` modules each load an overlapping catalog: `ReleasesApi.getCatalog` (datasets, dataset versions,
+Three `web` modules each load an overlapping catalog: `ReleasesApi.getCatalog` (datasets, dataset versions,
 identities, reports, releases), `DatasetsApi.getTenantCatalog` (dimensions with published members, roles, mapping sets,
 bridges, releases) and `MappingsApi.listDimensionRefs` (dimension refs). `DimensionsApi.listAllDimensions` is a fourth.
 **Agreed (OI-13):** one tenant catalog with the union of what they read, loaded once and cached on
@@ -103,7 +103,7 @@ Module contracts keep their own narrow types (`MappingDimensionRef`, `PinIdentit
 it helps a screen, but they read from `TenantApi`, not from a module-specific catalog endpoint. The dataset screens'
 `TenantLookups` is a `Pick` of `TenantApi`, so a `TenantApi` serves them unchanged.
 
-**Deltas from `web2`:**
+**Deltas from `web`:**
 
 - `datasets/contract.ts` `Dimension.publishedMembers` (members inline for every dimension) moves to
   `getPublishedMembers`, fetched per picker.
@@ -142,7 +142,7 @@ modules' unions: `dimensionKind`, `rangeDataType`, `editPolicy`, `cardinality`, 
 | POST | `/development/token` | dev token | anonymous, Development only | dev sign-in |
 | GET | `/health` | `200` | anonymous | |
 
-The tenant directory endpoints have no `web2` screen yet; they are kept as they are.
+The tenant directory endpoints have no `web` screen yet; they are kept as they are.
 
 ## Deltas from the current API
 

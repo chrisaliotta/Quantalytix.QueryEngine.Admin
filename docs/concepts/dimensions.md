@@ -522,8 +522,8 @@ protects deletion only; it does not protect the member keys a module reads.
 
 ## 8. What the dimension manager should expose
 
-For a plain user dimension, the manager edits the entities above in this shape; `web2`'s dimension screens
-(`web2/src/components/dimensions`) implement it.
+For a plain user dimension, the manager edits the entities above in this shape; `web`'s dimension screens
+(`web/src/components/dimensions`) implement it.
 
 | Area | Content | Read-only when |
 |---|---|---|

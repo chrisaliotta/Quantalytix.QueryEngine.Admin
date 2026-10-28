@@ -13,4 +13,4 @@
 
 # Generated from api/openapi/contract by `pnpm contract:bundle` and `pnpm contract:types`; regenerate, never merge by hand.
 api/openapi/contract/bundled.yaml linguist-generated=true
-web2/src/lib/api/schema.d.ts linguist-generated=true
+web/src/lib/api/schema.d.ts linguist-generated=true

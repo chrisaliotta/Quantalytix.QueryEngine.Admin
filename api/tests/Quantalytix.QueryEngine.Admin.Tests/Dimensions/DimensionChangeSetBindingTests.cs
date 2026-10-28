@@ -16,7 +16,7 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
 /// <summary>
-/// Confirms how the dimension endpoints bind what the web2 HTTP adapter sends, before anything reads the tenant: an operation no
+/// Confirms how the dimension endpoints bind what the web HTTP adapter sends, before anything reads the tenant: an operation no
 /// member of the change-set union matches answers the 400 problem, so a malformed change set never surfaces as a 500, and the list's
 /// <c>origin</c> query binds under its contract name. Runs in the startup collection, because starting the API sets FluentValidation's
 /// process-wide name resolvers.

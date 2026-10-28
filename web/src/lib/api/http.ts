@@ -2,7 +2,7 @@ import type { ApiResult, Problem } from './contract'
 
 /** Transport settings, supplied once by the session layer. */
 export interface HttpConfig {
-  /** Origin of the Admin API without a trailing slash; `''` when web2 is served from the API's origin. */
+  /** Origin of the Admin API without a trailing slash; `''` when web is served from the API's origin. */
   baseUrl: string
   /** Bearer token for the next request, or null to send none. */
   token(): string | null

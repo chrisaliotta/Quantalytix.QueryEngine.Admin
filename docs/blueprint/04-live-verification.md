@@ -1,7 +1,7 @@
 # 04 Live verification
 
 The refactor's phases are complete on `feature/web2-refactor`, and every check that runs without a cluster passes: the API
-build and tests, the contract lint and bundle, the exact contract conformance test, and `web2`'s build, lint and tests on
+build and tests, the contract lint and bundle, the exact contract conformance test, and `web`'s build, lint and tests on
 the mock adapters. What follows needs a live StarRocks tenant and has not been run yet. Each item says how to run it and
 what passing looks like; run them in order, because later items assume the earlier ones.
 
@@ -44,10 +44,10 @@ against StarRocks, so they verify behavior that the in-memory tests can't check:
 - report bridges created and written through the report change set;
 - the semantic revision advancing so the engine reloads after a live edit.
 
-## 3. web2 against the live API
+## 3. web against the live API
 
-Copy `web2/.env.example` to `web2/.env.local` (it sets `VITE_API_MODE=http` and `VITE_API_TENANT=development`), run
-`pnpm dev` in `web2/` (`http://localhost:5174`, an allowed CORS origin in Development), and walk every module's screens:
+Copy `web/.env.example` to `web/.env.local` (it sets `VITE_API_MODE=http` and `VITE_API_TENANT=development`), run
+`pnpm dev` in `web/` (`http://localhost:5174`, an allowed CORS origin in Development), and walk every module's screens:
 
 | Module | Check |
 |---|---|
@@ -68,7 +68,7 @@ Two follow-ups decided after integration ([11 Datasets](11-datasets.md) D13 and 
 mock parity suite. On a live tenant, first run the datasets parity suite over the HTTP adapter:
 
 ```bash
-cd web2
+cd web
 QE_LIVE_API=1 pnpm vitest run src/lib/datasets
 ```
 

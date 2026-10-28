@@ -3295,7 +3295,7 @@ components:
           description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
     FreezeResult:
       type: object
-      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web2 HTTP adapter turns the 422 into the port''s `live: null` (01, Results and errors).'
+      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web HTTP adapter turns the 422 into the port''s `live: null` (01, Results and errors).'
       required:
         - report
         - live

@@ -6,7 +6,7 @@ A request asks two questions: which dataset versions (the active **release**) an
 versions (the **assumption set**, active by default). This module authors releases, activates them, captures
 historical assumption sets and compares them.
 
-Sources: [`web2/src/lib/releases/contract.ts`](../../web2/src/lib/releases/contract.ts), `rules.ts`,
+Sources: [`web/src/lib/releases/contract.ts`](../../web/src/lib/releases/contract.ts), `rules.ts`,
 `mock/adapter.ts`; [releases and assumption sets brief](../requirements/releases-and-assumption-sets-prototype.md);
 current `ReleasesController`, `AssumptionSetsController`; schema `release/`, `assumption/`.
 

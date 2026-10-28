@@ -7,8 +7,8 @@ directory. The engine reads the metadata only through the tenant database's `vw_
 
 The API is contract-first. The hand-authored OpenAPI contract in [`openapi/contract/`](openapi/contract/README.md) is the
 source of truth, the C# request and response types are written by hand to match it, and a conformance test fails the build
-when the two differ. The `web2` application is the API's client; the older `web` application was removed with the move to
-the change-set API.
+when the two differ. The `web` application is the API's client. It replaced an earlier client, removed with the move to the
+change-set API.
 
 | Project | Holds |
 |---|---|
@@ -46,7 +46,7 @@ the version lifecycle, each feature module and the main request flows. The desig
 
 - **`StarRocks`:** connection options such as `CommandTimeoutSeconds`.
 - **`Cors:AllowedOrigins`:** the browser origins that may call the API; none by default. `appsettings.Development.json`
-  allows the `web2` dev server at `http://localhost:5174`. The `web2` dev server also
+  allows the `web` dev server at `http://localhost:5174`. The `web` dev server also
   proxies `/api` and `/development` to `http://localhost:5180`, so a browser on its origin does not need CORS.
 - **`Authentication:Schemes:Bearer`:** the standard ASP.NET Core JWT bearer settings through which a production identity
   provider plugs in. A token carries `sub`, one `tenant_id` claim (the claim type is `AdminAuthentication:TenantClaimType`),
@@ -72,8 +72,8 @@ The response's `accessToken` is a bearer token valid for eight hours. The signin
 working when the host restarts. `POST /development/token` exists only in Development and is not in the contract.
 `GET /health` answers without a token.
 
-To run `web2` against the API, start the API as above, then run `pnpm dev` in `web2/` with `VITE_API_MODE=http`
-(`VITE_API_TENANT` selects the tenant, `development` by default). Without it, `web2` uses its in-memory mock adapters.
+To run `web` against the API, start the API as above, then run `pnpm dev` in `web/` with `VITE_API_MODE=http`
+(`VITE_API_TENANT` selects the tenant, `development` by default). Without it, `web` uses its in-memory mock adapters.
 
 ## Contract-first workflow
 
@@ -92,7 +92,7 @@ An API change starts in the contract:
    from the C# code and copies `bundled.yaml` and `admin-api.json` into the test output.
 4. Run the tests. `ContractConformanceTests` fails on any difference between the bundled contract and the generated
    document.
-5. Regenerate the `web2` types from `web2/`, which bundles the contract and writes `web2/src/lib/api/schema.d.ts`:
+5. Regenerate the `web` types from `web/`, which bundles the contract and writes `web/src/lib/api/schema.d.ts`:
 
    ```bash
    pnpm contract:types
@@ -126,7 +126,7 @@ dotnet test --solution Quantalytix.QueryEngine.Admin.slnx --no-build
 - The live tests are skipped unless `QE_ADMIN_LIVE_GATEWAY=true`. They run against tenant `development` through the
   control-plane secret (or `ConnectionStrings__ControlPlane`), and write and then delete their own rows.
 
-`web2` has its own checks (`pnpm build`, `pnpm lint`, `pnpm test` in `web2/`). Its parity suites run on the mock adapters by
+`web` has its own checks (`pnpm build`, `pnpm lint`, `pnpm test` in `web/`). Its parity suites run on the mock adapters by
 default and also on the HTTP adapters against a running API with `QE_LIVE_API=1`.
 
 ## Live verification

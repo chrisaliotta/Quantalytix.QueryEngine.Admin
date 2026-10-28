@@ -6,14 +6,14 @@ A report defines rows, the sources that feed them, the profiles that pick a sour
 can break out or filter by, scenarios, variable scopes, columns and styles, over one calculation model. The engine runs
 a report while it is enabled, always on the active assumption set and with its model as it stands.
 
-Sources: `web2/src/lib/report/` (`types.ts`, `store.tsx`, `mockData.ts`, `coverage.ts`, `profiles.ts`,
+Sources: `web/src/lib/report/` (`types.ts`, `store.tsx`, `mockData.ts`, `coverage.ts`, `profiles.ts`,
 `scenarios.ts`, `dimensions.ts`, `rowStyle.ts`, `metricGraph.ts`) and `components/report/*`,
 `components/reports/*`; current `ReportsController`, `ReportEditorController`, `ReportSourcesController`,
 `SourceProfilesController`, `CalculationDimensionsController`, `ReportScenariosController`,
 `ReportVariableScopesController`, `ReportColumnsController`, `ReportStylesController`; schema `report/`,
 `calculation/`; schema README 2.18.0–2.26.0; engine README report contract 2.1.
 
-`web2` has no port for reports. Its store holds each report as one `ReportState` document, with copies of data other
+`web` has no port for reports. Its store holds each report as one `ReportState` document, with copies of data other
 modules own, and computes readiness, coverage and profile resolution in the browser. This file defines the contract
 and how it maps to the schema (OI-46).
 
@@ -41,10 +41,10 @@ them across the report tables, the report dimension and the report bridges, and 
 report bridges with versions and row counts that the editor never writes. The schema is the store, the
 `ReportDocument` read model is assembled from it, and every editor operation writes to the table that owns the fact.
 
-| `web2` `ReportState` | Stored as | Notes |
+| `web` `ReportState` | Stored as | Notes |
 |---|---|---|
 | `settings.key`, `name`, `type` | `qe_report.report_key`, `display_name`, `report_type` | key fixed (OI-47) |
-| `settings.model` | `qe_report.calculation_model_id` | fixed in the schema; `web2` lets the user change it (OI-47) |
+| `settings.model` | `qe_report.calculation_model_id` | fixed in the schema; `web` lets the user change it (OI-47) |
 | `settings.currency` | the model's `currency_code` | read-only on the report |
 | `settings.periodicity`, `layout` | `default_settings_json.periodicity`, `.layout` | (OI-54) |
 | `settings.subtotals` | `subtotal_position` | |
@@ -224,13 +224,13 @@ instead of relying on a bound id; the staged port keys the change set by it, and
 every edit of a batch names the same `reportId`. The operation union carries no `reportId`: the route names the
 report.
 
-**`createReport.copyFromReportId`** serves `web2`'s "New report" (copies rows, sources and profiles of another
+**`createReport.copyFromReportId`** serves `web`'s "New report" (copies rows, sources and profiles of another
 report, starts disabled) and "Duplicate" (`_copyN` key suggested by the client). The server copies the report
 dimension, report bridges and all content (new behavior; today `POST reports` only starts from a dimension). With
 `modelId` different from the source report's, it is also how a user "changes the model": the copy drops what does not
 resolve in the new model and starts disabled (OI-47).
 
-**Enable is a command.** `web2` toggles `enabled` as a staged edit and refuses Save while an enabled report is not
+**Enable is a command.** `web` toggles `enabled` as a staged edit and refuses Save while an enabled report is not
 ready. `setEnabled` runs on saved state; enabling answers 422 with the failing rules; while enabled,
 every commit passes the report gate or is refused with 422 (the current API's behavior).
 
@@ -240,9 +240,9 @@ A bridge source owns one report bridge. Creating a bridge source creates the bri
 `replicate`, source dimension = the role's dimension, target = the report dimension) in the same commit; deleting the
 source deletes it. `setRowRules` writes the bridge's `qe_bridge_mapping` rows for that row (one row per rule;
 `target_member_key` = row key). The mappings module reads these bridges and refuses to write them
-([13](13-mappings-and-bridges.md)). This removes the duplicate copy `web2` keeps in `Source.mappings`.
+([13](13-mappings-and-bridges.md)). This removes the duplicate copy `web` keeps in `Source.mappings`.
 
-The factor is the only number a rule carries (OI-52). `web2`'s separate multiplier (`multiplier-control.tsx`,
+The factor is the only number a rule carries (OI-52). `web`'s separate multiplier (`multiplier-control.tsx`,
 `mapping.setMultiplier`) is removed: a user who wants half an account sets the factor to 0.5, and an exclusion is a −1
 rule on the same item, which is what `breakOut` already produces.
 
@@ -294,8 +294,8 @@ type ReportOperation =
 | Operation | Cascade |
 |---|---|
 | `deleteRow` | children move up; its bridge rules, scopes, row parameters and member option go; formula rows naming it as parent move up |
-| `deleteSource` | its bridge goes; profile picks naming it are cleared (`web2` leaves them dangling) |
-| `deleteCalculationDimension` | removed from default breakout **and** default filter (`web2` cleans breakout only) |
+| `deleteSource` | its bridge goes; profile picks naming it are cleared (`web` leaves them dangling) |
+| `deleteCalculationDimension` | removed from default breakout **and** default filter (`web` cleans breakout only) |
 | `deleteStyle` | refused with `report_styles_resolve` while a row names it |
 | `deleteProfile` | refused while it is the default |
 | a model change | not offered (P4); see OI-47 |
@@ -312,7 +312,7 @@ Report rules (current API): `report_items_resolve`, `calculation_grouping_resolv
 
 ## Preview and run (out of scope, OI-53)
 
-Report preview and run are not part of this refactor. `web2`'s static Preview tab (`preview/preview-tab.tsx`, unreachable
+Report preview and run are not part of this refactor. `web`'s static Preview tab (`preview/preview-tab.tsx`, unreachable
 from the editor nav) is removed or left unreachable, and the Admin API does not call the engine. Comparisons, which
 `ReportState` stored, are run-time inputs of report contract 2.1 and are not stored (OI-55); they return with a future
 preview feature.

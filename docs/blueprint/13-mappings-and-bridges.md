@@ -4,12 +4,12 @@
 
 Mapping sets translate a source system's key values into members of one dimension. Bridges translate members of one
 dimension into members of another, with cardinality, allocation, factors and (for report bridges) descendant rules.
-Both are managed inside the dimension editor (`web2` rev. 2) and follow the same live-and-frozen version model as
+Both are managed inside the dimension editor (`web` rev. 2) and follow the same live-and-frozen version model as
 dimensions.
 
-Sources: [`web2/src/lib/mappings/contract.ts`](../../web2/src/lib/mappings/contract.ts), `rules.ts`, `mock/adapter.ts`;
+Sources: [`web/src/lib/mappings/contract.ts`](../../web/src/lib/mappings/contract.ts), `rules.ts`, `mock/adapter.ts`;
 [mappings and bridges brief rev. 1](../requirements/mappings-and-bridges-prototype.md) and
-[rev. 2](../../web2/docs/mappings-and-bridges.md); current `MappingSetsController`, `MappingVersionsController`,
+[rev. 2](../../web/docs/mappings-and-bridges.md); current `MappingSetsController`, `MappingVersionsController`,
 `MappingEntriesController`, `BridgesController`, `BridgeVersionsController`, `BridgeMappingsController`; schema
 `mapping/`, `bridge/`.
 
@@ -36,7 +36,7 @@ Sources: [`web2/src/lib/mappings/contract.ts`](../../web2/src/lib/mappings/contr
 The lifecycle and the `freeze` command are defined once in
 [12 Dimensions, "The version model"](12-dimensions.md#the-version-model-agreed-oi-14).
 
-**On B11:** editing settings in place changes how live queries allocate at once. The confirmation `web2` shows ("N
+**On B11:** editing settings in place changes how live queries allocate at once. The confirmation `web` shows ("N
 mappings won't satisfy ...") stays; because the version is live, a commit that leaves non-compliant mappings is refused
 (422) rather than kept as a flagged draft. Freeze first if the old semantics must remain available to historical sets.
 
@@ -175,7 +175,7 @@ Mapping versions: `source_key_unique`, `dimension_version_published`, `entry_mem
 `cardinality_many_to_one`, `allocation_none`, `allocation_partition`, `allocation_replicate`, `pair_unique`,
 `descendants_report_only` (B8).
 
-`web2`'s `lib/mappings/rules.ts` decided entry and mapping validity in the browser. With the server authoritative
+`web`'s `lib/mappings/rules.ts` decided entry and mapping validity in the browser. With the server authoritative
 (OI-05), issue badges, uncovered-member counts and the allocation summary come from preview `violations` and from
 read-model fields the server computes (`coverage: { uncoveredMemberKeys }`, `allocation: BridgeAllocationSummary`). Paste
 parsing and the paste preview's New/Unchanged/Changed/Removed grouping stay in the browser.

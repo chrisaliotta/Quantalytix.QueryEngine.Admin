@@ -1,11 +1,11 @@
 # Admin Web API and frontend contract blueprint
 
 This folder is the blueprint for rebuilding the Query Engine Admin Web API and for giving the new web application
-(`web2`) a frontend contract layer. It replaces neither the concept docs nor the requirements briefs: it turns them,
-the `web2` prototype and the authoritative database schema into one interface the frontend and the backend refactors
+(`web`) a frontend contract layer. It replaces neither the concept docs nor the requirements briefs: it turns them,
+the `web` prototype and the authoritative database schema into one interface the frontend and the backend refactors
 both build against.
 
-The frontend drives the design. Where the prototype's contracts (`web2/src/lib/*/contract.ts`) describe what a screen
+The frontend drives the design. Where the prototype's contracts (`web/src/lib/*/contract.ts`) describe what a screen
 needs, the API is shaped to serve it. Where the prototype asks for something the schema cannot hold, or where two
 sources disagree, the blueprint records an open issue instead of choosing silently.
 
@@ -15,7 +15,7 @@ format; the blueprint remains the source for the rules behind it
 ([00, the contract-first rule](00-architecture.md#the-contract-first-rule-agreed)).
 
 **Status:** phases 0 to 6 complete on `feature/web2-refactor` (2026-10-27). The API serves exactly the contract, with no
-allow-list; the old `web` app was removed in favor of `web2`. Checks against a live tenant are pending:
+allow-list; the old web app was removed and the new one (developed as `web2`) now lives in `web/`. Checks against a live tenant are pending:
 [04 Live verification](04-live-verification.md).
 
 ## Sources
@@ -27,9 +27,9 @@ allow-list; the old `web` app was removed in favor of `web2`. Checks against a l
 | [Current Admin API README](../../api/README.md), `api/openapi/admin-api.json`, `api/docs/architecture/`                                             | The API being rebuilt: about 160 operations in 43 controllers.            |
 | [Dimensions concept](../concepts/dimensions.md)                                                                                                     | Dimension model, lifecycle and proposed profiles.                         |
 | [Dimension manager brief](../requirements/dimension-manager-prototype.md)                                                                           | Dimension manager behaviors.                                              |
-| [Mappings and bridges brief](../requirements/mappings-and-bridges-prototype.md), [rev. 2 in web2](../../web2/docs/mappings-and-bridges.md)          | Mapping sets and bridges.                                                 |
+| [Mappings and bridges brief](../requirements/mappings-and-bridges-prototype.md), [rev. 2 in web](../../web/docs/mappings-and-bridges.md)          | Mapping sets and bridges.                                                 |
 | [Releases and assumption sets brief](../requirements/releases-and-assumption-sets-prototype.md)                                                     | Releases, activation, capture.                                            |
-| `web2` [prototype](../../web2/src/lib)                                                                                                              | Module ports, read models, mock rules; report and model stores.           |
+| `web` [prototype](../../web/src/lib)                                                                                                              | Module ports, read models, mock rules; report and model stores.           |
 
 ## Reading order
 
@@ -67,7 +67,7 @@ Each module file follows the same outline so the two refactors can be planned si
 
 1. Purpose and sources
 2. Domain rules (with the source that states each)
-3. Frontend contract: read models, inputs and the port, with deltas from the current `web2` contract
+3. Frontend contract: read models, inputs and the port, with deltas from the current `web` contract
 4. HTTP API: method, route, request, response, errors and the port method it serves
 5. Change-set operations: what an aggregate's commit accepts
 6. Rule codes
