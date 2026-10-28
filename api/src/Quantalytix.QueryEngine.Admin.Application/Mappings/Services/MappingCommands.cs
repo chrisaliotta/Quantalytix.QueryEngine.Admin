@@ -1,3 +1,4 @@
+using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -15,7 +16,7 @@ public sealed class MappingCommands(
     ITableGateway<MappingVersionRecord> versions,
     ITableGateway<DimensionMappingRecord> entries,
     ITableGateway<DimensionRecord> dimensions,
-    ITableGateway<AssumptionSetMappingRecord> pins,
+    AssumptionPins pins,
     MappingDrafts drafts,
     MappingVersionRemover remover,
     MappingSetSnapshotLoader loader,
@@ -64,7 +65,7 @@ public sealed class MappingCommands(
         var check = MappingDeleteRules.Set(snapshot);
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await pins.DeleteAsync(new { MappingSetId = mappingSetId }, cancellationToken);
+        await pins.UnpinMappingSetAsync(mappingSetId, cancellationToken);
         await remover.RemoveAsync([.. snapshot.Surroundings.Versions.Select(version => version.MappingVersionId)], cancellationToken);
         await sets.DeleteAsync(new { MappingSetId = mappingSetId }, cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);

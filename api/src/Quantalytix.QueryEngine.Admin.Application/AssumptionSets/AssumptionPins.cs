@@ -67,8 +67,11 @@ public sealed class AssumptionPins(
             cancellationToken);
     }
 
-    /// <summary>Deletes every pin of a dimension that is going away with its report, the only kind of dimension deleted with pins.</summary>
-    /// <param name="dimensionId">A report dimension.</param>
+    /// <summary>
+    /// Deletes every pin of a dimension that is going away. Its delete rules have refused a historical set's pin, so only the active
+    /// set's remains.
+    /// </summary>
+    /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the delete.</param>
     /// <returns>A task that completes when the pins are gone.</returns>
     public async Task UnpinDimensionAsync(long dimensionId, CancellationToken cancellationToken)
@@ -76,8 +79,23 @@ public sealed class AssumptionPins(
         await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
     }
 
-    /// <summary>Deletes every pin of a bridge that is going away with its report source, the only kind of bridge deleted with pins.</summary>
-    /// <param name="bridgeId">A report bridge.</param>
+    /// <summary>
+    /// Deletes every pin of a mapping set that is going away. Its delete rules have refused a historical set's pin, so only the active
+    /// set's remains.
+    /// </summary>
+    /// <param name="mappingSetId">The mapping set.</param>
+    /// <param name="cancellationToken">Cancels the delete.</param>
+    /// <returns>A task that completes when the pins are gone.</returns>
+    public async Task UnpinMappingSetAsync(long mappingSetId, CancellationToken cancellationToken)
+    {
+        await mappings.DeleteAsync(new { MappingSetId = mappingSetId }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Deletes every pin of a bridge that is going away. Its delete rules have refused a historical set's pin, so only the active
+    /// set's remains.
+    /// </summary>
+    /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancels the delete.</param>
     /// <returns>A task that completes when the pins are gone.</returns>
     public async Task UnpinBridgeAsync(long bridgeId, CancellationToken cancellationToken)

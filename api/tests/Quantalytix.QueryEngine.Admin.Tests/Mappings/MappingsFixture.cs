@@ -228,7 +228,7 @@ internal sealed class MappingsFixture
     public MappingCommands MappingCommands()
     {
         return new MappingCommands(
-            MappingSets, MappingVersions, Entries, Dimensions, MappingPins, MappingDrafts(), new MappingVersionRemover(MappingVersions, Entries), MappingLoader(),
+            MappingSets, MappingVersions, Entries, Dimensions, Pins(), MappingDrafts(), new MappingVersionRemover(MappingVersions, Entries), MappingLoader(),
             Workflow(), Freezer(), SemanticRevision(), _ids);
     }
 
