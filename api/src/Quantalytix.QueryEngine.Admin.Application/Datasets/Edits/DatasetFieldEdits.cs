@@ -115,8 +115,8 @@ internal static class DatasetFieldEdits
 
     /// <summary>
     /// The snapshot with a managed table's new column for a field, or a refusal when the table is not managed or has a column of that
-    /// name and another type. A column of that name and the field's type is this operation's own DDL, which the commit runs before it
-    /// replays the operations.
+    /// name and another type. A column of that name and the field's type is this operation's own DDL, left by a commit that stopped
+    /// before its row writes.
     /// </summary>
     private static DatasetSnapshot WithNewColumn(DatasetSnapshot snapshot, FieldRecord field, ChangeContext context)
     {

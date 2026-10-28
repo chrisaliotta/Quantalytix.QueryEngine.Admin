@@ -7,8 +7,9 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Changes;
 
 /// <summary>
 /// Confirms the commit write order (blueprint 01, "Writing without transactions", OI-03): StarRocks rejects UPDATE and DELETE
-/// inside transactions, so a commit that stops midway must leave a harmless residue. Deletes run children-first, then updates,
-/// then inserts parents-first, and the aggregate root's row is written last. Also confirms that <see cref="WritePlan.Sync"/>
+/// inside transactions, so a commit that stops midway must leave a harmless residue. Schema statements (DDL, which cannot be rolled
+/// back) run before any row write, deletes run children-first, then updates, then inserts parents-first, and the aggregate root's row
+/// is written last. Also confirms that <see cref="WritePlan.Sync"/>
 /// turns stored rows into changed rows with only the writes needed.
 /// </summary>
 public sealed class WritePlanTests
@@ -22,7 +23,10 @@ public sealed class WritePlanTests
     /// <summary>A grandchild table.</summary>
     private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new();
 
-    /// <summary>Writes added in any order come out deletes deepest first, updates and inserts shallowest first, the root last.</summary>
+    /// <summary>
+    /// Writes added in any order come out schema statements first, then deletes deepest first, updates and inserts shallowest first,
+    /// the root last.
+    /// </summary>
     [Fact]
     public void Ordered_FollowsTheResidueSafeOrder()
     {
@@ -34,9 +38,11 @@ public sealed class WritePlanTests
         plan.Update(_members, 2, Member(3));
         plan.Delete(_members, 2, new { DimensionMemberId = 2L });
         plan.Update(_levels, 1, Level(3));
+        plan.Schema(_ => Task.CompletedTask);
 
         Assert.Equal(
             [
+                (WriteKind.Schema, WritePlan.Root, (Type?)null),
                 (WriteKind.Delete, 2, typeof(DimensionMemberRecord)),
                 (WriteKind.Delete, 1, typeof(DimensionLevelRecord)),
                 (WriteKind.Update, 1, typeof(DimensionLevelRecord)),

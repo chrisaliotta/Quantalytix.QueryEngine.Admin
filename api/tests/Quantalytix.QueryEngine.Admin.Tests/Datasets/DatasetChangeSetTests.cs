@@ -203,6 +203,46 @@ public sealed class DatasetChangeSetTests
         Assert.Equal(RefusalKind.Conflict, refused.Refusal!.Kind);
     }
 
+    /// <summary>
+    /// One commit that renames the managed table and adds a column runs both statements in one write plan, the rename first and the
+    /// column on the new name, before the rows.
+    /// </summary>
+    /// <returns>A task that completes when the commit is checked.</returns>
+    [Fact]
+    public async Task Commit_RunsTheRenameThenTheNewColumns()
+    {
+        await _fixture.UseManagedTableAsync();
+        var save = SaveColumnField(null, "riskBand", "risk_band");
+
+        var commit = await _fixture.Changes().CommitAsync(
+            Draft, Request(save with { Input = save.Input with { CreateColumn = true } }, new DatasetRenameSourceTableOperation { TableName = "loan_staging" }), Token);
+
+        Assert.True(commit.Succeeded);
+        Assert.Equal(["rename staging_loans loan_staging", "add loan_staging risk_band"], _fixture.ManagedTables.Calls);
+    }
+
+    /// <summary>
+    /// DDL cannot be rolled back: when a commit stopped after its DDL, replaying the same operations finds the table renamed and the
+    /// column added, plans no DDL, and writes the rows.
+    /// </summary>
+    /// <returns>A task that completes when the replay is checked.</returns>
+    [Fact]
+    public async Task Replay_AfterTheDdlRan_PlansNoDdl()
+    {
+        await _fixture.UseManagedTableAsync();
+        await _fixture.ManagedTables.RenameAsync("staging_loans", "loan_staging", Token);
+        await _fixture.ManagedTables.AddColumnsAsync(
+            "loan_staging", [new DatasetNewColumnInput { Name = "risk_band", DataType = DataTypes.String, NumericPrecision = null, NumericScale = null, IsNullable = true }], Token);
+        var save = SaveColumnField(null, "riskBand", "risk_band");
+
+        var commit = await _fixture.Changes().CommitAsync(
+            Draft, Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging" }, save with { Input = save.Input with { CreateColumn = true } }), Token);
+
+        Assert.True(commit.Succeeded);
+        Assert.Equal(["rename staging_loans loan_staging", "add loan_staging risk_band"], _fixture.ManagedTables.Calls);
+        Assert.Equal("loan_staging", _fixture.Managed.All.Single().SourceObject);
+    }
+
     /// <summary>Publication findings come back in the preview and reflect the pending edits, without blocking the save.</summary>
     /// <returns>A task that completes when the preview is checked.</returns>
     [Fact]

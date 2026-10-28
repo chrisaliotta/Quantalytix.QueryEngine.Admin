@@ -4,7 +4,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 
 /// <summary>
 /// The row writes of one commit, ordered so a commit that stops midway leaves a harmless residue, because StarRocks rejects
-/// <c>UPDATE</c> and <c>DELETE</c> inside transactions (blueprint 01, OI-03): deletes children-first, then updates, then inserts
+/// <c>UPDATE</c> and <c>DELETE</c> inside transactions (blueprint 01, OI-03): schema statements (DDL) first, because they cannot be
+/// rolled back and the rows they enable must not be stored without them; then deletes children-first, then updates, then inserts
 /// parents-first, then the root row's writes last. Writes at the same depth keep the order they were added in.
 /// </summary>
 public sealed class WritePlan
@@ -46,6 +47,13 @@ public sealed class WritePlan
         _writes.Add(new PlannedWrite(WriteKind.Delete, depth, typeof(TRecord), cancellationToken => gateway.DeleteAsync(filter, cancellationToken)));
     }
 
+    /// <summary>Adds a schema statement, such as a managed table's new columns, which runs before every row write.</summary>
+    /// <param name="statement">Runs the statement.</param>
+    public void Schema(Func<CancellationToken, Task> statement)
+    {
+        _writes.Add(new PlannedWrite(WriteKind.Schema, Root, null, statement));
+    }
+
     /// <summary>
     /// Adds the writes that turn one table's stored rows into the changed rows: a delete per row that is gone, an update per row
     /// that differs, and one insert of the rows that are new. Rows are matched by their key.
@@ -78,16 +86,21 @@ public sealed class WritePlan
     }
 
     /// <summary>The writes in commit order.</summary>
-    /// <returns>Child deletes deepest first, child updates and inserts shallowest first, then the root's deletes, updates and inserts.</returns>
+    /// <returns>
+    /// Schema statements, then child deletes deepest first, child updates and inserts shallowest first, then the root's deletes, updates
+    /// and inserts.
+    /// </returns>
     public IReadOnlyList<PlannedWrite> Ordered()
     {
-        var children = _writes.Where(write => write.Depth != Root).ToList();
+        var rows = _writes.Where(write => write.Kind != WriteKind.Schema).ToList();
+        var children = rows.Where(write => write.Depth != Root).ToList();
         return
         [
+            .. _writes.Where(write => write.Kind == WriteKind.Schema),
             .. children.Where(write => write.Kind == WriteKind.Delete).OrderByDescending(write => write.Depth),
             .. children.Where(write => write.Kind == WriteKind.Update).OrderBy(write => write.Depth),
             .. children.Where(write => write.Kind == WriteKind.Insert).OrderBy(write => write.Depth),
-            .. _writes.Where(write => write.Depth == Root).OrderBy(write => write.Kind)
+            .. rows.Where(write => write.Depth == Root).OrderBy(write => write.Kind)
         ];
     }
 }

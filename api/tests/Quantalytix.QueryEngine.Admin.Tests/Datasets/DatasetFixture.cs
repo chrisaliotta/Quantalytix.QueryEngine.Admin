@@ -176,19 +176,18 @@ internal sealed class DatasetFixture
         return new ChangeSetPipeline<DatasetSnapshot, DatasetOperation, DatasetVersion>(
             new DatasetAggregate(
                 Loader(), new DatasetVersionReader(Views), Datasets, Versions, Fields, Grains, GrainFields, Bindings, TimeBindings, Measures, Components, Dependencies,
-                TimePolicies, Managed),
+                TimePolicies, Managed, new DatasetSchemaChanges(ManagedTables, Materializations())),
             Rules(),
             [new DatasetOperationValidator()],
             new SequentialIdGenerator(FirstNewId),
             SemanticRevision());
     }
 
-    /// <summary>The change set with its DDL step and materialization requests.</summary>
+    /// <summary>The change set with its materialization requests.</summary>
     /// <returns>The service.</returns>
     public DatasetChanges Changes()
     {
-        var materializations = Materializations();
-        return new DatasetChanges(Pipeline(), new DatasetSchemaChanges(Versions, Catalog, ManagedTables, materializations), materializations, Queries());
+        return new DatasetChanges(Pipeline(), Materializations(), Queries());
     }
 
     /// <summary>The materialization commands.</summary>

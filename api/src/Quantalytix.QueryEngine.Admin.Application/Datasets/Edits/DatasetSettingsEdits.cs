@@ -60,8 +60,8 @@ internal static class DatasetSettingsEdits
 
     /// <summary>
     /// <c>renameSourceTable</c>: renames the managed table the version reads, in the registry and the physical catalog. A table the
-    /// database already holds under the new name, and no longer under the old one, is this rename's own DDL, which the commit runs
-    /// before it replays the operations.
+    /// database already holds under the new name, and no longer under the old one, is this rename's own DDL, left by a commit that
+    /// stopped before its row writes.
     /// </summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="operation">The operation.</param>

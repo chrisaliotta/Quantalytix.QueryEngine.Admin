@@ -10,5 +10,8 @@ public enum WriteKind
     Update,
 
     /// <summary>Adds rows (an upsert in a StarRocks primary-key table).</summary>
-    Insert
+    Insert,
+
+    /// <summary>Changes the physical schema (DDL), such as adding a managed table's columns.</summary>
+    Schema
 }

@@ -25,7 +25,8 @@ public sealed class DatasetAggregate(
     ITableGateway<MeasureComponentRecord> components,
     ITableGateway<MeasureDependencyRecord> dependencies,
     ITableGateway<MeasureTimePolicyRecord> timePolicies,
-    ITableGateway<ManagedSourceObjectRecord> managed)
+    ITableGateway<ManagedSourceObjectRecord> managed,
+    DatasetSchemaChanges schema)
     : IChangeSetAggregate<DatasetSnapshot, DatasetOperation, DatasetVersion>
 {
     /// <summary>The depth of rows that name only the version: fields, grains, measures and the managed-table registry.</summary>
@@ -79,12 +80,13 @@ public sealed class DatasetAggregate(
         };
     }
 
-    /// <summary>Plans the row writes, the version and dataset rows last.</summary>
+    /// <summary>Plans the managed-table DDL, then the row writes, the version and dataset rows last.</summary>
     /// <param name="before">The aggregate as stored.</param>
     /// <param name="after">The aggregate with every operation applied.</param>
     /// <param name="plan">The plan.</param>
     public void Plan(DatasetSnapshot before, DatasetSnapshot after, WritePlan plan)
     {
+        schema.Plan(before, after, plan);
         if (before.Dataset != after.Dataset) plan.Update(datasets, WritePlan.Root, after.Dataset);
         if (before.Version != after.Version) plan.Update(versions, WritePlan.Root, after.Version);
         plan.Sync(managed, ItemDepth, before.ManagedObjects, after.ManagedObjects, row => new { row.ManagedSourceObjectId });
