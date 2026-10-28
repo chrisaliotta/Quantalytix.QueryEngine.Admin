@@ -1,23 +1,22 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
 /// <summary><c>manifest_not_empty</c>: a release pins at least one dataset version, because an empty release exposes no datasets to queries.</summary>
-public sealed class ManifestNotEmptyRule(ITableGateway<ReleaseDatasetRecord> manifest) : IPublicationRule
+public sealed class ManifestNotEmptyRule : IReleaseRule
 {
-    /// <summary>The rule applies to semantic releases.</summary>
-    public string Kind { get; } = VersionKinds.SemanticRelease;
+    /// <summary>Publication: a draft may be empty while it is edited.</summary>
+    public RuleStage Stage => RuleStage.Publication;
 
-    /// <summary>Reports a release whose manifest has no rows.</summary>
-    /// <param name="versionId">The release being validated.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <summary>Reports a manifest with no rows.</summary>
+    /// <param name="snapshot">The release.</param>
+    /// <param name="cancellationToken">Unused.</param>
     /// <returns>One violation for an empty manifest; none otherwise.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ReleaseViolation>> EvaluateAsync(ReleaseSnapshot snapshot, CancellationToken cancellationToken)
     {
-        var rows = await manifest.ListAsync(new { SemanticReleaseId = versionId }, cancellationToken);
-        if (rows.Count > 0) return [];
-        return [new RuleViolation { Code = "manifest_not_empty", Message = "The release pins no dataset versions." }];
+        IReadOnlyList<ReleaseViolation> violations = snapshot.Manifest.Count > 0
+            ? []
+            : [new ReleaseViolation { Code = "manifest_not_empty", Message = "The release pins no dataset versions.", DatasetId = null }];
+        return Task.FromResult(violations);
     }
 }

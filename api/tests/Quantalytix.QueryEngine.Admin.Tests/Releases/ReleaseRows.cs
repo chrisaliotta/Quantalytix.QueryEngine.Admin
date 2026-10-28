@@ -1,43 +1,48 @@
-using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Releases;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.Datasets;
-using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Releases;
 
-/// <summary>Builds the metadata rows the release rule tests seed, with every required column set to a valid default.</summary>
+/// <summary>Builds the metadata rows the release and report tests seed, with every required column set to a valid default.</summary>
 internal static class ReleaseRows
 {
-    /// <summary>The draft release every rule test validates.</summary>
+    /// <summary>The release the report tests treat as active, and whose rows <see cref="Pin"/> builds.</summary>
     public const long SemanticReleaseId = 900;
 
-    /// <summary>The branch role of dimension 100, which <see cref="Reader"/> names bindings by.</summary>
-    public const long BranchRoleId = 41;
-
-    /// <summary>The product role of dimension 200, which <see cref="Reader"/> names bindings by.</summary>
-    public const long ProductRoleId = 42;
-
-    /// <summary>The asOfDate field of dataset version 11, which <see cref="Reader"/> names a time binding by.</summary>
-    public const long AsOfFieldId = 3;
-
-    /// <summary>
-    /// The manifest reader over a release's pins and the given bindings, naming them by the branch and product roles or, for a time
-    /// binding, by the asOfDate field.
-    /// </summary>
-    /// <param name="manifest">The release's manifest rows.</param>
-    /// <param name="datasets">The pinned datasets.</param>
-    /// <param name="bindings">The bindings of the pinned dataset versions.</param>
-    /// <returns>The reader.</returns>
-    public static ReleaseManifestReader Reader(
-        InMemoryTableGateway<ReleaseDatasetRecord> manifest, InMemoryTableGateway<DatasetRecord> datasets, params DimensionBindingRecord[] bindings)
+    /// <summary>A release.</summary>
+    /// <param name="semanticReleaseId">The release's ID.</param>
+    /// <param name="releaseKey">The release's key.</param>
+    /// <param name="status">A <c>publication_status</c> value; a published release was published at the epoch.</param>
+    /// <returns>The release row.</returns>
+    public static SemanticReleaseRecord Release(long semanticReleaseId, string releaseKey, string status)
     {
-        var names = new BindingNames(
-            new InMemoryTableGateway<DimensionRoleRecord>(DimensionRows.Role(BranchRoleId, "branch", 100), DimensionRows.Role(ProductRoleId, "product", 200)),
-            new InMemoryTableGateway<FieldRecord>(DatasetRows.ColumnField(AsOfFieldId, 11, "asOfDate", "as_of_date", DataTypes.Date)));
-        return new ReleaseManifestReader(manifest, datasets, new InMemoryTableGateway<DimensionBindingRecord>(bindings), names);
+        return new SemanticReleaseRecord
+        {
+            SemanticReleaseId = semanticReleaseId,
+            ReleaseKey = releaseKey,
+            Status = status,
+            CreatedAt = DateTime.UnixEpoch.AddDays(semanticReleaseId - SemanticReleaseId),
+            PublishedAt = status is PublicationStatuses.Published or PublicationStatuses.Retired ? DateTime.UnixEpoch : null
+        };
+    }
+
+    /// <summary>An assumption set; a historical one reads <see cref="SemanticReleaseId"/>.</summary>
+    /// <param name="assumptionSetId">The set's ID.</param>
+    /// <param name="key">The set's key, which is also its display name.</param>
+    /// <param name="capturedAt">When a historical set was captured; null for the active set.</param>
+    /// <returns>The set row.</returns>
+    public static AssumptionSetRecord Set(long assumptionSetId, string key, DateTime? capturedAt)
+    {
+        return new AssumptionSetRecord
+        {
+            AssumptionSetId = assumptionSetId,
+            AssumptionSetKey = key,
+            DisplayName = key,
+            Status = capturedAt is null ? AssumptionSetStatuses.Active : AssumptionSetStatuses.Historical,
+            SemanticReleaseId = capturedAt is null ? null : SemanticReleaseId,
+            CapturedAt = capturedAt,
+            CreatedAt = capturedAt ?? DateTime.UnixEpoch
+        };
     }
 
     /// <summary>A dataset.</summary>

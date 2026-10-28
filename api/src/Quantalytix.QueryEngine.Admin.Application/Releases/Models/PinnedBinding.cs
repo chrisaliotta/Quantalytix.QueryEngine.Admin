@@ -2,10 +2,13 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
-/// <summary>A dimension binding of a dataset version that a release pins, with the key of the pinning dataset and the binding's name for rule messages.</summary>
+/// <summary>A dimension binding of a dataset version that a manifest pins, with its manifest row's dataset and the binding's name.</summary>
 public sealed record PinnedBinding
 {
-    /// <summary>The <c>dataset_key</c> of the manifest row that pins the binding's dataset version.</summary>
+    /// <summary>The dataset of the manifest row that pins the binding's dataset version.</summary>
+    public required long DatasetId { get; init; }
+
+    /// <summary>That dataset's <c>dataset_key</c>, which rule messages name.</summary>
     public required string DatasetKey { get; init; }
 
     /// <summary>The binding.</summary>

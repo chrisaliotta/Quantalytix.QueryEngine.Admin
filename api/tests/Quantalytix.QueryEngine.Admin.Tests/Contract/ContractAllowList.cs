@@ -38,32 +38,6 @@ internal static class ContractAllowList
             "freezeBridgeVersion",
             "checkDeleteBridgeVersion"
         ],
-        ["releases"] =
-        [
-            "listReleases",
-            "createRelease",
-            "diffReleases",
-            "getRelease",
-            "deleteRelease",
-            "previewReleaseChanges",
-            "commitReleaseChanges",
-            "checkRelease",
-            "validateRelease",
-            "publishRelease",
-            "backToDraft",
-            "retireRelease",
-            "activateRelease",
-            "listManifestDatasets",
-            "listIdentities",
-            "listReportReads",
-            "listSets",
-            "captureSet",
-            "capturePreview",
-            "compareSets",
-            "getSet",
-            "relabelSet",
-            "deleteSet"
-        ],
         ["reports"] =
         [
             "listReports",
@@ -140,11 +114,6 @@ internal static class ContractAllowList
             "POST /api/tenants/{tenantId}/reports/{reportId}/profiles",
             "PUT /api/tenants/{tenantId}/reports/{reportId}/profiles/{itemId}",
             "DELETE /api/tenants/{tenantId}/reports/{reportId}/profiles/{itemId}"
-        ],
-        ["Releases"] =
-        [
-            "GET /api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets",
-            "PUT /api/tenants/{tenantId}/releases/{semanticReleaseId}/datasets"
         ],
         ["MappingEntries"] =
         [

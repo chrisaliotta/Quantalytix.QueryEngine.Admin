@@ -1,37 +1,33 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
 /// <summary>
-/// <c>pinned_version_belongs_to_dataset</c>: every manifest row pins a version of its own dataset. The engine joins the
-/// manifest on both IDs, so a row whose version belongs to another dataset, or no longer exists, drops the dataset from queries.
+/// <c>pinned_version_belongs_to_dataset</c>: every manifest row pins a version of its own dataset. The engine joins the manifest on
+/// both ids, so a row whose version belongs to another dataset, or no longer exists, drops the dataset from queries.
 /// </summary>
-public sealed class PinnedVersionBelongsToDatasetRule(ReleaseManifestReader reader, ITableGateway<DatasetVersionRecord> datasetVersions)
-    : IPublicationRule
+public sealed class PinnedVersionBelongsToDatasetRule : IReleaseRule
 {
-    /// <summary>The rule applies to semantic releases.</summary>
-    public string Kind { get; } = VersionKinds.SemanticRelease;
+    /// <summary>Gate: a manifest edit cannot pin a version of another dataset.</summary>
+    public RuleStage Stage => RuleStage.Gate;
 
-    /// <summary>Reports every manifest row whose dataset version is not one of its dataset's versions.</summary>
-    /// <param name="versionId">The release being validated.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Reports every row whose dataset version is not one of its dataset's versions.</summary>
+    /// <param name="snapshot">The release.</param>
+    /// <param name="cancellationToken">Unused.</param>
     /// <returns>One violation per offending row.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ReleaseViolation>> EvaluateAsync(ReleaseSnapshot snapshot, CancellationToken cancellationToken)
     {
-        var pinned = await reader.ListDatasetsAsync(versionId, cancellationToken);
-        var versions = await datasetVersions.ListAsync(new { DatasetVersionId = pinned.Select(dataset => dataset.Row.DatasetVersionId).ToArray() }, cancellationToken);
-        var owned = versions.Select(version => (version.DatasetId, version.DatasetVersionId)).ToHashSet();
-        return
+        var owned = snapshot.Surroundings.DatasetVersions.Select(version => (version.DatasetId, version.DatasetVersionId)).ToHashSet();
+        var keys = snapshot.Surroundings.Datasets.ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
+        IReadOnlyList<ReleaseViolation> violations =
         [
-            .. pinned
-                .Where(dataset => !owned.Contains((dataset.Row.DatasetId, dataset.Row.DatasetVersionId)))
-                .Select(dataset => new RuleViolation
-                {
-                    Code = "pinned_version_belongs_to_dataset",
-                    Message = $"Dataset '{dataset.DatasetKey}' pins dataset version {dataset.Row.DatasetVersionId}, which is not one of its versions."
-                })
+            .. snapshot.Manifest
+                .Where(row => !owned.Contains((row.DatasetId, row.DatasetVersionId)))
+                .Select(row => ReleaseFindings.OnRow(
+                    "pinned_version_belongs_to_dataset",
+                    $"Dataset '{keys[row.DatasetId]}' pins dataset version {row.DatasetVersionId}, which is not one of its versions.",
+                    row.DatasetId))
         ];
+        return Task.FromResult(violations);
     }
 }

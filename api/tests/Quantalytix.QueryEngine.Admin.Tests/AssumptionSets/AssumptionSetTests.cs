@@ -1,235 +1,160 @@
-using Microsoft.Extensions.Time.Testing;
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Reports;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.Bridges;
-using Quantalytix.QueryEngine.Admin.Tests.Datasets;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Releases;
 using Quantalytix.QueryEngine.Admin.Tests.Reports;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
+using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseFixture;
+using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
+using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportGraphFixture;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.AssumptionSets;
 
 /// <summary>
-/// Confirms the assumption sets that let requests read the default versions or backtest against history. The one active set
-/// holds the default versions: publishing a living version repoints it, while historical sets keep the versions they
-/// captured, and it cannot be deleted. Capturing copies the active set's pins into a new historical set that reads the active
-/// release, so a backtest runs the pins over the datasets they were validated with, and capturing or deleting a set advances the
-/// semantic revision, because the engine caches which set keys requests can name by revision.
+/// Confirms the assumption sets that let requests read the default versions or backtest against history (R8–R11, OI-38). The one
+/// active set holds the default versions: publishing a living version repoints it while historical sets keep what they captured, and
+/// it is never relabelled or deleted. A capture copies the active set's analytical pins and the active release, leaving out what
+/// reports own, because reports always run on the active set. Capturing or deleting a set advances the semantic revision, because
+/// the engine caches which set keys requests can name by it. The read models tell which pins are still live, which identities moved
+/// on since a capture, and whether a historical set can serve each enabled report.
 /// </summary>
 public sealed class AssumptionSetTests
 {
-    /// <summary>The active set.</summary>
-    private const long ActiveSetId = 1;
-
-    /// <summary>A historical set captured before v2 of the branch dimension was published.</summary>
-    private const long HistoricalSetId = 2;
-
-    /// <summary>The branch dimension.</summary>
-    private const long BranchId = 100;
-
-    /// <summary>The tenant's semantic revision before each test.</summary>
-    private const long StartingRevision = 7;
-
-    /// <summary>The release queries use while each test runs.</summary>
-    private const long ActiveSemanticReleaseId = 900;
-
-    /// <summary>The clock's time throughout each test.</summary>
-    private static readonly DateTimeOffset Now = new(2026, 10, 14, 17, 30, 0, TimeSpan.Zero);
-
-    /// <summary>The active set and the historical set.</summary>
-    private readonly InMemoryTableGateway<AssumptionSetRecord> _sets = new(
-        Set(ActiveSetId, "active", AssumptionSetStatuses.Active),
-        Set(HistoricalSetId, "fy2026_q2", AssumptionSetStatuses.Historical) with { CapturedAt = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc) });
-
-    /// <summary>Both sets pin v1 of the branch dimension, which v2 is about to replace.</summary>
-    private readonly InMemoryTableGateway<AssumptionSetDimensionRecord> _dimensionPins = new(
-        new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = BranchId, DimensionVersionId = 101 },
-        new AssumptionSetDimensionRecord { AssumptionSetId = HistoricalSetId, DimensionId = BranchId, DimensionVersionId = 101 });
-
-    /// <summary>No bridge pins at first.</summary>
-    private readonly InMemoryTableGateway<AssumptionSetBridgeRecord> _bridgePins = new();
-
-    /// <summary>The analytical branch dimension and report 60's report dimension 500.</summary>
-    private readonly InMemoryTableGateway<DimensionRecord> _dimensions = new(
-        ReleaseRows.Dimension(BranchId, "branch"),
-        ReleaseRows.Dimension(500, "balance_sheet") with { DimensionPurpose = DimensionPurposes.Report });
-
-    /// <summary>Bridge 95 of a source of report 60, from branches into its report dimension.</summary>
-    private readonly InMemoryTableGateway<BridgeRecord> _bridges = new(BridgeRows.Bridge(95, BranchId, 500));
-
-    /// <summary>No bridge versions at first.</summary>
-    private readonly InMemoryTableGateway<BridgeVersionRecord> _bridgeVersions = new();
-
-    /// <summary>Report 60, whose rows dimension 500 holds.</summary>
-    private readonly InMemoryTableGateway<ReportRecord> _reports = new(ReportRows.Report());
-
-    /// <summary>The branch dimension's published v1 and v2.</summary>
-    private readonly InMemoryTableGateway<DimensionVersionRecord> _dimensionVersions = new(
-        DimensionRows.Version(101, BranchId, 1, PublicationStatuses.Published),
-        DimensionRows.Version(102, BranchId, 2, PublicationStatuses.Published));
-
-    /// <summary>The tenant's singleton database info row.</summary>
-    private readonly InMemoryTableGateway<DatabaseInfoRecord> _databaseInfo = new(new DatabaseInfoRecord
-    {
-        SingletonId = 1,
-        TenantKey = "sandbox",
-        MetadataSchemaVersion = 12,
-        SemanticRevision = StartingRevision,
-        ActiveSemanticReleaseId = ActiveSemanticReleaseId,
-        UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-    });
-
-    /// <summary>The pins over this test's tables.</summary>
-    private readonly AssumptionPins _pins;
-
-    /// <summary>Builds the pins over this test's tables.</summary>
-    public AssumptionSetTests()
-    {
-        _pins = new AssumptionPins(_sets, _dimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), _bridgePins);
-    }
-
-    /// <summary>
-    /// A capture is a historical set stamped with the capture time that pins exactly what the active set pins and reads the active
-    /// release.
-    /// </summary>
+    /// <summary>A capture pins the analytical dimensions only, records the active release and the time, and advances the revision.</summary>
     /// <returns>A task that completes when the capture is checked.</returns>
     [Fact]
-    public async Task Capture_CopiesTheActivePinsAndReleaseAndAdvancesTheRevision()
+    public async Task Capture_CopiesTheAnalyticalPinsAndTheActiveRelease()
     {
-        var input = new AssumptionCaptureInput { AssumptionSetKey = "fy2026_q3", DisplayName = "FY2026 Q3 close" };
-
-        var set = await Service().CaptureAsync(input, TestContext.Current.CancellationToken);
-
-        Assert.Equal((AssumptionSetStatuses.Historical, Now.UtcDateTime, ActiveSemanticReleaseId), (set.Status, set.CapturedAt, set.SemanticReleaseId));
-        Assert.Equal(
-            await _pins.ListAsync(ActiveSetId, TestContext.Current.CancellationToken),
-            await _pins.ListAsync(set.AssumptionSetId, TestContext.Current.CancellationToken));
-        Assert.Equal(StartingRevision + 1, Revision());
-    }
-
-    /// <summary>
-    /// A capture leaves out the pins of a report's dimension and of its sources' bridges, because reports always run on the active
-    /// set: a historical set holding them would keep versions alive that their report edits in place.
-    /// </summary>
-    /// <returns>A task that completes when the capture is checked.</returns>
-    [Fact]
-    public async Task Capture_SkipsReportOwnedPins()
-    {
+        var fixture = await CreateAsync();
         var cancellationToken = TestContext.Current.CancellationToken;
-        await _dimensionPins.InsertAsync(new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = 500, DimensionVersionId = 501 }, cancellationToken);
-        await _bridgePins.InsertAsync(new AssumptionSetBridgeRecord { AssumptionSetId = ActiveSetId, BridgeId = 95, BridgeVersionId = 96 }, cancellationToken);
 
-        var set = await Service().CaptureAsync(new AssumptionCaptureInput { AssumptionSetKey = "fy2026_q3", DisplayName = "FY2026 Q3 close" }, cancellationToken);
+        var set = (await fixture.SetCommands().CaptureAsync(new CaptureSetInput { Key = "fy2026_q3", DisplayName = "FY2026 Q3 close", Description = null }, cancellationToken)).Value!;
 
-        Assert.Equal([new PinnedVersion(VersionKinds.DimensionVersion, BranchId, 101)], await _pins.ListAsync(set.AssumptionSetId, cancellationToken));
-    }
-
-    /// <summary>
-    /// Each pin names the dimension its identity belongs under and, for what a report owns, that report, because the client opens a
-    /// pin where its identity lives: an analytical dimension, mapping set or bridge on the dimension's page, and a report's dimension
-    /// and the bridges into it in the report's editor.
-    /// </summary>
-    /// <returns>A task that completes when the pins are checked.</returns>
-    [Fact]
-    public async Task Pins_NameWhereTheirIdentityLives()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        await _dimensionPins.InsertAsync(new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = 500, DimensionVersionId = 501 }, cancellationToken);
-        await _dimensionVersions.InsertAsync(DimensionRows.Version(501, 500, 1, PublicationStatuses.Published), cancellationToken);
-        await _bridgePins.InsertAsync(new AssumptionSetBridgeRecord { AssumptionSetId = ActiveSetId, BridgeId = 95, BridgeVersionId = 96 }, cancellationToken);
-        await _bridgeVersions.InsertAsync(
-            BridgeRows.BridgeVersion(96, 95, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published), cancellationToken);
-
-        var pins = (await Service().GetAsync(ActiveSetId, cancellationToken)).Pins;
-
+        Assert.Equal((AssumptionSetStatuses.Historical, (long?)SemanticReleaseId, (DateTime?)Now.UtcDateTime), (set.Status, set.ReleaseId, set.CapturedAt));
         Assert.Equal(
-            [("balance_sheet", 500L, (long?)ReportRows.ReportId), ("branch", BranchId, null), ("zz_map_bridge_95", 500L, ReportRows.ReportId)],
-            pins.Select(pin => (pin.IdentityKey, pin.DimensionId, pin.ReportId)));
+            [new PinnedVersion(VersionKinds.DimensionVersion, RegionDimensionId, 601), new PinnedVersion(VersionKinds.DimensionVersion, AccountDimensionId, 801)],
+            await fixture.Pins().ListAsync(set.Id, cancellationToken));
+        Assert.Equal(StartingRevision + 1, fixture.CurrentRevision);
+        Assert.Equal(RefusalKind.Conflict, (await fixture.SetCommands().CaptureAsync(new CaptureSetInput { Key = "fy2026_q3", DisplayName = "Again", Description = null }, cancellationToken)).Refusal!.Kind);
     }
 
-    /// <summary>Publishing v2 of the branch dimension repoints the active set and leaves the historical set on v1.</summary>
+    /// <summary>The capture preview counts what a capture pins and leaves out, and names the release it records.</summary>
+    /// <returns>A task that completes when the preview is checked.</returns>
+    [Fact]
+    public async Task CapturePreview_CountsWhatACaptureLeavesOut()
+    {
+        var fixture = await CreateAsync();
+
+        var preview = await fixture.SetQueries().CapturePreviewAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal((2, 0, 0, 1, 1, SemanticReleaseId), (preview.Dimensions, preview.MappingSets, preview.Bridges, preview.LeftOutDimensions, preview.LeftOutBridges, preview.ReleaseId));
+    }
+
+    /// <summary>Publishing v2 of the account dimension repoints the active set and leaves the historical set on v1.</summary>
     /// <returns>A task that completes when the pins are checked.</returns>
     [Fact]
     public async Task Publishing_RepointsOnlyTheActiveSet()
     {
-        var pinner = new ActiveSetPinner(VersionKinds.DimensionVersion, new VersionStoreRegistry([new DimensionVersionStore(_dimensionVersions)]), _pins);
+        var fixture = await CreateAsync();
+        await PublishAccountV2Async(fixture);
 
-        await pinner.OnPublishedAsync(102, TestContext.Current.CancellationToken);
-
-        Assert.Equal(102, PinOf(ActiveSetId));
-        Assert.Equal(101, PinOf(HistoricalSetId));
+        Assert.Equal(802, PinOf(fixture, ActiveSetId));
+        Assert.Equal(801, PinOf(fixture, HistoricalSetId));
     }
 
-    /// <summary>The active set cannot be deleted: the refusal names it, and its pins and the revision stay.</summary>
-    /// <returns>A task that completes when the delete is checked.</returns>
+    /// <summary>
+    /// The active set's report-owned pins are flagged and its analytical ones live; once account v1 is frozen behind v2, the historical
+    /// set's pin is frozen and counts as changed since the capture.
+    /// </summary>
+    /// <returns>A task that completes when the pins are checked.</returns>
     [Fact]
-    public async Task ActiveSet_CannotBeDeleted()
+    public async Task Pins_CarryTheirStates()
     {
-        var conflict = await Service().DeleteAsync(ActiveSetId, TestContext.Current.CancellationToken);
+        var fixture = await CreateAsync();
+        var cancellationToken = TestContext.Current.CancellationToken;
 
-        Assert.Equal("Assumption set 'active' is the active set, which holds the default versions; it cannot be deleted.", conflict);
-        Assert.Equal(101, PinOf(ActiveSetId));
-        Assert.Equal(StartingRevision, Revision());
+        var active = await fixture.SetQueries().GetAsync(ActiveSetId, cancellationToken);
+        await PublishAccountV2Async(fixture);
+        var list = await fixture.SetQueries().ListAsync(cancellationToken);
+
+        Assert.Equal(
+            [(PinKinds.Dimension, AccountDimensionId, PinStates.Live), (PinKinds.Dimension, ReportRows.ReportDimensionId, PinStates.ReportOwned),
+             (PinKinds.Dimension, RegionDimensionId, PinStates.Live), (PinKinds.Bridge, AccountBridgeId, PinStates.ReportOwned)],
+            active.Pins.Select(pin => (pin.Kind, pin.IdentityId, pin.State)));
+        Assert.Null(active.Readiness);
+        var historical = Assert.Single(list.Historical);
+        Assert.Equal((1, 0, 1), (historical.PinCount, historical.LivePins, historical.ChangedSinceCapture));
+        Assert.Equal((4, 2, 0), (list.Active.PinCount, list.Active.LivePins, list.Active.ChangedSinceCapture));
     }
 
-    /// <summary>Deleting a historical set removes it with its pins and advances the revision.</summary>
-    /// <returns>A task that completes when the delete is checked.</returns>
+    /// <summary>The historical set cannot serve the balance sheet: it does not pin the region dimension the report reads.</summary>
+    /// <returns>A task that completes when the readiness is checked.</returns>
     [Fact]
-    public async Task HistoricalSet_IsDeletedWithItsPins()
+    public async Task Readiness_NamesTheIdentitiesASetMisses()
     {
-        var conflict = await Service().DeleteAsync(HistoricalSetId, TestContext.Current.CancellationToken);
+        var fixture = await CreateAsync();
 
-        Assert.Null(conflict);
-        Assert.DoesNotContain(_sets.All, set => set.AssumptionSetId == HistoricalSetId);
-        Assert.DoesNotContain(_dimensionPins.All, pin => pin.AssumptionSetId == HistoricalSetId);
-        Assert.Equal(StartingRevision + 1, Revision());
+        var detail = await fixture.SetQueries().GetAsync(HistoricalSetId, TestContext.Current.CancellationToken);
+
+        var readiness = Assert.Single(detail.Readiness!);
+        Assert.False(readiness.Ready);
+        var reason = Assert.Single(readiness.Reasons);
+        Assert.Equal(("Does not pin dimension 'region'.", PinKinds.Dimension, "600"), (reason.Message, reason.Target.Area, reason.Target.ItemId));
+        Assert.Equal(SemanticReleaseId, detail.ReadsReleaseId);
     }
 
-    /// <summary>The service over this test's tables and clock.</summary>
-    private AssumptionSetService Service()
+    /// <summary>Comparing the historical set with the active one adds the region pin; report-owned pins and the shared release are left out.</summary>
+    /// <returns>A task that completes when the comparison is checked.</returns>
+    [Fact]
+    public async Task Compare_LeavesOutReportOwnedPins()
     {
-        var time = new FakeTimeProvider(Now);
-        var reader = new AssumptionPinReader(
-            _pins,
-            _dimensions,
-            _dimensionVersions,
-            new InMemoryTableGateway<MappingSetRecord>(),
-            new InMemoryTableGateway<MappingVersionRecord>(),
-            _bridges,
-            _bridgeVersions,
-            _reports);
-        var ownership = new ReportOwnership(_dimensions, _dimensionVersions, _bridges, _bridgeVersions, _reports);
-        return new AssumptionSetService(
-            _sets, _pins, reader, ownership, _databaseInfo, new SemanticRevision(_databaseInfo, time), new SequentialIdGenerator(1000), time);
+        var fixture = await CreateAsync();
+
+        var comparison = (await fixture.SetQueries().CompareAsync(HistoricalSetId, ActiveSetId, TestContext.Current.CancellationToken))!;
+
+        Assert.Equal(RegionDimensionId, Assert.Single(comparison.Added).IdentityId);
+        Assert.Empty(comparison.Removed);
+        Assert.Equal(1, comparison.Unchanged);
+        Assert.Null(comparison.Release);
     }
 
-    /// <summary>The branch dimension version a set pins.</summary>
-    private long PinOf(long assumptionSetId)
+    /// <summary>The active set is neither relabelled nor deleted; a historical set is relabelled, then deleted with its pins.</summary>
+    /// <returns>A task that completes when the commands are checked.</returns>
+    [Fact]
+    public async Task OnlyHistoricalSets_AreRelabelledAndDeleted()
     {
-        return _dimensionPins.All.Single(pin => pin.AssumptionSetId == assumptionSetId && pin.DimensionId == BranchId).DimensionVersionId;
+        var fixture = await CreateAsync();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var commands = fixture.SetCommands();
+        var labels = new RelabelSetInput { DisplayName = "Q2 close", Description = "As reported" };
+
+        Assert.Equal(RefusalKind.Conflict, (await commands.RelabelAsync(ActiveSetId, labels, cancellationToken)).Refusal!.Kind);
+        Assert.Equal(RefusalKind.Conflict, (await commands.DeleteAsync(ActiveSetId, cancellationToken))!.Kind);
+        Assert.Equal("Q2 close", (await commands.RelabelAsync(HistoricalSetId, labels, cancellationToken)).Value!.DisplayName);
+        Assert.Equal(StartingRevision, fixture.CurrentRevision);
+
+        Assert.Null(await commands.DeleteAsync(HistoricalSetId, cancellationToken));
+        Assert.DoesNotContain(fixture.Sets.All, set => set.AssumptionSetId == HistoricalSetId);
+        Assert.DoesNotContain(fixture.DimensionPins.All, pin => pin.AssumptionSetId == HistoricalSetId);
+        Assert.Equal(StartingRevision + 1, fixture.CurrentRevision);
     }
 
-    /// <summary>The tenant's current semantic revision.</summary>
-    private long Revision()
+    /// <summary>Freezes account v1 behind a published v2 and repoints the active set, as the version workflow does.</summary>
+    private static async Task PublishAccountV2Async(ReleaseFixture fixture)
     {
-        return Assert.Single(_databaseInfo.All).SemanticRevision;
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var versions = fixture.Graph.DimensionVersions;
+        await versions.UpdateAsync(versions.All.Single(version => version.DimensionVersionId == 801) with { Status = PublicationStatuses.Retired }, cancellationToken);
+        await versions.InsertAsync(DimensionRows.Version(802, AccountDimensionId, 2, PublicationStatuses.Published) with { PublishedAt = Now.UtcDateTime }, cancellationToken);
+        var pinner = new ActiveSetPinner(VersionKinds.DimensionVersion, new VersionStoreRegistry([new DimensionVersionStore(versions)]), fixture.Pins());
+        await pinner.OnPublishedAsync(802, cancellationToken);
     }
 
-    /// <summary>An assumption set with a status.</summary>
-    private static AssumptionSetRecord Set(long assumptionSetId, string key, string status)
+    /// <summary>The account dimension version a set pins.</summary>
+    private static long PinOf(ReleaseFixture fixture, long setId)
     {
-        return new AssumptionSetRecord
-        {
-            AssumptionSetId = assumptionSetId,
-            AssumptionSetKey = key,
-            DisplayName = key,
-            Status = status,
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-        };
+        return fixture.DimensionPins.All.Single(pin => pin.AssumptionSetId == setId && pin.DimensionId == AccountDimensionId).DimensionVersionId;
     }
 }
