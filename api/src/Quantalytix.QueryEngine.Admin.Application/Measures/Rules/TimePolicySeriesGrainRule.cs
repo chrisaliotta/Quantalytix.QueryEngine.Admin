@@ -1,59 +1,30 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 
-/// <summary>
-/// Requires the selection grain of a measure's time policy to be a <c>series</c> grain of the same dataset version (schema
-/// sections 14 and 18): observations are selected independently per series, and the query engine finds the series fields
-/// in the version's grains.
-/// </summary>
-public sealed class TimePolicySeriesGrainRule(
-    ITableGateway<MeasureRecord> measures,
-    ITableGateway<MeasureTimePolicyRecord> timePolicies,
-    ITableGateway<DatasetGrainRecord> grains) : IPublicationRule
+/// <summary><c>time_policy_series_grain</c> (D8): a time policy's selection grain is a series grain of the same version.</summary>
+public sealed class TimePolicySeriesGrainRule : MeasureRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "time_policy_series_grain";
+    /// <summary><c>time_policy_series_grain</c>.</summary>
+    protected override string Code => "time_policy_series_grain";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports each selection grain that is not a grain of the version, or not a series grain.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per time policy with an unusable selection grain.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports every selection grain that is missing or not a series grain.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <returns>One violation per such policy.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
-        var versionFilter = new { DatasetVersionId = versionId };
-        var measureKeys = (await measures.ListAsync(versionFilter, cancellationToken)).ToDictionary(measure => measure.MeasureId, measure => measure.MeasureKey);
-        var selecting = (await timePolicies.ListAsync(new { MeasureId = measureKeys.Keys.ToArray() }, cancellationToken))
-            .Where(policy => policy.SelectionDatasetGrainId is not null)
-            .OrderBy(policy => measureKeys[policy.MeasureId], StringComparer.Ordinal)
-            .ToList();
-        var versionGrains = (await grains.ListAsync(versionFilter, cancellationToken)).ToDictionary(grain => grain.DatasetGrainId);
-
-        var violations = new List<RuleViolation>();
-        foreach (var policy in selecting)
+        var grains = snapshot.Grains.ToDictionary(grain => grain.DatasetGrainId);
+        var policies = snapshot.TimePolicies.ToDictionary(policy => policy.MeasureId);
+        foreach (var measure in ByKey(snapshot))
         {
-            var subject = $"The time policy of measure '{measureKeys[policy.MeasureId]}'";
-            if (!versionGrains.TryGetValue(policy.SelectionDatasetGrainId!.Value, out var grain))
-            {
-                violations.Add(Violation($"{subject} selects by grain {policy.SelectionDatasetGrainId}, which is not a grain of this version."));
-            }
+            if (!policies.TryGetValue(measure.MeasureId, out var policy) || policy.SelectionDatasetGrainId is not { } grainId) continue;
+            var subject = $"The time policy of measure '{measure.MeasureKey}'";
+            if (!grains.TryGetValue(grainId, out var grain))
+                yield return Violation(measure, $"{subject} selects by grain {grainId}, which is not a grain of this version.");
             else if (grain.GrainKind != GrainKinds.Series)
-            {
-                violations.Add(Violation($"{subject} selects by grain '{grain.GrainKey}', a {grain.GrainKind} grain; observations are selected per series grain."));
-            }
+                yield return Violation(measure, $"{subject} selects by grain '{grain.GrainKey}', a {grain.GrainKind} grain; observations are selected per series grain.");
         }
-
-        return violations;
-    }
-
-    /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
-    {
-        return new RuleViolation { Code = Code, Message = message };
     }
 }

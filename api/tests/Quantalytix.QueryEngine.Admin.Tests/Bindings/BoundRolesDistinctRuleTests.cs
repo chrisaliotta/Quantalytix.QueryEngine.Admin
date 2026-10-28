@@ -4,43 +4,26 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bindings;
 
 /// <summary>
-/// Confirms that <c>bound_roles_distinct</c> reports a role a version binds twice and a bound role whose key another field of
-/// the version has, and lets one field feed several roles. A request names a binding by its role's key, and the query engine
-/// reads the binding's field under that key beside the version's own fields, so either clash makes the key ambiguous and fails
-/// the version's metadata load.
+/// Confirms <c>bound_roles_distinct</c> (D6): a version binds each role at most once, and a bound role's key names no other field,
+/// because requests name a binding by its role's key.
 /// </summary>
 public sealed class BoundRolesDistinctRuleTests
 {
-    /// <summary>The version being validated.</summary>
-    private const long VersionId = 100;
-
-    /// <summary>The version's fields: branchCode (1) and servicingBranch (2).</summary>
-    private readonly InMemoryTableGateway<FieldRecord> _fields = new(
-        DatasetRows.ColumnField(1, VersionId, "branchCode", "branch_code"),
-        DatasetRows.ColumnField(2, VersionId, "servicingBranch", "servicing_branch"));
-
-    /// <summary>The roles of dimension 7000: originationBranch (81), servicingBranch (82) and branchCode (83).</summary>
-    private readonly InMemoryTableGateway<DimensionRoleRecord> _roles = new(
-        DimensionRows.Role(81, "originationBranch", 7000),
-        DimensionRows.Role(82, "servicingBranch", 7000),
-        DimensionRows.Role(83, "branchCode", 7000));
-
     /// <summary>A role bound twice is reported once, naming the role.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task RoleBoundTwice_IsReported()
     {
         var violation = Assert.Single(await EvaluateAsync(
-            DatasetRows.Binding(21, VersionId, 81, BindingKinds.Direct, 1),
-            DatasetRows.Binding(22, VersionId, 81, BindingKinds.Direct, 1) with { IsEnabled = false }));
+            DatasetRows.Binding(21, 100, 81, BindingKinds.Direct, 1),
+            DatasetRows.Binding(22, 100, 81, BindingKinds.Direct, 1) with { IsEnabled = false }));
 
-        Assert.Equal(BoundRolesDistinctRule.Code, violation.Code);
+        Assert.Equal("bound_roles_distinct", violation.Code);
         Assert.Equal("Role 'originationBranch' is bound 2 times; a version binds each role at most once, so its key names one binding.", violation.Message);
     }
 
@@ -49,7 +32,7 @@ public sealed class BoundRolesDistinctRuleTests
     [Fact]
     public async Task RoleKeyOfAnotherField_IsReported()
     {
-        var violation = Assert.Single(await EvaluateAsync(DatasetRows.Binding(21, VersionId, 82, BindingKinds.Direct, 1)));
+        var violation = Assert.Single(await EvaluateAsync(DatasetRows.Binding(21, 100, 82, BindingKinds.Direct, 1)));
 
         Assert.Equal(
             "Role 'servicingBranch' has the key of a field its binding does not read; requests name the binding by the role's key, so no other field may have it.",
@@ -62,15 +45,21 @@ public sealed class BoundRolesDistinctRuleTests
     public async Task OneFieldFeedingSeveralRoles_Passes()
     {
         Assert.Empty(await EvaluateAsync(
-            DatasetRows.Binding(21, VersionId, 81, BindingKinds.Direct, 1),
-            DatasetRows.Binding(22, VersionId, 83, BindingKinds.Direct, 1),
-            DatasetRows.Binding(23, VersionId, null, BindingKinds.Time, 2)));
+            DatasetRows.Binding(21, 100, 81, BindingKinds.Direct, 1),
+            DatasetRows.Binding(22, 100, 83, BindingKinds.Direct, 1),
+            DatasetRows.Binding(23, 100, null, BindingKinds.Time, 2)));
     }
 
-    /// <summary>Evaluates the rule on a version holding the given bindings.</summary>
-    private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
+    /// <summary>
+    /// Evaluates the rule on a version with fields branchCode (1) and servicingBranch (2), the roles originationBranch (81),
+    /// servicingBranch (82) and branchCode (83), and the given bindings.
+    /// </summary>
+    private static Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params DimensionBindingRecord[] bindings)
     {
-        var rule = new BoundRolesDistinctRule(new InMemoryTableGateway<DimensionBindingRecord>(bindings), _roles, _fields);
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(
+            fields: [DatasetRows.ColumnField(1, 100, "branchCode", "branch_code"), DatasetRows.ColumnField(2, 100, "servicingBranch", "servicing_branch")],
+            bindings: bindings,
+            roles: [DimensionRows.Role(81, "originationBranch", 7000), DimensionRows.Role(82, "servicingBranch", 7000), DimensionRows.Role(83, "branchCode", 7000)]);
+        return new BoundRolesDistinctRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 }

@@ -15,7 +15,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 public sealed class FieldInputValidatorTests
 {
     /// <summary>The validator under test.</summary>
-    private readonly FieldInputValidator _validator = new();
+    private readonly DatasetFieldInputValidator _validator = new();
 
     /// <summary>A valid field of each source kind passes.</summary>
     /// <param name="sourceKind">The field's source kind.</param>
@@ -109,8 +109,8 @@ public sealed class FieldInputValidatorTests
 
         var result = _validator.TestValidate(input);
 
-        Assert.Equal(precisionFails, HasError(result, nameof(FieldInput.NumericPrecision)));
-        Assert.Equal(scaleFails, HasError(result, nameof(FieldInput.NumericScale)));
+        Assert.Equal(precisionFails, HasError(result, nameof(DatasetFieldInput.NumericPrecision)));
+        Assert.Equal(scaleFails, HasError(result, nameof(DatasetFieldInput.NumericScale)));
     }
 
     /// <summary>Only decimals have a precision and scale.</summary>
@@ -149,9 +149,9 @@ public sealed class FieldInputValidatorTests
     [InlineData("branch\n", false)]
     public void FieldKey_MustMatchThePattern(string fieldKey, bool valid)
     {
-        var result = _validator.TestValidate(Field(FieldSourceKinds.Column) with { FieldKey = fieldKey });
+        var result = _validator.TestValidate(Field(FieldSourceKinds.Column) with { Key = fieldKey });
 
-        Assert.Equal(!valid, HasError(result, nameof(FieldInput.FieldKey)));
+        Assert.Equal(!valid, HasError(result, nameof(DatasetFieldInput.Key)));
     }
 
     /// <summary>A source column is an identifier, so it can be quoted into DDL.</summary>
@@ -167,7 +167,7 @@ public sealed class FieldInputValidatorTests
     {
         var result = _validator.TestValidate(Field(FieldSourceKinds.Column) with { SourceColumn = sourceColumn });
 
-        Assert.Equal(!valid, HasError(result, nameof(FieldInput.SourceColumn)));
+        Assert.Equal(!valid, HasError(result, nameof(DatasetFieldInput.SourceColumn)));
     }
 
     /// <summary>A JSON path is <c>$</c> followed by member names and array indexes, with no quote that could end a DDL string literal.</summary>
@@ -186,18 +186,24 @@ public sealed class FieldInputValidatorTests
     {
         var result = _validator.TestValidate(Field(FieldSourceKinds.JsonPath) with { JsonPath = jsonPath });
 
-        Assert.Equal(!valid, HasError(result, nameof(FieldInput.JsonPath)));
+        Assert.Equal(!valid, HasError(result, nameof(DatasetFieldInput.JsonPath)));
     }
 
     /// <summary>A valid field of a source kind: a string column, a string JSON path into <c>attributes</c>, or a decimal expression.</summary>
-    private static FieldInput Field(string sourceKind)
+    private static DatasetFieldInput Field(string sourceKind)
     {
-        var field = new FieldInput
+        var field = new DatasetFieldInput
         {
-            FieldKey = "branchCode",
+            Key = "branchCode",
             DisplayName = "Branch code",
             FieldSourceKind = sourceKind,
+            SourceColumn = null,
+            JsonPath = null,
+            ExpressionText = null,
             DataType = DataTypes.String,
+            NumericPrecision = null,
+            NumericScale = null,
+            UnitKey = null,
             IsNullable = true,
             IsSelectable = true,
             IsFilterable = true,
@@ -214,7 +220,7 @@ public sealed class FieldInputValidatorTests
     }
 
     /// <summary>Whether the result has an error for a property, however the validator names properties.</summary>
-    private static bool HasError(TestValidationResult<FieldInput> result, string propertyName)
+    private static bool HasError(TestValidationResult<DatasetFieldInput> result, string propertyName)
     {
         return result.Errors.Any(error => string.Equals(error.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
     }

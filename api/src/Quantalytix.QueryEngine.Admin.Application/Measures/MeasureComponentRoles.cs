@@ -11,6 +11,17 @@ namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 /// </summary>
 public static class MeasureComponentRoles
 {
+    /// <summary>Every role in vocabulary order.</summary>
+    private static readonly List<string> RoleOrder = [.. ComponentRoles.Definition.Values.Select(value => value.Value)];
+
+    /// <summary>A role's position in the vocabulary, the order a measure lists its components in.</summary>
+    /// <param name="role">A <c>component_role</c> value.</param>
+    /// <returns>The position.</returns>
+    public static int Order(string role)
+    {
+        return RoleOrder.IndexOf(role);
+    }
+
     /// <summary>Describes how a measure's component roles miss or exceed what its kind reads.</summary>
     /// <param name="measureKind">A <c>measure_kind</c> value.</param>
     /// <param name="aggregationFunction">The measure's <c>aggregation_function</c>, or null when it has none.</param>

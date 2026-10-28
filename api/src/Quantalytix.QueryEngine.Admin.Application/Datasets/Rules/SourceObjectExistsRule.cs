@@ -1,27 +1,20 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>Requires the table or view a dataset version queries to exist in the tenant database, with the version's kind.</summary>
-public sealed class SourceObjectExistsRule(ITableGateway<DatasetVersionRecord> versions, SourceObjectService sourceObjects) : IPublicationRule
+/// <summary><c>source_object_exists</c>: the version reads a table or view of its kind that the tenant database has.</summary>
+public sealed class SourceObjectExistsRule : DatasetRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "source_object_exists";
+    /// <summary><c>source_object_exists</c>.</summary>
+    protected override string Code => "source_object_exists";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports a source object the tenant database does not have.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation when the source object is missing; otherwise none.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports a source object the database lacks.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <returns>At most one violation.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
-        var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        if (await sourceObjects.ExistsAsync(version.SourceObjectKind, version.SourceObject, cancellationToken)) return [];
-        return [new RuleViolation { Code = Code, Message = $"The {version.SourceObjectKind} '{version.SourceObject}' does not exist in the tenant database." }];
+        var version = snapshot.Version;
+        if (snapshot.Surroundings.SourceObjects.Any(item => item.Kind == version.SourceObjectKind && item.Name == version.SourceObject)) yield break;
+        yield return Violation(DatasetTabs.Settings, $"The {version.SourceObjectKind} '{version.SourceObject}' does not exist in the tenant database.");
     }
 }

@@ -8,4 +8,10 @@ internal sealed record InformationSchemaTable
 
     /// <summary><c>BASE TABLE</c> or <c>VIEW</c>.</summary>
     public required string TableType { get; init; }
+
+    /// <summary>The row count StarRocks keeps; null when it has not measured the object.</summary>
+    public long? TableRows { get; init; }
+
+    /// <summary>The stored size in bytes; null for an object that stores nothing.</summary>
+    public long? DataLength { get; init; }
 }

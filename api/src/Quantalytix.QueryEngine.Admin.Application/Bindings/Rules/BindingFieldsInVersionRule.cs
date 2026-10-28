@@ -1,58 +1,29 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
-/// <summary>
-/// Requires the fields a binding reads, its source field and the interval-end field of its time extension, to be fields of
-/// the binding's own dataset version: the query engine resolves both by ID among the version's fields.
-/// </summary>
-public sealed class BindingFieldsInVersionRule(
-    ITableGateway<DimensionBindingRecord> bindings,
-    ITableGateway<TimeBindingRecord> timeBindings,
-    ITableGateway<FieldRecord> fields,
-    BindingNames names) : IPublicationRule
+/// <summary><c>binding_fields_in_version</c>: a binding's source field and a time binding's interval-end field are fields of the version.</summary>
+public sealed class BindingFieldsInVersionRule : BindingRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "binding_fields_in_version";
+    /// <summary><c>binding_fields_in_version</c>.</summary>
+    protected override string Code => "binding_fields_in_version";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports each source field and interval-end field that is not a field of the version.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per foreign field reference.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports every binding field that is not a field of the version.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <param name="names">Each binding's name, by id.</param>
+    /// <returns>One violation per such field.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot, IReadOnlyDictionary<long, string> names)
     {
-        var versionFilter = new { DatasetVersionId = versionId };
-        var versionBindings = await bindings.ListAsync(versionFilter, cancellationToken);
-        var named = await names.OfAsync(versionBindings, cancellationToken);
-        var extensions = (await timeBindings.ListAsync(new { DimensionBindingId = versionBindings.Select(binding => binding.DimensionBindingId).ToArray() }, cancellationToken))
-            .ToDictionary(extension => extension.DimensionBindingId);
-        var fieldIds = (await fields.ListAsync(versionFilter, cancellationToken)).Select(field => field.FieldId).ToHashSet();
-
-        var violations = new List<RuleViolation>();
-        foreach (var binding in versionBindings.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
+        var fieldIds = snapshot.Fields.Select(field => field.FieldId).ToHashSet();
+        var times = snapshot.TimeBindings.ToDictionary(time => time.DimensionBindingId);
+        foreach (var binding in ByName(snapshot.Bindings, names))
         {
+            var name = names[binding.DimensionBindingId];
             if (binding.SourceFieldId is { } sourceFieldId && !fieldIds.Contains(sourceFieldId))
-            {
-                violations.Add(Violation($"Binding '{named[binding.DimensionBindingId]}' reads field {sourceFieldId}, which is not a field of this version."));
-            }
-
-            if (extensions.TryGetValue(binding.DimensionBindingId, out var extension) && extension.IntervalEndFieldId is { } endFieldId && !fieldIds.Contains(endFieldId))
-            {
-                violations.Add(Violation($"Time binding '{named[binding.DimensionBindingId]}' ends its intervals at field {endFieldId}, which is not a field of this version."));
-            }
+                yield return Violation(binding, names, $"Binding '{name}' reads field {sourceFieldId}, which is not a field of this version.");
+            if (times.TryGetValue(binding.DimensionBindingId, out var time) && time.IntervalEndFieldId is { } endFieldId && !fieldIds.Contains(endFieldId))
+                yield return Violation(binding, names, $"Time binding '{name}' ends its intervals at field {endFieldId}, which is not a field of this version.");
         }
-
-        return violations;
-    }
-
-    /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
-    {
-        return new RuleViolation { Code = Code, Message = message };
     }
 }

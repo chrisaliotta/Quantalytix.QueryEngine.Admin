@@ -108,9 +108,12 @@ public sealed class IntervalEstimatesForFinerPeriodsRuleTests
     /// <summary>Evaluates the rule on the given version over this test's tables.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(DatasetVersionRecord version)
     {
-        var rule = new IntervalEstimatesForFinerPeriodsRule(
-            new InMemoryTableGateway<DatasetVersionRecord>(version), _bindings, _timeBindings, _measures, _timePolicies,
-            new BindingNames(new InMemoryTableGateway<DimensionRoleRecord>(), _fields));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(
+            fields: _fields.All,
+            bindings: _bindings.All,
+            timeBindings: _timeBindings.All,
+            measures: _measures.All,
+            timePolicies: _timePolicies.All) with { Version = version };
+        return new IntervalEstimatesForFinerPeriodsRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 }

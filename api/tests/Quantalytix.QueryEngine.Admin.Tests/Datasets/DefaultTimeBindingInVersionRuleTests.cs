@@ -1,41 +1,24 @@
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
-using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
-/// Confirms that <c>default_time_binding_in_version</c> accepts a version without a default time binding or with one that
-/// is a time binding of the same version, and reports a default that has no time extension or belongs to another version.
-/// Queries without their own time axis fall back to the default, so it must be a time axis of this very version.
+/// Confirms that <c>default_time_binding_in_version</c> accepts no default or a time binding of the version, and reports a default
+/// that is not one, because the engine aggregates time on the default when a measure names none.
 /// </summary>
 public sealed class DefaultTimeBindingInVersionRuleTests
 {
-    /// <summary>The version being validated.</summary>
-    private const long VersionId = 100;
-
     /// <summary>A time binding of the version.</summary>
     private const long TimeBindingId = 21;
 
-    /// <summary>A binding of the version without a time extension.</summary>
+    /// <summary>A binding of the version without a time axis.</summary>
     private const long MappedBindingId = 22;
 
-    /// <summary>A time binding of another version of the dataset.</summary>
-    private const long OtherVersionTimeBindingId = 31;
-
-    /// <summary>The bindings of the version and of version 200.</summary>
-    private readonly InMemoryTableGateway<DimensionBindingRecord> _bindings = new(
-        DatasetRows.Binding(TimeBindingId, VersionId, null, BindingKinds.Time, 2),
-        DatasetRows.Binding(MappedBindingId, VersionId, 81, BindingKinds.Mapped, 3),
-        DatasetRows.Binding(OtherVersionTimeBindingId, 200, null, BindingKinds.Time, 12));
-
-    /// <summary>The time extensions of both time bindings.</summary>
-    private readonly InMemoryTableGateway<TimeBindingRecord> _timeBindings = new(
-        DatasetRows.TimeBinding(TimeBindingId),
-        DatasetRows.TimeBinding(OtherVersionTimeBindingId));
+    /// <summary>A binding id the version does not have.</summary>
+    private const long OtherBindingId = 31;
 
     /// <summary>No default time binding, or a time binding of the version, passes.</summary>
     /// <param name="defaultTimeBindingId">The version's default time binding.</param>
@@ -48,24 +31,29 @@ public sealed class DefaultTimeBindingInVersionRuleTests
         Assert.Empty(await EvaluateAsync(defaultTimeBindingId));
     }
 
-    /// <summary>A binding without a time extension, or a time binding of another version, is reported.</summary>
+    /// <summary>A binding without a time axis, or an id the version does not have, is reported on the settings tab.</summary>
     /// <param name="defaultTimeBindingId">The version's default time binding.</param>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Theory]
     [InlineData(MappedBindingId)]
-    [InlineData(OtherVersionTimeBindingId)]
+    [InlineData(OtherBindingId)]
     public async Task BindingThatIsNotOwnTimeBinding_IsReported(long defaultTimeBindingId)
     {
         var violation = Assert.Single(await EvaluateAsync(defaultTimeBindingId));
 
-        Assert.Equal(DefaultTimeBindingInVersionRule.Code, violation.Code);
+        Assert.Equal("default_time_binding_in_version", violation.Code);
+        Assert.Equal(DatasetTabs.Settings, violation.Target!.Area);
     }
 
-    /// <summary>Evaluates the rule on the version with the given default time binding.</summary>
-    private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long? defaultTimeBindingId)
+    /// <summary>Evaluates the rule on a version with a time and a mapped binding and the given default.</summary>
+    private static Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long? defaultTimeBindingId)
     {
-        var versions = new InMemoryTableGateway<DatasetVersionRecord>(DatasetRows.Version(VersionId, defaultTimeBindingId));
-        var rule = new DefaultTimeBindingInVersionRule(versions, _bindings, _timeBindings);
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(
+            fields: [DatasetRows.ColumnField(2, 100, "asOf", "as_of"), DatasetRows.ColumnField(3, 100, "branch", "branch_code")],
+            bindings: [DatasetRows.Binding(TimeBindingId, 100, null, BindingKinds.Time, 2), DatasetRows.Binding(MappedBindingId, 100, 81, BindingKinds.Mapped, 3)],
+            timeBindings: [DatasetRows.TimeBinding(TimeBindingId)],
+            roles: [Dimensions.DimensionRows.Role(81, "branch", 7000)],
+            defaultTimeBindingId: defaultTimeBindingId);
+        return new DefaultTimeBindingInVersionRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 }

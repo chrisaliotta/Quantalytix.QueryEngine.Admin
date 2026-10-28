@@ -503,6 +503,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       const errors: Errors = {}
       if (existing && existing.key !== input.key) err(errors, 'key', 'The field key is fixed once created.')
       else if (!KEY_PATTERN.test(input.key)) err(errors, 'key', 'Start with a letter; use letters, digits and _.')
+      else if (!existing && v.fields.some((f) => f.key === input.key)) err(errors, 'key', `Another field of this version uses '${input.key}'.`)
       if (!input.displayName.trim()) err(errors, 'displayName', 'Enter a display name.')
       checkVocab(errors, 'fieldSourceKind', 'fieldSourceKind', input.fieldSourceKind)
       checkVocab(errors, 'dataType', 'dataType', input.dataType)

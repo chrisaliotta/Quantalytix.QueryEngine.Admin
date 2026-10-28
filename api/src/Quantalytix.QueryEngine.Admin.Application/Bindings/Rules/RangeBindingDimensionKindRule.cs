@@ -1,57 +1,32 @@
-using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bindings;
 
-/// <summary>
-/// Requires a range binding to bind a <c>range</c> dimension: a range binding assigns each scalar value through the range
-/// bands of the resolved dimension version, and only range dimensions have bands.
-/// </summary>
-public sealed class RangeBindingDimensionKindRule(
-    ITableGateway<DimensionBindingRecord> bindings,
-    ITableGateway<DimensionRecord> dimensions,
-    BindingNames names) : IPublicationRule
+/// <summary><c>range_binding_dimension_kind</c>: a range binding binds a range dimension, whose bands classify the values.</summary>
+public sealed class RangeBindingDimensionKindRule : BindingRule
 {
-    /// <summary>The rule's violation code.</summary>
-    public const string Code = "range_binding_dimension_kind";
+    /// <summary><c>range_binding_dimension_kind</c>.</summary>
+    protected override string Code => "range_binding_dimension_kind";
 
-    /// <summary>The kind this rule checks: dataset versions.</summary>
-    public string Kind { get; } = VersionKinds.DatasetVersion;
-
-    /// <summary>Reports each range binding whose dimension does not exist or is not a range dimension.</summary>
-    /// <param name="versionId">The dataset version leaving draft.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per range binding of another dimension kind.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <summary>Reports every range binding whose dimension is missing or not of the range kind.</summary>
+    /// <param name="snapshot">The dataset version.</param>
+    /// <param name="names">Each binding's name, by id.</param>
+    /// <returns>One violation per such binding.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot, IReadOnlyDictionary<long, string> names)
     {
-        var ranged = (await bindings.ListAsync(new { DatasetVersionId = versionId }, cancellationToken))
-            .Where(binding => binding.BindingKind == BindingKinds.Range)
-            .ToList();
-        var named = await names.OfAsync(ranged, cancellationToken);
-        var bound = (await dimensions.ListAsync(new { DimensionId = ranged.Select(binding => binding.DimensionId).Distinct().ToArray() }, cancellationToken))
-            .ToDictionary(dimension => dimension.DimensionId);
-
-        var violations = new List<RuleViolation>();
-        foreach (var binding in ranged.OrderBy(binding => named[binding.DimensionBindingId], StringComparer.Ordinal))
+        var dimensions = snapshot.Surroundings.Dimensions.ToDictionary(dimension => dimension.DimensionId);
+        foreach (var binding in ByName(snapshot.Bindings.Where(binding => binding.BindingKind == BindingKinds.Range), names))
         {
-            if (!bound.TryGetValue(binding.DimensionId, out var dimension))
-            {
-                violations.Add(Violation($"Range binding '{named[binding.DimensionBindingId]}' binds dimension {binding.DimensionId}, which does not exist."));
-            }
+            var name = names[binding.DimensionBindingId];
+            if (!dimensions.TryGetValue(binding.DimensionId, out var dimension))
+                yield return Violation(binding, names, $"Range binding '{name}' binds dimension {binding.DimensionId}, which does not exist.");
             else if (dimension.DimensionKind != DimensionKinds.Range)
-            {
-                violations.Add(Violation(
-                    $"Range binding '{named[binding.DimensionBindingId]}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension."));
-            }
+                yield return Violation(
+                    binding,
+                    names,
+                    $"Range binding '{name}' binds '{dimension.DimensionKey}', a {dimension.DimensionKind} dimension; range bindings classify through the bands of a range dimension.");
         }
-
-        return violations;
-    }
-
-    /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
-    {
-        return new RuleViolation { Code = Code, Message = message };
     }
 }

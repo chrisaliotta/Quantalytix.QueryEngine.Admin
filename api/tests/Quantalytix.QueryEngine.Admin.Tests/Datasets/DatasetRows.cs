@@ -1,4 +1,7 @@
+using Quantalytix.QueryEngine.Admin.Application.Datasets;
+using Quantalytix.QueryEngine.Admin.Application.Measures;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
@@ -130,6 +133,57 @@ internal static class DatasetRows
             DurationUnit = DurationUnits.CalendarDay,
             PartialIntervalBehavior = PartialIntervalBehaviors.ExactOnly,
             MissingPeriodBehavior = MissingPeriodBehaviors.Null
+        };
+    }
+
+    /// <summary>
+    /// A snapshot of draft version 100 of <see cref="Version"/> with the given rows, no release pins, the given tenant catalog, and the
+    /// table <c>loan_daily</c> with the given columns.
+    /// </summary>
+    public static DatasetSnapshot Snapshot(
+        IReadOnlyList<FieldRecord>? fields = null,
+        IReadOnlyList<DatasetGrainRecord>? grains = null,
+        IReadOnlyList<DatasetGrainFieldRecord>? grainFields = null,
+        IReadOnlyList<DimensionBindingRecord>? bindings = null,
+        IReadOnlyList<TimeBindingRecord>? timeBindings = null,
+        IReadOnlyList<MeasureRecord>? measures = null,
+        IReadOnlyList<MeasureComponentRecord>? components = null,
+        IReadOnlyList<MeasureTimePolicyRecord>? timePolicies = null,
+        IReadOnlyList<DimensionRoleRecord>? roles = null,
+        IReadOnlyList<DimensionRecord>? dimensions = null,
+        IReadOnlyList<BridgeRecord>? bridges = null,
+        IReadOnlyList<string>? columns = null,
+        long? defaultTimeBindingId = null)
+    {
+        var measureRows = measures ?? [];
+        return new DatasetSnapshot
+        {
+            Dataset = new DatasetRecord { DatasetId = 10, DatasetKey = "bank.loans", DisplayName = "Loans", IsEnabled = true },
+            Version = Version(100, defaultTimeBindingId),
+            Fields = fields ?? [],
+            Grains = grains ?? [],
+            GrainFields = grainFields ?? [],
+            Bindings = bindings ?? [],
+            TimeBindings = timeBindings ?? [],
+            Measures = measureRows,
+            Components = components ?? [],
+            Dependencies = MeasureDependencies.Of(measureRows),
+            TimePolicies = timePolicies ?? [],
+            ManagedObjects = [],
+            Surroundings = new DatasetSurroundings
+            {
+                TenantVersions = [Version(100, defaultTimeBindingId)],
+                Releases = new DatasetReleaseIndex([], [], null),
+                Roles = roles ?? [],
+                Dimensions = dimensions ?? [],
+                MappingSets = [],
+                Bridges = bridges ?? [],
+                SourceObjects = [new SourceObject { Name = "loan_daily", Kind = SourceObjectKinds.Table }],
+                Columns = new Dictionary<string, IReadOnlyList<PhysicalColumn>>
+                {
+                    ["loan_daily"] = [.. (columns ?? []).Select(name => new PhysicalColumn { Name = name, ColumnType = "varchar(16)", IsNullable = true, IsGenerated = false })]
+                }
+            }
         };
     }
 

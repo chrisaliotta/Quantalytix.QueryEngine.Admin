@@ -1,23 +1,32 @@
 using Dapper;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
+using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.Connections;
 
 namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SourceObjects;
 
-/// <summary>Reads the tables, views and columns of the request tenant's database from its <c>information_schema</c>.</summary>
-public sealed class SourceObjectCatalog(IStarRocksConnectionFactory connections) : ISourceObjectCatalog
+/// <summary>Reads the tables, views, columns and storage statistics of the request tenant's database from its <c>information_schema</c>.</summary>
+public sealed class SourceObjectCatalog(IStarRocksConnectionFactory connections, ITenantContext tenant, SourceStatisticsCache statistics) : ISourceObjectCatalog
 {
-    /// <summary>The tables and views of the connection's database.</summary>
+    /// <summary>The tables and views of the connection's database, with the statistics StarRocks keeps.</summary>
     private const string ObjectsSql = """
-        SELECT table_name, table_type
+        SELECT table_name, table_type, table_rows, data_length
         FROM information_schema.tables
         WHERE table_schema = DATABASE() AND table_type IN ('BASE TABLE', 'VIEW')
         """;
 
-    /// <summary>The columns of one table or view of the connection's database, in ordinal order.</summary>
-    private const string ColumnsSql = """
-        SELECT column_name, column_type, is_nullable, generation_expression
+    /// <summary>The columns of every table and view of the connection's database, by object and ordinal.</summary>
+    private const string AllColumnsSql = """
+        SELECT table_name, column_name, column_type, is_nullable, generation_expression
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+        ORDER BY table_name, ordinal_position
+        """;
+
+    /// <summary>The columns of one table or view of the connection's database, by ordinal.</summary>
+    private const string ObjectColumnsSql = """
+        SELECT table_name, column_name, column_type, is_nullable, generation_expression
         FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = @ObjectName
         ORDER BY ordinal_position
@@ -34,36 +43,70 @@ public sealed class SourceObjectCatalog(IStarRocksConnectionFactory connections)
     /// <returns>The tables and views, in no particular order.</returns>
     public async Task<IReadOnlyList<SourceObject>> ListObjectsAsync(CancellationToken cancellationToken)
     {
-        await using var connection = await connections.OpenTenantAsync(cancellationToken);
-        var rows = await connection.QueryAsync<InformationSchemaTable>(new CommandDefinition(ObjectsSql, cancellationToken: cancellationToken));
-        return [.. rows.Select(row => new SourceObject { Name = row.TableName, Kind = KindOf(row.TableType) })];
+        return [.. (await TablesAsync(cancellationToken)).Select(row => new SourceObject { Name = row.TableName, Kind = KindOf(row.TableType) })];
     }
 
-    /// <summary>Lists the columns of one table or view of the tenant database.</summary>
+    /// <summary>Lists the columns of one table or view.</summary>
     /// <param name="objectName">The table or view name.</param>
     /// <param name="cancellationToken">Cancels the query.</param>
     /// <returns>The columns, in ordinal order.</returns>
     public async Task<IReadOnlyList<PhysicalColumn>> ListColumnsAsync(string objectName, CancellationToken cancellationToken)
     {
+        var rows = await ColumnsAsync(ObjectColumnsSql, new { ObjectName = objectName }, cancellationToken);
+        return [.. rows.Select(Column)];
+    }
+
+    /// <summary>Lists the columns of every table and view.</summary>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>Each object's columns in ordinal order, by object name.</returns>
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<PhysicalColumn>>> ListAllColumnsAsync(CancellationToken cancellationToken)
+    {
+        var rows = await ColumnsAsync(AllColumnsSql, null, cancellationToken);
+        return rows.GroupBy(row => row.TableName, StringComparer.Ordinal).ToDictionary(group => group.Key, group => (IReadOnlyList<PhysicalColumn>)[.. group.Select(Column)], StringComparer.Ordinal);
+    }
+
+    /// <summary>Reads the statistics of the tables and views, cached briefly per tenant.</summary>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The statistics of each object StarRocks has measured, by name.</returns>
+    public Task<IReadOnlyDictionary<string, DatasetSourceObjectStats>> ListStatisticsAsync(CancellationToken cancellationToken)
+    {
+        return statistics.GetAsync(tenant.TenantId, async measuredAt => (await TablesAsync(cancellationToken))
+            .Where(row => row.TableRows is not null)
+            .ToDictionary(
+                row => row.TableName,
+                row => new DatasetSourceObjectStats { RowCount = row.TableRows!.Value, SizeBytes = row.DataLength ?? 0, MeasuredAt = measuredAt },
+                StringComparer.Ordinal));
+    }
+
+    /// <summary>Reads <c>information_schema.tables</c>.</summary>
+    private async Task<IEnumerable<InformationSchemaTable>> TablesAsync(CancellationToken cancellationToken)
+    {
         await using var connection = await connections.OpenTenantAsync(cancellationToken);
-        var command = new CommandDefinition(ColumnsSql, new { ObjectName = objectName }, cancellationToken: cancellationToken);
-        var rows = await connection.QueryAsync<InformationSchemaColumn>(command);
-        return
-        [
-            .. rows.Select(row => new PhysicalColumn
-            {
-                Name = row.ColumnName,
-                ColumnType = row.ColumnType,
-                IsNullable = row.IsNullable == Nullable,
-                IsGenerated = !string.IsNullOrEmpty(row.GenerationExpression)
-            })
-        ];
+        return await connection.QueryAsync<InformationSchemaTable>(new CommandDefinition(ObjectsSql, cancellationToken: cancellationToken));
+    }
+
+    /// <summary>Reads <c>information_schema.columns</c>.</summary>
+    private async Task<IEnumerable<InformationSchemaColumn>> ColumnsAsync(string sql, object? parameters, CancellationToken cancellationToken)
+    {
+        await using var connection = await connections.OpenTenantAsync(cancellationToken);
+        return await connection.QueryAsync<InformationSchemaColumn>(new CommandDefinition(sql, parameters, cancellationToken: cancellationToken));
+    }
+
+    /// <summary>A column as the application describes it.</summary>
+    private static PhysicalColumn Column(InformationSchemaColumn row)
+    {
+        return new PhysicalColumn
+        {
+            Name = row.ColumnName,
+            ColumnType = row.ColumnType,
+            IsNullable = row.IsNullable == Nullable,
+            IsGenerated = !string.IsNullOrEmpty(row.GenerationExpression)
+        };
     }
 
     /// <summary>The <c>source_object_kind</c> of an information_schema table type.</summary>
     private static string KindOf(string tableType)
     {
-        if (tableType == ViewTableType) return SourceObjectKinds.View;
-        return SourceObjectKinds.Table;
+        return tableType == ViewTableType ? SourceObjectKinds.View : SourceObjectKinds.Table;
     }
 }

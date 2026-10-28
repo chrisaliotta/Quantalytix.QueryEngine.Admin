@@ -23,17 +23,19 @@ public sealed class ExpressionFieldAcyclicRuleTests
     [Fact]
     public async Task FieldsOnACycle_AreReported()
     {
-        var fields = new InMemoryTableGateway<FieldRecord>(
+        var snapshot = DatasetRows.Snapshot(fields:
+        [
             DatasetRows.ColumnField(1, VersionId, "balance", "ending_balance"),
             DatasetRows.ExpressionField(2, VersionId, "gross", "[f.net] + [f.fees]"),
             DatasetRows.ExpressionField(3, VersionId, "net", "[f.gross] - [f.fees]"),
             DatasetRows.ExpressionField(4, VersionId, "fees", "[f.balance] * 0.01"),
             DatasetRows.ExpressionField(5, VersionId, "grossShare", "[f.gross] / [f.balance]"),
-            DatasetRows.ExpressionField(6, VersionId, "recursive", "[f.recursive] + 1"));
+            DatasetRows.ExpressionField(6, VersionId, "recursive", "[f.recursive] + 1")
+        ]);
 
-        var violations = await new ExpressionFieldAcyclicRule(fields).EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var violations = await new ExpressionFieldAcyclicRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
 
-        Assert.All(violations, violation => Assert.Equal(ExpressionFieldAcyclicRule.Code, violation.Code));
+        Assert.All(violations, violation => Assert.Equal("expression_field_acyclic", violation.Code));
         Assert.Equal(
             ["Expression field 'gross' references itself through its field references.",
              "Expression field 'net' references itself through its field references.",

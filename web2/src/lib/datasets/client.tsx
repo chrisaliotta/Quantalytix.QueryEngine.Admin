@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { unwrap } from '@/lib/api/contract'
+import { apiMode, tenantHttp } from '@/lib/api/session'
 import { DATASET_COMMANDS, DATASET_EDITS, type DatasetsApi, type DatasetSourceObjectKind } from './contract'
+import { createHttpDatasetsApi } from './http/adapter'
 import type { TenantLookups } from './lookups'
 import { createMockDatasetsApi } from './mock/adapter'
 import { createMockTenantLookups } from './mock/lookups'
@@ -10,9 +12,12 @@ import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 const ApiContext = createContext<DatasetsApi | null>(null)
 const LookupsContext = createContext<TenantLookups | null>(null)
 
-/** Supplies the adapters. Swap the mocks for HTTP adapters without touching any screen. */
+/**
+ * Supplies the adapters: an explicit `api`, else the HTTP adapter in http mode, else the in-memory mock. The tenant lookups stay
+ * on the mock until the tenant module serves them.
+ */
 export function DatasetsApiProvider({ children, api, lookups }: { children: ReactNode; api?: DatasetsApi; lookups?: TenantLookups }) {
-  const [instance] = useState(() => api ?? createMockDatasetsApi())
+  const [instance] = useState(() => api ?? (apiMode === 'http' ? createHttpDatasetsApi(tenantHttp) : createMockDatasetsApi()))
   const [lookupsInstance] = useState(() => lookups ?? createMockTenantLookups())
   return (
     <LookupsContext.Provider value={lookupsInstance}>

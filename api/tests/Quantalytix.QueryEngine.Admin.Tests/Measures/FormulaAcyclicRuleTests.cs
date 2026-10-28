@@ -40,7 +40,7 @@ public sealed class FormulaAcyclicRuleTests
     {
         var violation = Assert.Single(await EvaluateAsync(Edge(1, 2), Edge(2, 1)));
 
-        Assert.Equal(FormulaAcyclicRule.Code, violation.Code);
+        Assert.Equal("formula_acyclic", violation.Code);
         Assert.Equal("Formula measures 'a', 'b' depend on each other in a cycle.", violation.Message);
     }
 
@@ -67,11 +67,11 @@ public sealed class FormulaAcyclicRuleTests
     /// <summary>Evaluates the rule over the given dependency rows.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(params MeasureDependencyRecord[] edges)
     {
-        var rule = new FormulaAcyclicRule(_measures, new InMemoryTableGateway<MeasureDependencyRecord>(edges));
-        return rule.EvaluateAsync(VersionId, TestContext.Current.CancellationToken);
+        var snapshot = DatasetRows.Snapshot(measures: _measures.All) with { Dependencies = edges };
+        return new FormulaAcyclicRule().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>A formula measure of the version; the rule reads the dependency rows, not the expression.</summary>
+    /// <summary>A formula measure of the version; the rule reads the dependencies, not the expression.</summary>
     private static MeasureRecord Formula(long measureId, string measureKey)
     {
         return DatasetRows.Measure(measureId, VersionId, measureKey, MeasureKinds.Formula) with { ExpressionText = "1" };
