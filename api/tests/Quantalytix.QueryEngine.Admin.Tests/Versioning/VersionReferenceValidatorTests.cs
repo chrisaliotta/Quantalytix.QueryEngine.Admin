@@ -7,37 +7,27 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Versioning;
 
 /// <summary>
 /// Confirms that the generic status endpoints (<c>PUT versions/{kind}/{id}/status</c>, <c>POST .../validation</c>) no longer move or
-/// check dimension and dataset versions: a dimension version is frozen through its own endpoint (OI-14), where a status change would
-/// bypass the freeze's clone, note and pin; a dataset version follows its strict lifecycle endpoints (D3), where a status change would
-/// bypass the release pins and the retire checks. The other kinds still use them until their modules move (P6).
+/// check any version kind: dimension, mapping and bridge versions are frozen through their own endpoints (OI-14), where a status
+/// change would bypass the freeze's clone, note and pin; dataset versions and releases follow their strict lifecycle endpoints (D3,
+/// R5), where a status change would bypass the release pins, the retire checks and the activation log. The endpoints go in P6.
 /// </summary>
 public sealed class VersionReferenceValidatorTests
 {
     /// <summary>The validator under test.</summary>
     private readonly VersionReferenceValidator _validator = new();
 
-    /// <summary>The kinds with their own endpoints are refused.</summary>
+    /// <summary>Every kind is refused, because every kind has its own endpoints.</summary>
     /// <param name="kind">A version kind.</param>
     [Theory]
     [InlineData(VersionKinds.DimensionVersion)]
     [InlineData(VersionKinds.DatasetVersion)]
+    [InlineData(VersionKinds.MappingVersion)]
+    [InlineData(VersionKinds.BridgeVersion)]
+    [InlineData(VersionKinds.SemanticRelease)]
     public void KindsWithTheirOwnEndpoints_AreRefused(string kind)
     {
         var result = _validator.TestValidate(new VersionReference { Kind = kind, Id = 1 });
 
         result.ShouldHaveValidationErrorFor(version => version.Kind);
-    }
-
-    /// <summary>The kinds whose modules have not moved yet still pass.</summary>
-    /// <param name="kind">A version kind.</param>
-    [Theory]
-    [InlineData(VersionKinds.MappingVersion)]
-    [InlineData(VersionKinds.BridgeVersion)]
-    [InlineData(VersionKinds.SemanticRelease)]
-    public void OtherKinds_Pass(string kind)
-    {
-        var result = _validator.TestValidate(new VersionReference { Kind = kind, Id = 1 });
-
-        result.ShouldNotHaveAnyValidationErrors();
     }
 }
