@@ -35,7 +35,7 @@ public sealed class BridgeChanges(
     public async Task<Outcome<ChangeSetCommit<BridgeEditState>>> CommitAsync(long bridgeId, ChangeSetRequest<BridgeOperation> request, CancellationToken cancellationToken)
     {
         if (await OwnedByReportAsync(bridgeId, cancellationToken) is { } refusal) return Outcome<ChangeSetCommit<BridgeEditState>>.Refused(refusal);
-        return await LiveChanges.CommitAsync(pipeline, bridgeId, request, cancellationToken);
+        return await pipeline.CommitAsync(bridgeId, request, cancellationToken);
     }
 
     /// <summary>The refusal of a report bridge, or null for an analytical one.</summary>

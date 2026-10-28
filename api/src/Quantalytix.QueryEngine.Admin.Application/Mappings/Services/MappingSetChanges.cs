@@ -32,6 +32,6 @@ public sealed class MappingSetChanges(ChangeSetPipeline<MappingSetSnapshot, Mapp
         ChangeSetRequest<MappingOperation> request,
         CancellationToken cancellationToken)
     {
-        return LiveChanges.CommitAsync(pipeline, mappingSetId, request, cancellationToken);
+        return pipeline.CommitAsync(mappingSetId, request, cancellationToken);
     }
 }

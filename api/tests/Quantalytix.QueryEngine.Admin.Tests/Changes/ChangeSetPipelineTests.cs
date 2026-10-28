@@ -13,7 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Changes;
 /// Confirms the change-set protocol every module's editor relies on (blueprint 01, "Change-set protocol", OI-01): operations
 /// apply in order to the aggregate as stored; the first one whose input fails its validator, or that cannot apply, refuses the
 /// whole set with errors keyed by its index (<c>operations[1].key</c>); a gate refuses with 422; a refused commit writes nothing;
-/// a preview writes nothing and reports publication findings; a commit writes the difference, advances the semantic revision
+/// a preview writes nothing and reports publication and commit findings; a commit rule refuses the commit with 422; a commit
+/// writes the difference, advances the semantic revision
 /// once when the engine reads the aggregate, and maps each temporary id to the real id it got. A small member-list aggregate
 /// over one dimension version stands in for a module's.
 /// </summary>
@@ -134,6 +135,27 @@ public sealed class ChangeSetPipelineTests
         Assert.Equal(StartingRevision, Revision());
     }
 
+    /// <summary>
+    /// A commit rule guards content that is live once saved (mapping sets and bridges, B11): the preview reports its violation as a
+    /// finding so the editor can flag it, and the commit is refused with 422 in one run of the operations, writing nothing.
+    /// </summary>
+    /// <returns>A task that completes when the preview and commit are checked.</returns>
+    [Fact]
+    public async Task CommitRule_IsAPreviewFindingThatRefusesTheCommit()
+    {
+        var pipeline = Pipeline(new NotEmptyRule(RuleStage.Commit));
+        var request = Request(new RemoveMember("1"), new RemoveMember("2"));
+
+        var preview = await pipeline.PreviewAsync(10, request, Token);
+        var commit = await pipeline.CommitAsync(10, request, Token);
+
+        Assert.Equal([NotEmptyRule.Code], preview.Value!.Violations.Select(violation => violation.Code));
+        Assert.Equal(RefusalKind.RulesViolated, commit.Refusal!.Kind);
+        Assert.Equal([NotEmptyRule.Code], commit.Refusal.Violations.Select(violation => violation.Code));
+        Assert.Equal(2, _members.All.Count);
+        Assert.Equal(StartingRevision, Revision());
+    }
+
     /// <summary>The test's cancellation token.</summary>
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -143,12 +165,13 @@ public sealed class ChangeSetPipelineTests
         return new ChangeSetRequest<MemberOperation> { Operations = operations };
     }
 
-    /// <summary>The pipeline over the test aggregate, its gate and publication rule, and its operation validator.</summary>
-    private ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>> Pipeline()
+    /// <summary>The pipeline over the test aggregate, its gate and its operation validator.</summary>
+    /// <param name="notEmpty">The members-present rule; a publication rule by default.</param>
+    private ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>> Pipeline(NotEmptyRule? notEmpty = null)
     {
         return new ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>>(
             new MemberListAggregate(_versions, _members),
-            [new KeysUniqueGate(), new NotEmptyRule()],
+            [new KeysUniqueGate(), notEmpty ?? new NotEmptyRule(RuleStage.Publication)],
             [new MemberOperationValidator()],
             new SequentialIdGenerator(FirstNewId),
             new SemanticRevision(_databaseInfo, new FakeTimeProvider()));
@@ -221,14 +244,15 @@ public sealed class ChangeSetPipelineTests
         }
     }
 
-    /// <summary>A publication rule: the list has members.</summary>
-    private sealed class NotEmptyRule : ISnapshotRule<MemberList>
+    /// <summary>A finding rule: the list has members.</summary>
+    /// <param name="stage">Publication or commit.</param>
+    private sealed class NotEmptyRule(RuleStage stage) : ISnapshotRule<MemberList>
     {
         /// <summary>The rule code.</summary>
         public const string Code = "members_present";
 
-        /// <summary>A publication rule.</summary>
-        public RuleStage Stage => RuleStage.Publication;
+        /// <summary>The stage the test gives it.</summary>
+        public RuleStage Stage => stage;
 
         /// <summary>One violation when there are no members.</summary>
         /// <param name="snapshot">The member list.</param>

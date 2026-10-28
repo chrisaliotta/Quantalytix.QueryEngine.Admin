@@ -6,15 +6,14 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// A bridge version rule over a snapshot. Every bridge rule is a publication finding: a preview reports it on the mapping or source
-/// member at fault so the editor can flag it, and <see cref="LiveChanges"/> refuses the commit while one remains, because the version
-/// is live (B11). Every rule runs for <c>check</c> and freeze. The snapshot carries what the rules read outside the version, so they
-/// read nothing.
+/// A bridge version rule over a snapshot. Every bridge rule is a commit rule: a preview reports it on the mapping or source member at
+/// fault so the editor can flag it, and the commit is refused while one remains, because the version is live (B11). Every rule runs
+/// for <c>check</c> and freeze. The snapshot carries what the rules read outside the version, so they read nothing.
 /// </summary>
 public abstract class BridgeRule : ISnapshotRule<BridgeSnapshot>
 {
-    /// <summary>Publication: a finding the editor flags, which refuses the commit.</summary>
-    public RuleStage Stage => RuleStage.Publication;
+    /// <summary>Commit: a finding the editor flags, which refuses the commit.</summary>
+    public RuleStage Stage => RuleStage.Commit;
 
     /// <summary>The rule code its violations carry.</summary>
     protected abstract string Code { get; }

@@ -8,10 +8,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 /// <summary>
 /// The change-set protocol (blueprint 01, OI-01) for one aggregate, generalizing <c>ReportChanges</c> and <c>ModelChanges</c>:
 /// load the aggregate as stored, then for each operation in order validate its input and apply it in memory, then run the gates
-/// on the result. A preview stops there and reports the publication findings. A commit plans the row writes, makes them in
-/// <see cref="WritePlan"/> order, advances the semantic revision once when the engine reads the change, and answers the
-/// aggregate as stored with the real ids of the temporary ones. Any refusal writes nothing. Findings name the items the change set
-/// created by their temporary ids, like the preview's state.
+/// on the result. A preview stops there and reports the findings of the publication and commit rules. A commit runs the commit
+/// rules, then plans the row writes, makes them in <see cref="WritePlan"/> order, advances the semantic revision once when the
+/// engine reads the change, and answers the aggregate as stored with the real ids of the temporary ones. Any refusal writes
+/// nothing. Findings name the items the change set created by their temporary ids, like the preview's state.
 /// </summary>
 /// <typeparam name="TSnapshot">The aggregate's in-memory content.</typeparam>
 /// <typeparam name="TOperation">The aggregate's operation union.</typeparam>
@@ -30,11 +30,14 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
     where TOperation : notnull
     where TState : notnull
 {
+    /// <summary>The detail of the 422 refusal of a gate or commit rule.</summary>
+    private const string RulesViolatedDetail = "The change would break rules; nothing was written.";
+
     /// <summary>Applies the operations in memory and writes nothing.</summary>
     /// <param name="aggregateId">The aggregate root's id.</param>
     /// <param name="request">The operations so far.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The pending state with the publication findings, or the refusal of the first operation or gate that fails.</returns>
+    /// <returns>The pending state with the publication and commit findings, or the refusal of the first operation or gate that fails.</returns>
     public async Task<Outcome<ChangeSetPreview<TState>>> PreviewAsync(
         long aggregateId,
         ChangeSetRequest<TOperation> request,
@@ -45,7 +48,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         return Outcome<ChangeSetPreview<TState>>.Success(new ChangeSetPreview<TState>
         {
             State = await aggregate.ReadAsync(applied.After, applied.Ids.Present, cancellationToken),
-            Violations = await EvaluateAsync(RuleStage.Publication, applied.After, applied.Ids, cancellationToken)
+            Violations = await EvaluateAsync([RuleStage.Publication, RuleStage.Commit], applied.After, applied.Ids, cancellationToken)
         });
     }
 
@@ -53,7 +56,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
     /// <param name="aggregateId">The aggregate root's id.</param>
     /// <param name="request">Every operation of the change set.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The stored state and id map, or the refusal of the first operation or gate that fails, with nothing written.</returns>
+    /// <returns>The stored state and id map, or the refusal of the first operation, gate or commit rule that fails, with nothing written.</returns>
     public async Task<Outcome<ChangeSetCommit<TState>>> CommitAsync(
         long aggregateId,
         ChangeSetRequest<TOperation> request,
@@ -61,6 +64,8 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
     {
         var applied = await ApplyAsync(aggregateId, request, cancellationToken);
         if (applied.Refusal is { } refusal) return Outcome<ChangeSetCommit<TState>>.Refused(refusal);
+        var findings = await EvaluateAsync([RuleStage.Commit], applied.After, applied.Ids, cancellationToken);
+        if (findings.Count > 0) return Outcome<ChangeSetCommit<TState>>.Refused(Refusal.RulesViolated(RulesViolatedDetail, findings));
         var plan = new WritePlan();
         aggregate.Plan(applied.Before, applied.After, plan);
         foreach (var write in plan.Ordered()) await write.ExecuteAsync(cancellationToken);
@@ -88,8 +93,8 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
             if (context.Raised() is { } refused) return new Applied(before, after, temporaryIds, refused);
         }
 
-        var gates = await EvaluateAsync(RuleStage.Gate, after, temporaryIds, cancellationToken);
-        var refusal = gates.Count > 0 ? Refusal.RulesViolated("The change would break rules; nothing was written.", gates) : null;
+        var gates = await EvaluateAsync([RuleStage.Gate], after, temporaryIds, cancellationToken);
+        var refusal = gates.Count > 0 ? Refusal.RulesViolated(RulesViolatedDetail, gates) : null;
         return new Applied(before, after, temporaryIds, refusal);
     }
 
@@ -112,11 +117,11 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         return Refusal.Invalid(errors.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray(), StringComparer.Ordinal));
     }
 
-    /// <summary>The violations of every rule of a stage, in registration order, each target item presented as the client names it.</summary>
-    private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(RuleStage stage, TSnapshot snapshot, TemporaryIds temporaryIds, CancellationToken cancellationToken)
+    /// <summary>The violations of every rule of the stages, in registration order, each target item presented as the client names it.</summary>
+    private async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(RuleStage[] stages, TSnapshot snapshot, TemporaryIds temporaryIds, CancellationToken cancellationToken)
     {
         var violations = new List<RuleViolation>();
-        foreach (var rule in rules.Where(rule => rule.Stage == stage)) violations.AddRange(await rule.EvaluateAsync(snapshot, cancellationToken));
+        foreach (var rule in rules.Where(rule => stages.Contains(rule.Stage))) violations.AddRange(await rule.EvaluateAsync(snapshot, cancellationToken));
         return [.. violations.Select(violation => Presented(violation, temporaryIds))];
     }
 
