@@ -8,8 +8,8 @@ namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.SchemaChanges;
 
 /// <summary>
 /// Runs the DDL of managed tables on the request tenant's database. StarRocks answers <c>ALTER TABLE ... ADD COLUMN</c> as soon as it
-/// has queued the schema change job, so adding columns polls the table's newest job until it finishes; creating and renaming a
-/// table are synchronous.
+/// has queued the schema change job, so adding columns polls the table's newest job until it finishes; creating, renaming and
+/// dropping a table are synchronous.
 /// </summary>
 public sealed class StarRocksManagedTables(IStarRocksConnectionFactory connections) : IManagedTables
 {
@@ -61,6 +61,15 @@ public sealed class StarRocksManagedTables(IStarRocksConnectionFactory connectio
     public Task RenameAsync(string tableName, string newName, CancellationToken cancellationToken)
     {
         return ExecuteAsync(ManagedTableSql.Rename(tableName, newName), cancellationToken);
+    }
+
+    /// <summary>Drops a table.</summary>
+    /// <param name="tableName">The table.</param>
+    /// <param name="cancellationToken">Cancels the statement.</param>
+    /// <returns>A task that completes when the table is gone.</returns>
+    public Task DropAsync(string tableName, CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(ManagedTableSql.Drop(tableName), cancellationToken);
     }
 
     /// <summary>Runs one statement on the tenant database.</summary>

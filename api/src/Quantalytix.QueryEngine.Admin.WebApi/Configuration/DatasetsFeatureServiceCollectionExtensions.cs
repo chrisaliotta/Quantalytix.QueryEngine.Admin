@@ -43,6 +43,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddScoped<DatasetVersionCloner>();
         services.AddScoped<DatasetQueries>();
         services.AddScoped<DatasetCommands>();
+        services.AddScoped<DatasetTableDrops>();
         services.AddScoped<DatasetChanges>();
         services.AddScoped<DatasetSchemaChanges>();
         services.AddScoped<DatasetMaterializations>();

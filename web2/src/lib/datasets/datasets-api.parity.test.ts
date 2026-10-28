@@ -212,4 +212,21 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     expect(gone.ok).toBe(false)
     if (!gone.ok) expect(gone.problem.status).toBe(404)
   })
+
+  /**
+   * A managed table exists only for the datasets over it (OI-33): deleting the only dataset that reads a table it created drops the
+   * table, which then leaves the source object list. Live, this creates and drops a real table.
+   */
+  it('drops the managed table only the deleted dataset reads', async () => {
+    const key = uniqueKey()
+    const tableName = key.replace('.', '_')
+    const dataset = await unwrap(
+      api.createDataset({ mode: 'new', key, displayName: key, tableName, columns: [{ name: 'amount', dataType: 'decimal', numericPrecision: 18, numericScale: 2, isNullable: true }] }),
+    )
+    expect((await api.listSourceObjects()).find((s) => s.name === tableName)).toMatchObject({ kind: 'table', isManaged: true })
+
+    await unwrap(api.deleteDataset(dataset.id))
+
+    expect((await api.listSourceObjects()).map((s) => s.name)).not.toContain(tableName)
+  })
 })

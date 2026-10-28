@@ -28,4 +28,10 @@ public interface IManagedTables
     /// <param name="cancellationToken">Cancels the statement.</param>
     /// <returns>A task that completes when the table is renamed.</returns>
     Task RenameAsync(string tableName, string newName, CancellationToken cancellationToken);
+
+    /// <summary>Drops a table.</summary>
+    /// <param name="tableName">The table, which no materialized view reads.</param>
+    /// <param name="cancellationToken">Cancels the statement.</param>
+    /// <returns>A task that completes when the table is gone.</returns>
+    Task DropAsync(string tableName, CancellationToken cancellationToken);
 }

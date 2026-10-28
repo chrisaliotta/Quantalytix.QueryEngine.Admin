@@ -57,4 +57,15 @@ internal sealed class RecordingManagedTables(FixedSourceObjectCatalog catalog) :
         catalog.Rename(tableName, newName);
         return Task.CompletedTask;
     }
+
+    /// <summary>Records the drop and removes the table.</summary>
+    /// <param name="tableName">The table.</param>
+    /// <param name="cancellationToken">Unused.</param>
+    /// <returns>A completed task.</returns>
+    public Task DropAsync(string tableName, CancellationToken cancellationToken)
+    {
+        Calls.Add($"drop {tableName}");
+        catalog.Remove(tableName);
+        return Task.CompletedTask;
+    }
 }

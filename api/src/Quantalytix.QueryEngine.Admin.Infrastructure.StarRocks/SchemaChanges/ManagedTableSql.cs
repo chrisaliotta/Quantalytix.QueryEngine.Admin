@@ -39,6 +39,14 @@ internal static class ManagedTableSql
         return $"ALTER TABLE {StarRocksDdl.Quote(tableName)} RENAME {StarRocksDdl.Quote(newName)}";
     }
 
+    /// <summary>Drops a table; StarRocks keeps it in its recycle bin for the catalog's retention, where <c>RECOVER TABLE</c> restores it.</summary>
+    /// <param name="tableName">The table.</param>
+    /// <returns>The statement.</returns>
+    public static string Drop(string tableName)
+    {
+        return $"DROP TABLE {StarRocksDdl.Quote(tableName)}";
+    }
+
     /// <summary>A column definition.</summary>
     private static string Column(DatasetNewColumnInput column)
     {

@@ -51,6 +51,14 @@ internal sealed class FixedSourceObjectCatalog : ISourceObjectCatalog
         _columns.Remove(name);
     }
 
+    /// <summary>Removes an object with its columns.</summary>
+    /// <param name="name">The object.</param>
+    public void Remove(string name)
+    {
+        _objects.RemoveAll(item => item.Name == name);
+        _columns.Remove(name);
+    }
+
     /// <summary>Returns the tables and views.</summary>
     /// <param name="cancellationToken">Unused.</param>
     /// <returns>The tables and views.</returns>

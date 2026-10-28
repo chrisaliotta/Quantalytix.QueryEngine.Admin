@@ -181,3 +181,7 @@ When the check allows the delete, `DimensionCommands.DeleteAsync` removes the ac
 content, the roles and the dimension row, and the controller answers 204. A historical assumption set's pin is a blocker
 (`referenced_by_assumption_set`). Deletes inside a change set (a member, level or role) run the same rules through
 `context.Blocked` and answer the same 409.
+
+A dataset delete runs the same way through `DatasetDeleteRules`, and builds a `WritePlan`: `DatasetTableDrops` adds, as schema
+statements, the drop of each managed table that only the dataset's versions read, after its materialized view, and the delete
+of its `qe_managed_source_object` row; the version content, versions and dataset row follow children-first.

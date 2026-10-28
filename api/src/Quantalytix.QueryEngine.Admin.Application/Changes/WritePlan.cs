@@ -97,6 +97,14 @@ public sealed class WritePlan
         Insert(gateway, depth, [.. changed.Where(entry => !stored.ContainsKey(entry.Key)).Select(entry => entry.Value)]);
     }
 
+    /// <summary>Makes every write, in commit order.</summary>
+    /// <param name="cancellationToken">Cancels the remaining writes.</param>
+    /// <returns>A task that completes when every write is made.</returns>
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        foreach (var write in Ordered()) await write.ExecuteAsync(cancellationToken);
+    }
+
     /// <summary>The writes in commit order.</summary>
     /// <returns>
     /// Schema statements, then child deletes deepest first, child updates and inserts shallowest first, then the root's deletes, updates

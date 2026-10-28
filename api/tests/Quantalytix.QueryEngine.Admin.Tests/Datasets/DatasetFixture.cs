@@ -223,7 +223,7 @@ internal sealed class DatasetFixture
             Time);
         return new DatasetCommands(
             Datasets, Versions, Fields, Managed, Content(), new DatasetVersionCloner(Versions, Content(), ids, Time), ReleaseReader(), Queries(), Directory(), ManagedTables,
-            workflow, ids, Time);
+            new DatasetTableDrops(Versions, Managed, Directory(), ManagedTables, Views), workflow, ids, Time);
     }
 
     /// <summary>Every dataset rule, in the API's registration order.</summary>

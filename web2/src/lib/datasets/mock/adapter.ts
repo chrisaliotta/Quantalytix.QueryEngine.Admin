@@ -26,6 +26,7 @@ import type {
 } from '../contract'
 import type { Vocabularies } from '../lookups'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
+import { managedTablesDroppedWith } from '../managed-tables'
 import { DOTTED_KEY_PATTERN, KEY_PATTERN } from '@/lib/api/contract'
 import { catalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
 import { dependentsOf, FIELD_REF, MEASURE_REF, publicationViolations, refsOf } from './rules'
@@ -399,6 +400,10 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (!d) return problem(404, 'Dataset not found')
       const check = deleteCheck(d)
       if (!check.allowed) return problem(409, 'This dataset cannot be deleted', {}, { detail: check.message!, violations: check.reasons })
+      for (const table of managedTablesDroppedWith(d.id, versions.map((v) => ({ datasetId: v.datasetId, sourceObject: v.settings.sourceObject })), objects)) {
+        objects.splice(objects.findIndex((o) => o.name === table), 1)
+        delete columns[table]
+      }
       datasets.splice(datasets.indexOf(d), 1)
       versions.filter((v) => v.datasetId === d.id).forEach((v) => versions.splice(versions.indexOf(v), 1))
       return ok(null)

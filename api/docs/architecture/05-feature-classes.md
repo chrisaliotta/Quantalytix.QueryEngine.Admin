@@ -81,7 +81,8 @@ classDiagram
   change to the dataset identity row is engine-visible.
 - **Services:** `DatasetQueries`, `DatasetChanges` (commits, then materializes JSON path fields whose input asked for it),
   `DatasetCommands` (create over an existing object or a new managed table, delete, drafts, the strict transitions),
-  `DatasetSchemaChanges` (managed-table DDL as write-plan schema statements), `DatasetMaterializations` (one asynchronous
+  `DatasetSchemaChanges` (managed-table DDL as write-plan schema statements), `DatasetTableDrops` (a dataset delete's drops
+  of the managed tables only it reads, with their views and registry rows), `DatasetMaterializations` (one asynchronous
   materialized view per source object holding its JSON path fields' columns), `DatasetVersionCloner`,
   `DatasetFieldValues` (the bounded distinct values of a field, for report diagnostics), `DatasetDeleteRules`.
 - **Rules:** 26 snapshot rules, all `Publication` stage (field, grain, binding, measure, formula and time-policy rules),

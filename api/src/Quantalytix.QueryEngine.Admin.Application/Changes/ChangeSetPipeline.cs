@@ -68,7 +68,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         if (findings.Count > 0) return Outcome<ChangeSetCommit<TState>>.Refused(Refusal.RulesViolated(RulesViolatedDetail, findings));
         var plan = new WritePlan();
         aggregate.Plan(applied.Before, applied.After, plan);
-        foreach (var write in plan.Ordered()) await write.ExecuteAsync(cancellationToken);
+        await plan.ExecuteAsync(cancellationToken);
         if (aggregate.IsEngineVisible(applied.Before, applied.After)) await semanticRevision.AdvanceAsync(cancellationToken);
         return Outcome<ChangeSetCommit<TState>>.Success(new ChangeSetCommit<TState>
         {

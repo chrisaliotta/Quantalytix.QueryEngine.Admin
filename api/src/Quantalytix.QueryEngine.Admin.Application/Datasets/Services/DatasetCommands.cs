@@ -8,7 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
 /// The dataset manager's lifecycle commands, which run on stored state, never inside a change set: create a dataset over an existing
-/// object or a new managed table (OI-33), delete it, create and delete drafts (one open version per dataset, OI-23; OI-17), and the
+/// object or a new managed table (OI-33), delete it with the managed tables only it reads, create and delete drafts (one open version per dataset, OI-23; OI-17), and the
 /// strict transitions validate, publish, reopen and retire (D1) through the version workflow, which runs the publication rules on
 /// leaving draft and the retirement rules on retiring.
 /// </summary>
@@ -23,6 +23,7 @@ public sealed class DatasetCommands(
     DatasetQueries queries,
     SourceObjectDirectory sourceObjects,
     IManagedTables managedTables,
+    DatasetTableDrops tableDrops,
     VersionWorkflow workflow,
     IIdGenerator ids,
     TimeProvider time)
@@ -97,9 +98,13 @@ public sealed class DatasetCommands(
             .Select(pair => (pair.Column.Name, pair.Type!, pair.Column.IsNullable));
     }
 
-    /// <summary>Deletes a dataset whose versions are all open and that no release lists, with every version and its content (D10).</summary>
+    /// <summary>
+    /// Deletes a dataset whose versions are all open and that no release lists, with every version and its content (D10), and drops
+    /// the managed tables only it reads with their materialized views and registry rows (OI-33). The drops run first as the plan's
+    /// schema statements.
+    /// </summary>
     /// <param name="datasetId">The dataset.</param>
-    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
+    /// <param name="cancellationToken">Cancels the reads, statements and deletes.</param>
     /// <returns>Null when deleted; otherwise the blocked delete.</returns>
     public async Task<Refusal?> DeleteAsync(long datasetId, CancellationToken cancellationToken)
     {
@@ -108,9 +113,12 @@ public sealed class DatasetCommands(
         var check = DatasetDeleteRules.Dataset(dataset, own, await releases.ReadAsync(datasetId, cancellationToken));
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
         long[] versionIds = [.. own.Select(version => version.DatasetVersionId)];
-        await content.DeleteAsync(versionIds, cancellationToken);
-        await versions.DeleteAsync(new { DatasetVersionId = versionIds }, cancellationToken);
-        await datasets.DeleteAsync(new { DatasetId = datasetId }, cancellationToken);
+        var plan = new WritePlan();
+        await tableDrops.PlanAsync(datasetId, own, plan, cancellationToken);
+        plan.Call(WriteKind.Delete, 2, token => content.DeleteAsync(versionIds, token));
+        plan.Delete(versions, 1, new { DatasetVersionId = versionIds });
+        plan.Delete(datasets, WritePlan.Root, new { DatasetId = datasetId });
+        await plan.ExecuteAsync(cancellationToken);
         return null;
     }
 

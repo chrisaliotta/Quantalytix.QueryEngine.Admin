@@ -10,7 +10,8 @@ import { EditableLabel } from '@/components/report/shared/editable-label'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { DetailHeader, DetailKey } from '@/components/shell/page-shell'
 import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
-import { useDatasetsApi, useRefreshDatasets, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
+import { useDatasetList, useDatasetsApi, useRefreshDatasets, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
+import { managedTablesDroppedWith } from '@/lib/datasets/managed-tables'
 import type { ApiResult, DatasetListItem, DatasetVersionSummary, DatasetSourceObjectKind, Problem, DatasetValidationReport } from '@/lib/datasets/contract'
 import { FormRow, ProblemBanner, STATUS_TONE, VocabSelect, useApiCall } from './shared'
 import { cn } from '@/lib/utils'
@@ -302,7 +303,12 @@ function NewDraftDialog({
 const CONFIRM = {
   deleteDraft: { title: 'Delete this version?', body: 'Every field, grain, binding and measure in the version is removed. Published versions are not affected.', cta: 'Delete version', done: 'Version deleted' },
   retire: { title: 'Retire this version?', body: 'A retired version stays readable for reference but can no longer be pinned by a release.', cta: 'Retire version', done: 'Version retired' },
-  deleteDataset: { title: 'Delete this dataset?', body: 'Only possible while every version is a draft or validated and no release lists the dataset.', cta: 'Delete dataset', done: 'Dataset deleted' },
+  deleteDataset: {
+    title: 'Delete this dataset?',
+    body: 'Only possible while every version is a draft or validated and no release lists the dataset. A managed table only this dataset reads is dropped with it.',
+    cta: 'Delete dataset',
+    done: 'Dataset deleted',
+  },
 } as const
 
 function ConfirmDialog({
@@ -320,9 +326,12 @@ function ConfirmDialog({
 }) {
   const api = useDatasetsApi()
   const refresh = useRefreshDatasets()
+  const { data: list } = useDatasetList()
+  const { data: sources } = useSourceObjects()
   const [saving, setSaving] = useState(false)
   const [problem, setProblem] = useState<Problem | null>(null)
   const copy = CONFIRM[action]
+  const dropped = action === 'deleteDataset' ? managedTablesDroppedWith(dataset.id, (list ?? []).flatMap((d) => d.versions), sources ?? []) : []
 
   async function confirm() {
     setSaving(true)
@@ -345,6 +354,13 @@ function ConfirmDialog({
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>
         </DialogHeader>
+        {dropped.length > 0 && (
+          <p className="text-sm text-destructive">
+            The managed {dropped.length === 1 ? 'table' : 'tables'} <span className="font-mono">{dropped.join(', ')}</span>{' '}
+            {dropped.length === 1 ? 'is' : 'are'} read by no other dataset and will be dropped with {dropped.length === 1 ? 'its' : 'their'} data
+            and materialized view.
+          </p>
+        )}
         {problem && <ProblemBanner problem={problem} />}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>

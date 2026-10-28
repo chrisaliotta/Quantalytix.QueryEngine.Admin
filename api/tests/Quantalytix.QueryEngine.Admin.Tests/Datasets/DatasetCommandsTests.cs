@@ -1,6 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Xunit;
 
@@ -124,6 +125,58 @@ public sealed class DatasetCommandsTests
         Assert.Equal(RefusalKind.DeleteBlocked, refusal!.Kind);
     }
 
+    /// <summary>
+    /// A managed table exists only for the datasets over it (OI-33): deleting the last dataset that reads it drops its materialized
+    /// view and the table and deletes its registry row, so no orphaned table or registry entry outlives the metadata.
+    /// </summary>
+    /// <returns>A task that completes when the drops are checked.</returns>
+    [Fact]
+    public async Task DeleteDataset_DropsTheManagedTableOnlyItReads()
+    {
+        await DeletableOverTheManagedTableAsync();
+        await _fixture.Views.DefineAsync(
+            new MaterializedViewDefinition { ViewName = MaterializedViewNames.ViewOf(DatasetFixture.ManagedTable), SourceObject = DatasetFixture.ManagedTable, Columns = [] },
+            Token);
+
+        Assert.Null(await _fixture.Commands().DeleteAsync(DatasetFixture.DatasetId, Token));
+
+        Assert.Equal([$"drop {DatasetFixture.ManagedTable}"], _fixture.ManagedTables.Calls);
+        Assert.Empty(_fixture.Views.Definitions);
+        Assert.Empty(_fixture.Managed.All);
+        Assert.Empty(_fixture.Datasets.All);
+    }
+
+    /// <summary>A managed table another dataset still reads is that dataset's source: the delete keeps the table and its registry row.</summary>
+    /// <returns>A task that completes when the table is checked.</returns>
+    [Fact]
+    public async Task DeleteDataset_KeepsAManagedTableAnotherDatasetReads()
+    {
+        await DeletableOverTheManagedTableAsync();
+        await _fixture.Versions.InsertAsync(DatasetRows.Version(200) with { DatasetId = 11, SourceObject = DatasetFixture.ManagedTable }, Token);
+
+        Assert.Null(await _fixture.Commands().DeleteAsync(DatasetFixture.DatasetId, Token));
+
+        Assert.Empty(_fixture.ManagedTables.Calls);
+        Assert.Single(_fixture.Managed.All);
+    }
+
+    /// <summary>
+    /// DDL cannot be rolled back, so a delete that stopped after dropping the table is completed by a retry: the drops are planned
+    /// from what the database still holds, and the retry deletes the registry row without dropping the table again.
+    /// </summary>
+    /// <returns>A task that completes when the retry is checked.</returns>
+    [Fact]
+    public async Task DeleteDataset_AfterTheTableIsGone_DeletesOnlyTheRows()
+    {
+        await DeletableOverTheManagedTableAsync();
+        _fixture.Catalog.Remove(DatasetFixture.ManagedTable);
+
+        Assert.Null(await _fixture.Commands().DeleteAsync(DatasetFixture.DatasetId, Token));
+
+        Assert.Empty(_fixture.ManagedTables.Calls);
+        Assert.Empty(_fixture.Managed.All);
+    }
+
     /// <summary>Publishing a draft validates it first in the same call, stamping the publication time.</summary>
     /// <returns>A task that completes when the version is checked.</returns>
     [Fact]
@@ -202,6 +255,13 @@ public sealed class DatasetCommandsTests
         var outcome = await _fixture.Commands().RetireAsync(DatasetFixture.PublishedVersionId, Token);
 
         Assert.Equal(PublicationStatuses.Retired, outcome.Value!.Status);
+    }
+
+    /// <summary>Leaves the dataset with only its draft, which reads the managed table, so the dataset can be deleted.</summary>
+    private async Task DeletableOverTheManagedTableAsync()
+    {
+        await _fixture.Versions.DeleteAsync(new { DatasetVersionId = DatasetFixture.PublishedVersionId }, Token);
+        await _fixture.UseManagedTableAsync();
     }
 
     /// <summary>A dataset over <c>loan_daily</c>.</summary>
