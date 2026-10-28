@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ModelsApiProvider, useModelDeleteCheck, useModelList, useModelsApi, useRefreshModels } from '@/lib/models/client'
+import { useModelDeleteCheck, useModelList, useModelsApi, useRefreshModels } from '@/lib/models/client'
 import type { ModelListItem } from '@/lib/models/contract'
 import { EnabledBadge, ModelDetail } from './model-detail'
 import { METHOD_LABEL } from './method-explainer'
@@ -33,15 +33,7 @@ interface ModelsScreenProps {
 }
 
 /** The model manager over the `ModelsApi` port; the route names a model by its fixed key. */
-export function ModelsScreen(props: ModelsScreenProps) {
-  return (
-    <ModelsApiProvider>
-      <ModelsManager {...props} />
-    </ModelsApiProvider>
-  )
-}
-
-function ModelsManager({ modelKey, onSelect, onOpenReport }: ModelsScreenProps) {
+export function ModelsScreen({ modelKey, onSelect, onOpenReport }: ModelsScreenProps) {
   const api = useModelsApi()
   const refresh = useRefreshModels()
   const { data: models } = useModelList()
