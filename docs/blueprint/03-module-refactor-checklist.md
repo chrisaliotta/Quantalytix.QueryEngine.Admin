@@ -63,6 +63,8 @@ worked example; every step names its files.
   decide meaning (taken keys, parents outside the version) in the operation.
 - `Plan`: `plan.Sync(gateway, depth, before, after, row => new { row.KeyColumns })` per table, root row at
   `WritePlan.Root`; derived rows (closure) are deleted and re-inserted at the deepest depth when their source changed.
+  Physical DDL goes in the same plan with `plan.Schema(statement)`, which runs before every row write; derive it from the
+  before/after snapshots so a replay after a partial commit plans none (`DatasetSchemaChanges`).
 - Wrap the pipeline in a small service (`DimensionChanges`) for refusals that apply before any operation (report-owned).
 
 ### 4. Rules
@@ -73,7 +75,8 @@ worked example; every step names its files.
   the pending edits.
 - Register in reporting order with `AddSnapshotRule`, plus one `IPublicationRule` bridge (`DimensionVersionRules`) so
   the version workflow (freeze, publish) runs the same rules on stored versions. Remove the old `IPublicationRule`s.
-- Give violations a `Target` with your module's tab/area and the item id.
+- Give violations a `Target` with your module's tab/area and the item id as stored digits
+  (`TemporaryIds.PresentStored`); the pipeline rewrites ids of items the change set created to their temporary ids.
 
 ### 5. Commands, freeze and deletes
 
@@ -116,8 +119,8 @@ worked example; every step names its files.
   forms see the mock's keys; convert a 422 of `validate`/`publish`/`freeze` into the port's data shape.
 - `client.tsx` picks the adapter with `apiMode` from `@/lib/api/session`.
 - Add your module's cases to a `lib/<m>/<m>-api.parity.test.ts` suite modelled on the dimensions one: each test states
-  the behavior it confirms, runs on the mock always and on the HTTP adapter with `QE_LIVE_API=1`, creates and deletes its
-  own data, and never assumes an id format.
+  the behavior it confirms, runs on the mock always and on the HTTP adapter with `QE_LIVE_API=1` (`createLiveHttp` and
+  `isLiveRun` from `@/lib/api/live-http`), creates and deletes its own data, and never assumes an id format.
 
 ## Gotchas from the pilot
 
@@ -134,5 +137,34 @@ worked example; every step names its files.
   add per-operation reads.
 - **Schema DDL copy.** The test project copies the kit's DDL with `CopyToOutputDirectory="Always"`, because switching
   kit revisions can point at a file older than the copy.
-- **Contract mismatches** (`DeleteBlocker.code` optional in the generated types) are narrowed in the adapter with one
-  typed cast and reported to the integrator, never fixed by editing `schema.d.ts`.
+- **Contract mismatches** (a generated type looser than the port's) are narrowed in the adapter with one typed cast and
+  reported to the integrator, never fixed by editing `schema.d.ts`.
+- **Bundle before build.** The test project copies `bundled.yaml` at build time: after a contract change run
+  `pnpm contract:bundle`, then `dotnet build`, then `dotnet test`, or the conformance check compares a stale contract.
+
+## Building in a worktree
+
+`api/Directory.Build.props` finds the sibling repositories (`Quantalytix.QueryEngine`, `database/srdb_ebm`) next to the
+main checkout, which it reads from the worktree's `.git` file, so `dotnet build` works unchanged in
+`~/.cursor/worktrees/...`. To build against other checkouts, export `QueryEngineRoot` and `SeedKitRoot` (absolute paths).
+`pnpm install` once in the worktree root and in `web2/` before the contract and `web2` checks.
+
+## Follow-ups for Waves B and C (from Wave A)
+
+- **Releases (R5):** read the tenant catalog and answer `TenantInfo` through the public `Tenancy/TenantInfoReader`
+  (no second reader of `qe_database_info`). Retiring a release depends on `Releases/Rules/ReleaseNotActiveRule`; keep it
+  as the retire gate when the release commands move.
+- **Releases (R5):** refuse `semantic_release` in `VersionReferenceValidator` once releases move through their own
+  lifecycle endpoints (request it; add it to `OwnEndpoints`). Mappings and bridges (R4) do the same for
+  `mapping_version` and `bridge_version`.
+- **Mappings (R4):** read dimension references and published members from `TenantApi` (`getCatalog`,
+  `getPublishedMembers`, OI-13) in `lib/mappings/directory.ts`, then delete the deprecated
+  `DimensionsApi.listAllDimensions` from the dimensions port and both adapters (integrator-approved edit of
+  `lib/dimensions`).
+- **Reports (R6):** move every `lib/model` import (`lib/report/*`, `components/report/*`, `components/reports/*`,
+  `app/AppLayout.tsx`'s `ModelsProvider`) to `lib/models/client`, then delete `lib/model`. Keep the model gate's rule
+  dependencies (`ModelGateRule`, `ModelFindingsRule` over `ModelChecks`). Instead of picking rules out of
+  `ModelChecks`, request a public hook in `CalculationModels` that checks a report against a model's content.
+- **Datasets:** dropping the managed table when a dataset created over it is deleted is a pending product decision;
+  until then the table and its `qe_managed_source_object` row stay.
+
