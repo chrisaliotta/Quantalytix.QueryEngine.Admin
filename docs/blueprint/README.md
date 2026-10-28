@@ -38,7 +38,7 @@ allow-list; the old `web` app was removed in favor of `web2`. Checks against a l
 3. [02 Frontend contract layer](02-frontend-contract-layer.md): the shared kernel, ports, adapters and caching.
 4. [03 Module refactor checklist](03-module-refactor-checklist.md): the steps, files and gotchas of moving a module to
    the contract, from the dimensions pilot.
-5. [04 Live verification](04-live-verification.md): what still needs a live tenant, and the open items from integration.
+5. [04 Live verification](04-live-verification.md): what still needs a live tenant, and the checks for decisions made during integration.
 6. Module blueprints:
    - [10 Tenant, session and catalog](10-tenant-session-catalog.md)
    - [11 Datasets](11-datasets.md)
@@ -97,5 +97,6 @@ Record resolved open issues here, newest first, with the date, the issue, the ch
 
 | Date | Issue | Decision | By |
 |---|---|---|---|
+| 2026-10-27 | [OI-32](90-open-issues.md#oi-32) | Deleting a dataset over an ordinary (unmanaged) table neither redefines nor drops the table's materialized view; the next materialize or dematerialize on the table redefines it without the deleted fields' columns. | User |
 | 2026-10-27 | [OI-33](90-open-issues.md#oi-33) | Deleting a dataset drops each registered managed table that only its versions read, with the materialized view the API defined over it, and deletes the table's `qe_managed_source_object` row, as write-plan schema statements of the delete. | User |
 | 2026-10-27 | [OI-29](90-open-issues.md#oi-29) | The dotted key pattern (`DottedKey`) extends to dataset, calculation model and report keys, as the seed writes them. | Integrator, G1 |

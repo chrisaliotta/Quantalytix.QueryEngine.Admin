@@ -147,6 +147,8 @@ A JSON path field is materialized into a StarRocks asynchronous materialized vie
   report a column-level state.
 - `refreshMaterialization` triggers a refresh; `dematerializeField` removes the column from the view (and drops the
   view when no column is left).
+- Deleting a dataset over an ordinary (unmanaged) table leaves the table's view as it is, deleted fields' columns
+  included; the next `materializeField` or `dematerializeField` on the table redefines it (decided 2026-10-27).
 - These are commands: storage is physical and allowed on any non-retired version, as the `web2` contract says.
 
 ## Managed tables on dataset delete (Agreed, OI-33)

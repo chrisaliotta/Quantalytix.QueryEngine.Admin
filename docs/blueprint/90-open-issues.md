@@ -400,6 +400,9 @@ Path shorthand: `web2/` = `Quantalytix.QueryEngine.Admin/web2/src/`, `api/` = `Q
 - **Recommendation:** decide the physical mechanism first (materialized view versus generated column); then store state
   only if StarRocks cannot report it.
 - **Status:** Decided 2026-10-26. Mechanism: StarRocks materialized view per source object (async refresh). Store state (SG-07) only where StarRocks cannot report refresh status.
+- **Follow-up (dataset delete over an ordinary table):** whether deleting a dataset over an unmanaged table redefines or
+  drops the table's materialized view. Decided 2026-10-27 by the user: neither; the view keeps the deleted fields'
+  columns until the next materialize or dematerialize on the table redefines it.
 
 <a id="oi-33"></a>
 ### OI-33 Managed tables

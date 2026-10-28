@@ -90,10 +90,19 @@ list. Then check StarRocks itself, with `PREFIX` a new prefix per run:
 
 Passing: each step answers as described, and no `qe_` metadata row names a dropped table.
 
-## Open items
+## 5. Ordinary-table materialized view after dataset delete
 
-These came up during integration and are outside the refactor's scope. Each needs a decision or a follow-up change:
+Decided 2026-10-27 by the user ([11 Datasets](11-datasets.md#json-field-materialization-agreed-oi-32),
+[OI-32](90-open-issues.md#oi-32)): deleting a dataset over an ordinary (unmanaged) table neither redefines nor drops the
+table's materialized view, so the view keeps the deleted fields' columns until the next materialize or dematerialize on
+that table redefines it from the fields that remain. Check that cleanup, with `${TABLE}` an existing ordinary table with
+a `json` column:
 
-- **Materialized views of unmanaged sources on dataset delete.** Deleting a dataset over an unmanaged table leaves the
-  table's materialized view defined over the deleted fields' columns; the next materialization change on the table
-  redefines it. Decide whether the delete redefines (or drops) the view the way dematerializing a field does.
+1. Create two datasets with `mode: 'existing'` over `${TABLE}`, add a JSON path field over the column to each (different
+   paths, so they get different view columns), commit, and materialize both. `qe_mv_${TABLE}` in `information_schema.materialized_views` defines both columns.
+2. Delete the first dataset (204). `${TABLE}` and `qe_mv_${TABLE}` remain, and the view still defines the deleted field's
+   column.
+3. Materialize a second field of the remaining dataset (or dematerialize its field). The view is redefined without the
+   deleted field's column, and no `qe_field.materialized_column` names it.
+
+Passing: each step answers as described, and the API log shows no error from redefining the view.
