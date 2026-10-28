@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Releases;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseFixture;
 using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
@@ -33,7 +34,10 @@ public sealed class ReleaseChangeSetTests
         Assert.DoesNotContain(fixture.Graph.Manifest.All, row => row.SemanticReleaseId == DraftReleaseId);
     }
 
-    /// <summary>An empty manifest saves, but the preview reports <c>manifest_not_empty</c>, which blocks validate.</summary>
+    /// <summary>
+    /// An empty manifest saves, but the preview reports <c>manifest_not_empty</c>, which blocks validate, and, from the report checks
+    /// over the pending manifest, that the enabled report's source reads a dataset the manifest no longer pins, naming the source.
+    /// </summary>
     /// <returns>A task that completes when the preview is checked.</returns>
     [Fact]
     public async Task Preview_ReportsPublicationFindingsWithoutRefusing()
@@ -42,7 +46,8 @@ public sealed class ReleaseChangeSetTests
 
         var preview = (await PreviewAsync(fixture)).Value!;
 
-        Assert.Equal("manifest_not_empty", Assert.Single(preview.Report.Violations).Code);
+        Assert.Equal(["manifest_not_empty", ReportSourcesResolveRule.Code], preview.Report.Violations.Select(violation => violation.Code));
+        Assert.Equal("gl", preview.Report.Violations[1].Target!.ItemKey);
         Assert.Equal(preview.Report.Violations, preview.Violations);
     }
 
