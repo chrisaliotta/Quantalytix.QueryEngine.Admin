@@ -45,8 +45,8 @@ flowchart LR
    which map generated types to port types.
 6. Each adapter must pass the same port-level test suite, so the mock and HTTP adapters cannot drift (parity rule).
 
-Today's `web` client re-exports generated schema types into screens. `web2` must not; its prototype already isolates
-screens behind ports, and the blueprint keeps that boundary.
+The removed `web` client re-exported generated schema types into screens. `web2` must not; its prototype already
+isolates screens behind ports, and the blueprint keeps that boundary.
 
 ## Where validation lives (Agreed, OI-05)
 

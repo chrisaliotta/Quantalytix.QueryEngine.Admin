@@ -15,7 +15,7 @@ format; the blueprint remains the source for the rules behind it
 ([00, the contract-first rule](00-architecture.md#the-contract-first-rule-agreed)).
 
 **Status:** phases 0 to 6 complete on `feature/web2-refactor` (2026-10-27). The API serves exactly the contract, with no
-allow-list; the old `web` app is retired. Checks against a live tenant are pending:
+allow-list; the old `web` app was removed in favor of `web2`. Checks against a live tenant are pending:
 [04 Live verification](04-live-verification.md).
 
 ## Sources

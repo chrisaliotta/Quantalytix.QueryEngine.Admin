@@ -2,7 +2,7 @@
   <PropertyGroup>
     <RootNamespace>Quantalytix.QueryEngine.Admin.WebApi</RootNamespace>
     <UserSecretsId>Quantalytix.QueryEngine.Admin.WebApi.Development</UserSecretsId>
-    <!-- The OpenAPI document is written at build time; the web project generates its client types from it. -->
+    <!-- The OpenAPI document is written at build time; the contract conformance test compares it with the authored contract. -->
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../openapi</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name admin-api</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>

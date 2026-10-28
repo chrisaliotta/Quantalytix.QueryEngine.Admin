@@ -7,8 +7,8 @@ directory. The engine reads the metadata only through the tenant database's `vw_
 
 The API is contract-first. The hand-authored OpenAPI contract in [`openapi/contract/`](openapi/contract/README.md) is the
 source of truth, the C# request and response types are written by hand to match it, and a conformance test fails the build
-when the two differ. The `web2` application is the API's client. The older `web` application is retired: it targets
-endpoints this API no longer serves and is not supported against it.
+when the two differ. The `web2` application is the API's client; the older `web` application was removed with the move to
+the change-set API.
 
 | Project | Holds |
 |---|---|
@@ -46,7 +46,7 @@ the version lifecycle, each feature module and the main request flows. The desig
 
 - **`StarRocks`:** connection options such as `CommandTimeoutSeconds`.
 - **`Cors:AllowedOrigins`:** the browser origins that may call the API; none by default. `appsettings.Development.json`
-  allows the local dev servers, including the `web2` dev server at `http://localhost:5174`. The `web2` dev server also
+  allows the `web2` dev server at `http://localhost:5174`. The `web2` dev server also
   proxies `/api` and `/development` to `http://localhost:5180`, so a browser on its origin does not need CORS.
 - **`Authentication:Schemes:Bearer`:** the standard ASP.NET Core JWT bearer settings through which a production identity
   provider plugs in. A token carries `sub`, one `tenant_id` claim (the claim type is `AdminAuthentication:TenantClaimType`),

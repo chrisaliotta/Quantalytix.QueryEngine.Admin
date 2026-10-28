@@ -4,8 +4,8 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Identifiers;
 
 /// <summary>
-/// Confirms that allocated IDs are positive and at most JavaScript's <c>Number.MAX_SAFE_INTEGER</c> (2^53 - 1). The web app
-/// reads IDs as JSON numbers, and a larger ID would silently round to a different row's key in the browser.
+/// Confirms that allocated IDs are positive and at most JavaScript's <c>Number.MAX_SAFE_INTEGER</c> (2^53 - 1). A client that
+/// parses an ID as a JavaScript number would silently round a larger ID to a different row's key.
 /// </summary>
 public sealed class IdGeneratorTests
 {

@@ -6,6 +6,6 @@ public sealed record AdminCorsOptions
     /// <summary>The configuration section the options bind from.</summary>
     public const string SectionName = "Cors";
 
-    /// <summary>The allowed origins, such as <c>http://localhost:5173</c>; none by default.</summary>
+    /// <summary>The allowed origins, such as <c>http://localhost:5174</c>; none by default.</summary>
     public IReadOnlyList<string> AllowedOrigins { get; init; } = [];
 }
