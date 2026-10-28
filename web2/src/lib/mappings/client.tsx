@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import useSWR, { useSWRConfig } from 'swr'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 import { unwrap } from '@/lib/api/contract'
-import { useDimensionsApi } from '@/lib/dimensions/client'
+import { apiMode, tenantHttp } from '@/lib/api/session'
+import { tenantApi } from '@/lib/tenant/client'
 import {
   BRIDGE_EDITS,
   MAPPING_SET_EDITS,
@@ -16,18 +17,23 @@ import {
   type MappingVersionSummary,
   type ValidationReport,
 } from './contract'
-import { createDimensionsDirectory } from './directory'
+import { createTenantDirectory } from './directory'
+import { createHttpMappingsApi } from './http/adapter'
 import { createMockMappingsApi } from './mock/adapter'
+import { createMockMappingLookups } from './mock/lookups'
 
 const ApiContext = createContext<MappingsApi | null>(null)
 const DirectoryContext = createContext<MappingsDirectory | null>(null)
 
-/** Supplies the adapter and the directory; must sit inside DimensionsApiProvider, which the directory reads through. */
+/**
+ * Supplies the adapter and the directory: an explicit `api`, else the HTTP adapter in http mode, else the in-memory mock. The
+ * directory reads the tenant catalog and published members from `TenantApi` in http mode; the mock keeps its own lookups, whose
+ * ids match the mock.
+ */
 export function MappingsApiProvider({ children, api }: { children: ReactNode; api?: MappingsApi }) {
-  const dims = useDimensionsApi()
   const [services] = useState(() => {
-    const directory = createDimensionsDirectory(dims)
-    return { directory, api: api ?? createMockMappingsApi(directory) }
+    const directory = createTenantDirectory(apiMode === 'http' ? tenantApi : createMockMappingLookups())
+    return { directory, api: api ?? (apiMode === 'http' ? createHttpMappingsApi(tenantHttp) : createMockMappingsApi(directory)) }
   })
   return (
     <DirectoryContext.Provider value={services.directory}>
