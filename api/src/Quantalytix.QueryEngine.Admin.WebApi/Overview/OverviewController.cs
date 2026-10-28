@@ -6,22 +6,22 @@ using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Overview;
 
-/// <summary>Summarizes a tenant's metadata for the overview page.</summary>
+/// <summary>Summarizes a tenant's metadata for the overview screen.</summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/overview")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
+[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
+[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
 public sealed class OverviewController(OverviewService overview) : ControllerBase
 {
-    /// <summary>Reads the tenant's identity and semantic revision, its active release, its counts and its drafts in progress.</summary>
+    /// <summary>Read the tenant's state, counts and work in progress.</summary>
     /// <param name="tenantId">The tenant to summarize.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The tenant overview.</returns>
     /// <response code="200">The tenant overview.</response>
     /// <response code="401">The request has no valid bearer token.</response>
     /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
-    [HttpGet]
+    [HttpGet(Name = "getOverview")]
     [ProducesResponseType<TenantOverview>(StatusCodes.Status200OK)]
     public async Task<ActionResult<TenantOverview>> Get(string tenantId, CancellationToken cancellationToken)
     {

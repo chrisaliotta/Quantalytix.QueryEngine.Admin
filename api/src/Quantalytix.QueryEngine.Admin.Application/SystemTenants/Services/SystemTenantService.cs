@@ -4,7 +4,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.SystemTenants;
 
 /// <summary>
 /// Administers the control plane's tenant directory (<c>query_control.qe_tenant_directory</c>) for SystemAdmins. Every
-/// entry it returns has its connection string's password masked; tenants are never deleted.
+/// entry it returns has its connection string's password masked; tenants are never deleted. The directory lies outside the
+/// tenant tables the shared route check reads, so the reads and edits of one tenant answer null for a tenant it does not hold.
 /// </summary>
 public sealed class SystemTenantService(ITableGateway<TenantDirectoryRecord> tenants, IConnectionStringMasker masker, TimeProvider time)
 {
@@ -20,10 +21,11 @@ public sealed class SystemTenantService(ITableGateway<TenantDirectoryRecord> ten
     /// <summary>Reads one tenant.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The masked directory entry.</returns>
-    public async Task<TenantDirectoryEntry> GetAsync(string tenantId, CancellationToken cancellationToken)
+    /// <returns>The masked directory entry, or null when the directory has no such tenant.</returns>
+    public async Task<TenantDirectoryEntry?> GetAsync(string tenantId, CancellationToken cancellationToken)
     {
-        return ToEntry(await tenants.GetAsync(new { TenantId = tenantId }, cancellationToken));
+        var row = await FindAsync(tenantId, cancellationToken);
+        return row is null ? null : ToEntry(row);
     }
 
     /// <summary>Registers a tenant.</summary>
@@ -49,32 +51,41 @@ public sealed class SystemTenantService(ITableGateway<TenantDirectoryRecord> ten
     /// <param name="tenantId">The tenant.</param>
     /// <param name="input">The validated edit; a null connection string keeps the current one.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
-    /// <returns>The masked directory entry.</returns>
-    public async Task<TenantDirectoryEntry> UpdateAsync(string tenantId, TenantUpdateInput input, CancellationToken cancellationToken)
+    /// <returns>The masked directory entry, or null when the directory has no such tenant.</returns>
+    public Task<TenantDirectoryEntry?> UpdateAsync(string tenantId, TenantUpdateInput input, CancellationToken cancellationToken)
     {
-        var current = await tenants.GetAsync(new { TenantId = tenantId }, cancellationToken);
-        var updated = current with
+        return ChangeAsync(tenantId, current => current with
         {
             ProviderId = input.ProviderId,
             ConnectionString = input.ConnectionString ?? current.ConnectionString,
-            MetadataCacheSeconds = input.MetadataCacheSeconds,
-            UpdatedAt = time.GetUtcNow().UtcDateTime
-        };
-        await tenants.UpdateAsync(updated, cancellationToken);
-        return ToEntry(updated);
+            MetadataCacheSeconds = input.MetadataCacheSeconds
+        }, cancellationToken);
     }
 
     /// <summary>Permits or stops query routing for a tenant.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="input">Whether routing is permitted.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
-    /// <returns>The masked directory entry.</returns>
-    public async Task<TenantDirectoryEntry> SetEnabledAsync(string tenantId, TenantEnabledInput input, CancellationToken cancellationToken)
+    /// <returns>The masked directory entry, or null when the directory has no such tenant.</returns>
+    public Task<TenantDirectoryEntry?> SetEnabledAsync(string tenantId, TenantEnabledInput input, CancellationToken cancellationToken)
     {
-        var current = await tenants.GetAsync(new { TenantId = tenantId }, cancellationToken);
-        var updated = current with { IsEnabled = input.IsEnabled, UpdatedAt = time.GetUtcNow().UtcDateTime };
+        return ChangeAsync(tenantId, current => current with { IsEnabled = input.IsEnabled }, cancellationToken);
+    }
+
+    /// <summary>Applies a change to a tenant's row, stamps it and writes it.</summary>
+    private async Task<TenantDirectoryEntry?> ChangeAsync(string tenantId, Func<TenantDirectoryRecord, TenantDirectoryRecord> change, CancellationToken cancellationToken)
+    {
+        var current = await FindAsync(tenantId, cancellationToken);
+        if (current is null) return null;
+        var updated = change(current) with { UpdatedAt = time.GetUtcNow().UtcDateTime };
         await tenants.UpdateAsync(updated, cancellationToken);
         return ToEntry(updated);
+    }
+
+    /// <summary>The tenant's row, or null when the directory has no such tenant.</summary>
+    private async Task<TenantDirectoryRecord?> FindAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        return (await tenants.ListAsync(new { TenantId = tenantId }, cancellationToken)).SingleOrDefault();
     }
 
     /// <summary>A directory row as the API returns it, with the connection string masked.</summary>

@@ -16,7 +16,7 @@ public sealed class TenantsController(AccessibleTenantsService tenants, CallerFa
     /// <returns>The accessible tenants, sorted by tenant ID.</returns>
     /// <response code="200">The accessible tenants, sorted by tenant ID.</response>
     /// <response code="401">The request has no valid bearer token.</response>
-    [HttpGet]
+    [HttpGet(Name = "listTenants")]
     [ProducesResponseType<IReadOnlyList<AccessibleTenant>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<AccessibleTenant>>> List(CancellationToken cancellationToken)
     {

@@ -1,4 +1,4 @@
-import type { PublishedMember, TenantCatalog, TenantOverview, Vocabularies } from '../contract'
+import type { PublishedMember, TenantCatalog, Vocabularies } from '../contract'
 
 /* ───────────────────────── Vocabularies ───────────────────────── */
 
@@ -198,11 +198,8 @@ export const catalog: TenantCatalog = {
   assumptionSets: [{ id: 'as_current', key: 'current', displayName: 'Current', status: 'active' }],
 }
 
-export const overview: TenantOverview = {
-  ...catalog.tenant,
-  counts: { datasets: 2, dimensions: 4, mappingSets: 1, bridges: 1, releases: 2, assumptionSets: 1, models: 1, reports: 1, activeMeasures: 14 },
-  drafts: { datasetVersions: 1, releases: 1 },
-}
+/** The overview numbers the catalog cannot give: the active release's measures and the draft dataset versions. */
+export const overviewRows = { activeMeasures: 14, draftDatasetVersions: 1 }
 
 /* ───────────────────────── Published members ───────────────────────── */
 

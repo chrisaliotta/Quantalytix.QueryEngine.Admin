@@ -21,6 +21,9 @@ public sealed class DevelopmentTokenIssuer(IOptions<AdminAuthenticationOptions> 
     /// <summary>The subject of development tokens.</summary>
     public const string Subject = "development-user";
 
+    /// <summary>The name claim of development tokens, which the session shows as the caller's display name.</summary>
+    public const string Name = "Development user";
+
     /// <summary>How long a development token stays valid.</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(8);
 
@@ -48,7 +51,12 @@ public sealed class DevelopmentTokenIssuer(IOptions<AdminAuthenticationOptions> 
     public DevelopmentTokenResponse Issue(DevelopmentTokenRequest request)
     {
         var expires = time.GetUtcNow().Add(Lifetime);
-        var claims = new Dictionary<string, object> { [JwtRegisteredClaimNames.Sub] = Subject, [_tenantClaimType] = request.TenantId };
+        var claims = new Dictionary<string, object>
+        {
+            [JwtRegisteredClaimNames.Sub] = Subject,
+            [JwtRegisteredClaimNames.Name] = Name,
+            [_tenantClaimType] = request.TenantId
+        };
         if (request.SystemAdmin) claims[AdminAuthentication.RoleClaimType] = AdminAuthentication.SystemAdminRole;
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
