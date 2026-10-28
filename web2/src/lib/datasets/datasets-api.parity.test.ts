@@ -183,6 +183,23 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     expect(check).toMatchObject({ allowed: true, reasons: [] })
   })
 
+  /**
+   * The engine reads a dataset only through the version the active release pins (D2), so retiring that version is refused with 422
+   * `release_pins_retired_version` and nothing changes. Live, this needs a tenant whose active release pins a dataset version.
+   */
+  it('refuses retiring the version the active release pins', async () => {
+    const pinned = (await api.listDatasets()).find((d) => d.activeVersionId)!
+
+    const refused = await api.retireVersion(pinned.activeVersionId!)
+
+    expect(refused.ok).toBe(false)
+    if (refused.ok) return
+    expect(refused.problem.status).toBe(422)
+    expect(refused.problem.violations?.map((v) => v.code)).toEqual(['release_pins_retired_version'])
+    const after = await unwrap(api.getVersion(pinned.activeVersionId!))
+    expect(after.status).toBe('published')
+  })
+
   /** A dataset whose versions are all drafts deletes, after which it is not found. */
   it('deletes a dataset of drafts', async () => {
     const table = (await api.listSourceObjects()).find((s) => s.kind === 'table')!

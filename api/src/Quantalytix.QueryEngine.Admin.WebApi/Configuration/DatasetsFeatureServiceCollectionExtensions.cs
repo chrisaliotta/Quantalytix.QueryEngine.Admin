@@ -19,8 +19,8 @@ public static class DatasetsFeatureServiceCollectionExtensions
     /// <summary>
     /// Registers the Datasets slice: its route resources (fields are found within the route's version), the StarRocks catalog,
     /// managed tables and materialized views, its reads and commands, the dataset version change-set aggregate with its snapshot
-    /// rules in the order they report (blueprint 11, Rule codes), and the same rules as the workflow's <c>dataset_version</c>
-    /// publication rule.
+    /// rules in the order they report (blueprint 11, Rule codes), the same rules as the workflow's <c>dataset_version</c>
+    /// publication rule, and its retirement rule.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -77,6 +77,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DatasetSnapshot, TimePolicyTimeBindingInVersionRule>();
         services.AddScoped<DatasetRules>();
         services.AddScoped<IPublicationRule, DatasetVersionRules>();
+        services.AddScoped<IRetirementRule, ReleasePinsRetiredVersionRule>();
         return services;
     }
 

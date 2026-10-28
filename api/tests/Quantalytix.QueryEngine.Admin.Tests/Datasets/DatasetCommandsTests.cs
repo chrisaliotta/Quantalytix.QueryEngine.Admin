@@ -9,7 +9,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 /// <summary>
 /// Confirms the dataset manager's lifecycle commands (blueprint 11): creating a dataset over an existing object or a new managed
 /// table (OI-33, OI-36), one open version per dataset (OI-23) with clones recording their source and time (OI-12), deleting only
-/// open, unpinned versions and datasets (D10, OI-17), and the strict transitions validate, publish, reopen and retire (D1).
+/// open, unpinned versions and datasets (D10, OI-17) with the managed tables only they read (OI-33), and the strict transitions
+/// validate, publish, reopen and retire (D1), retire refusing the version the active release pins.
 /// </summary>
 public sealed class DatasetCommandsTests
 {
@@ -173,6 +174,34 @@ public sealed class DatasetCommandsTests
 
         Assert.Equal(PublicationStatuses.Draft, reopened.Value!.Status);
         Assert.Equal(PublicationStatuses.Retired, retired.Value!.Status);
+    }
+
+    /// <summary>
+    /// The engine reads a dataset only through the version the active release pins (D2), so retiring that version would take the
+    /// dataset out of every query: the retire is refused with <c>release_pins_retired_version</c> and the version stays published.
+    /// </summary>
+    /// <returns>A task that completes when the refusal is checked.</returns>
+    [Fact]
+    public async Task Retire_WhenTheActiveReleasePinsTheVersion_IsRefused()
+    {
+        await _fixture.PinAsync(DatasetFixture.PublishedVersionId, active: true);
+
+        var outcome = await _fixture.Commands().RetireAsync(DatasetFixture.PublishedVersionId, Token);
+
+        Assert.Equal((RefusalKind.RulesViolated, "release_pins_retired_version"), (outcome.Refusal!.Kind, Assert.Single(outcome.Refusal.Violations).Code));
+        Assert.Equal(PublicationStatuses.Published, _fixture.Versions.All.Single(version => version.DatasetVersionId == DatasetFixture.PublishedVersionId).Status);
+    }
+
+    /// <summary>Only the active release guards a version: a pin of a release the engine does not read leaves the version retirable.</summary>
+    /// <returns>A task that completes when the status is checked.</returns>
+    [Fact]
+    public async Task Retire_WhenOnlyAnInactiveReleasePinsTheVersion_Retires()
+    {
+        await _fixture.PinAsync(DatasetFixture.PublishedVersionId, active: false);
+
+        var outcome = await _fixture.Commands().RetireAsync(DatasetFixture.PublishedVersionId, Token);
+
+        Assert.Equal(PublicationStatuses.Retired, outcome.Value!.Status);
     }
 
     /// <summary>A dataset over <c>loan_daily</c>.</summary>

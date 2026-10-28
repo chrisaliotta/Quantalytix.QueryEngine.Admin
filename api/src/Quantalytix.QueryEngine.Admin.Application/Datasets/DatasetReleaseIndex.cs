@@ -51,6 +51,14 @@ public sealed class DatasetReleaseIndex(IReadOnlyList<ReleaseDatasetRecord> pins
         return pins.SingleOrDefault(pin => pin.DatasetId == datasetId && pin.SemanticReleaseId == activeReleaseId)?.DatasetVersionId;
     }
 
+    /// <summary>The active release, when it pins a version.</summary>
+    /// <param name="versionId">The dataset version.</param>
+    /// <returns>The release the engine reads the version through, or null.</returns>
+    public SemanticReleaseRecord? ActivePinning(long versionId)
+    {
+        return Pinning(versionId).SingleOrDefault(release => release.SemanticReleaseId == activeReleaseId);
+    }
+
     /// <summary>Whether the active release pins a version.</summary>
     /// <param name="versionId">The dataset version.</param>
     /// <returns>True when the engine reads the version.</returns>

@@ -27,6 +27,7 @@ Sources: [`web2/src/lib/datasets/contract.ts`](../../web2/src/lib/datasets/contr
 | D10 | A dataset can be deleted only when every version is a draft or validated and no release lists it; a version only while draft or validated and unpinned. | API delete rules; OI-17 |
 | D12 | A dataset has at most one open (draft or validated) version at a time. | OI-23 |
 | D11 | The UI never hard-codes an enumeration; vocabularies come from the server. | `datasets/contract.ts` header |
+| D13 | The version the active release pins cannot be retired (`release_pins_retired_version`); activate a release that pins another version first. | Agreed (follows from D2); API `ReleasePinsRetiredVersionRule` |
 
 ## Frontend contract
 
@@ -125,7 +126,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | POST | `dataset-versions/{id}/validate` | | `DatasetVersionSummary` | 409 transition, 422 | `validateVersion` |
 | POST | `dataset-versions/{id}/publish` | | `DatasetVersionSummary` | 409, 422 | `publishVersion` |
 | POST | `dataset-versions/{id}/reopen` | | `DatasetVersionSummary` | 409 | `reopenVersion` |
-| POST | `dataset-versions/{id}/retire` | | `DatasetVersionSummary` | 409, 422 `release_not_active`-style | `retireVersion` |
+| POST | `dataset-versions/{id}/retire` | | `DatasetVersionSummary` | 409, 422 `release_pins_retired_version` (D13) | `retireVersion` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` (`state: building`) | 409 cannot be materialized | `materializeField` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization/refresh` | | `DatasetField` | 409 | `refreshMaterialization` |
 | DELETE | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` | 409 | `dematerializeField` |
@@ -180,6 +181,8 @@ Kept from the current API (`dataset_version` rules): `source_object_exists`, `ve
 `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`,
 `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is the
 `DatasetTab` the rule belongs to.
+
+Retirement (D13): `release_pins_retired_version`, without a target, because the fix is in the releases module.
 
 ## Schema mapping
 

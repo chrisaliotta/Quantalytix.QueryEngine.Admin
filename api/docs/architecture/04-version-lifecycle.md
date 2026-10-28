@@ -53,7 +53,9 @@ that resolve keys against published versions see the content about to be publish
 
 Each kind registers one `IPublicationRule` that loads the stored snapshot and runs the module's snapshot rules:
 `DatasetVersionRules`, `DimensionVersionRules`, `MappingVersionRules`, `BridgeVersionRules` and `ReleaseVersionRules`.
-The only `IRetirementRule` is `ReleaseNotActiveRule` (`semantic_release`): the active release cannot be retired.
+Two kinds register an `IRetirementRule`: `ReleaseNotActiveRule` (`semantic_release`), so the active release cannot be
+retired, and `ReleasePinsRetiredVersionRule` (`dataset_version`), so the dataset version the active release pins cannot be
+retired.
 
 Lifecycle handlers (`IVersionLifecycleHandler`), in registration order:
 
@@ -68,8 +70,9 @@ Lifecycle handlers (`IVersionLifecycleHandler`), in registration order:
 `DatasetCommands` runs the dataset transitions through `VersionWorkflow.TransitionAsync`: `validate` (draft to validated),
 `publish` (validated to published; a draft is validated first in the same call), `reopen` (validated to draft) and
 `retire` (published to retired). Only one open (draft or validated) version exists per dataset. Publishing a dataset version
-does not advance the semantic revision, because the engine reads dataset versions only through the active release. No
-retirement rule is registered for `dataset_version`, so `retire` checks only the status. Materializing a JSON path field
+does not advance the semantic revision, because the engine reads dataset versions only through the active release. For the
+same reason `retire` runs `ReleasePinsRetiredVersionRule`: the version the active release pins is refused with 422
+`release_pins_retired_version` until a release that pins another version is activated. Materializing a JSON path field
 (`fields/{id}/materialization`) is allowed on any version that is not retired, because storage does not change what a
 version means. Materializing and dematerializing advance the revision because the engine reads
 `qe_field.materialized_column`.

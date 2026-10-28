@@ -85,7 +85,7 @@ classDiagram
   materialized view per source object holding its JSON path fields' columns), `DatasetVersionCloner`,
   `DatasetFieldValues` (the bounded distinct values of a field, for report diagnostics), `DatasetDeleteRules`.
 - **Rules:** 26 snapshot rules, all `Publication` stage (field, grain, binding, measure, formula and time-policy rules),
-  bridged to the workflow by `DatasetVersionRules`.
+  bridged to the workflow by `DatasetVersionRules`; one retirement rule, `ReleasePinsRetiredVersionRule`.
 - **Infrastructure:** `IManagedTables` (`StarRocksManagedTables`), `IMaterializedViews` (`StarRocksMaterializedViews`).
 
 ## Dimensions

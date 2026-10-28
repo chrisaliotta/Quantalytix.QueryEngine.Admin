@@ -204,13 +204,23 @@ internal sealed class DatasetFixture
         return new DatasetQueries(Datasets, Versions, ReleaseReader(), Directory(), Loader(), new DatasetVersionReader(Views), new DatasetRules(Rules()), Time);
     }
 
-    /// <summary>The lifecycle commands over the version workflow, with the dataset rules as its <c>dataset_version</c> publication rule.</summary>
+    /// <summary>
+    /// The lifecycle commands over the version workflow, with the dataset rules as its <c>dataset_version</c> publication rule and
+    /// <see cref="ReleasePinsRetiredVersionRule"/> as its retirement rule.
+    /// </summary>
     /// <returns>The commands.</returns>
     public DatasetCommands Commands()
     {
         var ids = new SequentialIdGenerator(FirstNewId);
         var stores = new VersionStoreRegistry([new DatasetVersionStore(Versions)]);
-        var workflow = new VersionWorkflow(stores, [new DatasetVersionRules(Loader(), new DatasetRules(Rules()))], [], [], new PublicationSet(), SemanticRevision(), Time);
+        var workflow = new VersionWorkflow(
+            stores,
+            [new DatasetVersionRules(Loader(), new DatasetRules(Rules()))],
+            [new ReleasePinsRetiredVersionRule(Versions, ReleaseReader())],
+            [],
+            new PublicationSet(),
+            SemanticRevision(),
+            Time);
         return new DatasetCommands(
             Datasets, Versions, Fields, Managed, Content(), new DatasetVersionCloner(Versions, Content(), ids, Time), ReleaseReader(), Queries(), Directory(), ManagedTables,
             workflow, ids, Time);

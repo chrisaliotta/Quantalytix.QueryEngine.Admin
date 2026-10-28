@@ -488,7 +488,12 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (active)
         return problem(422, 'This version is in the active release', {}, {
           detail: `${active.key} pins it, so the engine reads it today. Pin another version in that release first.`,
-          violations: [{ code: 'release_pins_retired_version', message: `The active release ${active.key} pins this version.` }],
+          violations: [
+            {
+              code: 'release_pins_retired_version',
+              message: `The active release '${active.key}' pins version v${found.v.versionNumber}; activate a release that pins another version before retiring it.`,
+            },
+          ],
         })
       found.v.status = 'retired'
       return ok(summary(found.v))
