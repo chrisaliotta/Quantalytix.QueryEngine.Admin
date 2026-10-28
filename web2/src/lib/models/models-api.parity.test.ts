@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import { unwrap } from '@/lib/api/contract'
-import { createHttpClient } from '@/lib/api/http'
+import { createLiveHttp, isLiveRun, liveTenant } from '@/lib/api/live-http'
 import type { ModelMeasure, ModelsApi, ModelVariable } from './contract'
 import { createHttpModelsApi } from './http/adapter'
 import { createMockModelsApi } from './mock/adapter'
@@ -11,28 +11,11 @@ import { createMockModelsApi } from './mock/adapter'
  * HTTP adapter against a live tenant. Live tests create and delete their own model and never assume an id format.
  */
 
-// Vitest mirrors process.env into import.meta.env; the app tsconfig carries no Node types.
-const liveTenant = {
-  baseUrl: import.meta.env.QE_API_BASE_URL ?? 'http://localhost:5180',
-  tenantId: import.meta.env.QE_TENANT_ID ?? 'development',
-}
-
-let liveToken: Promise<string> | undefined
-
-async function createLiveApi(): Promise<ModelsApi> {
-  vi.stubGlobal('window', { location: { origin: liveTenant.baseUrl } })
-  let token: string | null = null
-  const config = { baseUrl: '', token: () => token, onUnauthorized: () => {} }
-  liveToken ??= unwrap(
-    createHttpClient(config, '').post<{ accessToken: string }>('/development/token', { tenantId: liveTenant.tenantId, systemAdmin: false }),
-  ).then((t) => t.accessToken)
-  token = await liveToken
-  return createHttpModelsApi(createHttpClient(config).forTenant(liveTenant.tenantId))
-}
-
 const adapters = [
   { name: 'mock', create: async () => createMockModelsApi() },
-  ...(import.meta.env.QE_LIVE_API === '1' ? [{ name: 'http', create: createLiveApi }] : []),
+  ...(isLiveRun
+    ? [{ name: 'http', create: async () => createHttpModelsApi((await createLiveHttp()).forTenant(liveTenant.tenantId)) }]
+    : []),
 ]
 
 const uniqueKey = () => `parity.m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`

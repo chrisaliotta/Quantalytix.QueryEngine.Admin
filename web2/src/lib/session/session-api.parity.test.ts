@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SessionApi } from './contract'
 import { createHttpSessionApi } from './http/adapter'
-import { createLiveHttp, isLiveRun } from './live-http'
+import { createLiveHttp, isLiveRun } from '@/lib/api/live-http'
 import { createMockSessionApi } from './mock/adapter'
 
 /**
