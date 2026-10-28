@@ -20,7 +20,7 @@ Sources: [`web2/src/lib/mappings/contract.ts`](../../web2/src/lib/mappings/contr
 | B1 | A mapping set targets exactly one analytical categorical or hierarchical dimension; never a report dimension. | Brief A2; schema README 2.19.0 |
 | B2 | A source value appears at most once per version, compared exactly as text (never trimmed or coerced). | Brief A2; schema UQ |
 | B3 | An entry's member is an assignable member of the dimension's published version, named by key. | Brief A2 |
-| B4 | A bridge's endpoints are fixed at creation, differ, and the source is not `time`; a report dimension is never a bridge's source. | Brief A3; schema doc §18 rule 23 |
+| B4 | A bridge's endpoints are fixed at creation, differ, and are never `time` dimensions (source or target); a report dimension is never a bridge's source. | Brief A3; schema doc §18 rule 23 |
 | B5 | `many_to_one` allows `none` only; `many_to_many` allows `partition` or `replicate`. `none`: one target, weight 1. `partition`: weights ≥ 0 summing to 1 per source. `replicate`: weights ≥ 0. | Brief A3 |
 | B6 | Each (source, target) pair appears once per version. | Schema UQ |
 | B7 | A factor affects only measures with `bridge_factor_behavior = value`. | Brief A3 |

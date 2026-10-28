@@ -95,7 +95,8 @@ export function createHttpReleasesApi(http: HttpClient): ReleasesApi {
     capturePreview: async () => (await unwrap(http.get<Schemas['SetCapturePreview']>('/assumption-sets/capture-preview'))) as SetCapturePreview,
 
     async saveManifest(id, manifest) {
-      const result = await changes.stage(releasePath(id), { op: 'saveManifest', manifest })
+      const op: ReleaseOperation = { op: 'saveManifest', manifest }
+      const result = await changes.stage(releasePath(id), op satisfies Schemas['ReleaseOperation'])
       return result.ok ? { ok: true, data: result.data.state } : result
     },
 

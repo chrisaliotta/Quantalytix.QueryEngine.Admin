@@ -658,6 +658,8 @@ components:
         - $ref: '#/components/schemas/ReleaseSaveManifestOperation'
       discriminator:
         propertyName: op
+        mapping:
+          saveManifest: '#/components/schemas/ReleaseSaveManifestOperation'
 
     ReleaseChangeSetRequest:
       allOf:

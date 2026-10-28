@@ -3810,7 +3810,7 @@ export interface components {
             bridge: components["schemas"]["BridgeDetail"];
             content: components["schemas"]["BridgeVersionContent"];
         };
-        /** @description Endpoints are fixed at creation, differ, and the source is neither `time` nor a report dimension (B4). */
+        /** @description Endpoints are fixed at creation, differ, and are never `time` dimensions, source or target (B4); neither is a report dimension, whose bridges its report's sources create. */
         CreateBridgeInput: {
             key: components["schemas"]["DottedKey"];
             displayName: string;
@@ -4021,7 +4021,7 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            op: "ReleaseSaveManifestOperation";
+            op: "saveManifest";
             manifest: components["schemas"]["ManifestEntry"][];
         };
         ReleaseOperation: components["schemas"]["ReleaseSaveManifestOperation"];
@@ -6847,7 +6847,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description The key is taken, or the endpoints break B4 (equal, time source, report dimension). */
+            /** @description The key is taken, or the endpoints break B4 (equal, a `time` endpoint, a report dimension). */
             409: components["responses"]["Conflict"];
         };
     };

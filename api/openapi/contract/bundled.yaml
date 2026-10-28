@@ -1692,7 +1692,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The key is taken, or the endpoints break B4 (equal, time source, report dimension).
+          description: The key is taken, or the endpoints break B4 (equal, a `time` endpoint, a report dimension).
   /api/tenants/{tenantId}/bridges/{bridgeId}:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -7515,7 +7515,7 @@ components:
           $ref: '#/components/schemas/BridgeVersionContent'
     CreateBridgeInput:
       type: object
-      description: Endpoints are fixed at creation, differ, and the source is neither `time` nor a report dimension (B4).
+      description: Endpoints are fixed at creation, differ, and are never `time` dimensions, source or target (B4); neither is a report dimension, whose bridges its report's sources create.
       required:
         - key
         - displayName
@@ -8008,6 +8008,8 @@ components:
         - $ref: '#/components/schemas/ReleaseSaveManifestOperation'
       discriminator:
         propertyName: op
+        mapping:
+          saveManifest: '#/components/schemas/ReleaseSaveManifestOperation'
     ReleaseChangeSetRequest:
       allOf:
         - $ref: '#/components/schemas/ChangeSetRequest'
