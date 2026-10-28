@@ -165,30 +165,6 @@ export interface ScenarioMember {
   children?: ScenarioMember[]
 }
 
-export interface AssumptionSet {
-  key: string
-  label: string
-  captured: boolean
-  note?: string
-}
-
-export type PeriodShift = 'same' | 'PM' | 'PQ' | 'PY'
-
-export interface ComparisonSide {
-  /** 'actual', a plan version key, or `latest:<folderKey>` for the latest approved under a folder. */
-  scenario: string
-  period: PeriodShift
-  assumptions: string
-}
-
-export interface Comparison {
-  id: string
-  key: string
-  label: string
-  base: ComparisonSide
-  compare: ComparisonSide
-}
-
 export type ScopeKind = 'row' | 'subtree'
 
 export interface RowScope {
@@ -227,7 +203,5 @@ export interface ReportState {
   rowScopes: RowScope[]
   reportScenarios: ReportScenario[]
   scenarios: ScenarioMember[]
-  assumptionSets: AssumptionSet[]
-  comparisons: Comparison[]
   styles: ReportStyle[]
 }

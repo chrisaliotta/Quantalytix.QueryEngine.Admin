@@ -413,27 +413,6 @@ export const initialReport: ReportState = {
       ],
     },
   ],
-  assumptionSets: [
-    { key: 'active', label: 'Active', captured: false },
-    { key: 'seed_2024', label: 'Seed assumptions 2024', captured: true, note: 'Files Capital under Liabilities' },
-    { key: 'seed_2026', label: 'Seed assumptions 2026', captured: true },
-  ],
-  comparisons: [
-    {
-      id: 'c1',
-      key: 'vs_pm',
-      label: 'vs PM',
-      base: { scenario: 'actual', period: 'same', assumptions: 'active' },
-      compare: { scenario: 'actual', period: 'PM', assumptions: 'active' },
-    },
-    {
-      id: 'c2',
-      key: 'vs_budget',
-      label: 'vs Budget',
-      base: { scenario: 'actual', period: 'same', assumptions: 'active' },
-      compare: { scenario: 'latest:FY24_BUDGETS', period: 'same', assumptions: 'active' },
-    },
-  ],
   styles: [
     { key: 'header', name: 'Header', defaultRole: 'header', fontWeight: 'bold', italic: false },
     { key: 'subtotal', name: 'Subtotal', defaultRole: 'subtotal', fontWeight: 'bold', borderTop: 'thin', italic: false },
