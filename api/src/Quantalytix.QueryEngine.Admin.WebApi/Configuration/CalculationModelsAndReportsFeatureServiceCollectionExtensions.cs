@@ -36,8 +36,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportOwnership>();
         services.AddScoped<OwnedVersions>();
         services.AddScoped<ReleaseDatasets>();
-        services.AddScoped<ReportSourceStore>();
-        services.AddScoped<ReportBridgeRowStore>();
+        services.AddScoped<ReportSourceWrites>();
 
         services.AddChangeSetAggregate<ReportAggregate, ReportSnapshot, ReportOperation, ReportDocument>();
         services.AddSnapshotRule<ReportSnapshot, ReportGateRule>();

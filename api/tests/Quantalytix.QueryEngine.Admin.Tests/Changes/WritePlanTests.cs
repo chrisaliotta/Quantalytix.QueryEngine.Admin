@@ -54,6 +54,29 @@ public sealed class WritePlanTests
             plan.Ordered().Select(write => (write.Kind, write.Depth, write.Record)));
     }
 
+    /// <summary>
+    /// A custom write runs where a row write of its kind and depth would, after the row writes added before it at that depth, so an
+    /// aggregate can order another module's writes around its own rows (a report source's row is deleted before its bridge).
+    /// </summary>
+    /// <returns>A task that completes when the writes ran.</returns>
+    [Fact]
+    public async Task Call_RunsInTheSlotOfItsKindAndDepth()
+    {
+        var ran = new List<string>();
+        var plan = new WritePlan();
+        plan.Call(WriteKind.Insert, 2, _ => Record(ran, "insert 2"));
+        plan.Delete(_levels, 1, new { DimensionLevelId = 2L });
+        plan.Call(WriteKind.Delete, 1, _ => Record(ran, "delete 1 after the row"));
+        plan.Call(WriteKind.Insert, 1, _ => Record(ran, "insert 1"));
+
+        foreach (var write in plan.Ordered()) await write.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [(WriteKind.Delete, 1, typeof(DimensionLevelRecord)), (WriteKind.Delete, 1, null), (WriteKind.Insert, 1, null), (WriteKind.Insert, 2, (Type?)null)],
+            plan.Ordered().Select(write => (write.Kind, write.Depth, write.Record)));
+        Assert.Equal(["delete 1 after the row", "insert 1", "insert 2"], ran);
+    }
+
     /// <summary>Sync deletes the gone row, updates the changed one, inserts the new one, and leaves the unchanged one alone.</summary>
     /// <returns>A task that completes when the writes ran.</returns>
     [Fact]
@@ -68,6 +91,13 @@ public sealed class WritePlanTests
         Assert.Equal([WriteKind.Delete, WriteKind.Update, WriteKind.Insert], plan.Ordered().Select(write => write.Kind));
         Assert.Equal([1L, 2L, 4L], members.All.Select(row => row.DimensionMemberId).Order());
         Assert.Equal("Renamed", members.All.Single(row => row.DimensionMemberId == 2).DisplayName);
+    }
+
+    /// <summary>Notes that a custom write ran.</summary>
+    private static Task Record(List<string> ran, string write)
+    {
+        ran.Add(write);
+        return Task.CompletedTask;
     }
 
     /// <summary>A dimension version row.</summary>

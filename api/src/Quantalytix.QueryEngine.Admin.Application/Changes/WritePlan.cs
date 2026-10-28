@@ -55,6 +55,18 @@ public sealed class WritePlan
     }
 
     /// <summary>
+    /// Adds a write that is not one table gateway call, such as another module's public service writing rows the aggregate owns
+    /// (a report source's bridge). It runs where a row write of its kind and depth would.
+    /// </summary>
+    /// <param name="kind">What the write does to its rows.</param>
+    /// <param name="depth">The rows' depth below the root.</param>
+    /// <param name="write">Makes the write.</param>
+    public void Call(WriteKind kind, int depth, Func<CancellationToken, Task> write)
+    {
+        _writes.Add(new PlannedWrite(kind, depth, null, write));
+    }
+
+    /// <summary>
     /// Adds the writes that turn one table's stored rows into the changed rows: a delete per row that is gone, an update per row
     /// that differs, and one insert of the rows that are new. Rows are matched by their key.
     /// </summary>

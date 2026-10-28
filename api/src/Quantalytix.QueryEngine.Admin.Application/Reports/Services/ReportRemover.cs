@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
+using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -12,7 +13,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <param name="picks">The profile pick table.</param>
 /// <param name="sourceVariables">The source variable table.</param>
 /// <param name="leftOut">The left-out item table.</param>
-/// <param name="sources">The source table with the bridges it owns.</param>
+/// <param name="sources">The source table.</param>
+/// <param name="bridges">Deletes the sources' report bridges.</param>
 /// <param name="calculationDimensions">The calculation dimension table.</param>
 /// <param name="scopes">The variable scope table.</param>
 /// <param name="scenarios">The scenario table.</param>
@@ -32,7 +34,8 @@ public sealed class ReportRemover(
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
     ITableGateway<ReportSourceLeftOutRecord> leftOut,
-    ReportSourceStore sources,
+    ITableGateway<ReportSourceRecord> sources,
+    ReportBridges bridges,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<ReportScenarioRecord> scenarios,
@@ -59,13 +62,15 @@ public sealed class ReportRemover(
         var report = await reports.GetAsync(new { ReportId = reportId }, cancellationToken);
         var owner = new { ReportId = reportId };
         var structure = await owned.StructureAsync(report, cancellationToken);
-        long[] sourceIds = [.. (await sources.ListAsync(owner, cancellationToken)).Select(source => source.ReportSourceId)];
+        var reportSources = await sources.ListAsync(owner, cancellationToken);
+        long[] sourceIds = [.. reportSources.Select(source => source.ReportSourceId)];
         long[] profileIds = [.. (await profiles.ListAsync(owner, cancellationToken)).Select(profile => profile.CalculationSourceProfileId)];
         await picks.DeleteAsync(new { CalculationSourceProfileId = profileIds }, cancellationToken);
         await profiles.DeleteAsync(owner, cancellationToken);
         await sourceVariables.DeleteAsync(new { ReportSourceId = sourceIds }, cancellationToken);
         await leftOut.DeleteAsync(new { ReportSourceId = sourceIds }, cancellationToken);
         await sources.DeleteAsync(owner, cancellationToken);
+        foreach (var bridgeId in reportSources.Select(source => source.BridgeId).OfType<long>()) await bridges.DeleteAsync(bridgeId, cancellationToken);
         await calculationDimensions.DeleteAsync(owner, cancellationToken);
         await scopes.DeleteAsync(owner, cancellationToken);
         await scenarios.DeleteAsync(owner, cancellationToken);

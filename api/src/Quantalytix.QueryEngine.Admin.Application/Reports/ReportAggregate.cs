@@ -1,4 +1,3 @@
-using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
@@ -9,9 +8,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// The report change-set aggregate (blueprint 16, OI-46): the report row, its rows (the report dimension's members, member options
 /// and overlay lines), sources with their report bridges' rules and left-out items, profiles, calculation dimensions, scenarios,
 /// scopes, columns and styles, saved together. Reports are not versioned: <see cref="ReportGateRule"/> refuses a change that leaves
-/// an enabled report breaking a rule. The commit writes the report's own rows first and the bridge sources' rules after the sources
-/// that own them (<see cref="ReportSourceStore"/>, <see cref="ReportBridgeRowStore"/>), the report row last, and advances the semantic
-/// revision when the engine reads the report.
+/// an enabled report breaking a rule. The commit writes the report's own rows first and the bridge sources' bridges and rules with
+/// the sources that own them (<see cref="ReportSourceWrites"/>), the report row last, and advances the semantic revision when the
+/// engine reads the report.
 /// </summary>
 /// <param name="loader">Reads the report.</param>
 /// <param name="reports">The report table.</param>
@@ -27,10 +26,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <param name="scenarios">The scenario table.</param>
 /// <param name="scopes">The variable scope table.</param>
 /// <param name="rowParameters">The row parameter value table.</param>
-/// <param name="sources">The source table with the bridges it owns.</param>
+/// <param name="sources">Plans the source rows with their report bridges and rules.</param>
 /// <param name="sourceVariables">The source variable table.</param>
 /// <param name="leftOut">The left-out item table.</param>
-/// <param name="bridgeRows">The bridge sources' rules.</param>
 public sealed class ReportAggregate(
     ReportSnapshotLoader loader,
     ITableGateway<ReportRecord> reports,
@@ -46,10 +44,9 @@ public sealed class ReportAggregate(
     ITableGateway<ReportScenarioRecord> scenarios,
     ITableGateway<ReportVariableScopeRecord> scopes,
     ITableGateway<ReportRowParameterRecord> rowParameters,
-    ReportSourceStore sources,
+    ReportSourceWrites sources,
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
-    ITableGateway<ReportSourceLeftOutRecord> leftOut,
-    ReportBridgeRowStore bridgeRows)
+    ITableGateway<ReportSourceLeftOutRecord> leftOut)
     : IChangeSetAggregate<ReportSnapshot, ReportOperation, ReportDocument>
 {
     /// <summary>The depth of the report's content rows below the report row.</summary>
@@ -99,11 +96,10 @@ public sealed class ReportAggregate(
         plan.Sync(scenarios, ContentDepth, stored.Scenarios, changed.Scenarios, row => new { row.ReportId, row.DimensionRoleId });
         plan.Sync(scopes, ContentDepth, stored.Scopes, changed.Scopes, row => new { row.ReportId, row.VariableKey });
         plan.Sync(rowParameters, ContentDepth, stored.RowParameters, changed.RowParameters, row => new { row.ReportId, row.RowKey, row.ParameterKey });
-        plan.Sync(sources, ContentDepth, stored.Sources, changed.Sources, row => new { row.ReportSourceId });
+        sources.Plan(before, after, ContentDepth, plan);
         plan.Sync(sourceVariables, DependentDepth, stored.SourceVariables, changed.SourceVariables, row => new { row.ReportSourceId, row.VariableKey });
         plan.Sync(picks, DependentDepth, stored.Picks, changed.Picks, row => new { row.CalculationSourceProfileId, row.VariableKey });
         plan.Sync(leftOut, DependentDepth, stored.LeftOut, changed.LeftOut, row => new { row.ReportSourceId, row.MemberKey });
-        PlanBridgeRows(stored, changed, plan);
         if (Same(stored.Members, changed.Members)) return;
         plan.Delete(closure, ClosureDepth, new { after.Surroundings.DimensionVersionId });
         plan.Insert(closure, ClosureDepth, ClosureBuilder.ClosureOf(after.Surroundings.DimensionVersionId, changed.Members));
@@ -133,43 +129,6 @@ public sealed class ReportAggregate(
     public Task<ReportDocument> ReadAsync(ReportSnapshot snapshot, Func<long, string> presentId, CancellationToken cancellationToken)
     {
         return Task.FromResult(ReportReadModels.Document(snapshot));
-    }
-
-    /// <summary>
-    /// Plans the rule rows of the bridge sources that stay or are new: a row whose rules changed is replaced, and a row the report no
-    /// longer has loses its rules. A deleted source's rules go with its bridge.
-    /// </summary>
-    private void PlanBridgeRows(ReportGraph stored, ReportGraph changed, WritePlan plan)
-    {
-        var kept = changed.Sources.Select(source => source.ReportSourceId).ToHashSet();
-        var before = Rows(stored, kept);
-        var after = Rows(changed, kept);
-        var memberKeys = changed.Members.Select(member => member.MemberKey).ToHashSet(StringComparer.Ordinal);
-        foreach (var key in before.Keys.Where(key => !after.ContainsKey(key)))
-        {
-            var row = new ReportBridgeRow { ReportSourceId = key.Source, RowKey = key.Row, Rules = [] };
-            if (memberKeys.Contains(key.Row)) plan.Insert(bridgeRows, DependentDepth, [row]);
-            else plan.Delete(bridgeRows, DependentDepth, row);
-        }
-
-        ReportBridgeRow[] replaced =
-        [
-            .. after
-                .Where(row => !before.TryGetValue(row.Key, out var rules) || !rules.ToHashSet().SetEquals(row.Value))
-                .Select(row => new ReportBridgeRow { ReportSourceId = row.Key.Source, RowKey = row.Key.Row, Rules = row.Value })
-        ];
-        plan.Insert(bridgeRows, DependentDepth, replaced);
-    }
-
-    /// <summary>The rules of the kept sources, by source and row.</summary>
-    private static Dictionary<(long Source, string Row), IReadOnlyList<ReportBridgeRule>> Rows(ReportGraph report, IReadOnlySet<long> kept)
-    {
-        return report.SourceItems
-            .Where(item => kept.Contains(item.ReportSourceId))
-            .GroupBy(item => (Source: item.ReportSourceId, Row: item.RowKey))
-            .ToDictionary(
-                row => row.Key,
-                row => (IReadOnlyList<ReportBridgeRule>)[.. row.Select(item => new ReportBridgeRule { ItemKey = item.ItemKey, Selection = item.Selection, Factor = item.Factor })]);
     }
 
     /// <summary>Whether two row lists hold the same rows, in any order.</summary>

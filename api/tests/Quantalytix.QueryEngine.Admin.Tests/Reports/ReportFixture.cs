@@ -230,7 +230,7 @@ internal sealed class ReportFixture
         var pipeline = new ChangeSetPipeline<ReportSnapshot, ReportOperation, ReportDocument>(
             new ReportAggregate(
                 Loader(), Reports, Members, Closure, Lines, MemberOptions, Styles, Columns, Profiles, Picks, CalculationDimensions, Scenarios, Scopes,
-                RowParameters, SourceStore(), SourceVariables, LeftOut, new ReportBridgeRowStore(Sources, Owned(), BridgeMappings, ReportBridges())),
+                RowParameters, new ReportSourceWrites(Sources, ReportBridges()), SourceVariables, LeftOut),
             [new ReportGateRule(Rules()), new ReportFindingsRule(Rules())],
             [new ReportOperationValidator()],
             _ids,
@@ -260,7 +260,7 @@ internal sealed class ReportFixture
     public ReportRemover Remover()
     {
         return new ReportRemover(
-            Reports, DimensionVersions, Profiles, Picks, SourceVariables, LeftOut, SourceStore(), CalculationDimensions, Scopes, Scenarios, RowParameters, Lines,
+            Reports, DimensionVersions, Profiles, Picks, SourceVariables, LeftOut, Sources, ReportBridges(), CalculationDimensions, Scopes, Scenarios, RowParameters, Lines,
             Columns, MemberOptions, Styles, DimensionService(), Pins(), Owned(), Revision());
     }
 
@@ -296,12 +296,6 @@ internal sealed class ReportFixture
     {
         var store = new BridgeStore(Bridges, BridgeVersions, BridgeMappings, new BridgeDrafts(BridgeVersions, BridgeMappings, _ids, _time), Workflow(), Pins());
         return new ReportBridges(Bridges, BridgeVersions, BridgeMappings, store, _ids);
-    }
-
-    /// <summary>The source table with the bridges it owns.</summary>
-    private ReportSourceStore SourceStore()
-    {
-        return new ReportSourceStore(Sources, Reports, Roles, ReportBridges());
     }
 
     /// <summary>The snapshot loader.</summary>
