@@ -37,17 +37,6 @@ public static class Problems
         };
     }
 
-    /// <summary>
-    /// The 409 for a blocked delete of a resource whose service still answers with a sentence rather than a
-    /// <see cref="DeleteCheck"/>; it carries the sentence only until the module answers with the check.
-    /// </summary>
-    /// <param name="detail">The sentence naming what blocks the delete.</param>
-    /// <returns>The problem.</returns>
-    public static Problem DeleteBlocked(string detail)
-    {
-        return Create(StatusCodes.Status409Conflict, ProblemTypes.DeleteBlocked, "Delete blocked") with { Detail = detail };
-    }
-
     /// <summary>The 422 for a change that would break rules; nothing was written.</summary>
     /// <param name="detail">What was refused, such as <c>Report 42 is enabled, and the change would break its rules.</c></param>
     /// <param name="violations">The rules the change breaks.</param>

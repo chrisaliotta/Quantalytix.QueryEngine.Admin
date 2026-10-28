@@ -32,13 +32,4 @@ public static class ChangesServiceCollectionExtensions
     {
         return services.AddScoped<ISnapshotRule<TSnapshot>, TRule>();
     }
-
-    /// <summary>Runs a version kind's existing publication rules as the snapshot's publication rules, until they migrate.</summary>
-    /// <typeparam name="TSnapshot">A snapshot of one version.</typeparam>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The service collection.</returns>
-    public static IServiceCollection AddVersionRuleAdapter<TSnapshot>(this IServiceCollection services) where TSnapshot : IVersionSnapshot
-    {
-        return services.AddSnapshotRule<TSnapshot, VersionRuleAdapter<TSnapshot>>();
-    }
 }
