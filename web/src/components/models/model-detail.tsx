@@ -140,7 +140,11 @@ export function ModelDetail({ model: saved, onBack, onOpenReport }: ModelDetailP
     saving: false,
     save: async () => {
       const enabledChanged = model.enabled !== saved.enabled
-      saveModel(model.key)
+      const result = await saveModel(model.key)
+      if (!result.ok) {
+        setRefusal(result.violations)
+        return false
+      }
       toast.success('Changes saved', {
         description: enabledChanged ? (model.enabled ? `${model.name} is now enabled.` : `${model.name} is disabled.`) : undefined,
       })

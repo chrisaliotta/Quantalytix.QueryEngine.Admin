@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { useHistory } from '@/components/shell/history'
-import { initialModels, reportRefs } from './data'
+import { modelPersistence } from './persistence'
 import { modelViolations } from './rules'
 import type { CalcModel, ReportRef, RuleViolation } from './types'
 
@@ -16,7 +17,8 @@ interface ModelsContextValue {
   /** Applies an edit to the unsaved draft, or refuses it when the edited model breaks a rule. */
   edit: (key: string, fn: (draft: CalcModel) => void) => EditResult
   isDirty: (key: string) => boolean
-  saveModel: (key: string) => void
+  /** Stores the draft; resolves with the refusal when the store refuses it. */
+  saveModel: (key: string) => Promise<EditResult>
   discardModel: (key: string) => void
   /** Puts a draft back, e.g. to undo a discard. */
   restoreDraft: (key: string, draft: CalcModel) => void
@@ -28,7 +30,8 @@ interface ModelsContextValue {
 const ModelsContext = createContext<ModelsContextValue | null>(null)
 
 export function ModelsProvider({ children }: { children: ReactNode }) {
-  const [models, setModels] = useState(initialModels)
+  const [persistence] = useState(modelPersistence)
+  const [models, setModels] = useState(persistence.models)
   const [drafts, setDraftsState] = useState<Record<string, CalcModel>>({})
   const draftsRef = useRef(drafts)
   const setDrafts = useCallback((fn: (all: Record<string, CalcModel>) => Record<string, CalcModel>) => {
@@ -94,13 +97,16 @@ export function ModelsProvider({ children }: { children: ReactNode }) {
   )
 
   const saveModel = useCallback(
-    (key: string) => {
+    async (key: string): Promise<EditResult> => {
       const draft = draftsRef.current[key]
-      if (!draft) return
+      if (!draft) return { ok: true }
+      const violations = await persistence.save(models.find((m) => m.key === key)!, draft)
+      if (violations) return { ok: false, violations }
       setModels((all) => all.map((m) => (m.key === key ? draft : m)))
-      dropDraft(key)
+      if (draftsRef.current[key] === draft) dropDraft(key)
+      return { ok: true }
     },
-    [dropDraft],
+    [persistence, models, dropDraft],
   )
 
   const discardModel = useCallback((key: string) => dropDraft(key), [dropDraft])
@@ -109,19 +115,35 @@ export function ModelsProvider({ children }: { children: ReactNode }) {
     [recordDraft],
   )
 
-  const addModel = useCallback((model: CalcModel) => setModels((all) => [...all, model]), [])
+  const addModel = useCallback(
+    (model: CalcModel) => {
+      setModels((all) => [...all, model])
+      void persistence.create(model).then((result) => {
+        if (result.ok) return setModels((all) => all.map((m) => (m.key === model.key ? result.model : m)))
+        setModels((all) => all.filter((m) => m.key !== model.key))
+        toast.error(`${model.name} was not created`, { description: result.violations.map((v) => v.message).join(' ') })
+      })
+    },
+    [persistence],
+  )
   const removeModel = useCallback(
     (key: string) => {
+      const removed = models.find((m) => m.key === key)!
       setModels((all) => all.filter((m) => m.key !== key))
       dropDraft(key)
+      void persistence.remove(key).then((violations) => {
+        if (!violations) return
+        setModels((all) => [...all, removed])
+        toast.error(`${removed.name} was not deleted`, { description: violations.map((v) => v.message).join(' ') })
+      })
     },
-    [dropDraft],
+    [persistence, models, dropDraft],
   )
-  const usedBy = useCallback((key: string) => reportRefs.filter((r) => r.model === key), [])
+  const usedBy = useCallback((key: string) => persistence.reports.filter((r) => r.model === key), [persistence])
 
   const value = useMemo(
-    () => ({ models, reports: reportRefs, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy }),
-    [models, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy],
+    () => ({ models, reports: persistence.reports, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy }),
+    [models, persistence, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy],
   )
   return <ModelsContext.Provider value={value}>{children}</ModelsContext.Provider>
 }
