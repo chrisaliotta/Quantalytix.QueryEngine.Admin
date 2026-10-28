@@ -3,9 +3,28 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
-/// <summary>FluentValidation rules of the mapping entry inputs, which the bridge mapping list shares.</summary>
+/// <summary>FluentValidation rules of the mapping set and bridge inputs, which the report editor's rule lists share.</summary>
 public static class MappingRuleExtensions
 {
+    /// <summary>The contract's <c>DottedKey</c>: mapping set and bridge keys also allow <c>.</c>, as the seed and report bridge keys do (B14, OI-29).</summary>
+    public const string DottedKeyPattern = @"^[A-Za-z][A-Za-z0-9_.]*\z";
+
+    /// <summary>
+    /// Requires a mapping set or bridge key: not empty, within the 128-byte column and a <see cref="DottedKeyPattern"/>. Put
+    /// <c>Cascade(CascadeMode.Stop)</c> in front so an empty key reports one failure.
+    /// </summary>
+    /// <typeparam name="T">The validated input type.</typeparam>
+    /// <param name="rule">The rule for the key.</param>
+    /// <returns>The rule, for further configuration.</returns>
+    public static IRuleBuilderOptions<T, string> MustBeDottedKey<T>(this IRuleBuilder<T, string> rule)
+    {
+        return rule
+            .NotEmpty()
+            .MaximumLength(128)
+            .Matches(DottedKeyPattern)
+            .WithMessage("'{PropertyName}' must start with a letter and contain only letters, digits, '_' and '.'.");
+    }
+
     /// <summary>Requires an actual source value: not empty and within the 512-byte column. The value is kept exactly as given.</summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for a source value property of the input.</param>
@@ -16,8 +35,8 @@ public static class MappingRuleExtensions
     }
 
     /// <summary>
-    /// Requires a member key: not empty and within the 256-byte column. Whether a member holds it is for the publication rules,
-    /// which resolve it in the dimension's published version.
+    /// Requires a member key: not empty and within the 256-byte column. Whether a member holds it is for the rules, which resolve
+    /// it in the dimension's live version.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for a member key property of the input.</param>
@@ -25,5 +44,14 @@ public static class MappingRuleExtensions
     public static IRuleBuilderOptions<T, string?> MustBeMemberKey<T>(this IRuleBuilder<T, string> rule)
     {
         return rule.NotEmpty().MustFitVarchar(256);
+    }
+
+    /// <summary>Requires a factor or weight that fits the <c>DECIMAL(38, 12)</c> columns.</summary>
+    /// <typeparam name="T">The validated input type.</typeparam>
+    /// <param name="rule">The rule for the number.</param>
+    /// <returns>The rule, for further configuration.</returns>
+    public static IRuleBuilderOptions<T, decimal> MustFitDecimal<T>(this IRuleBuilder<T, decimal> rule)
+    {
+        return rule.PrecisionScale(38, 12, true);
     }
 }

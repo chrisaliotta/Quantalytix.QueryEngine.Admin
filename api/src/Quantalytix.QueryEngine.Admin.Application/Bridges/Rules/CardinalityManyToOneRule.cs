@@ -4,36 +4,22 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// <c>cardinality_many_to_one</c>: with cardinality <c>many_to_one</c>, each source member maps to at most one target,
-/// because a second target would count the source's facts twice in a cardinality the engine treats as additive.
+/// <c>cardinality_many_to_one</c>: with cardinality <c>many_to_one</c>, each source member maps to at most one target, because a second
+/// target would count the source's facts twice in a cardinality the engine treats as additive.
 /// </summary>
-public sealed class CardinalityManyToOneRule(BridgeMappingSetReader reader) : IPublicationRule
+public sealed class CardinalityManyToOneRule : BridgeRule
 {
-    /// <summary>The rule code violations carry.</summary>
-    public const string Code = "cardinality_many_to_one";
-
-    /// <summary>The kind the rule checks: bridge versions.</summary>
-    public string Kind { get; } = VersionKinds.BridgeVersion;
+    /// <summary><c>cardinality_many_to_one</c>.</summary>
+    protected override string Code => "cardinality_many_to_one";
 
     /// <summary>Reports every source member with several targets; other cardinalities have nothing to check.</summary>
-    /// <param name="versionId">The bridge version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>One violation per source member with several targets.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(long versionId, CancellationToken cancellationToken)
+    /// <param name="snapshot">The bridge version.</param>
+    /// <returns>One violation per such source member.</returns>
+    protected override IEnumerable<RuleViolation> Evaluate(BridgeSnapshot snapshot)
     {
-        var set = await reader.ReadAsync(versionId, cancellationToken);
-        if (set.Version.Cardinality != Cardinalities.ManyToOne) return [];
-        return
-        [
-            .. set.Mappings
-                .GroupBy(mapping => mapping.SourceMemberKey)
-                .Where(group => group.Count() > 1)
-                .Select(group => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"Source member '{group.Key}' maps to {group.Count()} targets ({BridgeMappingSet.DescribeTargets(group)}); "
-                        + "cardinality many_to_one allows one."
-                })
-        ];
+        if (snapshot.Version.Cardinality != Cardinalities.ManyToOne) return [];
+        return BySource(snapshot)
+            .Where(group => group.Count() > 1)
+            .Select(group => OnSource(group.Key, $"Source member '{group.Key}' maps to {group.Count()} targets ({DescribeTargets(group)}); cardinality many_to_one allows one."));
     }
 }

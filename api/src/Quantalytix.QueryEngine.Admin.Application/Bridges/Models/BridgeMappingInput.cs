@@ -1,25 +1,26 @@
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using System.Text.Json.Serialization;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>One assignment of a source member to a target member, with its value factor and allocation weight.</summary>
+/// <summary>The contract's <c>BridgeMappingInput</c>: one mapping of the live version, named by its id.</summary>
 public sealed record BridgeMappingInput
 {
-    /// <summary>The key of a member of the bridge's source dimension.</summary>
+    /// <summary>The mapping's stored id, or a client-generated <c>tmp:&lt;uuid&gt;</c> for a new mapping.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>The source member's key.</summary>
     public required string SourceMemberKey { get; init; }
 
-    /// <summary>The key of a member of the bridge's target dimension.</summary>
+    /// <summary>The target member's key.</summary>
     public required string TargetMemberKey { get; init; }
 
-    /// <summary>Signed business-value coefficient, such as <c>-1</c> for sign normalization; fits <c>DECIMAL(38, 12)</c>.</summary>
+    /// <summary>The coefficient measures with <c>bridge_factor_behavior = value</c> apply (B7).</summary>
     public required decimal Factor { get; init; }
 
-    /// <summary>Ownership multiplier of 0 or more; fractional for <c>partition</c> allocation; fits <c>DECIMAL(38, 12)</c>.</summary>
+    /// <summary>The share of the source's value the target takes.</summary>
     public required decimal AllocationWeight { get; init; }
 
-    /// <summary>
-    /// A <c>source_selection</c> value, <c>member</c> when omitted. Only a report source's bridge maps a member's descendants; its
-    /// editor writes them.
-    /// </summary>
-    public string SourceSelection { get; init; } = SourceSelections.Member;
+    /// <summary>Report bridges only, written by the report editor; absent means <c>member</c> (OI-28).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceSelection { get; init; }
 }

@@ -1,106 +1,101 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
-using Quantalytix.QueryEngine.Admin.WebApi.Reports;
-using Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.WebApi.Authorization;
 using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 
-/// <summary>Lists, creates, clones, edits and deletes bridge versions. Status changes go through the versions status endpoint.</summary>
+/// <summary>
+/// Bridge versions (blueprint 13, OI-14): the content of a live or frozen version, its rule check, the freeze of an analytical
+/// bridge's live version, and deleting a frozen one with its check. A report bridge's versions are read here and answer 409 to writes.
+/// </summary>
 [ApiController]
-[Route("api/tenants/{tenantId}")]
+[Route("api/tenants/{tenantId}/bridge-versions/{bridgeVersionId:long}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-public sealed class BridgeVersionsController(BridgeVersionService versions) : ControllerBase
+public sealed class BridgeVersionsController(BridgeQueries queries, BridgeCommands commands) : ControllerBase
 {
-    /// <summary>Lists a bridge's versions with their allocation semantics and status.</summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
-    /// <param name="bridgeId">The bridge.</param>
+    /// <summary>Reads a version with its mappings, allocation summary and rule findings.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeVersionId">The version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The versions by version number.</returns>
-    /// <response code="200">The versions by version number.</response>
-    [HttpGet("bridges/{bridgeId:long}/versions")]
-    [ProducesResponseType<IReadOnlyList<BridgeVersionRecord>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<BridgeVersionRecord>>> List(string tenantId, long bridgeId, CancellationToken cancellationToken)
+    /// <returns>The version content.</returns>
+    /// <response code="200">The version, its mappings, the allocation summary and rule findings.</response>
+    [HttpGet]
+    [ProducesResponseType<BridgeVersionContent>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BridgeVersionContent>> Get(string tenantId, long bridgeVersionId, CancellationToken cancellationToken)
     {
-        return Ok(await versions.ListAsync(bridgeId, cancellationToken));
+        return Ok(await queries.ContentAsync(bridgeVersionId, cancellationToken));
+    }
+
+    /// <summary>Deletes a frozen version of an analytical bridge that no historical assumption set pins.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeVersionId">The version.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>No content.</returns>
+    /// <response code="204">Deleted.</response>
+    /// <response code="400">The route does not bind.</response>
+    /// <response code="409">The version is live, a historical assumption set pins it, or the bridge is owned by a report.</response>
+    [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    public async Task<IActionResult> Delete(string tenantId, long bridgeVersionId, CancellationToken cancellationToken)
+    {
+        return await commands.DeleteVersionAsync(bridgeVersionId, cancellationToken) is { } refusal ? Problems.From(refusal).ToResult() : NoContent();
+    }
+
+    /// <summary>Runs every bridge version rule on the version and writes nothing (OI-30).</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeVersionId">The version.</param>
+    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
+    /// <returns>The rule report.</returns>
+    /// <response code="200">The rule report; codes are <c>BridgeViolationCode</c> values.</response>
+    /// <response code="400">The route does not bind.</response>
+    [HttpPost("check")]
+    [ProducesResponseType<ValidationReport>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    public async Task<ActionResult<ValidationReport>> Check(string tenantId, long bridgeVersionId, CancellationToken cancellationToken)
+    {
+        return Ok(await queries.CheckAsync(bridgeVersionId, cancellationToken));
     }
 
     /// <summary>
-    /// Creates a draft with the bridge's next version number: empty, or with copies of the mappings of <c>cloneFromVersionId</c>.
+    /// Freezes the live version of an analytical bridge: when every rule passes, clones it with its settings and mappings to a new live
+    /// version, retires it with the note, repoints the active assumption set and advances the semantic revision.
     /// </summary>
-    /// <param name="tenantId">The tenant that owns the bridge.</param>
-    /// <param name="bridgeId">The bridge.</param>
-    /// <param name="input">The cardinality, allocation mode and optional clone source.</param>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeVersionId">The live version.</param>
+    /// <param name="input">The freeze note.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The created draft.</returns>
-    /// <response code="200">The created draft.</response>
-    /// <response code="400">The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path.</response>
-    [HttpPost("bridges/{bridgeId:long}/versions")]
-    [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
-    [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<BridgeVersionRecord>> Create(
-        string tenantId,
-        long bridgeId,
-        NewBridgeVersionInput input,
-        CancellationToken cancellationToken)
+    /// <returns>The report and the new live version.</returns>
+    /// <response code="200">Frozen; <c>live</c> is the new live version.</response>
+    /// <response code="400">The note is too long.</response>
+    /// <response code="409">The version is not live, or the bridge is owned by a report.</response>
+    /// <response code="422">A rule fails; nothing changed.</response>
+    [HttpPost("freeze")]
+    [ProducesResponseType<BridgeFreezeResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status422UnprocessableEntity, ProblemWriter.ContentType)]
+    public async Task<ActionResult<BridgeFreezeResult>> Freeze(string tenantId, long bridgeVersionId, FreezeInput input, CancellationToken cancellationToken)
     {
-        return Ok(await versions.CreateAsync(bridgeId, input, cancellationToken));
+        var outcome = await commands.FreezeAsync(bridgeVersionId, input.Note, cancellationToken);
+        return outcome.Succeeded ? Ok(outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads one bridge version.</summary>
-    /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The bridge version.</param>
+    /// <summary>Checks whether the version can be deleted.</summary>
+    /// <param name="tenantId">The tenant.</param>
+    /// <param name="bridgeVersionId">The version.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The version.</returns>
-    /// <response code="200">The version.</response>
-    [HttpGet("bridge-versions/{versionId:long}")]
-    [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BridgeVersionRecord>> Get(string tenantId, long versionId, CancellationToken cancellationToken)
+    /// <returns>The delete check.</returns>
+    /// <response code="200">Whether the delete is allowed, and why not.</response>
+    [HttpGet("delete-check")]
+    [ProducesResponseType<DeleteCheck>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<DeleteCheck>> CheckDelete(string tenantId, long bridgeVersionId, CancellationToken cancellationToken)
     {
-        return Ok(await versions.GetAsync(versionId, cancellationToken));
-    }
-
-    /// <summary>Replaces a draft or published version's cardinality and allocation mode; its mappings stay as they are.</summary>
-    /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft or published bridge version.</param>
-    /// <param name="input">The new attributes.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The stored version.</returns>
-    /// <response code="200">The stored version.</response>
-    /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="409">The version is neither a draft nor published.</response>
-    [HttpPut("bridge-versions/{versionId:long}")]
-    [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
-    [RequireAnalytical(AnalyticalTarget.BridgeVersion, "versionId")]
-    [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<BridgeVersionRecord>> Update(
-        string tenantId,
-        long versionId,
-        BridgeVersionInput input,
-        CancellationToken cancellationToken)
-    {
-        return Ok(await versions.UpdateAsync(versionId, input, cancellationToken));
-    }
-
-    /// <summary>Deletes a draft version with its mappings.</summary>
-    /// <param name="tenantId">The tenant that owns the version.</param>
-    /// <param name="versionId">The draft bridge version.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>No content; 409 when the version is not a draft.</returns>
-    /// <response code="204">The version and its mappings are deleted.</response>
-    /// <response code="409">Nothing was deleted: the version is not a draft.</response>
-    [HttpDelete("bridge-versions/{versionId:long}")]
-    [RequireDraft(VersionKinds.BridgeVersion, "versionId")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Delete(string tenantId, long versionId, CancellationToken cancellationToken)
-    {
-        await versions.DeleteAsync(versionId, cancellationToken);
-        return NoContent();
+        return Ok(await queries.VersionDeleteCheckAsync(bridgeVersionId, cancellationToken));
     }
 }
