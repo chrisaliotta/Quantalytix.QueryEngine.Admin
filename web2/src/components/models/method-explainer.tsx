@@ -1,6 +1,6 @@
 import { InfoIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import type { AttributionMethod } from '@/lib/model/types'
+import type { AttributionMethod } from '@/lib/models/contract'
 import { cn } from '@/lib/utils'
 
 export const METHOD_LABEL: Record<AttributionMethod, string> = { shapley: 'Shapley', sequential: 'Sequential' }
@@ -83,15 +83,14 @@ interface Bar {
 
 /** A small horizontal waterfall: start, one bar per driver, end. */
 export function MiniWaterfall({ start, end, bars, className }: { start: number; end: number; bars: readonly Bar[]; className?: string }) {
-  const max = Math.max(start, end, ...bars.map((_, i) => start + bars.slice(0, i + 1).reduce((s, b) => s + b.value, 0)))
+  const totals = bars.map((_, i) => start + bars.slice(0, i + 1).reduce((s, b) => s + b.value, 0))
+  const max = Math.max(start, end, ...totals)
   const pct = (v: number) => `${(v / max) * 100}%`
-  let running = start
   const rows = [
     { key: 'start', label: 'Before', from: 0, to: start, kind: 'total' as const, value: start },
-    ...bars.map((b) => {
-      const from = running
-      running += b.value
-      return { key: b.key, label: b.label, from: Math.min(from, running), to: Math.max(from, running), kind: b.value >= 0 ? ('up' as const) : ('down' as const), value: b.value }
+    ...bars.map((b, i) => {
+      const from = totals[i] - b.value
+      return { key: b.key, label: b.label, from: Math.min(from, totals[i]), to: Math.max(from, totals[i]), kind: b.value >= 0 ? ('up' as const) : ('down' as const), value: b.value }
     }),
     { key: 'end', label: 'After', from: 0, to: end, kind: 'total' as const, value: end },
   ]

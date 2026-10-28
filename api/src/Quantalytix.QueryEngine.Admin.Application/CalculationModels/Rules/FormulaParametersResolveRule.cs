@@ -40,21 +40,50 @@ public static class FormulaParametersResolveRule
     /// <returns>One violation per problem.</returns>
     public static IEnumerable<RuleViolation> Evaluate(ModelGraph model)
     {
-        var parameters = model.Parameters.ToDictionary(parameter => parameter.ParameterKey, StringComparer.Ordinal);
+        var parameters = Declared(model.Parameters);
         return model.Formulas
             .OrderBy(formula => formula.Subject, StringComparer.Ordinal)
-            .SelectMany(formula => Problems(ExpressionParser.Parse(formula.Expression), parameters)
-                .Distinct(StringComparer.Ordinal)
-                .Select(problem => new RuleViolation { Code = Code, Message = $"{formula.Subject} {problem}." }));
+            .SelectMany(formula =>
+            {
+                var expression = ExpressionParser.Parse(formula.Expression);
+                return Undeclared(expression, parameters).Select(UndeclaredProblem).Concat(Misplaced(expression, parameters))
+                    .Distinct(StringComparer.Ordinal)
+                    .Select(problem => new RuleViolation { Code = Code, Message = $"{formula.Subject} {problem}.", Target = formula.Target });
+            });
     }
 
-    /// <summary>A formula's problems: the names it reads that no parameter answers to, then the values read out of place.</summary>
-    private static IEnumerable<string> Problems(Expression formula, IReadOnlyDictionary<string, ModelParameter> parameters)
+    /// <summary>A model's parameters by key, as the checks of one formula take them.</summary>
+    /// <param name="parameters">The model's parameters.</param>
+    /// <returns>The parameters by key.</returns>
+    public static IReadOnlyDictionary<string, ModelParameter> Declared(IEnumerable<ModelParameter> parameters)
     {
-        return ExpressionTree.ParameterNames(formula)
-            .Where(name => TypeOf(name, parameters) is null)
-            .Select(name => $"reads @{name}, which is no parameter of the model, @periodDays or @yearDays")
-            .Concat(Placement(formula, Slot.Number, parameters));
+        return parameters.ToDictionary(parameter => parameter.ParameterKey, StringComparer.Ordinal);
+    }
+
+    /// <summary>The names a formula reads as <c>@name</c> that no parameter answers to, in reading order.</summary>
+    /// <param name="formula">The parsed formula.</param>
+    /// <param name="parameters">The model's parameters by key.</param>
+    /// <returns>The names, without the <c>@</c>.</returns>
+    public static IEnumerable<string> Undeclared(Expression formula, IReadOnlyDictionary<string, ModelParameter> parameters)
+    {
+        return ExpressionTree.ParameterNames(formula).Where(name => TypeOf(name, parameters) is null);
+    }
+
+    /// <summary>The problem of a name no parameter answers to, completing a sentence that starts with the formula's subject.</summary>
+    /// <param name="name">The name, without the <c>@</c>.</param>
+    /// <returns>A phrase such as <c>reads @rate, which is no parameter of the model, @periodDays or @yearDays</c>.</returns>
+    public static string UndeclaredProblem(string name)
+    {
+        return $"reads @{name}, which is no parameter of the model, @periodDays or @yearDays";
+    }
+
+    /// <summary>The values a formula reads where their type does not belong, each completing a sentence that starts with its subject.</summary>
+    /// <param name="formula">The parsed formula.</param>
+    /// <param name="parameters">The model's parameters by key.</param>
+    /// <returns>The problems, in reading order.</returns>
+    public static IEnumerable<string> Misplaced(Expression formula, IReadOnlyDictionary<string, ModelParameter> parameters)
+    {
+        return Placement(formula, Slot.Number, parameters);
     }
 
     /// <summary>The values an expression in a position reads where their type does not belong.</summary>

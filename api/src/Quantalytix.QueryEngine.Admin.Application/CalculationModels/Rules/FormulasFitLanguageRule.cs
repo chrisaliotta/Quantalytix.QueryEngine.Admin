@@ -27,15 +27,23 @@ public static class FormulasFitLanguageRule
             .OrderBy(formula => formula.Subject, StringComparer.Ordinal)
             .SelectMany(formula => Uses(ExpressionInspector.Inspect(formula.Expression), declared)
                 .Where(use => !FormulaLanguageVersions.Includes(version, use.Version))
-                .Select(use => new RuleViolation
-                {
-                    Code = Code,
-                    Message = $"{formula.Subject} {use.What}, which formula language {version} lacks; the model needs formula language {use.Version}."
-                }));
+                .Select(use => new RuleViolation { Code = Code, Message = $"{formula.Subject} {Lacks(use, version)}.", Target = formula.Target }));
+    }
+
+    /// <summary>The problem of a use the model's language lacks, completing a sentence that starts with the formula's subject.</summary>
+    /// <param name="use">The use and the version that adds it.</param>
+    /// <param name="version">The model's formula language.</param>
+    /// <returns>A phrase such as <c>calls POWER, which formula language 1.0 lacks; the model needs formula language 1.1</c>.</returns>
+    public static string Lacks((string What, string Version) use, string version)
+    {
+        return $"{use.What}, which formula language {version} lacks; the model needs formula language {use.Version}";
     }
 
     /// <summary>What a formula uses that not every language has, with the version that adds it.</summary>
-    private static IEnumerable<(string What, string Version)> Uses(ExpressionInspection inspection, IReadOnlySet<string> declared)
+    /// <param name="inspection">The formula's inspection.</param>
+    /// <param name="declared">The model's parameter keys.</param>
+    /// <returns>Each use with its version, in a fixed order.</returns>
+    public static IEnumerable<(string What, string Version)> Uses(ExpressionInspection inspection, IReadOnlySet<string> declared)
     {
         if (inspection.Functions.Contains(ExpressionFunction.Power)) yield return ("calls POWER", FormulaLanguageVersions.Version11);
         if (inspection.Functions.Contains(ExpressionFunction.YearFrac)) yield return ("calls YEARFRAC", FormulaLanguageVersions.Version12);

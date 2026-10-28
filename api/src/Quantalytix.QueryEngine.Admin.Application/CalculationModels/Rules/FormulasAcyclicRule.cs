@@ -24,12 +24,18 @@ public static class FormulasAcyclicRule
         return reads.Keys.Order(StringComparer.Ordinal).Where(key => Reaches(key, key, reads, [])).Select(key => new RuleViolation
         {
             Code = Code,
-            Message = $"Calculated measure '{key}' reads itself through the calculated measures its formula reads."
+            Message = $"Calculated measure '{key}' reads itself through the calculated measures its formula reads.",
+            Target = ModelAreas.Measure(key)
         });
     }
 
     /// <summary>Whether a calculated measure's formula reaches the target through calculated measures.</summary>
-    private static bool Reaches(string from, string target, IReadOnlyDictionary<string, IReadOnlyList<string>> reads, HashSet<string> visited)
+    /// <param name="from">The calculated measure followed.</param>
+    /// <param name="target">The metric looked for.</param>
+    /// <param name="reads">The metric keys each calculated measure's formula reads, by measure key.</param>
+    /// <param name="visited">The calculated measures followed already.</param>
+    /// <returns>True when the target is read directly or through other calculated measures.</returns>
+    public static bool Reaches(string from, string target, IReadOnlyDictionary<string, IReadOnlyList<string>> reads, HashSet<string> visited)
     {
         foreach (var key in reads[from].Where(reads.ContainsKey))
         {

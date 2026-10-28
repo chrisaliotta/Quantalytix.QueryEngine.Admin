@@ -7,18 +7,20 @@ import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Segmented } from '@/components/report/shared/segmented'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
-import { attributionChip, attributionErrors, attributionFor, defaultDrivers, inputsOf, type Metric } from '@/lib/model/rules'
-import { useModels } from '@/lib/model/store'
-import type { AttributionMethod, CalcModel, Driver, RuleViolation } from '@/lib/model/types'
+import type { AttributionDriver, AttributionMethod, ModelDocument, Violation } from '@/lib/models/contract'
+import { attributionOf, defaultDrivers, findMetric, inputsOf, type ModelMetric } from '@/lib/models/metrics'
 import { cn } from '@/lib/utils'
 import { FormulaEditor } from './formula-editor'
 import { EXAMPLE, METHOD_LABEL, MiniWaterfall } from './method-explainer'
+import { useModelEdit } from './use-model-edit'
 
 const NO_WEIGHT = '__none'
 
-export function AttributionChip({ model, metric, onOpen }: { model: CalcModel; metric: Metric; onOpen: () => void }) {
-  const chip = attributionChip(model, metric)
-  if (chip.kind === 'none') {
+/** A metric's attribution at a glance: its own drivers, its formula's default drivers, or none for a variable without one. */
+export function AttributionChip({ model, metric, onOpen }: { model: ModelDocument; metric: ModelMetric; onOpen: () => void }) {
+  const own = attributionOf(model, metric.key)
+  const count = model.effectiveDrivers[metric.key]?.length ?? 0
+  if (!own && metric.type === 'variable') {
     return (
       <Tooltip>
         <TooltipTrigger
@@ -38,49 +40,43 @@ export function AttributionChip({ model, metric, onOpen }: { model: CalcModel; m
       </Tooltip>
     )
   }
+  const weight = own?.weightVariableKey ? (findMetric(model, own.weightVariableKey)?.displayName ?? own.weightVariableKey) : undefined
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={cn(
-        'rounded-full border px-2 py-0.5 text-xs whitespace-nowrap hover:bg-muted',
-        chip.kind === 'own' ? 'border-primary/40 bg-primary/10 text-foreground' : 'text-foreground',
-      )}
+      className={cn('rounded-full border px-2 py-0.5 text-xs whitespace-nowrap hover:bg-muted', own ? 'border-primary/40 bg-primary/10 text-foreground' : 'text-foreground')}
     >
-      {chip.kind === 'formula' ? `Formula drivers (${chip.count})` : `${chip.count} drivers${chip.weight ? ` · weight ${chip.weight}` : ''}`}
+      {own ? `${count} drivers${weight ? ` · weight ${weight}` : ''}` : `Formula drivers (${count})`}
     </button>
   )
 }
 
 interface AttributionEditorProps {
-  model: CalcModel
-  metric: Metric
+  model: ModelDocument
+  metric: ModelMetric
   onClose: () => void
-  onRefused: (violations: RuleViolation[]) => void
+  onRefused: (violations: Violation[]) => void
 }
 
+/** Edits a metric's attribution; Apply stages it, and the server refuses drivers that do not partition the expression. */
 export function AttributionEditor({ model, metric, onClose, onRefused }: AttributionEditorProps) {
-  const { edit } = useModels()
-  const initial = attributionFor(model, metric)
-  const [expression, setExpression] = useState(metric.attribution?.expression ?? '')
-  const [weight, setWeight] = useState(initial.weight ?? '')
-  const [useDefault, setUseDefault] = useState(initial.useDefault)
-  const [custom, setCustom] = useState<Driver[]>(initial.useDefault ? initial.drivers : initial.drivers)
-  const [method, setMethod] = useState<AttributionMethod>(model.method)
+  const run = useModelEdit()
+  const initial = attributionOf(model, metric.key)
+  const [expression, setExpression] = useState(initial?.expression ?? '')
+  const [weight, setWeight] = useState(initial?.weightVariableKey ?? '')
+  const [useDefault, setUseDefault] = useState(!initial?.drivers.length)
+  const [custom, setCustom] = useState<AttributionDriver[]>(model.effectiveDrivers[metric.key] ?? [])
+  const [method, setMethod] = useState<AttributionMethod>(model.attributionMethod)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [submitted, setSubmitted] = useState(false)
 
   const isVariable = metric.type === 'variable'
   const effective = expression.trim() || (metric.type === 'measure' ? metric.formula : '')
-  const generated = defaultDrivers(model, effective)
+  const generated = effective ? defaultDrivers(model, effective) : []
   const drivers = useDefault ? generated : custom
   const inputs = inputsOf(effective)
-  const errors = [
-    ...(isVariable && !expression.trim() ? ['A variable needs an expression to attribute its change.'] : []),
-    ...(effective ? attributionErrors(model, effective, drivers) : []),
-  ]
 
-  const setDriver = (i: number, patch: Partial<Driver>) => setCustom((ds) => ds.map((d, j) => (j === i ? { ...d, ...patch } : d)))
+  const setDriver = (i: number, patch: Partial<AttributionDriver>) => setCustom((ds) => ds.map((d, j) => (j === i ? { ...d, ...patch } : d)))
   const move = (from: number, to: number) =>
     setCustom((ds) => {
       if (to < 0 || to >= ds.length) return ds
@@ -90,32 +86,22 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
       return next
     })
 
-  const save = () => {
-    setSubmitted(true)
-    if (errors.length) return
-    const result = edit(model.key, (draft) => {
-      const list = metric.type === 'variable' ? draft.variables : draft.measures
-      const target = list.find((m) => m.key === metric.key)
-      if (target) target.attribution = { expression: expression.trim() || undefined, weight: weight || undefined, useDefault, drivers: useDefault ? [] : custom }
-    })
-    if (result.ok) onClose()
-    else onRefused(result.violations)
-  }
+  const settle = (violations: Violation[] | null) => (violations ? onRefused(violations) : onClose())
 
-  const clear = () => {
-    const result = edit(model.key, (draft) => {
-      const target = draft.measures.find((m) => m.key === metric.key)
-      if (target) delete target.attribution
-    })
-    if (result.ok) onClose()
-    else onRefused(result.violations)
-  }
+  const save = async () =>
+    settle(
+      await run((api) =>
+        api.setAttribution(model.id, { metricKey: metric.key, expression: expression.trim() || null, weightVariableKey: weight || null, drivers: useDefault ? [] : custom }),
+      ),
+    )
+
+  const clear = async () => settle(await run((api) => api.clearAttribution(model.id, metric.key)))
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-balance">{metric.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">{metric.displayName}</h1>
           <span className="font-mono text-sm text-muted-foreground">{metric.key}</span>
           <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">{isVariable ? 'Variable' : 'Calculated measure'}</span>
         </div>
@@ -133,6 +119,7 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
               value={expression}
               onChange={setExpression}
               placeholder={metric.type === 'measure' ? metric.formula : `e.g. [m.${metric.key}]`}
+              selfKey={null}
               aria-describedby="attr-expr-help"
             />
             <p id="attr-expr-help" className="text-xs text-muted-foreground">
@@ -146,7 +133,7 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
               id="attr-weight"
               value={weight || NO_WEIGHT}
               onChange={(v) => setWeight(v === NO_WEIGHT ? '' : v)}
-              options={[{ value: NO_WEIGHT, label: 'None' }, ...model.variables.map((v) => ({ value: v.key, label: v.name, hint: v.key }))]}
+              options={[{ value: NO_WEIGHT, label: 'None' }, ...model.variables.map((v) => ({ value: v.key, label: v.displayName, hint: v.key }))]}
               className="sm:w-80"
             />
             <p className="text-xs text-pretty text-muted-foreground">
@@ -191,12 +178,12 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
                     {useDefault ? (
                       <>
                         <span className="font-mono text-sm">{d.key}</span>
-                        <span className="text-sm text-muted-foreground">{d.name}</span>
+                        <span className="text-sm text-muted-foreground">{d.displayName}</span>
                       </>
                     ) : (
                       <>
                         <Input aria-label={`Driver ${i + 1} key`} value={d.key} onChange={(e) => setDriver(i, { key: e.target.value })} className="h-8 w-32 font-mono" />
-                        <Input aria-label={`Driver ${i + 1} name`} value={d.name} onChange={(e) => setDriver(i, { name: e.target.value })} className="h-8 min-w-0 flex-1" />
+                        <Input aria-label={`Driver ${i + 1} name`} value={d.displayName} onChange={(e) => setDriver(i, { displayName: e.target.value })} className="h-8 min-w-0 flex-1" />
                         <Button variant="ghost" size="icon-sm" aria-label="Move up" disabled={i === 0} onClick={() => move(i, i - 1)}>
                           <ArrowUpIcon />
                         </Button>
@@ -242,20 +229,12 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
                 variant="outline"
                 size="sm"
                 className="w-fit"
-                onClick={() => setCustom((ds) => [...ds, { key: `driver_${ds.length + 1}`, name: 'New driver', inputs: [] }])}
+                onClick={() => setCustom((ds) => [...ds, { key: `driver_${ds.length + 1}`, displayName: 'New driver', inputs: [] }])}
               >
                 <PlusIcon /> Add driver
               </Button>
             )}
           </div>
-
-          {(submitted || errors.length > 0) && errors.length > 0 && (
-            <ul role="alert" className="flex flex-col gap-1 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
-              {errors.map((e) => (
-                <li key={e}>{e}</li>
-              ))}
-            </ul>
-          )}
         </div>
 
         <aside className="flex h-full flex-col gap-4 border-t bg-muted/30 p-4 md:p-5 lg:border-t-0 lg:border-l">
@@ -273,14 +252,14 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
           </p>
           <MiniWaterfall start={EXAMPLE.start} end={EXAMPLE.end} bars={EXAMPLE.split[method]} />
           <p className="text-xs text-muted-foreground">
-            The model uses <span className="font-medium text-foreground">{METHOD_LABEL[model.method]}</span>; the toggle only previews.
+            The model uses <span className="font-medium text-foreground">{METHOD_LABEL[model.attributionMethod]}</span>; the toggle only previews.
           </p>
         </aside>
       </div>
       <div className="sticky bottom-0 -mx-4 flex flex-row justify-between gap-2 border-t bg-background px-4 py-3 md:-mx-6 md:px-6">
-        {metric.type === 'measure' && metric.attribution ? (
+        {initial ? (
           <Button variant="ghost" onClick={clear}>
-            Use own formula only
+            {isVariable ? 'Remove attribution' : 'Use own formula only'}
           </Button>
         ) : (
           <span />
@@ -289,7 +268,7 @@ export function AttributionEditor({ model, metric, onClose, onRefused }: Attribu
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={submitted && errors.length > 0} title="Saved with the model when you press Save">
+          <Button onClick={save} title="Saved with the model when you press Save">
             Apply
           </Button>
         </div>

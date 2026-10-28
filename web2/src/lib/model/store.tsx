@@ -1,128 +1,84 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useHistory } from '@/components/shell/history'
-import { initialModels, reportRefs } from './data'
-import { modelViolations } from './rules'
-import type { CalcModel, ReportRef, RuleViolation } from './types'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import useSWR from 'swr'
+import { unwrap } from '@/lib/api/contract'
+import { sharedModelsApi } from '@/lib/models/client'
+import type { ModelDocument } from '@/lib/models/contract'
+import type { DisplayFormat } from '@/lib/report/types'
+import type { CalcModel, Rounding } from './types'
 
-export type EditResult = { ok: true } | { ok: false; violations: RuleViolation[] }
+/**
+ * Compatibility view for the report editor, which still reads models in the prototype's shape: every model of the
+ * `ModelsApi`, read-only. The model screens edit through `lib/models`; their refresh revalidates this view too.
+ */
 
 interface ModelsContextValue {
-  /** Saved models; reports read these. */
   models: CalcModel[]
-  reports: ReportRef[]
   getModel: (key: string) => CalcModel | undefined
-  /** The model with unsaved edits applied, or the saved model when there are none. */
-  getDraft: (key: string) => CalcModel | undefined
-  /** Applies an edit to the unsaved draft, or refuses it when the edited model breaks a rule. */
-  edit: (key: string, fn: (draft: CalcModel) => void) => EditResult
-  isDirty: (key: string) => boolean
-  saveModel: (key: string) => void
-  discardModel: (key: string) => void
-  /** Puts a draft back, e.g. to undo a discard. */
-  restoreDraft: (key: string, draft: CalcModel) => void
-  addModel: (model: CalcModel) => void
-  removeModel: (key: string) => void
-  usedBy: (key: string) => ReportRef[]
 }
 
 const ModelsContext = createContext<ModelsContextValue | null>(null)
 
+function toLegacy(doc: ModelDocument): CalcModel {
+  const attribution = (key: string) => {
+    const a = doc.attributions.find((x) => x.metricKey === key)
+    if (!a) return undefined
+    return {
+      expression: a.expression ?? undefined,
+      weight: a.weightVariableKey ?? undefined,
+      useDefault: a.drivers.length === 0,
+      drivers: a.drivers.map((d) => ({ key: d.key, name: d.displayName, inputs: d.inputs })),
+    }
+  }
+  return {
+    key: doc.key,
+    name: doc.displayName,
+    currency: doc.currencyCode,
+    calendar: doc.calendarKey,
+    language: doc.formulaLanguage,
+    method: doc.attributionMethod,
+    enabled: doc.isEnabled,
+    parameters: doc.parameters.map((p) => ({
+      key: p.key,
+      name: p.displayName,
+      type: p.valueType,
+      allowedValues: p.allowedValues ?? [],
+      defaultNumber: p.defaultNumber,
+      defaultText: p.defaultText,
+      description: p.description ?? '',
+    })),
+    variables: doc.variables.map((v) => ({
+      key: v.key,
+      name: v.displayName,
+      format: v.displayFormat as DisplayFormat,
+      unit: v.unitKey ?? '',
+      missing: v.missingBehavior,
+      attribution: attribution(v.key),
+    })),
+    measures: doc.measures.map((m) => ({
+      key: m.key,
+      name: m.displayName,
+      formula: m.formula,
+      precision: m.outputPrecision ?? 28,
+      scale: m.outputScale ?? 0,
+      rounding: (m.roundingMode ?? 'half_even') as Rounding,
+      unit: m.unitKey ?? '',
+      format: m.displayFormat as DisplayFormat,
+      attribution: attribution(m.key),
+    })),
+  }
+}
+
+async function loadModels() {
+  const api = sharedModelsApi()
+  const list = await api.listModels()
+  return Promise.all(list.map((m) => unwrap(api.getModel(m.id))))
+}
+
 export function ModelsProvider({ children }: { children: ReactNode }) {
-  const [models, setModels] = useState(initialModels)
-  const [drafts, setDraftsState] = useState<Record<string, CalcModel>>({})
-  const draftsRef = useRef(drafts)
-  const setDrafts = useCallback((fn: (all: Record<string, CalcModel>) => Record<string, CalcModel>) => {
-    draftsRef.current = fn(draftsRef.current)
-    setDraftsState(draftsRef.current)
-  }, [])
-  const history = useHistory()
-
+  const { data } = useSWR(['models', 'compat'], loadModels, { revalidateOnFocus: false })
+  const models = useMemo(() => (data ?? []).map(toLegacy), [data])
   const getModel = useCallback((key: string) => models.find((m) => m.key === key), [models])
-  const getDraft = useCallback((key: string) => drafts[key] ?? models.find((m) => m.key === key), [drafts, models])
-
-  /** Puts a draft (or no draft) back for undo/redo. */
-  const putDraft = useCallback(
-    (key: string, draft: CalcModel | undefined) =>
-      setDrafts((all) => {
-        if (draft) return { ...all, [key]: draft }
-        const { [key]: _, ...rest } = all
-        return rest
-      }),
-    [setDrafts],
-  )
-
-  const recordDraft = useCallback(
-    (key: string, label: string, before: CalcModel | undefined, after: CalcModel | undefined) => {
-      putDraft(key, after)
-      history.record(`model:${key}`, label, () => putDraft(key, before), () => putDraft(key, after))
-    },
-    [putDraft, history],
-  )
-
-  const edit = useCallback(
-    (key: string, fn: (draft: CalcModel) => void, label = 'Model edit'): EditResult => {
-      const existing = draftsRef.current[key]
-      const current = existing ?? models.find((m) => m.key === key)
-      if (!current) return { ok: false, violations: [{ rule: 'model_exists', message: `No model '${key}'.` }] }
-      const next = structuredClone(current)
-      fn(next)
-      const before = new Set(modelViolations(current).map((v) => v.message))
-      const introduced = modelViolations(next).filter((v) => !before.has(v.message))
-      if (introduced.length) return { ok: false, violations: introduced }
-      if (JSON.stringify(next) === JSON.stringify(current)) return { ok: true }
-      recordDraft(key, label, existing, next)
-      return { ok: true }
-    },
-    [models, recordDraft],
-  )
-
-  const isDirty = useCallback(
-    (key: string) => {
-      const draft = drafts[key]
-      const saved = models.find((m) => m.key === key)
-      return !!draft && JSON.stringify(draft) !== JSON.stringify(saved)
-    },
-    [drafts, models],
-  )
-
-  const dropDraft = useCallback(
-    (key: string) => {
-      putDraft(key, undefined)
-      history.forget(`model:${key}`)
-    },
-    [putDraft, history],
-  )
-
-  const saveModel = useCallback(
-    (key: string) => {
-      const draft = draftsRef.current[key]
-      if (!draft) return
-      setModels((all) => all.map((m) => (m.key === key ? draft : m)))
-      dropDraft(key)
-    },
-    [dropDraft],
-  )
-
-  const discardModel = useCallback((key: string) => dropDraft(key), [dropDraft])
-  const restoreDraft = useCallback(
-    (key: string, draft: CalcModel) => recordDraft(key, 'Restore discarded changes', draftsRef.current[key], draft),
-    [recordDraft],
-  )
-
-  const addModel = useCallback((model: CalcModel) => setModels((all) => [...all, model]), [])
-  const removeModel = useCallback(
-    (key: string) => {
-      setModels((all) => all.filter((m) => m.key !== key))
-      dropDraft(key)
-    },
-    [dropDraft],
-  )
-  const usedBy = useCallback((key: string) => reportRefs.filter((r) => r.model === key), [])
-
-  const value = useMemo(
-    () => ({ models, reports: reportRefs, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy }),
-    [models, getModel, getDraft, edit, isDirty, saveModel, discardModel, restoreDraft, addModel, removeModel, usedBy],
-  )
+  const value = useMemo(() => ({ models, getModel }), [models, getModel])
   return <ModelsContext.Provider value={value}>{children}</ModelsContext.Provider>
 }
 

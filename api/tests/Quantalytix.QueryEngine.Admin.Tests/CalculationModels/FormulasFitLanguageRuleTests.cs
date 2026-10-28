@@ -15,14 +15,12 @@ public sealed class FormulasFitLanguageRuleTests
     /// <summary>A model whose formula and attribution expression call POWER.</summary>
     private static ModelGraph Compounding(string formulaLanguageVersion)
     {
-        var model = MarginGraph();
-        return MetricAttributionService.Put(
-            model with
-            {
-                Model = model.Model with { FormulaLanguageVersion = formulaLanguageVersion },
-                CalculatedMeasures = [.. model.CalculatedMeasures, Calculated(62, "GROWTH", "POWER([m.YIELD] + 1, @yearDays / @periodDays) - 1")]
-            },
-            Attribution("INTEREST_INCOME", "[m.AVERAGE_BALANCE] * POWER([m.YIELD], 1) * @periodDays / @yearDays"));
+        var model = MarginGraphWith(Attribution("INTEREST_INCOME", "[m.AVERAGE_BALANCE] * POWER([m.YIELD], 1) * @periodDays / @yearDays"));
+        return model with
+        {
+            Model = model.Model with { FormulaLanguageVersion = formulaLanguageVersion },
+            CalculatedMeasures = [.. model.CalculatedMeasures, Calculated(62, "GROWTH", "POWER([m.YIELD] + 1, @yearDays / @periodDays) - 1")]
+        };
     }
 
     /// <summary>On language 1.0, the formula and the attribution expression that call POWER are each reported.</summary>

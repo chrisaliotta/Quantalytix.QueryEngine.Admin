@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { DAY_PARAMS, FUNCTIONS, metricsOf, readsOf } from '@/lib/model/rules'
-import type { CalcModel } from '@/lib/model/types'
+import { useFormulaCheck } from '@/lib/models/client'
+import type { ModelDocument } from '@/lib/models/contract'
+import { DAY_PARAMS, FUNCTIONS, metricsOf } from '@/lib/models/metrics'
 import { cn } from '@/lib/utils'
 
 const TOKEN = /(\[m\.[A-Za-z0-9_]*\]?)|(@[A-Za-z][A-Za-z0-9_]*)|('[^']*'?)|\b(CASE|WHEN|THEN|ELSE|END|IN|COALESCE|NULLIF|ABS|POWER|YEARFRAC)\b|([+\-*/(),=<>])/g
@@ -37,17 +38,20 @@ export function FormulaText({ formula, className }: { formula: string; className
 
 interface FormulaEditorProps {
   id: string
-  model: CalcModel
+  model: ModelDocument
   value: string
   onChange: (value: string) => void
   placeholder?: string
-  error?: string | null
-  /** Extra inputs offered after "[m." e.g. none for attribution. */
-  excludeKey?: string
+  /** The calculated measure that owns the formula, so the server reports it reading itself; null otherwise. */
+  selfKey: string | null
   'aria-describedby'?: string
 }
 
-export function FormulaEditor({ id, model, value, onChange, placeholder, error, excludeKey, ...rest }: FormulaEditorProps) {
+/** Edits a formula with suggestions; the server's `formula-check` against the saved model gives its errors and reads (OI-43). */
+export function FormulaEditor({ id, model, value, onChange, placeholder, selfKey, ...rest }: FormulaEditorProps) {
+  const { data: check } = useFormulaCheck(model.id, value, selfKey)
+  const errors = value.trim() ? (check?.errors ?? []) : []
+  const error = errors.length > 0
   const ref = useRef<HTMLTextAreaElement>(null)
   const [caret, setCaret] = useState(0)
   const [focused, setFocused] = useState(false)
@@ -59,11 +63,12 @@ export function FormulaEditor({ id, model, value, onChange, placeholder, error, 
   const partial = metricPartial ?? paramPartial
   const paramOptions = [
     ...DAY_PARAMS.map((p) => ({ key: p.slice(1), name: p === '@periodDays' ? 'Days in the period' : 'Days in the year' })),
-    ...(model.language === '1.2' ? model.parameters.map((p) => ({ key: p.key, name: `${p.name} · ${p.type}` })) : []),
+    ...(model.formulaLanguage === '1.2' ? model.parameters.map((p) => ({ key: p.key, name: `${p.displayName} · ${p.valueType}` })) : []),
   ]
   const suggestions = metricPartial
     ? metricsOf(model)
-        .filter((m) => m.key !== excludeKey && m.key.startsWith(metricPartial[1].toUpperCase()))
+        .filter((m) => m.key !== selfKey && m.key.startsWith(metricPartial[1].toUpperCase()))
+        .map((m) => ({ key: m.key, name: m.displayName }))
         .slice(0, 8)
     : paramPartial
       ? paramOptions.filter((p) => p.key.toLowerCase().startsWith(paramPartial[1].toLowerCase())).slice(0, 8)
@@ -84,8 +89,7 @@ export function FormulaEditor({ id, model, value, onChange, placeholder, error, 
     })
   }
 
-  const reads = readsOf(value)
-  const params = [...new Set(value.match(/@[A-Za-z][A-Za-z0-9_]*/g) ?? [])]
+  const reads = value.trim() ? [...(check?.reads ?? []), ...(check?.parameters ?? []).map((p) => `@${p}`)] : []
 
   return (
     <div className="flex flex-col gap-2">
@@ -161,18 +165,23 @@ export function FormulaEditor({ id, model, value, onChange, placeholder, error, 
           </ul>
         )}
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {errors.map((e) => (
+        <p key={`${e.start}-${e.message}`} className="text-xs text-destructive">
+          {e.end > e.start && <code className="mr-1.5 font-mono">{value.slice(e.start, e.end)}</code>}
+          {e.message}
+        </p>
+      ))}
       <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         <span>Reads</span>
-        {reads.length + params.length === 0 && <span>nothing yet</span>}
-        {[...reads, ...params].map((r) => (
+        {reads.length === 0 && <span>nothing yet</span>}
+        {reads.map((r) => (
           <span key={r} className="rounded-sm border bg-muted px-1.5 py-0.5 font-mono text-foreground">
             {r}
           </span>
         ))}
         <span className="ml-auto hidden sm:inline">
-          Functions: {FUNCTIONS.filter((f) => model.language === '1.2' || f !== 'YEARFRAC').join(', ')}
-          {model.language === '1.2' && model.parameters.length > 0 && ' · type @ for parameters'}
+          Functions: {FUNCTIONS.filter((f) => model.formulaLanguage === '1.2' || f !== 'YEARFRAC').join(', ')}
+          {model.formulaLanguage === '1.2' && model.parameters.length > 0 && ' · type @ for parameters'}
         </span>
       </div>
     </div>

@@ -13,6 +13,9 @@ public static class AttributionInputs
     /// <summary>The most drivers a metric has, because Shapley attribution evaluates every subset of them.</summary>
     public const int MaxDrivers = 8;
 
+    /// <summary>The key of the default driver that switches the days inputs.</summary>
+    public const string DaysDriver = "days";
+
     /// <summary>The days inputs, which the default drivers switch as one, in the order the <c>days</c> driver lists them.</summary>
     public static readonly IReadOnlyList<string> DaysInputs = [.. FormulaContext.ParameterNames.Select(name => $"@{name}")];
 
@@ -23,10 +26,28 @@ public static class AttributionInputs
     /// <param name="model">The model.</param>
     /// <param name="attribution">One of its attributions.</param>
     /// <returns>The expression; null for a variable without one, or a metric the model lacks.</returns>
-    public static string? ExpressionOf(ModelGraph model, MetricAttribution attribution)
+    public static string? ExpressionOf(ModelGraph model, Attribution attribution)
     {
-        return attribution.ExpressionText
+        return attribution.Expression
             ?? model.CalculatedMeasures.FirstOrDefault(measure => measure.MeasureKey == attribution.MetricKey)?.ExpressionText;
+    }
+
+    /// <summary>
+    /// The drivers an expression has without drivers of its own, as the engine builds them: one per metric it reads, keyed and named
+    /// as the metric, then one <c>days</c> driver for its days.
+    /// </summary>
+    /// <param name="model">The model, which names the metrics.</param>
+    /// <param name="expressionText">An attribution expression or calculated measure formula.</param>
+    /// <returns>The default drivers.</returns>
+    public static IReadOnlyList<AttributionDriver> DefaultDrivers(ModelGraph model, string expressionText)
+    {
+        var inputs = Of(expressionText);
+        var names = model.Variables.ToDictionary(variable => variable.VariableKey, variable => variable.DisplayName, StringComparer.Ordinal);
+        foreach (var measure in model.CalculatedMeasures) names[measure.MeasureKey] = measure.DisplayName;
+        var metrics = inputs.Where(input => !ContextParameters.Contains(input))
+            .Select(key => new AttributionDriver { Key = key, DisplayName = names.GetValueOrDefault(key, key), Inputs = [key] });
+        AttributionDriver[] days = inputs.Any(ContextParameters.Contains) ? [new AttributionDriver { Key = DaysDriver, DisplayName = "Days", Inputs = DaysInputs }] : [];
+        return [.. metrics, .. days];
     }
 
     /// <summary>
@@ -41,13 +62,5 @@ public static class AttributionInputs
         string[] days = [.. inspection.ParameterNames.Select(name => $"@{name}").Where(ContextParameters.Contains)];
         var readsDays = days.Length > 0 || inspection.Functions.Contains(ExpressionFunction.YearFrac);
         return [.. inspection.MeasureKeys, .. readsDays ? days.Union(DaysInputs, StringComparer.Ordinal) : []];
-    }
-
-    /// <summary>How many default drivers an expression has: one per metric it reads, and one <c>days</c> driver for its days.</summary>
-    /// <param name="inputs">The expression's inputs.</param>
-    /// <returns>The number of default drivers.</returns>
-    public static int DefaultDriverCount(IReadOnlyList<string> inputs)
-    {
-        return inputs.Count(input => !ContextParameters.Contains(input)) + (inputs.Any(ContextParameters.Contains) ? 1 : 0);
     }
 }

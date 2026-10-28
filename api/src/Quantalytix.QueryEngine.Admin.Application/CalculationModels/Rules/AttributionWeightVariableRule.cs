@@ -16,14 +16,15 @@ public static class AttributionWeightVariableRule
     /// <returns>One violation per unresolved weight variable.</returns>
     public static IEnumerable<RuleViolation> Evaluate(ModelGraph model)
     {
-        var variableKeys = model.Variables.Select(variable => variable.VariableKey).ToHashSet(StringComparer.Ordinal);
+        var variableKeys = model.VariableKeys;
         return model.Attributions
             .Where(attribution => attribution.WeightVariableKey is { } weight && !variableKeys.Contains(weight))
             .OrderBy(attribution => attribution.MetricKey, StringComparer.Ordinal)
             .Select(attribution => new RuleViolation
             {
                 Code = Code,
-                Message = $"The attribution of '{attribution.MetricKey}' weighs members by '{attribution.WeightVariableKey}', which is no variable of the model."
+                Message = $"The attribution of '{attribution.MetricKey}' weighs members by '{attribution.WeightVariableKey}', which is no variable of the model.",
+                Target = ModelAreas.Attribution(attribution.MetricKey)
             });
     }
 }

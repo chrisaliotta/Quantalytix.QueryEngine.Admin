@@ -13,32 +13,22 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 public static class CalculationModelsAndReportsFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the slice's services and the report rules, all scoped. Each content kind is registered under
-    /// <see cref="IOwnedContent{TItem, TInput}"/>, a model's also under <see cref="IModelContent{TItem, TInput}"/> and a report's
-    /// under <see cref="IReportContent{TItem, TInput}"/>, with the validator of its item routes. The report rules run when a report
-    /// is enabled and on every write to an enabled report; <see cref="ModelChanges"/> runs the model's formula, parameter and
-    /// attribution rules, the row parameter rule over every report of the model and the report rules that read its metrics over the
-    /// enabled ones on every write to a model, its metrics, their attributions or its parameters; and the report rules
-    /// that read what a release gives reports also run, over the enabled reports, when a release is validated, after the release
-    /// slice's own rules.
+    /// Registers the Calculation models slice through <see cref="CalculationModelsFeatureServiceCollectionExtensions"/>, then the
+    /// report services and the report rules, all scoped. Each report content kind is registered under
+    /// <see cref="IOwnedContent{TItem, TInput}"/> and <see cref="IReportContent{TItem, TInput}"/>, with the validator of its item
+    /// routes. The report rules run when a report is enabled and on every write to an enabled report; the model gate runs the ones
+    /// that read a model's metrics and parameters on every model change set; and the report rules that read what a release gives
+    /// reports also run, over the enabled reports, when a release is validated, after the release slice's own rules.
     /// Also registers the slice's route resources, which the shared 404 check reads.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddCalculationModelsAndReportsFeature(this IServiceCollection services)
     {
+        services.AddCalculationModelsFeature();
         services.AddScoped<ContentKeys>();
 
-        services.AddRouteResource<CalculationModelRecord>("calculation-models", id => new { CalculationModelId = id });
         services.AddRouteResource<ReportRecord>("reports", id => new { ReportId = id });
-        services.AddScoped<CalculationModelService>();
-        services.AddScoped<ModelKeys>();
-        services.AddScoped<ReportUses>();
-        services.AddScoped<ModelChanges>();
-        services.AddScoped<MetricAttributionService>();
-        services.AddScoped<ModelParameterService>();
-        services.AddModelContent<VariableService, VariableRecord, VariableInput>();
-        services.AddModelContent<CalculatedMeasureService, CalculatedMeasureRecord, CalculatedMeasureInput>();
 
         services.AddScoped<ReportService>();
         services.AddScoped<ReportStatusService>();
@@ -88,16 +78,6 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         where TRule : IReportRule, new()
     {
         services.AddScoped<IPublicationRule>(provider => new ReportConsumerRule(new TRule(), provider.GetRequiredService<ReportGraphReader>()));
-    }
-
-    /// <summary>Registers one model content kind's service under both its interfaces and the validator that checks its item routes.</summary>
-    private static void AddModelContent<TService, TItem, TInput>(this IServiceCollection services)
-        where TService : class, IModelContent<TItem, TInput>
-    {
-        services.AddScoped<TService>();
-        services.AddScoped<IModelContent<TItem, TInput>>(provider => provider.GetRequiredService<TService>());
-        services.AddScoped<IOwnedContent<TItem, TInput>>(provider => provider.GetRequiredService<TService>());
-        services.AddScoped<IValidator<ModelItemReference<TItem>>, OwnedItemReferenceValidator<ModelItemReference<TItem>, TItem, TInput>>();
     }
 
     /// <summary>Registers one report content kind's service under both its interfaces and the validator that checks its item routes.</summary>

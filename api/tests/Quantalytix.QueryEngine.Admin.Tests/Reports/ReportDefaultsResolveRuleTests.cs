@@ -31,7 +31,7 @@ public sealed class ReportDefaultsResolveRuleTests
     [Fact]
     public async Task AParameterOfTheModel_IsReported()
     {
-        await _fixture.ParameterService().ReplaceAsync(CalculationModelId, DayCount(), TestContext.Current.CancellationToken);
+        await _fixture.Parameters.InsertAsync(ParameterRow(DayCount()), TestContext.Current.CancellationToken);
         await FilterRegionByAsync("dayCount");
 
         Assert.Equal(
