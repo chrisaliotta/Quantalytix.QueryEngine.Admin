@@ -7,18 +7,19 @@ import { createHttpDatasetsApi } from './http/adapter'
 import type { TenantLookups } from './lookups'
 import { createMockDatasetsApi } from './mock/adapter'
 import { createMockTenantLookups } from './mock/lookups'
+import { tenantApi } from '@/lib/tenant/client'
 import { ChangeScopeProvider, useStagedApi } from '@/components/shell/changes'
 
 const ApiContext = createContext<DatasetsApi | null>(null)
 const LookupsContext = createContext<TenantLookups | null>(null)
 
 /**
- * Supplies the adapters: an explicit `api`, else the HTTP adapter in http mode, else the in-memory mock. The tenant lookups stay
- * on the mock until the tenant module serves them.
+ * Supplies the adapters: an explicit `api`, else the HTTP adapter in http mode, else the in-memory mock. The tenant lookups are the
+ * tenant module's adapter in http mode; the mock keeps its own, whose ids match the datasets mock.
  */
 export function DatasetsApiProvider({ children, api, lookups }: { children: ReactNode; api?: DatasetsApi; lookups?: TenantLookups }) {
   const [instance] = useState(() => api ?? (apiMode === 'http' ? createHttpDatasetsApi(tenantHttp) : createMockDatasetsApi()))
-  const [lookupsInstance] = useState(() => lookups ?? createMockTenantLookups())
+  const [lookupsInstance] = useState(() => lookups ?? (apiMode === 'http' ? tenantApi : createMockTenantLookups()))
   return (
     <LookupsContext.Provider value={lookupsInstance}>
       <ApiContext.Provider value={instance}>{children}</ApiContext.Provider>

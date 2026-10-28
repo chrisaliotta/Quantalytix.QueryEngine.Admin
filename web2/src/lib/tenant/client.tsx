@@ -6,7 +6,7 @@ import { createHttpTenantApi } from './http/adapter'
 import { createMockTenantApi } from './mock/adapter'
 
 /** One adapter for the whole session, so every revision display agrees: HTTP in http mode, else the in-memory mock. */
-const api: TenantApi = apiMode === 'http' ? createHttpTenantApi(apiHttp, tenantId) : createMockTenantApi()
+export const tenantApi: TenantApi = apiMode === 'http' ? createHttpTenantApi(apiHttp, tenantId) : createMockTenantApi()
 
 const OPTS = { revalidateOnFocus: false }
 
@@ -18,21 +18,21 @@ const tenantKeys = {
 }
 
 export function useTenantOverview() {
-  return useSWR(tenantKeys.overview, () => api.getOverview(), OPTS)
+  return useSWR(tenantKeys.overview, () => tenantApi.getOverview(), OPTS)
 }
 
 /** The one catalog every picker reads (OI-13); `useRefreshTenant` reloads it when `semanticRevision` advances. */
 export function useTenantCatalog() {
-  return useSWR(tenantKeys.catalog, () => api.getCatalog(), OPTS)
+  return useSWR(tenantKeys.catalog, () => tenantApi.getCatalog(), OPTS)
 }
 
 /** Members of a dimension's published version, null when none is published; a null id skips the request. */
 export function usePublishedMembers(dimensionId: Id | null) {
-  return useSWR(dimensionId ? tenantKeys.publishedMembers(dimensionId) : null, () => api.getPublishedMembers(dimensionId!), OPTS)
+  return useSWR(dimensionId ? tenantKeys.publishedMembers(dimensionId) : null, () => tenantApi.getPublishedMembers(dimensionId!), OPTS)
 }
 
 export function useVocabularies() {
-  return useSWR(tenantKeys.vocabularies, () => api.getVocabularies(), { ...OPTS, revalidateIfStale: false })
+  return useSWR(tenantKeys.vocabularies, () => tenantApi.getVocabularies(), { ...OPTS, revalidateIfStale: false })
 }
 
 /** Re-reads the tenant state, catalog and published members after a command that advances `semanticRevision`. */

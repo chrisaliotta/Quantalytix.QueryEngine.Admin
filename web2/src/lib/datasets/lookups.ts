@@ -3,8 +3,8 @@ import type { TenantApi, TenantCatalog as FullTenantCatalog, Vocabularies as All
 export type { PublishedMembers } from '@/lib/tenant/contract'
 
 /**
- * The tenant-wide lookups the dataset screens read: a projection of `TenantApi` (blueprint 10), so the screens take
- * a `TenantApi` as is once that module serves them (P5).
+ * The tenant-wide lookups the dataset screens read: a projection of `TenantApi` (blueprint 10), which the tenant module's
+ * adapter satisfies as is.
  */
 
 export type Vocabularies = Pick<
