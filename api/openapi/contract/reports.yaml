@@ -22,8 +22,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/ReportSummary' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
     post:
       operationId: createReport
       summary: Create a report, its report dimension and, when copying, its content.
@@ -45,8 +43,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportSummary' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The report key is taken. }
 
   /api/tenants/{tenantId}/reports/{reportId}:
@@ -63,8 +59,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportDocument' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteReport
@@ -75,8 +69,6 @@ paths:
         '204':
           description: The report and everything it owns were deleted.
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/reports/{reportId}/diagnostics:
@@ -94,8 +86,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportDiagnostics' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/reports/{reportId}/sources/{sourceKey}/unmapped:
@@ -118,8 +108,6 @@ paths:
               schema:
                 type: array
                 items: { type: string }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound', description: 'No such report, or the report has no source with that key.' }
 
   /api/tenants/{tenantId}/reports/{reportId}/changes/preview:
@@ -143,8 +131,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportChangeSetPreview' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'An operation names a row, source, profile, dimension or style the report does not have.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'The report is enabled and the result fails the report gate, or a cascade is refused.' }
@@ -170,8 +156,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportChangeSetCommit' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'An operation names a row, source, profile, dimension or style the report does not have.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'The report is enabled and the result fails the report gate, or a cascade is refused.' }
@@ -197,8 +181,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportSummary' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: 'A report rule fails; the report stays disabled.' }
 

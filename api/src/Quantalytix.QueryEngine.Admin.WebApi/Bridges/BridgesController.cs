@@ -13,8 +13,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 [ApiController]
 [Route("api/tenants/{tenantId}/bridges")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgesController(BridgeService bridges) : ControllerBase
 {
     /// <summary>
@@ -27,8 +25,6 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <returns>The bridges by key.</returns>
     /// <response code="200">The dimension's bridges by key, ignoring case.</response>
     /// <response code="400">The request names no dimension.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<BridgeSummary>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -45,8 +41,6 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <returns>The created bridge.</returns>
     /// <response code="200">The created bridge.</response>
     /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -61,8 +55,6 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The bridge's summary.</returns>
     /// <response code="200">The bridge's summary.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{bridgeId:long}")]
     [ProducesResponseType<BridgeSummary>(StatusCodes.Status200OK)]
     public async Task<ActionResult<BridgeSummary>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
@@ -78,8 +70,6 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <returns>The stored bridge.</returns>
     /// <response code="200">The stored bridge.</response>
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{bridgeId:long}")]
     [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType<BridgeRecord>(StatusCodes.Status200OK)]
@@ -97,8 +87,6 @@ public sealed class BridgesController(BridgeService bridges) : ControllerBase
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
     /// <response code="204">The bridge and its drafts are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.</response>
     [HttpDelete("{bridgeId:long}")]
     [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]

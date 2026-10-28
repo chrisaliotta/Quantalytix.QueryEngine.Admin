@@ -15,8 +15,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.AssumptionSets;
 [ApiController]
 [Route("api/tenants/{tenantId}/assumption-sets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class AssumptionSetsController(AssumptionSetService sets) : ControllerBase
 {
     /// <summary>Lists the tenant's assumption sets: the active one, then historical sets, most recently captured first.</summary>
@@ -24,8 +22,6 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The assumption sets.</returns>
     /// <response code="200">The assumption sets.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<AssumptionSetRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<AssumptionSetRecord>>> List(string tenantId, CancellationToken cancellationToken)
@@ -40,8 +36,6 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <returns>The new historical set.</returns>
     /// <response code="201">The set was captured; the body is the new historical set.</response>
     /// <response code="400">The key is malformed or taken, or the display name is missing.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<AssumptionSetRecord>(StatusCodes.Status201Created)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -57,8 +51,6 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The set and its pins.</returns>
     /// <response code="200">The set and its pins.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{assumptionSetId:long}")]
     [ProducesResponseType<AssumptionSetDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AssumptionSetDetail>> Get(string tenantId, long assumptionSetId, CancellationToken cancellationToken)
@@ -74,8 +66,6 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <returns>The updated set.</returns>
     /// <response code="200">The updated set.</response>
     /// <response code="400">The display name is missing, or a label is too long.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{assumptionSetId:long}")]
     [ProducesResponseType<AssumptionSetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -94,8 +84,6 @@ public sealed class AssumptionSetsController(AssumptionSetService sets) : Contro
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when the set is the active one.</returns>
     /// <response code="204">The set and its pins are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: the set is the active set, which holds the default versions.</response>
     [HttpDelete("{assumptionSetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

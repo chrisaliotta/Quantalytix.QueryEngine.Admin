@@ -11,8 +11,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/columns")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportColumnsController(ReportColumnService columns) : ControllerBase
 {
     /// <summary>Lists a report's columns in display order.</summary>
@@ -21,8 +19,6 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The columns.</returns>
     /// <response code="200">The columns in display order.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReportColumnRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReportColumnRecord>>> List(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -41,8 +37,6 @@ public sealed class ReportColumnsController(ReportColumnService columns) : Contr
     /// <returns>The stored columns.</returns>
     /// <response code="200">The columns in display order.</response>
     /// <response code="400">A column key is reserved or repeated, a metric is not in the report's model, or a formula row still names a removed column; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the columns would break its rules, such as a profile without a pick for a newly read variable; nothing was written.</response>
     [HttpPut]
     [AdvancesReportRevision("reportId")]

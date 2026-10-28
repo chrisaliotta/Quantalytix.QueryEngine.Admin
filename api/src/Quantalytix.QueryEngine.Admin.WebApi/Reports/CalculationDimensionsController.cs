@@ -12,8 +12,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/calculation-dimensions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class CalculationDimensionsController(
     IReportContent<CalculationDimensionRecord, CalculationDimensionInput> dimensions,
     ReportChanges changes) : ControllerBase
@@ -24,8 +22,6 @@ public sealed class CalculationDimensionsController(
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The calculation dimensions by key.</returns>
     /// <response code="200">The calculation dimensions by key, ignoring case.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<CalculationDimensionRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<CalculationDimensionRecord>>> List(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -41,8 +37,6 @@ public sealed class CalculationDimensionsController(
     /// <returns>The created calculation dimension.</returns>
     /// <response code="200">The created calculation dimension.</response>
     /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the calculation dimension would break its rules; nothing was written.</response>
     [HttpPost]
     [AdvancesReportRevision("reportId")]
@@ -65,8 +59,6 @@ public sealed class CalculationDimensionsController(
     /// <returns>The stored calculation dimension.</returns>
     /// <response code="200">The stored calculation dimension.</response>
     /// <response code="400">The calculation dimension is not the report's, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the calculation dimension would break its rules; nothing was written.</response>
     [HttpPut("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
@@ -93,8 +85,6 @@ public sealed class CalculationDimensionsController(
     /// <returns>No content.</returns>
     /// <response code="204">The calculation dimension is deleted.</response>
     /// <response code="400">The calculation dimension is not the report's; the error is keyed <c>itemId</c>.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and losing the calculation dimension would break its rules, such as a default pivot on it; nothing was deleted.</response>
     [HttpDelete("{itemId:long}")]
     [AdvancesReportRevision("reportId")]

@@ -10,8 +10,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 [ApiController]
 [Route("api/tenants/{tenantId}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
 public sealed class TenantCatalogController(TenantCatalogReader catalog, PublishedMembersReader publishedMembers) : ControllerBase
 {
     /// <summary>Read the names and ids every picker and cross-module link resolves against.</summary>
@@ -19,8 +17,6 @@ public sealed class TenantCatalogController(TenantCatalogReader catalog, Publish
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The tenant catalog.</returns>
     /// <response code="200">The tenant catalog.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("catalog", Name = "getCatalog")]
     [ProducesResponseType<TenantCatalog>(StatusCodes.Status200OK)]
     public async Task<ActionResult<TenantCatalog>> GetCatalog(string tenantId, CancellationToken cancellationToken)
@@ -34,8 +30,6 @@ public sealed class TenantCatalogController(TenantCatalogReader catalog, Publish
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The published version's members.</returns>
     /// <response code="200">The published version's members, in hierarchy order.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="404">The dimension does not exist or has no published version.</response>
     [HttpGet("dimensions/{dimensionId:long}/published-members", Name = "getPublishedMembers")]
     [ProducesResponseType<PublishedMembers>(StatusCodes.Status200OK)]

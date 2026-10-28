@@ -11,17 +11,23 @@ apis:
 extends:
   - recommended
 
+# Adds 401 to every operation and 403 to tenant and system routes in the bundle (see plugins/qe.mjs).
+decorators:
+  qe/authorization-responses: on
+
 rules:
   operation-operationId: error
   operation-operationId-unique: error
   operation-tag-defined: error
-  operation-4xx-response: error
+  # Every operation gets 401 from qe/authorization-responses, which runs on the bundle only.
+  operation-4xx-response: off
   operation-summary: error
   # The only fixed host is the local development one.
   no-server-example.com: off
   qe/string-ids: error
   qe/operation-module-tag: error
   qe/problem-responses: error
+  qe/authorization-by-convention: error
   rule/property-names-camel-case:
     subject:
       type: SchemaProperties

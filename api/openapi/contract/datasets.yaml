@@ -24,8 +24,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DatasetSourceObject'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
 
   /api/tenants/{tenantId}/source-objects/{kind}/{name}/columns:
     parameters:
@@ -45,8 +43,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DatasetSourceColumn'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound', description: No table or view of that kind and name. }
 
   /api/tenants/{tenantId}/datasets:
@@ -65,8 +61,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DatasetListItem'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
     post:
       operationId: createDataset
       summary: Create a dataset and its draft version 1
@@ -88,8 +82,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetListItem'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The dataset key or table name is taken. }
 
   /api/tenants/{tenantId}/datasets/{datasetId}:
@@ -107,8 +99,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetListItem'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteDataset
@@ -119,8 +109,6 @@ paths:
         '204':
           description: Deleted.
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Delete blocked; `violations` are the reasons of the delete check. }
 
@@ -142,8 +130,6 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/datasets/{datasetId}/versions:
@@ -168,8 +154,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersionSummary'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The dataset already has an open (draft or validated) version (OI-23). }
 
@@ -188,8 +172,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetVersion'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteDatasetDraft
@@ -199,8 +181,6 @@ paths:
         '204':
           description: Deleted.
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Delete blocked; `violations` are the reasons of the delete check. }
 
@@ -222,8 +202,6 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview:
@@ -249,8 +227,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetChangeSetPreview'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent' }
@@ -280,8 +256,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetChangeSetCommit'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent' }
@@ -312,8 +286,6 @@ paths:
               schema:
                 $ref: './common.yaml#/components/schemas/ValidationReport'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/dataset-versions/{versionId}/validate:
@@ -332,8 +304,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersionSummary'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A publication rule fails; nothing was written. }
@@ -355,8 +325,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersionSummary'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft or validated. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A publication rule fails; nothing was written. }
@@ -377,8 +345,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersionSummary'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not validated. }
 
@@ -398,8 +364,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersionSummary'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not published. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: The active release pins the version. }
@@ -424,8 +388,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not a JSON path field. }
     delete:
@@ -441,8 +403,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not a JSON path field. }
 
@@ -463,8 +423,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not materialized. }
 

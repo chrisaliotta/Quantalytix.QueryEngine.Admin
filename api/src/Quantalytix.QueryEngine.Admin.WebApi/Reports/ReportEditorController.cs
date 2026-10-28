@@ -10,8 +10,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportEditorController(ReportEditorReader reader, ReportRowService rows) : ControllerBase
 {
     /// <summary>
@@ -22,8 +20,6 @@ public sealed class ReportEditorController(ReportEditorReader reader, ReportRowS
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The editor view.</returns>
     /// <response code="200">The editor view.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("editor")]
     [ProducesResponseType<EditorView>(StatusCodes.Status200OK)]
     public async Task<ActionResult<EditorView>> Read(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -42,8 +38,6 @@ public sealed class ReportEditorController(ReportEditorReader reader, ReportRowS
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The tree breaks a field rule or its shape, such as two top-level member rows; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the tree would break its rules; nothing was written.</response>
     [HttpPut("rows")]
     [AdvancesReportRevision("reportId")]

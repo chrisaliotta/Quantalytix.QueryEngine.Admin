@@ -13,8 +13,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 [ApiController]
 [Route("api/tenants/{tenantId}/mapping-versions/{versionId:long}/entries")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingEntriesController(MappingEntryService entries) : ControllerBase
 {
     /// <summary>Lists every entry of a mapping version.</summary>
@@ -23,8 +21,6 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The entries by source key.</returns>
     /// <response code="200">The entries by source key, compared exactly.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<DimensionMappingRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<DimensionMappingRecord>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
@@ -40,8 +36,6 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     /// <returns>The stored entries.</returns>
     /// <response code="200">The stored entries by source key, under new entry IDs.</response>
     /// <response code="400">A source key is empty, too long or repeated; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
@@ -64,8 +58,6 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     /// <returns>The created entry.</returns>
     /// <response code="200">The created entry.</response>
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPost]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
@@ -88,8 +80,6 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     /// <returns>The stored entry.</returns>
     /// <response code="200">The stored entry.</response>
     /// <response code="400">The entry is not in the version, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("{entryId:long}")]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]
@@ -111,8 +101,6 @@ public sealed class MappingEntriesController(MappingEntryService entries) : Cont
     /// <returns>No content.</returns>
     /// <response code="204">The entry is deleted.</response>
     /// <response code="400">The entry is not in the version; the error is keyed <c>entryId</c>.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpDelete("{entryId:long}")]
     [RequireEditable(VersionKinds.MappingVersion, "versionId")]

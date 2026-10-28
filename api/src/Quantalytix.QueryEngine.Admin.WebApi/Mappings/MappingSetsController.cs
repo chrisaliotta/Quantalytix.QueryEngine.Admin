@@ -12,8 +12,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 [ApiController]
 [Route("api/tenants/{tenantId}/mapping-sets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingSetsController(MappingSetService mappingSets) : ControllerBase
 {
     /// <summary>Lists the mapping sets of one dimension, which the dimension's page shows.</summary>
@@ -23,8 +21,6 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <returns>The mapping sets by key.</returns>
     /// <response code="200">The dimension's mapping sets by key, ignoring case.</response>
     /// <response code="400">The request names no dimension.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<MappingSetRecord>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -41,8 +37,6 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <returns>The created mapping set.</returns>
     /// <response code="200">The created mapping set.</response>
     /// <response code="400">The input breaks a field rule, such as a taken key; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<MappingSetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -57,8 +51,6 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The mapping set.</returns>
     /// <response code="200">The mapping set.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{mappingSetId:long}")]
     [ProducesResponseType<MappingSetRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<MappingSetRecord>> Get(string tenantId, long mappingSetId, CancellationToken cancellationToken)
@@ -74,8 +66,6 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <returns>The stored mapping set.</returns>
     /// <response code="200">The stored mapping set.</response>
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{mappingSetId:long}")]
     [ProducesResponseType<MappingSetRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -97,8 +87,6 @@ public sealed class MappingSetsController(MappingSetService mappingSets) : Contr
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when something blocks the delete.</returns>
     /// <response code="204">The mapping set and its drafts are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted; the detail names the non-draft versions and bindings that block the delete.</response>
     [HttpDelete("{mappingSetId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

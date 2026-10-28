@@ -70,6 +70,40 @@ function ProblemResponses() {
   }
 }
 
+/**
+ * The authorization policy (01, Authorization) as one convention instead of per-operation declarations: every operation needs a
+ * bearer token, so it answers 401; tenant routes (`{tenantId}`, the TenantAccess policy) and `/api/system/*` (the SystemAdmin
+ * policy) also answer 403. Applied to the bundle once the bundler has inlined every path, so the refs name its own components.
+ */
+const AUTHORIZATION_STATUSES = ['401', '403']
+const answers403 = (path) => path.includes('{tenantId}') || path.startsWith('/api/system/')
+
+function AuthorizationResponses() {
+  return {
+    Root: {
+      leave(root) {
+        for (const [path, item] of Object.entries(root.paths)) {
+          for (const operation of Object.values(item).filter((value) => value?.responses)) {
+            operation.responses['401'] = { $ref: '#/components/responses/Unauthorized' }
+            if (answers403(path)) operation.responses['403'] = { $ref: '#/components/responses/Forbidden' }
+          }
+        }
+      },
+    },
+  }
+}
+
+/** Module files leave 401 and 403 to the authorization convention, so every operation states them the same way. */
+function AuthorizationByConvention() {
+  return {
+    Operation(operation, ctx) {
+      for (const status of AUTHORIZATION_STATUSES.filter((code) => operation.responses?.[code])) {
+        ctx.report({ message: `${status} comes from the authorization convention (qe/authorization-responses); do not declare it.`, location: ctx.location.child(['responses', status]) })
+      }
+    },
+  }
+}
+
 export default function qeContractPlugin() {
   return {
     id: 'qe',
@@ -78,7 +112,9 @@ export default function qeContractPlugin() {
         'string-ids': StringIds,
         'operation-module-tag': OperationModuleTag,
         'problem-responses': ProblemResponses,
+        'authorization-by-convention': AuthorizationByConvention,
       },
     },
+    decorators: { oas3: { 'authorization-responses': AuthorizationResponses } },
   }
 }

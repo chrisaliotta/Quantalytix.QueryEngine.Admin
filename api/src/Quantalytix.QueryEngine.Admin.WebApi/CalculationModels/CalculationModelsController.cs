@@ -25,10 +25,8 @@ public sealed class CalculationModelsController(
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The list items by key.</returns>
     /// <response code="200">Every model of the tenant.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ModelListItem>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
     public async Task<ActionResult<IReadOnlyList<ModelListItem>>> List(string tenantId, CancellationToken cancellationToken)
     {
         return Ok(await queries.ListAsync(cancellationToken));

@@ -10,8 +10,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.SourceObjects;
 [ApiController]
 [Route("api/tenants/{tenantId}/source-objects")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
 public sealed class SourceObjectsController(SourceObjectDirectory sourceObjects) : ControllerBase
 {
     /// <summary>Lists the tables and views with whether the API manages each and their live statistics.</summary>

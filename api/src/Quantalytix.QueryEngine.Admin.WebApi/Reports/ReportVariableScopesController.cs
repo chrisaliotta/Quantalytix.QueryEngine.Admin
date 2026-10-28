@@ -14,8 +14,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/variable-scopes")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportVariableScopesController(ReportVariableScopeService scopes) : ControllerBase
 {
     /// <summary>Lists a report's variable scopes.</summary>
@@ -24,8 +22,6 @@ public sealed class ReportVariableScopesController(ReportVariableScopeService sc
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The scopes.</returns>
     /// <response code="200">The scopes by variable key.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReportVariableScopeRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReportVariableScopeRecord>>> List(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -44,8 +40,6 @@ public sealed class ReportVariableScopesController(ReportVariableScopeService sc
     /// <returns>The stored scopes.</returns>
     /// <response code="200">The scopes by variable key.</response>
     /// <response code="400">A variable is scoped twice, or a scope breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the scopes would break its rules; nothing was written.</response>
     [HttpPut]
     [AdvancesReportRevision("reportId")]

@@ -43,6 +43,9 @@ never generically (`ListItem`, `VersionSummary`).
 - **Errors:** every 4xx response is `application/problem+json` with the common `Problem`. Reuse the common responses
   and override only the description: `'409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }`.
   Every write (`post`, `put`, `patch`, `delete`) declares `400`.
+- **401 and 403** follow the authorization policy and are never declared in a module file: the bundle adds `401` to every
+  operation and `403` to every tenant route (`{tenantId}`) and `/api/system/*` route (`qe/authorization-responses`). The
+  API mirrors it with `AuthorizationResponsesTransformer`.
 - **Ids and nulls:** `id`, `<entity>Id` and `<entity>Ids` are strings (`$ref` the common `Id`). A nullable property is
   listed in `required` with `type: [string, 'null']`; a property that may be absent is left out of `required`.
 - **Change sets:** the operation union is a `oneOf` of named schemas, one per edit method, each with
@@ -75,8 +78,9 @@ DimensionChangeSetPreview:
 | `rule/property-names-camel-case`, `rule/parameter-names-camel-case` | camelCase property and parameter names |
 | `qe/string-ids` | `id`, `<entity>Id` and `<entity>Ids` are strings |
 | `qe/problem-responses` | writes declare 400; every error response is the common `Problem` |
+| `qe/authorization-by-convention` | no operation declares 401 or 403; the `qe/authorization-responses` decorator adds them to the bundle |
 | `qe/operation-module-tag` | each operation is tagged exactly with the module whose file declares it |
-| `operation-tag-defined`, `operation-operationId`, `operation-operationId-unique`, `operation-summary`, `operation-4xx-response` | tags from the root list, unique operation ids, summaries, at least one 4xx |
+| `operation-tag-defined`, `operation-operationId`, `operation-operationId-unique`, `operation-summary` | tags from the root list, unique operation ids, summaries (`operation-4xx-response` is off: the convention gives every operation a 401) |
 
 ## Commands
 

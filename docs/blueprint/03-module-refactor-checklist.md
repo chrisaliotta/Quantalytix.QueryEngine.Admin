@@ -89,9 +89,11 @@ worked example; every step names its files.
 ### 6. WebApi
 
 - Controllers under `WebApi/<Feature>/` route by the contract paths with `{id:long}` constraints and `string tenantId`.
-- Declare **exactly** the contract's status codes: the conformance check compares the set. Do not add 401/403 (the
-  module contracts do not list them). 404 is added by `NotFoundResponseTransformer` for every route segment registered
-  with `AddRouteResource`; declare it by hand only for lookups outside the tables (profile keys).
+- Declare **exactly** the contract's status codes: the conformance check compares the set. Never declare 401 or 403,
+  in the contract or in C#: the contract's `qe/authorization-responses` convention adds 401 to every operation and 403 to
+  tenant and system routes, and `AuthorizationResponsesTransformer` derives the same from `[Authorize]` metadata. 404 is
+  added by `NotFoundResponseTransformer` for every route segment registered with `AddRouteResource`; declare it by hand
+  only for lookups outside the tables (profile keys).
 - Register route resources for every id segment. Segments are global across modules: a generic segment (`members`,
   `levels`) must be scoped to its parent with the `(value, route) =>` overload, which assumes the parent route value
   exists — coordinate with the integrator before reusing a segment another module registered.

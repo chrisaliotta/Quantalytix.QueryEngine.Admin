@@ -22,8 +22,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/ReleaseListItem' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
     post:
       operationId: createRelease
       summary: Create a draft release, empty or copying another release's manifest
@@ -40,8 +38,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Release' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The key is taken. }
 
   /api/tenants/{tenantId}/releases/diff:
@@ -60,8 +56,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseDiff' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound', description: '`from` or `to` names no release.' }
 
   /api/tenants/{tenantId}/releases/{releaseId}:
@@ -78,8 +72,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseDetail' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteRelease
@@ -88,8 +80,6 @@ paths:
       responses:
         '204': { description: Deleted. }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
 
@@ -113,8 +103,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseChangeSetPreview' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A pinned version is not one of its dataset's versions or is not published. }
@@ -139,8 +127,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseChangeSetCommit' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A pinned version is not one of its dataset's versions or is not published. }
@@ -160,8 +146,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseCheckReport' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/releases/{releaseId}/validate:
@@ -179,8 +163,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseTransitionResult' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A release rule fails; `violations` are `ReleaseViolation`s. }
@@ -201,8 +183,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReleaseTransitionResult' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not validated. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A release rule fails; `violations` are `ReleaseViolation`s. }
@@ -222,8 +202,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Release' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not validated. }
 
@@ -242,8 +220,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Release' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not published. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: '`release_not_active`: the release is the active one.' }
@@ -268,8 +244,6 @@ paths:
             application/json:
               schema: { $ref: './tenant.yaml#/components/schemas/TenantInfo' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not published. }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: An enabled report's rules fail on the release. }
@@ -289,8 +263,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/ManifestDataset' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
 
   /api/tenants/{tenantId}/identities:
     parameters:
@@ -307,8 +279,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/PinIdentity' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
 
   /api/tenants/{tenantId}/report-reads:
     parameters:
@@ -325,8 +295,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/ReleaseReportRef' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
 
   /api/tenants/{tenantId}/assumption-sets:
     parameters:
@@ -341,8 +309,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AssumptionSetList' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
     post:
       operationId: captureSet
       summary: Capture the active set's analytical pins and the active release into a historical set
@@ -360,8 +326,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AssumptionSet' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The key is taken. }
 
   /api/tenants/{tenantId}/assumption-sets/capture-preview:
@@ -377,8 +341,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SetCapturePreview' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
 
   /api/tenants/{tenantId}/assumption-sets/compare:
     parameters:
@@ -396,8 +358,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SetComparison' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound', description: '`from` or `to` names no assumption set.' }
 
   /api/tenants/{tenantId}/assumption-sets/{setId}:
@@ -414,8 +374,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SetDetail' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     put:
       operationId: relabelSet
@@ -434,8 +392,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AssumptionSet' }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The active set. }
     delete:
@@ -446,8 +402,6 @@ paths:
       responses:
         '204': { description: Deleted. }
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '401': { $ref: './common.yaml#/components/responses/Unauthorized' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409': { $ref: './common.yaml#/components/responses/Conflict', description: The active set. }
 

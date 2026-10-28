@@ -12,8 +12,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Datasets;
 [ApiController]
 [Route("api/tenants/{tenantId}/datasets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
 public sealed class DatasetsController(DatasetQueries queries, DatasetCommands commands) : ControllerBase
 {
     /// <summary>Lists every dataset with its version summaries.</summary>

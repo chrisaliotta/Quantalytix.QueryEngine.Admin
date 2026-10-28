@@ -13,8 +13,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Mappings;
 [ApiController]
 [Route("api/tenants/{tenantId}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class MappingVersionsController(MappingVersionService versions) : ControllerBase
 {
     /// <summary>Lists a mapping set's versions with their status.</summary>
@@ -23,8 +21,6 @@ public sealed class MappingVersionsController(MappingVersionService versions) : 
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The versions by version number.</returns>
     /// <response code="200">The versions by version number.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("mapping-sets/{mappingSetId:long}/versions")]
     [ProducesResponseType<IReadOnlyList<MappingVersionRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<MappingVersionRecord>>> List(
@@ -45,8 +41,6 @@ public sealed class MappingVersionsController(MappingVersionService versions) : 
     /// <returns>The created draft.</returns>
     /// <response code="200">The created draft.</response>
     /// <response code="400">The clone source is not a version of the mapping set; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("mapping-sets/{mappingSetId:long}/versions")]
     [ProducesResponseType<MappingVersionRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -65,8 +59,6 @@ public sealed class MappingVersionsController(MappingVersionService versions) : 
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The version.</returns>
     /// <response code="200">The version.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("mapping-versions/{versionId:long}")]
     [ProducesResponseType<MappingVersionRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<MappingVersionRecord>> Get(string tenantId, long versionId, CancellationToken cancellationToken)
@@ -80,8 +72,6 @@ public sealed class MappingVersionsController(MappingVersionService versions) : 
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
     /// <response code="204">The version and its entries are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is not a draft.</response>
     [HttpDelete("mapping-versions/{versionId:long}")]
     [RequireDraft(VersionKinds.MappingVersion, "versionId")]

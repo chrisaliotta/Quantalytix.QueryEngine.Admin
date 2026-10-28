@@ -16,8 +16,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Releases;
 [ApiController]
 [Route("api/tenants/{tenantId}/releases")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReleasesController(ReleaseService releases, ReleaseActivator activator) : ControllerBase
 {
     /// <summary>Lists the tenant's releases, newest first, with whether each is active and how many datasets it pins.</summary>
@@ -25,8 +23,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The release summaries.</returns>
     /// <response code="200">The release summaries, newest first.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReleaseSummary>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReleaseSummary>>> List(string tenantId, CancellationToken cancellationToken)
@@ -41,8 +37,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <returns>The new draft release.</returns>
     /// <response code="201">The release was created; the body is the new draft.</response>
     /// <response code="400">The key is malformed or taken, or the release to copy does not exist.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status201Created)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -58,8 +52,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The release.</returns>
     /// <response code="200">The release.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{semanticReleaseId:long}")]
     [ProducesResponseType<SemanticReleaseRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<SemanticReleaseRecord>> Get(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
@@ -73,8 +65,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
     /// <response code="204">The release and its manifest are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not a draft.</response>
     [HttpDelete("{semanticReleaseId:long}")]
     [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
@@ -91,8 +81,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The manifest rows, ordered by dataset.</returns>
     /// <response code="200">The manifest rows, ordered by dataset.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{semanticReleaseId:long}/datasets")]
     [ProducesResponseType<IReadOnlyList<ReleaseDatasetRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReleaseDatasetRecord>>> ListDatasets(string tenantId, long semanticReleaseId, CancellationToken cancellationToken)
@@ -108,8 +96,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <returns>The stored manifest rows.</returns>
     /// <response code="200">The stored manifest rows, ordered by dataset.</response>
     /// <response code="400">A dataset does not exist, or a dataset or dataset version appears more than once.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not a draft.</response>
     [HttpPut("{semanticReleaseId:long}/datasets")]
     [RequireDraft(VersionKinds.SemanticRelease, "semanticReleaseId")]
@@ -133,8 +119,6 @@ public sealed class ReleasesController(ReleaseService releases, ReleaseActivator
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The tenant's database info after the activation.</returns>
     /// <response code="200">The release is active; the body is the updated database info.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The release is not published, so nothing changed; the detail names its status.</response>
     [HttpPost("{semanticReleaseId:long}/activate")]
     [ProducesResponseType<DatabaseInfoRecord>(StatusCodes.Status200OK)]

@@ -14,8 +14,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/styles")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportStylesController(ReportStyleService styles, ReportChanges changes) : ControllerBase
 {
     /// <summary>Lists a report's styles.</summary>
@@ -24,8 +22,6 @@ public sealed class ReportStylesController(ReportStyleService styles, ReportChan
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The styles by key.</returns>
     /// <response code="200">The styles by key.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReportStyleRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReportStyleRecord>>> List(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -41,8 +37,6 @@ public sealed class ReportStylesController(ReportStyleService styles, ReportChan
     /// <returns>The stored style.</returns>
     /// <response code="200">The stored style.</response>
     /// <response code="400">The key or the input breaks a field rule, such as a color that is not #RRGGBB; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the style would break its rules, such as a second default style of a role; nothing was written.</response>
     [HttpPut("{styleKey}")]
     [AdvancesReportRevision("reportId")]
@@ -69,8 +63,6 @@ public sealed class ReportStylesController(ReportStyleService styles, ReportChan
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 or 422 when nothing was deleted.</returns>
     /// <response code="204">The style is deleted, or the report had none by the key.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: rows of the report show the style; the detail names them.</response>
     /// <response code="422">The report is enabled and losing the style would break its rules, such as a row that shows it; nothing was deleted.</response>
     [HttpDelete("{styleKey}")]

@@ -20,6 +20,7 @@ public static class AdminOpenApiServiceCollectionExtensions
             options.AddOperationTransformer<CamelCaseParameterNamesTransformer>();
             options.AddOperationTransformer<StringIdParameterTransformer>();
             options.AddOperationTransformer<NotFoundResponseTransformer>();
+            options.AddOperationTransformer<AuthorizationResponsesTransformer>();
             options.AddOperationTransformer<RequestBodyDescriptionTransformer>();
             options.AddSchemaTransformer<ScalarValueSchemaTransformer>();
             options.AddSchemaTransformer<UnionMemberSchemaTransformer>();

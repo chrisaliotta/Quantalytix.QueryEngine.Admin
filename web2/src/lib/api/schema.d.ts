@@ -5946,6 +5946,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     createDimension: {
@@ -5974,6 +5976,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description The dimension key or the first role key is taken. */
             409: components["responses"]["Conflict"];
         };
@@ -6003,6 +6007,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     defineSystemDimension: {
@@ -6028,6 +6034,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description No profile has this key. */
             404: components["responses"]["NotFound"];
             /** @description The profile's dimension is defined already. */
@@ -6056,6 +6064,8 @@ export interface operations {
                     "application/json": components["schemas"]["DimensionDetail"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description No such dimension, or it is owned by a report. */
             404: components["responses"]["NotFound"];
         };
@@ -6081,6 +6091,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Blocked (see `violations`), a system dimension, or owned by a report. */
             409: components["responses"]["Conflict"];
@@ -6108,6 +6120,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6138,6 +6152,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Owned by a report, locked by its profile, or an operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6171,6 +6187,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Owned by a report, locked by its profile, or an operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6199,6 +6217,8 @@ export interface operations {
                     "application/json": components["schemas"]["DimensionVersionContent"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description No such version, or its dimension is owned by a report. */
             404: components["responses"]["NotFound"];
         };
@@ -6224,6 +6244,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The live version, or pinned by a historical assumption set (see `violations`). */
             409: components["responses"]["Conflict"];
@@ -6252,6 +6274,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6282,6 +6306,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Not the live version, or locked by its profile. */
             409: components["responses"]["Conflict"];
@@ -6311,6 +6337,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6337,6 +6365,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6363,6 +6393,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6388,6 +6420,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6416,6 +6450,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     createMappingSet: {
@@ -6444,6 +6480,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description The key is taken, or the dimension is not an analytical categorical or hierarchical dimension (B1). */
             409: components["responses"]["Conflict"];
         };
@@ -6470,6 +6508,8 @@ export interface operations {
                     "application/json": components["schemas"]["MappingSetDetail"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6494,6 +6534,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Blocked; `violations` lists the same reasons as the delete check. */
             409: components["responses"]["Conflict"];
@@ -6521,6 +6563,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6551,6 +6595,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description An operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6584,6 +6630,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description An operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6613,6 +6661,8 @@ export interface operations {
                     "application/json": components["schemas"]["MappingVersionContent"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6637,6 +6687,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The version is live, or a historical assumption set pins it. */
             409: components["responses"]["Conflict"];
@@ -6665,6 +6717,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6695,6 +6749,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The version is not live. */
             409: components["responses"]["Conflict"];
@@ -6724,6 +6780,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6756,6 +6814,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     createBridge: {
@@ -6784,6 +6844,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description The key is taken, or the endpoints break B4 (equal, time source, report dimension). */
             409: components["responses"]["Conflict"];
         };
@@ -6810,6 +6872,8 @@ export interface operations {
                     "application/json": components["schemas"]["BridgeDetail"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6834,6 +6898,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description Blocked (`violations` as in the delete check), or owned by a report. */
             409: components["responses"]["Conflict"];
@@ -6861,6 +6927,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6891,6 +6959,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The bridge is owned by a report, or an operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6924,6 +6994,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The bridge is owned by a report, or an operation targets a frozen version. */
             409: components["responses"]["Conflict"];
@@ -6953,6 +7025,8 @@ export interface operations {
                     "application/json": components["schemas"]["BridgeVersionContent"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -6977,6 +7051,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The version is live, a historical assumption set pins it, or the bridge is owned by a report. */
             409: components["responses"]["Conflict"];
@@ -7005,6 +7081,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -7035,6 +7113,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The version is not live, or the bridge is owned by a report. */
             409: components["responses"]["Conflict"];
@@ -7064,6 +7144,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -7768,6 +7850,7 @@ export interface operations {
                     "application/json": components["schemas"]["ModelListItem"][];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };
     };
@@ -7797,6 +7880,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description The model key is taken. */
             409: components["responses"]["Conflict"];
         };
@@ -7824,6 +7909,8 @@ export interface operations {
                     "application/json": components["schemas"]["ModelDocument"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -7849,6 +7936,8 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description A report reads the model; `violations` carry `referenced_by_report` per report. */
             409: components["responses"]["Conflict"];
@@ -7877,6 +7966,8 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -7908,6 +7999,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -7939,6 +8032,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The last operation introduces a violation of a model rule or of a report rule of an enabled report over the model; it is refused. */
             422: components["responses"]["UnprocessableContent"];
@@ -7972,6 +8067,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description An operation introduces a model-rule or enabled-report violation; nothing was written. */
             422: components["responses"]["UnprocessableContent"];

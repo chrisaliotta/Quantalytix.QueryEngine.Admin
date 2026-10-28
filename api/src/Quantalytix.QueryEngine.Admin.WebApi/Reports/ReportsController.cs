@@ -15,8 +15,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportsController(ReportService reports, ReportStatusService statuses) : ControllerBase
 {
     /// <summary>Lists every report of the tenant.</summary>
@@ -24,8 +22,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The reports by key.</returns>
     /// <response code="200">The reports by key, ignoring case.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReportRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ReportRecord>>> List(string tenantId, CancellationToken cancellationToken)
@@ -44,8 +40,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <returns>The created report.</returns>
     /// <response code="200">The created report.</response>
     /// <response code="400">The input breaks a field rule, such as a taken key or an unknown model; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -60,8 +54,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The report.</returns>
     /// <response code="200">The report.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{reportId:long}")]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReportRecord>> Get(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -77,8 +69,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <returns>The stored report.</returns>
     /// <response code="200">The stored report.</response>
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPut("{reportId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType<ReportRecord>(StatusCodes.Status200OK)]
@@ -96,8 +86,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <returns>The stored report.</returns>
     /// <response code="200">The stored report.</response>
     /// <response code="400">The input breaks a field rule, such as a default profile the report does not have; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the settings would break its rules; nothing was written.</response>
     [HttpPut("{reportId:long}/settings")]
     [AdvancesReportRevision("reportId")]
@@ -121,8 +109,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The stored report.</returns>
     /// <response code="200">The stored report.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report breaks its rules, so it stays disabled; the violations say what to fix.</response>
     [HttpPut("{reportId:long}/status")]
     [AdvancesReportRevision("reportId")]
@@ -141,8 +127,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The violations the rules found.</returns>
     /// <response code="200">The check ran; <c>violations</c> lists what the rules found and is empty when the report could be enabled.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{reportId:long}/validation")]
     [ProducesResponseType<ReportCheck>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReportCheck>> Check(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -159,8 +143,6 @@ public sealed class ReportsController(ReportService reports, ReportStatusService
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
     /// <response code="204">The report and everything it owns are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpDelete("{reportId:long}")]
     [AdvancesReportRevision("reportId")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

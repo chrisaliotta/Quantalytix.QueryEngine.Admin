@@ -13,8 +13,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/sources")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class ReportSourcesController(
     ReportSourceService sources,
     ReportSourceVariableService variables,
@@ -33,8 +31,6 @@ public sealed class ReportSourcesController(
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The input breaks a field rule, such as a dataset the active release does not pin; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the source would break its rules; nothing was written.</response>
     [HttpPost]
     [AdvancesReportRevision("reportId")]
@@ -56,8 +52,6 @@ public sealed class ReportSourcesController(
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The source is not the report's, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the edit would break its rules; nothing was written.</response>
     [HttpPut("{sourceId:long}")]
     [AdvancesReportRevision("reportId")]
@@ -82,8 +76,6 @@ public sealed class ReportSourcesController(
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The source is not the report's; the error is keyed <c>sourceId</c>.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and losing the source would break its rules, such as a profile left without a pick; nothing was deleted.</response>
     [HttpDelete("{sourceId:long}")]
     [AdvancesReportRevision("reportId")]
@@ -108,8 +100,6 @@ public sealed class ReportSourcesController(
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The source is not the report's, or the input breaks a field rule, such as a disabled measure; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the list would break its rules; nothing was written.</response>
     [HttpPut("{sourceId:long}/variables")]
     [AdvancesReportRevision("reportId")]
@@ -139,8 +129,6 @@ public sealed class ReportSourcesController(
     /// <returns>The editor view afterwards.</returns>
     /// <response code="200">The editor view afterwards.</response>
     /// <response code="400">The source is not the report's or is direct, or the input breaks a field rule, such as an item that is no member, or an item taken alone that is no assignable member; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the rules would break a report rule; nothing was written.</response>
     [HttpPut("{sourceId:long}/items")]
     [AdvancesReportRevision("reportId")]
@@ -165,8 +153,6 @@ public sealed class ReportSourcesController(
     /// <returns>The unmapped item keys.</returns>
     /// <response code="200">The unmapped item keys, in ordinal order.</response>
     /// <response code="400">The source is not the report's; the error is keyed <c>sourceId</c>.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{sourceId:long}/unmapped")]
     [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]

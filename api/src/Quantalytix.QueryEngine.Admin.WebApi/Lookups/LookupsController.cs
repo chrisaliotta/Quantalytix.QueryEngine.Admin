@@ -11,8 +11,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Lookups;
 [ApiController]
 [Route("api/tenants/{tenantId}/lookups")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class LookupsController(LookupService lookups) : ControllerBase
 {
     /// <summary>Lists the items of one picker, such as the versions of a dimension.</summary>
@@ -25,8 +23,6 @@ public sealed class LookupsController(LookupService lookups) : ControllerBase
     /// <returns>The picker's items.</returns>
     /// <response code="200">The picker's items, sorted by key unless the kind has a natural order (versions, levels, members).</response>
     /// <response code="400">The kind is not a <c>lookup_kind</c> value, a child kind has no <c>parentId</c>, or the purpose is unknown or given for another kind.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("{kind}")]
     [ProducesResponseType<IReadOnlyList<LookupItem>>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]

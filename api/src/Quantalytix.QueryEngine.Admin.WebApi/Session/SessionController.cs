@@ -9,13 +9,11 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Session;
 /// <summary>Describes the signed-in caller.</summary>
 [ApiController]
 [Route("api/me")]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
 public sealed class SessionController(CallerFactory callers) : ControllerBase
 {
     /// <summary>Read who the caller is.</summary>
     /// <returns>The caller's session.</returns>
     /// <response code="200">The caller as the API sees its bearer token.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
     [HttpGet(Name = "getSession")]
     [ProducesResponseType<SessionInfo>(StatusCodes.Status200OK)]
     public ActionResult<SessionInfo> Get()

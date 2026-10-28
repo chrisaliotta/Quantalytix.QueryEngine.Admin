@@ -14,16 +14,12 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.SystemTenants;
 [ApiController]
 [Route("api/system/tenants")]
 [Authorize(Policy = AdminPolicies.SystemAdmin)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, ProblemWriter.ContentType)]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, ProblemWriter.ContentType)]
 public sealed class SystemTenantsController(SystemTenantService tenants, TenantConnectionVerification verification) : ControllerBase
 {
     /// <summary>List every tenant in the directory.</summary>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The directory entries with masked connection strings.</returns>
     /// <response code="200">The directory entries, ordered by tenant id, with masked connection strings.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpGet(Name = "listSystemTenants")]
     [ProducesResponseType<IReadOnlyList<TenantDirectoryEntry>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TenantDirectoryEntry>>> List(CancellationToken cancellationToken)
@@ -36,8 +32,6 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The directory entry with a masked connection string.</returns>
     /// <response code="200">The directory entry with a masked connection string.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     /// <response code="404">The directory has no such tenant.</response>
     [HttpGet("{tenantId}", Name = "getSystemTenant")]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status200OK)]
@@ -53,8 +47,6 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <returns>The new directory entry.</returns>
     /// <response code="201">The tenant was registered; the body is its entry with a masked connection string.</response>
     /// <response code="400">A field breaks a rule; a <c>connectionString</c> error gives the reason verification failed.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpPost(Name = "createSystemTenant")]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status201Created)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
@@ -71,8 +63,6 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <returns>The updated directory entry.</returns>
     /// <response code="200">The updated entry with a masked connection string.</response>
     /// <response code="400">A field breaks a rule; a <c>connectionString</c> error gives the reason verification failed.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     /// <response code="404">The directory has no such tenant.</response>
     [HttpPut("{tenantId}", Name = "updateSystemTenant")]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status200OK)]
@@ -90,8 +80,6 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <returns>The updated directory entry.</returns>
     /// <response code="200">The updated entry with a masked connection string.</response>
     /// <response code="400">The body does not bind.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     /// <response code="404">The directory has no such tenant.</response>
     [HttpPut("{tenantId}/enabled", Name = "setSystemTenantEnabled")]
     [ProducesResponseType<TenantDirectoryEntry>(StatusCodes.Status200OK)]
@@ -108,8 +96,6 @@ public sealed class SystemTenantsController(SystemTenantService tenants, TenantC
     /// <returns>Whether the connection string is valid, and what was found or why it is rejected.</returns>
     /// <response code="200">The test ran; <c>isValid</c> and <c>message</c> give its outcome.</response>
     /// <response code="400">The tenant id or the connection string is missing or too long.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller lacks the SystemAdmin role.</response>
     [HttpPost("verify", Name = "verifySystemTenantConnection")]
     [ProducesResponseType<TenantConnectionCheck>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]

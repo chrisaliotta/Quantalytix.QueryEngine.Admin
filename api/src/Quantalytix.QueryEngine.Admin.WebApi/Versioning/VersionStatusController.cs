@@ -11,8 +11,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Versioning;
 [ApiController]
 [Route("api/tenants/{tenantId}/versions")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class VersionStatusController(VersionWorkflow workflow) : ControllerBase
 {
     /// <summary>
@@ -27,8 +25,6 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <returns>The version's new state; 409 when the lifecycle forbids the transition; 422 with the violations when rules reject it.</returns>
     /// <response code="200">The transition applied; the body is the version's new state.</response>
     /// <response code="400">The kind or the target status is not a known value.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The lifecycle does not allow moving from the current status to the target; the detail names both.</response>
     /// <response code="422">Publication or retirement rules rejected the transition and the status is unchanged; <c>violations</c> lists why.</response>
     [HttpPut("{kind}/{id:long}/status")]
@@ -65,8 +61,6 @@ public sealed class VersionStatusController(VersionWorkflow workflow) : Controll
     /// <returns>The violations the rules found.</returns>
     /// <response code="200">The check ran; <c>violations</c> lists what the rules found and is empty when the version passes.</response>
     /// <response code="400">The kind is not a known value.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("{kind}/{id:long}/validation")]
     [ProducesResponseType<VersionCheck>(StatusCodes.Status200OK)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, "application/problem+json")]

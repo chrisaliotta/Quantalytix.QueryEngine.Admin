@@ -23,7 +23,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/ModelListItem' }
-        '403': { $ref: './common.yaml#/components/responses/Forbidden' }
     post:
       operationId: createModel
       summary: Create a disabled, empty calculation model (command).

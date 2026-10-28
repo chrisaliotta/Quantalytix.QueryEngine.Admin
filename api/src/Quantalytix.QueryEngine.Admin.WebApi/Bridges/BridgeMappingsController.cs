@@ -14,8 +14,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 [ApiController]
 [Route("api/tenants/{tenantId}/bridge-versions/{versionId:long}/mappings")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgeMappingsController(BridgeMappingService mappings) : ControllerBase
 {
     /// <summary>Lists every mapping of a bridge version.</summary>
@@ -24,8 +22,6 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The mappings.</returns>
     /// <response code="200">The mappings by source member ID, then target member ID.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<BridgeMappingRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<BridgeMappingRecord>>> List(string tenantId, long versionId, CancellationToken cancellationToken)
@@ -41,8 +37,6 @@ public sealed class BridgeMappingsController(BridgeMappingService mappings) : Co
     /// <returns>The stored mappings.</returns>
     /// <response code="200">The stored mappings by source member ID, then target member ID.</response>
     /// <response code="400">A pair repeats, a weight is negative, or a value does not fit DECIMAL(38, 12); errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut]
     [RequireEditable(VersionKinds.BridgeVersion, "versionId")]

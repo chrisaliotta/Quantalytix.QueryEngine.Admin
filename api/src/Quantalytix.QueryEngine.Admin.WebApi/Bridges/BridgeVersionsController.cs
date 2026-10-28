@@ -14,8 +14,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Bridges;
 [ApiController]
 [Route("api/tenants/{tenantId}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class BridgeVersionsController(BridgeVersionService versions) : ControllerBase
 {
     /// <summary>Lists a bridge's versions with their allocation semantics and status.</summary>
@@ -24,8 +22,6 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The versions by version number.</returns>
     /// <response code="200">The versions by version number.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("bridges/{bridgeId:long}/versions")]
     [ProducesResponseType<IReadOnlyList<BridgeVersionRecord>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<BridgeVersionRecord>>> List(string tenantId, long bridgeId, CancellationToken cancellationToken)
@@ -43,8 +39,6 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <returns>The created draft.</returns>
     /// <response code="200">The created draft.</response>
     /// <response code="400">The input breaks a field rule, such as an unknown allocation mode; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpPost("bridges/{bridgeId:long}/versions")]
     [RequireAnalytical(AnalyticalTarget.Bridge, "bridgeId")]
     [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
@@ -64,8 +58,6 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The version.</returns>
     /// <response code="200">The version.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet("bridge-versions/{versionId:long}")]
     [ProducesResponseType<BridgeVersionRecord>(StatusCodes.Status200OK)]
     public async Task<ActionResult<BridgeVersionRecord>> Get(string tenantId, long versionId, CancellationToken cancellationToken)
@@ -81,8 +73,6 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <returns>The stored version.</returns>
     /// <response code="200">The stored version.</response>
     /// <response code="400">The input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">The version is neither a draft nor published.</response>
     [HttpPut("bridge-versions/{versionId:long}")]
     [RequireEditable(VersionKinds.BridgeVersion, "versionId")]
@@ -104,8 +94,6 @@ public sealed class BridgeVersionsController(BridgeVersionService versions) : Co
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content; 409 when the version is not a draft.</returns>
     /// <response code="204">The version and its mappings are deleted.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: the version is not a draft.</response>
     [HttpDelete("bridge-versions/{versionId:long}")]
     [RequireDraft(VersionKinds.BridgeVersion, "versionId")]

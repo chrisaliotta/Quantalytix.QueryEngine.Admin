@@ -11,8 +11,6 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
 [ApiController]
 [Route("api/tenants/{tenantId}/reports/{reportId:long}/profiles")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
-[ProducesResponseType<Problem>(StatusCodes.Status401Unauthorized, "application/problem+json")]
-[ProducesResponseType<Problem>(StatusCodes.Status403Forbidden, "application/problem+json")]
 public sealed class SourceProfilesController(IReportContent<SourceProfile, SourceProfileInput> profiles, ReportChanges changes) : ControllerBase
 {
     /// <summary>Lists a report's source profiles.</summary>
@@ -21,8 +19,6 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The source profiles by key.</returns>
     /// <response code="200">The profiles by key, ignoring case, each with its picks by variable.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<SourceProfile>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<SourceProfile>>> List(string tenantId, long reportId, CancellationToken cancellationToken)
@@ -38,8 +34,6 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     /// <returns>The created profile.</returns>
     /// <response code="200">The created profile.</response>
     /// <response code="400">The input breaks a field rule, such as a pick of a source that does not supply the variable; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the profile would break its rules, such as an enabled profile missing a pick; nothing was written.</response>
     [HttpPost]
     [AdvancesReportRevision("reportId")]
@@ -62,8 +56,6 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     /// <returns>The stored profile.</returns>
     /// <response code="200">The stored profile.</response>
     /// <response code="400">The profile is not the report's, or the input breaks a field rule; errors are keyed by camelCase JSON path.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="422">The report is enabled and the profile would break its rules; nothing was written.</response>
     [HttpPut("{itemId:long}")]
     [AdvancesReportRevision("reportId")]
@@ -90,8 +82,6 @@ public sealed class SourceProfilesController(IReportContent<SourceProfile, Sourc
     /// <returns>No content; 409 when nothing was deleted.</returns>
     /// <response code="204">The profile is deleted.</response>
     /// <response code="400">The profile is not the report's; the error is keyed <c>itemId</c>.</response>
-    /// <response code="401">The request has no valid bearer token.</response>
-    /// <response code="403">The caller's token names another tenant and lacks the SystemAdmin role.</response>
     /// <response code="409">Nothing was deleted: the profile is its report's default.</response>
     /// <response code="422">The report is enabled and losing the profile would break its rules; nothing was deleted.</response>
     [HttpDelete("{itemId:long}")]
