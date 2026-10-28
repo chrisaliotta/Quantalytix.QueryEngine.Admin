@@ -1,31 +1,33 @@
 #!/usr/bin/env bash
-# End-to-end acceptance of Query Engine Admin: a dataset authored through the admin API reaches the query engine.
+# End-to-end acceptance of Query Engine Admin (contract-v1.2): a dataset authored through the admin API reaches the query engine.
 #
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
-#     Authors dataset ${PREFIX}loans on loan_daily (5 fields, 2 grains, a mapped binding of the seed branch role through the
-#     seed mapping set loan.branch, a time binding on the seed Calendar dimension, 4 measures) and publishes its v1. It authors
-#     calculation model ${PREFIX}margin in US dollars (2 variables and a yield formula, live as written) and builds report
-#     ${PREFIX}margin over it through the report editor: its own report dimension starts as a copy of the seed
-#     MarginStatement dimension, 2 GL monthly bridge sources on the seed account role map accounts to rows as the seed
-#     report's gl_monthly source does and make the default profile, a branch calculation dimension reads the seed branch
-#     role, which each GL dataset binds, and 3 columns, a header row and a formula row follow; then it enables the report. It
-#     captures assumption set ${PREFIX}backtest, which keeps the release active at that moment. Then it creates release
-#     ${PREFIX}acceptance as a copy of the active release plus the dataset version, validates, publishes and activates it,
-#     renames the report's yield column live, checks GetCatalog, Execute, GetReportCatalog (which must show the renamed column)
-#     and ExecuteReport on the engine, checks that GetCatalog naming ${PREFIX}backtest still reads the release it captured, and
+#     Creates dataset ${PREFIX}loans over loan_daily (draft version 1 gets a field per readable column) and commits one change set
+#     on the draft: 2 grains, a mapped binding of the seed branch role through the seed mapping set loan.branch, a time binding on
+#     the seed Calendar dimension, 4 measures and the default time binding; then validates and publishes it. It creates calculation
+#     model ${PREFIX}margin in US dollars and commits its 2 variables, a yield measure and enabling it. It creates report
+#     ${PREFIX}margin over the model, its report dimension a copy of the seed MarginStatement dimension, and commits one change set:
+#     2 GL monthly bridge sources on the seed account role (gl_balance takes the seed report's gl_monthly rules row by row,
+#     gl_income copies gl_balance's rules), their variables, profile default picking both, a branch calculation dimension, 3
+#     columns, ASSETS as a header and a formula row; then it enables the report. It captures assumption set ${PREFIX}backtest,
+#     which keeps the release active at that moment. Then it creates release ${PREFIX}acceptance as a copy of the active release,
+#     commits its manifest plus the dataset version, validates, publishes and activates it, renames the report's yield column
+#     through a report change set, checks GetCatalog, Execute, GetReportCatalog (which must show the renamed column) and
+#     ExecuteReport on the engine, checks that GetCatalog naming ${PREFIX}backtest still reads the release it captured, and
 #     re-activates the release that was active before.
 #   PREFIX=zz_live_ DATASET_KEY=zz_bm_loans MEASURES="zzBmBalance zzBmRate zzBmBalanceRate zzBmEndingBalance" ./qe-acceptance.sh
 #     Releases an existing dataset's latest published version instead of authoring one.
 #   PREFIX=zz_w2_ AUTHOR_CHECK_ONLY=1 ./qe-acceptance.sh
-#     Authors and validates ${PREFIX}loans, then deletes it: the authoring path without leaving objects.
+#     Authors and validates ${PREFIX}loans, reopens it to draft, then deletes it: the authoring path without leaving objects.
 #
-# Run it outside the shell sandbox: it calls localhost and StarRocks. It needs curl, python3 and the .NET 10 SDK, and the
-# admin API running in Development at $ADMIN. When $ENGINE does not answer, it starts the engine host from its built DLL
-# under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant $TENANT, development by
-# default, and never prints the control-plane connection string. While it runs, its release is the tenant's active
-# release, so don't run the engine's golden cases at the same time.
+# Ids are strings in every request and response. Run it outside the shell sandbox: it calls localhost and StarRocks. It needs
+# curl, python3 and the .NET 10 SDK, and the admin API running in Development at $ADMIN. When $ENGINE does not answer, it starts
+# the engine host from its built DLL under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant
+# $TENANT, development by default, and never prints the control-plane connection string. While it runs, its release is the
+# tenant's active release, so don't run the engine's golden cases at the same time.
 # It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (enabled) with the report's
-# dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is reloaded. Their keys stay taken, so every run needs a new PREFIX.
+# dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is reloaded. Their keys
+# stay taken, so every run needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
@@ -61,156 +63,171 @@ call() {
 # py EXPR: prints a Python expression over the last response, r.
 py() { python3 -c "import json; r = json.load(open('$W/last.json')); print($1)"; }
 
-# json EXPR: prints a Python expression as JSON, for bodies that nest JSON text.
-json() { python3 -c "import json; print(json.dumps($1))"; }
+# keep NAME: keeps the last response as $W/NAME.json, for scripts that read several responses.
+keep() { cp "$W/last.json" "$W/$1.json"; }
 
-# measure KEY KIND OVERRIDES_JSON: a measure body with the defaults of a decimal(20, 2) output.
-measure() {
-  python3 -c '
-import json, sys
-key, kind, overrides = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
-body = {"measureKey": key, "displayName": key, "measureKind": kind, "aggregationFunction": None, "expressionText": None,
-        "rowFilterExpression": None, "valueNullBehavior": "exclude", "negativeWeightBehavior": "allow", "emptySetBehavior": "null",
-        "bridgeFactorBehavior": "ignore", "bridgeAllocationBehavior": "apply", "totalBehavior": "recompute",
-        "outputDataType": "decimal", "outputPrecision": 20, "outputScale": 2, "accumulatorPrecision": 38, "accumulatorScale": 12,
-        "roundingMode": None, "unitKey": None, "implementationKey": None, "implementationVersion": None,
-        "configurationJson": None, "isEnabled": True, "components": [], "timePolicy": None}
-body.update(overrides)
-print(json.dumps(body))' "$@"
+# changes PATH BODY_SCRIPT [ARGS...]: commits the change set a Python script prints; the script reads $W/*.json as it needs.
+changes() {
+  local path=$1 script=$2
+  shift 2
+  call POST "$path/changes" 200 "$(python3 -c "$script" "$W" "$@")"
 }
+
+# The seed objects every mode names, by key: datasets, dimensions, roles, mapping sets, reports and releases.
+read_catalog() {
+  call GET /catalog 200
+  keep catalog
+}
+
+# cat_id LIST KEY: the id of the catalog item of a list with a key.
+cat_id() { python3 -c "import json; print([x['id'] for x in json.load(open('$W/catalog.json'))['$1'] if x['key'] == '$2'][0])"; }
 
 author_dataset() {
   DATASET_KEY=${PREFIX}loans
-  call POST /datasets 200 "{\"datasetKey\":\"$DATASET_KEY\",\"displayName\":\"$DATASET_KEY acceptance\",\"isEnabled\":true,\"sourceObjectKind\":\"table\",\"sourceObject\":\"loan_daily\"}"
-  DATASET=$(py "r['datasetId']")
-  call GET "/datasets/$DATASET/versions" 200
-  VERSION=$(py "r[0]['datasetVersionId']")
+  call POST /datasets 201 "{\"mode\":\"existing\",\"key\":\"$DATASET_KEY\",\"displayName\":\"$DATASET_KEY acceptance\",\"sourceObjectKind\":\"table\",\"sourceObject\":\"loan_daily\"}"
+  DATASET=$(py "r['id']")
+  VERSION=$(py "r['versions'][0]['id']")
   local V=/dataset-versions/$VERSION
+  call GET "$V" 200
+  keep version
 
-  call POST "$V/fields/from-columns" 200 '{"columns":["loan_id","as_of_date","branch_code","interest_rate","ending_balance"]}'
-  local fields
-  fields=$(py "' '.join(str(f['fieldId']) for k in ['loanId', 'asOfDate', 'branchCode', 'interestRate', 'endingBalance'] for f in r if f['fieldKey'] == k)")
-  read -r F_LOAN F_DATE F_BRANCH F_RATE F_BALANCE <<< "$fields"
-  call POST "$V/grains" 200 "{\"grainKey\":\"loanSeries\",\"grainKind\":\"series\",\"fieldIds\":[$F_LOAN]}"
-  local series
-  series=$(py "r['datasetGrainId']")
-  call POST "$V/grains" 200 "{\"grainKey\":\"rowIdentity\",\"grainKind\":\"row\",\"fieldIds\":[$F_LOAN,$F_DATE]}"
+  # Seed objects are only referenced: the Calendar time dimension, the loan.branch mapping set onto Branch, and Branch's branch
+  # role. Items the change set creates are named by temporary ids, which later operations of the same change set reference.
+  changes "$V" '
+import json, sys
+w, calendar, mapset, branch_role = sys.argv[1:5]
+version = json.load(open(f"{w}/version.json"))
+field = {f["key"]: f["id"] for f in version["fields"]}
+common = {"raggedBehavior": "null", "defaultPeriodAlignment": "observation", "unmappedBehavior": "null", "unknownMemberKey": None,
+          "isGroupable": True, "isFilterable": True, "isEnabled": True, "bridgeId": None, "sourceDimensionBindingId": None}
+def measure(key, kind, **overrides):
+    body = {"key": key, "displayName": key, "isEnabled": True, "measureKind": kind, "aggregationFunction": None, "expressionText": None,
+            "implementationKey": None, "implementationVersion": None, "configurationJson": None, "components": [],
+            "rowFilterExpression": None, "valueNullBehavior": "exclude", "negativeWeightBehavior": "allow", "emptySetBehavior": "null",
+            "bridgeFactorBehavior": "ignore", "bridgeAllocationBehavior": "apply", "totalBehavior": "recompute",
+            "outputDataType": "decimal", "outputPrecision": 20, "outputScale": 2, "roundingMode": None, "unitKey": None,
+            "accumulatorPrecision": 38, "accumulatorScale": 12, "timePolicy": None}
+    body.update(overrides)
+    return {"op": "saveMeasure", "input": body}
+operations = [
+    {"op": "saveGrain", "input": {"id": "tmp:series", "key": "loanSeries", "grainKind": "series", "fieldIds": [field["loanId"]]}},
+    {"op": "saveGrain", "input": {"key": "rowIdentity", "grainKind": "row", "fieldIds": [field["loanId"], field["asOfDate"]]}},
+    {"op": "saveBinding", "input": dict(common, bindingKind="mapped", dimensionRoleId=branch_role, dimensionId=None, sourceFieldId=field["branchCode"],
+                                        mappingSetId=mapset, isRequired=False, time=None)},
+    {"op": "saveBinding", "input": dict(common, id="tmp:time", bindingKind="time", dimensionRoleId=None, dimensionId=calendar, sourceFieldId=field["asOfDate"],
+                                        mappingSetId=None, isRequired=True, time={
+        "timeValueType": "date", "sourceTimeZone": None, "defaultQueryTimeZone": "UTC", "observationKind": "snapshot", "nativePeriodicity": "day",
+        "intervalEndFieldId": None, "allowedPeriodicities": ["day", "month", "quarter", "year"], "cumulativeOrigin": "output_range_start",
+        "cumulativeFixedStart": None})},
+    measure("balance", "aggregate", aggregationFunction="sum", components=[{"role": "value", "fieldId": field["endingBalance"]}]),
+    measure("avgRate", "weighted_average", outputPrecision=9, outputScale=6,
+            components=[{"role": "value", "fieldId": field["interestRate"]}, {"role": "weight", "fieldId": field["endingBalance"]}]),
+    measure("balanceRate", "formula", outputPrecision=28, outputScale=6, expressionText="[m.balance] * [m.avgRate]"),
+    measure("endingBalance", "aggregate", aggregationFunction="sum", components=[{"role": "value", "fieldId": field["endingBalance"]}], timePolicy={
+        "requiredTimeBindingId": "tmp:time", "selectionDatasetGrainId": "tmp:series", "observationSelection": "at_end", "valueTimeRole": "point",
+        "boundaryMatch": "on_or_before", "maxLookbackSeconds": 86400, "durationUnit": "calendar_day", "partialIntervalBehavior": "exact_only",
+        "missingPeriodBehavior": "null"}),
+    {"op": "saveSettings", "settings": dict(version["settings"], defaultTimeBindingId="tmp:time")},
+]
+print(json.dumps({"operations": operations}))' "$(cat_id dimensions Calendar)" "$(cat_id mappingSets loan.branch)" "$(cat_id roles branch)"
+  echo "Dataset content: $(py "[(k, len(r['state'][k])) for k in ['fields', 'grains', 'bindings', 'measures']]")"
 
-  # Seed objects are only referenced: the Calendar time dimension, the loan.branch mapping set onto Branch, and Branch's
-  # branch role, which requests then name the binding by.
-  call GET /lookups/dimensions 200
-  local calendar
-  calendar=$(py "[d['id'] for d in r if d['key'] == 'Calendar'][0]")
-  call GET /lookups/mapping-sets 200
-  local mapset branch
-  mapset=$(py "[s['id'] for s in r if s['key'] == 'loan.branch'][0]")
-  branch=$(py "[s['parentId'] for s in r if s['key'] == 'loan.branch'][0]")
-  call GET "/lookups/dimension-roles?parentId=$branch" 200
-  local branch_role
-  branch_role=$(py "[d['id'] for d in r if d['key'] == 'branch'][0]")
-  local common='"raggedBehavior":"null","defaultPeriodAlignment":"observation","unmappedBehavior":"null","isGroupable":true,"isFilterable":true,"isEnabled":true'
-  call POST "$V/bindings" 200 "{\"dimensionRoleId\":$branch_role,\"bindingKind\":\"mapped\",\"sourceFieldId\":$F_BRANCH,\"mappingSetId\":$mapset,\"isRequired\":false,$common}"
-  call POST "$V/bindings" 200 "{\"dimensionId\":$calendar,\"bindingKind\":\"time\",\"sourceFieldId\":$F_DATE,\"isRequired\":true,$common,\"timeBinding\":{\"timeValueType\":\"date\",\"observationKind\":\"snapshot\",\"sourceTimeZone\":null,\"nativePeriodicity\":\"day\",\"intervalEndFieldId\":null,\"allowedPeriodicities\":[\"day\",\"month\",\"quarter\",\"year\"],\"defaultQueryTimeZone\":\"UTC\",\"cumulativeOrigin\":\"output_range_start\",\"cumulativeFixedStart\":null}}"
-  local time_binding
-  time_binding=$(py "r['binding']['dimensionBindingId']")
-
-  call POST "$V/measures" 200 "$(measure balance aggregate "{\"aggregationFunction\":\"sum\",\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_BALANCE}]}")"
-  call POST "$V/measures" 200 "$(measure avgRate weighted_average "{\"outputPrecision\":9,\"outputScale\":6,\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_RATE},{\"componentRole\":\"weight\",\"fieldId\":$F_BALANCE}]}")"
-  call POST "$V/measures" 200 "$(measure balanceRate formula '{"outputPrecision":28,"outputScale":6,"expressionText":"[m.balance] * [m.avgRate]"}')"
-  call POST "$V/measures" 200 "$(measure endingBalance aggregate "{\"aggregationFunction\":\"sum\",\"components\":[{\"componentRole\":\"value\",\"fieldId\":$F_BALANCE}],\"timePolicy\":{\"requiredTimeBindingId\":$time_binding,\"selectionDatasetGrainId\":$series,\"observationSelection\":\"at_end\",\"valueTimeRole\":\"point\",\"boundaryMatch\":\"on_or_before\",\"maxLookbackSeconds\":86400,\"durationUnit\":\"calendar_day\",\"partialIntervalBehavior\":\"exact_only\",\"missingPeriodBehavior\":\"null\"}}")"
-  call PUT "$V" 200 "{\"sourceObjectKind\":\"table\",\"sourceObject\":\"loan_daily\",\"supportsAggregate\":true,\"supportsDetail\":true,\"defaultTimeBindingId\":$time_binding,\"expressionLanguageVersion\":\"1.0\",\"securityPolicyKey\":null,\"properties\":null}"
-
-  call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"validated"}'
+  call POST "$V/validate" 200
   if [ "${AUTHOR_CHECK_ONLY:-}" = 1 ]; then
-    call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"draft"}'
+    call POST "$V/reopen" 200
     call DELETE "/datasets/$DATASET" 204
-    echo "PASS (authoring only): $DATASET_KEY validated, then deleted."
+    echo "PASS (authoring only): $DATASET_KEY validated, reopened, then deleted."
     rm -rf "$W"
     exit 0
   fi
-  call PUT "/versions/dataset_version/$VERSION/status" 200 '{"status":"published"}'
+  call POST "$V/publish" 200
 }
 
-# Authors model ${PREFIX}margin, which holds the metrics and has no versions to publish, and builds report ${PREFIX}margin over
-# it through the report editor. The report creates its own report dimension as a copy of the seed MarginStatement dimension, whose members
-# are its rows. Two sources bridge from the seed account role, which each GL dataset binds: gl_balance maps the GL accounts to
-# rows as the seed report's gl_monthly source does, and gl_income starts as a copy of gl_balance's mappings. Binding their
-# variables makes profile default, which picks both. The branch calculation dimension on the seed branch role, the columns and
-# the rows, with ASSETS as a header and a formula row, follow, and enabling the report checks it against every report rule.
-# Sources name keys and roles only: the active release decides which dataset versions they resolve in, and the active
-# assumption set which dimension and bridge versions.
+# Creates model ${PREFIX}margin, which holds the metrics and has no versions to publish, and builds report ${PREFIX}margin over it
+# in one report change set. The report's own report dimension starts as a copy of the seed MarginStatement dimension, whose
+# members are its rows. Two sources bridge from the seed account role, which each GL dataset binds: gl_balance takes the rules of
+# the seed report's gl_monthly source row by row, and gl_income starts as a copy of gl_balance's rules. Profile default picks both
+# for the variables they supply. The branch calculation dimension on the seed branch role, the columns, ASSETS as a header and a
+# formula row follow, and enabling the report checks it against every report rule.
+# Sources name keys and roles only: the active release decides which dataset versions they resolve in, and the active assumption
+# set which dimension and bridge versions.
 author_report() {
   REPORT_KEY=${PREFIX}margin
-  call GET /lookups/datasets 200
-  local balances income
-  balances=$(py "[d['id'] for d in r if d['key'] == 'bank.balance_monthly'][0]")
-  income=$(py "[d['id'] for d in r if d['key'] == 'bank.income_monthly'][0]")
-  call GET /lookups/dimensions 200
-  local statement
-  statement=$(py "[d['id'] for d in r if d['key'] == 'MarginStatement'][0]")
-  call GET /lookups/dimension-roles 200
-  local account_role branch_role
-  account_role=$(py "[d['id'] for d in r if d['key'] == 'account'][0]")
-  branch_role=$(py "[d['id'] for d in r if d['key'] == 'branch'][0]")
-  call GET /reports 200
-  local seed
-  seed=$(py "[x['reportId'] for x in r if x['reportKey'] == 'bank.margin_statement'][0]")
-  call GET "/reports/$seed/editor" 200
-  # One rule list per row the seed report's gl_monthly source maps accounts or account folders to; the copied rows keep the
-  # seed's keys.
-  python3 - "$W/last.json" > "$W/items.jsonl" <<'EOF'
-import json, sys
-view = json.load(open(sys.argv[1]))
-source = [s['source']['reportSourceId'] for s in view['sources'] if s['source']['sourceKey'] == 'gl_monthly'][0]
-for row in view['rows']:
-    items = [{'itemKey': item['itemKey'], 'selection': item['selection'], 'factor': item['factor']} for item in row['items'] if item['reportSourceId'] == source]
-    if items:
-        print(json.dumps({'rowKey': row['key'], 'items': items}))
-EOF
+  call POST /calculation-models 201 "{\"key\":\"$REPORT_KEY\",\"displayName\":\"$REPORT_KEY acceptance\",\"currencyCode\":\"USD\",\"formulaLanguage\":\"1.0\",\"attributionMethod\":\"shapley\"}"
+  MODEL=$(py "r['id']")
+  changes "/calculation-models/$MODEL" '
+import json
+variable = lambda key, name: {"op": "saveVariable", "input": {"key": key, "displayName": name, "displayFormat": "currency", "unitKey": None, "missingBehavior": "null"}}
+print(json.dumps({"operations": [
+    variable("AVERAGE_BALANCE", "Average balance"),
+    variable("INTEREST_INCOME", "Interest income"),
+    {"op": "saveMeasure", "input": {"key": "YIELD", "displayName": "Yield", "formula": "[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays",
+                                    "outputDataType": "decimal", "outputPrecision": 28, "outputScale": 6, "roundingMode": None, "unitKey": None,
+                                    "displayFormat": "percent"}},
+    {"op": "updateModel", "patch": {"isEnabled": True}}]}))'
 
-  call POST /calculation-models 200 "$(json "{'modelKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'currencyCode': 'USD', 'isEnabled': True, 'formulaLanguageVersion': '1.0', 'attributionMethod': 'shapley'}")"
-  MODEL=$(py "r['calculationModelId']")
-  local M=/calculation-models/$MODEL
-  call POST "$M/variables" 200 "$(json "{'variableKey': 'AVERAGE_BALANCE', 'displayName': 'Average balance', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
-  call POST "$M/variables" 200 "$(json "{'variableKey': 'INTEREST_INCOME', 'displayName': 'Interest income', 'missingBehavior': 'null', 'displayFormat': 'currency', 'unitKey': None}")"
-  call POST "$M/calculated-measures" 200 "$(json "{'measureKey': 'YIELD', 'displayName': 'Yield', 'expressionText': '[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] * @yearDays / @periodDays', 'outputDataType': 'decimal', 'outputPrecision': 28, 'outputScale': 6, 'roundingMode': None, 'unitKey': None, 'displayFormat': 'percent'}")"
-
-  call POST /reports 200 "$(json "{'reportKey': '$REPORT_KEY', 'displayName': '$REPORT_KEY acceptance', 'reportType': 'margin_analysis', 'calculationModelId': $MODEL, 'startFromDimensionId': $statement, 'payloadJson': None}")"
-  REPORT=$(py "r['reportId']")
+  call GET "/reports/$(cat_id reports bank.margin_statement)" 200
+  keep seed
+  call POST /reports 201 "{\"key\":\"$REPORT_KEY\",\"displayName\":\"$REPORT_KEY acceptance\",\"reportType\":\"margin_analysis\",\"modelId\":\"$MODEL\",\"startFromDimensionId\":\"$(cat_id dimensions MarginStatement)\"}"
+  REPORT=$(py "r['id']")
   local R=/reports/$REPORT
-  local gl="'mappingMethod': 'bridge', 'dimensionRoleId': $account_role, 'fieldKey': None, 'timeFieldKey': 'reportingPeriod'"
-  call POST "$R/sources" 200 "$(json "{'sourceKey': 'gl_balance', 'displayName': 'GL monthly balances', 'datasetId': $balances, $gl, 'copyFromSourceId': None}")"
-  local balance_source
-  balance_source=$(py "[s['source']['reportSourceId'] for s in r['sources'] if s['source']['sourceKey'] == 'gl_balance'][0]")
-  while read -r items; do call PUT "$R/sources/$balance_source/items" 200 "$items"; done < "$W/items.jsonl"
-  call POST "$R/sources" 200 "$(json "{'sourceKey': 'gl_income', 'displayName': 'GL interest income', 'datasetId': $income, $gl, 'copyFromSourceId': $balance_source}")"
-  local income_source
-  income_source=$(py "[s['source']['reportSourceId'] for s in r['sources'] if s['source']['sourceKey'] == 'gl_income'][0]")
-  echo "Sources and their mapped items: $(py "[(s['source']['sourceKey'], sum(1 for row in r['rows'] for item in row['items'] if item['reportSourceId'] == s['source']['reportSourceId'])) for s in r['sources']]")"
-  call PUT "$R/sources/$balance_source/variables" 200 "$(json "{'variables': [{'variableKey': 'AVERAGE_BALANCE', 'measureKey': 'periodAverage', 'sourceFilterJson': None}]}")"
-  call PUT "$R/sources/$income_source/variables" 200 "$(json "{'variables': [{'variableKey': 'INTEREST_INCOME', 'measureKey': 'totalValue', 'sourceFilterJson': json.dumps({'operator': 'eq', 'left': {'type': 'field', 'id': 'accountKey'}, 'right': {'type': 'literal', 'value': '4000'}})}]}")"
-  call GET "$R/profiles" 200
-  echo "Profile default picks $(py "sorted(p['variableKey'] for x in r if x['profile']['profileKey'] == 'default' for p in x['picks'])") (expected AVERAGE_BALANCE and INTEREST_INCOME)"
-  call POST "$R/calculation-dimensions" 200 "$(json "{'dimensionKey': 'branch', 'displayName': 'Branch', 'dimensionRoleId': $branch_role, 'groupingMode': 'member', 'groupingLevelKey': None, 'groupingAncestorMemberKey': None, 'groupingDepth': None, 'isGroupable': True, 'isFilterable': True, 'isEnabled': True}")"
-  call PUT "$R/columns" 200 "$(json "{'columns': [{'reportColumnId': None, 'columnKey': key, 'displayName': None, 'valueKind': kind, 'metricKey': metric, 'displayFormat': None, 'isVisible': True, 'payloadJson': None} for key, kind, metric in [('avgBalance', 'variable', 'AVERAGE_BALANCE'), ('interestIncome', 'variable', 'INTEREST_INCOME'), ('yield', 'calculated', 'YIELD')]]}")"
-  # The rows go back as a whole tree: ASSETS becomes a header, and formula row reportYield is added at the top.
-  call GET "$R/editor" 200
-  call PUT "$R/rows" 200 "$(py "json.dumps({'rows': [dict({k: row[k] for k in ['key', 'label', 'kind', 'parentKey', 'sortOrder', 'isVisible', 'calculatedMeasureKey', 'valueColumnKey']}, showsValues=row['showsValues'] and row['key'] != 'ASSETS') for row in r['rows']] + [{'key': 'reportYield', 'label': 'Report yield', 'kind': 'formula', 'parentKey': None, 'sortOrder': 99, 'isVisible': True, 'showsValues': True, 'calculatedMeasureKey': 'YIELD', 'valueColumnKey': 'yield'}]})")"
-  call PUT "$R/status" 200 '{"isEnabled":true}'
+  call GET "$R" 200
+  keep document
+  changes "$R" '
+import json, sys
+w, balances, income, account_role, branch_role = sys.argv[1:6]
+seed = json.load(open(f"{w}/seed.json"))
+report = json.load(open(f"{w}/document.json"))
+gl_monthly = [s for s in seed["sources"] if s["key"] == "gl_monthly"][0]
+source = lambda key, name, dataset: {"key": key, "displayName": name, "datasetId": dataset, "timeFieldKey": "reportingPeriod",
+                                     "method": "bridge", "roleId": account_role, "fieldKey": None}
+variables = lambda key, variable, measure, filter: {"op": "setSourceVariables", "sourceKey": key,
+                                                    "variables": [{"variableKey": variable, "measureKey": measure, "filter": filter, "missingBehavior": None}]}
+assets = [row for row in report["rows"] if row["key"] == "ASSETS"][0]
+siblings = lambda parent: [row["key"] for row in report["rows"] if row["parentKey"] == parent]
+column = lambda key, kind, metric: {"key": key, "displayName": None, "valueKind": kind, "metricKey": metric, "displayFormat": None, "isVisible": True}
+operations = [
+    {"op": "saveSource", "input": source("gl_balance", "GL monthly balances", balances)},
+    *[{"op": "setRowRules", "sourceKey": "gl_balance", "rowKey": row, "rules": rules} for row, rules in gl_monthly["rules"].items()],
+    {"op": "saveSource", "input": source("gl_income", "GL interest income", income), "copyFromSourceKey": "gl_balance"},
+    variables("gl_balance", "AVERAGE_BALANCE", "periodAverage", None),
+    variables("gl_income", "INTEREST_INCOME", "totalValue",
+              {"operator": "eq", "left": {"type": "field", "id": "accountKey"}, "right": {"type": "literal", "value": "4000"}}),
+    {"op": "saveProfile", "profile": {"key": "default", "displayName": "Default", "isEnabled": True,
+                                      "picks": {"AVERAGE_BALANCE": "gl_balance", "INTEREST_INCOME": "gl_income"}}},
+    {"op": "updateSettings", "patch": {"defaultProfileKey": "default"}},
+    {"op": "saveCalculationDimension", "input": {"key": "branch", "displayName": "Branch", "roleId": branch_role, "grouping": {"mode": "member"},
+                                                 "isGroupable": True, "isFilterable": True, "isEnabled": True}},
+    {"op": "setColumns", "columns": [column("avgBalance", "variable", "AVERAGE_BALANCE"), column("interestIncome", "variable", "INTEREST_INCOME"),
+                                     column("yield", "calculated", "YIELD")]},
+    {"op": "saveRow", "row": dict(assets, showsValues=False), "index": siblings(assets["parentKey"]).index("ASSETS")},
+    {"op": "saveRow", "index": len(siblings(None)), "row": {"key": "reportYield", "label": "Report yield", "kind": "formula", "parentKey": None,
+                                                            "isVisible": True, "showsValues": True, "calculatedMeasureKey": "YIELD",
+                                                            "valueColumnKey": "yield", "styleKey": None, "parameters": {}}},
+]
+print(json.dumps({"operations": operations}))' "$(cat_id datasets bank.balance_monthly)" "$(cat_id datasets bank.income_monthly)" "$(cat_id roles account)" "$(cat_id roles branch)"
+  echo "Sources and their rule rows: $(py "[(s['key'], len(s['rules'])) for s in r['state']['sources']]")"
+  echo "Profile default picks $(py "[sorted(p['picks']) for p in r['state']['profiles'] if p['key'] == 'default'][0]") (expected AVERAGE_BALANCE and INTEREST_INCOME)"
+  call PUT "$R/enabled" 200 '{"isEnabled":true}'
 }
 
-# Renames the enabled report's yield column: a live edit, which advances the semantic revision so the engine reloads it.
+# Renames the enabled report's yield column through a report change set: a live edit, which advances the semantic revision so the
+# engine reloads the report.
 rename_yield_column() {
   local R=/reports/$REPORT
-  call GET "$R/columns" 200
-  call PUT "$R/columns" 200 "$(py "json.dumps({'columns': [{'reportColumnId': c['reportColumnId'], 'columnKey': c['columnKey'], 'displayName': '$LIVE_COLUMN_NAME' if c['columnKey'] == 'yield' else c['displayName'], 'valueKind': c['valueKind'], 'metricKey': c['metricKey'], 'displayFormat': c['displayFormat'], 'isVisible': c['isVisible'], 'payloadJson': c['payloadJson']} for c in r]})")"
+  call GET "$R" 200
+  keep document
+  changes "$R" '
+import json, sys
+report = json.load(open(f"{sys.argv[1]}/document.json"))
+columns = [dict(c, displayName=sys.argv[2]) if c["key"] == "yield" else c for c in report["columns"]]
+print(json.dumps({"operations": [{"op": "setColumns", "columns": columns}]}))' "$LIVE_COLUMN_NAME"
 }
 
 find_published_version() {
-  call GET /lookups/datasets 200
-  DATASET=$(py "[d['id'] for d in r if d['key'] == '$DATASET_KEY'][0]")
-  call GET "/datasets/$DATASET/versions" 200
-  VERSION=$(py "max((v for v in r if v['status'] == 'published'), key=lambda v: v['versionNumber'])['datasetVersionId']")
+  DATASET=$(cat_id datasets "$DATASET_KEY")
+  call GET "/datasets/$DATASET" 200
+  VERSION=$(py "max((v for v in r['versions'] if v['status'] == 'published'), key=lambda v: v['versionNumber'])['id']")
 }
 
 start_engine() {
@@ -232,33 +249,38 @@ restore() {
   if [ -n "$ORIGINAL" ]; then
     call POST "/releases/$ORIGINAL/activate" 200
     call GET /overview 200
-    echo "Active release: $(py "r['activeRelease']['releaseKey']") (expected $ORIGINAL_KEY)"
+    echo "Active release: $(py "r['activeReleaseId']") (expected $ORIGINAL, $ORIGINAL_KEY)"
   fi
   if [ -f "$W/engine.pid" ]; then kill "$(cat "$W/engine.pid")"; fi
   if [ "$PASSED" = 1 ]; then rm -rf "$W"; else echo "Kept $W for inspection."; fi
 }
 
+read_catalog
 if [ -n "${DATASET_KEY:-}" ]; then find_published_version; else author_dataset; fi
 echo "Dataset $DATASET_KEY: version $VERSION"
 author_report
 echo "Report $REPORT_KEY: enabled, over model $MODEL"
 
-call GET /overview 200
-ORIGINAL_ID=$(py "r['activeRelease']['semanticReleaseId']")
-ORIGINAL_KEY=$(py "r['activeRelease']['releaseKey']")
-call POST /assumption-sets 201 "{\"assumptionSetKey\":\"${PREFIX}backtest\",\"displayName\":\"${PREFIX}backtest\"}"
-echo "Captured ${PREFIX}backtest on release $(py "r['semanticReleaseId']") (expected $ORIGINAL_ID)"
-call POST /releases 201 "{\"releaseKey\":\"${PREFIX}acceptance\",\"copyFromSemanticReleaseId\":$ORIGINAL_ID}"
-RELEASE=$(py "r['semanticReleaseId']")
-call GET "/releases/$RELEASE/datasets" 200
-call PUT "/releases/$RELEASE/datasets" 200 "$(py "json.dumps({'datasets': [{'datasetId': x['datasetId'], 'datasetVersionId': x['datasetVersionId']} for x in r] + [{'datasetId': $DATASET, 'datasetVersionId': $VERSION}]})")"
-call PUT "/versions/semantic_release/$RELEASE/status" 200 '{"status":"validated"}'
-call PUT "/versions/semantic_release/$RELEASE/status" 200 '{"status":"published"}'
+ORIGINAL_ID=$(python3 -c "import json; print([x['id'] for x in json.load(open('$W/catalog.json'))['releases'] if x['isActive']][0])")
+ORIGINAL_KEY=$(python3 -c "import json; print([x['key'] for x in json.load(open('$W/catalog.json'))['releases'] if x['isActive']][0])")
+call POST /assumption-sets 201 "{\"key\":\"${PREFIX}backtest\",\"displayName\":\"${PREFIX}backtest\",\"description\":null}"
+echo "Captured ${PREFIX}backtest on release $(py "r['releaseId']") (expected $ORIGINAL_ID)"
+call POST /releases 201 "{\"key\":\"${PREFIX}acceptance\",\"copyFromReleaseId\":\"$ORIGINAL_ID\"}"
+RELEASE=$(py "r['id']")
+call GET "/releases/$RELEASE" 200
+keep release
+changes "/releases/$RELEASE" '
+import json, sys
+w, dataset, version = sys.argv[1:4]
+manifest = [entry for entry in json.load(open(f"{w}/release.json"))["manifest"] if entry["datasetId"] != dataset]
+print(json.dumps({"operations": [{"op": "saveManifest", "manifest": [{"datasetId": e["datasetId"], "datasetVersionId": e["datasetVersionId"]} for e in manifest]
+                                  + [{"datasetId": dataset, "datasetVersionId": version}]}]}))' "$DATASET" "$VERSION"
+call POST "/releases/$RELEASE/validate" 200
+call POST "/releases/$RELEASE/publish" 200
 ORIGINAL=$ORIGINAL_ID
 trap restore EXIT
 call POST "/releases/$RELEASE/activate" 200
-call GET /overview 200
-echo "Active release: $(py "r['activeRelease']['releaseKey']"), semantic revision $(py "r['semanticRevision']")"
+echo "Active release: $(py "r['activeReleaseId']") (expected $RELEASE), semantic revision $(py "r['semanticRevision']")"
 rename_yield_column
 
 start_engine
