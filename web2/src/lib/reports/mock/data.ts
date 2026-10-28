@@ -1,6 +1,5 @@
-import { sampleReports } from '@/lib/report/mockData'
-import type { BreakoutDimension, DimMember, Filter, ReportState, RowNode, Source } from '@/lib/report/types'
-import type { Id, ReportDocument, FilterNode, Grouping, ReportRow, ReportRowKind, ReportSource, ReportSourceRule } from '../contract'
+import { catalog, publishedMembers } from '@/lib/tenant/mock/data'
+import type { Id, ReportDocument, ReportRow, ReportSource } from '../contract'
 
 /** An item of a role's dimension that a bridge rule can name. */
 export interface ItemNode {
@@ -10,173 +9,184 @@ export interface ItemNode {
 
 export interface Db {
   reports: ReportDocument[]
-  models: { id: Id; key: string }[]
+  /** The models mock's models, with the keys of their variables and calculated measures. */
+  models: { id: Id; key: string; metricKeys: string[] }[]
   /** Members of each role's dimension, by role id. */
   items: Record<Id, ItemNode[]>
   /** Values of each dataset field, by dataset id then field key. */
   fieldValues: Record<Id, Record<string, string[]>>
 }
 
-export const roleIdOf = (roleKey: string) => `role_${roleKey}`
-export const datasetIdOf = (datasetKey: string) => `dataset_${datasetKey}`
-
-/** Seeds the mock from the prototype's `ReportState` samples (lib/report/mockData.ts). */
-export function createSeed(): Db {
-  const models = [...new Set(sampleReports.map((s) => s.settings.model))].map((key, i) => ({ id: `model_${i + 1}`, key }))
-  const datasets = sampleReports[0].datasets
-  const roleKeys = new Set(datasets.flatMap((d) => d.roles))
-  return {
-    reports: sampleReports.map((state, i) => toDocument(state, `report_${i + 1}`, models.find((m) => m.key === state.settings.model)!.id)),
-    models,
-    items: Object.fromEntries([...roleKeys].map((role) => [roleIdOf(role), role === 'account' ? toItems(sampleReports[0].accounts) : []])),
-    fieldValues: Object.fromEntries(datasets.map((d) => [datasetIdOf(d.key), Object.fromEntries(d.fields.map((f) => [f, d.fieldValues?.[f] ?? []]))])),
-  }
-}
-
-function toItems(members: DimMember[]): ItemNode[] {
-  return members.map((m) => ({ key: m.key, children: m.children && toItems(m.children) }))
-}
-
-function toDocument(state: ReportState, id: Id, modelId: Id): ReportDocument {
-  const s = state.settings
-  const folders = new Set(flattenItems(toItems(state.accounts)).filter((i) => i.children?.length).map((i) => i.key))
-  return {
-    id,
-    key: s.key,
-    isEnabled: state.enabled,
-    modelId,
-    reportDimensionId: `${id}_dimension`,
-    reportDimensionVersionId: `${id}_dimension_v1`,
-    settings: {
-      displayName: s.name,
-      reportType: s.type,
-      subtotalPosition: s.subtotals === 'Above' ? 'above' : 'below',
-      defaultProfileKey: s.defaultProfile,
-      periodicity: s.periodicity.toLowerCase() as ReportDocument['settings']['periodicity'],
-      layout: s.layout === 'Statement' ? 'statement' : 'list',
-      defaultBreakout: s.defaultBreakout,
-      defaultFilter: toFilter(s.defaultFilters),
-    },
-    rows: toRows(state.rows, null),
-    sources: state.sources.map((source) => toSource(source, id, folders)),
-    profiles: state.profiles.map((p) => ({ key: p.key, displayName: p.name, isEnabled: p.enabled, picks: p.picks })),
-    calculationDimensions: state.breakoutDims.map(toCalculationDimension),
-    scenarios: state.reportScenarios.map((sc) => ({ roleId: roleIdOf(sc.role) })),
-    variableScopes: state.rowScopes.map((sc) => ({ variableKey: sc.variable, scopeMemberKey: sc.rowKey, selectionScope: sc.scope === 'row' ? 'exact' : 'descendants' })),
-    columns: state.columns.map((c) => ({ key: c.key, displayName: c.label, valueKind: c.kind, metricKey: c.metric, displayFormat: c.format, isVisible: c.visible })),
-    styles: state.styles.map((st) => ({
-      key: st.key,
-      displayName: st.name,
-      defaultRole: st.defaultRole ?? null,
-      fontFamily: st.fontFamily ?? null,
-      fontSize: st.fontSize ?? null,
-      fontWeight: st.fontWeight ?? null,
-      isItalic: st.italic ?? false,
-      textColor: st.textColor ?? null,
-      backgroundColor: st.backgroundColor ?? null,
-      borderTop: st.borderTop ?? null,
-      borderBottom: st.borderBottom ?? null,
-      indent: st.indent ?? null,
-    })),
-  }
-}
-
 export function flattenItems(items: ItemNode[]): ItemNode[] {
   return items.flatMap((i) => [i, ...flattenItems(i.children ?? [])])
 }
 
-/** OI-48: a heading over member rows is a `group` that shows no values; any other heading is a `section`. */
-function kindOf(node: RowNode): ReportRowKind {
-  const hasMembers = node.children.some((c) => c.kind !== 'formula')
-  switch (node.kind) {
-    case 'formula':
-      return 'formula'
-    case 'heading':
-      return hasMembers ? 'group' : 'section'
-    default:
-      return node.children.length ? 'group' : 'data'
-  }
+/** The published members of each role's dimension in the tenant mock, as an item tree. */
+function itemsByRole(): Record<Id, ItemNode[]> {
+  const tree = (members: { key: string; parentKey: string | null }[], parentKey: string | null): ItemNode[] =>
+    members.filter((m) => m.parentKey === parentKey).map((m) => ({ key: m.key, children: tree(members, m.key) }))
+  return Object.fromEntries(catalog.roles.map((role) => [role.id, tree(publishedMembers[role.dimensionId] ?? [], null)]))
 }
 
-function toRows(nodes: RowNode[], parentKey: string | null): ReportRow[] {
-  return nodes.flatMap((n) => {
-    const kind = kindOf(n)
-    const row: ReportRow = {
-      key: n.key,
-      label: n.label,
-      kind,
-      parentKey,
-      isVisible: !n.hidden,
-      showsValues: n.kind !== 'heading' && kind !== 'section',
-      calculatedMeasureKey: n.measureKey ?? null,
-      valueColumnKey: n.columnKey ?? null,
-      styleKey: n.styleKey ?? null,
-      parameters: n.parameters ?? {},
-    }
-    return [row, ...toRows(n.children, n.key)]
-  })
+const row = (key: string, label: string, kind: ReportRow['kind'], parentKey: string | null, extra: Partial<ReportRow> = {}): ReportRow => ({
+  key,
+  label,
+  kind,
+  parentKey,
+  isVisible: true,
+  showsValues: true,
+  calculatedMeasureKey: null,
+  valueColumnKey: null,
+  styleKey: null,
+  parameters: {},
+  ...extra,
+})
+
+const loansByBranch: ReportSource = {
+  key: 'loans_by_branch',
+  displayName: 'Loans by branch',
+  datasetId: 'ds_loan_daily',
+  timeFieldKey: 'as_of_date',
+  method: 'bridge',
+  roleId: 'role_servicing_branch',
+  fieldKey: null,
+  bridgeId: 'report-1_bridge_loans_by_branch',
+  variables: [
+    { variableKey: 'AVERAGE_BALANCE', measureKey: 'balance', filter: null, missingBehavior: null },
+    { variableKey: 'INTEREST_INCOME', measureKey: 'interest_income', filter: null, missingBehavior: null },
+    { variableKey: 'LOAN_BALANCE', measureKey: 'balance', filter: null, missingBehavior: null },
+  ],
+  rules: {
+    LOANS: [
+      { itemKey: 'BR01', selection: 'member', factor: 1 },
+      { itemKey: 'BR02', selection: 'member', factor: 1 },
+    ],
+    DEPOSITS: [{ itemKey: 'BR03', selection: 'member', factor: 1 }],
+  },
+  leftOut: ['BR_UNK'],
 }
 
-/** OI-52: the multiplier is dropped; the factor is the only number a rule carries. */
-function toSource(source: Source, reportId: Id, folders: Set<string>): ReportSource {
-  const bridge = source.method === 'mapped'
-  const rules: Record<string, ReportSourceRule[]> = {}
-  for (const m of source.mappings) {
-    ;(rules[m.rowKey] ??= []).push({ itemKey: m.memberKey, selection: folders.has(m.memberKey) ? 'descendants' : 'member', factor: m.factor })
-  }
+const glDirect: ReportSource = {
+  key: 'gl_direct',
+  displayName: 'GL by product',
+  datasetId: 'ds_gl_balance',
+  timeFieldKey: 'posting_date',
+  method: 'direct',
+  roleId: null,
+  fieldKey: 'product_code',
+  bridgeId: null,
+  variables: [{ variableKey: 'INTEREST_EXPENSE', measureKey: 'interest_expense', filter: null, missingBehavior: 'zero' }],
+  rules: {},
+  leftOut: [],
+}
+
+/** Bank margin, enabled, over the models mock's bank margin model, and an empty draft of branch profitability over the same model. */
+export function createSeed(): Db {
   return {
-    key: source.key,
-    displayName: source.name,
-    datasetId: datasetIdOf(source.dataset),
-    timeFieldKey: source.timeField,
-    method: bridge ? 'bridge' : 'direct',
-    roleId: bridge ? roleIdOf(source.dimension!) : null,
-    fieldKey: source.rowKeyField ?? null,
-    bridgeId: bridge ? `${reportId}_bridge_${source.key}` : null,
-    variables: source.bindings.map((b) => ({
-      variableKey: b.variable,
-      measureKey: b.measure,
-      filter: toFilter(b.filters),
-      missingBehavior: b.missing === 'null' || b.missing === 'zero' ? b.missing : null,
-    })),
-    rules,
-    leftOut: source.leftOut,
-  }
-}
-
-const COMPARISON = { '=': 'eq', '!=': 'ne', '>': 'gt', '<': 'lt' } as const
-
-function toFilter(filters: Filter[]): FilterNode | null {
-  const nodes = filters.map((f): FilterNode => {
-    const left = { type: 'field' as const, id: f.field }
-    if (f.op === 'in') return { operator: 'in', left, values: f.value.split(',').map((v) => ({ type: 'literal', value: v.trim() })) }
-    return { operator: COMPARISON[f.op], left, right: { type: 'literal', value: f.value } }
-  })
-  if (nodes.length === 0) return null
-  return nodes.length === 1 ? nodes[0] : { operator: 'and', operands: nodes }
-}
-
-function toGrouping(g: BreakoutDimension['grouping']): Grouping {
-  switch (g.kind) {
-    case 'member':
-      return { mode: 'member' }
-    case 'level':
-      return { mode: 'level', levelKey: g.level! }
-    case 'ancestor':
-      return { mode: 'ancestor', memberKey: g.member! }
-    case 'depth':
-      return { mode: 'depth', depth: g.steps! }
-  }
-}
-
-function toCalculationDimension(d: BreakoutDimension) {
-  return {
-    key: d.aliasKey,
-    displayName: d.name,
-    roleId: roleIdOf(d.role),
-    grouping: toGrouping(d.grouping),
-    isGroupable: d.groupable,
-    isFilterable: d.filterable,
-    isEnabled: d.enabled,
+    models: [
+      {
+        id: 'model-1',
+        key: 'bank.margin_model',
+        metricKeys: ['AVERAGE_BALANCE', 'INTEREST_INCOME', 'INTEREST_EXPENSE', 'LOAN_BALANCE', 'YIELD', 'COST_OF_FUNDS', 'NET_INTEREST_INCOME', 'NIM'],
+      },
+      {
+        id: 'model-2',
+        key: 'consolidated.balances',
+        metricKeys: [
+          'ENDING_BALANCE', 'OPENING_BALANCE', 'DEBITS', 'CREDITS', 'FX_ADJUSTMENT', 'ELIMINATIONS',
+          'NET_MOVEMENT', 'CONSOLIDATED', 'CHANGE', 'ANNUAL_GROWTH', 'FX_SHARE',
+        ],
+      },
+    ],
+    items: itemsByRole(),
+    fieldValues: { ds_gl_balance: { product_code: ['LOANS', 'DEPOSITS', 'FEES'] } },
+    reports: [
+      {
+        id: 'report-1',
+        key: 'bank.margin_statement',
+        isEnabled: true,
+        modelId: 'model-1',
+        reportDimensionId: 'report-1_dimension',
+        reportDimensionVersionId: 'report-1_dimension_v1',
+        settings: {
+          displayName: 'Bank margin',
+          reportType: 'financial',
+          subtotalPosition: 'above',
+          defaultProfileKey: 'base',
+          periodicity: 'month',
+          layout: 'statement',
+          defaultBreakout: ['region'],
+          defaultFilter: null,
+        },
+        rows: [
+          row('total', 'Net interest margin', 'group', null, { styleKey: 'total' }),
+          row('LOANS', 'Loans', 'data', 'total'),
+          row('DEPOSITS', 'Deposits', 'data', 'total'),
+          row('NIM_LINE', 'Net interest margin %', 'formula', 'total', { calculatedMeasureKey: 'NIM', valueColumnKey: 'nim' }),
+        ],
+        sources: [glDirect, loansByBranch],
+        profiles: [
+          {
+            key: 'base',
+            displayName: 'Base',
+            isEnabled: true,
+            picks: { AVERAGE_BALANCE: 'loans_by_branch', INTEREST_INCOME: 'loans_by_branch', LOAN_BALANCE: 'loans_by_branch', INTEREST_EXPENSE: 'gl_direct' },
+          },
+        ],
+        calculationDimensions: [
+          { key: 'region', displayName: 'Region', roleId: 'role_region', grouping: { mode: 'level', levelKey: 'region' }, isGroupable: true, isFilterable: true, isEnabled: true },
+        ],
+        scenarios: [],
+        variableScopes: [],
+        columns: [
+          { key: 'income', displayName: 'Interest income', valueKind: 'variable', metricKey: 'INTEREST_INCOME', displayFormat: null, isVisible: true },
+          { key: 'expense', displayName: 'Interest expense', valueKind: 'variable', metricKey: 'INTEREST_EXPENSE', displayFormat: null, isVisible: true },
+          { key: 'balance', displayName: null, valueKind: 'variable', metricKey: 'AVERAGE_BALANCE', displayFormat: null, isVisible: true },
+          { key: 'nim', displayName: 'NIM', valueKind: 'calculated', metricKey: 'NIM', displayFormat: 'percent', isVisible: true },
+        ],
+        styles: [
+          {
+            key: 'total',
+            displayName: 'Total',
+            defaultRole: 'total',
+            fontFamily: null,
+            fontSize: null,
+            fontWeight: 'bold',
+            isItalic: false,
+            textColor: null,
+            backgroundColor: null,
+            borderTop: 'thin',
+            borderBottom: 'double',
+            indent: null,
+          },
+        ],
+      },
+      {
+        id: 'report-3',
+        key: 'bank.branch_profitability',
+        isEnabled: false,
+        modelId: 'model-1',
+        reportDimensionId: 'report-3_dimension',
+        reportDimensionVersionId: 'report-3_dimension_v1',
+        settings: {
+          displayName: 'Branch profitability',
+          reportType: 'financial',
+          subtotalPosition: 'above',
+          defaultProfileKey: null,
+          periodicity: 'month',
+          layout: 'statement',
+          defaultBreakout: [],
+          defaultFilter: null,
+        },
+        rows: [row('total', 'Branch profitability', 'group', null)],
+        sources: [],
+        profiles: [],
+        calculationDimensions: [],
+        scenarios: [],
+        variableScopes: [],
+        columns: [],
+        styles: [],
+      },
+    ],
   }
 }

@@ -17,15 +17,15 @@ public sealed class ColumnKeysDistinctRule : IReportRule
     /// <returns>The violations found.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        if (report.Columns.Count == 0) yield return Violation($"Report '{report.ReportKey}' has no columns, so it returns nothing.");
+        if (report.Columns.Count == 0) yield return Violation($"Report '{report.ReportKey}' has no columns, so it returns nothing.", null);
         var dimensionKeys = report.EnabledDimensions.Select(dimension => dimension.DimensionKey).ToHashSet(StringComparer.Ordinal);
         foreach (var column in report.Columns.Where(column => dimensionKeys.Contains(column.ColumnKey)))
-            yield return Violation($"Report '{report.ReportKey}' column '{column.ColumnKey}' is named like a calculation dimension of the report.");
+            yield return Violation($"Report '{report.ReportKey}' column '{column.ColumnKey}' is named like a calculation dimension of the report.", column.ColumnKey);
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, string? columnKey)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Columns, columnKey) };
     }
 }

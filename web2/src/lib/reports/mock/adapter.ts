@@ -32,6 +32,8 @@ const fail = (status: Problem['status'], title: string, extra: Partial<Problem> 
 type ReportContent = Omit<ReportDocument, 'id' | 'key' | 'isEnabled' | 'modelId' | 'reportDimensionId' | 'reportDimensionVersionId'>
 
 const violated = (violations: Violation[]) => fail(422, 'The change would break a report rule.', { type: 'urn:qe:problem:rules-violated', violations })
+const missing = (noun: string, key: string) => fail(409, 'Not in the report', { detail: `The report has no ${noun} '${key}'.` })
+const invalid = (path: string, message: string) => fail(400, 'The request is not valid.', { errors: { [path]: [message] } })
 
 /**
  * In-memory `ReportsApi`. Cascades follow blueprint 16; diagnostics are simplified: coverage is computed, and the
@@ -39,7 +41,7 @@ const violated = (violations: Violation[]) => fail(422, 'The change would break 
  */
 export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
   const report = (id: Id) => db.reports.find((r) => r.id === id)!
-  const source = (doc: ReportDocument, key: string) => doc.sources.find((s) => s.key === key)!
+  const source = (doc: ReportDocument, key: string) => doc.sources.find((s) => s.key === key)
 
   function summaryOf(doc: ReportDocument): ReportSummary {
     return {
@@ -92,6 +94,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
 
     const found: Partial<Record<ReportDiagnosticsStepName, Violation[]>> = {}
     const add = (step: ReportDiagnosticsStepName, v: Violation) => (found[step] ??= []).push(v)
+    if (!doc.columns.length) add('columns', { code: 'column_keys_distinct', message: `Report '${doc.key}' has no columns, so it returns nothing.`, target: { area: 'columns' } })
     if (!doc.profiles.some((p) => p.key === doc.settings.defaultProfileKey && p.isEnabled)) {
       add('profiles', { code: 'default_profile_enabled', message: 'The default profile must be one of the enabled profiles.', target: { area: 'profiles' } })
     }
@@ -145,7 +148,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
       ? clone(report(input.copyFromReportId))
       : {
           settings: { displayName: input.displayName, reportType: input.reportType, subtotalPosition: 'above', defaultProfileKey: null, periodicity: null, layout: 'statement', defaultBreakout: [], defaultFilter: null },
-          rows: [{ key: 'TOTAL', label: input.displayName, kind: 'data', parentKey: null, isVisible: true, showsValues: true, calculatedMeasureKey: null, valueColumnKey: null, styleKey: null, parameters: {} }],
+          rows: [{ key: 'total', label: input.displayName, kind: 'group', parentKey: null, isVisible: true, showsValues: true, calculatedMeasureKey: null, valueColumnKey: null, styleKey: null, parameters: {} }],
           sources: [],
           profiles: [],
           calculationDimensions: [],
@@ -155,6 +158,14 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
           styles: [],
         }
     for (const s of content.sources) s.bridgeId &&= `${id}_bridge_${s.key}`
+    if (input.copyFromReportId && input.modelId !== report(input.copyFromReportId).modelId) {
+      const model = db.models.find((m) => m.id === input.modelId)!
+      content.columns = content.columns.filter((c) => model.metricKeys.includes(c.metricKey))
+      content.rows = content.rows.filter((r) => r.kind !== 'formula' || (model.metricKeys.includes(r.calculatedMeasureKey!) && content.columns.some((c) => c.key === r.valueColumnKey)))
+      for (const s of content.sources) s.variables = s.variables.filter((v) => model.metricKeys.includes(v.variableKey))
+      for (const p of content.profiles) p.picks = Object.fromEntries(Object.entries(p.picks).filter(([v]) => model.metricKeys.includes(v)))
+      content.variableScopes = content.variableScopes.filter((sc) => model.metricKeys.includes(sc.variableKey))
+    }
     return {
       ...content,
       id,
@@ -192,7 +203,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async getUnmappedItems(id, sourceKey) {
       await wait()
       const doc = report(id)
-      return unmapped(doc, source(doc, sourceKey))
+      return unmapped(doc, source(doc, sourceKey)!)
     },
 
     async updateSettings(reportId, patch) {
@@ -212,13 +223,16 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async moveRow(reportId, key, to) {
       await wait()
       const doc = report(reportId)
+      if (!doc.rows.some((r) => r.key === key)) return missing('row', key)
       placeRows(doc, takeRows(doc, key), to.parentKey, to.index)
       return ok(null)
     },
     async deleteRow(reportId, key) {
       await wait()
       const doc = report(reportId)
-      const row = doc.rows.find((r) => r.key === key)!
+      const row = doc.rows.find((r) => r.key === key)
+      if (!row) return missing('row', key)
+      if (row.parentKey === null && row.kind !== 'section' && row.kind !== 'formula') return invalid('key', `Row '${key}' is the report's total; it stays.`)
       for (const child of doc.rows.filter((r) => r.parentKey === key)) child.parentKey = row.parentKey
       doc.rows.splice(doc.rows.indexOf(row), 1)
       for (const s of doc.sources) delete s.rules[key]
@@ -230,10 +244,10 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
       const doc = report(reportId)
       const existing = doc.sources.find((s) => s.key === input.key)
       if (existing) return ok(Object.assign(existing, input))
-      const copied = copyFromSourceKey ? clone(source(doc, copyFromSourceKey)) : { variables: [], rules: {}, leftOut: [] }
+      const copied = copyFromSourceKey ? clone(source(doc, copyFromSourceKey)!) : { variables: [], rules: {}, leftOut: [] }
       const created: ReportSource = {
         ...input,
-        bridgeId: input.method === 'bridge' ? `tmp:${crypto.randomUUID()}` : null,
+        bridgeId: input.method === 'bridge' ? `${reportId}_bridge_${input.key}` : null,
         variables: copied.variables,
         rules: copied.rules,
         leftOut: copied.leftOut,
@@ -244,6 +258,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async deleteSource(reportId, key) {
       await wait()
       const doc = report(reportId)
+      if (!source(doc, key)) return missing('source', key)
       doc.sources = doc.sources.filter((s) => s.key !== key)
       for (const p of doc.profiles) {
         for (const [variable, sourceKey] of Object.entries(p.picks)) if (sourceKey === key) delete p.picks[variable]
@@ -252,19 +267,35 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     },
     async setSourceVariables(reportId, sourceKey, variables) {
       await wait()
-      source(report(reportId), sourceKey).variables = variables
+      const doc = report(reportId)
+      const s = source(doc, sourceKey)
+      if (!s) return missing('source', sourceKey)
+      s.variables = variables
+      const supplied = new Set(variables.map((v) => v.variableKey))
+      for (const p of doc.profiles) {
+        for (const [variable, picked] of Object.entries(p.picks)) if (picked === sourceKey && !supplied.has(variable)) delete p.picks[variable]
+      }
       return ok(null)
     },
     async setRowRules(reportId, sourceKey, rowKey, rules) {
       await wait()
-      const s = source(report(reportId), sourceKey)
+      const doc = report(reportId)
+      const s = source(doc, sourceKey)
+      if (!s) return missing('source', sourceKey)
+      if (s.method === 'direct') return invalid('sourceKey', `Source '${sourceKey}' is a direct source; it has no items.`)
+      const row = doc.rows.find((r) => r.key === rowKey)
+      if (!row) return missing('row', rowKey)
+      if (row.kind !== 'data') return invalid('rowKey', `Row '${rowKey}' is no data row of the report; only data rows take items.`)
       if (rules.length) s.rules[rowKey] = rules
       else delete s.rules[rowKey]
       return ok(null)
     },
     async setLeftOut(reportId, sourceKey, itemKeys) {
       await wait()
-      source(report(reportId), sourceKey).leftOut = itemKeys
+      const s = source(report(reportId), sourceKey)
+      if (!s) return missing('source', sourceKey)
+      if (s.method === 'direct') return invalid('sourceKey', `Source '${sourceKey}' is a direct source; it has no items.`)
+      s.leftOut = itemKeys
       return ok(null)
     },
     async saveProfile(reportId, { originalKey, ...profile }) {
@@ -280,6 +311,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async deleteProfile(reportId, key) {
       await wait()
       const doc = report(reportId)
+      if (!doc.profiles.some((p) => p.key === key)) return missing('profile', key)
       if (doc.settings.defaultProfileKey === key) {
         return violated([{ code: 'default_profile_enabled', message: 'The default profile cannot be deleted.', target: { area: 'profiles', itemKey: key } }])
       }
@@ -299,6 +331,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async deleteCalculationDimension(reportId, key) {
       await wait()
       const doc = report(reportId)
+      if (!doc.calculationDimensions.some((d) => d.key === key)) return missing('calculation dimension', key)
       doc.calculationDimensions = doc.calculationDimensions.filter((d) => d.key !== key)
       renameDimension(doc, key, null)
       return ok(null)
@@ -329,6 +362,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     async deleteStyle(reportId, key) {
       await wait()
       const doc = report(reportId)
+      if (!doc.styles.some((s) => s.key === key)) return missing('style', key)
       if (doc.rows.some((r) => r.styleKey === key)) {
         return violated([{ code: 'report_styles_resolve', message: 'A row still uses this style.', target: { area: 'styles', itemKey: key } }])
       }

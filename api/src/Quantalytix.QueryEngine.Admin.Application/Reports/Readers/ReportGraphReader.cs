@@ -6,7 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// Reads what the report rules check. A report is checked against its model and the active release; when a semantic release is
-/// validated, every enabled report is checked against its datasets, because a report runs against whichever release is active.
+/// validated, stored or pending, every enabled report is checked against its datasets, because a report runs against whichever
+/// release is active.
 /// </summary>
 public sealed class ReportGraphReader(
     ITableGateway<ReportRecord> reports,
@@ -23,6 +24,7 @@ public sealed class ReportGraphReader(
     ITableGateway<SourceProfileVariableRecord> picks,
     ITableGateway<ReportSourceRecord> sources,
     ITableGateway<ReportSourceVariableRecord> sourceVariables,
+    ITableGateway<ReportSourceLeftOutRecord> leftOut,
     ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<CalculationDimensionRecord> dimensions,
     ITableGateway<VariableRecord> variables,
@@ -43,6 +45,7 @@ public sealed class ReportGraphReader(
         var structure = await owned.StructureAsync(report, cancellationToken);
         var reportProfiles = await profiles.ListAsync(owner, cancellationToken);
         var reportSources = await sources.ListAsync(owner, cancellationToken);
+        long[] sourceIds = [.. reportSources.Select(source => source.ReportSourceId)];
         var metrics = new { report.CalculationModelId };
         return new ReportGraph
         {
@@ -54,12 +57,13 @@ public sealed class ReportGraphReader(
             RowParameters = await rowParameters.ListAsync(owner, cancellationToken),
             Scopes = await scopes.ListAsync(owner, cancellationToken),
             Scenarios = await scenarios.ListAsync(owner, cancellationToken),
-            Columns = await columns.ListAsync(owner, cancellationToken),
+            Columns = [.. (await columns.ListAsync(owner, cancellationToken)).OrderBy(column => column.SortOrder)],
             Profiles = reportProfiles,
             Picks = await picks.ListAsync(new { CalculationSourceProfileId = reportProfiles.Select(profile => profile.CalculationSourceProfileId).ToArray() }, cancellationToken),
             Sources = reportSources,
-            SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = reportSources.Select(source => source.ReportSourceId).ToArray() }, cancellationToken),
+            SourceVariables = await sourceVariables.ListAsync(new { ReportSourceId = sourceIds }, cancellationToken),
             SourceItems = await SourceItemsAsync(reportSources, cancellationToken),
+            LeftOut = await leftOut.ListAsync(new { ReportSourceId = sourceIds }, cancellationToken),
             Dimensions = await dimensions.ListAsync(owner, cancellationToken),
             Variables = await variables.ListAsync(metrics, cancellationToken),
             CalculatedMeasures = await calculatedMeasures.ListAsync(metrics, cancellationToken),
@@ -78,27 +82,58 @@ public sealed class ReportGraphReader(
         return [.. graphs.OrderBy(graph => graph.ReportKey, StringComparer.Ordinal)];
     }
 
-    /// <summary>Reads what reports are checked against besides their content.</summary>
+    /// <summary>Reads what reports are checked against besides their content, in a stored release.</summary>
     /// <param name="graphs">The reports.</param>
     /// <param name="semanticReleaseId">The release being validated; null for the active release.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The release's versions of the datasets the reports read, and the templates of their calculation dimensions.</returns>
+    /// <returns>The release's versions of the datasets the reports read, and the templates of the roles they name.</returns>
     public async Task<ReportScope> ScopeAsync(IReadOnlyList<ReportGraph> graphs, long? semanticReleaseId, CancellationToken cancellationToken)
     {
-        long[] sourceDatasets = [.. graphs.SelectMany(report => report.Sources.Select(source => source.DatasetId)).Distinct()];
-        long[] calculationRoles = [.. graphs.SelectMany(report => report.Dimensions.Select(dimension => dimension.DimensionRoleId)).Distinct()];
-        long[] namedRoles = [.. graphs.SelectMany(report => report.Sources.Select(source => source.DimensionRoleId)).OfType<long>().Concat(calculationRoles).Distinct()];
+        var datasetsRead = DatasetsRead(graphs);
+        return await ScopeAsync(graphs, await releaseDatasets.ReadAsync(semanticReleaseId, datasetsRead, cancellationToken), datasetsRead, cancellationToken);
+    }
+
+    /// <summary>Reads what reports are checked against besides their content, in a manifest that is not stored, such as a release preview's.</summary>
+    /// <param name="graphs">The reports.</param>
+    /// <param name="versionsByDataset">The pending manifest: the pinned version of each dataset, by dataset id.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The manifest's versions of the datasets the reports read, and the templates of the roles they name.</returns>
+    public async Task<ReportScope> PendingScopeAsync(IReadOnlyList<ReportGraph> graphs, IReadOnlyDictionary<long, long> versionsByDataset, CancellationToken cancellationToken)
+    {
+        var datasetsRead = DatasetsRead(graphs);
+        var pinned = versionsByDataset.Where(pin => datasetsRead.Contains(pin.Key)).ToDictionary(pin => pin.Key, pin => pin.Value);
+        return await ScopeAsync(graphs, await releaseDatasets.ReadAsync(pinned, cancellationToken), datasetsRead, cancellationToken);
+    }
+
+    /// <summary>The scope over some pinned dataset versions.</summary>
+    private async Task<ReportScope> ScopeAsync(
+        IReadOnlyList<ReportGraph> graphs,
+        IReadOnlyDictionary<long, PinnedDatasetVersion> pinned,
+        long[] datasetsRead,
+        CancellationToken cancellationToken)
+    {
+        long[] namedRoles =
+        [
+            .. graphs.SelectMany(report => report.Sources.Select(source => source.DimensionRoleId).OfType<long>()
+                .Concat(report.Dimensions.Select(dimension => dimension.DimensionRoleId))).Distinct()
+        ];
         var rolesById = (await roles.ListAsync(new { DimensionRoleId = namedRoles }, cancellationToken)).ToDictionary(role => role.DimensionRoleId);
         var templates = new Dictionary<long, DimensionKeys?>();
-        foreach (var dimensionRoleId in calculationRoles)
-            templates[dimensionRoleId] = await publishedDimensions.ReadAsync(rolesById[dimensionRoleId].DimensionId, cancellationToken);
+        foreach (var role in rolesById.Values)
+            templates[role.DimensionRoleId] = await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken);
         return new ReportScope
         {
-            Datasets = await releaseDatasets.ReadAsync(semanticReleaseId, sourceDatasets, cancellationToken),
-            DatasetKeys = (await datasets.ListAsync(new { DatasetId = sourceDatasets }, cancellationToken)).ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey),
+            Datasets = pinned,
+            DatasetKeys = (await datasets.ListAsync(new { DatasetId = datasetsRead }, cancellationToken)).ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey),
             RoleKeys = rolesById.ToDictionary(pair => pair.Key, pair => pair.Value.DimensionRoleKey),
             Templates = templates
         };
+    }
+
+    /// <summary>The datasets the reports' sources read.</summary>
+    private static long[] DatasetsRead(IReadOnlyList<ReportGraph> graphs)
+    {
+        return [.. graphs.SelectMany(report => report.Sources.Select(source => source.DatasetId)).Distinct()];
     }
 
     /// <summary>The rules of the bridge sources: the entries of each one's bridge.</summary>

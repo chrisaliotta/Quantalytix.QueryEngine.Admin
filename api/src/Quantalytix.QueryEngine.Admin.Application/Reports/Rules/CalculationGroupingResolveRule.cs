@@ -29,21 +29,21 @@ public sealed class CalculationGroupingResolveRule : IReportRule
             var subject = $"Report '{report.ReportKey}' calculation dimension '{dimension.DimensionKey}'";
             if (scope.Templates[dimension.DimensionRoleId] is not { } keys)
             {
-                yield return Violation($"{subject} names levels or members of its role's dimension, which has no published version.");
+                yield return Violation($"{subject} names levels or members of its role's dimension, which has no published version.", dimension.DimensionKey);
                 continue;
             }
 
             var version = $"v{keys.Version.VersionNumber}, the published version of its role's dimension";
             if (dimension.GroupingLevelKey is { } level && !keys.LevelKeys.Contains(level))
-                yield return Violation($"{subject} groups at level '{level}', which is not a level of {version}.");
+                yield return Violation($"{subject} groups at level '{level}', which is not a level of {version}.", dimension.DimensionKey);
             if (dimension.GroupingAncestorMemberKey is { } ancestor && !keys.MemberKeys.Contains(ancestor))
-                yield return Violation($"{subject} groups under ancestor member '{ancestor}', which is not a member of {version}.");
+                yield return Violation($"{subject} groups under ancestor member '{ancestor}', which is not a member of {version}.", dimension.DimensionKey);
         }
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, string dimensionKey)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Dimensions, dimensionKey) };
     }
 }

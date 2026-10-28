@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.ReportEditor;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
@@ -12,39 +11,38 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms against the development tenant that the seeded reports, which the engine's golden report cases run, pass every report
-/// rule and open in the report editor, and that their sources' bridges are listed as report bridges owned by those sources. The
-/// rules and the editor read the report tables through the StarRocks gateways, and only a live read shows that they map onto the
-/// seed's rows; a rule that refused a report the engine runs would keep it from being enabled. A new report also round-trips
-/// through the editor's writes and the tenant's real publication rules, and is deleted again. Opt in with
-/// <c>QE_ADMIN_LIVE_GATEWAY=true</c>.
+/// rule and read into a whole document, and that their sources' bridges are listed as report bridges owned by those sources. The
+/// rules and the document read the report tables through the StarRocks gateways, and only a live read shows that they map onto the
+/// seed's rows; a rule that refused a report the engine runs would keep it from being enabled. A copy of the margin statement also
+/// round-trips through the report change set, the report bridges and the tenant's real publication rules, and is deleted again. Opt
+/// in with <c>QE_ADMIN_LIVE_GATEWAY=true</c>.
 /// </summary>
 public sealed class ReportLiveTests
 {
     /// <summary>Whether the live read is enabled.</summary>
     public static bool IsEnabled => LiveTenant.IsEnabled;
 
-    /// <summary>Every enabled seeded report passes its rules and reads into the editor, and its bridges are report bridges.</summary>
+    /// <summary>Every enabled seeded report passes its rules and reads into a document, and its bridges are report bridges.</summary>
     /// <returns>A task that completes when the reports are checked.</returns>
     [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_GATEWAY=true to read the seeded reports of tenant development.")]
-    public async Task SeededReports_PassTheirRulesAndOpenInTheEditor()
+    public async Task SeededReports_PassTheirRulesAndReadIntoADocument()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var services = LiveTenant.Services();
         await using var scope = services.CreateAsyncScope();
-        var statuses = scope.ServiceProvider.GetRequiredService<ReportStatusService>();
-        var editor = scope.ServiceProvider.GetRequiredService<ReportEditorReader>();
-        var enabled = (await scope.ServiceProvider.GetRequiredService<ReportService>().ListAsync(cancellationToken)).Where(report => report.IsEnabled).ToList();
+        var queries = scope.ServiceProvider.GetRequiredService<ReportQueries>();
+        var enabled = (await queries.ListAsync(cancellationToken)).Where(report => report.IsEnabled).ToList();
 
-        Assert.Contains(enabled, report => report.ReportKey == "bank.margin_statement");
+        Assert.Contains(enabled, report => report.Key == "bank.margin_statement");
         foreach (var report in enabled)
         {
-            Assert.Empty(await statuses.CheckAsync(report.ReportId, cancellationToken));
-            var view = await editor.ReadAsync(report.ReportId, cancellationToken);
-            Assert.NotEmpty(view.Rows);
-            Assert.NotEmpty(view.Sources);
+            Assert.True((await queries.DiagnosticsAsync(report.Id, cancellationToken)).Ready);
+            var document = await queries.DocumentAsync(report.Id, cancellationToken);
+            Assert.NotEmpty(document.Rows);
+            Assert.NotEmpty(document.Sources);
         }
 
-        var marginStatement = enabled.Single(report => report.ReportKey == "bank.margin_statement");
+        var marginStatement = await queries.DocumentAsync(enabled.Single(report => report.Key == "bank.margin_statement").Id, cancellationToken);
         var reportBridges = await scope.ServiceProvider.GetRequiredService<BridgeQueries>()
             .ListAsync(new BridgeListQuery { DimensionId = marginStatement.ReportDimensionId }, cancellationToken);
         Assert.All(reportBridges, bridge => Assert.NotNull(bridge.Owner));
@@ -52,114 +50,62 @@ public sealed class ReportLiveTests
     }
 
     /// <summary>
-    /// A report built like the margin statement, with a direct and a bridge source, is created with its dimension published and
-    /// pinned through the tenant's real publication rules, and takes rows, sources, variables and a column. Its bridge source takes
-    /// the margin statement's rules for Loans, which take a folder of accounts and take one account back out at -1, so the rules'
-    /// selections and factors round-trip through StarRocks, and the factor passes the report rules because the seed's balance
-    /// measure applies bridge factors. The report passes its rules when enabled, and leaves nothing behind when deleted: its
-    /// dimension, its bridge and their pins go with it.
+    /// A copy of the margin statement is created with its dimension published and pinned through the tenant's real publication
+    /// rules, and takes the margin statement's rows, sources and rules through one report change set: its bridge sources get bridges
+    /// of their own whose rules, including folder rules and -1 exclusions, round-trip through StarRocks. The copy passes its rules when
+    /// enabled, and leaves nothing behind when deleted: its dimension, its bridges and their pins go with it.
     /// </summary>
-    /// <returns>A task that completes when the round trip is checked and the report is deleted.</returns>
+    /// <returns>A task that completes when the round trip is checked and the copy is deleted.</returns>
     [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_GATEWAY=true to round-trip a report through tenant development.")]
-    public async Task NewReport_RoundTripsThroughStarRocks()
+    public async Task CopiedReport_RoundTripsThroughStarRocks()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var services = LiveTenant.Services();
         await using var scope = services.CreateAsyncScope();
         var provider = scope.ServiceProvider;
-        var reports = provider.GetRequiredService<ReportService>();
-        var editor = provider.GetRequiredService<ReportEditorReader>();
+        var queries = provider.GetRequiredService<ReportQueries>();
+        var commands = provider.GetRequiredService<ReportCommands>();
         var pins = provider.GetRequiredService<AssumptionPins>();
-        var margin = (await reports.ListAsync(cancellationToken)).Single(report => report.ReportKey == "bank.margin_statement");
-        var template = await editor.ReadAsync(margin.ReportId, cancellationToken);
-        var direct = template.Sources.First(source => source.Source.MappingMethod == ReportMappingMethods.Direct);
-        var bridged = template.Sources.First(source => source.Source.MappingMethod == ReportMappingMethods.Bridge);
-        var variable = direct.Variables[0];
-        var input = new NewReportInput
+        var margin = (await queries.ListAsync(cancellationToken)).Single(report => report.Key == "bank.margin_statement");
+        var template = await queries.DocumentAsync(margin.Id, cancellationToken);
+        var input = new ReportCreateInput
         {
-            ReportKey = $"zz_live_{DateTime.UtcNow:yyyyMMddHHmmss}",
+            Key = $"zz_live_{DateTime.UtcNow:yyyyMMddHHmmss}",
             DisplayName = "Live round trip",
             ReportType = "test",
-            CalculationModelId = margin.CalculationModelId
+            ModelId = margin.ModelId,
+            CopyFromReportId = margin.Id
         };
 
-        var report = await reports.CreateAsync(input, cancellationToken);
+        var created = await commands.CreateAsync(input, cancellationToken);
+        Assert.True(created.Succeeded);
+        var copy = await queries.DocumentAsync(created.Value.Id, cancellationToken);
         var active = await pins.ActiveAsync(cancellationToken);
         try
         {
-            Assert.False(report.IsEnabled);
-            Assert.Contains(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == report.ReportDimensionId);
-            Assert.Empty(await provider.GetRequiredService<ReportRowService>().ReplaceAsync(
-                report.ReportId,
-                new ReportRowsInput { Rows = [Row("total", ReportRowKinds.Group, null), Row("LOANS", ReportRowKinds.Data, "total")] },
-                cancellationToken));
-            var sources = provider.GetRequiredService<ReportSourceService>();
-            Assert.Empty(await sources.CreateAsync(report.ReportId, Source("direct", direct, ReportMappingMethods.Direct), cancellationToken));
-            Assert.Empty(await sources.CreateAsync(report.ReportId, Source("bridged", bridged, ReportMappingMethods.Bridge), cancellationToken));
-            var created = (await editor.ReadAsync(report.ReportId, cancellationToken)).Sources;
-            var directId = created.Single(source => source.Source.SourceKey == "direct").Source.ReportSourceId;
-            var bridgedId = created.Single(source => source.Source.SourceKey == "bridged").Source.ReportSourceId;
-            var variables = provider.GetRequiredService<ReportSourceVariableService>();
-            Assert.Empty(await variables.ReplaceAsync(report.ReportId, directId, new SourceVariablesInput { Variables = [Supplied(variable)] }, cancellationToken));
-            Assert.Empty(await variables.ReplaceAsync(
-                report.ReportId, bridgedId, new SourceVariablesInput { Variables = [.. bridged.Variables.Select(Supplied)] }, cancellationToken));
-            SourceItemInput[] loansRules =
-            [
-                .. Assert.Single(template.Rows, row => row.Key == "LOANS").Items
-                    .Where(item => item.ReportSourceId == bridged.Source.ReportSourceId)
-                    .Select(item => new SourceItemInput { ItemKey = item.ItemKey, Selection = item.Selection, Factor = item.Factor })
-            ];
-            Assert.Contains(loansRules, rule => rule.Selection == SourceSelections.Descendants);
-            Assert.Contains(loansRules, rule => rule.Factor == -1m);
-            Assert.Empty(await provider.GetRequiredService<SourceItemService>()
-                .ReplaceAsync(report.ReportId, bridgedId, new SourceItemsInput { RowKey = "LOANS", Items = loansRules }, cancellationToken));
-            var stored = Assert.Single((await editor.ReadAsync(report.ReportId, cancellationToken)).Rows, row => row.Key == "LOANS").Items
-                .Select(item => new SourceItemInput { ItemKey = item.ItemKey, Selection = item.Selection, Factor = item.Factor });
-            Assert.Equal(loansRules.OrderBy(rule => rule.ItemKey, StringComparer.Ordinal), stored.OrderBy(rule => rule.ItemKey, StringComparer.Ordinal));
-            var column = new ReportColumnInput { ColumnKey = "amount", ValueKind = ReportValueKinds.Variable, MetricKey = variable.VariableKey, IsVisible = true };
-            Assert.Empty(await provider.GetRequiredService<ReportColumnService>()
-                .ReplaceAsync(report.ReportId, new ReportColumnsInput { Columns = [column] }, cancellationToken));
+            Assert.False(copy.IsEnabled);
+            Assert.Contains(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == copy.ReportDimensionId);
+            Assert.Equal(template.Rows.Select(row => row.Key), copy.Rows.Select(row => row.Key));
+            foreach (var source in template.Sources.Where(source => source.Method == ReportMappingMethods.Bridge))
+            {
+                var copied = copy.Sources.Single(other => other.Key == source.Key);
+                Assert.NotEqual(source.BridgeId, copied.BridgeId);
+                Assert.Equal(source.Rules.Keys.Order(StringComparer.Ordinal), copied.Rules.Keys.Order(StringComparer.Ordinal));
+                foreach (var (rowKey, rules) in source.Rules) Assert.Equal(rules, copied.Rules[rowKey]);
+            }
 
-            var statuses = provider.GetRequiredService<ReportStatusService>();
-            Assert.Empty(await statuses.SetAsync(report.ReportId, new ReportStatusInput { IsEnabled = true }, cancellationToken));
-            Assert.Empty(await statuses.SetAsync(report.ReportId, new ReportStatusInput { IsEnabled = false }, cancellationToken));
+            Assert.True((await commands.SetEnabledAsync(copy.Id, new ReportEnabledInput { IsEnabled = true }, cancellationToken)).Succeeded);
+            Assert.True((await commands.SetEnabledAsync(copy.Id, new ReportEnabledInput { IsEnabled = false }, cancellationToken)).Succeeded);
         }
         finally
         {
-            await reports.DeleteAsync(report.ReportId, cancellationToken);
+            await provider.GetRequiredService<ReportRemover>().DeleteAsync(copy.Id, cancellationToken);
         }
 
-        var bridges = await provider.GetRequiredService<BridgeQueries>().ListAsync(new BridgeListQuery { DimensionId = report.ReportDimensionId }, cancellationToken);
-        Assert.DoesNotContain(await reports.ListAsync(cancellationToken), other => other.ReportId == report.ReportId);
-        Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = report.ReportDimensionId }, cancellationToken));
+        var bridges = await provider.GetRequiredService<BridgeQueries>().ListAsync(new BridgeListQuery { DimensionId = copy.ReportDimensionId }, cancellationToken);
+        Assert.DoesNotContain(await queries.ListAsync(cancellationToken), other => other.Id == copy.Id);
+        Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = copy.ReportDimensionId }, cancellationToken));
         Assert.Empty(bridges);
-        Assert.DoesNotContain(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == report.ReportDimensionId);
-    }
-
-    /// <summary>The supply of a variable as a margin statement source supplies it.</summary>
-    private static SourceVariableInput Supplied(ReportSourceVariableRecord variable)
-    {
-        return new SourceVariableInput { VariableKey = variable.VariableKey, MeasureKey = variable.MeasureKey, SourceFilterJson = variable.SourceFilterJson };
-    }
-
-    /// <summary>A visible row that shows its values, labelled with its key.</summary>
-    private static ReportRowInput Row(string key, string kind, string? parentKey)
-    {
-        return new ReportRowInput { Key = key, Label = key, Kind = kind, ParentKey = parentKey, SortOrder = 0, IsVisible = true, ShowsValues = true };
-    }
-
-    /// <summary>A source of the dataset, role or field and time field a margin statement source reads.</summary>
-    private static NewReportSourceInput Source(string sourceKey, EditorSource template, string mappingMethod)
-    {
-        return new NewReportSourceInput
-        {
-            SourceKey = sourceKey,
-            DisplayName = sourceKey,
-            DatasetId = template.Source.DatasetId,
-            MappingMethod = mappingMethod,
-            DimensionRoleId = template.Source.DimensionRoleId,
-            FieldKey = template.Source.FieldKey,
-            TimeFieldKey = template.Source.TimeFieldKey
-        };
+        Assert.DoesNotContain(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == copy.ReportDimensionId);
     }
 }

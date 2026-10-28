@@ -1,37 +1,34 @@
 import {
-  BracesIcon,
   ClipboardCheckIcon,
   Columns3Icon,
   DatabaseIcon,
   GitBranchIcon,
   LayersIcon,
   ListTreeIcon,
-  type LucideIcon,
   NetworkIcon,
   PaletteIcon,
   SlidersHorizontalIcon,
   UsersIcon,
+  type LucideIcon,
 } from 'lucide-react'
 import { SectionNav, type NavGroup } from '@/components/shell/page-shell'
-import { allRows } from '@/lib/report/tree'
-import { useEditor, type SettingsSectionId, type Tab } from '@/lib/report/store'
-import type { ReportState } from '@/lib/report/types'
-import { usePublishStatus } from './settings/publish-section'
+import type { ReportDocument } from '@/lib/reports/contract'
+import { useReportEditor, type EditorTab, type SettingsSection } from './editor-state'
 
-type NavId = `editor:${Tab}` | `settings:${SettingsSectionId}`
+type NavId = `editor:${EditorTab}` | `settings:${SettingsSection}`
 
 interface Item {
   id: NavId
   label: string
   icon: LucideIcon
-  count?: (r: ReportState) => number
+  count?: (r: ReportDocument) => number
 }
 
 const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: 'Build',
     items: [
-      { id: 'editor:rows', label: 'Rows', icon: ListTreeIcon, count: (r) => allRows(r.rows).length },
+      { id: 'editor:rows', label: 'Rows', icon: ListTreeIcon, count: (r) => r.rows.length },
       { id: 'editor:data', label: 'Data', icon: DatabaseIcon, count: (r) => r.sources.length },
       { id: 'editor:columns', label: 'Columns', icon: Columns3Icon, count: (r) => r.columns.length },
     ],
@@ -40,9 +37,9 @@ const GROUPS: { label: string; items: Item[] }[] = [
     label: 'Data model',
     items: [
       { id: 'settings:profiles', label: 'Profiles', icon: UsersIcon, count: (r) => r.profiles.length },
-      { id: 'settings:breakout', label: 'Dimensions', icon: NetworkIcon, count: (r) => r.breakoutDims.length },
-      { id: 'settings:scenarios', label: 'Scenarios', icon: GitBranchIcon, count: (r) => r.reportScenarios.length },
-      { id: 'settings:scopes', label: 'Variable scopes', icon: LayersIcon, count: (r) => r.rowScopes.length },
+      { id: 'settings:dimensions', label: 'Dimensions', icon: NetworkIcon, count: (r) => r.calculationDimensions.length },
+      { id: 'settings:scenarios', label: 'Scenarios', icon: GitBranchIcon, count: (r) => r.scenarios.length },
+      { id: 'settings:scopes', label: 'Variable scopes', icon: LayersIcon, count: (r) => r.variableScopes.length },
     ],
   },
   {
@@ -55,11 +52,10 @@ const GROUPS: { label: string; items: Item[] }[] = [
 ]
 
 export function EditorNav() {
-  const { report, ui, setUi } = useEditor()
-  const publish = usePublishStatus()
-
-  const active: NavId = ui.view === 'settings' ? `settings:${ui.settingsSection}` : `editor:${ui.tab}`
-  const blocking = publish.ready.issues.length
+  const { report, diagnostics, ui, setUi } = useReportEditor()
+  const failing = diagnostics?.steps.filter((s) => s.status === 'fail').reduce((n, s) => n + s.violations.length, 0) ?? 0
+  const warns = diagnostics?.steps.some((s) => s.status === 'warn') ?? false
+  const active: NavId = ui.view === 'settings' ? `settings:${ui.section}` : `editor:${ui.tab}`
 
   const groups: NavGroup<NavId>[] = [
     ...GROUPS.map((g) => ({
@@ -70,11 +66,11 @@ export function EditorNav() {
       label: 'Release',
       items: [
         {
-          id: 'settings:publish',
+          id: 'settings:diagnostics',
           label: 'Diagnostics',
-          icon: publish.overall === 'fail' ? BracesIcon : ClipboardCheckIcon,
-          badge: publish.overall === 'pass' ? 'OK' : publish.overall === 'warn' ? 'Warn' : blocking,
-          tone: publish.overall === 'pass' ? 'good' : publish.overall === 'fail' ? 'bad' : undefined,
+          icon: ClipboardCheckIcon,
+          badge: diagnostics ? (diagnostics.ready ? (warns ? 'Warn' : 'OK') : failing) : undefined,
+          tone: diagnostics ? (diagnostics.ready ? 'good' : 'bad') : undefined,
         },
       ],
     },
@@ -82,7 +78,7 @@ export function EditorNav() {
 
   const go = (id: NavId) => {
     const [kind, key] = id.split(':') as ['editor' | 'settings', string]
-    setUi(kind === 'editor' ? { view: 'editor', tab: key as Tab } : { view: 'settings', settingsSection: key as SettingsSectionId })
+    setUi(kind === 'editor' ? { view: 'editor', tab: key as EditorTab } : { view: 'settings', section: key as SettingsSection })
   }
 
   return <SectionNav label="Report sections" groups={groups} active={active} onSelect={go} />

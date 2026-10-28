@@ -26,36 +26,36 @@ public sealed class ReportSourcesResolveRule : IReportRule
             var subject = $"Report '{report.ReportKey}' source '{source.SourceKey}'";
             if (!scope.Datasets.TryGetValue(source.DatasetId, out var dataset))
             {
-                yield return Violation($"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the release does not pin.");
+                yield return Violation(source.SourceKey, $"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the release does not pin.");
                 continue;
             }
 
             if (source.DimensionRoleId is { } dimensionRoleId)
             {
                 if (!SourceBindings.BridgesFrom(dataset, dimensionRoleId))
-                    yield return Violation($"{subject} bridges from role '{scope.RoleKeys[dimensionRoleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding.");
+                    yield return Violation(source.SourceKey, $"{subject} bridges from role '{scope.RoleKeys[dimensionRoleId]}', which '{dataset.DatasetKey}' binds into no members with an enabled binding.");
             }
             else if (dataset.Fields.GetValueOrDefault(source.FieldKey!) is not { IsEnabled: true })
             {
-                yield return Violation($"{subject} maps rows by '{source.FieldKey}', which is no enabled field of '{dataset.DatasetKey}'.");
+                yield return Violation(source.SourceKey, $"{subject} maps rows by '{source.FieldKey}', which is no enabled field of '{dataset.DatasetKey}'.");
             }
             if (!dataset.IsTimeField(source.TimeFieldKey))
-                yield return Violation($"{subject}: time field '{source.TimeFieldKey}' of '{dataset.DatasetKey}' has no time binding.");
+                yield return Violation(source.SourceKey, $"{subject}: time field '{source.TimeFieldKey}' of '{dataset.DatasetKey}' has no time binding.");
             foreach (var variable in variablesOf[source.ReportSourceId].OrderBy(variable => variable.VariableKey, StringComparer.Ordinal))
             {
                 if (dataset.Measures.GetValueOrDefault(variable.MeasureKey) is not { IsEnabled: true })
-                    yield return Violation($"{subject}: variable '{variable.VariableKey}' reads '{variable.MeasureKey}', which is no enabled measure of '{dataset.DatasetKey}'.");
+                    yield return Violation(source.SourceKey, $"{subject}: variable '{variable.VariableKey}' reads '{variable.MeasureKey}', which is no enabled measure of '{dataset.DatasetKey}'.");
                 if (variable.SourceFilterJson is not { } filter) continue;
                 foreach (var field in FilterNodes.Inspect(filter).Operands.Select(operand => operand.Id).Distinct(StringComparer.Ordinal)
                     .Where(key => dataset.Fields.GetValueOrDefault(key) is not { IsEnabled: true, IsFilterable: true }))
-                    yield return Violation($"{subject}: variable '{variable.VariableKey}' filters on '{field}', which is no enabled, filterable field of '{dataset.DatasetKey}'.");
+                    yield return Violation(source.SourceKey, $"{subject}: variable '{variable.VariableKey}' filters on '{field}', which is no enabled, filterable field of '{dataset.DatasetKey}'.");
             }
         }
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string sourceKey, string message)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Sources, sourceKey) };
     }
 }

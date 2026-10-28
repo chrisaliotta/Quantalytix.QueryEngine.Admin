@@ -1,204 +1,139 @@
-import { methodLabel, sourceScenarios } from '@/lib/report/scenarios'
-
-import { FilterIcon, MoreHorizontalIcon, PlusIcon, Trash2Icon } from 'lucide-react'
-import { toast } from 'sonner'
-import { useUndoAction } from '@/components/shell/history'
+import { Trash2Icon, XIcon } from 'lucide-react'
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { sourceCoverage } from '@/lib/report/coverage'
-import { uid, useEditor } from '@/lib/report/store'
-import { useCalcModel } from '@/lib/report/use-calc-model'
-import type { Source } from '@/lib/report/types'
-import { cn } from '@/lib/utils'
-import { KeyText, WARN_CHIP } from '../shared/bits'
-import { filterSummary } from '../shared/filter-builder'
-import { SearchCombobox } from '../shared/search-combobox'
+import { Input } from '@/components/ui/input'
+import type { ReportSource, ReportSourceInput, ReportSourceVariable, VariableMissingBehavior, Violation } from '@/lib/reports/contract'
+import { useNames, useReportEditor } from '../editor-state'
+import { KeyText, Refusal, SectionLabel, WARN_CHIP } from '../shared/bits'
 import { SimpleSelect } from '../shared/simple-select'
+import { ReportBridgeLine } from './report-bridge-line'
 
-interface SourceCardProps {
-  source: Source
-  onEditFilter: (bindingId: string) => void
-  onOpenProfiles: (variable: string) => void
-}
+const INHERIT = '__inherit__'
 
-export function SourceCard({ source, onEditFilter, onOpenProfiles }: SourceCardProps) {
-  const { report, mutate, openDialog } = useEditor()
-  const undoAction = useUndoAction()
-  const calc = useCalcModel()
-  const dataset = report.datasets.find((d) => d.key === source.dataset)
-  const coverage = source.method === 'mapped' ? sourceCoverage(source, report) : null
-  const gaps = coverage?.unmapped.length ?? 0
-  const supplierCount = (variable: string) => report.sources.filter((s) => s.bindings.some((b) => b.variable === variable)).length
-
-  const editSource = (fn: (s: Source) => void) =>
-    mutate((d) => {
-      const s = d.sources.find((x) => x.key === source.key)
-      if (s) fn(s)
-    })
-
-  const removeSource = () => {
-    mutate((d) => {
-      d.sources = d.sources.filter((s) => s.key !== source.key)
-    })
-    toast(`Removed "${source.name}"`, { action: undoAction() })
+/** One source: its name and time field, the variables it supplies, its coverage, and its delete, which takes its bridge (OI-56). */
+export function SourceCard({ source }: { source: ReportSource }) {
+  const { reportId, diagnostics, run, setUi } = useReportEditor()
+  const names = useNames()
+  const [refusal, setRefusal] = useState<Violation[] | null>(null)
+  const coverage = diagnostics?.coverage[source.key]
+  const edit = async (call: Parameters<typeof run>[0]) => setRefusal(await run(call))
+  const identity: ReportSourceInput = {
+    key: source.key,
+    displayName: source.displayName,
+    datasetId: source.datasetId,
+    timeFieldKey: source.timeFieldKey,
+    method: source.method,
+    roleId: source.roleId,
+    fieldKey: source.fieldKey,
   }
 
-  const unbound = calc.variables.filter((v) => !source.bindings.some((b) => b.variable === v.key))
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border bg-card p-4" aria-label={source.displayName}>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium">{source.displayName}</h3>
+            <KeyText>{source.key}</KeyText>
+            <Badge variant="outline">{source.method === 'bridge' ? 'Bridge' : 'Direct'}</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {names.dataset(source.datasetId)?.displayName ?? source.datasetId}
+            {source.method === 'bridge' ? ` · role ${names.role(source.roleId)?.displayName ?? source.roleId}` : ` · field ${source.fieldKey}`}
+          </p>
+          {source.method === 'bridge' && <ReportBridgeLine sourceKey={source.key} />}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {source.method === 'bridge' && coverage && (
+            <Button size="sm" variant="outline" className={coverage.unmapped.length ? WARN_CHIP : undefined} onClick={() => setUi({ dialog: { type: 'coverage', sourceKey: source.key } })}>
+              {coverage.unmapped.length ? `${coverage.unmapped.length} unmapped` : 'Coverage'}
+            </Button>
+          )}
+          <Button size="icon-sm" variant="ghost" aria-label={`Delete ${source.displayName}`} onClick={() => void edit((api) => api.deleteSource(reportId, source.key))}>
+            <Trash2Icon />
+          </Button>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-sm">
+          Name
+          <Input
+            defaultValue={source.displayName}
+            onBlur={(e) => e.target.value !== source.displayName && void edit((api) => api.saveSource(reportId, { ...identity, displayName: e.target.value }))}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          Time field
+          <Input
+            className="font-mono"
+            defaultValue={source.timeFieldKey}
+            onBlur={(e) => e.target.value !== source.timeFieldKey && void edit((api) => api.saveSource(reportId, { ...identity, timeFieldKey: e.target.value.trim() }))}
+          />
+        </label>
+      </div>
+      <Refusal violations={refusal} />
+      <SourceVariables source={source} />
+    </section>
+  )
+}
+
+/** The variables a source supplies, each from a dataset measure, with an optional override of the variable's missing behavior. */
+function SourceVariables({ source }: { source: ReportSource }) {
+  const { reportId, model, run } = useReportEditor()
+  const [variables, setVariables] = useState<ReportSourceVariable[]>(source.variables)
+  const [refusal, setRefusal] = useState<Violation[] | null>(null)
+  const free = (model?.variables ?? []).filter((v) => !variables.some((s) => s.variableKey === v.key))
+  const patch = (key: string, p: Partial<ReportSourceVariable>) => setVariables(variables.map((v) => (v.variableKey === key ? { ...v, ...p } : v)))
 
   return (
-    <article className="flex flex-col rounded-lg border bg-card" aria-labelledby={`src-${source.key}`}>
-      <header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b px-4 py-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 id={`src-${source.key}`} className="font-semibold">
-              {source.name}
-            </h3>
-            <Badge variant="outline" className="font-normal text-muted-foreground">
-              {methodLabel(source)}
-            </Badge>
-            {sourceScenarios(report, source).map((sc) => (
-              <Badge key={sc.role} variant="outline" className="font-normal" title={`Reads one ${sc.name.toLowerCase()} per run`}>
-                {sc.name}
-              </Badge>
-            ))}
-            {coverage && (
-              <button
-                type="button"
-                onClick={() => openDialog({ type: 'coverage', sourceKey: source.key })}
-                className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                aria-label={`${gaps} unmapped accounts, review coverage`}
-              >
-                <Badge variant="outline" className={cn('tabular-nums', gaps > 0 ? WARN_CHIP : 'font-normal text-muted-foreground')}>
-                  {gaps} unmapped
-                </Badge>
-              </button>
-            )}
-          </div>
-          <p className="flex flex-wrap items-center gap-x-3 text-muted-foreground">
-            <KeyText>{source.dataset}</KeyText>
-            <span>
-              Time field <KeyText className="text-foreground">{source.timeField}</KeyText>
-            </span>
-          </p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`${source.name} actions`} />}>
-            <MoreHorizontalIcon />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {source.method === 'mapped' && (
-              <DropdownMenuItem onClick={() => openDialog({ type: 'coverage', sourceKey: source.key })}>Review coverage…</DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={removeSource}>
-              <Trash2Icon /> Remove source
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[34%] pl-4">Variable</TableHead>
-            <TableHead className="w-[26%]">Measure</TableHead>
-            <TableHead>Filter</TableHead>
-            <TableHead className="w-12 pr-4">
-              <span className="sr-only">Remove</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {source.bindings.map((b) => (
-            <TableRow key={b.id}>
-              <TableCell className="pl-4">
-                <div className="flex items-center gap-2">
-                  <KeyText className="text-foreground">{b.variable}</KeyText>
-                  {supplierCount(b.variable) > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenProfiles(b.variable)}
-                      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                    >
-                      <Badge variant="secondary" className="font-normal">
-                        Profiles
-                      </Badge>
-                      <span className="sr-only"> for {b.variable}</span>
-                    </button>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <SearchCombobox
-                  value={b.measure}
-                  onChange={(measure) =>
-                    editSource((s) => {
-                      const x = s.bindings.find((y) => y.id === b.id)
-                      if (x) x.measure = measure
-                    })
-                  }
-                  options={(dataset?.measures ?? []).map((m) => ({ value: m, label: m }))}
-                  className="h-8 w-full font-mono"
-                />
-              </TableCell>
-              <TableCell>
-                {b.filters.length ? (
-                  <button
-                    type="button"
-                    onClick={() => onEditFilter(b.id)}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 font-mono text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/60"
-                    aria-label={`Edit filter on ${b.variable}`}
-                  >
-                    <FilterIcon className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-                    <span className="truncate">{b.filters.map(filterSummary).join(' and ')}</span>
-                  </button>
-                ) : (
-                  <Button variant="ghost" size="xs" className="text-muted-foreground" onClick={() => onEditFilter(b.id)}>
-                    <PlusIcon /> Add filter<span className="sr-only"> on {b.variable}</span>
-                  </Button>
-                )}
-              </TableCell>
-              <TableCell className="pr-4">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove ${b.variable} binding`}
-                  onClick={() => editSource((s) => (s.bindings = s.bindings.filter((x) => x.id !== b.id)))}
-                >
-                  <Trash2Icon />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {source.bindings.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="py-4 pl-4 text-muted-foreground">
-                No variables yet. This source contributes nothing until one is bound.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      {unbound.length > 0 && (
-        <footer className="flex items-center gap-2 border-t px-4 py-2">
+    <div className="flex flex-col gap-2">
+      <SectionLabel>Variables supplied</SectionLabel>
+      <ul className="flex flex-col gap-1.5">
+        {variables.map((v) => (
+          <li key={v.variableKey} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="min-w-40">{model?.variables.find((m) => m.key === v.variableKey)?.displayName ?? v.variableKey}</span>
+            <span className="text-muted-foreground">from measure</span>
+            <Input aria-label={`Measure of ${v.variableKey}`} className="h-7 w-40 font-mono" value={v.measureKey} onChange={(e) => patch(v.variableKey, { measureKey: e.target.value.trim() })} />
+            <SimpleSelect
+              aria-label={`Missing values of ${v.variableKey}`}
+              size="sm"
+              value={v.missingBehavior ?? INHERIT}
+              onChange={(m) => patch(v.variableKey, { missingBehavior: m === INHERIT ? null : (m as VariableMissingBehavior) })}
+              options={[
+                { value: INHERIT, label: "Variable's missing behavior" },
+                { value: 'null', label: 'Missing is null' },
+                { value: 'zero', label: 'Missing is zero' },
+              ]}
+              className="w-56"
+            />
+            <Button size="icon-xs" variant="ghost" aria-label={`Remove ${v.variableKey}`} onClick={() => setVariables(variables.filter((x) => x !== v))}>
+              <XIcon />
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-2">
+        {free.length > 0 && (
           <SimpleSelect
+            aria-label="Variable to add"
             size="sm"
             value=""
-            placeholder="Supply a variable…"
-            aria-label={`Add a variable to ${source.name}`}
+            placeholder="Add a variable…"
+            onChange={(variableKey) => setVariables([...variables, { variableKey, measureKey: '', filter: null, missingBehavior: null }])}
+            options={free.map((v) => ({ value: v.key, label: v.displayName, hint: v.key }))}
             className="w-56"
-            options={unbound.map((v) => ({ value: v.key, label: `${v.key}  ${v.name}` }))}
-            onChange={(variable) =>
-              editSource((s) => {
-                s.bindings.push({ id: uid('b'), variable, measure: dataset?.measures[0] ?? '', filters: [] })
-              })
-            }
           />
-        </footer>
-      )}
-    </article>
+        )}
+        <Button
+          size="sm"
+          className="ml-auto"
+          disabled={JSON.stringify(variables) === JSON.stringify(source.variables) || variables.some((v) => !v.measureKey)}
+          onClick={async () => setRefusal(await run((api) => api.setSourceVariables(reportId, source.key, variables)))}
+        >
+          Apply
+        </Button>
+      </div>
+      <Refusal violations={refusal} />
+    </div>
   )
 }

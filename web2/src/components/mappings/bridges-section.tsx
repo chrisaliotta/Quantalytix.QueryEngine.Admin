@@ -39,7 +39,7 @@ import {
   type ValidationReport,
 } from '@/lib/mappings/contract'
 import { bridgeMappingsToText, fmt, indexMembers, nearlyEqual, previewBridgePaste, violationsByTarget, type MemberIndex } from '@/lib/mappings/rules'
-import { useEditor } from '@/lib/report/store'
+import { useReportByKey } from '@/lib/reports/client'
 import { cn } from '@/lib/utils'
 import { BlockedDeleteDialog, memberOptions, PinsList, PREVIEW_TONE, RowIssues, useMapCall, ValidationList, VersionBar, withoutKey } from './shared'
 
@@ -244,14 +244,13 @@ function CreateBridgeDialog({ open, onOpenChange, dim, onCreated }: { open: bool
 }
 
 function OpenInReportEditor({ reportKey }: { reportKey: string }) {
-  const { library } = useEditor()
   const nav = useAppNav()
-  const item = library.find((i) => i.report.settings.key === reportKey)
+  const item = useReportByKey(reportKey)
   if (!item) return <Mono>{reportKey}</Mono>
   return (
     <Button variant="link" size="sm" className="h-auto gap-1 p-0" onClick={() => nav.report(item.id)}>
       <FileTextIcon aria-hidden className="size-3.5" />
-      Open {item.report.settings.name || reportKey}
+      Open {item.displayName}
       <span className="sr-only"> in the report editor</span>
     </Button>
   )

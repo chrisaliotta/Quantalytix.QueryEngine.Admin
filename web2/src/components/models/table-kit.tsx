@@ -1,9 +1,16 @@
 import type { KeyboardEvent } from 'react'
-import { FORMAT_LABEL } from '@/components/report/columns/column-dialog'
 import { KEY_PATTERN } from '@/lib/api/contract'
 import type { ModelDocument, RoundingMode, VariableMissingBehavior, Violation } from '@/lib/models/contract'
-import type { DisplayFormat } from '@/lib/report/types'
 import { RuleList } from './refusal-alert'
+
+type DisplayFormat = 'currency' | 'percent' | 'number' | 'basisPoints'
+
+const FORMAT_LABEL: Record<DisplayFormat, string> = {
+  currency: 'Currency',
+  percent: 'Percent',
+  number: 'Number',
+  basisPoints: 'Basis points',
+}
 
 export const NEW_ROW_ID = '__new__'
 

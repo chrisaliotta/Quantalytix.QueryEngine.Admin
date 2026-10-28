@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// What the report rules check reports against besides their own content: the dataset versions of the release they run against,
-/// and the published versions of the dimensions their calculation dimensions' roles template.
+/// and the published versions of the dimensions their sources' and calculation dimensions' roles template.
 /// </summary>
 public sealed record ReportScope
 {
@@ -18,8 +18,8 @@ public sealed record ReportScope
     public required IReadOnlyDictionary<long, string> RoleKeys { get; init; }
 
     /// <summary>
-    /// The published version's keys of the dimension each calculation dimension's role templates, by role ID; null while the
-    /// dimension has no published version.
+    /// The published version's keys of the dimension each source's or calculation dimension's role templates, by role ID; null
+    /// while the dimension has no published version.
     /// </summary>
     public required IReadOnlyDictionary<long, DimensionKeys?> Templates { get; init; }
 }

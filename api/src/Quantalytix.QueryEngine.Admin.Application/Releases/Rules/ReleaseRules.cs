@@ -3,12 +3,11 @@ using Quantalytix.QueryEngine.Admin.Application.Changes;
 namespace Quantalytix.QueryEngine.Admin.Application.Releases;
 
 /// <summary>
-/// Runs the release rules in the contract's order (<c>ReleaseRuleCode</c>): the manifest rules in registration order, then, over a
-/// stored release, the report rules of <see cref="ReleaseReportChecks"/>. A pending manifest is checked by the manifest rules only:
-/// the reports module reads a release's dataset versions from stored manifests.
+/// Runs the release rules in the contract's order (<c>ReleaseRuleCode</c>): the manifest rules in registration order, then the report
+/// rules of <see cref="ReleaseReportChecks"/>, over a stored release or a change set's pending manifest.
 /// </summary>
 /// <param name="rules">The manifest rules, in registration order.</param>
-/// <param name="reports">The report rules over a stored release.</param>
+/// <param name="reports">The report rules over a release.</param>
 /// <param name="time">Stamps the reports.</param>
 public sealed class ReleaseRules(IEnumerable<IReleaseRule> rules, ReleaseReportChecks reports, TimeProvider time)
 {
@@ -45,13 +44,18 @@ public sealed class ReleaseRules(IEnumerable<IReleaseRule> rules, ReleaseReportC
         return Report(snapshot, false, violations);
     }
 
-    /// <summary>The report of the manifest rules over a change set's pending manifest (OI-37).</summary>
+    /// <summary>The report of every release rule over a change set's pending manifest (OI-37).</summary>
     /// <param name="snapshot">The pending release.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The report; <c>unsaved</c> is true.</returns>
     public async Task<ReleaseCheckReport> CheckPendingAsync(ReleaseSnapshot snapshot, CancellationToken cancellationToken)
     {
-        return Report(snapshot, true, await EvaluateAsync(snapshot, cancellationToken));
+        IReadOnlyList<ReleaseViolation> violations =
+        [
+            .. await EvaluateAsync(snapshot, cancellationToken),
+            .. await reports.PendingConsumersAsync(snapshot.Manifest.ToDictionary(row => row.DatasetId, row => row.DatasetVersionId), cancellationToken)
+        ];
+        return Report(snapshot, true, violations);
     }
 
     /// <summary>Runs some rules in order.</summary>

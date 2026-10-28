@@ -18,14 +18,23 @@ public sealed class DefaultProfileEnabledRule : IReportRule
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
         if (report.Report.DefaultProfileKey is not { } profileKey)
-            yield return Violation($"Report '{report.ReportKey}' names no default profile.");
+            yield return Violation($"Report '{report.ReportKey}' names no default profile.", null);
         else if (report.Profiles.FirstOrDefault(profile => profile.ProfileKey == profileKey) is not { IsEnabled: true })
-            yield return Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no enabled profile of the report.");
+            yield return Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no enabled profile of the report.", profileKey);
+    }
+
+    /// <summary>Reports a default profile key that names no profile of the report, which no report may keep (a gate even while disabled).</summary>
+    /// <param name="report">The report.</param>
+    /// <returns>One violation when the default names no profile.</returns>
+    public static IEnumerable<RuleViolation> Unresolved(ReportGraph report)
+    {
+        if (report.Report.DefaultProfileKey is { } profileKey && report.Profiles.All(profile => profile.ProfileKey != profileKey))
+            yield return Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no profile of the report.", profileKey);
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, string? profileKey)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = ReportAreas.Target(ReportAreas.Profiles, profileKey) };
     }
 }

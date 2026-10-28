@@ -24,20 +24,20 @@ public sealed class ReportMetricsResolveRule : IReportRule
         var profileKeys = report.Profiles.ToDictionary(profile => profile.CalculationSourceProfileId, profile => profile.ProfileKey);
         var sourceKeys = report.Sources.ToDictionary(source => source.ReportSourceId, source => source.SourceKey);
         foreach (var column in report.Columns.Where(column => !(column.ValueKind == ReportValueKinds.Variable ? variables : measures).Contains(column.MetricKey)))
-            yield return Violation($"{subject} column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the model.");
+            yield return Violation($"{subject} column '{column.ColumnKey}' returns '{column.MetricKey}', which is no {column.ValueKind} metric of the model.", ReportAreas.Target(ReportAreas.Columns, column.ColumnKey));
         foreach (var line in report.Lines.Where(line => line.CalculatedMeasureKey is { } key && !measures.Contains(key)))
-            yield return Violation($"{subject} row '{line.LineKey}' evaluates '{line.CalculatedMeasureKey}', which is no calculated measure of the model.");
+            yield return Violation($"{subject} row '{line.LineKey}' evaluates '{line.CalculatedMeasureKey}', which is no calculated measure of the model.", ReportAreas.Target(ReportAreas.Rows, line.LineKey));
         foreach (var scoped in report.Scopes.Where(scoped => !variables.Contains(scoped.VariableKey)))
-            yield return Violation($"{subject} scopes '{scoped.VariableKey}', which is no variable of the model.");
+            yield return Violation($"{subject} scopes '{scoped.VariableKey}', which is no variable of the model.", ReportAreas.Target(ReportAreas.Scopes, scoped.VariableKey));
         foreach (var supplied in report.SourceVariables.Where(supplied => !variables.Contains(supplied.VariableKey)))
-            yield return Violation($"{subject} source '{sourceKeys[supplied.ReportSourceId]}' supplies '{supplied.VariableKey}', which is no variable of the model.");
+            yield return Violation($"{subject} source '{sourceKeys[supplied.ReportSourceId]}' supplies '{supplied.VariableKey}', which is no variable of the model.", ReportAreas.Target(ReportAreas.Sources, sourceKeys[supplied.ReportSourceId]));
         foreach (var pick in report.Picks.Where(pick => !variables.Contains(pick.VariableKey)))
-            yield return Violation($"{subject} profile '{profileKeys[pick.CalculationSourceProfileId]}' picks a source for '{pick.VariableKey}', which is no variable of the model.");
+            yield return Violation($"{subject} profile '{profileKeys[pick.CalculationSourceProfileId]}' picks a source for '{pick.VariableKey}', which is no variable of the model.", ReportAreas.Target(ReportAreas.Profiles, profileKeys[pick.CalculationSourceProfileId]));
     }
 
     /// <summary>A violation of this rule.</summary>
-    private static RuleViolation Violation(string message)
+    private static RuleViolation Violation(string message, ViolationTarget target)
     {
-        return new RuleViolation { Code = Code, Message = message };
+        return new RuleViolation { Code = Code, Message = message, Target = target };
     }
 }

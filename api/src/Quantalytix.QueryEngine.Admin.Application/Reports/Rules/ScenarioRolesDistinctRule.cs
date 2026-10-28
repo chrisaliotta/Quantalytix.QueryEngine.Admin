@@ -27,7 +27,8 @@ public sealed class ScenarioRolesDistinctRule : IReportRule
             {
                 Code = Code,
                 Message = $"Report '{report.ReportKey}' reads role '{scope.RoleKeys[dimension.DimensionRoleId]}' as a scenario and through calculation dimension " +
-                    $"'{dimension.DimensionKey}'; a scenario's member is chosen per run, never broken out or filtered by."
+                    $"'{dimension.DimensionKey}'; a scenario's member is chosen per run, never broken out or filtered by.",
+                Target = ReportAreas.Target(ReportAreas.Dimensions, dimension.DimensionKey)
             };
         }
     }

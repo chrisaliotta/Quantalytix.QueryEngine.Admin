@@ -728,7 +728,7 @@ export function createSeed(): Db {
       purpose: 'report',
       ownerReport: { reportKey: 'bank.margin_statement', reportName: 'Bank margin' },
       isRemovable: false,
-      // Mirrors the report's Rows tree (lib/report/mockData.ts); formula rows are not members.
+      // Mirrors a report's rows tree; formula rows are not members.
       versions: [
         {
           n: 1,

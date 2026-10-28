@@ -32,6 +32,15 @@ public sealed class ReleaseDatasets(
         var release = semanticReleaseId ?? (await databaseInfo.GetAsync(new { SingletonId }, cancellationToken)).ActiveSemanticReleaseId;
         var datasetVersions = (await manifest.ListAsync(new { SemanticReleaseId = release, DatasetId = datasetIds.ToArray() }, cancellationToken))
             .ToDictionary(row => row.DatasetId, row => row.DatasetVersionId);
+        return await ReadAsync(datasetVersions, cancellationToken);
+    }
+
+    /// <summary>Reads the dataset versions of a manifest that is not stored, such as a release change set's pending one.</summary>
+    /// <param name="datasetVersions">The pinned version of each dataset, by dataset id.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The pinned versions by dataset id.</returns>
+    public async Task<IReadOnlyDictionary<long, PinnedDatasetVersion>> ReadAsync(IReadOnlyDictionary<long, long> datasetVersions, CancellationToken cancellationToken)
+    {
         long[] versionIds = [.. datasetVersions.Values];
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = datasetVersions.Keys.ToArray() }, cancellationToken))
             .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
