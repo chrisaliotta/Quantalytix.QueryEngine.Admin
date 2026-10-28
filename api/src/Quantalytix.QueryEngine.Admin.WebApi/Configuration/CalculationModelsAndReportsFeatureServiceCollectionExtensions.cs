@@ -30,7 +30,6 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportSnapshotLoader>();
         services.AddScoped<ReportGraphReader>();
         services.AddScoped<ReportRules>();
-        services.AddScoped<ReportOwnership>();
         services.AddScoped<OwnedVersions>();
         services.AddScoped<ReleaseDatasets>();
         services.AddScoped<ReportSourceWrites>();

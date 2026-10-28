@@ -276,13 +276,6 @@ internal sealed class ReportFixture
             Columns, MemberOptions, Styles, DimensionService(), Pins(), Owned(), Revision());
     }
 
-    /// <summary>The finder of the reports that own dimensions and bridges.</summary>
-    /// <returns>The finder over these tables.</returns>
-    public ReportOwnership Ownership()
-    {
-        return new ReportOwnership(Dimensions, DimensionVersions, Bridges, BridgeVersions, Reports);
-    }
-
     /// <summary>The parameters of model 40.</summary>
     /// <returns>The service over these tables.</returns>
     public ModelParameterService ParameterService()

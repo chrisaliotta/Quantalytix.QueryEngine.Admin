@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Quantalytix.QueryEngine.Admin.Application.Lookups;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -10,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Configuration;
 public static class AdminApplicationServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers tenant listing, lookups, the five version stores, their registry, the version workflow with the publication set
+    /// Registers tenant listing, the five version stores, their registry, the version workflow with the publication set
     /// its rules read, a predecessor retirer for each living kind, the semantic revision and the living kinds' freeze, all scoped
     /// to the request. The API registers the FluentValidation validators by scanning this assembly.
     /// </summary>
@@ -19,8 +18,6 @@ public static class AdminApplicationServiceCollectionExtensions
     public static IServiceCollection AddAdminApplication(this IServiceCollection services)
     {
         services.AddScoped<AccessibleTenantsService>();
-        services.AddScoped<LookupService>();
-        services.AddScoped<CalculationLookups>();
         services.AddScoped<IVersionStore, DatasetVersionStore>();
         services.AddScoped<IVersionStore, DimensionVersionStore>();
         services.AddScoped<IVersionStore, MappingVersionStore>();
