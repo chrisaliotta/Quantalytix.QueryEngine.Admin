@@ -46,10 +46,6 @@ export function mappingsOnRow(source: Source, rowKey: string) {
   return source.mappings.filter((m) => m.rowKey === rowKey)
 }
 
-export function mappingMultiplier(m: Mapping) {
-  return m.multiplier ?? 1
-}
-
 /**
  * Net scale per account that lands on a row from one source. An exclusion cancels what folders contribute,
  * but a direct mapping of the same account still counts — that is how an account is broken out of a folder.
@@ -62,9 +58,8 @@ export function rowLeafFactors(source: Source, rowKey: string, accounts: DimMemb
     const touching = rowMappings.filter((m) => mappingCovers(m, leaf.key, index))
     if (!touching.length) continue
     const excluded = touching.some((m) => m.factor < 0)
-    const scale = (m: Mapping) => m.factor * mappingMultiplier(m)
-    const viaFolders = touching.filter((m) => m.factor > 0 && m.memberKey !== leaf.key).reduce((s, m) => s + scale(m), 0)
-    const direct = touching.filter((m) => m.factor > 0 && m.memberKey === leaf.key).reduce((s, m) => s + scale(m), 0)
+    const viaFolders = touching.filter((m) => m.factor > 0 && m.memberKey !== leaf.key).reduce((s, m) => s + m.factor, 0)
+    const direct = touching.filter((m) => m.factor > 0 && m.memberKey === leaf.key).reduce((s, m) => s + m.factor, 0)
     result.set(leaf.key, (excluded ? 0 : viaFolders) + direct)
   }
   return result

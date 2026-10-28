@@ -14,7 +14,6 @@ import { useEditor } from '@/lib/report/store'
 import type { DimMember, Mapping, Source } from '@/lib/report/types'
 import { cn } from '@/lib/utils'
 import { KeyText } from '../shared/bits'
-import { FactorInput } from './multiplier-control'
 
 const ROW = 'border-b last:border-b-0 hover:bg-muted/40'
 const ACCOUNT_CELL = 'w-full max-w-0 py-1 pr-3'
@@ -99,6 +98,10 @@ export function MappingTable({ source, rowKey, advanced }: { source: Source; row
   )
 }
 
+function Factor({ value }: { value: number }) {
+  return <span className="pr-1 font-mono text-xs tabular-nums">{value}</span>
+}
+
 function AccountName({ code, label, excluded, className }: { code: string; label: string; excluded?: boolean; className?: string }) {
   return (
     <div className={cn('flex min-w-0 items-center gap-2', className)}>
@@ -138,7 +141,7 @@ function AccountRow({
         {excluded ? (
           <span className="pr-1 text-xs text-muted-foreground">Excluded</span>
         ) : (
-          <FactorInput sourceKey={source.key} mapping={m} label={label} />
+          <Factor value={m.factor} />
         )}
       </td>
       <td className={ACTION_CELL}>
@@ -213,7 +216,7 @@ function FolderRows({
           <span className="sr-only"> accounts included</span>
         </td>
         <td className={FACTOR_CELL}>
-          <FactorInput sourceKey={source.key} mapping={m} label={`${folder.label} folder`} />
+          <Factor value={m.factor} />
         </td>
         <td className={ACTION_CELL}>
           <Button variant="ghost" size="icon-xs" aria-label={`Remove ${m.memberKey} folder from this row`} onClick={() => mapping.remove(source.key, m.id)}>

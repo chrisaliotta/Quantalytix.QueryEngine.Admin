@@ -85,8 +85,6 @@ export interface Mapping {
   memberKey: string
   /** +1 includes the member, -1 cancels an inclusion (an exclusion). */
   factor: number
-  /** Optional scale applied to the mapped value; kept apart from factor so exclusions still net to zero. */
-  multiplier?: number
 }
 
 export type SourceMethod = 'mapped' | 'matched'

@@ -89,7 +89,6 @@ interface EditorContextValue {
     include: (sourceKey: string, rowKey: string, memberKey: string) => void
     /** Excludes an account from its folder and maps it directly, so it can carry its own factor. */
     breakOut: (sourceKey: string, rowKey: string, memberKey: string) => void
-    setMultiplier: (sourceKey: string, mappingId: string, multiplier: number | undefined) => void
   }
 }
 
@@ -315,13 +314,6 @@ export function EditorProvider({ children }: { children: ReactNode }) {
           if (!s.mappings.some((m) => onRow(m) && m.factor > 0)) s.mappings.push({ id: directId, rowKey, memberKey, factor: 1 })
         })
       },
-      setMultiplier: (sourceKey: string, mappingId: string, multiplier: number | undefined) =>
-        withSource(sourceKey, (s) => {
-          const m = s.mappings.find((x) => x.id === mappingId)
-          if (!m) return
-          if (multiplier === undefined || multiplier === 1) delete m.multiplier
-          else m.multiplier = multiplier
-        }),
     }
   }, [mutate])
 
