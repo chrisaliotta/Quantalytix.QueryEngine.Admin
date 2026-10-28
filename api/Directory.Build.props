@@ -7,11 +7,16 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Root of the query engine checkout whose Domain project supplies the expression parser. Override with an environment variable of the same name. -->
-    <QueryEngineRoot Condition="'$(QueryEngineRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'Quantalytix.QueryEngine'))</QueryEngineRoot>
+    <!-- The main checkout of this repository. A git worktree elsewhere (~/.cursor/worktrees/...) has a .git file whose "gitdir: <main>/.git/worktrees/<name>" names it, so the sibling repositories below resolve from any worktree. -->
+    <_AdminGitFile>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '.git'))</_AdminGitFile>
+    <_AdminWorktreeGitDir Condition="$([System.IO.File]::Exists('$(_AdminGitFile)'))">$([System.IO.File]::ReadAllText('$(_AdminGitFile)').Trim().Substring(8))</_AdminWorktreeGitDir>
+    <AdminCheckoutRoot Condition="'$(_AdminWorktreeGitDir)' != ''">$([MSBuild]::NormalizeDirectory($(_AdminWorktreeGitDir.Substring(0, $(_AdminWorktreeGitDir.IndexOf('/.git/'))))))</AdminCheckoutRoot>
+    <AdminCheckoutRoot Condition="'$(AdminCheckoutRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..'))</AdminCheckoutRoot>
+    <!-- Root of the query engine checkout whose Domain project supplies the expression parser, next to the main checkout. Override with an environment variable of the same name. -->
+    <QueryEngineRoot Condition="'$(QueryEngineRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(AdminCheckoutRoot)', '..', 'Quantalytix.QueryEngine'))</QueryEngineRoot>
     <QueryEngineRoot>$([MSBuild]::EnsureTrailingSlash('$(QueryEngineRoot)'))</QueryEngineRoot>
-    <!-- Root of the seed kit whose schema DDL the records mirror. Override with an environment variable of the same name. -->
-    <SeedKitRoot Condition="'$(SeedKitRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'database', 'srdb_ebm'))</SeedKitRoot>
+    <!-- Root of the seed kit whose schema DDL the records mirror, next to the main checkout. Override with an environment variable of the same name. -->
+    <SeedKitRoot Condition="'$(SeedKitRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(AdminCheckoutRoot)', '..', 'database', 'srdb_ebm'))</SeedKitRoot>
     <SeedKitRoot>$([MSBuild]::EnsureTrailingSlash('$(SeedKitRoot)'))</SeedKitRoot>
   </PropertyGroup>
 </Project>
