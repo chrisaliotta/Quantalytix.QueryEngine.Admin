@@ -15,7 +15,7 @@ public sealed class DatasetCreateFromExistingInputValidator : AbstractValidator<
     /// <param name="sourceObjects">The tables and views datasets can read.</param>
     public DatasetCreateFromExistingInputValidator(SourceObjectDirectory sourceObjects)
     {
-        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDatasetKey();
+        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey(DatasetPatterns.DatasetKeyLength);
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.SourceObjectKind)
             .MustBeIn(SourceObjectKinds.Definition)

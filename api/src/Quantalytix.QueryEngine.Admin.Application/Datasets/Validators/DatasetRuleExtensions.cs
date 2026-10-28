@@ -8,15 +8,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// <summary>FluentValidation rules the dataset inputs share.</summary>
 public static class DatasetRuleExtensions
 {
-    /// <summary>Requires a dataset key: the contract's <c>DottedKey</c>, fitting its column.</summary>
-    /// <typeparam name="T">The validated input type.</typeparam>
-    /// <param name="rule">The rule for the key.</param>
-    /// <returns>The rule, for further configuration.</returns>
-    public static IRuleBuilderOptions<T, string> MustBeDatasetKey<T>(this IRuleBuilder<T, string> rule)
-    {
-        return rule.NotEmpty().MaximumLength(DatasetPatterns.DatasetKeyLength).Matches(DatasetPatterns.DatasetKey()).WithMessage(DatasetPatterns.DatasetKeyMessage);
-    }
-
     /// <summary>Requires a physical table or column name that can be inlined into DDL.</summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for the name.</param>

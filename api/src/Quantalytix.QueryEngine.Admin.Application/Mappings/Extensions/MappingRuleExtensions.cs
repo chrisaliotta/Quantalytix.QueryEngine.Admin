@@ -6,24 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 /// <summary>FluentValidation rules of the mapping set and bridge inputs, which the report editor's rule lists share.</summary>
 public static class MappingRuleExtensions
 {
-    /// <summary>The contract's <c>DottedKey</c>: mapping set and bridge keys also allow <c>.</c>, as the seed and report bridge keys do (B14, OI-29).</summary>
-    public const string DottedKeyPattern = @"^[A-Za-z][A-Za-z0-9_.]*\z";
-
-    /// <summary>
-    /// Requires a mapping set or bridge key: not empty, within the 128-byte column and a <see cref="DottedKeyPattern"/>. Put
-    /// <c>Cascade(CascadeMode.Stop)</c> in front so an empty key reports one failure.
-    /// </summary>
-    /// <typeparam name="T">The validated input type.</typeparam>
-    /// <param name="rule">The rule for the key.</param>
-    /// <returns>The rule, for further configuration.</returns>
-    public static IRuleBuilderOptions<T, string> MustBeDottedKey<T>(this IRuleBuilder<T, string> rule)
-    {
-        return rule
-            .NotEmpty()
-            .MaximumLength(128)
-            .Matches(DottedKeyPattern)
-            .WithMessage("'{PropertyName}' must start with a letter and contain only letters, digits, '_' and '.'.");
-    }
+    /// <summary>The length of <c>qe_mapping_set.mapping_set_key</c> and <c>qe_bridge.bridge_key</c>.</summary>
+    public const int KeyLength = 128;
 
     /// <summary>Requires an actual source value: not empty and within the 512-byte column. The value is kept exactly as given.</summary>
     /// <typeparam name="T">The validated input type.</typeparam>

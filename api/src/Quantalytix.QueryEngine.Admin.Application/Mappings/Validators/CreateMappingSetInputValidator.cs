@@ -12,7 +12,7 @@ public sealed class CreateMappingSetInputValidator : AbstractValidator<CreateMap
     /// <summary>Declares the rules.</summary>
     public CreateMappingSetInputValidator()
     {
-        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey();
+        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey(MappingRuleExtensions.KeyLength);
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.SourceNamespace).NotEmpty().MustFitVarchar(128);
     }

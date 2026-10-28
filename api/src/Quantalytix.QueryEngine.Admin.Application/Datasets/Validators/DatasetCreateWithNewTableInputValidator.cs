@@ -12,7 +12,7 @@ public sealed class DatasetCreateWithNewTableInputValidator : AbstractValidator<
     /// <summary>Declares the rules.</summary>
     public DatasetCreateWithNewTableInputValidator()
     {
-        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDatasetKey();
+        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey(DatasetPatterns.DatasetKeyLength);
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
         RuleFor(input => input.TableName).Cascade(CascadeMode.Stop).MustBeTableName();
         RuleForEach(input => input.Columns).SetValidator(new DatasetNewColumnInputValidator());

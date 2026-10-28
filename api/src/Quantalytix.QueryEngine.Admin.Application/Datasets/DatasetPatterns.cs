@@ -8,9 +8,6 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// </summary>
 internal static partial class DatasetPatterns
 {
-    /// <summary>The validation message of a value that does not match <see cref="DatasetKey"/>.</summary>
-    public const string DatasetKeyMessage = "'{PropertyName}' must start with a letter and contain only letters, digits, '_' and '.'.";
-
     /// <summary>The validation message of a value that does not match <see cref="Identifier"/>.</summary>
     public const string IdentifierMessage = "'{PropertyName}' must start with a letter or '_' and contain only letters, digits and '_'.";
 
@@ -22,11 +19,6 @@ internal static partial class DatasetPatterns
 
     /// <summary>The length of a physical table or column name in the metadata.</summary>
     public const int IdentifierLength = 128;
-
-    /// <summary>A dataset key, the contract's <c>DottedKey</c>, such as <c>bank.balance_monthly</c> (OI-29).</summary>
-    /// <returns>The compiled pattern.</returns>
-    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9_.]*\z")]
-    public static partial Regex DatasetKey();
 
     /// <summary>A physical table or column name: a letter or <c>_</c>, then letters, digits or <c>_</c>.</summary>
     /// <returns>The compiled pattern.</returns>

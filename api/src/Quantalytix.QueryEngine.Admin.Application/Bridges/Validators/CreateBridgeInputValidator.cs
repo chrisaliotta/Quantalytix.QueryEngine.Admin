@@ -13,7 +13,7 @@ public sealed class CreateBridgeInputValidator : AbstractValidator<CreateBridgeI
     /// <summary>Declares the rules.</summary>
     public CreateBridgeInputValidator()
     {
-        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey();
+        RuleFor(input => input.Key).Cascade(CascadeMode.Stop).MustBeDottedKey(MappingRuleExtensions.KeyLength);
         RuleFor(input => input.DisplayName).NotEmpty().MustFitVarchar(256);
     }
 }
