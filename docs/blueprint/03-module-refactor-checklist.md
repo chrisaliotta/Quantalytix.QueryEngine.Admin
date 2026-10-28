@@ -180,6 +180,6 @@ old report endpoints, `VersionStatus` (P6) and `Lookups` (P6).
   `ModelChecks`, request a public hook in `CalculationModels` that checks a report against a model's content.
 - **Pins:** a report dimension or bridge going away takes its pins through `AssumptionPins.UnpinDimensionAsync` and
   `UnpinBridgeAsync` (`ReportBridges.DeleteAsync` already does the bridge's).
-- **Datasets:** dropping the managed table when a dataset created over it is deleted is a pending product decision;
-  until then the table and its `qe_managed_source_object` row stay.
+- **Datasets:** deleting a dataset drops each managed table only its versions read, with its materialized view and
+  `qe_managed_source_object` row (decided 2026-10-27, [OI-33](90-open-issues.md#oi-33); `DatasetTableDrops`).
 

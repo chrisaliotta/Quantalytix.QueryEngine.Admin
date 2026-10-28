@@ -62,12 +62,38 @@ Copy `web2/.env.example` to `web2/.env.local` (it sets `VITE_API_MODE=http` and 
 Passing: every commit answers 200 and the screen shows the stored state; every refusal shows the API's problem on the
 item it targets; no console errors.
 
+## 4. Dataset retirement and managed-table drop
+
+Two follow-ups decided after integration ([11 Datasets](11-datasets.md) D13 and D14) are covered by in-memory tests and the
+mock parity suite. On a live tenant, first run the datasets parity suite over the HTTP adapter:
+
+```bash
+cd web2
+QE_LIVE_API=1 pnpm vitest run src/lib/datasets
+```
+
+It refuses retiring the version the active release pins (so the tenant needs an active release that pins a dataset
+version), and creates a dataset over a new managed table, deletes it, and expects the table to leave the source object
+list. Then check StarRocks itself, with `PREFIX` a new prefix per run:
+
+1. **Retire guard.** `POST dataset-versions/{id}/retire` on the version the active release pins answers 422 with one
+   violation `release_pins_retired_version`, and `GET dataset-versions/{id}` still reads `published`.
+2. **Table dropped.** Create a dataset with `mode: 'new'`, table `${PREFIX}drop_t`, and one `json` column, then
+   `SHOW TABLES LIKE '${PREFIX}drop_t'` lists it and `qe_managed_source_object` has its row. Delete the dataset (204).
+   `SHOW TABLES LIKE '${PREFIX}drop_t'` is empty, `SELECT * FROM qe_managed_source_object WHERE source_object =
+   '${PREFIX}drop_t'` is empty, and `SHOW CATALOG RECYCLE BIN` lists the table.
+3. **Materialized view dropped.** Repeat 2, but before deleting add a JSON path field over the column, commit it, and
+   materialize it, so `qe_mv_${PREFIX}drop_t` appears in `information_schema.materialized_views`. After the delete (204)
+   neither the view nor the table exists, and the API log shows no error from the drop order (view first, then table).
+4. **Shared table kept.** Create a dataset over a new managed table, then a second dataset with `mode: 'existing'` over the
+   same table. Deleting the first keeps the table and its registry row; deleting the second then drops both.
+
+Passing: each step answers as described, and no `qe_` metadata row names a dropped table.
+
 ## Open items
 
 These came up during integration and are outside the refactor's scope. Each needs a decision or a follow-up change:
 
-- **Dataset retirement has no rule.** `DatasetCommands.RetireAsync` promises to retire only versions that the active release
-  doesn't pin, but no `IRetirementRule` covers dataset versions (releases have `ReleaseNotActiveRule`), so a pinned version
-  can be retired. It needs a dataset retirement rule and a test.
-- **Managed tables on dataset delete.** Deleting a dataset created over a new managed table leaves the table and its
-  `qe_managed_source_object` row in place. Decide whether the delete drops them ([OI-33](90-open-issues.md#oi-33)).
+- **Materialized views of unmanaged sources on dataset delete.** Deleting a dataset over an unmanaged table leaves the
+  table's materialized view defined over the deleted fields' columns; the next materialization change on the table
+  redefines it. Decide whether the delete redefines (or drops) the view the way dematerializing a field does.

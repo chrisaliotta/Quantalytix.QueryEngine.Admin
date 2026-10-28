@@ -25,6 +25,7 @@ Sources: [`web2/src/lib/datasets/contract.ts`](../../web2/src/lib/datasets/contr
 | D8 | A time policy's selection grain is a `series` grain of the same version. | §18 rule 30 |
 | D9 | A time binding allows a periodicity finer than its native one only when its interval measures use `uniform_estimate`. | §18 rule 31 |
 | D10 | A dataset can be deleted only when every version is a draft or validated and no release lists it; a version only while draft or validated and unpinned. | API delete rules; OI-17 |
+| D14 | Deleting a dataset drops each registered managed table its versions read that no version of another dataset reads, with the table's materialized view and registry row ([below](#managed-tables-on-dataset-delete-agreed-oi-33)). | OI-33, decided 2026-10-27 |
 | D12 | A dataset has at most one open (draft or validated) version at a time. | OI-23 |
 | D11 | The UI never hard-codes an enumeration; vocabularies come from the server. | `datasets/contract.ts` header |
 | D13 | The version the active release pins cannot be retired (`release_pins_retired_version`); activate a release that pins another version first. | Agreed (follows from D2); API `ReleasePinsRetiredVersionRule` |
@@ -115,7 +116,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | POST | `datasets` | `DatasetCreateInput` | `201 DatasetListItem` (creates draft v1) | 400, 409 key taken | `createDataset` |
 | GET | `datasets/{id}` | | `DatasetListItem` | 404 | `getDataset` |
 | GET | `datasets/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDeleteDataset` |
-| DELETE | `datasets/{id}` | | `204` | 404, 409 blocked (`has_published_versions`, `referenced_by_release`) | `deleteDataset` |
+| DELETE | `datasets/{id}` | | `204` (drops managed tables only it reads, D14) | 404, 409 blocked (`has_published_versions`, `referenced_by_release`) | `deleteDataset` |
 | POST | `datasets/{id}/versions` | `DatasetCreateDraftInput` | `201 DatasetVersionSummary` | 400, 409 an open version exists (OI-23) | `createDraft` |
 | GET | `dataset-versions/{id}` | | `DatasetVersion` (settings, fields, grains, bindings, measures, dependents) | 404 | `getVersion` |
 | GET | `dataset-versions/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDeleteVersion` |
@@ -147,6 +148,22 @@ A JSON path field is materialized into a StarRocks asynchronous materialized vie
 - `refreshMaterialization` triggers a refresh; `dematerializeField` removes the column from the view (and drops the
   view when no column is left).
 - These are commands: storage is physical and allowed on any non-retired version, as the `web2` contract says.
+
+## Managed tables on dataset delete (Agreed, OI-33)
+
+A managed table exists for the datasets over it. When `deleteDataset` passes its delete check (D10), the delete also takes
+every table registered in `qe_managed_source_object` that the dataset's versions read and no version of another dataset
+reads:
+
+- The materialized view the API defined over the table (OI-32) is dropped, then the table, as schema statements of the
+  delete's write plan, so they run before any row is deleted; then the version content, the versions, the table's
+  registry row and the dataset row are deleted.
+- The drops are planned from what StarRocks still holds, so a retry after a delete that stopped midway drops nothing
+  twice and finishes the row deletes. StarRocks keeps a dropped table in its recycle bin for the catalog's retention,
+  where `RECOVER TABLE` restores it.
+- The delete check is unchanged: its `message` is a summary of what blocks a delete. `web2`'s confirmation names the
+  tables the delete drops (`lib/datasets/managed-tables.ts`), from the source objects' `isManaged` and the versions'
+  `sourceObject`.
 
 ## Change-set operations
 
@@ -209,7 +226,7 @@ Retirement (D13): `release_pins_retired_version`, without a target, because the 
 | Change | `POST versions/dataset_version/{id}/validation` becomes `check` |
 | Change | `POST datasets` accepts `DatasetCreateInput` (both modes) and returns the list item |
 | Change | `materialize` / `materialized-column` become the materialization sub-resource (OI-32) |
-| New | `delete-check` on datasets and dataset versions, dependents in the version read model, managed-table creation (OI-33), source stats (OI-34) |
+| New | `delete-check` on datasets and dataset versions, dependents in the version read model, managed-table creation and drop on dataset delete (OI-33), source stats (OI-34) |
 | Remove | `PUT datasets/{id}` (identity edits move into the change set) |
 
 ## Decisions applied

@@ -412,6 +412,11 @@ Path shorthand: `web2/` = `Quantalytix.QueryEngine.Admin/web2/src/`, `api/` = `Q
 - **Recommendation:** registry table; DDL only on registered objects; rename allowed only while no published version
   reads it.
 - **Status:** Decided 2026-10-26. Managed-object registry (SG-08); DDL only on registered objects; rename only while no published version reads it.
+- **Follow-up (dataset delete):** whether deleting a dataset drops the managed table it was created over. Decided
+  2026-10-27 by the user: when the dataset's versions read a registered managed table that no version of another dataset
+  reads, the delete drops the table and the materialized view the API defined over it, and deletes its
+  `qe_managed_source_object` row. The drops run as the delete's write-plan schema statements, view before table, and only
+  when the delete check passes. The delete check's contract is unchanged; `web2`'s confirmation names the table.
 
 <a id="oi-34"></a>
 ### OI-34 Source-object statistics

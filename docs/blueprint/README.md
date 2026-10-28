@@ -97,4 +97,5 @@ Record resolved open issues here, newest first, with the date, the issue, the ch
 
 | Date | Issue | Decision | By |
 |---|---|---|---|
+| 2026-10-27 | [OI-33](90-open-issues.md#oi-33) | Deleting a dataset drops each registered managed table that only its versions read, with the materialized view the API defined over it, and deletes the table's `qe_managed_source_object` row, as write-plan schema statements of the delete. | User |
 | 2026-10-27 | [OI-29](90-open-issues.md#oi-29) | The dotted key pattern (`DottedKey`) extends to dataset, calculation model and report keys, as the seed writes them. | Integrator, G1 |
