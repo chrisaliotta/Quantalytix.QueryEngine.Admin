@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.OpenApi;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -14,8 +13,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     /// Registers the Calculation models slice through <see cref="CalculationModelsFeatureServiceCollectionExtensions"/>, then the
     /// reports slice, all scoped: its route resource, its reads and commands, the report change-set aggregate with the report gate,
     /// which refuses a change that leaves an enabled report breaking a rule, and the findings of a disabled one, and the report rules
-    /// in reporting order, which enabling, the gate, the model gate and the release checks run. Also describes the report filters as
-    /// the contract's <c>FilterNode</c> in the OpenAPI document.
+    /// in reporting order, which enabling, the gate, the model gate and the release checks run.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -23,7 +21,6 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     {
         services.AddCalculationModelsFeature();
         services.AddRouteResource<ReportRecord>("reports", id => new { ReportId = id });
-        services.Configure<OpenApiOptions>("v1", options => options.AddDocumentTransformer<FilterNodeSchemaTransformer>());
 
         services.AddScoped<ReportQueries>();
         services.AddScoped<ReportCommands>();

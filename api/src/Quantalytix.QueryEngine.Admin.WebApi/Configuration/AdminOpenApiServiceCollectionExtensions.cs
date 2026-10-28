@@ -7,7 +7,8 @@ public static class AdminOpenApiServiceCollectionExtensions
     /// Registers the OpenAPI document with the bearer security scheme, camelCase path and query parameter names, string ids in
     /// parameters and schemas, the 404 of every route that names a registered resource, properties omitted when null as
     /// optional, no guessed request body descriptions, number or string scalar values (report row parameter values, band
-    /// bounds), and the members of a union (a change set's operations) as objects that require their discriminator. XML comments
+    /// bounds), the members of a union (a change set's operations) as objects that require their discriminator, and the report
+    /// filter unions the schema generator cannot derive (<see cref="FilterNodeSchemaTransformer"/>). XML comments
     /// supply summaries and descriptions; they are applied before these transformers run.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -17,6 +18,7 @@ public static class AdminOpenApiServiceCollectionExtensions
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+            options.AddDocumentTransformer<FilterNodeSchemaTransformer>();
             options.AddOperationTransformer<CamelCaseParameterNamesTransformer>();
             options.AddOperationTransformer<StringIdParameterTransformer>();
             options.AddOperationTransformer<NotFoundResponseTransformer>();

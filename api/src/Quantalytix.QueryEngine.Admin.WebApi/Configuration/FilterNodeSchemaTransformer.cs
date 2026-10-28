@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 
-namespace Quantalytix.QueryEngine.Admin.WebApi.Reports;
+namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 
 /// <summary>
 /// Describes <see cref="FilterNode"/>, which the API carries as its JSON object, as the contract's <c>FilterNode</c>: a union of
