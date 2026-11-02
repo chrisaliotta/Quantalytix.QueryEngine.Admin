@@ -6,8 +6,8 @@ public sealed record ReportLineRecord
     /// <summary>Primary key.</summary>
     public required long ReportLineId { get; init; }
 
-    /// <summary>The owning report.</summary>
-    public required long ReportId { get; init; }
+    /// <summary>The owning report version.</summary>
+    public required long ReportVersionId { get; init; }
 
     /// <summary>Key, unique among the report's overlay rows and distinct from every member key of the report dimension.</summary>
     public required string LineKey { get; init; }

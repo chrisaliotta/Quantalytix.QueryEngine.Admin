@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Mappings;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 using static Quantalytix.QueryEngine.Admin.Tests.Bridges.BridgeRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Dimensions.DimensionRows;
@@ -17,7 +18,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 /// be 0 or more; <c>allocation_none</c> allows one target per source with a weight of exactly 1; <c>cardinality_many_to_one</c> allows
 /// one target per source. The engine multiplies fact values by these weights, so a partition that does not sum to 1 loses or invents
 /// value, and a second target in a one-target mode counts a source twice. <c>mapping_members_in_endpoint_versions</c> resolves the
-/// mappings' member keys in the live versions of the bridge's dimensions, which the active assumption set pins; <c>pair_unique</c> and
+/// mappings' member keys in the versions of the bridge's dimensions in the bridge version's snapshot; <c>pair_unique</c> and
 /// <c>descendants_report_only</c> keep a pair once and descendants to report bridges (B6, B8).
 /// </summary>
 public sealed class BridgeMappingRuleTests
@@ -216,7 +217,7 @@ public sealed class BridgeMappingRuleTests
     /// </summary>
     private static BridgeSnapshot Snapshot(string cardinality, string allocationMode, params BridgeMappingRecord[] mappings)
     {
-        var version = BridgeVersion(VersionId, 1, 1, cardinality, allocationMode, PublicationStatuses.Published);
+        var version = BridgeVersion(VersionId, 1, cardinality, allocationMode);
         return new BridgeSnapshot
         {
             Bridge = Bridge(1, 1, 2),
@@ -225,14 +226,15 @@ public sealed class BridgeMappingRuleTests
             Surroundings = new BridgeSurroundings
             {
                 Source = Dimension(1, DimensionKinds.Categorical),
-                SourcePublished = Keys(Version(10, 1, 1, PublicationStatuses.Published), "LOAN_A", "LOAN_B"),
+                SourceKeys = Keys(Version(10, 1), "LOAN_A", "LOAN_B"),
                 Target = Dimension(2, DimensionKinds.Categorical),
-                TargetPublished = Keys(Version(20, 2, 1, PublicationStatuses.Published), "EAST", "WEST", "NORTH"),
+                TargetKeys = Keys(Version(20, 2), "EAST", "WEST", "NORTH"),
                 Owner = null,
+                LiveSnapshotId = SnapshotRows.LiveId,
                 Versions = [version],
+                FrozenSnapshotKeys = [],
                 MappingCounts = new Dictionary<long, int> { [VersionId] = mappings.Length },
-                Bindings = [],
-                Pins = []
+                Bindings = []
             }
         };
     }

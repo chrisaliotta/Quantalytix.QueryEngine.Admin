@@ -47,7 +47,7 @@ paths:
       - $ref: '#/components/parameters/ModelId'
     get:
       operationId: getModel
-      summary: Read one model with its variables, measures, parameters, attributions, effective drivers and readers.
+      summary: Read one model's live version with its variables, measures, parameters, attributions, effective drivers and readers.
       tags: [models]
       responses:
         '200':
@@ -58,7 +58,7 @@ paths:
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteModel
-      summary: Delete a model that no report reads (command, C8).
+      summary: Delete a model that no live report reads and no frozen snapshot holds (command, C8).
       tags: [models]
       responses:
         '204':
@@ -67,7 +67,25 @@ paths:
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
         '409':
           $ref: './common.yaml#/components/responses/Conflict'
-          description: A report reads the model; `violations` carry `referenced_by_report` per report.
+          description: >-
+            A live report reads the model or a frozen snapshot holds it; `violations` carry `referenced_by_report` per
+            report and `referenced_by_snapshot`.
+
+  /api/tenants/{tenantId}/calculation-model-versions/{modelVersionId}:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelVersionId'
+    get:
+      operationId: getModelVersion
+      summary: Read one model version, live or frozen, with its content, effective drivers and the reports of its snapshot that read it.
+      tags: [models]
+      responses:
+        '200':
+          description: The model version's document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModelDocument' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/calculation-models/{modelId}/delete-check:
     parameters:
@@ -91,7 +109,7 @@ paths:
       - $ref: '#/components/parameters/ModelId'
     post:
       operationId: checkFormula
-      summary: Parse a formula against the saved model and report errors, reads, parameters and the language it needs (OI-43).
+      summary: Parse a formula against the saved live version and report errors, reads, parameters and the language it needs (OI-43).
       tags: [models]
       requestBody:
         required: true
@@ -167,6 +185,12 @@ components:
       required: true
       description: The calculation model id.
       schema: { $ref: './common.yaml#/components/schemas/Id' }
+    ModelVersionId:
+      name: modelVersionId
+      in: path
+      required: true
+      description: A calculation model version id.
+      schema: { $ref: './common.yaml#/components/schemas/Id' }
 
   schemas:
     ModelFormulaLanguage:
@@ -188,10 +212,15 @@ components:
 
     CalcModel:
       type: object
-      description: The model's own settings (`qe_calculation_model`).
-      required: [id, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled]
+      description: The model's identity with one version's settings (`qe_calculation_model_version`).
+      required: [id, versionId, snapshotId, isLive, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
+        versionId: { $ref: './common.yaml#/components/schemas/Id' }
+        snapshotId: { $ref: './common.yaml#/components/schemas/Id' }
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         key:
           $ref: './common.yaml#/components/schemas/DottedKey'
           description: Fixed after creation (C9).
@@ -282,7 +311,7 @@ components:
 
     ModelReportUse:
       type: object
-      description: A report that reads the model (`qe_report.calculation_model_id`, OI-44).
+      description: A report whose version in the model version's snapshot reads it (OI-44).
       required: [reportId, reportKey, displayName, isEnabled]
       properties:
         reportId: { $ref: './common.yaml#/components/schemas/Id' }

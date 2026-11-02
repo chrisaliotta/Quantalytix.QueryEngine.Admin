@@ -6,13 +6,13 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// A range band rule: a publication finding, since bands are edited a set at a time and checked as a whole before freezing. Only
+/// A range band rule: a commit finding, since bands are edited a set at a time and checked as a whole on saving. Only
 /// range dimensions use bands.
 /// </summary>
 public abstract class DimensionBandRule : DimensionRule
 {
-    /// <summary>Publication.</summary>
-    public override RuleStage Stage => RuleStage.Publication;
+    /// <summary>Commit.</summary>
+    public override RuleStage Stage => RuleStage.Commit;
 
     /// <summary>Checks the bands of a range dimension's version, by ordinal.</summary>
     /// <param name="snapshot">The dimension version.</param>

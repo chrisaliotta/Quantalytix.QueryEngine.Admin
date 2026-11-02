@@ -1,70 +1,82 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
-/// The model manager's lifecycle commands, which run on stored state, never inside a change set: create a disabled, empty model,
-/// and delete a model no report reads (C8). Neither changes what the engine reads: no report reads a new or deletable model.
+/// The model manager's commands, which run on stored state, never inside a change set: create a model with a disabled, empty live
+/// version, and delete a model that no live report reads and no frozen snapshot holds (C8). Both advance the semantic revision.
 /// </summary>
-/// <param name="models">The model table.</param>
-/// <param name="variables">The variable table.</param>
-/// <param name="measures">The calculated measure table.</param>
-/// <param name="parameters">The parameter table.</param>
-/// <param name="attributions">The attribution table.</param>
-/// <param name="drivers">The attribution driver table.</param>
-/// <param name="loader">Reads the model's readers.</param>
-/// <param name="ids">Allocates the new model's id.</param>
+/// <param name="models">The model identities.</param>
+/// <param name="versions">The model versions.</param>
+/// <param name="remover">Deletes the live version and the identity.</param>
+/// <param name="loader">Reads the model's live version and readers.</param>
+/// <param name="live">The live snapshot.</param>
+/// <param name="holders">Names the frozen snapshots that hold the model.</param>
+/// <param name="semanticRevision">The tenant's semantic revision.</param>
+/// <param name="ids">Allocates the new rows' ids.</param>
+/// <param name="time">Stamps the new version.</param>
 public sealed class ModelCommands(
     ITableGateway<CalculationModelRecord> models,
-    ITableGateway<VariableRecord> variables,
-    ITableGateway<CalculatedMeasureRecord> measures,
-    ITableGateway<ModelParameterRecord> parameters,
-    ITableGateway<MetricAttributionRecord> attributions,
-    ITableGateway<MetricAttributionDriverRecord> drivers,
+    ITableGateway<CalculationModelVersionRecord> versions,
+    CalculationModelVersionRemover remover,
     ModelSnapshotLoader loader,
-    IIdGenerator ids)
+    LiveSnapshot live,
+    SnapshotHolders holders,
+    SemanticRevision semanticRevision,
+    IIdGenerator ids,
+    TimeProvider time)
 {
-    /// <summary>Creates a disabled model without metrics.</summary>
+    /// <summary>Creates a model with a disabled live version without metrics.</summary>
     /// <param name="input">The new model, already validated.</param>
-    /// <param name="cancellationToken">Cancels the reads and the write.</param>
+    /// <param name="cancellationToken">Cancels the reads and the writes.</param>
     /// <returns>The model's settings, or a conflict when the key is taken.</returns>
     public async Task<Outcome<CalcModel>> CreateAsync(CalcModelCreateInput input, CancellationToken cancellationToken)
     {
         if ((await models.ListAsync(new { ModelKey = input.Key }, cancellationToken)).Count > 0)
             return Outcome<CalcModel>.Refused(Refusal.Conflict("Key taken", $"A calculation model with key '{input.Key}' already exists."));
 
-        var model = new CalculationModelRecord
+        var model = new CalculationModelRecord { CalculationModelId = ids.NextId(), ModelKey = input.Key };
+        var liveSnapshotId = await live.IdAsync(cancellationToken);
+        var version = new CalculationModelVersionRecord
         {
-            CalculationModelId = ids.NextId(),
-            ModelKey = input.Key,
+            CalculationModelVersionId = ids.NextId(),
+            CalculationModelId = model.CalculationModelId,
+            SnapshotId = liveSnapshotId,
             DisplayName = input.DisplayName,
             CalendarKey = ModelCalendars.Gregorian,
             CurrencyCode = input.CurrencyCode,
             FormulaLanguageVersion = input.FormulaLanguage,
             IsEnabled = false,
-            AttributionMethod = input.AttributionMethod
+            AttributionMethod = input.AttributionMethod,
+            CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await models.InsertAsync(model, cancellationToken);
-        return Outcome<CalcModel>.Success(ModelReadModels.Settings(model));
+        await versions.InsertAsync(version, cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
+        return Outcome<CalcModel>.Success(ModelReadModels.Settings(model, version, liveSnapshotId));
     }
 
-    /// <summary>Deletes a model no report reads, its content first and the model row last.</summary>
+    /// <summary>Deletes a model nothing blocks: its live version's content first, the identity last.</summary>
     /// <param name="calculationModelId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
     /// <returns>Null when deleted; otherwise the blocked delete, with nothing deleted.</returns>
     public async Task<Refusal?> DeleteAsync(long calculationModelId, CancellationToken cancellationToken)
     {
-        var owner = new { CalculationModelId = calculationModelId };
-        var check = ModelDeleteRules.Model(await models.GetAsync(owner, cancellationToken), await loader.ReadersAsync(calculationModelId, cancellationToken));
+        var model = await models.GetAsync(new { CalculationModelId = calculationModelId }, cancellationToken);
+        var version = await loader.LiveVersionAsync(calculationModelId, cancellationToken);
+        var all = await versions.ListAsync(new { CalculationModelId = calculationModelId }, cancellationToken);
+        var check = ModelDeleteRules.Model(
+            model,
+            await loader.ReadersAsync(version, cancellationToken),
+            await holders.FrozenKeysAsync(all.Select(row => row.SnapshotId), cancellationToken));
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await drivers.DeleteAsync(owner, cancellationToken);
-        await attributions.DeleteAsync(owner, cancellationToken);
-        await variables.DeleteAsync(owner, cancellationToken);
-        await measures.DeleteAsync(owner, cancellationToken);
-        await parameters.DeleteAsync(owner, cancellationToken);
-        await models.DeleteAsync(owner, cancellationToken);
+        await remover.RemoveVersionAsync(version.CalculationModelVersionId, cancellationToken);
+        await remover.RemoveIdentityAsync(calculationModelId, cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
     }
 }

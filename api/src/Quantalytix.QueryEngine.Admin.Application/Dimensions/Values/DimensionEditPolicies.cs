@@ -9,6 +9,6 @@ public static class DimensionEditPolicies
     /// <summary>Required members and roles cannot be deleted; everything else may change.</summary>
     public const string Extend = "extend";
 
-    /// <summary>Every edit and freeze is refused; the owner changes the dimension through provisioning (OI-24).</summary>
+    /// <summary>Every edit is refused; the owner changes the dimension through provisioning (OI-24).</summary>
     public const string Locked = "locked";
 }

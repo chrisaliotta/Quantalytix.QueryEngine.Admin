@@ -87,20 +87,6 @@ public sealed class DimensionAggregate(
         plan.Insert(closure, MemberDependentDepth, ClosureBuilder.ClosureOf(after.VersionId, after.Members));
     }
 
-    /// <summary>Whether the engine reads the change: anything but the removability flag.</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(DimensionSnapshot before, DimensionSnapshot after)
-    {
-        return before.Dimension with { IsRemovable = after.Dimension.IsRemovable } != after.Dimension
-            || before.Version != after.Version
-            || !Same(before.Roles, after.Roles)
-            || !Same(before.Levels, after.Levels)
-            || !Same(before.Members, after.Members)
-            || !Same(before.Bands, after.Bands);
-    }
-
     /// <summary>The edit state of a snapshot.</summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="presentId">Writes each id.</param>

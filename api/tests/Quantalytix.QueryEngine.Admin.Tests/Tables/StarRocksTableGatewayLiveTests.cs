@@ -10,12 +10,11 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Tables;
 /// <summary>
 /// Confirms against the development tenant that StarRocks runs the statements the table gateway generates and returns the
 /// values as written: one multi-row INSERT whose rows hold a JSON column written through PARSE_JSON, a null JSON column and
-/// both boolean values; a re-insert of an existing key, which replaces that row; an UPDATE by key that changes the status, a
-/// boolean, the JSON column and the publication time, which reads back as UTC; and a DELETE with an IN filter, after which no
-/// rows remain. The database-free tests check the SQL text; only a live round trip shows that StarRocks accepts it and that
+/// both boolean values; a re-insert of an existing key, which replaces that row; an UPDATE by key that changes two booleans, the
+/// JSON column and the creation time, which reads back as UTC; and a DELETE with an IN filter, after which no rows remain. The database-free tests check the SQL text; only a live round trip shows that StarRocks accepts it and that
 /// every column type maps back onto the record. Opt in with <c>QE_ADMIN_LIVE_GATEWAY=true</c>; the control-plane connection
-/// comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The rows belong to a new dataset ID that no
-/// release pins, and the test deletes them, so the query engine and its golden cases never read them.
+/// comes from the API's user secrets or <c>ConnectionStrings__ControlPlane</c>. The rows belong to a new dataset ID in a snapshot ID
+/// that no snapshot row has, and the test deletes them, so the query engine and its golden cases never read them.
 /// </summary>
 public sealed class StarRocksTableGatewayLiveTests
 {
@@ -26,16 +25,16 @@ public sealed class StarRocksTableGatewayLiveTests
     private const string UpdatedProperties = """{"origin":"admin-api-live-test","step":"updated"}""";
 
     /// <summary>
-    /// The publication time the update writes. Its fraction is below half a second, so the stored value keeps the same whole
+    /// The creation time the update writes. Its fraction is below half a second, so the stored value keeps the same whole
     /// second whether the column truncates or rounds sub-second digits.
     /// </summary>
-    private static readonly DateTime PublicationTime = new DateTime(2026, 10, 14, 17, 30, 15, DateTimeKind.Utc).AddTicks(1234567);
+    private static readonly DateTime UpdatedTime = new DateTime(2026, 10, 14, 17, 30, 15, DateTimeKind.Utc).AddTicks(1234567);
 
     /// <summary>Whether the live round trip is enabled.</summary>
     public static bool IsEnabled => LiveTenant.IsEnabled;
 
     /// <summary>
-    /// Two dataset versions of a dataset no release references round-trip through insert, upsert, update and delete, keeping
+    /// Two dataset versions of a dataset no snapshot holds round-trip through insert, upsert, update and delete, keeping
     /// JSON, DATETIME, boolean and null values.
     /// </summary>
     /// <returns>A task that completes when the round trip is checked and its rows are deleted.</returns>
@@ -48,8 +47,9 @@ public sealed class StarRocksTableGatewayLiveTests
         var gateway = scope.ServiceProvider.GetRequiredService<ITableGateway<DatasetVersionRecord>>();
         var ids = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
         var datasetId = ids.NextId();
-        var withJson = DatasetVersion(ids.NextId(), datasetId, 1, InsertedProperties);
-        var withoutJson = DatasetVersion(ids.NextId(), datasetId, 2, null) with { SupportsDetail = false };
+        var snapshotId = ids.NextId();
+        var withJson = DatasetVersion(ids.NextId(), datasetId, snapshotId, InsertedProperties);
+        var withoutJson = DatasetVersion(ids.NextId(), datasetId, snapshotId, null) with { SupportsDetail = false };
         var filter = new { DatasetVersionId = new[] { withJson.DatasetVersionId, withoutJson.DatasetVersionId } };
 
         await gateway.InsertManyAsync([withJson, withoutJson], token);
@@ -67,19 +67,19 @@ public sealed class StarRocksTableGatewayLiveTests
             Assert.Equal(2, afterUpsert.Count);
             Assert.Equal(upserted, afterUpsert[upserted.DatasetVersionId]);
 
-            var published = withJson with
+            var changed = withJson with
             {
-                Status = PublicationStatuses.Published,
+                IsEnabled = false,
                 SupportsDetail = false,
                 Properties = UpdatedProperties,
-                PublishedAt = PublicationTime
+                CreatedAt = UpdatedTime
             };
-            await gateway.UpdateAsync(published, token);
+            await gateway.UpdateAsync(changed, token);
             var afterUpdate = await RowsAsync(gateway, filter, token);
-            var updated = afterUpdate[published.DatasetVersionId];
-            Assert.Equal(published with { Properties = null, PublishedAt = null }, updated with { Properties = null, PublishedAt = null });
+            var updated = afterUpdate[changed.DatasetVersionId];
+            Assert.Equal(changed with { Properties = null, CreatedAt = DateTime.UnixEpoch }, updated with { Properties = null, CreatedAt = DateTime.UnixEpoch });
             AssertSameJson(UpdatedProperties, updated.Properties);
-            AssertSameSecond(PublicationTime, updated.PublishedAt);
+            AssertSameSecond(UpdatedTime, updated.CreatedAt);
             Assert.Equal(upserted, afterUpdate[upserted.DatasetVersionId]);
         }
         finally
@@ -114,11 +114,10 @@ public sealed class StarRocksTableGatewayLiveTests
     /// Asserts that a DATETIME read back is UTC and has the whole second written. Sub-second digits are not compared, because
     /// the column's sub-second precision on this cluster is not yet verified.
     /// </summary>
-    private static void AssertSameSecond(DateTime written, DateTime? read)
+    private static void AssertSameSecond(DateTime written, DateTime read)
     {
-        var value = Assert.NotNull(read);
-        Assert.Equal(DateTimeKind.Utc, value.Kind);
-        Assert.Equal(WholeSeconds(written), WholeSeconds(value));
+        Assert.Equal(DateTimeKind.Utc, read.Kind);
+        Assert.Equal(WholeSeconds(written), WholeSeconds(read));
     }
 
     /// <summary>A time without its fraction of a second.</summary>
@@ -128,16 +127,16 @@ public sealed class StarRocksTableGatewayLiveTests
     }
 
 
-    /// <summary>A draft version of a dataset over the <c>loan_daily</c> table.</summary>
-    private static DatasetVersionRecord DatasetVersion(long datasetVersionId, long datasetId, int versionNumber, string? properties)
+    /// <summary>An enabled version of a dataset over the <c>loan_daily</c> table.</summary>
+    private static DatasetVersionRecord DatasetVersion(long datasetVersionId, long datasetId, long snapshotId, string? properties)
     {
         return new DatasetVersionRecord
         {
             CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = datasetVersionId,
             DatasetId = datasetId,
-            VersionNumber = versionNumber,
-            Status = PublicationStatuses.Draft,
+            SnapshotId = snapshotId,
+            IsEnabled = true,
             SourceObjectKind = SourceObjectKinds.Table,
             SourceObject = "loan_daily",
             SupportsAggregate = true,

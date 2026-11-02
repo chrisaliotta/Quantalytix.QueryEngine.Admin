@@ -42,8 +42,8 @@ public sealed class ReportDefaultsResolveRuleTests
     /// <summary>Has the seeded report filter by default on region equal to the named request parameter.</summary>
     private Task FilterRegionByAsync(string parameter)
     {
-        return _fixture.Reports.UpdateAsync(
-            Report() with { DefaultProfileKey = "base", DefaultFilterJson = FilterRegionBy(parameter) }, TestContext.Current.CancellationToken);
+        return _fixture.ReportVersions.UpdateAsync(
+            ReportRows.Version() with { DefaultProfileKey = "base", DefaultFilterJson = FilterRegionBy(parameter) }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>A default filter comparing region with the named request parameter.</summary>

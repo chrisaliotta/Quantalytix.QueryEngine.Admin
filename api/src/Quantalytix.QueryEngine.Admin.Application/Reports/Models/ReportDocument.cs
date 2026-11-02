@@ -1,6 +1,9 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
-/// <summary>The contract's <c>ReportDocument</c>: the whole report, assembled from the tables that own each fact (OI-48 to OI-50).</summary>
+/// <summary>
+/// The contract's <c>ReportDocument</c>: the whole report in one version, assembled from the tables that own each fact (OI-48 to
+/// OI-50).
+/// </summary>
 public sealed record ReportDocument
 {
     /// <summary>The report.</summary>
@@ -9,16 +12,28 @@ public sealed record ReportDocument
     /// <summary>The report's fixed key.</summary>
     public required string Key { get; init; }
 
-    /// <summary>Whether the engine offers the report.</summary>
+    /// <summary>The version the document shows.</summary>
+    public required long VersionId { get; init; }
+
+    /// <summary>The snapshot the version belongs to.</summary>
+    public required long SnapshotId { get; init; }
+
+    /// <summary>Whether the version is live, and so editable; a frozen version is read-only.</summary>
+    public required bool IsLive { get; init; }
+
+    /// <summary>Whether the engine offers the report in the version's snapshot.</summary>
     public required bool IsEnabled { get; init; }
 
     /// <summary>The calculation model the report reads.</summary>
     public required long ModelId { get; init; }
 
+    /// <summary>The model's version in the same snapshot, whose metrics the report reads.</summary>
+    public required long ModelVersionId { get; init; }
+
     /// <summary>The report dimension, whose members are the member rows.</summary>
     public required long ReportDimensionId { get; init; }
 
-    /// <summary>The report dimension's one version.</summary>
+    /// <summary>The report dimension's version in the same snapshot.</summary>
     public required long ReportDimensionVersionId { get; init; }
 
     /// <summary>The settings and defaults.</summary>

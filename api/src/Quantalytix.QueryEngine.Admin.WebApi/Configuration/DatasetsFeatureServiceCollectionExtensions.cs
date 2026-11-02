@@ -19,8 +19,8 @@ public static class DatasetsFeatureServiceCollectionExtensions
     /// <summary>
     /// Registers the Datasets slice: its route resources (fields are found within the route's version), the StarRocks catalog,
     /// managed tables and materialized views, its reads and commands, the dataset version change-set aggregate with its snapshot
-    /// rules in the order they report (blueprint 11, Rule codes), the same rules as the workflow's <c>dataset_version</c>
-    /// publication rule, and its retirement rule.
+    /// rules in the order they report (blueprint 11, Rule codes), and the kind's version rules, copier and remover that snapshots
+    /// use.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -36,11 +36,12 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddScoped<IMaterializedViews, StarRocksMaterializedViews>();
 
         services.AddScoped<SourceObjectDirectory>();
-        services.AddScoped<DatasetReleaseReader>();
         services.AddScoped<DatasetSnapshotLoader>();
         services.AddScoped<DatasetVersionReader>();
         services.AddScoped<DatasetVersionContentStore>();
-        services.AddScoped<DatasetVersionCloner>();
+        services.AddScoped<IVersionCopier, DatasetVersionCopier>();
+        services.AddScoped<DatasetVersionRemover>();
+        services.AddScoped<IVersionRemover>(provider => provider.GetRequiredService<DatasetVersionRemover>());
         services.AddScoped<DatasetQueries>();
         services.AddScoped<DatasetCommands>();
         services.AddScoped<DatasetTableDrops>();
@@ -67,6 +68,9 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DatasetSnapshot, RangeBindingDimensionKindRule>();
         services.AddSnapshotRule<DatasetSnapshot, TimeBindingDimensionKindRule>();
         services.AddSnapshotRule<DatasetSnapshot, BridgeBindingRouteRule>();
+        services.AddSnapshotRule<DatasetSnapshot, BoundDimensionsResolvableRule>();
+        services.AddSnapshotRule<DatasetSnapshot, MappedBindingsResolvableRule>();
+        services.AddSnapshotRule<DatasetSnapshot, BridgeBindingsResolvableRule>();
         services.AddSnapshotRule<DatasetSnapshot, UnknownMembersInVersionRule>();
         services.AddSnapshotRule<DatasetSnapshot, IntervalEstimatesForFinerPeriodsRule>();
         services.AddSnapshotRule<DatasetSnapshot, MeasureKeyUniqueRule>();
@@ -76,9 +80,8 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DatasetSnapshot, FormulaAcyclicRule>();
         services.AddSnapshotRule<DatasetSnapshot, TimePolicySeriesGrainRule>();
         services.AddSnapshotRule<DatasetSnapshot, TimePolicyTimeBindingInVersionRule>();
-        services.AddScoped<DatasetRules>();
-        services.AddScoped<IPublicationRule, DatasetVersionRules>();
-        services.AddScoped<IRetirementRule, ReleasePinsRetiredVersionRule>();
+        services.AddSnapshotRule<DatasetSnapshot, DatasetReportsResolveRule>();
+        services.AddScoped<IVersionRules, DatasetVersionRules>();
         return services;
     }
 

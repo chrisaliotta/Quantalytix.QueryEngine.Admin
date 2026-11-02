@@ -11,10 +11,8 @@ public static class TableCatalog
     {
         [typeof(TenantDirectoryRecord)] = ControlPlane("qe_tenant_directory", [nameof(TenantDirectoryRecord.TenantId)]),
         [typeof(DatabaseInfoRecord)] = Tenant("qe_database_info", [nameof(DatabaseInfoRecord.SingletonId)], []),
-        [typeof(SemanticReleaseRecord)] = Tenant("qe_semantic_release", [nameof(SemanticReleaseRecord.SemanticReleaseId)], []),
-        [typeof(ReleaseDatasetRecord)] = Tenant(
-            "qe_release_dataset", [nameof(ReleaseDatasetRecord.SemanticReleaseId), nameof(ReleaseDatasetRecord.DatasetId)], []),
-        [typeof(ReleaseActivationRecord)] = Tenant("qe_release_activation", [nameof(ReleaseActivationRecord.ReleaseActivationId)], []),
+        [typeof(SnapshotRecord)] = Tenant("qe_snapshot", [nameof(SnapshotRecord.SnapshotId)], []),
+        [typeof(SnapshotRestoreRecord)] = Tenant("qe_snapshot_restore", [nameof(SnapshotRestoreRecord.SnapshotRestoreId)], []),
         [typeof(DatasetRecord)] = Tenant("qe_dataset", [nameof(DatasetRecord.DatasetId)], []),
         [typeof(DatasetVersionRecord)] = Tenant(
             "qe_dataset_version", [nameof(DatasetVersionRecord.DatasetVersionId)], [nameof(DatasetVersionRecord.Properties)]),
@@ -42,19 +40,6 @@ public static class TableCatalog
         [typeof(MappingSetRecord)] = Tenant("qe_mapping_set", [nameof(MappingSetRecord.MappingSetId)], []),
         [typeof(MappingVersionRecord)] = Tenant("qe_mapping_version", [nameof(MappingVersionRecord.MappingVersionId)], []),
         [typeof(DimensionMappingRecord)] = Tenant("qe_dimension_mapping", [nameof(DimensionMappingRecord.DimensionMappingId)], []),
-        [typeof(AssumptionSetRecord)] = Tenant("qe_assumption_set", [nameof(AssumptionSetRecord.AssumptionSetId)], []),
-        [typeof(AssumptionSetDimensionRecord)] = Tenant(
-            "qe_assumption_set_dimension",
-            [nameof(AssumptionSetDimensionRecord.AssumptionSetId), nameof(AssumptionSetDimensionRecord.DimensionId)],
-            []),
-        [typeof(AssumptionSetMappingRecord)] = Tenant(
-            "qe_assumption_set_mapping",
-            [nameof(AssumptionSetMappingRecord.AssumptionSetId), nameof(AssumptionSetMappingRecord.MappingSetId)],
-            []),
-        [typeof(AssumptionSetBridgeRecord)] = Tenant(
-            "qe_assumption_set_bridge",
-            [nameof(AssumptionSetBridgeRecord.AssumptionSetId), nameof(AssumptionSetBridgeRecord.BridgeId)],
-            []),
         [typeof(BridgeRecord)] = Tenant("qe_bridge", [nameof(BridgeRecord.BridgeId)], []),
         [typeof(BridgeVersionRecord)] = Tenant("qe_bridge_version", [nameof(BridgeVersionRecord.BridgeVersionId)], []),
         [typeof(BridgeMappingRecord)] = Tenant("qe_bridge_mapping", [nameof(BridgeMappingRecord.BridgeMappingId)], []),
@@ -68,6 +53,8 @@ public static class TableCatalog
             "qe_measure_dependency", [nameof(MeasureDependencyRecord.MeasureId), nameof(MeasureDependencyRecord.DependencyMeasureId)], []),
         [typeof(MeasureTimePolicyRecord)] = Tenant("qe_measure_time_policy", [nameof(MeasureTimePolicyRecord.MeasureId)], []),
         [typeof(CalculationModelRecord)] = Tenant("qe_calculation_model", [nameof(CalculationModelRecord.CalculationModelId)], []),
+        [typeof(CalculationModelVersionRecord)] = Tenant(
+            "qe_calculation_model_version", [nameof(CalculationModelVersionRecord.CalculationModelVersionId)], []),
         [typeof(VariableRecord)] = Tenant("qe_variable", [nameof(VariableRecord.VariableId)], []),
         [typeof(ReportSourceRecord)] = Tenant("qe_report_source", [nameof(ReportSourceRecord.ReportSourceId)], []),
         [typeof(ReportSourceVariableRecord)] = Tenant(
@@ -83,21 +70,27 @@ public static class TableCatalog
             []),
         [typeof(CalculatedMeasureRecord)] = Tenant("qe_calculated_measure", [nameof(CalculatedMeasureRecord.CalculatedMeasureId)], []),
         [typeof(MetricAttributionRecord)] = Tenant(
-            "qe_metric_attribution", [nameof(MetricAttributionRecord.CalculationModelId), nameof(MetricAttributionRecord.MetricKey)], []),
+            "qe_metric_attribution", [nameof(MetricAttributionRecord.CalculationModelVersionId), nameof(MetricAttributionRecord.MetricKey)], []),
         [typeof(MetricAttributionDriverRecord)] = Tenant(
             "qe_metric_attribution_driver",
-            [nameof(MetricAttributionDriverRecord.CalculationModelId), nameof(MetricAttributionDriverRecord.MetricKey), nameof(MetricAttributionDriverRecord.DriverKey)],
+            [nameof(MetricAttributionDriverRecord.CalculationModelVersionId), nameof(MetricAttributionDriverRecord.MetricKey), nameof(MetricAttributionDriverRecord.DriverKey)],
             [nameof(MetricAttributionDriverRecord.InputKeysJson)]),
         [typeof(ModelParameterRecord)] = Tenant(
             "qe_model_parameter",
-            [nameof(ModelParameterRecord.CalculationModelId), nameof(ModelParameterRecord.ParameterKey)],
+            [nameof(ModelParameterRecord.CalculationModelVersionId), nameof(ModelParameterRecord.ParameterKey)],
             [nameof(ModelParameterRecord.AllowedValuesJson)]),
         [typeof(CalculationDimensionRecord)] = Tenant(
             "qe_calculation_dimension", [nameof(CalculationDimensionRecord.CalculationDimensionId)], []),
-        [typeof(ReportRecord)] = Tenant(
-            "qe_report",
-            [nameof(ReportRecord.ReportId)],
-            [nameof(ReportRecord.PayloadJson), nameof(ReportRecord.DefaultFilterJson), nameof(ReportRecord.DefaultSettingsJson), nameof(ReportRecord.DefaultPivotJson)]),
+        [typeof(ReportRecord)] = Tenant("qe_report", [nameof(ReportRecord.ReportId)], []),
+        [typeof(ReportVersionRecord)] = Tenant(
+            "qe_report_version",
+            [nameof(ReportVersionRecord.ReportVersionId)],
+            [
+                nameof(ReportVersionRecord.PayloadJson),
+                nameof(ReportVersionRecord.DefaultFilterJson),
+                nameof(ReportVersionRecord.DefaultSettingsJson),
+                nameof(ReportVersionRecord.DefaultPivotJson)
+            ]),
         [typeof(ReportLineRecord)] = Tenant(
             "qe_report_line",
             [nameof(ReportLineRecord.ReportLineId)],
@@ -105,16 +98,16 @@ public static class TableCatalog
         [typeof(ReportColumnRecord)] = Tenant(
             "qe_report_column", [nameof(ReportColumnRecord.ReportColumnId)], [nameof(ReportColumnRecord.PayloadJson)]),
         [typeof(ReportMemberOptionRecord)] = Tenant(
-            "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportId), nameof(ReportMemberOptionRecord.MemberKey)], []),
+            "qe_report_member_option", [nameof(ReportMemberOptionRecord.ReportVersionId), nameof(ReportMemberOptionRecord.MemberKey)], []),
         [typeof(ReportVariableScopeRecord)] = Tenant(
-            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportId), nameof(ReportVariableScopeRecord.VariableKey)], []),
+            "qe_report_variable_scope", [nameof(ReportVariableScopeRecord.ReportVersionId), nameof(ReportVariableScopeRecord.VariableKey)], []),
         [typeof(ReportScenarioRecord)] = Tenant(
-            "qe_report_scenario", [nameof(ReportScenarioRecord.ReportId), nameof(ReportScenarioRecord.DimensionRoleId)], []),
+            "qe_report_scenario", [nameof(ReportScenarioRecord.ReportVersionId), nameof(ReportScenarioRecord.DimensionRoleId)], []),
         [typeof(ReportRowParameterRecord)] = Tenant(
             "qe_report_row_parameter",
-            [nameof(ReportRowParameterRecord.ReportId), nameof(ReportRowParameterRecord.RowKey), nameof(ReportRowParameterRecord.ParameterKey)],
+            [nameof(ReportRowParameterRecord.ReportVersionId), nameof(ReportRowParameterRecord.RowKey), nameof(ReportRowParameterRecord.ParameterKey)],
             []),
-        [typeof(ReportStyleRecord)] = Tenant("qe_report_style", [nameof(ReportStyleRecord.ReportId), nameof(ReportStyleRecord.StyleKey)], [])
+        [typeof(ReportStyleRecord)] = Tenant("qe_report_style", [nameof(ReportStyleRecord.ReportVersionId), nameof(ReportStyleRecord.StyleKey)], [])
     }.ToFrozenDictionary();
 
     /// <summary>Returns the table a record type mirrors.</summary>

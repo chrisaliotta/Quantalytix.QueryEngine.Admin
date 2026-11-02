@@ -9,8 +9,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Measures;
 
 /// <summary>
 /// Confirms that <c>component_roles_match_kind</c> judges an aggregate's components by its aggregation function: a count
-/// without a value component publishes, because the query engine counts rows for it, while a sum without one is reported.
-/// The seed kit's dataset versions carry such row counts, so publication must accept what the engine runs.
+/// without a value component passes, because the query engine counts rows for it, while a sum without one is reported.
+/// The seed kit's dataset versions carry such row counts, so a commit must accept what the engine runs.
 /// </summary>
 public sealed class ComponentRolesMatchKindRuleTests
 {

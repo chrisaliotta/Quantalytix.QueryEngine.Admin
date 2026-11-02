@@ -63,10 +63,10 @@ paths:
                   $ref: '#/components/schemas/DatasetListItem'
     post:
       operationId: createDataset
-      summary: Create a dataset and its draft version 1
+      summary: Create a dataset and its live version
       description: >-
         Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with
-        the given columns, then a draft whose fields read them.
+        the given columns, then a live version whose fields read them. Advances `semanticRevision`.
       tags: [datasets]
       requestBody:
         required: true
@@ -76,7 +76,7 @@ paths:
               $ref: '#/components/schemas/DatasetCreateInput'
       responses:
         '201':
-          description: The dataset, with draft version 1.
+          description: The dataset, with its live version.
           content:
             application/json:
               schema:
@@ -102,8 +102,8 @@ paths:
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
     delete:
       operationId: deleteDataset
-      summary: Delete a dataset and all its versions
-      description: Allowed only when every version is a draft or validated and no release lists the dataset (D10, OI-17).
+      summary: Delete a dataset and its live version
+      description: Allowed only when no frozen snapshot holds a version of the dataset (D10). Advances `semanticRevision`.
       tags: [datasets]
       responses:
         '204':
@@ -120,8 +120,7 @@ paths:
       operationId: checkDeleteDataset
       summary: Tell whether a dataset can be deleted, and why not
       description: >-
-        Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and
-        `referenced_by_release` (a release lists the dataset).
+        Never writes. Reasons carry the code `referenced_by_snapshot` (a frozen snapshot holds a version of the dataset).
       tags: [datasets]
       responses:
         '200':
@@ -132,38 +131,13 @@ paths:
                 $ref: './common.yaml#/components/schemas/DeleteCheck'
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
-  /api/tenants/{tenantId}/datasets/{datasetId}/versions:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetIdPath'
-    post:
-      operationId: createDatasetDraft
-      summary: Create a draft version, empty or cloned from another version of the dataset
-      tags: [datasets]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DatasetCreateDraftInput'
-      responses:
-        '201':
-          description: The new draft.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The dataset already has an open (draft or validated) version (OI-23). }
-
   /api/tenants/{tenantId}/dataset-versions/{versionId}:
     parameters:
       - $ref: './common.yaml#/components/parameters/TenantId'
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     get:
       operationId: getDatasetVersion
-      summary: Get the whole content of one dataset version
+      summary: Get the whole content of one dataset version, live or frozen
       tags: [datasets]
       responses:
         '200':
@@ -173,45 +147,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/DatasetVersion'
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-    delete:
-      operationId: deleteDatasetDraft
-      summary: Delete a draft or validated version that no release pins
-      tags: [datasets]
-      responses:
-        '204':
-          description: Deleted.
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: Delete blocked; `violations` are the reasons of the delete check. }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/delete-check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    get:
-      operationId: checkDeleteDatasetVersion
-      summary: Tell whether a dataset version can be deleted, and why not
-      description: >-
-        Never writes. Reasons carry the codes `published_version` (the version is published or retired) and
-        `referenced_by_release` (a release pins the version).
-      tags: [datasets]
-      responses:
-        '200':
-          description: The delete check.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview:
     parameters:
       - $ref: './common.yaml#/components/parameters/TenantId'
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     post:
       operationId: previewDatasetChanges
-      summary: Apply staged operations to a dataset version in memory and return the result
-      description: Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01).
+      summary: Apply staged operations to the live dataset version in memory and return the result
+      description: >-
+        Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01). `violations` are the
+        commit rules' findings. Rule codes: `source_object_exists`, `version_supports_a_mode`,
+        `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`,
+        `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`,
+        `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`,
+        `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`,
+        `bridge_binding_route`, `bound_dimensions_resolvable`, `mapped_bindings_resolvable`, `bridge_bindings_resolvable`,
+        `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`,
+        `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`,
+        `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`, and the report rules
+        `report_sources_resolve` and `report_factors_apply` of the enabled reports over the dataset. Each violation's
+        `target.area` is a `DatasetTab`.
       tags: [datasets]
       requestBody:
         required: true
@@ -228,7 +183,7 @@ paths:
                 $ref: '#/components/schemas/DatasetChangeSetPreview'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.' }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent' }
 
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes:
@@ -237,10 +192,11 @@ paths:
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     post:
       operationId: commitDatasetChanges
-      summary: Apply and write staged operations to a dataset version
+      summary: Apply and write staged operations to the live dataset version
       description: >-
-        Replays the operations onto the stored version (last write wins, OI-02) and writes them; any failure writes
-        nothing except DDL already run for `createColumn`, which leaves an unread column.
+        Replays the operations onto the stored version (last write wins, OI-02) and writes them; a commit-rule finding
+        refuses with 422. Any failure writes nothing except DDL already run for `createColumn`, which leaves an unread
+        column. Advances `semanticRevision`.
       tags: [datasets]
       requestBody:
         required: true
@@ -257,116 +213,8 @@ paths:
                 $ref: '#/components/schemas/DatasetChangeSetCommit'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.' }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: 'The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents.' }
         '422': { $ref: './common.yaml#/components/responses/UnprocessableContent' }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: checkDatasetVersion
-      summary: Run the publication rules on a dataset version without writing
-      description: >-
-        Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`,
-        `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`,
-        `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`,
-        `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`,
-        `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`,
-        `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`,
-        `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`,
-        `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's
-        `target.area` is a `DatasetTab`.
-      tags: [datasets]
-      responses:
-        '200':
-          description: The rule report.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/ValidationReport'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/validate:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: validateDatasetVersion
-      summary: Move a draft to validated when every publication rule passes
-      tags: [datasets]
-      responses:
-        '200':
-          description: The validated version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft. }
-        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A publication rule fails; nothing was written. }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/publish:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: publishDatasetVersion
-      summary: Publish a draft or validated version when every publication rule passes
-      description: A draft is validated first, in the same call.
-      tags: [datasets]
-      responses:
-        '200':
-          description: The published version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not a draft or validated. }
-        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: A publication rule fails; nothing was written. }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/reopen:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: reopenDatasetVersion
-      summary: Return a validated version to draft
-      tags: [datasets]
-      responses:
-        '200':
-          description: The draft.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not validated. }
-
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/retire:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: retireDatasetVersion
-      summary: Retire a published version that the active release does not pin
-      tags: [datasets]
-      responses:
-        '200':
-          description: The retired version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400': { $ref: './common.yaml#/components/responses/BadRequest' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: Not published. }
-        '422': { $ref: './common.yaml#/components/responses/UnprocessableContent', description: The active release pins the version. }
 
   /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization:
     parameters:
@@ -378,7 +226,7 @@ paths:
       summary: Add a JSON path field to its source object's materialized view
       description: >-
         Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32).
-        Allowed on any non-retired version: storage does not change what the version means.
+        Allowed on the live version only.
       tags: [datasets]
       responses:
         '200':
@@ -389,7 +237,7 @@ paths:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not a JSON path field. }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is frozen or the field is not a JSON path field. }
     delete:
       operationId: dematerializeDatasetField
       summary: Remove a field's column from the materialized view
@@ -404,7 +252,7 @@ paths:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not a JSON path field. }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is frozen or the field is not a JSON path field. }
 
   /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization/refresh:
     parameters:
@@ -424,7 +272,7 @@ paths:
                 $ref: '#/components/schemas/DatasetField'
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
-        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is retired or the field is not materialized. }
+        '409': { $ref: './common.yaml#/components/responses/Conflict', description: The version is frozen or the field is not materialized. }
 
 components:
   parameters:
@@ -605,7 +453,7 @@ components:
 
     Dataset:
       type: object
-      description: The dataset identity (`qe_dataset`), shared by every version.
+      description: The dataset identity (`qe_dataset`), shared by every version, with one version's enabled flag.
       required: [id, key, displayName, isEnabled]
       properties:
         id:
@@ -616,75 +464,55 @@ components:
           type: string
         isEnabled:
           type: boolean
+          description: The live version's flag, or a frozen version's own.
 
     DatasetPatch:
       type: object
-      description: Identity edits; the key is fixed after creation (OI-36).
+      description: Identity edits and the live version's enabled flag; the key is fixed after creation (OI-36).
       properties:
         displayName:
           type: string
         isEnabled:
           type: boolean
 
-    DatasetReleasePin:
-      type: object
-      description: A release that pins the version.
-      required: [releaseId, releaseKey, isActive]
-      properties:
-        releaseId:
-          $ref: './common.yaml#/components/schemas/Id'
-        releaseKey:
-          type: string
-        isActive:
-          type: boolean
-
     DatasetVersionSummary:
       type: object
-      required: [id, datasetId, versionNumber, status, sourceObject, createdAt, publishedAt, clonedFromVersionId, releases]
+      description: One version of a dataset and the snapshot it belongs to.
+      required: [id, datasetId, snapshotId, isLive, sourceObject, createdAt]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
         datasetId:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         sourceObject:
           type: string
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          oneOf:
-            - $ref: './common.yaml#/components/schemas/Timestamp'
-            - type: 'null'
-        clonedFromVersionId:
-          type: [string, 'null']
-          description: The version this one was cloned from (SG-04, OI-12).
-        releases:
-          type: array
-          items:
-            $ref: '#/components/schemas/DatasetReleasePin'
 
     DatasetListItem:
       allOf:
         - $ref: '#/components/schemas/Dataset'
         - type: object
-          required: [versions, activeVersionId, storage]
+          required: [versions, liveVersionId, storage]
           properties:
             versions:
               type: array
-              description: Newest first.
+              description: One per snapshot holding the dataset, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/DatasetVersionSummary'
-            activeVersionId:
-              type: [string, 'null']
-              description: The version the active release pins; what the engine reads.
+            liveVersionId:
+              $ref: './common.yaml#/components/schemas/Id'
+              description: The live version, which change sets edit and requests that name no snapshot read.
             storage:
               oneOf:
                 - $ref: '#/components/schemas/DatasetSourceObjectStats'
                 - type: 'null'
-              description: Statistics of the latest version's source object.
+              description: Statistics of the live version's source object.
 
     DatasetVersionSettings:
       type: object
@@ -1144,7 +972,7 @@ components:
 
     DatasetCreateWithNewTableInput:
       type: object
-      description: Creates and registers a managed table with these columns (possibly none), then a draft whose fields read them.
+      description: Creates and registers a managed table with these columns (possibly none), then a live version whose fields read them.
       required: [mode, key, displayName, tableName, columns]
       properties:
         mode:
@@ -1159,36 +987,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DatasetNewColumnInput'
-
-    DatasetCreateDraftInput:
-      oneOf:
-        - $ref: '#/components/schemas/DatasetCreateEmptyDraftInput'
-        - $ref: '#/components/schemas/DatasetCloneDraftInput'
-      discriminator:
-        propertyName: mode
-        mapping:
-          empty: '#/components/schemas/DatasetCreateEmptyDraftInput'
-          clone: '#/components/schemas/DatasetCloneDraftInput'
-
-    DatasetCreateEmptyDraftInput:
-      type: object
-      required: [mode, sourceObjectKind, sourceObject]
-      properties:
-        mode:
-          const: empty
-        sourceObjectKind:
-          $ref: '#/components/schemas/DatasetSourceObjectKind'
-        sourceObject:
-          type: string
-
-    DatasetCloneDraftInput:
-      type: object
-      required: [mode, fromVersionId]
-      properties:
-        mode:
-          const: clone
-        fromVersionId:
-          $ref: './common.yaml#/components/schemas/Id'
 
     # ───────────── Change set (one per dataset version) ─────────────
 
@@ -1225,7 +1023,7 @@ components:
 
     DatasetUpdateDatasetOperation:
       type: object
-      description: Edits the dataset identity; the only operation a version that is not a draft accepts.
+      description: Edits the display name and the live version's enabled flag.
       required: [op, patch]
       properties:
         op:
@@ -1244,7 +1042,7 @@ components:
 
     DatasetRenameSourceTableOperation:
       type: object
-      description: Renames the managed table the draft reads; refused while a published version reads it (OI-33).
+      description: Renames the managed table the live version reads; refused while another version, live or frozen, reads it (OI-33).
       required: [op, tableName]
       properties:
         op:

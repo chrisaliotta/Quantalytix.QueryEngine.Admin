@@ -3,14 +3,14 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>A model's content as the rows of its tables, which a commit compares and writes.</summary>
-/// <param name="Model">The model row.</param>
+/// <param name="Model">The model version row.</param>
 /// <param name="Variables">The variable rows.</param>
 /// <param name="Measures">The calculated measure rows.</param>
 /// <param name="Parameters">The parameter rows.</param>
 /// <param name="Attributions">The attribution rows.</param>
 /// <param name="Drivers">The attribution driver rows.</param>
 public sealed record ModelTableRows(
-    CalculationModelRecord Model,
+    CalculationModelVersionRecord Model,
     IReadOnlyList<VariableRecord> Variables,
     IReadOnlyList<CalculatedMeasureRecord> Measures,
     IReadOnlyList<ModelParameterRecord> Parameters,
@@ -22,9 +22,9 @@ public sealed record ModelTableRows(
     /// <returns>The rows.</returns>
     public static ModelTableRows Of(ModelGraph content)
     {
-        var modelId = content.Model.CalculationModelId;
+        var modelId = content.Version.CalculationModelVersionId;
         return new ModelTableRows(
-            content.Model,
+            content.Version,
             content.Variables,
             content.CalculatedMeasures,
             [.. content.Parameters.Select(parameter => ModelParameterService.ToRecord(modelId, parameter))],

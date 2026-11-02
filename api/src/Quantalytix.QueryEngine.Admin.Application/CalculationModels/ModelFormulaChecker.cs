@@ -37,7 +37,7 @@ public static class ModelFormulaChecker
         var parameters = FormulaParametersResolveRule.Declared(model.Parameters);
         var declared = parameters.Keys.ToHashSet(StringComparer.Ordinal);
         var uses = FormulasFitLanguageRule.Uses(inspection, declared).ToList();
-        var language = model.Model.FormulaLanguageVersion;
+        var language = model.Version.FormulaLanguageVersion;
         var metricKeys = model.MetricKeys;
         List<ModelFormulaError> errors =
         [

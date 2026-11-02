@@ -18,7 +18,7 @@ public sealed class FormulasFitLanguageRuleTests
         var model = MarginGraphWith(Attribution("INTEREST_INCOME", "[m.AVERAGE_BALANCE] * POWER([m.YIELD], 1) * @periodDays / @yearDays"));
         return model with
         {
-            Model = model.Model with { FormulaLanguageVersion = formulaLanguageVersion },
+            Version = model.Version with { FormulaLanguageVersion = formulaLanguageVersion },
             CalculatedMeasures = [.. model.CalculatedMeasures, Calculated(62, "GROWTH", "POWER([m.YIELD] + 1, @yearDays / @periodDays) - 1")]
         };
     }
@@ -57,7 +57,7 @@ public sealed class FormulasFitLanguageRuleTests
     {
         var model = Graph([Variable(51, "V")], [Calculated(61, "X", "CASE WHEN @dayCount = 'actual_360' THEN [m.V] / YEARFRAC(@dayCount) END")]) with
         {
-            Model = Model() with { FormulaLanguageVersion = formulaLanguageVersion },
+            Version = Version() with { FormulaLanguageVersion = formulaLanguageVersion },
             Parameters = [DayCount()]
         };
 
@@ -83,7 +83,7 @@ public sealed class FormulasFitLanguageRuleTests
     {
         var model = MarginGraph() with { CalculatedMeasures = [Calculated(61, "YIELD", "[m.INTEREST_INCOME] * @yearDays / @periodDays * @margin")] };
 
-        Assert.Equal(FormulaLanguageVersions.Version10, model.Model.FormulaLanguageVersion);
+        Assert.Equal(FormulaLanguageVersions.Version10, model.Version.FormulaLanguageVersion);
         Assert.Empty(FormulasFitLanguageRule.Evaluate(model));
     }
 }

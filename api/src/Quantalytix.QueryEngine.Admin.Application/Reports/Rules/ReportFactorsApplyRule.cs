@@ -14,9 +14,9 @@ public sealed class ReportFactorsApplyRule : IReportRule
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_factors_apply";
 
-    /// <summary>Reports every variable of a factored source whose measure ignores bridge factors in the release.</summary>
+    /// <summary>Reports every variable of a factored source whose measure ignores bridge factors in the snapshot.</summary>
     /// <param name="report">The report.</param>
-    /// <param name="scope">Holds the release's dataset versions.</param>
+    /// <param name="scope">Holds the snapshot's dataset versions.</param>
     /// <returns>One violation per such variable.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {

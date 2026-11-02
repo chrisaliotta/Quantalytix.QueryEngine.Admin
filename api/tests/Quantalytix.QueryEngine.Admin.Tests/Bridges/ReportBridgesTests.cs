@@ -2,6 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Mappings;
 using Quantalytix.QueryEngine.Admin.Tests.Reports;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
@@ -9,11 +10,12 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 /// <summary>
 /// Confirms <see cref="ReportBridges"/>, the reports module's only way to write report bridges (B9): a source's bridge is created live,
 /// <c>many_to_many</c> / <c>replicate</c>, optionally from a copy of a sibling's rules; a row's rules are replaced without touching the
-/// other rows'; rules into removed rows go; and the bridge is deleted with its pins, version and rules.
+/// other rows'; rules into removed rows go; and deleting it removes its live version with the rules, and the bridge itself unless a
+/// frozen snapshot still holds a version of it.
 /// </summary>
 public sealed class ReportBridgesTests
 {
-    /// <summary>A new source's bridge is live, many_to_many / replicate, pinned, and starts with a copy of the sibling's rules.</summary>
+    /// <summary>A new source's bridge is live, many_to_many / replicate, and starts with a copy of the sibling's rules.</summary>
     /// <returns>A task that completes when the bridge is checked.</returns>
     [Fact]
     public async Task Create_IsLiveAndCopiesTheSiblingsRules()
@@ -31,9 +33,8 @@ public sealed class ReportBridgesTests
         var bridgeId = await fixture.ReportBridges().CreateAsync(input, TestContext.Current.CancellationToken);
 
         var version = fixture.BridgeVersions.All.Single(row => row.BridgeId == bridgeId);
-        Assert.Equal((PublicationStatuses.Published, Cardinalities.ManyToMany, AllocationModes.Replicate), (version.Status, version.Cardinality, version.AllocationMode));
+        Assert.Equal((SnapshotRows.LiveId, Cardinalities.ManyToMany, AllocationModes.Replicate), (version.SnapshotId, version.Cardinality, version.AllocationMode));
         Assert.Equal([("US", "LOANS", SourceSelections.Descendants)], fixture.BridgeMappings.All.Where(m => m.BridgeVersionId == version.BridgeVersionId).Select(m => (m.SourceMemberKey, m.TargetMemberKey, m.SourceSelection)));
-        Assert.Contains(fixture.BridgePins.All, pin => pin.BridgeId == bridgeId && pin.BridgeVersionId == version.BridgeVersionId);
     }
 
     /// <summary>Replacing one row's rules leaves the rules of the source's other rows as they are.</summary>
@@ -67,10 +68,10 @@ public sealed class ReportBridgesTests
         Assert.Contains(fixture.Bridges.All, bridge => bridge.BridgeId == MappingsFixture.ReportBridgeId);
     }
 
-    /// <summary>Deleting a source's bridge removes its pins, its version with the rules, and the bridge.</summary>
+    /// <summary>Deleting a source's bridge that only live holds removes its version with the rules, and the bridge.</summary>
     /// <returns>A task that completes when the bridge is checked.</returns>
     [Fact]
-    public async Task Delete_RemovesPinsVersionAndRules()
+    public async Task Delete_RemovesVersionRulesAndBridge()
     {
         var fixture = new MappingsFixture();
 
@@ -79,6 +80,24 @@ public sealed class ReportBridgesTests
         Assert.DoesNotContain(fixture.Bridges.All, bridge => bridge.BridgeId == MappingsFixture.ReportBridgeId);
         Assert.DoesNotContain(fixture.BridgeVersions.All, version => version.BridgeId == MappingsFixture.ReportBridgeId);
         Assert.DoesNotContain(fixture.BridgeMappings.All, mapping => mapping.BridgeVersionId == MappingsFixture.ReportBridgeVersionId);
-        Assert.DoesNotContain(fixture.BridgePins.All, pin => pin.BridgeId == MappingsFixture.ReportBridgeId);
+    }
+
+    /// <summary>
+    /// Deleting a source's bridge that a frozen snapshot also holds removes only the live version, so restoring that snapshot can
+    /// bring the bridge back.
+    /// </summary>
+    /// <returns>A task that completes when the bridge is checked.</returns>
+    [Fact]
+    public async Task Delete_KeepsTheBridgeAFrozenSnapshotHolds()
+    {
+        var fixture = new MappingsFixture();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var frozenId = await fixture.BridgeCopier().CopyAsync(MappingsFixture.ReportBridgeVersionId, SnapshotRows.FrozenId, null, cancellationToken);
+
+        await fixture.ReportBridges().DeleteAsync(MappingsFixture.ReportBridgeId, cancellationToken);
+
+        Assert.Contains(fixture.Bridges.All, bridge => bridge.BridgeId == MappingsFixture.ReportBridgeId);
+        Assert.Equal([frozenId], fixture.BridgeVersions.All.Where(version => version.BridgeId == MappingsFixture.ReportBridgeId).Select(version => version.BridgeVersionId));
+        Assert.Contains(fixture.BridgeMappings.All, mapping => mapping.BridgeVersionId == frozenId);
     }
 }

@@ -31,6 +31,6 @@ public sealed record DatasetCreateWithNewTableInput : DatasetCreateInput
     /// <summary>The new table's name.</summary>
     public required string TableName { get; init; }
 
-    /// <summary>The table's columns, each also a column field of draft version 1; possibly none.</summary>
+    /// <summary>The table's columns, each also a column field of the live version; possibly none.</summary>
     public required IReadOnlyList<DatasetNewColumnInput> Columns { get; init; }
 }

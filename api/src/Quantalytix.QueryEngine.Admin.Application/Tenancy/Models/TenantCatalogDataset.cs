@@ -12,9 +12,9 @@ public sealed record TenantCatalogDataset
     /// <summary>The display name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Whether the dataset is enabled.</summary>
+    /// <summary>Whether the live version is enabled.</summary>
     public required bool IsEnabled { get; init; }
 
-    /// <summary>The dataset version the active release pins; null when it pins none.</summary>
-    public required long? ActiveVersionId { get; init; }
+    /// <summary>The live version.</summary>
+    public required long LiveVersionId { get; init; }
 }

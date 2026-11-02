@@ -1,15 +1,16 @@
 # Core classes
 
 [Index](README.md) · [High-level architecture](01-architecture.md) · [Request pipeline](02-request-pipeline.md) ·
-[Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
+[Snapshot lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
 The shared machinery lives in `Application/Changes` (change sets), `Application/Metadata` (records, gateways, delete
-checks) and `Application/Versioning` (lifecycle, described in [Version lifecycle](04-version-lifecycle.md)).
+checks) `Application/Versioning` (version copiers, removers and rules) and `Application/Snapshots` (capture and restore, described in
+[Snapshot lifecycle](04-version-lifecycle.md)).
 
 ## The change-set pipeline
 
-Every editable aggregate (a dataset version, a dimension, a mapping set, an analytical bridge, a draft release, a
-calculation model, a report) is edited through one protocol ([blueprint 01](../../../docs/blueprint/01-api-conventions.md#change-set-protocol-agreed-oi-01)).
+Every editable aggregate (a dataset, a dimension, a mapping set, an analytical bridge, a calculation model, a report,
+each with its live version) is edited through one protocol ([blueprint 01](../../../docs/blueprint/01-api-conventions.md#change-set-protocol-agreed-oi-01)).
 The client holds the pending operations and posts all of them on every edit:
 
 - `POST <aggregate>/changes/preview` with `{ operations }` answers `200 { state, violations }` or a problem, and writes
@@ -17,8 +18,7 @@ The client holds the pending operations and posts all of them on every edit:
 - `POST <aggregate>/changes` with the same body applies the operations to the aggregate as stored now, writes the result,
   and answers `200 { state, idMap }` or a problem with nothing written.
 
-Some aggregates extend the preview envelope: the report preview adds the pending report's diagnostics, and the release
-preview adds the rules' report over the pending manifest and its difference from the active release.
+Some aggregates extend the preview envelope: the report preview adds the pending report's diagnostics.
 
 ```mermaid
 classDiagram
@@ -72,8 +72,8 @@ a `Surroundings` record of everything outside it that operations, rules and read
 sibling versions). A snapshot loader reads it once per request, because operations are synchronous and cannot read. The
 module registers the aggregate with `AddChangeSetAggregate<TAggregate, TSnapshot, TOperation, TState>()`, which also
 registers `ChangeSetPipeline<…>`, and its rules with `AddSnapshotRule<TSnapshot, TRule>()`. A small service per module
-(`DimensionChanges`, `BridgeChanges`, `ReleaseChanges`, …) wraps the pipeline for refusals that apply before any operation
-(a report-owned dimension or bridge, a release that is not a draft) and for envelope extensions.
+(`DimensionChanges`, `BridgeChanges`, `ReportChanges`, …) wraps the pipeline for refusals that apply before any operation
+(a report-owned dimension or bridge) and for envelope extensions.
 
 **Preview** (`PreviewAsync`):
 
@@ -83,7 +83,7 @@ registers `ChangeSetPipeline<…>`, and its rules with `AddSnapshotRule<TSnapsho
    `context.Reject(path, message)` (400), `context.Conflict(title, detail)` (409) or `context.Blocked(deleteCheck)`
    (409 with the coded blockers), and the pipeline stops.
 3. Run the `Gate` rules on the result; any violation refuses with 422.
-4. Answer `ReadAsync(after, ids.Present)` as `state`, and the `Publication` and `Commit` rule violations as `violations`.
+4. Answer `ReadAsync(after, ids.Present)` as `state`, and the `Commit` rule violations as `violations`.
 
 **Commit** (`CommitAsync`) repeats steps 1 to 3 on the aggregate as stored at commit time, then:
 
@@ -99,18 +99,16 @@ an operation whose target another author deleted fails with the usual 400, 409 o
 
 `ISnapshotRule<TSnapshot>.Stage` decides when a rule's violations block:
 
-| Stage | Preview | Commit | Validate, publish, freeze | Used for |
+| Stage | Preview | Commit | Restore | Used for |
 |---|---|---|---|---|
-| `Gate` | refused with 422 | refused with 422 | blocks | What the engine would read as saved: member and level key uniqueness, parents and levels in the version, hierarchy acyclic, consumers resolve, profile-required keys (dimensions); the report gate; the model gate; manifest pins that must resolve (releases) |
-| `Publication` | reported in `violations` | allowed | blocks | Findings that matter only for leaving draft, freezing or enabling: every dataset rule, band and property rules of dimensions, findings of a disabled report, model findings |
-| `Commit` | reported in `violations` | refused with 422 | blocks | Content that is live as soon as it is saved: every mapping set rule (`MappingRule`) and analytical bridge rule (`BridgeRule`) |
+| `Gate` | refused with 422 | refused with 422 | blocks | What the engine would read as saved: member and level key uniqueness, parents and levels in the version, hierarchy acyclic, consumers resolve, profile-required keys (dimensions); the report gate; the model gate |
+| `Commit` | reported in `violations` | refused with 422 | blocks | Every other rule, because saved content is live at once: every dataset rule, including the binding checks and the checks of the enabled reports that read the dataset; band and property rules of dimensions; unknown members in a binding's version; every mapping set rule (`MappingRule`) and analytical bridge rule (`BridgeRule`); report findings; model findings |
 
-Releases register only `ReleaseGateRule` as a snapshot rule; it runs the `Gate`-stage release rules (`IReleaseRule`), and
-`ReleaseChanges` adds the full release rules' report to the preview itself. Rules run in registration order. A rule targets the offending item with its stored id; the pipeline rewrites ids of items
+There is no publication stage: live is always valid, so a capture copies it without validating. Rules run in registration order. A rule targets the offending item with its stored id; the pipeline rewrites ids of items
 the change set created to their temporary ids, so findings match the preview's `state`. To run the same rules on stored
-versions, each module also registers one `IPublicationRule` (`DatasetVersionRules`, `DimensionVersionRules`,
-`MappingVersionRules`, `BridgeVersionRules`, `ReleaseVersionRules`) that loads the stored snapshot and runs its rules; the
-version workflow and `LivingVersionFreezer` call it.
+versions, each module also registers one `IVersionRules` (`DatasetVersionRules`, `DimensionVersionRules`,
+`MappingVersionRules`, `BridgeVersionRules`, and the report and model rules) that loads the stored version and runs its
+rules, resolving what it names in the version's own snapshot; restore calls it on every version of the snapshot it restores.
 
 ### The write plan
 
@@ -139,7 +137,7 @@ Items created inside a change set carry client ids of the form `tmp:<uuid>`; lat
 first use; `context.Ids.NewId()` allocates for an item an input creates without an id. A preview presents created items by
 their temporary ids (`TemporaryIds.Present`), because the real ids it allocated are discarded and the next preview must find
 the items by the same names; the commit presents stored ids (`TemporaryIds.PresentStored`) and returns the `idMap`. For this
-reason every id a preview's read model can carry is a `string` in the Application models. The report, model and release change sets
+reason every id a preview's read model can carry is a `string` in the Application models. The report and model change sets
 allocate no temporary ids, so their read models carry stored ids only.
 
 ### Outcomes and refusals
@@ -147,7 +145,7 @@ allocate no temporary ids, so their read models carry stored ids only.
 Services return `Outcome<T>` (a value or a `Refusal`) or `Refusal?` for commands without a value. `Refusal` has four kinds:
 `Invalid` (errors by input path), `Conflict` (title and detail), `DeleteBlocked` (the blockers and their sentence) and
 `RulesViolated` (violations). The WebApi maps them with `Problems.From` ([Request pipeline](02-request-pipeline.md#the-problem-shape)).
-Lifecycle commands (create, delete, validate, publish, reopen, retire, freeze, activate, enable, capture) are services on
+Commands (create, delete, enable, capture, restore, relabel and delete a snapshot) are services on
 stored state and are never staged; the client blocks them while a change set is open.
 
 ## Delete checks
@@ -160,11 +158,10 @@ allowed. Each module has one pure delete-rules class over its snapshot (`Dataset
 
 `DeleteBlockers(subject)` collects coded reasons and builds the check: `Add(code, reason)` adds one, and
 `AddNamed(code, label, names)` adds one naming up to ten blocking objects. Codes come from `DeleteBlockerCodes`, which
-mirrors the contract's `DeleteBlockerCode`: state codes (`not_removable`, `system_dimension`, `published_version`,
-`live_version`, `has_published_versions`, `has_children`, `required_by_profile`, `assigned_by_bands`, `named_by_consumers`,
-`owned_by_report`) and usage codes `referenced_by_<usage>` (`member`, `dataset_binding`, `mapping_set`, `bridge`,
-`calculation_dimension`, `report_scenario`, `report_source`, `assumption_set`, `release`, `report`). A historical assumption
-set's pin blocks a delete; the active set's pin goes with the deleted identity (`AssumptionPins.Unpin…`).
+mirrors the contract's `DeleteBlockerCode`: state codes (`not_removable`, `system_dimension`, `has_children`,
+`required_by_profile`, `assigned_by_bands`, `named_by_consumers`, `owned_by_report`) and usage codes `referenced_by_<usage>` (`member`, `dataset_binding`, `mapping_set`, `bridge`,
+`calculation_dimension`, `report_scenario`, `report_source`, `snapshot`, `report`). A frozen snapshot that holds a version of
+the identity blocks its delete, for all six kinds; the identity's live version goes with it.
 
 ## Table gateways and infrastructure
 
@@ -182,11 +179,11 @@ string; `StarRocksConnectionFactory` resolves the request tenant's connection th
 
 ## Tenant schema check
 
-The API reads and writes tenant metadata schema 2.27.0, which records metadata schema version 18 in `qe_database_info`.
+The API reads and writes tenant metadata schema 3.0.0, which records metadata schema version 19 in `qe_database_info`.
 `TenantConnectionVerification` (run by the create and update validators of `/api/system/tenants` and by
 `POST /api/system/tenants/verify`) refuses a
 connection string whose database names another tenant, has a `metadata_schema_version` other than
-`SupportedSchemaVersion = 18`, or does not have exactly one active assumption set.
+`SupportedSchemaVersion = 19`, or does not have exactly one live snapshot.
 
 ## Contract conformance
 

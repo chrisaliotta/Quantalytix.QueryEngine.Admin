@@ -11,9 +11,9 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Mappings;
 /// Confirms the entry rules of mapping versions over a loaded snapshot: <c>source_key_unique</c> compares source values exactly, so
 /// values that differ only by leading zeros are distinct while a repeated value is reported on the repeating entry;
 /// <c>entry_member_in_version</c> reports entries whose member key the live version of the set's dimension lacks;
-/// <c>entry_member_assignable</c> reports entries that map to a folder-only member; and <c>dimension_version_published</c> reports a
+/// <c>entry_member_assignable</c> reports entries that map to a folder-only member; and <c>dimension_version_in_snapshot</c> reports a
 /// dimension with no live version, which the member rules then leave alone. The engine maps each fact's source value through these
-/// entries in the dimension version the active assumption set pins, which is the live one.
+/// entries in the dimension's version in the same snapshot, which is the live one.
 /// </summary>
 public sealed class MappingEntryRuleTests
 {
@@ -49,7 +49,7 @@ public sealed class MappingEntryRuleTests
 
         var violation = Assert.Single(violations);
         Assert.Equal(EntryMemberInVersionRule.Code, violation.Code);
-        Assert.Equal("Source key '48' maps to member 'TX', which is not a member of v2, the live version of the set's dimension.", violation.Message);
+        Assert.Equal("Source key '48' maps to member 'TX', which is not a member of the set's dimension.", violation.Message);
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public sealed class MappingEntryRuleTests
     }
 
     /// <summary>
-    /// While the set's dimension has no live version, <c>dimension_version_published</c> names the cause once and the member rules
+    /// While the set's dimension has no live version, <c>dimension_version_in_snapshot</c> names the cause once and the member rules
     /// report nothing, rather than every entry.
     /// </summary>
     /// <returns>A task that completes when the rules are checked.</returns>
@@ -84,7 +84,7 @@ public sealed class MappingEntryRuleTests
 
         var violations = await MappingsFixture.MappingRules().EvaluateAsync(snapshot, TestContext.Current.CancellationToken);
 
-        Assert.Equal([DimensionVersionPublishedRule.Code], violations.Select(violation => violation.Code));
+        Assert.Equal([DimensionVersionInSnapshotRule.Code], violations.Select(violation => violation.Code));
     }
 
     /// <summary>Runs a rule over the live version of mapping set 300 with extra entries.</summary>

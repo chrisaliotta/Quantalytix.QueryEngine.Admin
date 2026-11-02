@@ -4,9 +4,9 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// A dimension rule over a snapshot. A gate refuses a change set whose result breaks it; a publication rule is a preview finding
-/// that blocks freezing. Every rule runs for <c>check</c> and freeze (<see cref="DimensionRules"/>). The snapshot carries what the
-/// rules read outside the version, so they read nothing.
+/// A dimension rule over a snapshot. A gate refuses a change set whose result breaks it; a commit rule is a preview finding that
+/// refuses the commit. Every rule runs for restore (<see cref="DimensionVersionRules"/>). The snapshot carries what the rules read
+/// outside the version, so they read nothing.
 /// </summary>
 public abstract class DimensionRule : ISnapshotRule<DimensionSnapshot>
 {

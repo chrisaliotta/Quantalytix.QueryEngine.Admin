@@ -6,24 +6,24 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
 /// The identity, settings and rename operations of the dataset change set. A rename moves a managed table (OI-33) only while no
-/// other version reads it, so no published query ever read the old name; the commit runs the rename's DDL before the rows.
+/// other version, live or frozen, reads it, so no query ever read the old name; the commit runs the rename's DDL before the rows.
 /// </summary>
 internal static class DatasetSettingsEdits
 {
-    /// <summary><c>updateDataset</c>: an absent patch field keeps its value; the key is fixed (OI-36).</summary>
+    /// <summary>
+    /// <c>updateDataset</c>: an absent patch field keeps its value; the key is fixed (OI-36). The display name belongs to the
+    /// identity, the enabled flag to the live version.
+    /// </summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="operation">The operation.</param>
-    /// <returns>The aggregate with the identity changed.</returns>
+    /// <returns>The aggregate with the identity and the flag changed.</returns>
     public static DatasetSnapshot UpdateDataset(DatasetSnapshot snapshot, DatasetUpdateDatasetOperation operation)
     {
         var patch = operation.Patch;
         return snapshot with
         {
-            Dataset = snapshot.Dataset with
-            {
-                DisplayName = patch.DisplayName ?? snapshot.Dataset.DisplayName,
-                IsEnabled = patch.IsEnabled ?? snapshot.Dataset.IsEnabled
-            }
+            Dataset = snapshot.Dataset with { DisplayName = patch.DisplayName ?? snapshot.Dataset.DisplayName },
+            Version = snapshot.Version with { IsEnabled = patch.IsEnabled ?? snapshot.Version.IsEnabled }
         };
     }
 

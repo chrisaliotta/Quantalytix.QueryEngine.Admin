@@ -1,20 +1,16 @@
-using Quantalytix.QueryEngine.Admin.Application.Mappings;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>
-/// The bridge snapshot rules as the version workflow's one <c>bridge_version</c> publication rule, so the freeze of
-/// <see cref="LivingVersionFreezer"/> and the publish of a new live version 1 (analytical or report) run the same rules on the stored
-/// version that a change set runs on its pending result.
-/// </summary>
+/// <summary>The bridge snapshot rules as the bridge kind's <see cref="IVersionRules"/>, which restore runs on a stored version.</summary>
 /// <param name="loader">Reads the version as a snapshot.</param>
 /// <param name="rules">Runs every bridge rule.</param>
-public sealed class BridgeVersionRules(BridgeSnapshotLoader loader, SnapshotRuleRunner<BridgeSnapshot> rules) : IPublicationRule
+public sealed class BridgeVersionRules(BridgeSnapshotLoader loader, SnapshotRuleRunner<BridgeSnapshot> rules) : IVersionRules
 {
-    /// <summary><c>bridge_version</c>.</summary>
-    public string Kind => VersionKinds.BridgeVersion;
+    /// <summary><c>bridge</c>.</summary>
+    public string Kind => SnapshotKinds.Bridge;
 
     /// <summary>Runs every bridge rule on a stored version.</summary>
     /// <param name="versionId">The bridge version.</param>

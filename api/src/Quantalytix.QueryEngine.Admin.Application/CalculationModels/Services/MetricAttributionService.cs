@@ -13,13 +13,13 @@ public sealed class MetricAttributionService(
     ITableGateway<MetricAttributionRecord> attributions,
     ITableGateway<MetricAttributionDriverRecord> drivers)
 {
-    /// <summary>Lists a model's attributions, each with its drivers.</summary>
-    /// <param name="calculationModelId">The calculation model.</param>
+    /// <summary>Lists a model version's attributions, each with its drivers.</summary>
+    /// <param name="modelVersionId">The calculation model version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The attributions by metric key, their drivers by sort order.</returns>
-    public async Task<IReadOnlyList<Attribution>> ListAsync(long calculationModelId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Attribution>> ListAsync(long modelVersionId, CancellationToken cancellationToken)
     {
-        var owner = new { CalculationModelId = calculationModelId };
+        var owner = new { CalculationModelVersionId = modelVersionId };
         var driversOf = (await drivers.ListAsync(owner, cancellationToken)).ToLookup(driver => driver.MetricKey, StringComparer.Ordinal);
         return
         [
@@ -44,14 +44,14 @@ public sealed class MetricAttributionService(
     }
 
     /// <summary>The row an attribution is stored as, without its drivers.</summary>
-    /// <param name="calculationModelId">The calculation model.</param>
+    /// <param name="modelVersionId">The calculation model version.</param>
     /// <param name="attribution">The attribution.</param>
     /// <returns>The row.</returns>
-    public static MetricAttributionRecord ToRecord(long calculationModelId, Attribution attribution)
+    public static MetricAttributionRecord ToRecord(long modelVersionId, Attribution attribution)
     {
         return new MetricAttributionRecord
         {
-            CalculationModelId = calculationModelId,
+            CalculationModelVersionId = modelVersionId,
             MetricKey = attribution.MetricKey,
             ExpressionText = attribution.Expression,
             WeightVariableKey = attribution.WeightVariableKey
@@ -59,14 +59,14 @@ public sealed class MetricAttributionService(
     }
 
     /// <summary>The rows an attribution's drivers are stored as, each sorted by its position.</summary>
-    /// <param name="calculationModelId">The calculation model.</param>
+    /// <param name="modelVersionId">The calculation model version.</param>
     /// <param name="attribution">The attribution.</param>
     /// <returns>The driver rows.</returns>
-    public static IEnumerable<MetricAttributionDriverRecord> DriverRecords(long calculationModelId, Attribution attribution)
+    public static IEnumerable<MetricAttributionDriverRecord> DriverRecords(long modelVersionId, Attribution attribution)
     {
         return attribution.Drivers.Select((driver, index) => new MetricAttributionDriverRecord
         {
-            CalculationModelId = calculationModelId,
+            CalculationModelVersionId = modelVersionId,
             MetricKey = attribution.MetricKey,
             DriverKey = driver.Key,
             DisplayName = driver.DisplayName,

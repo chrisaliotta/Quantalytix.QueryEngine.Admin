@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Checks a grouping: a known mode with exactly the key it needs, a level key for <c>level</c>, an ancestor member key for
-/// <c>ancestor</c> and a depth for <c>depth</c>. Whether the keys name a level or member of the dimension's published version is a
-/// publication rule, because publishing another dimension version can change the answer.
+/// <c>ancestor</c> and a depth for <c>depth</c>. Whether the keys name a level or member of the dimension's version is a commit rule,
+/// because an edit of the dimension can change the answer.
 /// </summary>
 /// <typeparam name="T">The input that groups members.</typeparam>
 public sealed class GroupingInputValidator<T> : AbstractValidator<T>

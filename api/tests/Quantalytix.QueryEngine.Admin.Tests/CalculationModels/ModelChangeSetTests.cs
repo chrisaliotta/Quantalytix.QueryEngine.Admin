@@ -10,11 +10,10 @@ using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelFixture;
 namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
 /// <summary>
-/// Confirms the model change set the model editor saves through (blueprint 15, OI-42). A model has no draft: the engine reads it as
-/// it stands through each enabled report over it, so every edit is applied in memory and refused with 422, writing nothing, when it
-/// introduces a model-rule violation or a report-rule violation of a report over the model; a violation the stored model already has
-/// does not refuse, but is listed. Keys are fixed and name the items an operation edits. A commit re-runs the gate, writes the rows,
-/// and advances the semantic revision only when an enabled report reads the model.
+/// Confirms the model change set the model editor saves through (blueprint 15, OI-42). A model has no draft: edits write its live
+/// version, so every edit is applied in memory and refused with 422, writing nothing, when it introduces a model-rule violation or a
+/// report-rule violation of a report over the model; a violation the stored model already has is listed in the preview. Keys are
+/// fixed and name the items an operation edits. A commit re-runs the gate, writes the rows, and advances the semantic revision.
 /// </summary>
 public sealed class ModelChangeSetTests
 {
@@ -41,7 +40,7 @@ public sealed class ModelChangeSetTests
         Assert.Equal(["balance"], _fixture.Tables.Variables.All.Select(variable => variable.VariableKey));
     }
 
-    /// <summary>A commit writes the rows with new ids and advances the revision, because an enabled report reads the model.</summary>
+    /// <summary>A commit writes the rows with new ids and advances the revision, because it edits the live version the engine reads.</summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]
     public async Task Commit_WritesTheRowsAndAdvancesTheRevision()
@@ -55,19 +54,15 @@ public sealed class ModelChangeSetTests
         Assert.Equal(revision + 1, _fixture.Revision);
     }
 
-    /// <summary>A model no enabled report reads is not read by the engine, so its commit keeps the revision.</summary>
+    /// <summary>Renaming the model writes the live version's display name.</summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]
-    public async Task CommitOfAModelNoEnabledReportReads_KeepsTheRevision()
+    public async Task Rename_WritesTheLiveVersion()
     {
-        await _fixture.DisableReportAsync();
-        var revision = _fixture.Revision;
-
         var outcome = await _fixture.Pipeline().CommitAsync(ModelId, Request(new ModelUpdateModelOperation { Patch = new CalcModelPatch { DisplayName = "Renamed" } }), Token);
 
         Assert.True(outcome.Succeeded);
-        Assert.Equal("Renamed", _fixture.Tables.Models.All.Single().DisplayName);
-        Assert.Equal(revision, _fixture.Revision);
+        Assert.Equal("Renamed", _fixture.Tables.ModelVersions.All.Single().DisplayName);
     }
 
     /// <summary>A formula that reads a key the model lacks, or reads itself, is refused by the rule it breaks, and nothing is written.</summary>
@@ -116,7 +111,7 @@ public sealed class ModelChangeSetTests
     {
         await _fixture.Tables.Parameters.InsertAsync(ModelRows.ParameterRow(ModelRows.DayCount()), Token);
         await _fixture.Tables.RowParameters.InsertAsync(
-            new ReportRowParameterRecord { ReportId = ReportRows.ReportId, RowKey = "assets", ParameterKey = "dayCount", TextValue = DayCountConventions.Actual360 }, Token);
+            new ReportRowParameterRecord { ReportVersionId = ReportRows.ReportVersionId, RowKey = "assets", ParameterKey = "dayCount", TextValue = DayCountConventions.Actual360 }, Token);
         await _fixture.DisableReportAsync();
 
         var outcome = await _fixture.Pipeline().PreviewAsync(
@@ -130,8 +125,8 @@ public sealed class ModelChangeSetTests
     [Fact]
     public async Task DeclaringAParameterADefaultFilterCompares_IsRefused()
     {
-        await _fixture.Tables.Reports.UpdateAsync(
-            _fixture.Tables.Reports.All.Single() with { DefaultFilterJson = ReportDefaultsResolveRuleTests.FilterRegionBy("dayCount") }, Token);
+        await _fixture.Tables.ReportVersions.UpdateAsync(
+            _fixture.Tables.ReportVersions.All.Single() with { DefaultFilterJson = ReportDefaultsResolveRuleTests.FilterRegionBy("dayCount") }, Token);
 
         var outcome = await _fixture.Pipeline().PreviewAsync(ModelId, Request(new ModelSaveParameterOperation { Input = DayCount(DayCountConventions.ActualActual) }), Token);
 

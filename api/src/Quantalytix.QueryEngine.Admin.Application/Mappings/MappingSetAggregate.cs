@@ -57,15 +57,6 @@ public sealed class MappingSetAggregate(
         plan.Sync(entries, EntryDepth, before.Entries, after.Entries, row => new { row.DimensionMappingId });
     }
 
-    /// <summary>Whether the engine reads the change: any change of the identity or the entries.</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(MappingSetSnapshot before, MappingSetSnapshot after)
-    {
-        return before.Set != after.Set || before.Entries.Count != after.Entries.Count || !before.Entries.ToHashSet().SetEquals(after.Entries);
-    }
-
     /// <summary>The edit state of a snapshot, with the findings of its entries.</summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="presentId">Writes each entry id.</param>

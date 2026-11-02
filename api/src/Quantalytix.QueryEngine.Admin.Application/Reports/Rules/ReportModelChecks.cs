@@ -28,6 +28,6 @@ public static class ReportModelChecks
             .Select(report => report with { Variables = model.Variables, CalculatedMeasures = model.CalculatedMeasures, Parameters = model.Parameters })
             .ToList();
         return withModel.SelectMany(report => ParameterRule.Evaluate(report, scope))
-            .Concat(withModel.Where(report => report.Report.IsEnabled).SelectMany(report => EnabledReportRules.SelectMany(rule => rule.Evaluate(report, scope))));
+            .Concat(withModel.Where(report => report.Version.IsEnabled).SelectMany(report => EnabledReportRules.SelectMany(rule => rule.Evaluate(report, scope))));
     }
 }

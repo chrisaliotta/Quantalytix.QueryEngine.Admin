@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Time.Testing;
-using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
@@ -13,7 +13,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
 /// <summary>
 /// In-memory tables of one tenant and the dimension module's loader, rules and change-set pipeline over them, so tests run the
-/// module as the API does. Seeds a hierarchical user dimension with a live version 1, a frozen version 0 and a role.
+/// module as the API does. Seeds a hierarchical user dimension with a live version, a version in a frozen snapshot and a role.
 /// </summary>
 internal sealed class DimensionFixture
 {
@@ -23,17 +23,14 @@ internal sealed class DimensionFixture
     /// <summary>Its role.</summary>
     public const long RoleId = 110;
 
-    /// <summary>Its live version 1.</summary>
+    /// <summary>Its live version.</summary>
     public const long LiveVersionId = 101;
 
-    /// <summary>Its frozen version, numbered 0 so the live one is 1.</summary>
+    /// <summary>Its version in the frozen snapshot.</summary>
     public const long FrozenVersionId = 102;
 
     /// <summary>The first id the generator allocates.</summary>
     public const long FirstNewId = 900;
-
-    /// <summary>The active assumption set.</summary>
-    public const long ActiveSetId = 5;
 
     /// <summary>The tenant's semantic revision before each test.</summary>
     public const long StartingRevision = 7;
@@ -46,8 +43,8 @@ internal sealed class DimensionFixture
 
     /// <summary>The version table.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> Versions { get; } = new(
-        DimensionRows.Version(LiveVersionId, DimensionId, 1, PublicationStatuses.Published),
-        DimensionRows.Version(FrozenVersionId, DimensionId, 0, PublicationStatuses.Retired));
+        DimensionRows.Version(LiveVersionId, DimensionId),
+        DimensionRows.Version(FrozenVersionId, DimensionId, SnapshotRows.FrozenId));
 
     /// <summary>The level table.</summary>
     public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new();
@@ -91,6 +88,9 @@ internal sealed class DimensionFixture
     /// <summary>The report table.</summary>
     public InMemoryTableGateway<ReportRecord> Reports { get; } = new();
 
+    /// <summary>The report version table.</summary>
+    public InMemoryTableGateway<ReportVersionRecord> ReportVersions { get; } = new();
+
     /// <summary>The calculation dimension table.</summary>
     public InMemoryTableGateway<CalculationDimensionRecord> CalculationDimensions { get; } = new();
 
@@ -100,25 +100,15 @@ internal sealed class DimensionFixture
     /// <summary>The report source table.</summary>
     public InMemoryTableGateway<ReportSourceRecord> Sources { get; } = new();
 
-    /// <summary>The assumption set table: the active set.</summary>
-    public InMemoryTableGateway<AssumptionSetRecord> AssumptionSets { get; } = new(new AssumptionSetRecord
-    {
-        AssumptionSetId = ActiveSetId,
-        AssumptionSetKey = "active",
-        DisplayName = "Active",
-        Status = AssumptionSetStatuses.Active,
-        CreatedAt = DateTime.UnixEpoch
-    });
-
-    /// <summary>The assumption set dimension pin table.</summary>
-    public InMemoryTableGateway<AssumptionSetDimensionRecord> Pins { get; } = new();
+    /// <summary>The snapshot table: the live snapshot and one frozen snapshot.</summary>
+    public InMemoryTableGateway<SnapshotRecord> Snapshots { get; } = new(SnapshotRows.Live(), SnapshotRows.Frozen());
 
     /// <summary>The tenant's database info row.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 18,
+        MetadataSchemaVersion = 19,
         SemanticRevision = StartingRevision,
         UpdatedAt = DateTime.UnixEpoch
     });
@@ -142,11 +132,11 @@ internal sealed class DimensionFixture
         var names = new BindingNames(Roles, new InMemoryTableGateway<FieldRecord>());
         var usage = new DimensionUsageReader(
             Bindings, DatasetVersions, Datasets, MappingSets, MappingVersions, MappingEntries, Bridges, BridgeVersions, BridgeMappings, Reports,
-            CalculationDimensions, Scenarios, Sources, AssumptionSets, Pins, names);
+            ReportVersions, CalculationDimensions, Scenarios, Sources, names);
         var consumers = new DimensionConsumers(
             Datasets, DatasetVersions, Bindings, Roles, MappingSets, MappingVersions, MappingEntries, Bridges, BridgeVersions, BridgeMappings, Reports,
-            CalculationDimensions, names);
-        return new DimensionSnapshotLoader(Dimensions, Roles, Versions, Levels, Members, Bands, usage, consumers);
+            ReportVersions, CalculationDimensions, names);
+        return new DimensionSnapshotLoader(Dimensions, Roles, Versions, Levels, Members, Bands, usage, consumers, Live(), new SnapshotHolders(Snapshots));
     }
 
     /// <summary>The dimension change-set pipeline with every dimension rule, as the API registers them.</summary>
@@ -161,35 +151,42 @@ internal sealed class DimensionFixture
             new SemanticRevision(DatabaseInfo, new FakeTimeProvider()));
     }
 
-    /// <summary>
-    /// The lifecycle commands over the version workflow, with the dimension rules as its publication rule and the handlers the API
-    /// registers for dimension versions: the predecessor retirer, the active set pinner and the closure builder.
-    /// </summary>
+    /// <summary>The create and delete commands.</summary>
     /// <returns>The commands.</returns>
     public DimensionCommands Commands()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero));
         var ids = new SequentialIdGenerator(FirstNewId);
-        var stores = new VersionStoreRegistry([new DimensionVersionStore(Versions)]);
-        var pins = new AssumptionPins(AssumptionSets, Pins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), new InMemoryTableGateway<AssumptionSetBridgeRecord>());
-        var revision = new SemanticRevision(DatabaseInfo, time);
-        var loader = Loader();
-        var workflow = new VersionWorkflow(
-            stores,
-            [new DimensionVersionRules(loader, new DimensionRules(Rules()))],
-            [],
-            [
-                new PredecessorRetirer(VersionKinds.DimensionVersion, stores, time),
-                new ActiveSetPinner(VersionKinds.DimensionVersion, stores, pins),
-                new ClosureBuilder(Members, Closure)
-            ],
-            new PublicationSet(),
-            revision,
-            time);
-        var drafts = new DimensionDrafts(Versions, new DimensionVersionCloner(Levels, Members, Bands, ids), ids, time);
-        var freezer = new LivingVersionFreezer(stores, workflow, [new DimensionVersionCopier(Versions, drafts)], time);
-        return new DimensionCommands(
-            Dimensions, Roles, Versions, Members, drafts, new DimensionVersionRemover(Versions, Levels, Members, Closure, Bands), loader, workflow, freezer, pins, revision, ids);
+        var liveVersions = new LiveDimensionVersions(Versions, Cloner(ids), Live(), ids, time);
+        return new DimensionCommands(Dimensions, Roles, Members, Closure, liveVersions, Remover(), Loader(), new SemanticRevision(DatabaseInfo, time), ids);
+    }
+
+    /// <summary>The copier capture and restore use.</summary>
+    /// <returns>The copier.</returns>
+    public DimensionVersionCopier Copier()
+    {
+        var ids = new SequentialIdGenerator(FirstNewId);
+        return new DimensionVersionCopier(Versions, Cloner(ids), Remover(), ids, new FakeTimeProvider());
+    }
+
+    /// <summary>The remover snapshot deletes and restores use.</summary>
+    /// <returns>The remover.</returns>
+    public DimensionVersionRemover Remover()
+    {
+        return new DimensionVersionRemover(Dimensions, Roles, Versions, Levels, Members, Closure, Bands);
+    }
+
+    /// <summary>The live snapshot over the snapshot table.</summary>
+    /// <returns>The reader.</returns>
+    public LiveSnapshot Live()
+    {
+        return new LiveSnapshot(Snapshots);
+    }
+
+    /// <summary>The content cloner over the tables.</summary>
+    private DimensionVersionCloner Cloner(SequentialIdGenerator ids)
+    {
+        return new DimensionVersionCloner(Levels, Members, Bands, Closure, ids);
     }
 
     /// <summary>Every dimension rule, in the API's registration order.</summary>

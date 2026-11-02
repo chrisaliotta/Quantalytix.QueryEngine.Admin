@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
-/// <summary>A <c>qe_dataset_version</c> row: the immutable physical and logical definition of a dataset.</summary>
+/// <summary>A <c>qe_dataset_version</c> row: one snapshot's physical and logical definition of a dataset.</summary>
 public sealed record DatasetVersionRecord
 {
     /// <summary>Surrogate primary key.</summary>
@@ -9,11 +9,11 @@ public sealed record DatasetVersionRecord
     /// <summary>The owning logical dataset.</summary>
     public required long DatasetId { get; init; }
 
-    /// <summary>Monotonic version within the dataset.</summary>
-    public required int VersionNumber { get; init; }
+    /// <summary>The snapshot the version belongs to; unique together with the dataset.</summary>
+    public required long SnapshotId { get; init; }
 
-    /// <summary>A <c>publication_status</c> value.</summary>
-    public required string Status { get; init; }
+    /// <summary>Administrative availability flag.</summary>
+    public required bool IsEnabled { get; init; }
 
     /// <summary>A <c>source_object_kind</c> value.</summary>
     public required string SourceObjectKind { get; init; }
@@ -39,15 +39,6 @@ public sealed record DatasetVersionRecord
     /// <summary>Extension metadata as raw JSON text (a JSON column).</summary>
     public string? Properties { get; init; }
 
-    /// <summary>Publication time (UTC).</summary>
-    public DateTime? PublishedAt { get; init; }
-
     /// <summary>Creation time (UTC).</summary>
     public required DateTime CreatedAt { get; init; }
-
-    /// <summary>When the version was retired (UTC); null until then.</summary>
-    public DateTime? RetiredAt { get; init; }
-
-    /// <summary>The version this draft was cloned from; null for a version created empty.</summary>
-    public long? ClonedFromDatasetVersionId { get; init; }
 }

@@ -2,7 +2,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 /// <summary>
 /// A <c>qe_bridge_mapping</c> row: one source-member to target-member assignment of a bridge version, by member key. The keys
-/// resolve in the versions of the bridge's dimensions an assumption set pins. A mapping of the source member's descendants maps
+/// resolve in the versions of the bridge's dimensions its snapshot holds. A mapping of the source member's descendants maps
 /// every member under it as well, so a report row can take a folder of accounts, including accounts added to it later.
 /// </summary>
 public sealed record BridgeMappingRecord

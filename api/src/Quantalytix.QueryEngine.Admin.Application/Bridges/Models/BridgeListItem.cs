@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 /// The contract's <c>BridgeListItem</c>: an analytical or report bridge with its endpoints, version summaries and the bindings that
 /// use it.
 /// </summary>
-public record BridgeListItem
+public sealed record BridgeListItem
 {
     /// <summary>The bridge's id.</summary>
     public required long Id { get; init; }
@@ -23,7 +23,7 @@ public record BridgeListItem
     /// <summary>The dimension the bridge maps into, fixed after creation.</summary>
     public required long TargetDimensionId { get; init; }
 
-    /// <summary>Whether queries may use the bridge.</summary>
+    /// <summary>Whether queries may use the bridge: the live version's flag.</summary>
     public required bool IsEnabled { get; init; }
 
     /// <summary>The report source of a report bridge, which is written only through its report; null for an analytical bridge.</summary>
@@ -35,12 +35,15 @@ public record BridgeListItem
     /// <summary>The target dimension.</summary>
     public required MappingDimensionRef Target { get; init; }
 
-    /// <summary>Every version, by version number.</summary>
+    /// <summary>Every version, one per snapshot holding the bridge: the live one first, then frozen ones, newest first.</summary>
     public required IReadOnlyList<BridgeVersionSummary> Versions { get; init; }
 
-    /// <summary>The mappings of the live version.</summary>
-    public required int PublishedMappingCount { get; init; }
+    /// <summary>The live version, which change sets edit.</summary>
+    public required long LiveVersionId { get; init; }
 
-    /// <summary>The dataset bindings that remap through the bridge.</summary>
+    /// <summary>The mappings of the live version.</summary>
+    public required int LiveMappingCount { get; init; }
+
+    /// <summary>The live dataset bindings that remap through the bridge.</summary>
     public required IReadOnlyList<MappingBindingUsage> Bindings { get; init; }
 }

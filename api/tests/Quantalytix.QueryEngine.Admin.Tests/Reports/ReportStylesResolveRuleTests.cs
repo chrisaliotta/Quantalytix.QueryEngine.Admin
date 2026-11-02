@@ -48,6 +48,6 @@ public sealed class ReportStylesResolveRuleTests
     /// <summary>A bold style of report 60 that is the default of a role, or of none.</summary>
     private static ReportStyleRecord Style(string styleKey, string? defaultRole)
     {
-        return new ReportStyleRecord { ReportId = ReportId, StyleKey = styleKey, DisplayName = styleKey, DefaultRole = defaultRole, FontWeight = FontWeights.Bold, IsItalic = false };
+        return new ReportStyleRecord { ReportVersionId = ReportVersionId, StyleKey = styleKey, DisplayName = styleKey, DefaultRole = defaultRole, FontWeight = FontWeights.Bold, IsItalic = false };
     }
 }

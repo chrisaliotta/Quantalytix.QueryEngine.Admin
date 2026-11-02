@@ -61,8 +61,6 @@ public sealed class BridgeListTests
                 DatasetId = 10,
                 DatasetKey = "bank.loans",
                 DatasetVersionId = 1000,
-                DatasetVersionNumber = 1,
-                Status = "draft",
                 FieldKey = "branch_code",
                 RoleKey = "region",
                 SourceRoleKey = "branch"

@@ -1,11 +1,12 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Builds the report rows the report and release tests seed: enabled report 60 over report dimension 500 and model 40, and its
+/// Builds the report rows the report and snapshot tests seed: enabled report 60 over report dimension 500 and model 40, and its
 /// content unless changed with <c>with</c>.
 /// </summary>
 internal static class ReportRows
@@ -13,22 +14,32 @@ internal static class ReportRows
     /// <summary>The report the rows belong to.</summary>
     public const long ReportId = 60;
 
+    /// <summary>The report's live version, which the content rows key by.</summary>
+    public const long ReportVersionId = 61;
+
     /// <summary>The report's dimension.</summary>
     public const long ReportDimensionId = 500;
 
-    /// <summary>The enabled balance sheet report over dimension 500, which reads model 40 with subtotals above.</summary>
+    /// <summary>The balance sheet report over dimension 500.</summary>
     public static ReportRecord Report()
     {
-        return new ReportRecord
+        return new ReportRecord { ReportId = ReportId, ReportKey = "balance_sheet", ReportDimensionId = ReportDimensionId };
+    }
+
+    /// <summary>The report's enabled live version 61, which reads model 40 with subtotals above.</summary>
+    public static ReportVersionRecord Version()
+    {
+        return new ReportVersionRecord
         {
+            ReportVersionId = ReportVersionId,
             ReportId = ReportId,
-            ReportKey = "balance_sheet",
+            SnapshotId = SnapshotRows.LiveId,
             DisplayName = "Balance sheet",
             ReportType = "financial",
-            ReportDimensionId = ReportDimensionId,
             CalculationModelId = ModelRows.CalculationModelId,
             SubtotalPosition = SubtotalPositions.Above,
-            IsEnabled = true
+            IsEnabled = true,
+            CreatedAt = DateTime.UnixEpoch
         };
     }
 
@@ -38,7 +49,7 @@ internal static class ReportRows
         return new ReportColumnRecord
         {
             ReportColumnId = columnId,
-            ReportId = ReportId,
+            ReportVersionId = ReportVersionId,
             ColumnKey = columnKey,
             DisplayName = columnKey,
             ValueKind = valueKind,
@@ -54,7 +65,7 @@ internal static class ReportRows
         return new ReportLineRecord
         {
             ReportLineId = lineId,
-            ReportId = ReportId,
+            ReportVersionId = ReportVersionId,
             LineKey = lineKey,
             DisplayName = lineKey,
             LineKind = lineKind,
@@ -67,7 +78,7 @@ internal static class ReportRows
     /// <summary>A member option that makes a member a header.</summary>
     public static ReportMemberOptionRecord MemberOption(string memberKey)
     {
-        return new ReportMemberOptionRecord { ReportId = ReportId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
+        return new ReportMemberOptionRecord { ReportVersionId = ReportVersionId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
     }
 
     /// <summary>A scope that reads a variable at a member and its descendants.</summary>
@@ -75,7 +86,7 @@ internal static class ReportRows
     {
         return new ReportVariableScopeRecord
         {
-            ReportId = ReportId, VariableKey = variableKey, ScopeMemberKey = scopeMemberKey, SelectionScope = SelectionScopes.Descendants
+            ReportVersionId = ReportVersionId, VariableKey = variableKey, ScopeMemberKey = scopeMemberKey, SelectionScope = SelectionScopes.Descendants
         };
     }
 
@@ -85,7 +96,7 @@ internal static class ReportRows
         return new ReportSourceRecord
         {
             ReportSourceId = sourceId,
-            ReportId = ReportId,
+            ReportVersionId = ReportVersionId,
             SourceKey = sourceKey,
             DisplayName = sourceKey,
             DatasetId = datasetId,
@@ -104,7 +115,7 @@ internal static class ReportRows
     /// <summary>An enabled source profile.</summary>
     public static SourceProfileRecord Profile(long profileId, string profileKey)
     {
-        return new SourceProfileRecord { CalculationSourceProfileId = profileId, ReportId = ReportId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
+        return new SourceProfileRecord { CalculationSourceProfileId = profileId, ReportVersionId = ReportVersionId, ProfileKey = profileKey, DisplayName = profileKey, IsEnabled = true };
     }
 
     /// <summary>A profile's pick of a source for a variable.</summary>
@@ -119,7 +130,7 @@ internal static class ReportRows
         return new CalculationDimensionRecord
         {
             CalculationDimensionId = calculationDimensionId,
-            ReportId = ReportId,
+            ReportVersionId = ReportVersionId,
             DimensionKey = dimensionKey,
             DisplayName = dimensionKey,
             DimensionRoleId = dimensionRoleId,
@@ -133,6 +144,6 @@ internal static class ReportRows
     /// <summary>A scenario of the report on a role.</summary>
     public static ReportScenarioRecord Scenario(long dimensionRoleId)
     {
-        return new ReportScenarioRecord { ReportId = ReportId, DimensionRoleId = dimensionRoleId };
+        return new ReportScenarioRecord { ReportVersionId = ReportVersionId, DimensionRoleId = dimensionRoleId };
     }
 }

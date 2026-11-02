@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 /// </summary>
 public sealed record ReportRowParameterRecord
 {
-    /// <summary>The owning report; first part of the primary key.</summary>
-    public required long ReportId { get; init; }
+    /// <summary>The owning report version; first part of the primary key.</summary>
+    public required long ReportVersionId { get; init; }
 
     /// <summary>A member key of the report dimension or an overlay row's key; second part of the primary key.</summary>
     public required string RowKey { get; init; }

@@ -128,8 +128,7 @@ public sealed class BridgeBindingRouteRuleTests
             BridgeKey = bridgeKey,
             DisplayName = bridgeKey,
             SourceDimensionId = sourceDimensionId,
-            TargetDimensionId = RegionDimension,
-            IsEnabled = true
+            TargetDimensionId = RegionDimension
         };
     }
 }

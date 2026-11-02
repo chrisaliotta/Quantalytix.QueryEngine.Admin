@@ -2,19 +2,20 @@ using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
 /// Confirms the materialization commands of JSON path fields (OI-32): a field's column joins its source object's materialized view,
-/// which every change redefines from the columns the fields name; the last column out drops the view; only JSON path fields of
-/// versions that are not retired take part; and each change advances the semantic revision, because the engine reads
+/// which every change redefines from the columns the fields name; the last column out drops the view; only JSON path fields of the
+/// live version take part; and each change advances the semantic revision, because the engine reads
 /// <c>materialized_column</c>.
 /// </summary>
 public sealed class DatasetMaterializationsTests
 {
-    /// <summary>The JSON path field of the published version.</summary>
+    /// <summary>The JSON path field of the live version.</summary>
     private const long FieldId = 5;
 
     /// <summary>The tables and services.</summary>
@@ -33,7 +34,7 @@ public sealed class DatasetMaterializationsTests
     {
         await SeedJsonFieldAsync();
 
-        var outcome = await _fixture.Materializations().MaterializeAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
+        var outcome = await _fixture.Materializations().MaterializeAsync(DatasetFixture.LiveVersionId, FieldId, Token);
 
         Assert.Equal(MaterializationStates.Building, outcome.Value!.Materialization!.State);
         Assert.Equal("attributes_risk_rating_string", _fixture.Fields.All.Single().MaterializedColumn);
@@ -48,30 +49,30 @@ public sealed class DatasetMaterializationsTests
     {
         await SeedJsonFieldAsync();
         var materializations = _fixture.Materializations();
-        await materializations.MaterializeAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
+        await materializations.MaterializeAsync(DatasetFixture.LiveVersionId, FieldId, Token);
 
-        var outcome = await materializations.DematerializeAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
+        var outcome = await materializations.DematerializeAsync(DatasetFixture.LiveVersionId, FieldId, Token);
 
         Assert.Null(outcome.Value!.Materialization);
         Assert.Null(_fixture.Fields.All.Single().MaterializedColumn);
         Assert.False(_fixture.Views.Definitions.ContainsKey(View));
     }
 
-    /// <summary>Only JSON path fields are materialized, and only on versions queries can still read.</summary>
+    /// <summary>Only JSON path fields are materialized, and only on the live version: a frozen snapshot is read-only.</summary>
     /// <returns>A task that completes when the refusals are checked.</returns>
     [Fact]
-    public async Task OtherFieldsAndRetiredVersions_AreConflicts()
+    public async Task OtherFieldsAndFrozenVersions_AreConflicts()
     {
-        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(6, DatasetFixture.PublishedVersionId, "balance", "balance"), Token);
+        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(6, DatasetFixture.LiveVersionId, "balance", "balance"), Token);
         await SeedJsonFieldAsync();
-        var published = _fixture.Versions.All.Single(version => version.DatasetVersionId == DatasetFixture.PublishedVersionId);
+        var live = _fixture.Versions.All.Single(version => version.DatasetVersionId == DatasetFixture.LiveVersionId);
 
-        var column = await _fixture.Materializations().MaterializeAsync(DatasetFixture.PublishedVersionId, 6, Token);
-        await _fixture.Versions.UpdateAsync(published with { Status = PublicationStatuses.Retired }, Token);
-        var retired = await _fixture.Materializations().MaterializeAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
+        var column = await _fixture.Materializations().MaterializeAsync(DatasetFixture.LiveVersionId, 6, Token);
+        await _fixture.Versions.UpdateAsync(live with { SnapshotId = SnapshotRows.FrozenId }, Token);
+        var frozen = await _fixture.Materializations().MaterializeAsync(DatasetFixture.LiveVersionId, FieldId, Token);
 
         Assert.Equal(RefusalKind.Conflict, column.Refusal!.Kind);
-        Assert.Equal(RefusalKind.Conflict, retired.Refusal!.Kind);
+        Assert.Equal(RefusalKind.Conflict, frozen.Refusal!.Kind);
         Assert.Empty(_fixture.Views.Definitions);
     }
 
@@ -83,20 +84,20 @@ public sealed class DatasetMaterializationsTests
         await SeedJsonFieldAsync();
         var materializations = _fixture.Materializations();
 
-        var before = await materializations.RefreshAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
-        await materializations.MaterializeAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
-        var after = await materializations.RefreshAsync(DatasetFixture.PublishedVersionId, FieldId, Token);
+        var before = await materializations.RefreshAsync(DatasetFixture.LiveVersionId, FieldId, Token);
+        await materializations.MaterializeAsync(DatasetFixture.LiveVersionId, FieldId, Token);
+        var after = await materializations.RefreshAsync(DatasetFixture.LiveVersionId, FieldId, Token);
 
         Assert.Equal(RefusalKind.Conflict, before.Refusal!.Kind);
         Assert.True(after.Succeeded);
         Assert.Equal([View], _fixture.Views.Refreshed);
     }
 
-    /// <summary>Seeds a string JSON path field over <c>attributes</c> in the published version.</summary>
+    /// <summary>Seeds a string JSON path field over <c>attributes</c> in the live version.</summary>
     private Task SeedJsonFieldAsync()
     {
         return _fixture.Fields.InsertAsync(
-            DatasetRows.ColumnField(FieldId, DatasetFixture.PublishedVersionId, "rating", "attributes") with { FieldSourceKind = FieldSourceKinds.JsonPath, JsonPath = "$.risk.rating" },
+            DatasetRows.ColumnField(FieldId, DatasetFixture.LiveVersionId, "rating", "attributes") with { FieldSourceKind = FieldSourceKinds.JsonPath, JsonPath = "$.risk.rating" },
             Token);
     }
 }

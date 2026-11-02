@@ -12,9 +12,8 @@ public static class DimensionsFeatureServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the Dimensions slice, all scoped: its route resources (members and levels are found within the route's version),
-    /// its reads and commands, the dimension change-set aggregate with its snapshot rules in the order they report, the same rules
-    /// as the workflow's <c>dimension_version</c> publication rule, the freeze copier, the closure builder as a lifecycle handler,
-    /// and the readers other slices use.
+    /// its reads and commands, the dimension change-set aggregate with its snapshot rules in the order they report, the kind's
+    /// version rules, copier and remover that snapshots use, and the readers other slices use.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -32,14 +31,13 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddScoped<DimensionSnapshotLoader>();
         services.AddScoped<DimensionUsageReader>();
         services.AddScoped<DimensionConsumers>();
-        services.AddScoped<DimensionDrafts>();
+        services.AddScoped<LiveDimensionVersions>();
         services.AddScoped<DimensionVersionCloner>();
         services.AddScoped<DimensionVersionRemover>();
-        services.AddScoped<ILivingVersionCopier, DimensionVersionCopier>();
+        services.AddScoped<IVersionRemover>(provider => provider.GetRequiredService<DimensionVersionRemover>());
+        services.AddScoped<IVersionCopier, DimensionVersionCopier>();
         services.AddScoped<ReportDimensions>();
-        services.AddScoped<PublishedDimensionReader>();
-        services.AddScoped<ClosureBuilder>();
-        services.AddScoped<IVersionLifecycleHandler>(provider => provider.GetRequiredService<ClosureBuilder>());
+        services.AddScoped<SnapshotDimensionReader>();
 
         services.AddChangeSetAggregate<DimensionAggregate, DimensionSnapshot, DimensionOperation, DimensionEditState>();
         services.AddSnapshotRule<DimensionSnapshot, RangeDataTypeMatchesKindRule>();
@@ -56,8 +54,7 @@ public static class DimensionsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DimensionSnapshot, DimensionConsumersResolveRule>();
         services.AddSnapshotRule<DimensionSnapshot, ProfileRequiredKeysPresentRule>();
         services.AddSnapshotRule<DimensionSnapshot, ProfilePropertiesValidRule>();
-        services.AddScoped<DimensionRules>();
-        services.AddScoped<IPublicationRule, DimensionVersionRules>();
+        services.AddScoped<IVersionRules, DimensionVersionRules>();
         return services;
     }
 

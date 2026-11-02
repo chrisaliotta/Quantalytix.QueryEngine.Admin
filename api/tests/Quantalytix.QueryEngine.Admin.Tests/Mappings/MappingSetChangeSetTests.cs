@@ -31,7 +31,7 @@ public sealed class MappingSetChangeSetTests
         Assert.True(preview.Succeeded);
         Assert.Contains(preview.Value.State.Content.Entries, entry => entry.Id == "tmp:ny");
         Assert.Empty(preview.Value.State.Content.Coverage.UncoveredMemberKeys);
-        Assert.Equal(2, preview.Value.State.Set.PublishedEntryCount);
+        Assert.Equal(2, preview.Value.State.Set.LiveEntryCount);
         Assert.True(commit.Succeeded);
         var stored = commit.Value.IdMap["tmp:ny"];
         Assert.Contains(fixture.Entries.All, entry => entry.DimensionMappingId == stored && entry.MemberKey == "NY");

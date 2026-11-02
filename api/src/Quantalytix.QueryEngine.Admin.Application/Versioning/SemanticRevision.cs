@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
 /// The tenant's semantic revision in <c>qe_database_info</c>. The query engine keys its metadata cache by it, so content
-/// that reaches queries without a release activation must advance it.
+/// that reaches queries must advance it.
 /// </summary>
 public sealed class SemanticRevision(ITableGateway<DatabaseInfoRecord> databaseInfo, TimeProvider time)
 {

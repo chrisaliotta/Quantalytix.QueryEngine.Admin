@@ -24,11 +24,8 @@ internal static class BridgeEdits
         var patch = operation.Patch;
         return snapshot with
         {
-            Bridge = snapshot.Bridge with
-            {
-                DisplayName = patch.DisplayName ?? snapshot.Bridge.DisplayName,
-                IsEnabled = patch.IsEnabled ?? snapshot.Bridge.IsEnabled
-            }
+            Bridge = snapshot.Bridge with { DisplayName = patch.DisplayName ?? snapshot.Bridge.DisplayName },
+            Version = snapshot.Version with { IsEnabled = patch.IsEnabled ?? snapshot.Version.IsEnabled }
         };
     }
 

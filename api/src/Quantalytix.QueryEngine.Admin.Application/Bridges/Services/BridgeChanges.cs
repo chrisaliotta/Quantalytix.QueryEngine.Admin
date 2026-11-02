@@ -1,6 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
@@ -11,10 +12,12 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 /// <param name="pipeline">Runs the bridge aggregate.</param>
 /// <param name="owners">Reads whether a report owns the bridge.</param>
 /// <param name="bridges">Reads the bridge.</param>
+/// <param name="live">The live snapshot, whose report sources own report bridges.</param>
 public sealed class BridgeChanges(
     ChangeSetPipeline<BridgeSnapshot, BridgeOperation, BridgeEditState> pipeline,
     BridgeOwnerReader owners,
-    ITableGateway<BridgeRecord> bridges)
+    ITableGateway<BridgeRecord> bridges,
+    LiveSnapshot live)
 {
     /// <summary>Applies the operations in memory and writes nothing.</summary>
     /// <param name="bridgeId">The bridge.</param>
@@ -41,7 +44,7 @@ public sealed class BridgeChanges(
     /// <summary>The refusal of a report bridge, or null for an analytical one.</summary>
     private async Task<Refusal?> OwnedByReportAsync(long bridgeId, CancellationToken cancellationToken)
     {
-        if ((await owners.OwnersAsync([bridgeId], cancellationToken)).GetValueOrDefault(bridgeId) is not { } owner) return null;
+        if ((await owners.OwnersAsync([bridgeId], await live.IdAsync(cancellationToken), cancellationToken)).GetValueOrDefault(bridgeId) is not { } owner) return null;
         return BridgeRefusals.OwnedByReport(await bridges.GetAsync(new { BridgeId = bridgeId }, cancellationToken), owner);
     }
 }

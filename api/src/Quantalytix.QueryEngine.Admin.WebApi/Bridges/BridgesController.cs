@@ -50,20 +50,20 @@ public sealed class BridgesController(BridgeQueries queries, BridgeCommands comm
         return outcome.Succeeded ? StatusCode(StatusCodes.Status201Created, outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads a bridge with its bindings and assumption set pins.</summary>
+    /// <summary>Reads a bridge with its versions and the live bindings that use it.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The detail.</returns>
     /// <response code="200">The detail read model.</response>
     [HttpGet("{bridgeId:long}")]
-    [ProducesResponseType<BridgeDetail>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BridgeDetail>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
+    [ProducesResponseType<BridgeListItem>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<BridgeListItem>> Get(string tenantId, long bridgeId, CancellationToken cancellationToken)
     {
         return Ok(await queries.DetailAsync(bridgeId, cancellationToken));
     }
 
-    /// <summary>Deletes an analytical bridge and every version when no binding uses it and no historical set pins it (B12).</summary>
+    /// <summary>Deletes an analytical bridge with its live version when no live binding uses it and no frozen snapshot holds it (B12).</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

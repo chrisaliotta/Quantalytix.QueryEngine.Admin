@@ -23,7 +23,7 @@ public sealed record DimensionKeys
     /// <summary>The key of each member's parent, for the members that have one.</summary>
     public required IReadOnlyDictionary<string, string> ParentKeys { get; init; }
 
-    /// <summary>A member and every member above it, nearest first; a published version's hierarchy has no cycles.</summary>
+    /// <summary>A member and every member above it, nearest first; a stored version's hierarchy has no cycles.</summary>
     /// <param name="memberKey">The key of a member of the version.</param>
     /// <returns>The member's key, then its parent's, up to its root's.</returns>
     public IEnumerable<string> SelfAndAncestors(string memberKey)

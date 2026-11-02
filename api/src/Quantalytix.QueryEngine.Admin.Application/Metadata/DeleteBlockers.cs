@@ -37,6 +37,13 @@ public sealed class DeleteBlockers(string subject)
         Add(code, $"{label} {listed}");
     }
 
+    /// <summary>Adds the reason naming the frozen snapshots that hold a version of the identity being deleted, when any does.</summary>
+    /// <param name="snapshotKeys">The keys of the frozen snapshots holding a version.</param>
+    public void AddFrozenSnapshots(IEnumerable<string> snapshotKeys)
+    {
+        AddNamed(DeleteBlockerCodes.ReferencedBySnapshot, "held by frozen snapshots", snapshotKeys.Select(key => $"'{key}'"));
+    }
+
     /// <summary>The delete check: allowed when no reason was added, otherwise the reasons and the sentence naming them.</summary>
     /// <returns>The check.</returns>
     public DeleteCheck Check()

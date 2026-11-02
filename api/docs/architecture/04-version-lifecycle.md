@@ -1,122 +1,78 @@
-# Version lifecycle
+# Snapshot lifecycle
 
 [Index](README.md) · [High-level architecture](01-architecture.md) · [Request pipeline](02-request-pipeline.md) ·
 [Core classes](03-core-classes.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
-Five kinds are versioned (`VersionKinds`): `dataset_version`, `semantic_release`, `dimension_version`, `mapping_version`
-and `bridge_version`. Their rows carry a `status` of `draft`, `validated`, `published` or `retired`. Calculation models and
-reports are not versioned: every change to them is checked by their gates instead.
+Six kinds are versioned (`SnapshotKinds`): `dataset`, `dimension`, `mapping_set`, `bridge`, `calculation_model` and
+`report`. A report's own dimension and the bridges into it are dimensions and bridges like any other. Every version belongs to
+exactly one snapshot (`qe_snapshot`), and an identity has at most one version per snapshot. Versions carry no status: whether a
+version can be edited is decided by its snapshot.
 
-## Strict and living kinds
+## Live and frozen snapshots
 
-| | Strict: datasets, releases | Living: dimensions, mapping sets, bridges |
+| | Live snapshot | Frozen snapshot |
 |---|---|---|
-| Edited | Only a draft's content changes; a validated or published version refuses edits with 409 | The one live (published) version is edited in place through the identity's change set |
-| Reaches queries | A dataset version only through the active release; a release when it is activated | At once: the active assumption set pins the live version |
-| Lifecycle endpoints | `validate`, `publish`, `reopen`, `retire`; releases also `activate` | `freeze` |
-| Retired | By hand (`retire`) | Only when a successor is published (freeze) |
-| New versions | Drafts created by hand, empty or cloned (datasets) | Version 1 is created live; later versions come from freezing |
+| How many | Exactly one, with key `live` | Any number, each with its own key |
+| Edited | Every version in place, through the identity's change set | Never; its versions are read-only |
+| Reaches queries | At once: a request that names no snapshot reads it, and every engine-visible commit advances the semantic revision | When a query, catalog request or report comparison names its key |
+| Validated | Every commit runs every gate and commit rule; a violation refuses the commit with 422 and writes nothing | Not again: it is a copy of a live snapshot that passed every rule |
+| Relabel, delete | Neither | Both |
 
-## Transitions
+`LiveSnapshot` (`Application/Snapshots`) reads the live snapshot's id once per request. Every aggregate loader resolves an
+identity's version through it, so a change set always edits the live version and an identity's id is all a route names.
 
-`VersionTransitions` defines the allowed moves:
+## Validation on commit
 
-```mermaid
-stateDiagram-v2
-    [*] --> draft
-    draft --> validated : publication rules pass
-    validated --> draft : reopen
-    validated --> published
-    published --> retired : strict kinds by hand, living kinds when the successor publishes
-    retired --> [*]
-```
+`RuleStage` has two stages, `Gate` and `Commit`. A gate refuses a change set in preview and commit alike. A commit rule's
+violations are findings in a preview, which the editor flags, and refuse the commit with 422. Every rule runs on every
+commit, so live is always valid and capture does not validate.
 
-- **draft to validated** runs the kind's lifecycle handlers' `OnValidatingAsync` (the dimension closure is rebuilt), then
-  every `IPublicationRule` of the kind. Any violation rejects the transition.
-- **validated to published** stamps `published_at`, then runs every handler's `OnPublishedAsync` in registration order.
-  For a living kind it then advances the semantic revision.
-- **published to retired** is allowed only for strict kinds by hand, and runs every `IRetirementRule` of the kind.
+Datasets follow the same rule as every other kind. `CreateAsync` inserts the dataset's live version; its change set edits that
+version, and its commit rules include the checks against the rest of live: `BoundDimensionsResolvableRule`,
+`MappedBindingsResolvableRule`, `BridgeBindingsResolvableRule`, `BindingIdentityRule`, and the report checks of the enabled
+reports that read the dataset. Materializing a JSON path field (`fields/{id}/materialization`) does not change what the version
+means, so it runs no commit rules, but it advances the revision because the engine reads `qe_field.materialized_column`.
 
-## VersionWorkflow
+## Capture
 
-`VersionWorkflow` (`Application/Versioning`) moves one version of any kind:
+`SnapshotCommands.CaptureAsync` copies every live version of every kind into a new frozen snapshot:
 
-- `TransitionAsync(kind, id, targetStatus)` checks the transition, runs the rules it requires, writes the status through
-  the kind's `IVersionStore` (found in `VersionStoreRegistry`), and runs the publish handlers. It answers `Applied`,
-  `NotAllowed` or `Rejected` with the violations.
-- `PublishAsync(kind, id)` takes a new draft through validated to published. Living kinds use it to create version 1 live
-  (a new dimension, mapping set, analytical bridge, report dimension or report bridge) and to publish a freeze's copy.
-- `CheckAsync(kind, id)` runs the publication rules on a stored version without changing it.
+1. It reads `semantic_revision`.
+2. It copies each live version, changed or not, through the kind's `IVersionCopier` into the new snapshot, in `SnapshotKinds`
+   order. A copier remaps every internal id of the copied content through one `IdRemap`, so references between copied rows point
+   at the copies; references to identities keep their ids. `ReportVersionCopier` remaps line, column, source and profile ids.
+3. It writes the `qe_snapshot` row last, with `captured_at` and `captured_by`, the caller's token subject.
+4. It reads `semantic_revision` again. When it changed, a commit ran during the capture, so the capture deletes its copies through
+   each kind's `IVersionRemover` and refuses with 409.
 
-While the rules of a living version run, `PublicationSet` counts that version as its identity's published version, so rules
-that resolve keys against published versions see the content about to be published rather than the version it replaces.
+The live version ids never change. A capture advances the semantic revision. `SnapshotQueries` answers the capture preview, the
+count of versions per kind a capture would copy, without writing anything.
 
-Each kind registers one `IPublicationRule` that loads the stored snapshot and runs the module's snapshot rules:
-`DatasetVersionRules`, `DimensionVersionRules`, `MappingVersionRules`, `BridgeVersionRules` and `ReleaseVersionRules`.
-Two kinds register an `IRetirementRule`: `ReleaseNotActiveRule` (`semantic_release`), so the active release cannot be
-retired, and `ReleasePinsRetiredVersionRule` (`dataset_version`), so the dataset version the active release pins cannot be
-retired.
+## Restore
 
-Lifecycle handlers (`IVersionLifecycleHandler`), in registration order:
+`SnapshotCommands.RestoreAsync` makes live equal a frozen snapshot:
 
-| Handler | Kind | Does |
-|---|---|---|
-| `PredecessorRetirer` | each living kind | On publish, retires the identity's other published version, stamping its retirement time |
-| `ClosureBuilder` | `dimension_version` | On validating, rebuilds `qe_dimension_closure` from the member tree |
-| `ActiveSetPinner` | each living kind | On publish, pins the new version in the active assumption set, replacing the identity's previous pin |
+1. Every `IVersionRules` of every kind runs on the snapshot's versions, resolving what they name in the snapshot, which is what
+   live would hold. Any violation refuses the restore with 422 and nothing changes; a physical table that drifted since the
+   capture is the usual cause.
+2. For each identity the snapshot holds, the kind's copier copies the frozen version over the identity's live version, passing the
+   live version's id as `targetVersionId`, so the live id is kept and its content replaced. An identity with no live version gets a
+   new one.
+3. For each identity the snapshot lacks, the kind's remover deletes its live version, and deletes the identity row when no other
+   snapshot holds a version of it.
+4. It logs a `qe_snapshot_restore` row with `restored_by` and advances the semantic revision.
 
-## Datasets
+## Relabel, delete and compare
 
-`DatasetCommands` runs the dataset transitions through `VersionWorkflow.TransitionAsync`: `validate` (draft to validated),
-`publish` (validated to published; a draft is validated first in the same call), `reopen` (validated to draft) and
-`retire` (published to retired). Only one open (draft or validated) version exists per dataset. Publishing a dataset version
-does not advance the semantic revision, because the engine reads dataset versions only through the active release. For the
-same reason `retire` runs `ReleasePinsRetiredVersionRule`: the version the active release pins is refused with 422
-`release_pins_retired_version` until a release that pins another version is activated. Materializing a JSON path field
-(`fields/{id}/materialization`) is allowed on any version that is not retired, because storage does not change what a
-version means. Materializing and dematerializing advance the revision because the engine reads
-`qe_field.materialized_column`.
+`RelabelAsync` changes a frozen snapshot's key, display name and description, and refuses the live snapshot. `DeleteAsync`
+removes every version of a frozen snapshot with its content, through each kind's `IVersionRemover`, then the `qe_snapshot` row,
+and refuses the live snapshot. Both advance the semantic revision, because a request names a snapshot by key.
 
-## Releases
+`SnapshotQueries` lists snapshots, reads one with the version it holds of each identity, and compares two snapshots kind by kind,
+listing the identities only one holds and those whose versions differ.
 
-A release's manifest lists one dataset version per dataset. `ReleaseCommands` implements the release transitions itself on
-the stored manifest rather than through `VersionWorkflow`:
-
-- `validate` (draft to validated) and `publish` (validated to published) run every release rule (`ReleaseRules`) and
-  answer 422 on a violation; `publish` stamps `published_at` and the manifest's content hash. Publishing activates nothing.
-- `reopen` returns a validated release to draft; `retire` refuses the active release (`ReleaseNotActiveRule`).
-- `activate` requires a published release, checks every enabled report against it (`ReleaseReportChecks`) and refuses with
-  422 if any breaks a rule; then it writes `qe_database_info.active_semantic_release_id`, advances the semantic revision,
-  and logs a `qe_release_activation` row. Activating an older release is a rollback.
-
-## Living versions and freeze
-
-A living identity has one live version, edited in place through the identity's change set
-(`dimensions/{id}/changes`, `mapping-sets/{id}/changes`, `bridges/{id}/changes`). The change set's commit advances the
-semantic revision when the engine-visible content changed. Earlier versions are frozen: read-only snapshots that a
-historical assumption set can pin and that can be deleted when nothing pins them.
-
-`POST <kind>-versions/{id}/freeze` with `{ note }` runs `LivingVersionFreezer.FreezeAsync(kind, versionId, note)`:
-
-1. The version must be published (live); otherwise 409.
-2. `VersionWorkflow.CheckAsync` runs every publication rule of the kind on it; any violation refuses with 422 and nothing
-   changes.
-3. The kind's `ILivingVersionCopier` copies version n into draft n+1.
-4. `VersionWorkflow.PublishAsync` publishes n+1: `PredecessorRetirer` retires n, `ClosureBuilder` has rebuilt the closure
-   on validating, `ActiveSetPinner` repoints the active assumption set to n+1, and the semantic revision advances.
-5. Version n keeps the freeze note (`freeze_note`).
-
-The answer is a `FreezeResult` with the clean validation report and the new live version. Dimension freeze also refuses
-report dimensions and dimensions locked by their profile; bridge freeze refuses report bridges.
-
-## Assumption sets
-
-An assumption set pins one version per dimension, mapping set and bridge. Exactly one set is active; the tenant database
-holds it and every living publish repoints it, so it always pins the live versions, which every request that names no set
-reads. `AssumptionSetCommands` captures historical sets: a capture copies the active set's analytical pins (report
-dimensions and report bridges are left out, because reports always run on the active set) and the active release under a
-new key. Historical sets can be relabelled and deleted; the active set cannot. Capturing and deleting a set advance the
-semantic revision; relabelling does not. A historical set's pin blocks deleting the version or identity it pins.
+A delete of any identity is refused while a frozen snapshot holds a version of it, for all six kinds, and managed-table DDL refuses
+to rename or drop a table or column that any dataset version, live or frozen, reads.
 
 ## Semantic revision
 
@@ -125,13 +81,10 @@ It advances once per commit or command that changes what the engine reads:
 
 | Advances | Does not advance |
 |---|---|
-| A dimension, mapping set or bridge change set that changes engine-visible content | A dataset draft's content (only a change to the dataset identity row advances) |
-| Publishing a living version (create, freeze) | Publishing, reopening or retiring a dataset version |
-| A change set on an enabled report; enabling or disabling a report; deleting an enabled report | A change set on, or the delete of, a disabled report |
-| A model change set that changes a model an enabled report reads | A draft release's manifest change set; validating or publishing a release |
-| Activating a release | Relabelling an assumption set |
-| Capturing or deleting an assumption set | Refreshing a materialized field's view |
-| Materializing or dematerializing a JSON path field | |
+| A commit that changes engine-visible live content, creating or deleting an identity included | A commit that changes only what the engine never reads, such as a disabled report |
+| Enabling or disabling a dataset, bridge or report | A preview |
+| Materializing or dematerializing a JSON path field | Refreshing a materialized field's view |
+| Capturing, restoring, relabelling or deleting a snapshot | A refused capture, restore or commit |
 
 Writes that must be seen together write their rows first and advance the revision last, so the engine never caches
 half-written metadata under the new revision.

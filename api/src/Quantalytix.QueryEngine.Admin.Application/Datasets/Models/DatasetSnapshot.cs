@@ -1,7 +1,5 @@
-using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
@@ -10,7 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// time axes, measures with their components, dependencies and time policies), the managed-table registry its renames write, and
 /// what surrounds it as loaded. Operations, rules, delete checks and read models all work on these values.
 /// </summary>
-public sealed record DatasetSnapshot : IVersionSnapshot
+public sealed record DatasetSnapshot
 {
     /// <summary>The dataset identity every version shares.</summary>
     public required DatasetRecord Dataset { get; init; }
@@ -51,14 +49,11 @@ public sealed record DatasetSnapshot : IVersionSnapshot
     /// <summary>What surrounds the aggregate, read when it was loaded.</summary>
     public required DatasetSurroundings Surroundings { get; init; }
 
-    /// <summary><c>dataset_version</c>.</summary>
-    public string Kind => VersionKinds.DatasetVersion;
-
     /// <summary>The version's id.</summary>
     public long VersionId => Version.DatasetVersionId;
 
-    /// <summary>Whether the version is a draft, the only status whose content changes (D3).</summary>
-    public bool IsDraft => Version.Status == PublicationStatuses.Draft;
+    /// <summary>Whether the version belongs to the live snapshot, the only one whose content changes.</summary>
+    public bool IsLive => Version.SnapshotId == Surroundings.LiveSnapshotId;
 
     /// <summary>The columns of the version's source object; none when the object does not exist.</summary>
     public IReadOnlyList<PhysicalColumn> SourceColumns => Surroundings.Columns.GetValueOrDefault(Version.SourceObject) ?? [];

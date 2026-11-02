@@ -1,14 +1,13 @@
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Reads what references a dimension (blueprint 12, <c>DimensionDetail.usage</c>): dataset bindings, mapping sets, bridges at
-/// either end, calculation dimensions, report scenarios and report sources on its roles, and assumption set pins of its versions.
-/// Member keys are the ones each object names in the live version: unknown members of published bindings, entries of published
-/// mapping versions, mappings of published bridge versions, and ancestor groupings of enabled calculation dimensions.
+/// either end, calculation dimensions, report scenarios and report sources on its roles, all from the objects of the dimension
+/// version's snapshot. Member keys are the ones each object names in that version: unknown members of bindings, entries of mapping
+/// versions, mappings of bridge versions, and ancestor groupings of enabled calculation dimensions.
 /// </summary>
 public sealed class DimensionUsageReader(
     ITableGateway<DimensionBindingRecord> bindings,
@@ -21,73 +20,73 @@ public sealed class DimensionUsageReader(
     ITableGateway<BridgeVersionRecord> bridgeVersions,
     ITableGateway<BridgeMappingRecord> bridgeMappings,
     ITableGateway<ReportRecord> reports,
+    ITableGateway<ReportVersionRecord> reportVersions,
     ITableGateway<CalculationDimensionRecord> calculationDimensions,
     ITableGateway<ReportScenarioRecord> scenarios,
     ITableGateway<ReportSourceRecord> sources,
-    ITableGateway<AssumptionSetRecord> assumptionSets,
-    ITableGateway<AssumptionSetDimensionRecord> pins,
     BindingNames names)
 {
-    /// <summary>Reads every reference to a dimension.</summary>
+    /// <summary>Reads every reference to a dimension from the objects of one snapshot.</summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="roles">The dimension's roles.</param>
-    /// <param name="versions">The dimension's versions.</param>
+    /// <param name="snapshotId">The snapshot of the dimension's version.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The references, by kind in contract order.</returns>
     public async Task<IReadOnlyList<DimensionUsageReference>> ReadAsync(
         long dimensionId,
         IReadOnlyList<DimensionRoleRecord> roles,
-        IReadOnlyList<DimensionVersionRecord> versions,
+        long snapshotId,
         CancellationToken cancellationToken)
     {
         var roleKeys = roles.ToDictionary(role => role.DimensionRoleId, role => role.DimensionRoleKey);
         var roleIds = roleKeys.Keys.ToArray();
-        var reportsById = (await reports.ListAsync(null, cancellationToken)).ToDictionary(report => report.ReportId);
+        var reportKeys = (await reports.ListAsync(null, cancellationToken)).ToDictionary(report => report.ReportId, report => report.ReportKey);
+        var reportOf = (await reportVersions.ListAsync(new { SnapshotId = snapshotId }, cancellationToken)).ToDictionary(version => version.ReportVersionId);
+        var held = new { ReportVersionId = reportOf.Keys.ToArray(), DimensionRoleId = roleIds };
         return
         [
-            .. await BindingsAsync(dimensionId, roleKeys, cancellationToken),
-            .. await MappingSetsAsync(dimensionId, cancellationToken),
-            .. await BridgesAsync(dimensionId, cancellationToken),
-            .. (await calculationDimensions.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken)).Select(dimension =>
+            .. await BindingsAsync(dimensionId, roleKeys, snapshotId, cancellationToken),
+            .. await MappingSetsAsync(dimensionId, snapshotId, cancellationToken),
+            .. await BridgesAsync(dimensionId, snapshotId, cancellationToken),
+            .. (await calculationDimensions.ListAsync(held, cancellationToken)).Select(dimension =>
             {
-                var report = reportsById[dimension.ReportId];
+                var report = reportOf[dimension.ReportVersionId];
                 var named = report.IsEnabled && dimension.IsEnabled && dimension.GroupingAncestorMemberKey is { } ancestor ? new[] { ancestor } : null;
                 return new DimensionUsageReference
                 {
                     Kind = DimensionUsageKinds.CalculationDimension,
                     Name = dimension.DimensionKey,
-                    Detail = $"of report '{report.ReportKey}'",
+                    Detail = $"of report '{reportKeys[report.ReportId]}'",
                     RoleKey = roleKeys[dimension.DimensionRoleId],
                     MemberKeys = named
                 };
             }),
-            .. (await scenarios.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken)).Select(scenario => new DimensionUsageReference
+            .. (await scenarios.ListAsync(held, cancellationToken)).Select(scenario => new DimensionUsageReference
             {
                 Kind = DimensionUsageKinds.ReportScenario,
-                Name = reportsById[scenario.ReportId].ReportKey,
-                Detail = reportsById[scenario.ReportId].DisplayName,
+                Name = reportKeys[reportOf[scenario.ReportVersionId].ReportId],
+                Detail = reportOf[scenario.ReportVersionId].DisplayName,
                 RoleKey = roleKeys[scenario.DimensionRoleId]
             }),
-            .. (await sources.ListAsync(new { DimensionRoleId = roleIds }, cancellationToken)).Select(source => new DimensionUsageReference
+            .. (await sources.ListAsync(held, cancellationToken)).Select(source => new DimensionUsageReference
             {
                 Kind = DimensionUsageKinds.ReportSource,
                 Name = source.SourceKey,
-                Detail = $"of report '{reportsById[source.ReportId].ReportKey}'",
+                Detail = $"of report '{reportKeys[reportOf[source.ReportVersionId].ReportId]}'",
                 RoleKey = roleKeys[source.DimensionRoleId!.Value]
-            }),
-            .. await PinsAsync(dimensionId, versions, cancellationToken)
+            })
         ];
     }
 
-    /// <summary>The bindings of every dataset version, with the unknown member key of a published one.</summary>
+    /// <summary>The bindings of the snapshot's dataset versions, with their unknown member keys.</summary>
     private async Task<IEnumerable<DimensionUsageReference>> BindingsAsync(
         long dimensionId,
         IReadOnlyDictionary<long, string> roleKeys,
+        long snapshotId,
         CancellationToken cancellationToken)
     {
-        var bound = await bindings.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
-        var holding = (await datasetVersions.ListAsync(new { DatasetVersionId = bound.Select(binding => binding.DatasetVersionId).Distinct().ToArray() }, cancellationToken))
-            .ToDictionary(version => version.DatasetVersionId);
+        var holding = (await datasetVersions.ListAsync(new { SnapshotId = snapshotId }, cancellationToken)).ToDictionary(version => version.DatasetVersionId);
+        var bound = await bindings.ListAsync(new { DimensionId = dimensionId, DatasetVersionId = holding.Keys.ToArray() }, cancellationToken);
         var datasetKeys = (await datasets.ListAsync(new { DatasetId = holding.Values.Select(version => version.DatasetId).Distinct().ToArray() }, cancellationToken))
             .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.DatasetKey);
         var named = await names.OfAsync(bound, cancellationToken);
@@ -95,28 +94,26 @@ public sealed class DimensionUsageReader(
         {
             var version = holding[binding.DatasetVersionId];
             var datasetKey = datasetKeys[version.DatasetId];
-            var unknown = version.Status == PublicationStatuses.Published && binding.UnknownMemberKey is { } key ? new[] { key } : null;
             return new DimensionUsageReference
             {
                 Kind = DimensionUsageKinds.DatasetBinding,
                 Name = datasetKey,
-                Detail = $"binding '{named[binding.DimensionBindingId]}' of v{version.VersionNumber}",
+                Detail = $"binding '{named[binding.DimensionBindingId]}'",
                 RoleKey = binding.DimensionRoleId is { } roleId ? roleKeys[roleId] : null,
-                MemberKeys = unknown,
-                Label = $"'{datasetKey}' v{version.VersionNumber}"
+                MemberKeys = binding.UnknownMemberKey is { } key ? [key] : null
             };
         });
     }
 
-    /// <summary>The mapping sets that target the dimension, with the member keys of their published version's entries.</summary>
-    private async Task<IEnumerable<DimensionUsageReference>> MappingSetsAsync(long dimensionId, CancellationToken cancellationToken)
+    /// <summary>The mapping sets that target the dimension, with the member keys of their snapshot version's entries.</summary>
+    private async Task<IEnumerable<DimensionUsageReference>> MappingSetsAsync(long dimensionId, long snapshotId, CancellationToken cancellationToken)
     {
         var sets = await mappingSets.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
-        var published = await mappingVersions.ListAsync(
-            new { MappingSetId = sets.Select(set => set.MappingSetId).ToArray(), Status = PublicationStatuses.Published }, cancellationToken);
-        var entries = (await mappingEntries.ListAsync(new { MappingVersionId = published.Select(version => version.MappingVersionId).ToArray() }, cancellationToken))
+        var held = await mappingVersions.ListAsync(
+            new { MappingSetId = sets.Select(set => set.MappingSetId).ToArray(), SnapshotId = snapshotId }, cancellationToken);
+        var entries = (await mappingEntries.ListAsync(new { MappingVersionId = held.Select(version => version.MappingVersionId).ToArray() }, cancellationToken))
             .ToLookup(entry => entry.MappingVersionId, entry => entry.MemberKey);
-        var liveOf = published.ToDictionary(version => version.MappingSetId, version => version.MappingVersionId);
+        var liveOf = held.ToDictionary(version => version.MappingSetId, version => version.MappingVersionId);
         return sets.Select(set => new DimensionUsageReference
         {
             Kind = DimensionUsageKinds.MappingSet,
@@ -126,17 +123,17 @@ public sealed class DimensionUsageReader(
         });
     }
 
-    /// <summary>The bridges from or to the dimension, with the member keys their published version's mappings name on its side.</summary>
-    private async Task<IEnumerable<DimensionUsageReference>> BridgesAsync(long dimensionId, CancellationToken cancellationToken)
+    /// <summary>The bridges from or to the dimension, with the member keys their snapshot version's mappings name on its side.</summary>
+    private async Task<IEnumerable<DimensionUsageReference>> BridgesAsync(long dimensionId, long snapshotId, CancellationToken cancellationToken)
     {
         var from = await bridges.ListAsync(new { SourceDimensionId = dimensionId }, cancellationToken);
         var to = await bridges.ListAsync(new { TargetDimensionId = dimensionId }, cancellationToken);
         var joined = from.Concat(to).DistinctBy(bridge => bridge.BridgeId).ToList();
-        var published = await bridgeVersions.ListAsync(
-            new { BridgeId = joined.Select(bridge => bridge.BridgeId).ToArray(), Status = PublicationStatuses.Published }, cancellationToken);
-        var mappings = (await bridgeMappings.ListAsync(new { BridgeVersionId = published.Select(version => version.BridgeVersionId).ToArray() }, cancellationToken))
+        var held = await bridgeVersions.ListAsync(
+            new { BridgeId = joined.Select(bridge => bridge.BridgeId).ToArray(), SnapshotId = snapshotId }, cancellationToken);
+        var mappings = (await bridgeMappings.ListAsync(new { BridgeVersionId = held.Select(version => version.BridgeVersionId).ToArray() }, cancellationToken))
             .ToLookup(mapping => mapping.BridgeVersionId);
-        var liveOf = published.ToDictionary(version => version.BridgeId, version => version.BridgeVersionId);
+        var liveOf = held.ToDictionary(version => version.BridgeId, version => version.BridgeVersionId);
         return joined.Select(bridge => new DimensionUsageReference
         {
             Kind = DimensionUsageKinds.Bridge,
@@ -149,31 +146,6 @@ public sealed class DimensionUsageReader(
                     bridge.TargetDimensionId == dimensionId ? mapping.TargetMemberKey : null
                 }.OfType<string>()))
                 : null
-        });
-    }
-
-    /// <summary>The assumption sets that pin a version of the dimension.</summary>
-    private async Task<IEnumerable<DimensionUsageReference>> PinsAsync(
-        long dimensionId,
-        IReadOnlyList<DimensionVersionRecord> versions,
-        CancellationToken cancellationToken)
-    {
-        var pinned = await pins.ListAsync(new { DimensionId = dimensionId }, cancellationToken);
-        var sets = (await assumptionSets.ListAsync(new { AssumptionSetId = pinned.Select(pin => pin.AssumptionSetId).ToArray() }, cancellationToken))
-            .ToDictionary(set => set.AssumptionSetId);
-        var numbers = versions.ToDictionary(version => version.DimensionVersionId, version => version.VersionNumber);
-        return pinned.Select(pin =>
-        {
-            var set = sets[pin.AssumptionSetId];
-            var number = numbers[pin.DimensionVersionId];
-            return new DimensionUsageReference
-            {
-                Kind = DimensionUsageKinds.AssumptionSet,
-                Name = set.AssumptionSetKey,
-                Detail = $"{set.Status} → v{number}",
-                PinsVersion = number,
-                IsHistoricalPin = set.Status == AssumptionSetStatuses.Historical
-            };
         });
     }
 

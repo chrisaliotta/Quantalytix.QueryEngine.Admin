@@ -64,18 +64,6 @@ public sealed class BridgeAggregate(
         plan.Sync(mappings, MappingDepth, before.Mappings, after.Mappings, row => new { row.BridgeMappingId });
     }
 
-    /// <summary>Whether the engine reads the change: any change of the identity, the settings or the mappings.</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(BridgeSnapshot before, BridgeSnapshot after)
-    {
-        return before.Bridge != after.Bridge
-            || before.Version != after.Version
-            || before.Mappings.Count != after.Mappings.Count
-            || !before.Mappings.ToHashSet().SetEquals(after.Mappings);
-    }
-
     /// <summary>The edit state of a snapshot, with the findings of its settings and mappings.</summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="presentId">Writes each mapping id.</param>

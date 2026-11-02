@@ -1,21 +1,25 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>The bridge reads: the list, the detail, version content, rule checks and delete checks, of analytical and report bridges alike.</summary>
+/// <summary>
+/// The bridge reads, of analytical and report bridges alike: the list of the bridges the live snapshot holds, one bridge, a live or
+/// frozen version's content and the delete check.
+/// </summary>
 public sealed class BridgeQueries(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
     ITableGateway<BridgeMappingRecord> mappings,
     ITableGateway<ReportSourceRecord> sources,
+    ITableGateway<ReportVersionRecord> reportVersions,
     MappingReferenceReader references,
     BridgeOwnerReader owners,
     BridgeSnapshotLoader loader,
     SnapshotRuleRunner<BridgeSnapshot> rules,
-    TimeProvider time)
+    LiveSnapshot live)
 {
     /// <summary>Lists every bridge, those starting or ending at one dimension, or the one bridge of a report source.</summary>
     /// <param name="query">The filters, already validated.</param>
@@ -23,15 +27,22 @@ public sealed class BridgeQueries(
     /// <returns>The list items: analytical bridges first, then report bridges, each by key.</returns>
     public async Task<IReadOnlyList<BridgeListItem>> ListAsync(BridgeListQuery query, CancellationToken cancellationToken)
     {
-        var listed = await ListedAsync(query, cancellationToken);
+        var liveSnapshotId = await live.IdAsync(cancellationToken);
+        var versionsOf = (await versions.ListAsync(null, cancellationToken)).ToLookup(version => version.BridgeId);
+        var listed = (await ListedAsync(query, liveSnapshotId, cancellationToken))
+            .Where(bridge => versionsOf[bridge.BridgeId].Any(version => version.SnapshotId == liveSnapshotId))
+            .ToList();
         long[] bridgeIds = [.. listed.Select(bridge => bridge.BridgeId)];
-        var versionsOf = (await versions.ListAsync(new { BridgeId = bridgeIds }, cancellationToken)).ToLookup(version => version.BridgeId);
-        var counts = (await mappings.ListAsync(new { BridgeVersionId = versionsOf.SelectMany(group => group).Select(version => version.BridgeVersionId).ToArray() }, cancellationToken))
+        var counts = (await mappings.ListAsync(new { BridgeVersionId = bridgeIds.SelectMany(bridgeId => versionsOf[bridgeId]).Select(version => version.BridgeVersionId).ToArray() }, cancellationToken))
             .GroupBy(mapping => mapping.BridgeVersionId)
             .ToDictionary(group => group.Key, group => group.Count());
-        var ownerOf = await owners.OwnersAsync(bridgeIds, cancellationToken);
-        var dimensions = await references.DimensionsAsync(listed.SelectMany(bridge => new[] { bridge.SourceDimensionId, bridge.TargetDimensionId }), cancellationToken);
-        var bindings = await references.BindingsAsync(new { BridgeId = bridgeIds }, binding => binding.BridgeId!.Value, cancellationToken);
+        var ownerOf = await owners.OwnersAsync(bridgeIds, liveSnapshotId, cancellationToken);
+        var dimensions = await references.DimensionsAsync(listed.SelectMany(bridge => new[] { bridge.SourceDimensionId, bridge.TargetDimensionId }), liveSnapshotId, cancellationToken);
+        var bindings = await references.BindingsAsync(
+            binding => binding.BridgeId is { } bridgeId && bridgeIds.Contains(bridgeId),
+            binding => binding.BridgeId!.Value,
+            liveSnapshotId,
+            cancellationToken);
         return
         [
             .. listed
@@ -45,6 +56,7 @@ public sealed class BridgeQueries(
                         dimensions[bridge.SourceDimensionId],
                         dimensions[bridge.TargetDimensionId],
                         own,
+                        liveSnapshotId,
                         mappingCounts,
                         [.. bindings[bridge.BridgeId]]);
                 })
@@ -53,11 +65,11 @@ public sealed class BridgeQueries(
         ];
     }
 
-    /// <summary>Reads a bridge's detail.</summary>
+    /// <summary>Reads one bridge.</summary>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The detail.</returns>
-    public async Task<BridgeDetail> DetailAsync(long bridgeId, CancellationToken cancellationToken)
+    /// <returns>The list item.</returns>
+    public async Task<BridgeListItem> DetailAsync(long bridgeId, CancellationToken cancellationToken)
     {
         return BridgeReadModels.Detail(await loader.LoadLiveAsync(bridgeId, cancellationToken));
     }
@@ -72,16 +84,6 @@ public sealed class BridgeQueries(
         return BridgeReadModels.Content(snapshot, await rules.EvaluateAsync(snapshot, cancellationToken), TemporaryIds.PresentStored);
     }
 
-    /// <summary>Runs every bridge rule on a version and changes nothing (OI-30).</summary>
-    /// <param name="versionId">The bridge version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The report.</returns>
-    public async Task<ValidationReport> CheckAsync(long versionId, CancellationToken cancellationToken)
-    {
-        var violations = await rules.EvaluateAsync(await loader.LoadVersionAsync(versionId, cancellationToken), cancellationToken);
-        return new ValidationReport { VersionId = versionId, CheckedAt = time.GetUtcNow().UtcDateTime, Violations = violations };
-    }
-
     /// <summary>Checks whether a bridge can be deleted; a report bridge never can here.</summary>
     /// <param name="bridgeId">The bridge.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
@@ -91,21 +93,13 @@ public sealed class BridgeQueries(
         return BridgeDeleteRules.Bridge(await loader.LoadLiveAsync(bridgeId, cancellationToken));
     }
 
-    /// <summary>Checks whether a version can be deleted.</summary>
-    /// <param name="versionId">The bridge version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The check.</returns>
-    public async Task<DeleteCheck> VersionDeleteCheckAsync(long versionId, CancellationToken cancellationToken)
-    {
-        return BridgeDeleteRules.Version(await loader.LoadVersionAsync(versionId, cancellationToken));
-    }
-
-    /// <summary>The bridges the filters select.</summary>
-    private async Task<IReadOnlyList<BridgeRecord>> ListedAsync(BridgeListQuery query, CancellationToken cancellationToken)
+    /// <summary>The bridges the filters select; a report's are those of its live version's sources.</summary>
+    private async Task<IReadOnlyList<BridgeRecord>> ListedAsync(BridgeListQuery query, long liveSnapshotId, CancellationToken cancellationToken)
     {
         if (query.ReportId is { } reportId)
         {
-            var owning = await sources.ListAsync(new { ReportId = reportId, query.SourceKey }, cancellationToken);
+            var report = (await reportVersions.ListAsync(new { ReportId = reportId, SnapshotId = liveSnapshotId }, cancellationToken)).Single();
+            var owning = await sources.ListAsync(new { report.ReportVersionId, query.SourceKey }, cancellationToken);
             return await bridges.ListAsync(new { BridgeId = owning.Select(source => source.BridgeId).OfType<long>().ToArray() }, cancellationToken);
         }
 

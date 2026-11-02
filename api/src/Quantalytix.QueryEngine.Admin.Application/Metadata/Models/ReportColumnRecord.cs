@@ -6,8 +6,8 @@ public sealed record ReportColumnRecord
     /// <summary>Primary key.</summary>
     public required long ReportColumnId { get; init; }
 
-    /// <summary>The owning report.</summary>
-    public required long ReportId { get; init; }
+    /// <summary>The owning report version.</summary>
+    public required long ReportVersionId { get; init; }
 
     /// <summary>Key, unique among the report's columns.</summary>
     public required string ColumnKey { get; init; }

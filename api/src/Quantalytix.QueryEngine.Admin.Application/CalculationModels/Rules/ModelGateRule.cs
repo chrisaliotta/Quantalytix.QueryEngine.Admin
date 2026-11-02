@@ -5,8 +5,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
 /// The model gate (OI-42): a change set is refused, writing nothing, when it introduces a violation of <see cref="ModelChecks"/>.
-/// A violation the stored model already has does not refuse an edit, so a model that breaks a rule can still be repaired step by
-/// step. Preview and commit run it alike; a commit compares with the model as stored when it commits.
+/// A violation the stored model already has does not refuse a preview, so the editor can show it next to the edit that repairs it;
+/// <see cref="ModelFindingsRule"/> refuses the commit until none remains. Preview and commit run it alike; a commit compares with the
+/// model as stored when it commits.
 /// </summary>
 public sealed class ModelGateRule : ISnapshotRule<ModelSnapshot>
 {

@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
+using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
@@ -13,19 +13,21 @@ public static class DimensionReadModels
     /// <summary>A list item.</summary>
     /// <param name="dimension">The dimension.</param>
     /// <param name="roles">Its roles.</param>
-    /// <param name="versions">Its versions.</param>
+    /// <param name="versions">Its versions, the live one among them.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <param name="memberCounts">The member count of each version, by version id.</param>
     /// <param name="presentId">Writes each id.</param>
     /// <returns>The list item.</returns>
     public static DimensionListItem ListItem(
         DimensionRecord dimension,
         IEnumerable<DimensionRoleRecord> roles,
-        IReadOnlyList<DimensionVersionRecord> versions,
+        IEnumerable<DimensionVersionRecord> versions,
+        long liveSnapshotId,
         IReadOnlyDictionary<long, int> memberCounts,
         Func<long, string> presentId)
     {
-        var ordered = versions.OrderBy(version => version.VersionNumber).ToList();
-        var live = ordered.SingleOrDefault(version => version.Status == PublicationStatuses.Published);
+        var ordered = versions.OrderByDescending(version => version.SnapshotId == liveSnapshotId).ThenByDescending(version => version.CreatedAt).ToList();
+        var live = ordered[0];
         return new DimensionListItem
         {
             Id = presentId(dimension.DimensionId),
@@ -40,8 +42,9 @@ public static class DimensionReadModels
             IsRemovable = dimension.IsRemovable,
             Profile = DimensionProfiles.Of(dimension.DimensionProfileKey),
             Roles = [.. roles.OrderBy(role => role.DimensionRoleKey, StringComparer.Ordinal).Select(role => Role(role, presentId))],
-            Versions = [.. ordered.Select(version => Summary(version, memberCounts[version.DimensionVersionId], ordered, presentId))],
-            PublishedMemberCount = live is null ? null : memberCounts[live.DimensionVersionId]
+            Versions = [.. ordered.Select(version => Summary(version, memberCounts[version.DimensionVersionId], liveSnapshotId, presentId))],
+            LiveVersionId = presentId(live.DimensionVersionId),
+            LiveMemberCount = memberCounts[live.DimensionVersionId]
         };
     }
 
@@ -53,7 +56,7 @@ public static class DimensionReadModels
     {
         var versions = snapshot.Surroundings.Versions.Select(version => version.DimensionVersionId == snapshot.VersionId ? snapshot.Version : version).ToList();
         var memberCounts = new Dictionary<long, int>(snapshot.Surroundings.MemberCounts) { [snapshot.VersionId] = snapshot.Members.Count };
-        return new DimensionDetail(ListItem(snapshot.Dimension, snapshot.Roles, versions, memberCounts, presentId), snapshot.Surroundings.Usage);
+        return new DimensionDetail(ListItem(snapshot.Dimension, snapshot.Roles, versions, snapshot.Surroundings.LiveSnapshotId, memberCounts, presentId), snapshot.Surroundings.Usage);
     }
 
     /// <summary>The content of a snapshot's version.</summary>
@@ -65,7 +68,7 @@ public static class DimensionReadModels
         var rangeDataType = snapshot.Version.RangeDataType;
         return new DimensionVersionContent
         {
-            Version = Version(snapshot.Version, snapshot.Surroundings.Versions, presentId),
+            Version = Version(snapshot.Version, snapshot.Surroundings.LiveSnapshotId, presentId),
             Levels = [.. snapshot.Levels.OrderBy(level => level.Ordinal).Select(level => Level(level, presentId))],
             Members = [.. snapshot.Members.OrderBy(member => member.SortOrder).ThenBy(member => member.MemberKey, StringComparer.Ordinal).Select(member => Member(member, presentId))],
             Bands =
@@ -99,24 +102,17 @@ public static class DimensionReadModels
     /// <summary>A version summary.</summary>
     /// <param name="version">The version.</param>
     /// <param name="memberCount">Its member count.</param>
-    /// <param name="versions">Every version of its dimension, which derives <c>supersededBy</c>.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <param name="presentId">Writes each id.</param>
     /// <returns>The summary.</returns>
-    public static DimensionVersionSummary Summary(
-        DimensionVersionRecord version,
-        int memberCount,
-        IReadOnlyList<DimensionVersionRecord> versions,
-        Func<long, string> presentId)
+    public static DimensionVersionSummary Summary(DimensionVersionRecord version, int memberCount, long liveSnapshotId, Func<long, string> presentId)
     {
         return new DimensionVersionSummary
         {
             Id = presentId(version.DimensionVersionId),
-            VersionNumber = version.VersionNumber,
-            Status = version.Status,
-            PublishedAt = version.PublishedAt,
-            RetiredAt = version.RetiredAt,
-            SupersededBy = SupersededBy(version, versions),
-            FreezeNote = version.FreezeNote,
+            SnapshotId = TemporaryIds.PresentStored(version.SnapshotId),
+            IsLive = version.SnapshotId == liveSnapshotId,
+            CreatedAt = version.CreatedAt,
             MemberCount = memberCount
         };
     }
@@ -138,28 +134,17 @@ public static class DimensionReadModels
     }
 
     /// <summary>A version.</summary>
-    private static DimensionVersion Version(DimensionVersionRecord version, IReadOnlyList<DimensionVersionRecord> versions, Func<long, string> presentId)
+    private static DimensionVersion Version(DimensionVersionRecord version, long liveSnapshotId, Func<long, string> presentId)
     {
         return new DimensionVersion
         {
             Id = presentId(version.DimensionVersionId),
             DimensionId = presentId(version.DimensionId),
-            VersionNumber = version.VersionNumber,
-            Status = version.Status,
+            SnapshotId = TemporaryIds.PresentStored(version.SnapshotId),
+            IsLive = version.SnapshotId == liveSnapshotId,
             RangeDataType = version.RangeDataType,
-            CreatedAt = version.CreatedAt,
-            PublishedAt = version.PublishedAt,
-            RetiredAt = version.RetiredAt,
-            SupersededBy = SupersededBy(version, versions),
-            FreezeNote = version.FreezeNote
+            CreatedAt = version.CreatedAt
         };
-    }
-
-    /// <summary>The next version number of a frozen version; null for any other.</summary>
-    private static int? SupersededBy(DimensionVersionRecord version, IReadOnlyList<DimensionVersionRecord> versions)
-    {
-        if (version.Status != PublicationStatuses.Retired) return null;
-        return versions.Where(other => other.VersionNumber > version.VersionNumber).Select(other => (int?)other.VersionNumber).Min();
     }
 
     /// <summary>A role.</summary>

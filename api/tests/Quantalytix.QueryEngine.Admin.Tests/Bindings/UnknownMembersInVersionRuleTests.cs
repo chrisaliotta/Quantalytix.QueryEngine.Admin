@@ -11,9 +11,9 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Bindings;
 
 /// <summary>
-/// Confirms that <c>unknown_members_in_version</c> resolves a binding's unknown member key in the published version of its
-/// dimension, which the active assumption set pins, and ignores retired versions and drafts. A binding with the key whose
-/// dimension has no published version is reported too. The engine resolves the key in that version, so a key it lacks routes
+/// Confirms that <c>unknown_members_in_version</c> resolves a binding's unknown member key in its dimension's version in the
+/// dataset version's own snapshot, and ignores the dimension's versions in other snapshots. A binding with the key whose dimension
+/// has no version in that snapshot is reported too. The engine resolves the key in that version, so a key it lacks routes
 /// unmapped rows nowhere.
 /// </summary>
 public sealed class UnknownMembersInVersionRuleTests
@@ -24,13 +24,13 @@ public sealed class UnknownMembersInVersionRuleTests
     /// <summary>The bound dimension.</summary>
     private const long DimensionId = 7000;
 
-    /// <summary>v1, retired.</summary>
+    /// <summary>A version in the frozen snapshot.</summary>
     private const long V1 = 701;
 
-    /// <summary>v2, published.</summary>
+    /// <summary>The live version.</summary>
     private const long V2 = 702;
 
-    /// <summary>v3, a draft.</summary>
+    /// <summary>Another version in the frozen snapshot.</summary>
     private const long V3 = 703;
 
     /// <summary>The members: UNKNOWN in v2, LEGACY in v1 and PENDING in v3 only.</summary>
@@ -39,55 +39,55 @@ public sealed class UnknownMembersInVersionRuleTests
         DimensionRows.Member(7022, V2, "UNKNOWN"),
         DimensionRows.Member(7033, V3, "PENDING"));
 
-    /// <summary>An unknown member the published version has passes.</summary>
+    /// <summary>An unknown member the live version has passes.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task KeyInThePublishedVersion_Passes()
+    public async Task KeyInTheSnapshotsVersion_Passes()
     {
-        Assert.Empty(await EvaluateAsync(Binding("UNKNOWN"), Published()));
+        Assert.Empty(await EvaluateAsync(Binding("UNKNOWN"), Versions()));
     }
 
-    /// <summary>An unknown member that only a retired version or a draft has is reported against the published version.</summary>
+    /// <summary>An unknown member that only versions in another snapshot have is reported against the live version.</summary>
     /// <param name="memberKey">The member the binding routes unmapped rows to.</param>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Theory]
     [InlineData("LEGACY")]
     [InlineData("PENDING")]
-    public async Task KeyOutsideThePublishedVersion_IsReported(string memberKey)
+    public async Task KeyOutsideTheSnapshotsVersion_IsReported(string memberKey)
     {
-        var violation = Assert.Single(await EvaluateAsync(Binding(memberKey), Published()));
+        var violation = Assert.Single(await EvaluateAsync(Binding(memberKey), Versions()));
 
         Assert.Equal("unknown_members_in_version", violation.Code);
         Assert.Equal(
-            $"Binding 'region' routes unmapped rows to member '{memberKey}', which is not a member of v2, the published version of its dimension.",
+            $"Binding 'region' routes unmapped rows to member '{memberKey}', which is not a member of its dimension's version.",
             violation.Message);
     }
 
-    /// <summary>A binding with an unknown member whose dimension has no published version is reported once.</summary>
+    /// <summary>A binding with an unknown member whose dimension has no version in the snapshot is reported once.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task KeyWithoutAPublishedVersion_IsReported()
+    public async Task KeyWithoutAVersionInTheSnapshot_IsReported()
     {
-        var unpublished = new InMemoryTableGateway<DimensionVersionRecord>(DimensionRows.Version(V3, DimensionId, 3, PublicationStatuses.Draft));
+        var frozenOnly = new InMemoryTableGateway<DimensionVersionRecord>(DimensionRows.Version(V3, DimensionId, SnapshotRows.FrozenId));
 
-        var violation = Assert.Single(await EvaluateAsync(Binding("UNKNOWN"), unpublished));
+        var violation = Assert.Single(await EvaluateAsync(Binding("UNKNOWN"), frozenOnly));
 
-        Assert.Equal("Binding 'region' routes unmapped rows to a member of its dimension, which has no published version.", violation.Message);
+        Assert.Equal("Binding 'region' routes unmapped rows to a member of its dimension, which has no version in this snapshot.", violation.Message);
     }
 
-    /// <summary>The dimension's versions: v1 retired, v2 published and v3 a draft.</summary>
-    private static InMemoryTableGateway<DimensionVersionRecord> Published()
+    /// <summary>The dimension's versions: v2 live, v1 and v3 frozen.</summary>
+    private static InMemoryTableGateway<DimensionVersionRecord> Versions()
     {
         return new InMemoryTableGateway<DimensionVersionRecord>(
-            DimensionRows.Version(V1, DimensionId, 1, PublicationStatuses.Retired),
-            DimensionRows.Version(V2, DimensionId, 2, PublicationStatuses.Published),
-            DimensionRows.Version(V3, DimensionId, 3, PublicationStatuses.Draft));
+            DimensionRows.Version(V1, DimensionId, SnapshotRows.FrozenId),
+            DimensionRows.Version(V2, DimensionId),
+            DimensionRows.Version(V3, DimensionId, SnapshotRows.FrozenId));
     }
 
     /// <summary>Evaluates the rule on a version holding one binding, over the given dimension versions.</summary>
     private Task<IReadOnlyList<RuleViolation>> EvaluateAsync(DimensionBindingRecord binding, InMemoryTableGateway<DimensionVersionRecord> versions)
     {
-        var rule = new UnknownMembersInVersionRule(new PublishedDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members, new PublicationSet()));
+        var rule = new UnknownMembersInVersionRule(new SnapshotDimensionReader(versions, new InMemoryTableGateway<DimensionLevelRecord>(), _members));
         var snapshot = DatasetRows.Snapshot(
             fields: [DatasetRows.ColumnField(1, VersionId, "regionCode", "region_code")],
             bindings: [binding],

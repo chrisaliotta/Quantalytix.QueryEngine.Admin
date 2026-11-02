@@ -5,8 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
 /// <summary>
 /// A mapping version rule over a snapshot. Every mapping rule is a commit rule: a preview reports it on the entry at fault so the
-/// editor can flag it, and the commit is refused while one remains, because the version is live (B11). Every rule runs for
-/// <c>check</c> and freeze (<see cref="SnapshotRuleRunner{TSnapshot}"/>). The snapshot carries what the rules read outside the
+/// editor can flag it, and the commit is refused while one remains, because the version is live (B11). Every rule runs for restore
+/// and the content read model (<see cref="SnapshotRuleRunner{TSnapshot}"/>). The snapshot carries what the rules read outside the
 /// version, so they read nothing.
 /// </summary>
 public abstract class MappingRule : ISnapshotRule<MappingSetSnapshot>

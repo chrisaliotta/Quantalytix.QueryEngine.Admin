@@ -15,11 +15,8 @@ public sealed record TenantOverviewCounts
     /// <summary>The analytical bridges; report-owned bridges are not counted (OI-22).</summary>
     public required int Bridges { get; init; }
 
-    /// <summary>The releases, whatever their status.</summary>
-    public required int Releases { get; init; }
-
-    /// <summary>The assumption sets: the active one and every historical set.</summary>
-    public required int AssumptionSets { get; init; }
+    /// <summary>The frozen snapshots.</summary>
+    public required int FrozenSnapshots { get; init; }
 
     /// <summary>The calculation models.</summary>
     public required int Models { get; init; }
@@ -27,6 +24,6 @@ public sealed record TenantOverviewCounts
     /// <summary>The reports.</summary>
     public required int Reports { get; init; }
 
-    /// <summary>The measures of the dataset versions the active release pins: the measures queries can use.</summary>
-    public required int ActiveMeasures { get; init; }
+    /// <summary>The measures of the live dataset versions: the measures queries that name no snapshot can use.</summary>
+    public required int LiveMeasures { get; init; }
 }

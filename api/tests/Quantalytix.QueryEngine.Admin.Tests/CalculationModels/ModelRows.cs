@@ -1,28 +1,40 @@
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
 
-/// <summary>Builds the calculation model rows the model, report and release tests seed, all of model 40 unless changed with <c>with</c>.</summary>
+/// <summary>Builds the calculation model rows the model, report and snapshot tests seed, all of model 40 unless changed with <c>with</c>.</summary>
 internal static class ModelRows
 {
     /// <summary>The calculation model the rows belong to.</summary>
     public const long CalculationModelId = 40;
 
-    /// <summary>Model 40, in US dollars, on formula language 1.0 with Shapley attribution.</summary>
+    /// <summary>The model's live version, which the content rows key by.</summary>
+    public const long ModelVersionId = 41;
+
+    /// <summary>Model 40.</summary>
     public static CalculationModelRecord Model()
     {
-        return new CalculationModelRecord
+        return new CalculationModelRecord { CalculationModelId = CalculationModelId, ModelKey = "margin" };
+    }
+
+    /// <summary>Model 40's live version 41, in US dollars, on formula language 1.0 with Shapley attribution.</summary>
+    public static CalculationModelVersionRecord Version()
+    {
+        return new CalculationModelVersionRecord
         {
+            CalculationModelVersionId = ModelVersionId,
             CalculationModelId = CalculationModelId,
-            ModelKey = "margin",
+            SnapshotId = SnapshotRows.LiveId,
             DisplayName = "Margin",
             CalendarKey = "gregorian",
             CurrencyCode = "USD",
             FormulaLanguageVersion = FormulaLanguageVersions.Version10,
             IsEnabled = true,
-            AttributionMethod = AttributionMethods.Shapley
+            AttributionMethod = AttributionMethods.Shapley,
+            CreatedAt = DateTime.UnixEpoch
         };
     }
 
@@ -63,7 +75,7 @@ internal static class ModelRows
         var model = MarginGraph();
         return model with
         {
-            Model = model.Model with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
+            Version = model.Version with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
             CalculatedMeasures = [Calculated(61, "YIELD", "[m.INTEREST_INCOME] / [m.AVERAGE_BALANCE] / YEARFRAC(@dayCount)")],
             Attributions = [model.Attributions[0], model.Attributions[1] with { Expression = "[m.AVERAGE_BALANCE] * [m.YIELD] * YEARFRAC(@dayCount)" }],
             Parameters = [DayCount()]
@@ -91,14 +103,14 @@ internal static class ModelRows
     /// <summary>The stored row of a parameter of model 40, for seeding the parameter table.</summary>
     public static ModelParameterRecord ParameterRow(ModelParameter parameter)
     {
-        return ModelParameterService.ToRecord(CalculationModelId, parameter);
+        return ModelParameterService.ToRecord(ModelVersionId, parameter);
     }
 
     /// <summary>The content of model 40 with the given rows, as the model rules read it.</summary>
     public static ModelGraph Graph(
         IReadOnlyList<VariableRecord> variables, IReadOnlyList<CalculatedMeasureRecord> measures, params IReadOnlyList<Attribution> attributions)
     {
-        return new ModelGraph { Model = Model(), Variables = variables, CalculatedMeasures = measures, Attributions = attributions, Parameters = [] };
+        return new ModelGraph { Model = Model(), Version = Version(), Variables = variables, CalculatedMeasures = measures, Attributions = attributions, Parameters = [] };
     }
 
     /// <summary>An attribution of a metric with an optional expression and the given drivers, without a weight variable.</summary>
@@ -119,7 +131,7 @@ internal static class ModelRows
         return new VariableRecord
         {
             VariableId = variableId,
-            CalculationModelId = CalculationModelId,
+            CalculationModelVersionId = ModelVersionId,
             VariableKey = variableKey,
             DisplayName = variableKey,
             MissingBehavior = VariableMissingBehaviors.Zero,
@@ -133,7 +145,7 @@ internal static class ModelRows
         return new CalculatedMeasureRecord
         {
             CalculatedMeasureId = measureId,
-            CalculationModelId = CalculationModelId,
+            CalculationModelVersionId = ModelVersionId,
             MeasureKey = measureKey,
             DisplayName = measureKey,
             ExpressionText = expressionText,

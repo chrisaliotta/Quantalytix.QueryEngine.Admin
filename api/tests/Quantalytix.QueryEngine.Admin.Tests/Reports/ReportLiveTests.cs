@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
@@ -14,7 +13,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// rule and read into a whole document, and that their sources' bridges are listed as report bridges owned by those sources. The
 /// rules and the document read the report tables through the StarRocks gateways, and only a live read shows that they map onto the
 /// seed's rows; a rule that refused a report the engine runs would keep it from being enabled. A copy of the margin statement also
-/// round-trips through the report change set, the report bridges and the tenant's real publication rules, and is deleted again. Opt
+/// round-trips through the report change set and the report bridges in the live snapshot, and is deleted again. Opt
 /// in with <c>QE_ADMIN_LIVE_GATEWAY=true</c>.
 /// </summary>
 public sealed class ReportLiveTests
@@ -50,10 +49,10 @@ public sealed class ReportLiveTests
     }
 
     /// <summary>
-    /// A copy of the margin statement is created with its dimension published and pinned through the tenant's real publication
-    /// rules, and takes the margin statement's rows, sources and rules through one report change set: its bridge sources get bridges
-    /// of their own whose rules, including folder rules and -1 exclusions, round-trip through StarRocks. The copy passes its rules when
-    /// enabled, and leaves nothing behind when deleted: its dimension, its bridges and their pins go with it.
+    /// A copy of the margin statement is created with its dimension in the live snapshot, and takes the margin statement's rows,
+    /// sources and rules through one report change set: its bridge sources get bridges of their own whose rules, including folder
+    /// rules and -1 exclusions, round-trip through StarRocks. The copy passes its rules when enabled, and leaves nothing behind when
+    /// deleted: its dimension and its bridges go with it.
     /// </summary>
     /// <returns>A task that completes when the round trip is checked and the copy is deleted.</returns>
     [Fact(SkipUnless = nameof(IsEnabled), Skip = "Set QE_ADMIN_LIVE_GATEWAY=true to round-trip a report through tenant development.")]
@@ -65,7 +64,6 @@ public sealed class ReportLiveTests
         var provider = scope.ServiceProvider;
         var queries = provider.GetRequiredService<ReportQueries>();
         var commands = provider.GetRequiredService<ReportCommands>();
-        var pins = provider.GetRequiredService<AssumptionPins>();
         var margin = (await queries.ListAsync(cancellationToken)).Single(report => report.Key == "bank.margin_statement");
         var template = await queries.DocumentAsync(margin.Id, cancellationToken);
         var input = new ReportCreateInput
@@ -80,11 +78,9 @@ public sealed class ReportLiveTests
         var created = await commands.CreateAsync(input, cancellationToken);
         Assert.True(created.Succeeded);
         var copy = await queries.DocumentAsync(created.Value.Id, cancellationToken);
-        var active = await pins.ActiveAsync(cancellationToken);
         try
         {
             Assert.False(copy.IsEnabled);
-            Assert.Contains(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == copy.ReportDimensionId);
             Assert.Equal(template.Rows.Select(row => row.Key), copy.Rows.Select(row => row.Key));
             foreach (var source in template.Sources.Where(source => source.Method == ReportMappingMethods.Bridge))
             {
@@ -106,6 +102,5 @@ public sealed class ReportLiveTests
         Assert.DoesNotContain(await queries.ListAsync(cancellationToken), other => other.Id == copy.Id);
         Assert.Empty(await provider.GetRequiredService<ITableGateway<DimensionRecord>>().ListAsync(new { DimensionId = copy.ReportDimensionId }, cancellationToken));
         Assert.Empty(bridges);
-        Assert.DoesNotContain(await pins.ListAsync(active.AssumptionSetId, cancellationToken), pin => pin.IdentityId == copy.ReportDimensionId);
     }
 }

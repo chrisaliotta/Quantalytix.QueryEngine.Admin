@@ -5,6 +5,7 @@ using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Measures;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
@@ -16,7 +17,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
 /// In-memory tables and physical catalog of one tenant, and the dataset module's loader, rules, change set and commands over them,
-/// so tests run the module as the API does. Seeds dataset 10 with a published version 1 and a draft version 2, both reading the
+/// so tests run the module as the API does. Seeds dataset 10 with a frozen version in snapshot 2 and a live version, both reading the
 /// unmanaged table <c>loan_daily</c>; the managed table <c>staging_loans</c> is registered but read by no version.
 /// </summary>
 internal sealed class DatasetFixture
@@ -24,11 +25,11 @@ internal sealed class DatasetFixture
     /// <summary>The seeded dataset.</summary>
     public const long DatasetId = 10;
 
-    /// <summary>Its published version 1.</summary>
-    public const long PublishedVersionId = 99;
+    /// <summary>Its version in the frozen snapshot.</summary>
+    public const long FrozenVersionId = 99;
 
-    /// <summary>Its draft version 2.</summary>
-    public const long DraftVersionId = 100;
+    /// <summary>Its live version, which change sets edit.</summary>
+    public const long LiveVersionId = 100;
 
     /// <summary>A role of the branch dimension.</summary>
     public const long BranchRoleId = 7100;
@@ -52,12 +53,15 @@ internal sealed class DatasetFixture
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero));
 
     /// <summary>The dataset table.</summary>
-    public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(new DatasetRecord { DatasetId = DatasetId, DatasetKey = "bank.loans", DisplayName = "Loans", IsEnabled = true });
+    public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(new DatasetRecord { DatasetId = DatasetId, DatasetKey = "bank.loans", DisplayName = "Loans" });
 
     /// <summary>The dataset version table.</summary>
     public InMemoryTableGateway<DatasetVersionRecord> Versions { get; } = new(
-        DatasetRows.Version(PublishedVersionId) with { VersionNumber = 1, Status = PublicationStatuses.Published, PublishedAt = DateTime.UnixEpoch },
-        DatasetRows.Version(DraftVersionId) with { VersionNumber = 2 });
+        DatasetRows.Version(FrozenVersionId) with { SnapshotId = SnapshotRows.FrozenId },
+        DatasetRows.Version(LiveVersionId));
+
+    /// <summary>The snapshot table: the live snapshot and one frozen snapshot.</summary>
+    public InMemoryTableGateway<SnapshotRecord> Snapshots { get; } = new(SnapshotRows.Live(), SnapshotRows.Frozen());
 
     /// <summary>The field table.</summary>
     public InMemoryTableGateway<FieldRecord> Fields { get; } = new();
@@ -96,18 +100,12 @@ internal sealed class DatasetFixture
         CreatedAt = DateTime.UnixEpoch
     });
 
-    /// <summary>The release manifest dataset table.</summary>
-    public InMemoryTableGateway<ReleaseDatasetRecord> ReleaseDatasets { get; } = new();
-
-    /// <summary>The semantic release table.</summary>
-    public InMemoryTableGateway<SemanticReleaseRecord> Releases { get; } = new();
-
     /// <summary>The tenant's database info row.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 18,
+        MetadataSchemaVersion = 19,
         SemanticRevision = StartingRevision,
         UpdatedAt = DateTime.UnixEpoch
     });
@@ -117,6 +115,9 @@ internal sealed class DatasetFixture
 
     /// <summary>The dimension table: the branch dimension.</summary>
     public InMemoryTableGateway<DimensionRecord> Dimensions { get; } = new(DimensionRows.Dimension(BranchDimensionId, DimensionKinds.Categorical));
+
+    /// <summary>The dimension version table: the branch dimension's live version.</summary>
+    public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(7001, BranchDimensionId));
 
     /// <summary>The physical tables, views and columns.</summary>
     public FixedSourceObjectCatalog Catalog { get; } = new FixedSourceObjectCatalog()
@@ -135,23 +136,13 @@ internal sealed class DatasetFixture
     /// <summary>The lazily created managed-table double.</summary>
     private RecordingManagedTables? _managedTables;
 
-    /// <summary>Points the draft at the managed table.</summary>
+    /// <summary>Points a version at the managed table.</summary>
+    /// <param name="versionId">The dataset version; the live one by default.</param>
     /// <returns>A task that completes when the row is updated.</returns>
-    public Task UseManagedTableAsync()
+    public Task UseManagedTableAsync(long versionId = LiveVersionId)
     {
-        var draft = Versions.All.Single(version => version.DatasetVersionId == DraftVersionId);
-        return Versions.UpdateAsync(draft with { SourceObject = ManagedTable }, CancellationToken.None);
-    }
-
-    /// <summary>Makes a release pin a version, the active one when asked.</summary>
-    /// <param name="versionId">The dataset version.</param>
-    /// <param name="active">Whether the release is the tenant's active one.</param>
-    /// <returns>A task that completes when the rows are written.</returns>
-    public async Task PinAsync(long versionId, bool active)
-    {
-        await Releases.InsertAsync(new SemanticReleaseRecord { SemanticReleaseId = 600, ReleaseKey = "r1", Status = PublicationStatuses.Published, CreatedAt = DateTime.UnixEpoch }, CancellationToken.None);
-        await ReleaseDatasets.InsertAsync(new ReleaseDatasetRecord { SemanticReleaseId = 600, DatasetId = DatasetId, DatasetVersionId = versionId }, CancellationToken.None);
-        if (active) await DatabaseInfo.UpdateAsync(DatabaseInfo.All.Single() with { ActiveSemanticReleaseId = 600 }, CancellationToken.None);
+        var version = Versions.All.Single(row => row.DatasetVersionId == versionId);
+        return Versions.UpdateAsync(version with { SourceObject = ManagedTable }, CancellationToken.None);
     }
 
     /// <summary>The physical catalog the module reads.</summary>
@@ -166,7 +157,18 @@ internal sealed class DatasetFixture
     public DatasetSnapshotLoader Loader()
     {
         return new DatasetSnapshotLoader(
-            Datasets, Versions, Content(), ReleaseReader(), Roles, Dimensions, new InMemoryTableGateway<MappingSetRecord>(), new InMemoryTableGateway<BridgeRecord>(), Directory());
+            Datasets,
+            Versions,
+            Content(),
+            Roles,
+            Dimensions,
+            DimensionVersions,
+            new InMemoryTableGateway<MappingSetRecord>(),
+            new InMemoryTableGateway<MappingVersionRecord>(),
+            new InMemoryTableGateway<BridgeRecord>(),
+            new InMemoryTableGateway<BridgeVersionRecord>(),
+            Live(),
+            Directory());
     }
 
     /// <summary>The dataset change-set pipeline with every dataset rule, as the API registers them.</summary>
@@ -194,44 +196,66 @@ internal sealed class DatasetFixture
     /// <returns>The service.</returns>
     public DatasetMaterializations Materializations()
     {
-        return new DatasetMaterializations(Versions, Fields, Views, SemanticRevision());
+        return new DatasetMaterializations(Versions, Fields, Live(), Views, SemanticRevision());
     }
 
     /// <summary>The reads.</summary>
     /// <returns>The service.</returns>
     public DatasetQueries Queries()
     {
-        return new DatasetQueries(Datasets, Versions, ReleaseReader(), Directory(), Loader(), new DatasetVersionReader(Views), new DatasetRules(Rules()), Time);
+        return new DatasetQueries(Datasets, Versions, Live(), new SnapshotHolders(Snapshots), Directory(), Loader(), new DatasetVersionReader(Views));
     }
 
-    /// <summary>
-    /// The lifecycle commands over the version workflow, with the dataset rules as its <c>dataset_version</c> publication rule and
-    /// <see cref="ReleasePinsRetiredVersionRule"/> as its retirement rule.
-    /// </summary>
+    /// <summary>The create and delete commands.</summary>
     /// <returns>The commands.</returns>
     public DatasetCommands Commands()
     {
-        var ids = new SequentialIdGenerator(FirstNewId);
-        var stores = new VersionStoreRegistry([new DatasetVersionStore(Versions)]);
-        var workflow = new VersionWorkflow(
-            stores,
-            [new DatasetVersionRules(Loader(), new DatasetRules(Rules()))],
-            [new ReleasePinsRetiredVersionRule(Versions, ReleaseReader())],
-            [],
-            new PublicationSet(),
-            SemanticRevision(),
-            Time);
         return new DatasetCommands(
-            Datasets, Versions, Fields, Managed, Content(), new DatasetVersionCloner(Versions, Content(), ids, Time), ReleaseReader(), Queries(), Directory(), ManagedTables,
-            new DatasetTableDrops(Versions, Managed, Directory(), ManagedTables, Views), workflow, ids, Time);
+            Datasets,
+            Versions,
+            Fields,
+            Managed,
+            Content(),
+            Live(),
+            new SnapshotHolders(Snapshots),
+            Queries(),
+            Directory(),
+            ManagedTables,
+            new DatasetTableDrops(Versions, Managed, Directory(), ManagedTables, Views),
+            SemanticRevision(),
+            new SequentialIdGenerator(FirstNewId),
+            Time);
     }
 
-    /// <summary>Every dataset rule, in the API's registration order.</summary>
+    /// <summary>The copier capture and restore use.</summary>
+    /// <returns>The copier.</returns>
+    public DatasetVersionCopier Copier()
+    {
+        return new DatasetVersionCopier(Versions, Content(), new SequentialIdGenerator(FirstNewId), Time);
+    }
+
+    /// <summary>The remover snapshot deletes and restores use.</summary>
+    /// <returns>The remover.</returns>
+    public DatasetVersionRemover Remover()
+    {
+        return new DatasetVersionRemover(Datasets, Versions, Content());
+    }
+
+    /// <summary>The live snapshot over the snapshot table.</summary>
+    /// <returns>The reader.</returns>
+    public LiveSnapshot Live()
+    {
+        return new LiveSnapshot(Snapshots);
+    }
+
+    /// <summary>
+    /// Every dataset rule, in the API's registration order, except the report rules over the dataset, which need no reports here
+    /// because the fixture seeds none.
+    /// </summary>
     /// <returns>The rules.</returns>
     public IReadOnlyList<ISnapshotRule<DatasetSnapshot>> Rules()
     {
-        var published = new PublishedDimensionReader(
-            new InMemoryTableGateway<DimensionVersionRecord>(), new InMemoryTableGateway<DimensionLevelRecord>(), new InMemoryTableGateway<DimensionMemberRecord>(), new PublicationSet());
+        var dimensionKeys = new SnapshotDimensionReader(DimensionVersions, new InMemoryTableGateway<DimensionLevelRecord>(), new InMemoryTableGateway<DimensionMemberRecord>());
         return
         [
             new SourceObjectExistsRule(),
@@ -251,7 +275,10 @@ internal sealed class DatasetFixture
             new RangeBindingDimensionKindRule(),
             new TimeBindingDimensionKindRule(),
             new BridgeBindingRouteRule(),
-            new UnknownMembersInVersionRule(published),
+            new BoundDimensionsResolvableRule(),
+            new MappedBindingsResolvableRule(),
+            new BridgeBindingsResolvableRule(),
+            new UnknownMembersInVersionRule(dimensionKeys),
             new IntervalEstimatesForFinerPeriodsRule(),
             new MeasureKeyUniqueRule(),
             new ComponentFieldsInVersionRule(),
@@ -267,12 +294,6 @@ internal sealed class DatasetFixture
     private DatasetVersionContentStore Content()
     {
         return new DatasetVersionContentStore(Fields, Grains, GrainFields, Bindings, TimeBindings, Measures, Components, Dependencies, TimePolicies);
-    }
-
-    /// <summary>The release pin reader over the tables.</summary>
-    private DatasetReleaseReader ReleaseReader()
-    {
-        return new DatasetReleaseReader(ReleaseDatasets, Releases, DatabaseInfo);
     }
 
     /// <summary>The semantic revision over the database info row.</summary>

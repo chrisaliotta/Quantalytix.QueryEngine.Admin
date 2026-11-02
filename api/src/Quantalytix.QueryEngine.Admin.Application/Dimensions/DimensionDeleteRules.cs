@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// <summary>
 /// What blocks deleting a dimension, a version, a member, a level or a role (M9, blueprint 01 "Delete checks"), decided on a
 /// snapshot, so a delete-check endpoint and a change set's delete operation give the same answer. Only the live version's keys
-/// are named by consumers; a profile's required keys block only under the <c>extend</c> policy (M11). The active assumption set's
-/// pin goes with a deleted dimension; a historical set's pin blocks.
+/// are named by consumers; a profile's required keys block only under the <c>extend</c> policy (M11). A frozen snapshot holding a
+/// version of the dimension blocks deleting it.
 /// </summary>
 public static class DimensionDeleteRules
 {
@@ -19,11 +19,10 @@ public static class DimensionDeleteRules
         [DimensionUsageKinds.Bridge] = "it is joined by bridges",
         [DimensionUsageKinds.CalculationDimension] = "it is grouped by calculation dimensions",
         [DimensionUsageKinds.ReportScenario] = "it is a scenario of reports",
-        [DimensionUsageKinds.ReportSource] = "it is read by report sources",
-        [DimensionUsageKinds.AssumptionSet] = "it is pinned by historical assumption sets"
+        [DimensionUsageKinds.ReportSource] = "it is read by report sources"
     };
 
-    /// <summary>What blocks deleting the snapshot's dimension: a system dimension, not removable, or referenced.</summary>
+    /// <summary>What blocks deleting the snapshot's dimension: a system dimension, not removable, referenced, or held by a frozen snapshot.</summary>
     /// <param name="snapshot">The dimension.</param>
     /// <returns>The check.</returns>
     public static DeleteCheck Dimension(DimensionSnapshot snapshot)
@@ -31,18 +30,8 @@ public static class DimensionDeleteRules
         var blockers = new DeleteBlockers($"Dimension '{snapshot.Dimension.DisplayName}'");
         if (snapshot.Dimension.DefinitionOrigin == DefinitionOrigins.System) blockers.Add(DeleteBlockerCodes.SystemDimension, "it is a system dimension");
         if (!snapshot.Dimension.IsRemovable) blockers.Add(DeleteBlockerCodes.NotRemovable, "it is not removable");
-        AddReferences(blockers, snapshot.Surroundings.Usage.Where(reference => reference.Kind != DimensionUsageKinds.AssumptionSet || reference.IsHistoricalPin));
-        return blockers.Check();
-    }
-
-    /// <summary>What blocks deleting the snapshot's version: it is live, or a historical assumption set pins it.</summary>
-    /// <param name="snapshot">The version.</param>
-    /// <returns>The check.</returns>
-    public static DeleteCheck Version(DimensionSnapshot snapshot)
-    {
-        var blockers = new DeleteBlockers($"Version {snapshot.Version.VersionNumber}");
-        if (snapshot.IsLive) blockers.Add(DeleteBlockerCodes.LiveVersion, "it is the live version");
-        AddReferences(blockers, snapshot.Surroundings.Usage.Where(reference => reference.IsHistoricalPin && reference.PinsVersion == snapshot.Version.VersionNumber));
+        AddReferences(blockers, snapshot.Surroundings.Usage);
+        blockers.AddFrozenSnapshots(snapshot.Surroundings.FrozenSnapshotKeys);
         return blockers.Check();
     }
 

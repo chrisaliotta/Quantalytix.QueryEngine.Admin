@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Time.Testing;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Reports;
@@ -28,7 +29,8 @@ internal sealed class ModelFixture
     public ModelSnapshotLoader Loader()
     {
         return new ModelSnapshotLoader(
-            Tables.Models, Tables.Variables, Tables.CalculatedMeasures, Tables.AttributionService(), Tables.ParameterService(), Tables.Reports, Tables.Reader());
+            Tables.Models, Tables.ModelVersions, Tables.Variables, Tables.CalculatedMeasures, Tables.AttributionService(), Tables.ParameterService(), Tables.Versions(),
+            Tables.Reader(), Live());
     }
 
     /// <summary>The model change-set pipeline with the gate and the findings, as the API registers them.</summary>
@@ -36,34 +38,50 @@ internal sealed class ModelFixture
     public ChangeSetPipeline<ModelSnapshot, ModelOperation, ModelDocument> Pipeline()
     {
         return new ChangeSetPipeline<ModelSnapshot, ModelOperation, ModelDocument>(
-            new ModelChanges(Loader(), Tables.Models, Tables.Variables, Tables.CalculatedMeasures, Tables.Parameters, Tables.Attributions, Tables.AttributionDrivers),
+            new ModelChanges(Loader(), Tables.ModelVersions, Tables.Variables, Tables.CalculatedMeasures, Tables.Parameters, Tables.Attributions, Tables.AttributionDrivers),
             [new ModelGateRule(), new ModelFindingsRule()],
             [new ModelOperationValidator()],
             new SequentialIdGenerator(FirstNewId),
             new SemanticRevision(Tables.DatabaseInfo, new FakeTimeProvider()));
     }
 
-    /// <summary>The lifecycle commands over the tables.</summary>
+    /// <summary>The create and delete commands over the tables.</summary>
     /// <returns>The commands.</returns>
     public ModelCommands Commands()
     {
         return new ModelCommands(
-            Tables.Models, Tables.Variables, Tables.CalculatedMeasures, Tables.Parameters, Tables.Attributions, Tables.AttributionDrivers, Loader(),
-            new SequentialIdGenerator(FirstNewId));
+            Tables.Models, Tables.ModelVersions, Remover(), Loader(), Live(), new SnapshotHolders(Tables.Snapshots),
+            new SemanticRevision(Tables.DatabaseInfo, new FakeTimeProvider()), new SequentialIdGenerator(FirstNewId), new FakeTimeProvider());
+    }
+
+    /// <summary>The remover of a model version's content and identity.</summary>
+    /// <returns>The remover.</returns>
+    public CalculationModelVersionRemover Remover()
+    {
+        return new CalculationModelVersionRemover(
+            Tables.Models, Tables.ModelVersions, Tables.Variables, Tables.CalculatedMeasures, Tables.Parameters, Tables.Attributions, Tables.AttributionDrivers);
+    }
+
+    /// <summary>The live snapshot over the tables.</summary>
+    /// <returns>The reader.</returns>
+    public LiveSnapshot Live()
+    {
+        return new LiveSnapshot(Tables.Snapshots);
     }
 
     /// <summary>The reads over the tables.</summary>
     /// <returns>The queries.</returns>
     public ModelQueries Queries()
     {
-        return new ModelQueries(Tables.Models, Tables.Variables, Tables.CalculatedMeasures, Tables.Reports, Loader());
+        return new ModelQueries(
+            Tables.Models, Tables.ModelVersions, Tables.Variables, Tables.CalculatedMeasures, Loader(), Live(), new SnapshotHolders(Tables.Snapshots), Tables.Versions());
     }
 
-    /// <summary>Disables the seeded report, so the engine no longer reads the model through it.</summary>
-    /// <returns>A task that completes when the report is updated.</returns>
+    /// <summary>Disables the seeded report's live version, so the report rules no longer check it against the model.</summary>
+    /// <returns>A task that completes when the version is updated.</returns>
     public Task DisableReportAsync()
     {
-        return Tables.Reports.UpdateAsync(Tables.Reports.All.Single() with { IsEnabled = false }, CancellationToken.None);
+        return Tables.ReportVersions.UpdateAsync(Tables.ReportVersions.All.Single() with { IsEnabled = false }, CancellationToken.None);
     }
 
     /// <summary>A change set of the operations.</summary>

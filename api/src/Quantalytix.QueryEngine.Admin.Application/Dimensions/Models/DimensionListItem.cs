@@ -42,9 +42,12 @@ public record DimensionListItem
     /// <summary>The roles, by key.</summary>
     public required IReadOnlyList<DimensionRole> Roles { get; init; }
 
-    /// <summary>Every version, by version number.</summary>
+    /// <summary>Every version, one per snapshot holding the dimension: the live one first, then frozen ones, newest first.</summary>
     public required IReadOnlyList<DimensionVersionSummary> Versions { get; init; }
 
-    /// <summary>The members of the live version; null when the dimension has no live version.</summary>
-    public required int? PublishedMemberCount { get; init; }
+    /// <summary>The live version, which change sets edit.</summary>
+    public required string LiveVersionId { get; init; }
+
+    /// <summary>The members of the live version.</summary>
+    public required int LiveMemberCount { get; init; }
 }

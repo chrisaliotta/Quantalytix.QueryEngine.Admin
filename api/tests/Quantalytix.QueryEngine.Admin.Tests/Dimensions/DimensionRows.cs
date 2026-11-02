@@ -1,6 +1,7 @@
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
@@ -29,16 +30,15 @@ internal static class DimensionRows
         return new DimensionRoleRecord { DimensionRoleId = dimensionRoleId, DimensionId = dimensionId, DimensionRoleKey = dimensionRoleKey, DisplayName = dimensionRoleKey };
     }
 
-    /// <summary>A version of a dimension with a status and an optional range data type.</summary>
-    public static DimensionVersionRecord Version(long versionId, long dimensionId, int versionNumber, string status, string? rangeDataType = null)
+    /// <summary>A version of a dimension in a snapshot, live by default, with an optional range data type.</summary>
+    public static DimensionVersionRecord Version(long versionId, long dimensionId, long snapshotId = SnapshotRows.LiveId, string? rangeDataType = null)
     {
         return new DimensionVersionRecord
         {
             CreatedAt = DateTime.UnixEpoch,
             DimensionVersionId = versionId,
             DimensionId = dimensionId,
-            VersionNumber = versionNumber,
-            Status = status,
+            SnapshotId = snapshotId,
             RangeDataType = rangeDataType
         };
     }
@@ -113,7 +113,7 @@ internal static class DimensionRows
         IReadOnlyList<DimensionMemberRecord> members,
         IReadOnlyList<RangeBandRecord> bands)
     {
-        var version = Version(versionId, dimensionId, 1, PublicationStatuses.Published, rangeDataType);
+        var version = Version(versionId, dimensionId, rangeDataType: rangeDataType);
         return new DimensionSnapshot
         {
             Dimension = Dimension(dimensionId, kind),
@@ -128,7 +128,9 @@ internal static class DimensionRows
                 Usage = [],
                 NamedKeys = [],
                 OtherRoleKeys = new HashSet<string>(),
+                LiveSnapshotId = SnapshotRows.LiveId,
                 Versions = [version],
+                FrozenSnapshotKeys = [],
                 MemberCounts = new Dictionary<long, int> { [versionId] = members.Count }
             }
         };

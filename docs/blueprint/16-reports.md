@@ -4,7 +4,8 @@
 
 A report defines rows, the sources that feed them, the profiles that pick a source per variable, the dimensions a run
 can break out or filter by, scenarios, variable scopes, columns and styles, over one calculation model. The engine runs
-a report while it is enabled, always on the active assumption set and with its model as it stands.
+a report while it is enabled, on the live snapshot with the live model version as it stands; a comparison that names a frozen
+snapshot computes with that snapshot's whole report version.
 
 Sources: `web/src/lib/report/` (`types.ts`, `store.tsx`, `mockData.ts`, `coverage.ts`, `profiles.ts`,
 `scenarios.ts`, `dimensions.ts`, `rowStyle.ts`, `metricGraph.ts`) and `components/report/*`,
@@ -21,9 +22,9 @@ and how it maps to the schema (OI-46).
 
 | # | Rule | Source |
 |---|---|---|
-| P1 | Reports are not versioned. `is_enabled` decides whether the engine sees a report; a new report starts disabled. | Schema README 2.19.0 |
+| P1 | A report has one version per snapshot ([14](14-snapshots.md)); the live version is edited in place. `qe_report_version.is_enabled` decides whether the engine sees a report in a snapshot; a new report starts disabled. | Schema README 3.0.0 |
 | P2 | Enabling a report checks it against every report rule; every later write to an enabled report is checked before it is made. | API README; schema doc §15–16 |
-| P3 | A report owns one report dimension (`dimension_purpose = report`), created with the report's key and name, either with a single root or copied from a categorical or hierarchical "start from" dimension. Its one version is published and edited in place through the report. | Schema README 2.18.0, 2.19.0; API `NewReportInput` |
+| P3 | A report owns one report dimension (`dimension_purpose = report`), created with the report's key and name, either with a single root or copied from a categorical or hierarchical "start from" dimension. Its live version is edited in place through the report, and snapshots copy it with the report. | Schema README 2.18.0, 2.19.0; API `NewReportInput` |
 | P4 | `report_dimension_id` and `calculation_model_id` are fixed after creation; `report_key` is fixed. | Schema; API (OI-47) |
 | P5 | Rows are the report dimension's members in hierarchy order, plus overlay `section` and `formula` lines; member options relabel, hide or make headers of members. Overlay keys never collide with member keys. Row keys are fixed once created. | Schema README 2.17.0 item 7; API `ReportRowInput` |
 | P6 | A source reads one dataset on one time field and reaches rows by `bridge` (its own report bridge, from a role the dataset binds) or `direct` (a field whose values are row keys). | Schema README 2.19.0 item 2 |
@@ -43,15 +44,15 @@ report bridges with versions and row counts that the editor never writes. The sc
 
 | `web` `ReportState` | Stored as | Notes |
 |---|---|---|
-| `settings.key`, `name`, `type` | `qe_report.report_key`, `display_name`, `report_type` | key fixed (OI-47) |
-| `settings.model` | `qe_report.calculation_model_id` | fixed in the schema; `web` lets the user change it (OI-47) |
+| `settings.key`, `name`, `type` | `qe_report.report_key`; the live `qe_report_version`'s `display_name`, `report_type` | key fixed (OI-47) |
+| `settings.model` | `qe_report_version.calculation_model_id` | fixed in the schema; `web` lets the user change it (OI-47) |
 | `settings.currency` | the model's `currency_code` | read-only on the report |
 | `settings.periodicity`, `layout` | `default_settings_json.periodicity`, `.layout` | (OI-54) |
 | `settings.subtotals` | `subtotal_position` | |
 | `settings.defaultProfile` | `default_profile_key` | |
 | `settings.defaultBreakout` | `default_pivot_json.rowDimensions` | (OI-54) |
 | `settings.defaultFilters` | `default_filter_json` (`filterNode` over calculation dimensions) | (OI-54) |
-| `enabled` | `is_enabled` (a command, not an edit; see below) | |
+| `enabled` | `qe_report_version.is_enabled` (a command, not an edit; see below) | |
 | `rows` (`line`, `subtotal`, `heading`, `formula`) | report dimension members + `qe_report_member_option` + `qe_report_line` | kinds map to `data`, `group`, `section`, `formula` (OI-48) |
 | `rows[].styleKey`, `hidden` | `qe_report_member_option` / `qe_report_line` `style_key`, `is_visible` | |
 | `rows[].parameters` | `qe_report_row_parameter` | |
@@ -67,7 +68,7 @@ report bridges with versions and row counts that the editor never writes. The sc
 | `columns` | `qe_report_column` | `kind` = `value_kind`; `metric` = `metric_key` |
 | `styles` | `qe_report_style` | |
 | `variables`, `measures` | the model | removed from the report (OI-55) |
-| `accounts`, `datasets`, `scenarios`, `assumptionSets` | other modules (dimension members, datasets, scenario dimension members, assumption sets) | removed from the report (OI-55) |
+| `accounts`, `datasets`, `scenarios`, `assumptionSets` | other modules (dimension members, datasets, scenario dimension members, snapshots) | removed from the report (OI-55) |
 | `comparisons` | run-time request input (report contract 2.1 `comparisons[]`) | not stored (OI-55) |
 
 ## Frontend contract (Agreed, new `lib/reports/contract.ts`)
@@ -236,7 +237,7 @@ every commit passes the report gate or is refused with 422 (the current API's be
 
 ### Sources and report bridges
 
-A bridge source owns one report bridge. Creating a bridge source creates the bridge (published v1, `many_to_many`,
+A bridge source owns one report bridge. Creating a bridge source creates the bridge (a live version, `many_to_many`,
 `replicate`, source dimension = the role's dimension, target = the report dimension) in the same commit; deleting the
 source deletes it. `setRowRules` writes the bridge's `qe_bridge_mapping` rows for that row (one row per rule;
 `target_member_key` = row key). The mappings module reads these bridges and refuses to write them

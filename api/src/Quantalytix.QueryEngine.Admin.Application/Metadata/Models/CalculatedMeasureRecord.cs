@@ -6,8 +6,8 @@ public sealed record CalculatedMeasureRecord
     /// <summary>Primary key.</summary>
     public required long CalculatedMeasureId { get; init; }
 
-    /// <summary>The owning model.</summary>
-    public required long CalculationModelId { get; init; }
+    /// <summary>The owning model version.</summary>
+    public required long CalculationModelVersionId { get; init; }
 
     /// <summary>Key, unique among the model's variables and calculated measures.</summary>
     public required string MeasureKey { get; init; }

@@ -12,9 +12,8 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the Mappings and Bridges slice, all scoped: its route resources, the readers both kinds share, and for each kind its
-    /// reads and commands, its change-set aggregate with its snapshot rules in the order they report, the same rules as the workflow's
-    /// publication rule of the kind, and the freeze copier; plus <see cref="ReportBridges"/>, the reports module's way to write report
-    /// bridges.
+    /// reads and commands, its change-set aggregate with its snapshot rules in the order they report, and the kind's version rules,
+    /// copier and remover that snapshots use; plus <see cref="ReportBridges"/>, the reports module's way to write report bridges.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -26,21 +25,20 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddRouteResource<BridgeVersionRecord>("bridge-versions", id => new { BridgeVersionId = id });
 
         services.AddScoped<MappingReferenceReader>();
-        services.AddScoped(typeof(SnapshotRuleRunner<>));
 
         services.AddScoped<MappingQueries>();
         services.AddScoped<MappingCommands>();
         services.AddScoped<MappingSetChanges>();
         services.AddScoped<MappingSetSnapshotLoader>();
-        services.AddScoped<MappingDrafts>();
         services.AddScoped<MappingVersionRemover>();
-        services.AddScoped<ILivingVersionCopier, MappingVersionCopier>();
+        services.AddScoped<IVersionRemover>(provider => provider.GetRequiredService<MappingVersionRemover>());
+        services.AddScoped<IVersionCopier, MappingVersionCopier>();
         services.AddChangeSetAggregate<MappingSetAggregate, MappingSetSnapshot, MappingOperation, MappingSetEditState>();
-        services.AddSnapshotRule<MappingSetSnapshot, DimensionVersionPublishedRule>();
+        services.AddSnapshotRule<MappingSetSnapshot, DimensionVersionInSnapshotRule>();
         services.AddSnapshotRule<MappingSetSnapshot, SourceKeyUniqueRule>();
         services.AddSnapshotRule<MappingSetSnapshot, EntryMemberInVersionRule>();
         services.AddSnapshotRule<MappingSetSnapshot, EntryMemberAssignableRule>();
-        services.AddScoped<IPublicationRule, MappingVersionRules>();
+        services.AddScoped<IVersionRules, MappingVersionRules>();
 
         services.AddScoped<BridgeQueries>();
         services.AddScoped<BridgeCommands>();
@@ -48,11 +46,12 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddScoped<ReportBridges>();
         services.AddScoped<BridgeSnapshotLoader>();
         services.AddScoped<BridgeOwnerReader>();
-        services.AddScoped<BridgeDrafts>();
         services.AddScoped<BridgeStore>();
-        services.AddScoped<ILivingVersionCopier, BridgeVersionCopier>();
+        services.AddScoped<BridgeVersionRemover>();
+        services.AddScoped<IVersionRemover>(provider => provider.GetRequiredService<BridgeVersionRemover>());
+        services.AddScoped<IVersionCopier, BridgeVersionCopier>();
         services.AddChangeSetAggregate<BridgeAggregate, BridgeSnapshot, BridgeOperation, BridgeEditState>();
-        services.AddSnapshotRule<BridgeSnapshot, EndpointVersionsPublishedRule>();
+        services.AddSnapshotRule<BridgeSnapshot, EndpointVersionsInSnapshotRule>();
         services.AddSnapshotRule<BridgeSnapshot, MappingMembersInEndpointVersionsRule>();
         services.AddSnapshotRule<BridgeSnapshot, PairUniqueRule>();
         services.AddSnapshotRule<BridgeSnapshot, CardinalityManyToOneRule>();
@@ -60,7 +59,7 @@ public static class MappingsAndBridgesFeatureServiceCollectionExtensions
         services.AddSnapshotRule<BridgeSnapshot, AllocationPartitionRule>();
         services.AddSnapshotRule<BridgeSnapshot, AllocationReplicateRule>();
         services.AddSnapshotRule<BridgeSnapshot, DescendantsReportOnlyRule>();
-        services.AddScoped<IPublicationRule, BridgeVersionRules>();
+        services.AddScoped<IVersionRules, BridgeVersionRules>();
         return services;
     }
 }

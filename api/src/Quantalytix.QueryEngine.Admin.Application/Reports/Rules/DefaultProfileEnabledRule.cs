@@ -17,7 +17,7 @@ public sealed class DefaultProfileEnabledRule : IReportRule
     /// <returns>One violation when the report has no enabled default profile.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
-        if (report.Report.DefaultProfileKey is not { } profileKey)
+        if (report.Version.DefaultProfileKey is not { } profileKey)
             yield return Violation($"Report '{report.ReportKey}' names no default profile.", null);
         else if (report.Profiles.FirstOrDefault(profile => profile.ProfileKey == profileKey) is not { IsEnabled: true })
             yield return Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no enabled profile of the report.", profileKey);
@@ -28,7 +28,7 @@ public sealed class DefaultProfileEnabledRule : IReportRule
     /// <returns>One violation when the default names no profile.</returns>
     public static IEnumerable<RuleViolation> Unresolved(ReportGraph report)
     {
-        if (report.Report.DefaultProfileKey is { } profileKey && report.Profiles.All(profile => profile.ProfileKey != profileKey))
+        if (report.Version.DefaultProfileKey is { } profileKey && report.Profiles.All(profile => profile.ProfileKey != profileKey))
             yield return Violation($"Report '{report.ReportKey}' defaults to profile '{profileKey}', which is no profile of the report.", profileKey);
     }
 

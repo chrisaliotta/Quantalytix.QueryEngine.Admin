@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Bridges;
 
@@ -18,23 +19,22 @@ internal static class BridgeRows
             BridgeKey = $"zz_map_bridge_{bridgeId}",
             DisplayName = $"Bridge {bridgeId}",
             SourceDimensionId = sourceDimensionId,
-            TargetDimensionId = targetDimensionId,
-            IsEnabled = true
+            TargetDimensionId = targetDimensionId
         };
     }
 
-    /// <summary>A version of a bridge with its cardinality, allocation mode and status.</summary>
-    public static BridgeVersionRecord BridgeVersion(long bridgeVersionId, long bridgeId, int versionNumber, string cardinality, string allocationMode, string status)
+    /// <summary>An enabled version of a bridge in a snapshot, live by default, with its cardinality and allocation mode.</summary>
+    public static BridgeVersionRecord BridgeVersion(long bridgeVersionId, long bridgeId, string cardinality, string allocationMode, long snapshotId = SnapshotRows.LiveId)
     {
         return new BridgeVersionRecord
         {
             CreatedAt = DateTime.UnixEpoch,
             BridgeVersionId = bridgeVersionId,
             BridgeId = bridgeId,
-            VersionNumber = versionNumber,
+            SnapshotId = snapshotId,
             Cardinality = cardinality,
             AllocationMode = allocationMode,
-            Status = status
+            IsEnabled = true
         };
     }
 

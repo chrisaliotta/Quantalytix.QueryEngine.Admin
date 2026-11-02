@@ -46,7 +46,7 @@ public sealed class ReportsController(ReportQueries queries, ReportCommands comm
         return outcome.Succeeded ? StatusCode(StatusCodes.Status201Created, outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads a report's whole document.</summary>
+    /// <summary>Reads a report's whole live document.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -59,20 +59,21 @@ public sealed class ReportsController(ReportQueries queries, ReportCommands comm
         return Ok(await queries.DocumentAsync(reportId, cancellationToken));
     }
 
-    /// <summary>Deletes a report with its report dimension, report bridges and content; never blocked (P12).</summary>
+    /// <summary>Deletes a report with its report dimension, report bridges and content, unless a frozen snapshot holds it (P12).</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="reportId">The report.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>No content.</returns>
     /// <response code="204">The report and everything it owns were deleted.</response>
     /// <response code="400">The route does not bind.</response>
+    /// <response code="409">A frozen snapshot holds a version of the report.</response>
     [HttpDelete("{reportId:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
+    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
     public async Task<IActionResult> Delete(string tenantId, long reportId, CancellationToken cancellationToken)
     {
-        await remover.DeleteAsync(reportId, cancellationToken);
-        return NoContent();
+        return await remover.DeleteAsync(reportId, cancellationToken) is { } refusal ? Problems.From(refusal).ToResult() : NoContent();
     }
 
     /// <summary>Checks the stored report against the report rules, with coverage and profile resolution.</summary>

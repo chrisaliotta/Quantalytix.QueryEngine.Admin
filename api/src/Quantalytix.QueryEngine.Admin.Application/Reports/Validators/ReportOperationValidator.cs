@@ -10,7 +10,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// Checks each report operation's input shape before it applies: keys, names and numbers that fit their columns, vocabulary values,
 /// well-formed filters, a formula row's references and a source's method-specific fields, and lists that name each item once. What
 /// the input means for the report (a taken key, a row that is no data row) is decided as the operation applies, and what it means
-/// for the model, the release and the role dimensions by the report rules.
+/// for the model, the snapshot's datasets and the role dimensions by the report rules.
 /// </summary>
 public sealed class ReportOperationValidator : AbstractValidator<ReportOperation>
 {

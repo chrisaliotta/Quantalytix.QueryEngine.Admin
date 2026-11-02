@@ -1,7 +1,7 @@
 # Key actions
 
 [Index](README.md) · [High-level architecture](01-architecture.md) · [Request pipeline](02-request-pipeline.md) ·
-[Core classes](03-core-classes.md) · [Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md)
+[Core classes](03-core-classes.md) · [Snapshot lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md)
 
 Each sequence starts after authentication, the route existence check and input validation
 ([Request pipeline](02-request-pipeline.md)). Paths are relative to `/api/tenants/{tenantId}`.
@@ -42,9 +42,9 @@ sequenceDiagram
 The commit replays the operations onto the dimension as stored now. A refusal at any step returns its problem and nothing
 is written. Because the version is live, the change reaches the next query once the revision advances.
 
-## Dataset commit and publish
+## Dataset commit
 
-A draft version gets a new field that creates a column on its managed table, then the user publishes the version.
+The live version of a dataset gets a new field that creates a column on its managed table.
 
 ```mermaid
 sequenceDiagram
@@ -52,52 +52,58 @@ sequenceDiagram
     participant Ch as DatasetChanges
     participant P as ChangeSetPipeline
     participant Agg as DatasetAggregate
+    participant Rules as Snapshot rules
     participant Ddl as DatasetSchemaChanges
+    participant Rev as SemanticRevision
     participant Mat as DatasetMaterializations
-    participant Cmd as DatasetCommands
-    participant Wf as VersionWorkflow
     Ctl->>Ch: CommitAsync(versionId, [saveField with createColumn])
     Ch->>P: CommitAsync
-    P->>Agg: Load, Apply (draft only, else 409), Plan
+    P->>Agg: Load the live version, Apply
+    P->>Rules: Gate and Commit rules (fields, bindings resolvable in live, enabled reports that read the dataset)
+    Rules-->>P: violations (422 when any)
+    P->>Agg: Plan(before, after)
     Agg->>Ddl: Plan(before, after)
     Ddl-->>Agg: plan.Schema: rename table, ADD COLUMN, redefine materialized view
     P->>P: execute: schema statements first, then field rows, root last
+    P->>Rev: AdvanceAsync
     Ch->>Mat: MaterializeAsync for JSON path fields that asked for it
     Ch-->>Ctl: 200 state and idMap
-    Ctl->>Cmd: POST publish
-    Cmd->>Wf: TransitionAsync(dataset_version, validated)
-    Wf->>Wf: DatasetVersionRules (every dataset snapshot rule)
-    Cmd->>Wf: TransitionAsync(dataset_version, published)
-    Cmd-->>Ctl: 200 summary, or 422 with violations
 ```
 
 Schema statements run before every row write because DDL cannot be rolled back; `DatasetSchemaChanges` derives them from
-the difference between the stored and changed physical catalog, so a replay after a partial commit plans none. Content
-changes of a draft are not engine-visible, and publishing a dataset version does not advance the revision: the version
-reaches queries only when a release that pins it is activated.
+the difference between the stored and changed physical catalog, so a replay after a partial commit plans none. The DDL never
+renames or drops a table or column that a frozen snapshot's dataset version reads. Because the version is live, the change
+reaches the next query once the revision advances.
 
-## Release activation
+## Snapshot capture
 
 ```mermaid
 sequenceDiagram
-    participant Ctl as ReleasesController
-    participant Cmd as ReleaseCommands
-    participant Chk as ReleaseReportChecks
+    participant Ctl as SnapshotsController
+    participant Cmd as SnapshotCommands
     participant Info as qe_database_info
+    participant Cp as IVersionCopier (per kind)
+    participant Rm as IVersionRemover (per kind)
+    participant Snap as qe_snapshot
     participant Rev as SemanticRevision
-    participant Log as qe_release_activation
-    Ctl->>Cmd: POST releases/{id}/activate
-    Cmd->>Cmd: status must be published (else 409)
-    Cmd->>Chk: AllAsync(releaseId): every enabled report against the release
-    Chk-->>Cmd: violations (422 when any)
-    Cmd->>Info: active_semantic_release_id = releaseId
-    Cmd->>Rev: AdvanceAsync
-    Cmd->>Log: insert activation with the previous release
-    Cmd-->>Ctl: 200 TenantInfo
+    Ctl->>Cmd: CaptureAsync(key, displayName, description)
+    Cmd->>Info: read semantic_revision
+    loop each kind, each live version
+        Cmd->>Cp: CopyAsync(liveVersionId, newSnapshotId, null)
+    end
+    Cmd->>Snap: insert the frozen snapshot row
+    Cmd->>Info: read semantic_revision again
+    alt revision changed
+        Cmd->>Rm: RemoveVersionAsync for every copy
+        Cmd-->>Ctl: 409
+    else unchanged
+        Cmd->>Rev: AdvanceAsync
+        Cmd-->>Ctl: 201 snapshot
+    end
 ```
 
-The pointer is written before the revision advances, so the engine never caches the previous release under the new
-revision; the log row is written last, so a stop never logs an activation that did not happen.
+The copies are written before the snapshot row, so a stop midway leaves versions no snapshot row names, which no request can
+reach. The live versions are only read; their ids never change.
 
 ## Report commit with report bridges
 
@@ -127,36 +133,43 @@ sequenceDiagram
 
 Report bridges are written only through the bridges module's public `ReportBridges` service. `WritePlan.Call` places each
 call where a row write of its kind and depth would run: a new source's bridge is created before its row, a renamed source
-renames its bridge, a deleted source's row is deleted before its bridge (`ReportBridges.DeleteAsync`, which removes pins,
+renames its bridge, a deleted source's row is deleted before its bridge (`ReportBridges.DeleteAsync`, which removes the
 version and rules), and rules into a row are replaced after the sources that own them. A commit that stops midway leaves at
 most a bridge no source owns, which the engine never reads. The preview of the same operations also returns the report's
 diagnostics; for a direct source, `ReportDiagnosticsBuilder` reads the field's distinct values through `DatasetFieldValues`
 and `ISourceObjectCatalog.ListDistinctValuesAsync` to report the values that name no data row.
 
-## Freeze of a living version
+## Snapshot restore
 
 ```mermaid
 sequenceDiagram
-    participant Ctl as MappingVersionsController
-    participant Cmd as MappingCommands
-    participant Fz as LivingVersionFreezer
-    participant Wf as VersionWorkflow
-    participant Cp as MappingVersionCopier
-    participant H as Handlers
-    Ctl->>Cmd: POST mapping-versions/{n}/freeze { note }
-    Cmd->>Fz: FreezeAsync(mapping_version, n, note)
-    Fz->>Fz: n must be published (else 409)
-    Fz->>Wf: CheckAsync: MappingVersionRules (422 when any violation)
-    Fz->>Cp: CopyAsync(n) -> draft n+1
-    Fz->>Wf: PublishAsync(n+1): draft -> validated -> published
-    Wf->>H: PredecessorRetirer retires n; ActiveSetPinner pins n+1
-    Wf->>Wf: SemanticRevision.AdvanceAsync
-    Fz->>Fz: SetFreezeNoteAsync(n, note)
-    Cmd-->>Ctl: 200 FreezeResult { report, live }
+    participant Ctl as SnapshotsController
+    participant Cmd as SnapshotCommands
+    participant Rules as IVersionRules (per kind)
+    participant Cp as IVersionCopier (per kind)
+    participant Rm as IVersionRemover (per kind)
+    participant Log as qe_snapshot_restore
+    participant Rev as SemanticRevision
+    Ctl->>Cmd: RestoreAsync(snapshotId)
+    Cmd->>Cmd: the live snapshot itself is refused (409)
+    loop each kind, each version the snapshot holds
+        Cmd->>Rules: EvaluateAsync(frozenVersionId)
+    end
+    Rules-->>Cmd: violations (422 when any, nothing written)
+    loop each identity the snapshot holds
+        Cmd->>Cp: CopyAsync(frozenVersionId, liveSnapshotId, liveVersionId or null)
+    end
+    loop each live identity the snapshot lacks
+        Cmd->>Rm: RemoveVersionAsync(liveVersionId), RemoveIdentityAsync when no snapshot holds it
+    end
+    Cmd->>Log: insert the restore with restored_by
+    Cmd->>Rev: AdvanceAsync
+    Cmd-->>Ctl: 200
 ```
 
-Dimension and bridge freezes are the same with their own copier and rules; for a dimension, `ClosureBuilder` rebuilds the
-copy's closure when it is validated. After the freeze, version n is read-only and the identity's change set edits n+1.
+Every rule runs before anything is written, so a snapshot whose versions no longer pass, for example because a physical table
+drifted, is refused whole. A copy over a live version keeps the live version's id and replaces its content; for a dimension,
+the copied closure rows come with it.
 
 ## Delete check and blocked delete
 
@@ -177,11 +190,11 @@ sequenceDiagram
     Cmd-->>Client: 409 urn:qe:problem:delete-blocked with the same reasons as violations
 ```
 
-When the check allows the delete, `DimensionCommands.DeleteAsync` removes the active set's pin, the versions with their
-content, the roles and the dimension row, and the controller answers 204. A historical assumption set's pin is a blocker
-(`referenced_by_assumption_set`). Deletes inside a change set (a member, level or role) run the same rules through
+When the check allows the delete, `DimensionCommands.DeleteAsync` removes the live version with its content, the roles and
+the dimension row, and the controller answers 204. A frozen snapshot that holds a version of the dimension is a blocker
+(`referenced_by_snapshot`). Deletes inside a change set (a member, level or role) run the same rules through
 `context.Blocked` and answer the same 409.
 
 A dataset delete runs the same way through `DatasetDeleteRules`, and builds a `WritePlan`: `DatasetTableDrops` adds, as schema
-statements, the drop of each managed table that only the dataset's versions read, after its materialized view, and the delete
+statements, the drop of each managed table that only the dataset's live version reads, after its materialized view, and the delete
 of its `qe_managed_source_object` row; the version content, versions and dataset row follow children-first.

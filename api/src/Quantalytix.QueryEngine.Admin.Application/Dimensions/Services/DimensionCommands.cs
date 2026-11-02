@@ -1,4 +1,3 @@
-using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
@@ -7,29 +6,25 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// The dimension manager's lifecycle commands, which run on stored state, never inside a change set: create a user dimension,
-/// define a system dimension from a profile, delete a dimension or a frozen version, and freeze the live version (OI-14). A new
-/// dimension's version 1 is published through the version workflow, so it is live, pinned by the active assumption set and its
-/// closure built, as every later live version is.
+/// The dimension manager's commands, which run on stored state, never inside a change set: create a user dimension, define a system
+/// dimension from a profile, and delete a dimension. A new dimension starts with a live version, closure included; each command
+/// advances the semantic revision.
 /// </summary>
 public sealed class DimensionCommands(
     ITableGateway<DimensionRecord> dimensions,
     ITableGateway<DimensionRoleRecord> roles,
-    ITableGateway<DimensionVersionRecord> versions,
     ITableGateway<DimensionMemberRecord> members,
-    DimensionDrafts drafts,
+    ITableGateway<DimensionClosureRecord> closure,
+    LiveDimensionVersions liveVersions,
     DimensionVersionRemover remover,
     DimensionSnapshotLoader loader,
-    VersionWorkflow workflow,
-    LivingVersionFreezer freezer,
-    AssumptionPins pins,
     SemanticRevision semanticRevision,
     IIdGenerator ids)
 {
     /// <summary>The title of the refusal of a key another dimension or role has.</summary>
     private const string KeyTakenTitle = "Key taken";
 
-    /// <summary>Creates a user, analytical dimension with its first role and its live version 1 (M2).</summary>
+    /// <summary>Creates a user, analytical dimension with its first role and its live version (M2).</summary>
     /// <param name="input">The new dimension, already validated.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>The dimension and its version, or a conflict when the dimension or role key is taken.</returns>
@@ -88,7 +83,7 @@ public sealed class DimensionCommands(
     }
 
     /// <summary>
-    /// Deletes a dimension nothing blocks (M9): its active-set pin, its versions with their content, its roles, then the row.
+    /// Deletes a dimension nothing blocks (M9): its live version with its content, its roles, then the row.
     /// </summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
@@ -100,53 +95,10 @@ public sealed class DimensionCommands(
         var check = DimensionDeleteRules.Dimension(snapshot);
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await pins.UnpinDimensionAsync(dimensionId, cancellationToken);
-        await remover.RemoveAsync([.. snapshot.Surroundings.Versions.Select(version => version.DimensionVersionId)], cancellationToken);
-        await roles.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
-        await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
+        await remover.RemoveVersionAsync(snapshot.VersionId, cancellationToken);
+        await remover.RemoveIdentityAsync(dimensionId, cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
-    }
-
-    /// <summary>Deletes a version that is not live and that no historical assumption set pins, with its content.</summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>Null when deleted; otherwise why nothing was deleted.</returns>
-    public async Task<Refusal?> DeleteVersionAsync(long versionId, CancellationToken cancellationToken)
-    {
-        var snapshot = await loader.LoadVersionAsync(versionId, cancellationToken);
-        if (snapshot.Dimension.DimensionPurpose == DimensionPurposes.Report) return DimensionRefusals.OwnedByReport(snapshot.Dimension);
-        var check = DimensionDeleteRules.Version(snapshot);
-        if (!check.Allowed) return Refusal.DeleteBlocked(check);
-        await remover.RemoveAsync([versionId], cancellationToken);
-        return null;
-    }
-
-    /// <summary>
-    /// Freezes the live version with a note and continues in a live clone (OI-14, OI-15); a locked profile refuses (M11).
-    /// </summary>
-    /// <param name="versionId">The live version.</param>
-    /// <param name="note">Why it is frozen; blank is none.</param>
-    /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The report and the new live version, or a 409 or 422 refusal with nothing changed.</returns>
-    public async Task<Outcome<DimensionFreezeResult>> FreezeAsync(long versionId, string? note, CancellationToken cancellationToken)
-    {
-        var version = await versions.GetAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var dimension = await dimensions.GetAsync(new { version.DimensionId }, cancellationToken);
-        if (dimension.DimensionPurpose == DimensionPurposes.Report) return Outcome<DimensionFreezeResult>.Refused(DimensionRefusals.OwnedByReport(dimension));
-        if (DimensionProfiles.Of(dimension.DimensionProfileKey) is { EditPolicy: DimensionEditPolicies.Locked } locked)
-            return Outcome<DimensionFreezeResult>.Refused(DimensionRefusals.ReadOnly(dimension, locked));
-
-        var frozen = await freezer.FreezeAsync(VersionKinds.DimensionVersion, versionId, string.IsNullOrWhiteSpace(note) ? null : note.Trim(), cancellationToken);
-        if (!frozen.Succeeded) return Outcome<DimensionFreezeResult>.Refused(frozen.Refusal);
-        var all = await versions.ListAsync(new { version.DimensionId }, cancellationToken);
-        var live = all.Single(row => row.DimensionVersionId == frozen.Value.LiveVersionId);
-        var memberCount = (await members.ListAsync(new { live.DimensionVersionId }, cancellationToken)).Count;
-        return Outcome<DimensionFreezeResult>.Success(new DimensionFreezeResult
-        {
-            Report = frozen.Value.Report,
-            Live = DimensionReadModels.Summary(live, memberCount, all, TemporaryIds.PresentStored)
-        });
     }
 
     /// <summary>The conflict of a dimension key another dimension has, or of a role key another role has, both ignoring case.</summary>
@@ -160,7 +112,7 @@ public sealed class DimensionCommands(
             : null;
     }
 
-    /// <summary>Stores a new dimension with its roles and a draft version 1 holding its members, then publishes the draft.</summary>
+    /// <summary>Stores a new dimension with its roles and a live version holding its members and their closure.</summary>
     private async Task<DimensionCreated> StoreAsync(
         DimensionRecord dimension,
         IReadOnlyList<(string Key, string DisplayName)> roleSeeds,
@@ -172,21 +124,22 @@ public sealed class DimensionCommands(
         await roles.InsertManyAsync(
             [.. roleSeeds.Select(seed => new DimensionRoleRecord { DimensionRoleId = ids.NextId(), DimensionId = dimension.DimensionId, DimensionRoleKey = seed.Key, DisplayName = seed.DisplayName })],
             cancellationToken);
-        var draft = await drafts.CreateAsync(dimension.DimensionId, rangeDataType, cancellationToken);
-        await members.InsertManyAsync(
-            [
-                .. memberSeeds.Select((seed, index) => new DimensionMemberRecord
-                {
-                    DimensionMemberId = ids.NextId(),
-                    DimensionVersionId = draft.DimensionVersionId,
-                    MemberKey = seed.Key,
-                    DisplayName = seed.DisplayName,
-                    IsAssignable = true,
-                    SortOrder = index + 1
-                })
-            ],
-            cancellationToken);
-        await workflow.PublishAsync(VersionKinds.DimensionVersion, draft.DimensionVersionId, cancellationToken);
-        return new DimensionCreated { DimensionId = dimension.DimensionId, VersionId = draft.DimensionVersionId };
+        var version = await liveVersions.CreateAsync(dimension.DimensionId, rangeDataType, cancellationToken);
+        List<DimensionMemberRecord> seeded =
+        [
+            .. memberSeeds.Select((seed, index) => new DimensionMemberRecord
+            {
+                DimensionMemberId = ids.NextId(),
+                DimensionVersionId = version.DimensionVersionId,
+                MemberKey = seed.Key,
+                DisplayName = seed.DisplayName,
+                IsAssignable = true,
+                SortOrder = index + 1
+            })
+        ];
+        await members.InsertManyAsync(seeded, cancellationToken);
+        await closure.InsertManyAsync(ClosureBuilder.ClosureOf(version.DimensionVersionId, seeded), cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
+        return new DimensionCreated { DimensionId = dimension.DimensionId, VersionId = version.DimensionVersionId };
     }
 }

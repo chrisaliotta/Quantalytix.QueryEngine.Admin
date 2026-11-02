@@ -1,39 +1,21 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
-/// What blocks deleting a dataset, a version, or an item inside a version (D10, OI-17), shared by the delete checks and the deletes.
-/// Only drafts and validated versions that no release pins can go; an item goes when nothing names it by id.
+/// What blocks deleting a dataset or an item inside its live version (D10), shared by the delete checks and the deletes. A dataset goes
+/// with its live version when no frozen snapshot holds a version of it; an item goes when nothing names it by id.
 /// </summary>
 public static class DatasetDeleteRules
 {
-    /// <summary>The delete check of a dataset: every version is open, and no release lists the dataset.</summary>
+    /// <summary>The delete check of a dataset: no frozen snapshot holds a version of it.</summary>
     /// <param name="dataset">The dataset.</param>
-    /// <param name="versions">Its versions.</param>
-    /// <param name="releases">The release pins of the dataset.</param>
+    /// <param name="frozenSnapshotKeys">The keys of the frozen snapshots holding a version of it.</param>
     /// <returns>The check.</returns>
-    public static DeleteCheck Dataset(DatasetRecord dataset, IEnumerable<DatasetVersionRecord> versions, DatasetReleaseIndex releases)
+    public static DeleteCheck Dataset(DatasetRecord dataset, IEnumerable<string> frozenSnapshotKeys)
     {
         var blockers = new DeleteBlockers($"Dataset '{dataset.DatasetKey}'");
-        blockers.AddNamed(
-            DeleteBlockerCodes.HasPublishedVersions,
-            "it has published or retired versions",
-            versions.Where(version => !IsOpen(version)).OrderBy(version => version.VersionNumber).Select(version => $"v{version.VersionNumber} ({version.Status})"));
-        blockers.AddNamed(DeleteBlockerCodes.ReferencedByRelease, "listed by releases", releases.Listing(dataset.DatasetId).Select(release => $"'{release.ReleaseKey}'"));
-        return blockers.Check();
-    }
-
-    /// <summary>The delete check of a version: it is open, and no release pins it.</summary>
-    /// <param name="version">The version.</param>
-    /// <param name="releases">The release pins of its dataset.</param>
-    /// <returns>The check.</returns>
-    public static DeleteCheck Version(DatasetVersionRecord version, DatasetReleaseIndex releases)
-    {
-        var blockers = new DeleteBlockers($"Version v{version.VersionNumber}");
-        if (!IsOpen(version)) blockers.Add(DeleteBlockerCodes.PublishedVersion, $"it is {version.Status}");
-        blockers.AddNamed(DeleteBlockerCodes.ReferencedByRelease, "pinned by releases", releases.Pinning(version.DatasetVersionId).Select(release => $"'{release.ReleaseKey}'"));
+        blockers.AddFrozenSnapshots(frozenSnapshotKeys);
         return blockers.Check();
     }
 
@@ -66,13 +48,5 @@ public static class DatasetDeleteRules
     private static void AddReaders(DeleteBlockers blockers, DatasetSnapshot snapshot, long itemId, string code)
     {
         blockers.AddNamed(code, "it is read by", DatasetDependents.Blocking(snapshot, itemId).Select(reference => $"{reference.ItemKey} ({reference.Relation})"));
-    }
-
-    /// <summary>Whether a version is open: a draft or validated (OI-23).</summary>
-    /// <param name="version">The version.</param>
-    /// <returns>True for a draft or a validated version.</returns>
-    public static bool IsOpen(DatasetVersionRecord version)
-    {
-        return version.Status is PublicationStatuses.Draft or PublicationStatuses.Validated;
     }
 }

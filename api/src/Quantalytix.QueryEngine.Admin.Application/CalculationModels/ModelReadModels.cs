@@ -1,44 +1,51 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>Builds the contract's read models of a calculation model from its rows and content.</summary>
 public static class ModelReadModels
 {
-    /// <summary>A model's settings.</summary>
+    /// <summary>A model's settings in one version.</summary>
     /// <param name="model">The model row.</param>
+    /// <param name="version">The version row.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <returns>The settings.</returns>
-    public static CalcModel Settings(CalculationModelRecord model)
+    public static CalcModel Settings(CalculationModelRecord model, CalculationModelVersionRecord version, long liveSnapshotId)
     {
         return new CalcModel
         {
             Id = model.CalculationModelId,
+            VersionId = version.CalculationModelVersionId,
+            SnapshotId = version.SnapshotId,
+            IsLive = version.SnapshotId == liveSnapshotId,
             Key = model.ModelKey,
-            DisplayName = model.DisplayName,
-            CurrencyCode = model.CurrencyCode,
-            CalendarKey = model.CalendarKey,
-            FormulaLanguage = model.FormulaLanguageVersion,
-            AttributionMethod = model.AttributionMethod,
-            IsEnabled = model.IsEnabled
+            DisplayName = version.DisplayName,
+            CurrencyCode = version.CurrencyCode,
+            CalendarKey = version.CalendarKey,
+            FormulaLanguage = version.FormulaLanguageVersion,
+            AttributionMethod = version.AttributionMethod,
+            IsEnabled = version.IsEnabled
         };
     }
 
     /// <summary>A report as a reader of its model.</summary>
-    /// <param name="report">The report row.</param>
+    /// <param name="report">The report with its version.</param>
     /// <returns>The use.</returns>
-    public static ModelReportUse Use(ReportRecord report)
+    public static ModelReportUse Use(VersionedReport report)
     {
-        return new ModelReportUse { ReportId = report.ReportId, ReportKey = report.ReportKey, DisplayName = report.DisplayName, IsEnabled = report.IsEnabled };
+        return new ModelReportUse { ReportId = report.ReportId, ReportKey = report.ReportKey, DisplayName = report.Version.DisplayName, IsEnabled = report.Version.IsEnabled };
     }
 
-    /// <summary>The whole model with the drivers in effect for each metric and the reports that read it.</summary>
-    /// <param name="content">The model's content.</param>
-    /// <param name="readers">The reports over the model, by key.</param>
+    /// <summary>The whole model version with the drivers in effect for each metric and the reports that read it.</summary>
+    /// <param name="content">The model version's content.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
+    /// <param name="readers">The reports over the model version, by key.</param>
     /// <returns>The document.</returns>
-    public static ModelDocument Document(ModelGraph content, IEnumerable<ReportRecord> readers)
+    public static ModelDocument Document(ModelGraph content, long liveSnapshotId, IEnumerable<VersionedReport> readers)
     {
         return new ModelDocument(
-            Settings(content.Model),
+            Settings(content.Model, content.Version, liveSnapshotId),
             [.. content.Variables.Select(Variable)],
             [.. content.CalculatedMeasures.Select(Measure)],
             [.. content.Parameters.Select(Parameter)],

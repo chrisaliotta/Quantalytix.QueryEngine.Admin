@@ -12,15 +12,6 @@ public static class DeleteBlockerCodes
     /// <summary>A system dimension.</summary>
     public const string SystemDimension = "system_dimension";
 
-    /// <summary>A dataset version that is published or retired.</summary>
-    public const string PublishedVersion = "published_version";
-
-    /// <summary>The live version of a dimension, mapping set or bridge; only frozen versions can be deleted.</summary>
-    public const string LiveVersion = "live_version";
-
-    /// <summary>An identity with published or retired versions.</summary>
-    public const string HasPublishedVersions = "has_published_versions";
-
     /// <summary>A member with child members.</summary>
     public const string HasChildren = "has_children";
 
@@ -57,11 +48,8 @@ public static class DeleteBlockerCodes
     /// <summary>A dimension or role a report source reads.</summary>
     public const string ReferencedByReportSource = "referenced_by_report_source";
 
-    /// <summary>A version, mapping set or bridge that a historical assumption set pins.</summary>
-    public const string ReferencedByAssumptionSet = "referenced_by_assumption_set";
-
-    /// <summary>A dataset or dataset version that a release manifest lists.</summary>
-    public const string ReferencedByRelease = "referenced_by_release";
+    /// <summary>An identity that a frozen snapshot holds a version of; it goes only with every snapshot that holds it.</summary>
+    public const string ReferencedBySnapshot = "referenced_by_snapshot";
 
     /// <summary>A calculation model, or a dimension as a report dimension, that a report reads.</summary>
     public const string ReferencedByReport = "referenced_by_report";

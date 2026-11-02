@@ -9,10 +9,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.SystemTenants;
 
 /// <summary>
 /// Confirms that a tenant connection string is accepted only when the database it reaches belongs to the tenant, has the
-/// metadata schema version this API supports and holds exactly one active assumption set: a tenant-key mismatch, a wrong
-/// schema version, a missing or repeated active set, or an unreachable database becomes an error on <c>connectionString</c>
-/// that gives the reason, and a good connection passes. Every publish repoints the active set, so the API refuses a
-/// database without exactly one. On an edit, a supplied connection string is
+/// metadata schema version this API supports and holds exactly one live snapshot: a tenant-key mismatch, a wrong schema
+/// version, a missing or repeated live snapshot, or an unreachable database becomes an error on <c>connectionString</c> that
+/// gives the reason, and a good connection passes. Every edit writes the live snapshot, so the API refuses a database without
+/// exactly one. On an edit, a supplied connection string is
 /// verified against the route's tenant and an omitted one is not verified at all. The tenant directory is the engine's
 /// only routing table, so a wrong route would serve one tenant another tenant's metadata.
 /// </summary>
@@ -41,21 +41,21 @@ public sealed class TenantInputValidatorTests
     {
         var result = await ValidateCreateAsync(Reached(TenantId, 3));
 
-        Assert.Equal("The database has metadata schema version 3; this API requires version 18.", ConnectionStringError(result));
+        Assert.Equal("The database has metadata schema version 3; this API requires version 19.", ConnectionStringError(result));
     }
 
-    /// <summary>A database without an active assumption set, or with two, fails.</summary>
-    /// <param name="activeSets">The number of active assumption sets the database holds.</param>
+    /// <summary>A database without a live snapshot, or with two, fails, because every edit writes the one live snapshot.</summary>
+    /// <param name="liveSnapshots">The number of live snapshots the database holds.</param>
     /// <returns>A task that completes when the validation is checked.</returns>
     [Theory]
     [InlineData(0)]
     [InlineData(2)]
-    public async Task ActiveAssumptionSetsOtherThanOne_Fail(int activeSets)
+    public async Task LiveSnapshotsOtherThanOne_Fail(int liveSnapshots)
     {
-        var result = await ValidateCreateAsync(Reached(TenantId, TenantConnectionVerification.SupportedSchemaVersion) with { ActiveAssumptionSets = activeSets });
+        var result = await ValidateCreateAsync(Reached(TenantId, TenantConnectionVerification.SupportedSchemaVersion) with { LiveSnapshots = liveSnapshots });
 
         Assert.Equal(
-            $"The database has {activeSets} active assumption sets; it needs exactly one, which holds the default versions.",
+            $"The database has {liveSnapshots} live snapshots; it needs exactly one, which every edit writes.",
             ConnectionStringError(result));
     }
 
@@ -130,12 +130,12 @@ public sealed class TenantInputValidatorTests
         return validator.ValidateAsync(input, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>A probe that reached a database with the given tenant key and schema version, and one active assumption set.</summary>
+    /// <summary>A probe that reached a database with the given tenant key and schema version, and one live snapshot.</summary>
     private static TenantDatabaseProbe Reached(string tenantKey, int metadataSchemaVersion)
     {
         return new TenantDatabaseProbe
         {
-            ActiveAssumptionSets = 1,
+            LiveSnapshots = 1,
             DatabaseInfo = new DatabaseInfoRecord
             {
                 SingletonId = 1,

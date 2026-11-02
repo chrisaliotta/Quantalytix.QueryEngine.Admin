@@ -13,58 +13,56 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// </summary>
 public static class DatasetReadModels
 {
-    /// <summary>The identity of a dataset row.</summary>
+    /// <summary>The identity of a dataset row with a version's enabled flag.</summary>
     /// <param name="dataset">The row.</param>
+    /// <param name="version">The version shown.</param>
     /// <returns>The identity.</returns>
-    public static Dataset Identity(DatasetRecord dataset)
+    public static Dataset Identity(DatasetRecord dataset, DatasetVersionRecord version)
     {
         return new Dataset
         {
             Id = TemporaryIds.PresentStored(dataset.DatasetId),
             Key = dataset.DatasetKey,
             DisplayName = dataset.DisplayName,
-            IsEnabled = dataset.IsEnabled
+            IsEnabled = version.IsEnabled
         };
     }
 
     /// <summary>A list item.</summary>
     /// <param name="dataset">The dataset.</param>
-    /// <param name="versions">Its versions.</param>
-    /// <param name="releases">The release pins.</param>
+    /// <param name="versions">Its versions, the live one among them.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <param name="statistics">The source objects' statistics, by name.</param>
-    /// <returns>The list item, versions newest first.</returns>
+    /// <returns>The list item, the live version first and frozen versions newest first.</returns>
     public static DatasetListItem ListItem(
         DatasetRecord dataset,
         IEnumerable<DatasetVersionRecord> versions,
-        DatasetReleaseIndex releases,
+        long liveSnapshotId,
         IReadOnlyDictionary<string, DatasetSourceObjectStats> statistics)
     {
-        var newestFirst = versions.OrderByDescending(version => version.VersionNumber).ToList();
-        var active = releases.ActiveVersionOf(dataset.DatasetId);
+        var ordered = versions.OrderByDescending(version => version.SnapshotId == liveSnapshotId).ThenByDescending(version => version.CreatedAt).ToList();
+        var live = ordered[0];
         return new DatasetListItem(
-            Identity(dataset),
-            [.. newestFirst.Select(version => Summary(version, releases))],
-            active is { } activeId ? TemporaryIds.PresentStored(activeId) : null,
-            newestFirst.Count == 0 ? null : statistics.GetValueOrDefault(newestFirst[0].SourceObject));
+            Identity(dataset, live),
+            [.. ordered.Select(version => Summary(version, liveSnapshotId))],
+            TemporaryIds.PresentStored(live.DatasetVersionId),
+            statistics.GetValueOrDefault(live.SourceObject));
     }
 
     /// <summary>A version's summary.</summary>
     /// <param name="version">The version.</param>
-    /// <param name="releases">The release pins.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <returns>The summary.</returns>
-    public static DatasetVersionSummary Summary(DatasetVersionRecord version, DatasetReleaseIndex releases)
+    public static DatasetVersionSummary Summary(DatasetVersionRecord version, long liveSnapshotId)
     {
         return new DatasetVersionSummary
         {
             Id = TemporaryIds.PresentStored(version.DatasetVersionId),
             DatasetId = TemporaryIds.PresentStored(version.DatasetId),
-            VersionNumber = version.VersionNumber,
-            Status = version.Status,
+            SnapshotId = TemporaryIds.PresentStored(version.SnapshotId),
+            IsLive = version.SnapshotId == liveSnapshotId,
             SourceObject = version.SourceObject,
-            CreatedAt = version.CreatedAt,
-            PublishedAt = version.PublishedAt,
-            ClonedFromVersionId = version.ClonedFromDatasetVersionId is { } source ? TemporaryIds.PresentStored(source) : null,
-            Releases = releases.PinsOf(version.DatasetVersionId)
+            CreatedAt = version.CreatedAt
         };
     }
 
@@ -81,8 +79,8 @@ public static class DatasetReadModels
         var policies = snapshot.TimePolicies.ToDictionary(policy => policy.MeasureId);
         var view = views.GetValueOrDefault(MaterializedViewNames.ViewOf(snapshot.Version.SourceObject));
         return new DatasetVersion(
-            Summary(snapshot.Version, snapshot.Surroundings.Releases),
-            Identity(snapshot.Dataset),
+            Summary(snapshot.Version, snapshot.Surroundings.LiveSnapshotId),
+            Identity(snapshot.Dataset, snapshot.Version),
             Settings(snapshot.Version, presentId),
             [.. snapshot.Fields.OrderBy(field => field.FieldKey, StringComparer.OrdinalIgnoreCase).Select(field => Field(field, snapshot.Version.SourceObject, view, presentId))],
             [.. snapshot.Grains.OrderBy(grain => grain.GrainKey, StringComparer.OrdinalIgnoreCase).Select(grain => Grain(grain, snapshot.GrainFields, presentId))],

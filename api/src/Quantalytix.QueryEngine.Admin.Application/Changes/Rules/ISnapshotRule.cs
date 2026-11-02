@@ -3,8 +3,8 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 
 /// <summary>
-/// A semantic check of an aggregate held in memory, replacing <see cref="IVersionRule"/>'s check of a stored version by id: the
-/// same rule then checks a change set's pending result, a stored version before freeze or publish, and a read-only check.
+/// A semantic check of an aggregate held in memory: the same rule checks a change set's pending result, a stored version a restore
+/// would make live (<see cref="IVersionRules"/>), and a version's read model.
 /// Register with <see cref="ChangesServiceCollectionExtensions.AddSnapshotRule{TSnapshot, TRule}"/>; rules run in registration order.
 /// </summary>
 /// <typeparam name="TSnapshot">The aggregate's in-memory content.</typeparam>

@@ -43,7 +43,7 @@ internal static class LiveTenant
             .AddDimensionsFeature()
             .AddMappingsAndBridgesFeature()
             .AddBindingsAndMeasuresFeature()
-            .AddReleasesAndSystemFeature()
+            .AddSnapshotsFeature()
             .AddCalculationModelsAndReportsFeature()
             .AddSingleton<ITenantContext>(new FixedTenantContext(TenantId))
             .BuildServiceProvider();

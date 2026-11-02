@@ -1,24 +1,46 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>Copies a bridge version, its settings included, into the bridge's next draft, for the freeze.</summary>
-/// <param name="versions">Reads the version's bridge and settings.</param>
-/// <param name="drafts">Creates the draft as a copy.</param>
-public sealed class BridgeVersionCopier(ITableGateway<BridgeVersionRecord> versions, BridgeDrafts drafts) : ILivingVersionCopier
+/// <summary>Copies a bridge version, its settings and mappings included, into a snapshot, for capture and restore.</summary>
+/// <param name="versions">Reads the source and writes the copy's row.</param>
+/// <param name="mappings">Clears the mappings a copy replaces.</param>
+/// <param name="store">Copies the mappings.</param>
+/// <param name="ids">Allocates a new version's id.</param>
+/// <param name="time">Stamps the copy.</param>
+public sealed class BridgeVersionCopier(
+    ITableGateway<BridgeVersionRecord> versions,
+    ITableGateway<BridgeMappingRecord> mappings,
+    BridgeStore store,
+    IIdGenerator ids,
+    TimeProvider time) : IVersionCopier
 {
-    /// <summary><c>bridge_version</c>.</summary>
-    public string Kind => VersionKinds.BridgeVersion;
+    /// <summary><c>bridge</c>.</summary>
+    public string Kind => SnapshotKinds.Bridge;
 
-    /// <summary>Creates the bridge's next draft as a copy of a version.</summary>
-    /// <param name="sourceVersionId">The version to copy.</param>
+    /// <summary>Copies a version into a snapshot, as a new version or over another version of the bridge.</summary>
+    /// <param name="versionId">The version to copy.</param>
+    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
+    /// <param name="targetVersionId">The version whose settings and mappings the copy replaces, or null for a new version.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The new draft's id.</returns>
-    public async Task<long> CopyAsync(long sourceVersionId, CancellationToken cancellationToken)
+    /// <returns>The copy's id.</returns>
+    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { BridgeVersionId = sourceVersionId }, cancellationToken);
-        return (await drafts.CreateAsync(source.BridgeId, source.Cardinality, source.AllocationMode, sourceVersionId, cancellationToken)).BridgeVersionId;
+        var source = await versions.GetAsync(new { BridgeVersionId = versionId }, cancellationToken);
+        var copy = source with { BridgeVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
+        if (targetVersionId is { } target)
+        {
+            await mappings.DeleteAsync(new { BridgeVersionId = target }, cancellationToken);
+            await versions.UpdateAsync(copy, cancellationToken);
+        }
+        else
+        {
+            await versions.InsertAsync(copy, cancellationToken);
+        }
+
+        await store.CopyMappingsAsync(versionId, copy.BridgeVersionId, cancellationToken);
+        return copy.BridgeVersionId;
     }
 }

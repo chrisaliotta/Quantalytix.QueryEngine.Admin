@@ -5,15 +5,14 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// The report change-set aggregate (blueprint 16, OI-46): the report row, its rows (the report dimension's members, member options
-/// and overlay lines), sources with their report bridges' rules and left-out items, profiles, calculation dimensions, scenarios,
-/// scopes, columns and styles, saved together. Reports are not versioned: <see cref="ReportGateRule"/> refuses a change that leaves
-/// an enabled report breaking a rule. The commit writes the report's own rows first and the bridge sources' bridges and rules with
-/// the sources that own them (<see cref="ReportSourceWrites"/>), the report row last, and advances the semantic revision when the
-/// engine reads the report.
+/// The report change-set aggregate (blueprint 16, OI-46): the live report version row, its rows (the report dimension's members,
+/// member options and overlay lines), sources with their report bridges' rules and left-out items, profiles, calculation dimensions,
+/// scenarios, scopes, columns and styles, saved together. <see cref="ReportGateRule"/> refuses a change that leaves an enabled report
+/// breaking a rule. The commit writes the report's own rows first and the bridge sources' bridges and rules with the sources that own
+/// them (<see cref="ReportSourceWrites"/>), the version row last.
 /// </summary>
 /// <param name="loader">Reads the report.</param>
-/// <param name="reports">The report table.</param>
+/// <param name="versions">The report version table.</param>
 /// <param name="members">The report dimension's member table.</param>
 /// <param name="closure">The report dimension's closure table.</param>
 /// <param name="lines">The overlay line table.</param>
@@ -31,7 +30,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <param name="leftOut">The left-out item table.</param>
 public sealed class ReportAggregate(
     ReportSnapshotLoader loader,
-    ITableGateway<ReportRecord> reports,
+    ITableGateway<ReportVersionRecord> versions,
     ITableGateway<DimensionMemberRecord> members,
     ITableGateway<DimensionClosureRecord> closure,
     ITableGateway<ReportLineRecord> lines,
@@ -58,7 +57,7 @@ public sealed class ReportAggregate(
     /// <summary>The depth of the report dimension's closure, derived from its members.</summary>
     private const int ClosureDepth = 3;
 
-    /// <summary>Reads the report.</summary>
+    /// <summary>Reads the report's live version.</summary>
     /// <param name="aggregateId">The report.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The snapshot.</returns>
@@ -77,7 +76,7 @@ public sealed class ReportAggregate(
         return ReportEdits.Apply(snapshot, operation, context);
     }
 
-    /// <summary>Plans the row writes: content, then what hangs off sources and profiles, then the closure, the report row last.</summary>
+    /// <summary>Plans the row writes: content, then what hangs off sources and profiles, then the closure, the version row last.</summary>
     /// <param name="before">The report as stored.</param>
     /// <param name="after">The report with every operation applied.</param>
     /// <param name="plan">The plan.</param>
@@ -85,17 +84,17 @@ public sealed class ReportAggregate(
     {
         var stored = before.Content;
         var changed = after.Content;
-        if (stored.Report != changed.Report) plan.Update(reports, WritePlan.Root, changed.Report);
+        if (stored.Version != changed.Version) plan.Update(versions, WritePlan.Root, changed.Version);
         plan.Sync(members, ContentDepth, stored.Members, changed.Members, row => new { row.DimensionMemberId });
         plan.Sync(lines, ContentDepth, stored.Lines, changed.Lines, row => new { row.ReportLineId });
-        plan.Sync(options, ContentDepth, stored.MemberOptions, changed.MemberOptions, row => new { row.ReportId, row.MemberKey });
-        plan.Sync(styles, ContentDepth, stored.Styles, changed.Styles, row => new { row.ReportId, row.StyleKey });
+        plan.Sync(options, ContentDepth, stored.MemberOptions, changed.MemberOptions, row => new { row.ReportVersionId, row.MemberKey });
+        plan.Sync(styles, ContentDepth, stored.Styles, changed.Styles, row => new { row.ReportVersionId, row.StyleKey });
         plan.Sync(columns, ContentDepth, stored.Columns, changed.Columns, row => new { row.ReportColumnId });
         plan.Sync(profiles, ContentDepth, stored.Profiles, changed.Profiles, row => new { row.CalculationSourceProfileId });
         plan.Sync(dimensions, ContentDepth, stored.Dimensions, changed.Dimensions, row => new { row.CalculationDimensionId });
-        plan.Sync(scenarios, ContentDepth, stored.Scenarios, changed.Scenarios, row => new { row.ReportId, row.DimensionRoleId });
-        plan.Sync(scopes, ContentDepth, stored.Scopes, changed.Scopes, row => new { row.ReportId, row.VariableKey });
-        plan.Sync(rowParameters, ContentDepth, stored.RowParameters, changed.RowParameters, row => new { row.ReportId, row.RowKey, row.ParameterKey });
+        plan.Sync(scenarios, ContentDepth, stored.Scenarios, changed.Scenarios, row => new { row.ReportVersionId, row.DimensionRoleId });
+        plan.Sync(scopes, ContentDepth, stored.Scopes, changed.Scopes, row => new { row.ReportVersionId, row.VariableKey });
+        plan.Sync(rowParameters, ContentDepth, stored.RowParameters, changed.RowParameters, row => new { row.ReportVersionId, row.RowKey, row.ParameterKey });
         sources.Plan(before, after, ContentDepth, plan);
         plan.Sync(sourceVariables, DependentDepth, stored.SourceVariables, changed.SourceVariables, row => new { row.ReportSourceId, row.VariableKey });
         plan.Sync(picks, DependentDepth, stored.Picks, changed.Picks, row => new { row.CalculationSourceProfileId, row.VariableKey });
@@ -103,22 +102,6 @@ public sealed class ReportAggregate(
         if (Same(stored.Members, changed.Members)) return;
         plan.Delete(closure, ClosureDepth, new { after.Surroundings.DimensionVersionId });
         plan.Insert(closure, ClosureDepth, ClosureBuilder.ClosureOf(after.Surroundings.DimensionVersionId, changed.Members));
-    }
-
-    /// <summary>Whether the engine reads the change: any change to an enabled report.</summary>
-    /// <param name="before">The report as stored.</param>
-    /// <param name="after">The report with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(ReportSnapshot before, ReportSnapshot after)
-    {
-        var stored = before.Content;
-        var changed = after.Content;
-        return changed.Report.IsEnabled && (stored.Report != changed.Report
-            || !Same(stored.Members, changed.Members) || !Same(stored.Lines, changed.Lines) || !Same(stored.MemberOptions, changed.MemberOptions)
-            || !Same(stored.Styles, changed.Styles) || !Same(stored.Columns, changed.Columns) || !Same(stored.Profiles, changed.Profiles)
-            || !Same(stored.Picks, changed.Picks) || !Same(stored.Dimensions, changed.Dimensions) || !Same(stored.Scenarios, changed.Scenarios)
-            || !Same(stored.Scopes, changed.Scopes) || !Same(stored.RowParameters, changed.RowParameters) || !Same(stored.Sources, changed.Sources)
-            || !Same(stored.SourceVariables, changed.SourceVariables) || !Same(stored.SourceItems, changed.SourceItems) || !Same(stored.LeftOut, changed.LeftOut));
     }
 
     /// <summary>The document of a snapshot; the report change set allocates no temporary ids, so every id is stored.</summary>

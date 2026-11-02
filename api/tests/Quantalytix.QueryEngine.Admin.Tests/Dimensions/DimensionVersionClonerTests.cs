@@ -9,19 +9,17 @@ using static Quantalytix.QueryEngine.Admin.Tests.Dimensions.DimensionRows;
 namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
 /// <summary>
-/// Confirms that cloning a dimension version copies its content into the new draft with every internal reference remapped:
-/// levels; members with their parents and levels; and range bands with their members. A clone that pointed back into the
-/// source version would let edits to the draft corrupt published content.
+/// Confirms that cloning a dimension version, as creating a report dimension from a template and copying into a snapshot do, copies
+/// its content into the target version with every internal reference remapped: levels; members with their parents and levels;
+/// range bands with their members; and the closure of the copied tree. A clone that pointed back into the source version would let
+/// edits to live corrupt a frozen snapshot.
 /// </summary>
 public sealed class DimensionVersionClonerTests
 {
-    /// <summary>The cloned dimension.</summary>
-    private const long DimensionId = 1;
-
     /// <summary>The version being cloned.</summary>
     private const long SourceVersionId = 10;
 
-    /// <summary>The new draft version the clone fills.</summary>
+    /// <summary>The new version the clone fills.</summary>
     private const long TargetVersionId = 11;
 
     /// <summary>The levels table: two levels of the source.</summary>
@@ -41,8 +39,8 @@ public sealed class DimensionVersionClonerTests
         DecimalBand(SourceVersionId, 1, 201, null, 10m),
         DecimalBand(SourceVersionId, 2, 202, 10m, null));
 
-    /// <summary>The new draft version.</summary>
-    private readonly DimensionVersionRecord _target = Version(TargetVersionId, DimensionId, 3, PublicationStatuses.Draft);
+    /// <summary>The closure table, empty until the clone writes the target's.</summary>
+    private readonly InMemoryTableGateway<DimensionClosureRecord> _closure = new();
 
     /// <summary>Levels and members are copied under new IDs, and each copied member's parent and level are the copies of the originals.</summary>
     /// <returns>A task that completes when the clone is checked.</returns>
@@ -79,10 +77,27 @@ public sealed class DimensionVersionClonerTests
             bands);
     }
 
+    /// <summary>The target gets the closure of its copied tree, so the engine can group its members as soon as it is live.</summary>
+    /// <returns>A task that completes when the clone is checked.</returns>
+    [Fact]
+    public async Task Closure_IsWrittenForTheCopiedTree()
+    {
+        await CloneAsync();
+
+        var memberIds = _members.All.Where(member => member.DimensionVersionId == TargetVersionId).ToDictionary(member => member.MemberKey, member => member.DimensionMemberId);
+        (long Ancestor, long Descendant, int Depth)[] expected =
+        [
+            (memberIds["US"], memberIds["US"], 0), (memberIds["CA"], memberIds["CA"], 0), (memberIds["NY"], memberIds["NY"], 0),
+            (memberIds["US"], memberIds["CA"], 1), (memberIds["US"], memberIds["NY"], 1)
+        ];
+        Assert.Equal(expected.Order(), _closure.All.Select(row => (row.AncestorDimensionMemberId, row.DescendantDimensionMemberId, row.Depth)).Order());
+        Assert.All(_closure.All, row => Assert.Equal(TargetVersionId, row.DimensionVersionId));
+    }
+
     /// <summary>Clones the source into the target with this test's tables.</summary>
     private Task CloneAsync()
     {
-        var cloner = new DimensionVersionCloner(_levels, _members, _bands, new IdGenerator());
-        return cloner.CloneAsync(SourceVersionId, _target, TestContext.Current.CancellationToken);
+        var cloner = new DimensionVersionCloner(_levels, _members, _bands, _closure, new IdGenerator());
+        return cloner.CloneAsync(SourceVersionId, TargetVersionId, TestContext.Current.CancellationToken);
     }
 }

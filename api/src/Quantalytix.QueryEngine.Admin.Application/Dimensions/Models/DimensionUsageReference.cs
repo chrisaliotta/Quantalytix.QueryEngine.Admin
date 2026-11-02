@@ -22,15 +22,7 @@ public sealed record DimensionUsageReference
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? MemberKeys { get; init; }
 
-    /// <summary>The version number an assumption set pins; omitted for other kinds.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? PinsVersion { get; init; }
-
-    /// <summary>The object as blockers name it, such as <c>'loans.details' v3</c>; omitted when the name says it.</summary>
+    /// <summary>The object as blockers name it, such as <c>'loans.details'</c>; omitted when the name says it.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Label { get; init; }
-
-    /// <summary>Whether a historical assumption set pins a version; the active set's pins never block a delete.</summary>
-    [JsonIgnore]
-    public bool IsHistoricalPin { get; init; }
 }

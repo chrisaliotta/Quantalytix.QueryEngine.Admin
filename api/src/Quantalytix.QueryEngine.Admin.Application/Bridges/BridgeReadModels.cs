@@ -1,7 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Mappings;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
@@ -16,20 +15,23 @@ public static class BridgeReadModels
     /// <param name="owner">The report source of a report bridge; null for an analytical one.</param>
     /// <param name="source">The source dimension.</param>
     /// <param name="target">The target dimension.</param>
-    /// <param name="versions">The bridge's versions.</param>
+    /// <param name="versions">The bridge's versions, the live one among them.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <param name="mappingCounts">The mapping count of each version, by version id.</param>
-    /// <param name="bindings">The bindings that remap through it.</param>
+    /// <param name="bindings">The live bindings that remap through it.</param>
     /// <returns>The list item.</returns>
     public static BridgeListItem ListItem(
         BridgeRecord bridge,
         BridgeOwner? owner,
         MappingDimensionRef source,
         MappingDimensionRef target,
-        IReadOnlyList<BridgeVersionRecord> versions,
+        IEnumerable<BridgeVersionRecord> versions,
+        long liveSnapshotId,
         IReadOnlyDictionary<long, int> mappingCounts,
         IReadOnlyList<MappingBindingUsage> bindings)
     {
-        var ordered = versions.OrderBy(version => version.VersionNumber).ToList();
+        var ordered = versions.OrderByDescending(version => version.SnapshotId == liveSnapshotId).ThenByDescending(version => version.CreatedAt).ToList();
+        var live = ordered[0];
         return new BridgeListItem
         {
             Id = bridge.BridgeId,
@@ -37,33 +39,34 @@ public static class BridgeReadModels
             DisplayName = bridge.DisplayName,
             SourceDimensionId = bridge.SourceDimensionId,
             TargetDimensionId = bridge.TargetDimensionId,
-            IsEnabled = bridge.IsEnabled,
+            IsEnabled = live.IsEnabled,
             Owner = owner,
             Source = source,
             Target = target,
-            Versions = [.. ordered.Select(version => Summary(version, mappingCounts[version.BridgeVersionId]))],
-            PublishedMappingCount = mappingCounts[ordered.Single(version => version.Status == PublicationStatuses.Published).BridgeVersionId],
+            Versions = [.. ordered.Select(version => Summary(version, liveSnapshotId, mappingCounts[version.BridgeVersionId]))],
+            LiveVersionId = live.BridgeVersionId,
+            LiveMappingCount = mappingCounts[live.BridgeVersionId],
             Bindings = bindings
         };
     }
 
-    /// <summary>The detail of a snapshot's bridge, with the snapshot's pending identity, settings and mapping count.</summary>
+    /// <summary>The list item of a snapshot's bridge, with the snapshot's pending identity, settings and mapping count.</summary>
     /// <param name="snapshot">The aggregate.</param>
-    /// <returns>The detail.</returns>
-    public static BridgeDetail Detail(BridgeSnapshot snapshot)
+    /// <returns>The list item.</returns>
+    public static BridgeListItem Detail(BridgeSnapshot snapshot)
     {
         var surroundings = snapshot.Surroundings;
         var versions = surroundings.Versions.Select(version => version.BridgeVersionId == snapshot.VersionId ? snapshot.Version : version).ToList();
         var mappingCounts = new Dictionary<long, int>(surroundings.MappingCounts) { [snapshot.VersionId] = snapshot.Mappings.Count };
-        var item = ListItem(
+        return ListItem(
             snapshot.Bridge,
             surroundings.Owner,
-            MappingReadModels.DimensionRef(surroundings.Source, surroundings.SourcePublished?.Version),
-            MappingReadModels.DimensionRef(surroundings.Target, surroundings.TargetPublished?.Version),
+            MappingReadModels.DimensionRef(surroundings.Source, surroundings.SourceKeys?.Version),
+            MappingReadModels.DimensionRef(surroundings.Target, surroundings.TargetKeys?.Version),
             versions,
+            surroundings.LiveSnapshotId,
             mappingCounts,
             surroundings.Bindings);
-        return new BridgeDetail(item, surroundings.Pins);
     }
 
     /// <summary>The content of a snapshot's version.</summary>
@@ -80,14 +83,12 @@ public static class BridgeReadModels
             {
                 Id = version.BridgeVersionId,
                 BridgeId = version.BridgeId,
-                VersionNumber = version.VersionNumber,
-                Status = version.Status,
+                SnapshotId = version.SnapshotId,
+                IsLive = snapshot.IsLive,
                 Cardinality = version.Cardinality,
                 AllocationMode = version.AllocationMode,
-                CreatedAt = version.CreatedAt,
-                PublishedAt = version.PublishedAt,
-                RetiredAt = version.RetiredAt,
-                FreezeNote = version.FreezeNote
+                IsEnabled = version.IsEnabled,
+                CreatedAt = version.CreatedAt
             },
             Mappings =
             [
@@ -133,21 +134,19 @@ public static class BridgeReadModels
 
     /// <summary>A version summary.</summary>
     /// <param name="version">The version.</param>
+    /// <param name="liveSnapshotId">The live snapshot.</param>
     /// <param name="mappingCount">Its mapping count.</param>
     /// <returns>The summary.</returns>
-    public static BridgeVersionSummary Summary(BridgeVersionRecord version, int mappingCount)
+    public static BridgeVersionSummary Summary(BridgeVersionRecord version, long liveSnapshotId, int mappingCount)
     {
         return new BridgeVersionSummary
         {
             Id = version.BridgeVersionId,
-            VersionNumber = version.VersionNumber,
-            Status = version.Status,
+            SnapshotId = version.SnapshotId,
+            IsLive = version.SnapshotId == liveSnapshotId,
             Cardinality = version.Cardinality,
             AllocationMode = version.AllocationMode,
             CreatedAt = version.CreatedAt,
-            PublishedAt = version.PublishedAt,
-            RetiredAt = version.RetiredAt,
-            FreezeNote = version.FreezeNote,
             MappingCount = mappingCount
         };
     }

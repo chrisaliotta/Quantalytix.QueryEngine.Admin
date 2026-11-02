@@ -4,14 +4,14 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
-/// A dataset version rule over a snapshot (blueprint 11, Rule codes). Every rule is a publication rule: a draft is work in progress,
-/// so a finding blocks validate and publish and shows in the preview without blocking a save. The snapshot carries what the rules
-/// read outside the version, so they read nothing.
+/// A dataset version rule over a snapshot (blueprint 11, Rule codes). Every rule is a commit rule: the live version is what the engine
+/// reads, so a finding shows in the preview and refuses the commit. The snapshot carries what the rules read outside the version, so
+/// they read nothing.
 /// </summary>
 public abstract class DatasetRule : ISnapshotRule<DatasetSnapshot>
 {
-    /// <summary>Publication: findings block leaving draft.</summary>
-    public RuleStage Stage => RuleStage.Publication;
+    /// <summary>Commit: findings refuse the save.</summary>
+    public RuleStage Stage => RuleStage.Commit;
 
     /// <summary>The rule code its violations carry.</summary>
     protected abstract string Code { get; }

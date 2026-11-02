@@ -3,15 +3,16 @@
 ## Purpose and sources
 
 A calculation model holds the variables, calculated measures, parameters and attributions that reports over it read.
-Models are not versioned: every enabled report reads the model as it stands, so every write is checked against the
-model's own rules and against every enabled report over it before it is made.
+A model has one version per snapshot ([14](14-snapshots.md)). Every enabled live report reads the live model version as it
+stands, so every write is checked against the model's own rules and against every enabled live report over it before it
+is made.
 
 Sources: `web/src/lib/model/` (`types.ts`, `store.tsx`, `rules.ts`, `data.ts`) and `components/models/*`; current
 `CalculationModelsController`, `VariablesController`, `CalculatedMeasuresController`,
 `MetricAttributionsController`, `ModelParametersController`, `A/CalculationModels/ModelChanges.cs`; schema
 `calculation/`; engine README (formula language 1.0–1.2, attribution).
 
-`web` has no port for models; its React store holds the models, a draft per model, and runs the rules in the browser.
+`web` has no port for models; its React store holds the models, a pending copy per model, and runs the rules in the browser.
 This file defines the contract.
 
 ## Domain rules
@@ -24,8 +25,8 @@ This file defines the contract.
 | C4 | Text only in text comparisons or as the `YEARFRAC` argument; the argument is a convention literal or a text parameter whose allowed values are all conventions. | §18 rule 9 |
 | C5 | A parameter sets exactly the default its type names; only text parameters have allowed values, and they include the default; a parameter that formulas or row values use is never deleted or re-keyed. | §18 rule 8 |
 | C6 | An attribution names a metric of its model; its expression reads only model keys and day parameters; drivers (at most 8, never `residual`) cover each reference exactly once; its weight variable is a variable of the model; a variable needs an expression. | §18 rule 6; engine A.7 |
-| C7 | Every write is applied in memory and refused, writing nothing, when it breaks a model rule or an enabled report over the model. | Schema doc §15–16; API model gate |
-| C8 | A model is deleted only when no report reads it. | API |
+| C7 | Every write to the live version is applied in memory and refused, writing nothing, when it breaks a model rule or an enabled live report over the model. | Schema doc §15–16; API model gate |
+| C8 | A model is deleted only when no report reads it and no frozen snapshot holds a version of it. | API; plan |
 | C9 | `model_key` is fixed. | Agreed (OI-45) |
 
 ## Frontend contract (Agreed, new `lib/models/contract.ts`)
@@ -139,14 +140,14 @@ already matches.
 ## Refusal semantics (Agreed, OI-42)
 
 `web` refuses an edit at once, before it is staged, when it **introduces** a violation (the store compares rule
-results before and after the edit) and shows "This change was refused". Saving the draft is then always accepted. The
+results before and after the edit) and shows "This change was refused". Saving the pending changes is then always accepted. The
 current API refuses each individual write that breaks a rule.
 
 Preview implements the refusal. Each edit posts the operations so far to
 `calculation-models/{id}/changes/preview`; the server applies them and answers `422` with `violations` when the last
 operation introduces a violation of a model rule or a report rule of any enabled report over the model; the staged port
-drops the operation and the UI shows `RefusalAlert`. Commit re-runs the same gate. Violations that already existed
-before the change set opened do not refuse new edits (the `web` behavior), but are listed in preview `violations`.
+drops the operation and the UI shows `RefusalAlert`. Commit re-runs the same gate and the commit rules. Because every commit and every restore leaves the live model valid,
+there are no older violations for a change set to inherit.
 
 This makes the two report-side refusals `web` fakes against the open report (`parameter_filter_clash`,
 `parameter_allowed_values`) real, and checks every enabled report, not just the open one.
@@ -185,7 +186,7 @@ type ModelOperation =
   | { op: 'clearAttribution'; metricKey: string }
 ```
 
-A commit that changes a model read by an enabled report advances `semantic_revision`.
+A commit that changes a live model version read by an enabled report advances `semantic_revision`.
 
 ## Rule codes
 
@@ -202,12 +203,12 @@ Mapping from `web` (confirm each against the API's rule implementations during t
 
 | Contract | Table |
 |---|---|
-| `CalcModel` | `qe_calculation_model` |
-| `ModelVariable` | `qe_variable` |
+| `CalcModel` | `qe_calculation_model` + its live `qe_calculation_model_version` |
+| `ModelVariable` | `qe_variable` (keyed by `calculation_model_version_id`) |
 | `ModelMeasure` | `qe_calculated_measure` (`expression_text` → `formula`) |
 | `ModelParameter` | `qe_model_parameter` |
 | `Attribution` | `qe_metric_attribution` + `qe_metric_attribution_driver` (`sort_order` = position, `input_keys_json` = `inputs`) |
-| `usedBy` | `qe_report.calculation_model_id` |
+| `usedBy` | `qe_report_version.calculation_model_id` in the live snapshot |
 
 ## Deltas from the current API
 

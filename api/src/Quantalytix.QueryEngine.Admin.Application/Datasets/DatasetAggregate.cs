@@ -7,9 +7,8 @@ using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
-/// The dataset version change-set aggregate (blueprint 11): one version's settings, fields, grains, bindings and measures, and its
-/// dataset's identity, saved together. Content changes need a draft (D3); a version that is not a draft accepts only
-/// <c>updateDataset</c>. Only the identity is engine-visible: queries read published versions, which never change (D1, D2).
+/// The dataset version change-set aggregate (blueprint 11): the live version's settings, fields, grains, bindings and measures, and
+/// its dataset's identity, saved together. Only the live version changes; a frozen version refuses every operation.
 /// </summary>
 public sealed class DatasetAggregate(
     DatasetSnapshotLoader loader,
@@ -54,17 +53,15 @@ public sealed class DatasetAggregate(
     /// <returns>The aggregate with the operation applied.</returns>
     public DatasetSnapshot Apply(DatasetSnapshot snapshot, DatasetOperation operation, ChangeContext context)
     {
-        if (operation is DatasetUpdateDatasetOperation update) return DatasetSettingsEdits.UpdateDataset(snapshot, update);
-        if (!snapshot.IsDraft)
+        if (!snapshot.IsLive)
         {
-            context.Conflict(
-                DatasetRefusals.WrongStatusTitle,
-                $"Version v{snapshot.Version.VersionNumber} is {snapshot.Version.Status}; only a draft's content changes, so clone it to make changes.");
+            context.Conflict(DatasetRefusals.FrozenTitle, $"Version {snapshot.VersionId} belongs to a frozen snapshot; only the live version changes.");
             return snapshot;
         }
 
         return operation switch
         {
+            DatasetUpdateDatasetOperation update => DatasetSettingsEdits.UpdateDataset(snapshot, update),
             DatasetSaveSettingsOperation save => DatasetSettingsEdits.SaveSettings(snapshot, save, context),
             DatasetRenameSourceTableOperation rename => DatasetSettingsEdits.RenameSourceTable(snapshot, rename, context),
             DatasetSaveFieldOperation save => DatasetFieldEdits.Save(snapshot, save, context),
@@ -99,15 +96,6 @@ public sealed class DatasetAggregate(
         plan.Sync(dependencies, ItemReferenceDepth, before.Dependencies, after.Dependencies, row => new { row.MeasureId, row.DependencyMeasureId });
         plan.Sync(timeBindings, BindingReferenceDepth, before.TimeBindings, after.TimeBindings, row => new { row.DimensionBindingId });
         plan.Sync(timePolicies, BindingReferenceDepth, before.TimePolicies, after.TimePolicies, row => new { row.MeasureId });
-    }
-
-    /// <summary>Whether the engine reads the change: only the dataset identity, since draft content reaches no query.</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(DatasetSnapshot before, DatasetSnapshot after)
-    {
-        return before.Dataset != after.Dataset;
     }
 
     /// <summary>The version content of a snapshot, its materialized fields with their view's status.</summary>

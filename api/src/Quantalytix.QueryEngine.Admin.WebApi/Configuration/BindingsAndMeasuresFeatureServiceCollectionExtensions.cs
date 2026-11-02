@@ -8,7 +8,7 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 /// </summary>
 public static class BindingsAndMeasuresFeatureServiceCollectionExtensions
 {
-    /// <summary>Registers the binding namer the dimension, mapping, bridge and release slices share, scoped to the request.</summary>
+    /// <summary>Registers the binding namer the dimension, mapping and bridge slices share, scoped to the request.</summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddBindingsAndMeasuresFeature(this IServiceCollection services)

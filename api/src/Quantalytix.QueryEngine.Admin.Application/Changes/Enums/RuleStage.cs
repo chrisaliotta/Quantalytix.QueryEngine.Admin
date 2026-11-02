@@ -7,15 +7,8 @@ public enum RuleStage
     Gate,
 
     /// <summary>
-    /// A publication rule: it blocks validate, publish and freeze; a change set's preview reports its violations as findings that
-    /// do not block saving.
-    /// </summary>
-    Publication,
-
-    /// <summary>
-    /// A commit rule, for aggregates whose saved content is live at once (mapping sets and bridges, B11): a preview reports its
-    /// violations as findings, like a publication rule, so the editor can flag them, and a commit whose result breaks it is refused
-    /// with 422 and writes nothing.
+    /// A commit rule: saved content is live at once, so a preview reports its violations as findings the editor flags, and a commit
+    /// whose result breaks it is refused with 422 and writes nothing. Restore runs it on every version it would make live.
     /// </summary>
     Commit
 }

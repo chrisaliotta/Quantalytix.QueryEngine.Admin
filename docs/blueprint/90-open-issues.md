@@ -1,14 +1,14 @@
 # 90 Open issues
 
 Every disagreement or uncertainty of intent found while writing the blueprint. Each entry lists the sources that
-disagreed, the options, the recommendation, and the decision (all decided 2026-10-26 and applied across the blueprint). Decisions are recorded here and in the [README decision log](README.md#decision-log).
+disagreed, the options, the recommendation, and the decision (all decided 2026-10-26 and applied across the blueprint). The snapshot versioning decision of 2026-11-02
+supersedes the entries marked so ([14](14-snapshots.md)). Decisions are recorded here and in the [README decision log](README.md#decision-log).
 
 Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Quantalytix.QueryEngine.Admin/api/`,
 `concept` = [dimensions concept](../concepts/dimensions.md), `dim brief` =
 [dimension manager brief](../requirements/dimension-manager-prototype.md), `map brief` =
 [mappings and bridges brief](../requirements/mappings-and-bridges-prototype.md), `map rev2` =
-[`web/docs/mappings-and-bridges.md`](../../web/docs/mappings-and-bridges.md), `rel brief` =
-[releases brief](../requirements/releases-and-assumption-sets-prototype.md), `schema doc` =
+[`web/docs/mappings-and-bridges.md`](../../web/docs/mappings-and-bridges.md), `schema doc` =
 `database/srdb_ebm/docs/schema/Query_Engine_Database_Schema.md`.
 
 ## Index
@@ -19,7 +19,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 | Dimensions | [14](#oi-14) [15](#oi-15) [16](#oi-16) [17](#oi-17) [18](#oi-18) [19](#oi-19) [20](#oi-20) [21](#oi-21) [22](#oi-22) [23](#oi-23) [24](#oi-24) |
 | Mapping sets and bridges | [25](#oi-25) [26](#oi-26) [27](#oi-27) [28](#oi-28) [29](#oi-29) [30](#oi-30) [31](#oi-31) |
 | Datasets | [32](#oi-32) [33](#oi-33) [34](#oi-34) [35](#oi-35) [36](#oi-36) |
-| Releases and assumption sets | [37](#oi-37) [38](#oi-38) [39](#oi-39) [40](#oi-40) [41](#oi-41) |
+| Releases and assumption sets (withdrawn) | [37](#oi-37) [38](#oi-38) [39](#oi-39) [40](#oi-40) [41](#oi-41) |
 | Calculation models | [42](#oi-42) [43](#oi-43) [44](#oi-44) [45](#oi-45) |
 | Reports | [46](#oi-46) [47](#oi-47) [48](#oi-48) [49](#oi-49) [50](#oi-50) [51](#oi-51) [52](#oi-52) [53](#oi-53) [54](#oi-54) [55](#oi-55) [56](#oi-56) |
 
@@ -183,6 +183,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
   `retiredAt` with the successor's `published_at`; drop from the UI.
 - **Recommendation:** derive `supersededBy` and `retiredAt` now; add `created_at` in the next schema revision.
 - **Status:** Decided 2026-10-26 (differs from the recommendation). Add `created_at`, `retired_at` and `cloned_from_dataset_version_id` columns now (SG-04).
+  **Amended 2026-11-02:** snapshots keep only `created_at`; `retired_at`, `supersededBy` and the clone origin are dropped.
 
 <a id="oi-13"></a>
 ### OI-13 One tenant catalog
@@ -208,27 +209,15 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 <a id="oi-14"></a>
 ### OI-14 Live-and-frozen versus draft-and-publish
 
-- **Statement:** `web/lib/dimensions/contract.ts` 364–375: one live version edited in place plus frozen snapshots, "no
-  drafts"; `freezeVersion` clones the live version into a new live one. The concept doc §6.4, the dim brief §6.2 (draft
-  / validated / published bar, "only one draft") and the API (draft → validated → published, publish retires) keep
-  drafts. The mappings prototype in `web` keeps drafts too, so dimensions and mappings now behave differently.
-- **Options:**
-  1. `web` model on the living lifecycle: v1 created published; freeze = clone to n+1 published and retire n
-     ([12](12-dimensions.md#the-version-model-agreed-oi-14)); mappings keep drafts.
-  2. `web` model for dimensions, mappings and bridges alike.
-  3. Draft model everywhere (change the `web` dimension screens back to the brief).
-- **Recommendation:** option 1. It is what users of `web` see, needs no schema change except the note (OI-15), and
-  mapping sets genuinely need drafts for full re-mappings.
-- **Status:** Decided 2026-10-26 (differs from the recommendation). Option 2: live-and-frozen model for dimensions, mapping sets and bridges alike; no drafts for living kinds.
+- **Status:** **Superseded 2026-11-02** by snapshot versioning ([14](14-snapshots.md)). Every versioned kind has one version per snapshot: the live version is edited in place and
+  validated on every commit, and frozen snapshots hold read-only copies. There are no drafts, no publishing and no
+  per-object freeze ([12](12-dimensions.md#the-version-model-agreed-oi-14)).
 
 <a id="oi-15"></a>
 ### OI-15 Freeze note
 
-- **Statement:** `freezeVersion(versionId, note)` records why a version was frozen ("FY26 close"); no column holds it.
-- **Options:** `qe_dimension_version.freeze_note` ([SG-05](91-schema-gaps.md#sg-05-freeze-note)); drop the note;
-  steer users to capture an assumption set (which has a name and description) instead.
-- **Recommendation:** add the column; freezing is often paired with a capture, but not always.
-- **Status:** Decided 2026-10-26. Add `qe_dimension_version.freeze_note` (SG-05).
+- **Status:** **Superseded 2026-11-02** by snapshot versioning ([14](14-snapshots.md)). There is no per-object freeze; a snapshot's display name and description say what a capture
+  recorded, and `freeze_note` is dropped.
 
 <a id="oi-16"></a>
 ### OI-16 Dimension profiles, edit policy and visibility
@@ -248,12 +237,8 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 <a id="oi-17"></a>
 ### OI-17 Deleting validated versions, retiring by hand, reopening
 
-- **Statement:** Concept §6.4/§6.6: only drafts are deleted; a published version is never retired by hand. Dim brief
-  §6.2 offers "validated: Publish, Delete". Concept §6.1 lists `retired` as an accepted status value. Releases define
-  validated → draft; living kinds do not say. `web` mappings has `reopen*Version`.
-- **Recommendation:** delete drafts and validated versions (a validated version was never live); never retire living
-  versions by hand; allow validated → draft (`reopen`) for every kind with drafts.
-- **Status:** Decided 2026-10-26. Delete drafts and validated versions; never retire living versions by hand; validated -> draft (reopen) for every kind with drafts (datasets and releases, given OI-14).
+- **Status:** **Superseded 2026-11-02** by snapshot versioning ([14](14-snapshots.md)). Versions have no status. A version is deleted only with its snapshot, or by a restore that
+  removes an identity the restored snapshot lacks.
 
 <a id="oi-18"></a>
 ### OI-18 Member property schema format
@@ -304,11 +289,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 <a id="oi-23"></a>
 ### OI-23 One draft at a time
 
-- **Statement:** The dim brief, map brief and map rev2 allow one draft per identity; the schema and API do not enforce
-  it. `web` datasets do not state it.
-- **Recommendation:** enforce one open (draft or validated) version per identity for mapping sets, bridges and dataset
-  versions; 409 on a second `createDraft`.
-- **Status:** Decided 2026-10-26. Enforce one open (draft or validated) dataset version per dataset; releases unrestricted.
+- **Status:** **Superseded 2026-11-02** by snapshot versioning ([14](14-snapshots.md)). An identity has at most one version per snapshot, and only the live one is edited.
 
 <a id="oi-24"></a>
 ### OI-24 How a locked system dimension changes
@@ -338,6 +319,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 - **Recommendation:** draft only. Changing allocation semantics under live queries is a different bridge, so it
   should go through a new version and publish.
 - **Status:** Decided 2026-10-26 (differs from the recommendation). Cardinality and allocation editable in place on the live version like any other edit.
+  Still holds under snapshots: capture a snapshot first to keep the old semantics for backtests.
 
 <a id="oi-27"></a>
 ### OI-27 A new bridge's first version
@@ -345,7 +327,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 - **Statement:** Map brief B5.2: a bridge starts without a version. Map rev2: an empty `many_to_one` / `none` draft v1
   is created at once. The API creates none.
 - **Recommendation:** create draft v1 at once (rev2), and the same for mapping sets.
-- **Status:** Decided 2026-10-26. Created at once as an empty live v1 (`many_to_one` / `none` for bridges); same for mapping sets.
+- **Status:** Decided 2026-10-26. Created at once as an empty live version (`many_to_one` / `none` for bridges); same for mapping sets.
 
 <a id="oi-28"></a>
 ### OI-28 `descendants` rules on analytical bridges
@@ -372,11 +354,8 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 <a id="oi-30"></a>
 ### OI-30 Check versus validate
 
-- **Statement:** `web` mappings has both `check*Version` (read-only) and `validate*Version` (transition); dimensions
-  has only `checkVersion`; the API has `POST versions/{kind}/{id}/validation` (read-only) and the status endpoint.
-- **Recommendation:** `check` = read-only rule run on any version; `validate` = draft → validated transition, for kinds
-  with drafts.
-- **Status:** Decided 2026-10-26. `check` = read-only rule run on any version; `validate` = draft -> validated, datasets and releases only.
+- **Status:** **Superseded 2026-11-02** by snapshot versioning ([14](14-snapshots.md)). Every commit runs every rule and the preview reports findings, so neither `check` nor
+  `validate` endpoints remain.
 
 <a id="oi-31"></a>
 ### OI-31 Report bridge owner shape
@@ -414,9 +393,10 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
   (prefix) instead of a registry; drop managed tables from scope.
 - **Recommendation:** registry table; DDL only on registered objects; rename allowed only while no published version
   reads it.
-- **Status:** Decided 2026-10-26. Managed-object registry (SG-08); DDL only on registered objects; rename only while no published version reads it.
+- **Status:** Decided 2026-10-26. Managed-object registry (SG-08); DDL only on registered objects.
+  **Amended 2026-11-02:** no rename or drop of a table or column that any dataset version, live or frozen, reads.
 - **Follow-up (dataset delete):** whether deleting a dataset drops the managed table it was created over. Decided
-  2026-10-27 by the user: when the dataset's versions read a registered managed table that no version of another dataset
+  2026-10-27 by the user: when the dataset's live version reads a registered managed table that no version of another dataset
   reads, the delete drops the table and the materialized view the API defined over it, and deletes its
   `qe_managed_source_object` row. The drops run as the delete's write-plan schema statements, view before table, and only
   when the delete check passes. The delete check's contract is unchanged; `web`'s confirmation names the table.
@@ -445,48 +425,37 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 - **Recommendation:** fixed; remove from the patch.
 - **Status:** Decided 2026-10-26. Fixed after creation; removed from the patch.
 
-## Releases and assumption sets
+## Releases and assumption sets (withdrawn)
 
 <a id="oi-37"></a>
 ### OI-37 Checking an unsaved manifest
 
-- **Statement:** `checkRelease(id, manifest?)` and `diffReleases(from, to, toManifest?)` run over a draft's unsaved
-  manifest (`CheckReport.unsaved`). The API checks saved state only.
-- **Recommendation:** release change-set preview returns the check report and the diff for the pending manifest.
-- **Status:** Decided 2026-10-26. Release change-set preview returns the check report and diff for the pending manifest.
+- **Status:** Withdrawn 2026-11-02. Snapshots replace releases and assumption sets ([14](14-snapshots.md)); the
+  snapshot read models are specified there.
 
 <a id="oi-38"></a>
 ### OI-38 Derived release and set read models
 
-- **Statement:** `web` needs `ReleaseDiff` with `readBy`, `diffVsActive`, `SetComparison`, `CapturePreview`, pin
-  `state`, `livePins`, `changedSinceCapture` and per-report `Readiness`. None exist in the API.
-- **Recommendation:** compute them server-side as specified in
-  [14](14-releases-and-assumption-sets.md#derived-read-models-agreed-oi-38).
-- **Status:** Decided 2026-10-26. Compute all derived read models server-side as specified in doc 14.
+- **Status:** Withdrawn 2026-11-02. Snapshots replace releases and assumption sets ([14](14-snapshots.md)); the
+  snapshot read models are specified there.
 
 <a id="oi-39"></a>
 ### OI-39 Release display name
 
-- **Statement:** `web/lib/datasets/contract.ts` `Release.displayName`; no column (`qe_semantic_release` has a key only);
-  the releases contract has none.
-- **Recommendation:** drop it; show the key.
-- **Status:** Decided 2026-10-26. Dropped; show the key.
+- **Status:** Withdrawn 2026-11-02. Snapshots replace releases and assumption sets ([14](14-snapshots.md)); the
+  snapshot read models are specified there.
 
 <a id="oi-40"></a>
 ### OI-40 Activation history
 
-- **Statement:** The rel brief shows no activation date because none is recorded; rollback is "activate an older
-  release". Nothing records who activated what, when.
-- **Options:** activation log table ([SG-09](91-schema-gaps.md#sg-09-release-activation-log)); none.
-- **Recommendation:** add the log; it answers "what was live on date X", which historical sets also rely on.
-- **Status:** Decided 2026-10-26. Add an activation log table (SG-09).
+- **Status:** Withdrawn 2026-11-02. Snapshots replace releases and assumption sets ([14](14-snapshots.md)); the
+  snapshot read models are specified there.
 
 <a id="oi-41"></a>
 ### OI-41 Release content hash
 
-- **Statement:** `qe_semantic_release.content_hash` exists; no document says who computes it or what it covers.
-- **Recommendation:** compute on publish over the sorted manifest; show it on the release page.
-- **Status:** Decided 2026-10-26. Compute on publish over the sorted manifest; show on the release page.
+- **Status:** Withdrawn 2026-11-02. Snapshots replace releases and assumption sets ([14](14-snapshots.md)); the
+  snapshot read models are specified there.
 
 ## Calculation models
 
@@ -514,7 +483,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 
 - **Statement:** `web` reads a static `reportRefs` list unrelated to the report library.
 - **Recommendation:** `usedBy` computed from `qe_report.calculation_model_id` in model read models.
-- **Status:** Decided 2026-10-26. `usedBy` computed from `qe_report.calculation_model_id`.
+- **Status:** Decided 2026-10-26. `usedBy` computed from the report versions' `calculation_model_id` in the live snapshot.
 
 <a id="oi-45"></a>
 ### OI-45 Model creation and keys

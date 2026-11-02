@@ -9,15 +9,16 @@ using static Quantalytix.QueryEngine.Admin.Tests.Datasets.DatasetInputs;
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
-/// Confirms the dataset version change set the dataset editor saves through (blueprint 11, OI-01): edits apply to a draft in memory,
-/// a preview names what it creates by the client's temporary ids, a commit writes the rows and maps the ids, a version that is not a
-/// draft takes identity edits only (D3), keys are fixed and unique (D4), deletes are refused while an item is read by id (OI-35),
-/// managed tables take new columns and renames before the rows are written (OI-33), and publication findings track pending edits.
+/// Confirms the dataset version change set the dataset editor saves through (blueprint 11, OI-01): edits apply to the live version in
+/// memory, a preview names what it creates by the client's temporary ids, a commit writes the rows, maps the ids and advances the
+/// semantic revision, a frozen version takes no edit, keys are fixed and unique (D4), deletes are refused while an item is read by id
+/// (OI-35), managed tables take new columns and renames before the rows are written (OI-33), and commit findings track pending edits
+/// and refuse the commit.
 /// </summary>
 public sealed class DatasetChangeSetTests
 {
-    /// <summary>The draft as operations carry its ids.</summary>
-    private const long Draft = DatasetFixture.DraftVersionId;
+    /// <summary>The live version as operations carry its ids.</summary>
+    private const long Live = DatasetFixture.LiveVersionId;
 
     /// <summary>The tables and services.</summary>
     private readonly DatasetFixture _fixture = new();
@@ -30,7 +31,7 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task Preview_PresentsCreatedItemsByTemporaryId()
     {
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
 
         Assert.True(outcome.Succeeded);
         Assert.Equal("tmp:balance", Assert.Single(outcome.Value.State.Fields).Id);
@@ -39,40 +40,39 @@ public sealed class DatasetChangeSetTests
     }
 
     /// <summary>
-    /// A commit writes the field and the grain component with real ids, answers the temporary-to-real map, and leaves the semantic
-    /// revision alone: no query reads a draft.
+    /// A commit writes the field and the grain component with real ids, answers the temporary-to-real map, and advances the semantic
+    /// revision once: the engine reads the live version at once.
     /// </summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]
     public async Task Commit_WritesRowsAndMapsTemporaryIds()
     {
-        var outcome = await _fixture.Pipeline().CommitAsync(Draft, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
+        var outcome = await _fixture.Pipeline().CommitAsync(Live, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
 
         Assert.True(outcome.Succeeded);
         var fieldId = outcome.Value.IdMap["tmp:balance"];
         Assert.Equal(fieldId, Assert.Single(_fixture.GrainFields.All).FieldId);
         Assert.Equal(fieldId.ToString(CultureInfo.InvariantCulture), Assert.Single(outcome.Value.State.Fields).Id);
-        Assert.Equal(DatasetFixture.StartingRevision, _fixture.Revision);
+        Assert.Equal(DatasetFixture.StartingRevision + 1, _fixture.Revision);
     }
 
     /// <summary>
-    /// A published version never changes (D1): a content edit is a conflict, while an identity edit applies and advances the
-    /// semantic revision, because the engine reads the dataset row.
+    /// A frozen snapshot is read-only: a content edit and an identity edit of its version are both conflicts, and nothing is written.
     /// </summary>
     /// <returns>A task that completes when the commits are checked.</returns>
     [Fact]
-    public async Task PublishedVersion_TakesIdentityEditsOnly()
+    public async Task FrozenVersion_TakesNoEdit()
     {
-        var content = await _fixture.Pipeline().CommitAsync(DatasetFixture.PublishedVersionId, Request(SaveColumnField(null, "balance", "balance")), Token);
+        var content = await _fixture.Pipeline().CommitAsync(DatasetFixture.FrozenVersionId, Request(SaveColumnField(null, "balance", "balance")), Token);
         var identity = await _fixture.Pipeline().CommitAsync(
-            DatasetFixture.PublishedVersionId,
+            DatasetFixture.FrozenVersionId,
             Request(new DatasetUpdateDatasetOperation { Patch = new DatasetPatch { DisplayName = "Loans daily" } }),
             Token);
 
         Assert.Equal(RefusalKind.Conflict, content.Refusal!.Kind);
-        Assert.True(identity.Succeeded);
-        Assert.Equal("Loans daily", _fixture.Datasets.All.Single().DisplayName);
-        Assert.Equal(DatasetFixture.StartingRevision + 1, _fixture.Revision);
+        Assert.Equal(RefusalKind.Conflict, identity.Refusal!.Kind);
+        Assert.Equal("Loans", _fixture.Datasets.All.Single().DisplayName);
+        Assert.Equal(DatasetFixture.StartingRevision, _fixture.Revision);
     }
 
     /// <summary>The change-set state carries the dataset identity, so a preview shows a staged identity edit before it is written.</summary>
@@ -81,7 +81,7 @@ public sealed class DatasetChangeSetTests
     public async Task Preview_ShowsTheStagedIdentity()
     {
         var preview = await _fixture.Pipeline().PreviewAsync(
-            Draft, Request(new DatasetUpdateDatasetOperation { Patch = new DatasetPatch { DisplayName = "Loans daily" } }), Token);
+            Live, Request(new DatasetUpdateDatasetOperation { Patch = new DatasetPatch { DisplayName = "Loans daily" } }), Token);
 
         Assert.Equal("Loans daily", preview.Value!.State.Dataset.DisplayName);
         Assert.NotEqual("Loans daily", _fixture.Datasets.All.Single().DisplayName);
@@ -92,7 +92,7 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task TakenFieldKey_IsRefusedAsInput()
     {
-        var outcome = await _fixture.Pipeline().CommitAsync(Draft, Request(SaveColumnField(null, "balance", "balance"), SaveColumnField(null, "balance", "loan_id")), Token);
+        var outcome = await _fixture.Pipeline().CommitAsync(Live, Request(SaveColumnField(null, "balance", "balance"), SaveColumnField(null, "balance", "loan_id")), Token);
 
         Assert.Equal(RefusalKind.Invalid, outcome.Refusal!.Kind);
         Assert.Contains("operations[1].input.key", outcome.Refusal.Errors.Keys);
@@ -104,9 +104,9 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task StoredFieldKey_IsFixed()
     {
-        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(5, Draft, "balance", "balance"), Token);
+        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(5, Live, "balance", "balance"), Token);
 
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(SaveColumnField("5", "endingBalance", "balance")), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(SaveColumnField("5", "endingBalance", "balance")), Token);
 
         Assert.Contains("operations[0].input.key", outcome.Refusal!.Errors.Keys);
     }
@@ -116,11 +116,11 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task DeletingAFieldAGrainReads_IsBlocked()
     {
-        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(5, Draft, "balance", "balance"), Token);
-        await _fixture.Grains.InsertAsync(DatasetRows.Grain(6, Draft, "row", GrainKinds.Row), Token);
+        await _fixture.Fields.InsertAsync(DatasetRows.ColumnField(5, Live, "balance", "balance"), Token);
+        await _fixture.Grains.InsertAsync(DatasetRows.Grain(6, Live, "row", GrainKinds.Row), Token);
         await _fixture.GrainFields.InsertAsync(DatasetRows.GrainField(6, 1, 5), Token);
 
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(new DatasetDeleteFieldOperation { FieldId = "5" }), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(new DatasetDeleteFieldOperation { FieldId = "5" }), Token);
 
         Assert.Equal(RefusalKind.DeleteBlocked, outcome.Refusal!.Kind);
         Assert.Equal(DatasetItemBlockerCodes.FieldInUse, Assert.Single(outcome.Refusal.Violations).Code);
@@ -131,7 +131,7 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task Dependents_NameWhatReadsEachItem()
     {
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(SaveColumnField("tmp:balance", "balance", "balance"), SaveGrain("tmp:row", "row", "tmp:balance")), Token);
 
         var dependent = Assert.Single(outcome.Value!.State.Dependents["tmp:balance"]);
         Assert.Equal(DatasetTabs.Grains, dependent.Tab);
@@ -149,9 +149,9 @@ public sealed class DatasetChangeSetTests
     {
         var request = Request(new DatasetAddFieldsFromColumnsOperation { Columns = ["loan_id", "branch_code"] });
 
-        var first = await _fixture.Pipeline().PreviewAsync(Draft, request, Token);
-        var second = await _fixture.Pipeline().PreviewAsync(Draft, request, Token);
-        var unreadable = await _fixture.Pipeline().PreviewAsync(Draft, Request(new DatasetAddFieldsFromColumnsOperation { Columns = ["sketch"] }), Token);
+        var first = await _fixture.Pipeline().PreviewAsync(Live, request, Token);
+        var second = await _fixture.Pipeline().PreviewAsync(Live, request, Token);
+        var unreadable = await _fixture.Pipeline().PreviewAsync(Live, Request(new DatasetAddFieldsFromColumnsOperation { Columns = ["sketch"] }), Token);
 
         Assert.Equal(["branchCode", "loanId"], first.Value!.State.Fields.Select(field => field.Key));
         Assert.Equal(first.Value.State.Fields.Select(field => field.Id), second.Value!.State.Fields.Select(field => field.Id));
@@ -166,7 +166,7 @@ public sealed class DatasetChangeSetTests
     {
         var operation = SaveColumnField(null, "riskBand", "risk_band");
 
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(operation with { Input = operation.Input with { CreateColumn = true } }), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(operation with { Input = operation.Input with { CreateColumn = true } }), Token);
 
         Assert.Equal(RefusalKind.Conflict, outcome.Refusal!.Kind);
         Assert.Empty(_fixture.ManagedTables.Calls);
@@ -184,8 +184,8 @@ public sealed class DatasetChangeSetTests
         var operation = SaveColumnField(null, "riskBand", "risk_band");
         var request = Request(operation with { Input = operation.Input with { CreateColumn = true } });
 
-        var preview = await _fixture.Changes().PreviewAsync(Draft, request, Token);
-        var commit = await _fixture.Changes().CommitAsync(Draft, request, Token);
+        var preview = await _fixture.Changes().PreviewAsync(Live, request, Token);
+        var commit = await _fixture.Changes().CommitAsync(Live, request, Token);
 
         Assert.DoesNotContain(preview.Value!.Violations, violation => violation.Code == "field_columns_exist");
         Assert.True(commit.Succeeded);
@@ -194,23 +194,23 @@ public sealed class DatasetChangeSetTests
     }
 
     /// <summary>
-    /// A managed table that only the draft reads is renamed before the rows; the version and the registry then name the new table.
-    /// Another version reading it keeps its name, so the rename is a conflict (OI-33).
+    /// A managed table that only the live version reads is renamed before the rows; the version and the registry then name the new
+    /// table. Another version reading it, live or frozen, keeps its name, so the rename is a conflict (OI-33).
     /// </summary>
     /// <returns>A task that completes when the commits are checked.</returns>
     [Fact]
-    public async Task RenameSourceTable_RenamesAManagedTableOnlyTheDraftReads()
+    public async Task RenameSourceTable_RenamesAManagedTableOnlyTheLiveVersionReads()
     {
         await _fixture.UseManagedTableAsync();
         var rename = Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging" });
 
-        var renamed = await _fixture.Changes().CommitAsync(Draft, rename, Token);
-        await _fixture.Versions.InsertAsync(DatasetRows.Version(101) with { VersionNumber = 3, SourceObject = "loan_staging" }, Token);
-        var refused = await _fixture.Changes().CommitAsync(Draft, Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging_2" }), Token);
+        var renamed = await _fixture.Changes().CommitAsync(Live, rename, Token);
+        await _fixture.Versions.InsertAsync(DatasetRows.Version(101) with { SnapshotId = 3, SourceObject = "loan_staging" }, Token);
+        var refused = await _fixture.Changes().CommitAsync(Live, Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging_2" }), Token);
 
         Assert.True(renamed.Succeeded);
         Assert.Equal(["rename staging_loans loan_staging"], _fixture.ManagedTables.Calls);
-        Assert.Equal("loan_staging", _fixture.Versions.All.Single(version => version.DatasetVersionId == Draft).SourceObject);
+        Assert.Equal("loan_staging", _fixture.Versions.All.Single(version => version.DatasetVersionId == Live).SourceObject);
         Assert.Equal("loan_staging", _fixture.Managed.All.Single().SourceObject);
         Assert.Equal(RefusalKind.Conflict, refused.Refusal!.Kind);
     }
@@ -227,7 +227,7 @@ public sealed class DatasetChangeSetTests
         var save = SaveColumnField(null, "riskBand", "risk_band");
 
         var commit = await _fixture.Changes().CommitAsync(
-            Draft, Request(save with { Input = save.Input with { CreateColumn = true } }, new DatasetRenameSourceTableOperation { TableName = "loan_staging" }), Token);
+            Live, Request(save with { Input = save.Input with { CreateColumn = true } }, new DatasetRenameSourceTableOperation { TableName = "loan_staging" }), Token);
 
         Assert.True(commit.Succeeded);
         Assert.Equal(["rename staging_loans loan_staging", "add loan_staging risk_band"], _fixture.ManagedTables.Calls);
@@ -248,23 +248,39 @@ public sealed class DatasetChangeSetTests
         var save = SaveColumnField(null, "riskBand", "risk_band");
 
         var commit = await _fixture.Changes().CommitAsync(
-            Draft, Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging" }, save with { Input = save.Input with { CreateColumn = true } }), Token);
+            Live, Request(new DatasetRenameSourceTableOperation { TableName = "loan_staging" }, save with { Input = save.Input with { CreateColumn = true } }), Token);
 
         Assert.True(commit.Succeeded);
         Assert.Equal(["rename staging_loans loan_staging", "add loan_staging risk_band"], _fixture.ManagedTables.Calls);
         Assert.Equal("loan_staging", _fixture.Managed.All.Single().SourceObject);
     }
 
-    /// <summary>Publication findings come back in the preview and reflect the pending edits, without blocking the save.</summary>
+    /// <summary>Commit findings come back in the preview and reflect the pending edits, so the editor flags them before Save.</summary>
     /// <returns>A task that completes when the preview is checked.</returns>
     [Fact]
-    public async Task PublicationFindings_TrackPendingEdits()
+    public async Task CommitFindings_TrackPendingEdits()
     {
-        var outcome = await _fixture.Pipeline().PreviewAsync(Draft, Request(SaveExpressionField(null, "share", "[f.missing] / 2")), Token);
+        var outcome = await _fixture.Pipeline().PreviewAsync(Live, Request(SaveExpressionField(null, "share", "[f.missing] / 2")), Token);
 
         var violation = Assert.Single(outcome.Value!.Violations);
         Assert.Equal("expression_field_references", violation.Code);
         Assert.Equal(DatasetTabs.Fields, violation.Target!.Area);
+    }
+
+    /// <summary>
+    /// The live version is what the engine reads, so a rule that only gated publishing before now refuses the commit: an expression
+    /// field naming a missing field is refused with 422, nothing is written and the semantic revision stays.
+    /// </summary>
+    /// <returns>A task that completes when the refusal is checked.</returns>
+    [Fact]
+    public async Task Commit_ThatBreaksAFormerPublicationRule_IsRefused()
+    {
+        var outcome = await _fixture.Pipeline().CommitAsync(Live, Request(SaveExpressionField(null, "share", "[f.missing] / 2")), Token);
+
+        Assert.Equal(RefusalKind.RulesViolated, outcome.Refusal!.Kind);
+        Assert.Equal("expression_field_references", Assert.Single(outcome.Refusal.Violations).Code);
+        Assert.Empty(_fixture.Fields.All);
+        Assert.Equal(DatasetFixture.StartingRevision, _fixture.Revision);
     }
 
     /// <summary>A JSON path field saved with <c>materialize</c> gets its column in the source object's view once the commit has written it.</summary>
@@ -272,7 +288,7 @@ public sealed class DatasetChangeSetTests
     [Fact]
     public async Task MaterializeOnSave_AddsTheColumnToTheView()
     {
-        var outcome = await _fixture.Changes().CommitAsync(Draft, Request(SaveJsonField(null, "rating", "$.risk.rating", materialize: true)), Token);
+        var outcome = await _fixture.Changes().CommitAsync(Live, Request(SaveJsonField(null, "rating", "$.risk.rating", materialize: true)), Token);
 
         var field = Assert.Single(outcome.Value!.State.Fields);
         Assert.Equal(MaterializationStates.Building, field.Materialization!.State);

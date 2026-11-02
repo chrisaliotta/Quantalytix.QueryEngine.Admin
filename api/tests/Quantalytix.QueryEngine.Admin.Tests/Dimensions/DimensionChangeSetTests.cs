@@ -113,7 +113,7 @@ public sealed class DimensionChangeSetTests
 
     /// <summary>
     /// A preview's findings come from the pending bands, not the stored version: overlapping bands saved in the change set are
-    /// reported, yet saving is not blocked, because band rules block only freezing.
+    /// reported as findings, which the editor flags before it commits.
     /// </summary>
     /// <returns>A task that completes when the preview is checked.</returns>
     [Fact]
@@ -148,7 +148,8 @@ public sealed class DimensionChangeSetTests
     public async Task SecondRoleOfAScenarioDimension_IsAConflict()
     {
         await _fixture.Reports.InsertAsync(ReportRows.Report(), Token);
-        await _fixture.Scenarios.InsertAsync(new ReportScenarioRecord { ReportId = ReportRows.Report().ReportId, DimensionRoleId = DimensionFixture.RoleId }, Token);
+        await _fixture.ReportVersions.InsertAsync(ReportRows.Version(), Token);
+        await _fixture.Scenarios.InsertAsync(new ReportScenarioRecord { ReportVersionId = ReportRows.ReportVersionId, DimensionRoleId = DimensionFixture.RoleId }, Token);
 
         var outcome = await _fixture.Pipeline().PreviewAsync(DimensionFixture.DimensionId, Request(SaveRole("tmp:r", "originationBranch")), Token);
 

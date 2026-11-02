@@ -20,7 +20,7 @@ public sealed class VocabulariesTests
     public void Catalog_DiscoversDeclaredVocabularies()
     {
         Assert.Contains(DimensionKinds.Definition, VocabularyCatalog.All);
-        Assert.Same(PublicationStatuses.Definition, VocabularyCatalog.Find("publication_status"));
+        Assert.Same(DimensionKinds.Definition, VocabularyCatalog.Find("dimension_kind"));
     }
 
     /// <summary>No two vocabularies or relationships claim the same key, so none hides another in the answer.</summary>
@@ -41,10 +41,10 @@ public sealed class VocabulariesTests
 
         var json = JsonSerializer.SerializeToNode(Vocabularies.FromCatalog(), options)!.AsObject();
 
-        var term = json["versionStatus"]![0]!.AsObject();
+        var term = json["dimensionKind"]![0]!.AsObject();
         Assert.Equal(["value", "label", "description"], term.Select(member => member.Key));
-        Assert.Equal("draft", (string)term["value"]!);
-        Assert.Equal("Draft", (string)term["label"]!);
+        Assert.Equal("categorical", (string)term["value"]!);
+        Assert.Equal("Categorical", (string)term["label"]!);
         Assert.Null(json["lookupKind"]);
     }
 }

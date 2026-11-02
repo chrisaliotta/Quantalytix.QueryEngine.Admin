@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>The contract's <c>DatasetVersionSummary</c>: one version's lifecycle state and the releases that pin it.</summary>
+/// <summary>The contract's <c>DatasetVersionSummary</c>: one version and the snapshot it belongs to.</summary>
 public record DatasetVersionSummary
 {
     /// <summary>The version's id.</summary>
@@ -9,24 +9,15 @@ public record DatasetVersionSummary
     /// <summary>The dataset's id.</summary>
     public required string DatasetId { get; init; }
 
-    /// <summary>The version number within the dataset.</summary>
-    public required int VersionNumber { get; init; }
+    /// <summary>The snapshot the version belongs to.</summary>
+    public required string SnapshotId { get; init; }
 
-    /// <summary>A <c>publication_status</c> value.</summary>
-    public required string Status { get; init; }
+    /// <summary>Whether the version is live, and so editable; a frozen version is read-only.</summary>
+    public required bool IsLive { get; init; }
 
     /// <summary>The table or view the version reads.</summary>
     public required string SourceObject { get; init; }
 
     /// <summary>Creation time (UTC).</summary>
     public required DateTime CreatedAt { get; init; }
-
-    /// <summary>Publication time (UTC); null until published.</summary>
-    public required DateTime? PublishedAt { get; init; }
-
-    /// <summary>The version this one was cloned from; null for a version created empty (OI-12).</summary>
-    public required string? ClonedFromVersionId { get; init; }
-
-    /// <summary>The releases that pin the version.</summary>
-    public required IReadOnlyList<DatasetReleasePin> Releases { get; init; }
 }

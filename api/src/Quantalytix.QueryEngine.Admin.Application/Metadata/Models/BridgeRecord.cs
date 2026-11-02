@@ -17,7 +17,4 @@ public sealed record BridgeRecord
 
     /// <summary>The canonical target dimension.</summary>
     public required long TargetDimensionId { get; init; }
-
-    /// <summary>Administrative availability flag.</summary>
-    public required bool IsEnabled { get; init; }
 }

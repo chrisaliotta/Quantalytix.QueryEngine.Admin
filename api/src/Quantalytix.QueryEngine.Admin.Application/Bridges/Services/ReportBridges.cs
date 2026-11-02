@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
@@ -7,17 +8,18 @@ namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 /// The writes of report bridges, which this module reads but only the reports module makes (B9), through its report editor. A report
 /// bridge maps one report source's dimension into the report's dimension: <c>many_to_many</c> and <c>replicate</c>, with one live
 /// version edited in place, whose mappings are the source's rules: each adds an item, or every item under it, into one row (a target
-/// member) with its factor and the whole weight. The methods write at once and leave the semantic revision to the report's change,
-/// except <see cref="CreateAsync"/>, whose publish advances it.
+/// member) with its factor and the whole weight. The methods write at once and leave the semantic revision to the report's change.
 /// </summary>
 public sealed class ReportBridges(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
     ITableGateway<BridgeMappingRecord> mappings,
     BridgeStore store,
+    BridgeVersionRemover remover,
+    LiveSnapshot live,
     IIdGenerator ids)
 {
-    /// <summary>Creates a report source's bridge with its live version 1, empty or with a copy of another report bridge's rules.</summary>
+    /// <summary>Creates a report source's bridge with its live version, empty or with a copy of another report bridge's rules.</summary>
     /// <param name="input">The new bridge.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
     /// <returns>The new bridge's id, which the source stores as its <c>bridge_id</c>.</returns>
@@ -29,11 +31,10 @@ public sealed class ReportBridges(
             BridgeKey = input.Key,
             DisplayName = input.DisplayName,
             SourceDimensionId = input.SourceDimensionId,
-            TargetDimensionId = input.ReportDimensionId,
-            IsEnabled = true
+            TargetDimensionId = input.ReportDimensionId
         };
         long? template = input.CopyFromBridgeId is { } copyFrom ? (await LiveAsync(copyFrom, cancellationToken)).BridgeVersionId : null;
-        return (await store.CreateAsync(bridge, Cardinalities.ManyToMany, AllocationModes.Replicate, template, cancellationToken)).BridgeId;
+        return (await store.CreateAsync(bridge, Cardinalities.ManyToMany, AllocationModes.Replicate, true, template, cancellationToken)).BridgeId;
     }
 
     /// <summary>Gives a report bridge its source's new display name.</summary>
@@ -84,18 +85,23 @@ public sealed class ReportBridges(
         await mappings.DeleteAsync(new { live.BridgeVersionId, TargetMemberKey = rowKeys.ToArray() }, cancellationToken);
     }
 
-    /// <summary>Deletes a report source's bridge with its source: its pins, its version with the rules, then the bridge.</summary>
+    /// <summary>
+    /// Deletes a report source's bridge with its source: its live version with the rules, then the bridge, unless a frozen snapshot
+    /// still holds a version of it for its own copy of the source.
+    /// </summary>
     /// <param name="bridgeId">The report bridge.</param>
     /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>A task that completes when the bridge is gone.</returns>
-    public Task DeleteAsync(long bridgeId, CancellationToken cancellationToken)
+    /// <returns>A task that completes when the bridge is gone from the live snapshot.</returns>
+    public async Task DeleteAsync(long bridgeId, CancellationToken cancellationToken)
     {
-        return store.RemoveAsync(bridgeId, cancellationToken);
+        var liveVersion = await LiveAsync(bridgeId, cancellationToken);
+        await remover.RemoveVersionAsync(liveVersion.BridgeVersionId, cancellationToken);
+        if ((await versions.ListAsync(new { BridgeId = bridgeId }, cancellationToken)).Count == 0) await remover.RemoveIdentityAsync(bridgeId, cancellationToken);
     }
 
-    /// <summary>The live version of a report bridge, its only one.</summary>
+    /// <summary>The live version of a report bridge.</summary>
     private async Task<BridgeVersionRecord> LiveAsync(long bridgeId, CancellationToken cancellationToken)
     {
-        return (await versions.ListAsync(new { BridgeId = bridgeId, Status = PublicationStatuses.Published }, cancellationToken)).Single();
+        return (await versions.ListAsync(new { BridgeId = bridgeId, SnapshotId = await live.IdAsync(cancellationToken) }, cancellationToken)).Single();
     }
 }

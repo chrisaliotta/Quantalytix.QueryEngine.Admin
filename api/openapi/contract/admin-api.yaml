@@ -22,16 +22,16 @@ tags:
     description: Session, tenant directory, overview, catalog and vocabularies. Blueprint 10-tenant-session-catalog.md.
   - name: datasets
     x-displayName: Datasets
-    description: Datasets, dataset versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
+    description: Datasets, their live and frozen versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
   - name: dimensions
     x-displayName: Dimensions
     description: Dimensions, roles, the live and frozen versions, levels, members and range bands. Blueprint 12-dimensions.md.
   - name: mappings
     x-displayName: Mapping sets and bridges
     description: Mapping sets, bridges and their live and frozen versions. Blueprint 13-mappings-and-bridges.md.
-  - name: releases
-    x-displayName: Releases and assumption sets
-    description: Semantic releases, activation and assumption sets. Blueprint 14-releases-and-assumption-sets.md.
+  - name: snapshots
+    x-displayName: Snapshots
+    description: The live snapshot, frozen snapshots, capture, restore and comparison. Blueprint 14-snapshots.md.
   - name: models
     x-displayName: Calculation models
     description: Calculation models, variables, calculated measures, parameters and attributions. Blueprint 15-calculation-models.md.

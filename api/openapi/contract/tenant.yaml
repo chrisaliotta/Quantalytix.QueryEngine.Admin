@@ -86,15 +86,15 @@ paths:
         schema: { $ref: './common.yaml#/components/schemas/Id' }
     get:
       operationId: getPublishedMembers
-      summary: Read the members of a dimension's published version
+      summary: Read the members of a dimension's live version
       tags: [tenant]
       responses:
         '200':
-          description: The published version's members, in hierarchy order.
+          description: The live version's members, in hierarchy order.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PublishedMembers' }
-        '404': { $ref: './common.yaml#/components/responses/NotFound', description: The dimension does not exist or has no published version. }
+        '404': { $ref: './common.yaml#/components/responses/NotFound', description: The dimension does not exist or the live snapshot holds no version of it. }
 
   /api/system/tenants:
     get:
@@ -238,7 +238,7 @@ components:
     TenantInfo:
       type: object
       description: The tenant database's identity and the revision the engine keys its metadata cache by.
-      required: [tenantKey, metadataSchemaVersion, semanticRevision, activeReleaseId]
+      required: [tenantKey, metadataSchemaVersion, semanticRevision]
       properties:
         tenantKey:
           type: string
@@ -249,24 +249,20 @@ components:
           type: integer
           format: int64
           description: Advances once per commit or command that changes what the engine reads.
-        activeReleaseId:
-          type: [string, 'null']
-          description: The release runtime queries use; null when the tenant has none.
 
     TenantOverview:
       description: The tenant at a glance for the overview screen.
       allOf:
         - $ref: '#/components/schemas/TenantInfo'
         - type: object
-          required: [counts, drafts]
+          required: [counts]
           properties:
             counts: { $ref: '#/components/schemas/TenantOverviewCounts' }
-            drafts: { $ref: '#/components/schemas/TenantOverviewDrafts' }
 
     TenantOverviewCounts:
       type: object
       description: How much metadata the tenant holds.
-      required: [datasets, dimensions, mappingSets, bridges, releases, assumptionSets, models, reports, activeMeasures]
+      required: [datasets, dimensions, mappingSets, bridges, frozenSnapshots, models, reports, liveMeasures]
       properties:
         datasets: { type: integer }
         dimensions:
@@ -276,30 +272,21 @@ components:
         bridges:
           type: integer
           description: Analytical bridges; report-owned bridges are not counted (OI-22).
-        releases: { type: integer }
-        assumptionSets: { type: integer }
+        frozenSnapshots: { type: integer }
         models: { type: integer }
         reports: { type: integer }
-        activeMeasures:
+        liveMeasures:
           type: integer
-          description: Measures of the dataset versions the active release pins.
-
-    TenantOverviewDrafts:
-      type: object
-      description: >-
-        Work in progress: the kinds that still have a draft status. Dimensions, mapping sets and bridges follow the
-        living lifecycle and have no drafts (OI-14).
-      required: [datasetVersions, releases]
-      properties:
-        datasetVersions: { type: integer }
-        releases: { type: integer }
+          description: Measures of the live dataset versions, which requests that name no snapshot read.
 
     # ───────────── Catalog ─────────────
 
     TenantCatalog:
       type: object
-      description: The union of what every module's pickers and cross-module links read (OI-13).
-      required: [tenant, datasets, dimensions, roles, mappingSets, bridges, models, reports, releases, assumptionSets]
+      description: >-
+        The union of what every module's pickers and cross-module links read (OI-13): every identity the live snapshot
+        holds, and every snapshot.
+      required: [tenant, datasets, dimensions, roles, mappingSets, bridges, models, reports, snapshots]
       properties:
         tenant: { $ref: '#/components/schemas/TenantInfo' }
         datasets:
@@ -323,28 +310,26 @@ components:
         reports:
           type: array
           items: { $ref: '#/components/schemas/TenantCatalogReport' }
-        releases:
+        snapshots:
           type: array
-          items: { $ref: '#/components/schemas/TenantCatalogRelease' }
-        assumptionSets:
-          type: array
-          items: { $ref: '#/components/schemas/TenantCatalogAssumptionSet' }
+          description: The live snapshot first, then frozen ones by key.
+          items: { $ref: '#/components/schemas/TenantCatalogSnapshot' }
 
     TenantCatalogDataset:
       type: object
-      required: [id, key, displayName, isEnabled, activeVersionId]
+      required: [id, key, displayName, isEnabled, liveVersionId]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { $ref: './common.yaml#/components/schemas/DottedKey' }
         displayName: { type: string }
         isEnabled: { type: boolean }
-        activeVersionId:
-          type: [string, 'null']
-          description: The dataset version the active release pins; null when it pins none.
+        liveVersionId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: The live version.
 
     TenantCatalogDimension:
       type: object
-      required: [id, key, displayName, kind, purpose, origin, isEnabled, publishedVersionId, publishedVersionNumber, ownerReportId]
+      required: [id, key, displayName, kind, purpose, origin, isEnabled, liveVersionId, ownerReportId]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { $ref: './common.yaml#/components/schemas/Key' }
@@ -353,11 +338,9 @@ components:
         purpose: { $ref: './common.yaml#/components/schemas/DimensionPurpose' }
         origin: { $ref: './common.yaml#/components/schemas/DefinitionOrigin' }
         isEnabled: { type: boolean }
-        publishedVersionId:
-          type: [string, 'null']
-          description: The live version; null when none is published.
-        publishedVersionNumber:
-          type: [integer, 'null']
+        liveVersionId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: The live version.
         ownerReportId:
           type: [string, 'null']
           description: The report that owns a `report` purpose dimension; null otherwise.
@@ -413,28 +396,19 @@ components:
         modelId: { $ref: './common.yaml#/components/schemas/Id' }
         reportDimensionId: { $ref: './common.yaml#/components/schemas/Id' }
 
-    TenantCatalogRelease:
+    TenantCatalogSnapshot:
       type: object
-      description: A release has a key and no display name (OI-39).
-      required: [id, key, status, isActive]
-      properties:
-        id: { $ref: './common.yaml#/components/schemas/Id' }
-        key: { type: string }
-        status: { $ref: './common.yaml#/components/schemas/VersionStatus' }
-        isActive: { type: boolean }
-
-    TenantCatalogAssumptionSet:
-      type: object
-      required: [id, key, displayName, status]
+      description: A snapshot a request or a comparison can name.
+      required: [id, key, displayName, isLive]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { type: string }
         displayName: { type: string }
-        status: { $ref: './common.yaml#/components/schemas/AssumptionSetStatus' }
+        isLive: { type: boolean }
 
     PublishedMembers:
       type: object
-      description: The members of a dimension's published version, fetched per picker.
+      description: The members of a dimension's live version, fetched per picker.
       required: [dimensionId, versionId, members]
       properties:
         dimensionId: { $ref: './common.yaml#/components/schemas/Id' }
@@ -461,8 +435,6 @@ components:
         Every enumeration a select renders, keyed by name (OI-11). Values are the schema's; open vocabularies
         (`expressionLanguageVersion`, `displayFormat`, `timeZone`) list the offered values of a free-text column.
       required:
-        - versionStatus
-        - assumptionSetStatus
         - dataType
         - measureOutputDataType
         - sourceObjectKind
@@ -520,18 +492,6 @@ components:
         - layout
         - provider
       properties:
-        versionStatus:
-          type: array
-          items:
-            allOf:
-              - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/VersionStatus' } } }
-        assumptionSetStatus:
-          type: array
-          items:
-            allOf:
-              - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/AssumptionSetStatus' } } }
         dataType:
           type: array
           items:

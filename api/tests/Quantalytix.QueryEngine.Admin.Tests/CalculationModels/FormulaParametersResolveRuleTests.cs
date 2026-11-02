@@ -126,7 +126,7 @@ public sealed class FormulaParametersResolveRuleTests
     {
         return Graph([Variable(51, "V")], measures) with
         {
-            Model = Model() with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
+            Version = Version() with { FormulaLanguageVersion = FormulaLanguageVersions.Version12 },
             Parameters =
             [
                 DayCount(),

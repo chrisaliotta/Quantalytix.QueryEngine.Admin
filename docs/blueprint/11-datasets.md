@@ -3,8 +3,8 @@
 ## Purpose and sources
 
 The dataset manager describes a tenant table or view so the engine can read it: fields, grains, dimension bindings
-(with time bindings) and measures (with components and time policies), versioned strictly and released through
-semantic releases.
+(with time bindings) and measures (with components and time policies). A dataset has one version per snapshot; the live
+version is edited in place and reaches queries at once, and frozen snapshots keep read-only copies ([14](14-snapshots.md)).
 
 Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contract.ts) and its mock
 (`mock/adapter.ts`, `mock/rules.ts`); current `DatasetsController`, `DatasetVersionsController`, `FieldsController`,
@@ -15,20 +15,19 @@ Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contrac
 
 | # | Rule | Source |
 |---|---|---|
-| D1 | Dataset versions are strictly versioned: draft, validated, published, retired; validated can return to draft. Published versions never change. Several may be published at once. | Agreed; schema README 2.17.0 item 1; API `VersionTransitions` |
-| D2 | A dataset version reaches queries only when the active release pins it. | Agreed |
-| D3 | Content writes require a draft. | Agreed; API `[RequireDraft]` |
+| D1 | A dataset has at most one version per snapshot. The live version is edited in place; a frozen snapshot's version never changes. | Agreed; schema README 3.0.0 item 3 |
+| D2 | The live version reaches queries as soon as a commit writes it; a frozen version only when a request names its snapshot. | Agreed |
+| D3 | Every commit runs every dataset rule, including the checks against the rest of live (bound dimensions, mapped and bridge bindings resolvable, binding identity, and the enabled reports that read the dataset), and is refused with 422 when one fails. | Plan, Decisions |
 | D4 | `dataset_key`, `field_key`, `grain_key`, `measure_key` are fixed after creation and unique in scope. | Agreed (OI-36 for `datasetKey`) |
 | D5 | `field_source_kind`: `column` needs `source_column`; `json_path` needs `source_column` and `json_path`; `expression` needs `expression_text`. | Schema doc |
 | D6 | A version binds each role at most once, and a bound role's key names no other field of the version. | Schema doc §18 rule 22 |
 | D7 | Measure component roles fit the measure kind; measure and expression dependency graphs are acyclic. | §18 rules 28–29 |
 | D8 | A time policy's selection grain is a `series` grain of the same version. | §18 rule 30 |
 | D9 | A time binding allows a periodicity finer than its native one only when its interval measures use `uniform_estimate`. | §18 rule 31 |
-| D10 | A dataset can be deleted only when every version is a draft or validated and no release lists it; a version only while draft or validated and unpinned. | API delete rules; OI-17 |
-| D14 | Deleting a dataset drops each registered managed table its versions read that no version of another dataset reads, with the table's materialized view and registry row ([below](#managed-tables-on-dataset-delete-agreed-oi-33)). | OI-33, decided 2026-10-27 |
-| D12 | A dataset has at most one open (draft or validated) version at a time. | OI-23 |
+| D10 | A dataset can be deleted only while no frozen snapshot holds a version of it (`referenced_by_snapshot`) and no report reads it. Versions are not deleted one by one. | Plan, §3; OI-17 |
+| D14 | Deleting a dataset drops each registered managed table its live version reads that no version of another dataset reads, with the table's materialized view and registry row ([below](#managed-tables-on-dataset-delete-agreed-oi-33)). | OI-33, decided 2026-10-27 |
 | D11 | The UI never hard-codes an enumeration; vocabularies come from the server. | `datasets/contract.ts` header |
-| D13 | The version the active release pins cannot be retired (`release_pins_retired_version`); activate a release that pins another version first. | Agreed (follows from D2); API `ReleasePinsRetiredVersionRule` |
+| D13 | Managed-table DDL refuses to rename or drop a table or column that any version, live or frozen, reads. | Plan, Decisions |
 
 ## Frontend contract
 
@@ -36,20 +35,20 @@ Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contrac
 
 | Item | Change | Why |
 |---|---|---|
-| `ApiResult`, `ValidationProblemDetails`, `PublicationViolation`, `ValidationReport` | Replaced by kernel `ApiResult`, `Problem`, and `DatasetViolation` / `DatasetValidationReport`, which narrow the kernel `Violation` and `ValidationReport` to `target.area` = `DatasetTab` | [02](02-frontend-contract-layer.md#shared-kernel-libapicontractts-agreed) |
+| `ApiResult`, `ValidationProblemDetails`, `PublicationViolation`, `ValidationReport` | Replaced by kernel `ApiResult`, `Problem`, and `DatasetViolation`, which narrows the kernel `Violation` to `target.area` = `DatasetTab` | [02](02-frontend-contract-layer.md#shared-kernel-libapicontractts-agreed) |
 | `ValidationProblemDetails.dependents` | Becomes `Problem.violations` with `target` for refused deletes | One error shape |
 | `getTenantCatalog`, `TenantCatalog`, `Dimension.publishedMembers` | Moved to `TenantApi` ([10](10-tenant-session-catalog.md)) | OI-13 |
 | `DimensionKind = 'standard' \| 'range' \| 'time'` | Removed; use the schema's `categorical \| hierarchical \| range \| time` | OI-11 |
-| `Release.displayName`, `Release.pins` | `displayName` dropped (no column, OI-39); `pins` comes from the release module | |
+| `Release`, version status, drafts, clone | Removed: a dataset's version is the live one, and snapshots replace releases ([14](14-snapshots.md)) | |
 | Field names | `datasetKey`, `fieldKey`, `grainKey`, `measureKey` become `key`; references stay `<entity>Id` | OI-10 |
 | `createDataset` | Moves from the edit list to the command list | It creates an aggregate; it cannot be staged inside another one's change set |
 | `updateDataset` patch | Drops `datasetKey` | D4; OI-36 |
 | `DatasetFieldMaterialization` | Kept: materialized view per source object, async refresh ([below](#json-field-materialization-agreed-oi-32)) | OI-32 |
-| `DatasetSourceObject.isManaged`, `createColumn`, `DatasetNewColumnInput`, `renameSourceTable`, `DatasetCreateInput.mode = 'new'` | Kept; backed by the managed-object registry (SG-08); DDL only on registered objects; rename only while no published version reads the table | OI-33 |
+| `DatasetSourceObject.isManaged`, `createColumn`, `DatasetNewColumnInput`, `renameSourceTable`, `DatasetCreateInput.mode = 'new'` | Kept; backed by the managed-object registry (SG-08); DDL only on registered objects; no rename or drop of a table or column any version, live or frozen, reads | OI-33 |
 | `DatasetSourceObject.stats`, `DatasetListItem.storage` | Kept; read live from `information_schema` with a short cache | OI-34 |
 | `DatasetVersion.dependents` | Computed by the server from the delete-blocker graph | OI-35 |
 | `RoundingMode` | Add `truncate` (schema allows it); shared kernel type with models | Schema `qe_measure.rounding_mode` |
-| `MeasureKind`, `ComponentRole`, `BindingKind`, `Periodicity` | Shared kernel types (`common.yaml`) instead of `Dataset*` copies | Read by tenant, releases, dimensions and reports too |
+| `MeasureKind`, `ComponentRole`, `BindingKind`, `Periodicity` | Shared kernel types (`common.yaml`) instead of `Dataset*` copies | Read by tenant, dimensions and reports too |
 | `DatasetBinding.raggedBehavior`, `unmappedBehavior` | Required, with a `null` term, instead of nullable | The schema stores the string `'null'` (NOT NULL, default `'null'`); values are the schema's ([01](01-api-conventions.md#ids-keys-and-names)) |
 | `Dataset.key` | `DottedKey` | The seed writes dotted dataset keys (OI-29) |
 
@@ -62,10 +61,9 @@ export interface DatasetsApi extends ChangeSetPort {
   getSourceColumns(kind: DatasetSourceObjectKind, name: string): Promise<ApiResult<DatasetSourceColumn[]>>
   listDatasets(): Promise<DatasetListItem[]>
   getDataset(datasetId: Id): Promise<ApiResult<DatasetListItem>>
-  getVersion(versionId: Id): Promise<ApiResult<DatasetVersion>>
-  checkVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>   // new: read-only rules run
+  getVersion(versionId: Id): Promise<ApiResult<DatasetVersion>>             // live or frozen
 
-  // edits (staged per version; see "Change-set operations")
+  // edits (staged on the live version; see "Change-set operations")
   updateDataset(datasetId: Id, patch: DatasetPatch): Promise<ApiResult<Dataset>>
   saveSettings(versionId: Id, settings: DatasetVersionSettings): Promise<ApiResult<DatasetSettingsSaveResult>>
   saveField(versionId: Id, input: DatasetFieldInput): Promise<ApiResult<DatasetField>>
@@ -83,13 +81,6 @@ export interface DatasetsApi extends ChangeSetPort {
   createDataset(input: DatasetCreateInput): Promise<ApiResult<DatasetListItem>>
   deleteDataset(datasetId: Id): Promise<ApiResult<null>>
   checkDeleteDataset(datasetId: Id): Promise<DeleteCheck>                     // new
-  checkDeleteVersion(versionId: Id): Promise<DeleteCheck>                     // new
-  createDraft(datasetId: Id, input: DatasetCreateDraftInput): Promise<ApiResult<DatasetVersionSummary>>
-  deleteDraft(versionId: Id): Promise<ApiResult<null>>
-  validateVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
-  publishVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
-  reopenVersion(versionId: Id): Promise<ApiResult<DatasetVersionSummary>>
-  retireVersion(versionId: Id): Promise<ApiResult<DatasetVersionSummary>>
   materializeField(versionId: Id, fieldId: Id): Promise<ApiResult<DatasetField>>        // OI-32
   refreshMaterialization(versionId: Id, fieldId: Id): Promise<ApiResult<DatasetField>>  // OI-32
   dematerializeField(versionId: Id, fieldId: Id): Promise<ApiResult<DatasetField>>      // OI-32
@@ -101,8 +92,7 @@ export interface DatasetsApi extends ChangeSetPort {
 unchanged.
 
 **Dataset identity edits.** `updateDataset` edits `qe_dataset`, which is shared by every version. It is staged in the
-open version's change set (as today) and committed with it; on a version that is not a draft only `updateDataset`
-operations are accepted.
+live version's change set and committed with it. A frozen version accepts no operation.
 
 ## HTTP API
 
@@ -113,27 +103,19 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `source-objects` | | `DatasetSourceObject[]` | | `listSourceObjects` |
 | GET | `source-objects/{kind}/{name}/columns` | | `DatasetSourceColumn[]` | 404 | `getSourceColumns` |
 | GET | `datasets` | | `DatasetListItem[]` | | `listDatasets` |
-| POST | `datasets` | `DatasetCreateInput` | `201 DatasetListItem` (creates draft v1) | 400, 409 key taken | `createDataset` |
+| POST | `datasets` | `DatasetCreateInput` | `201 DatasetListItem` (creates the live version) | 400, 409 key taken | `createDataset` |
 | GET | `datasets/{id}` | | `DatasetListItem` | 404 | `getDataset` |
 | GET | `datasets/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDeleteDataset` |
-| DELETE | `datasets/{id}` | | `204` (drops managed tables only it reads, D14) | 404, 409 blocked (`has_published_versions`, `referenced_by_release`) | `deleteDataset` |
-| POST | `datasets/{id}/versions` | `DatasetCreateDraftInput` | `201 DatasetVersionSummary` | 400, 409 an open version exists (OI-23) | `createDraft` |
+| DELETE | `datasets/{id}` | | `204` (drops managed tables only it reads, D14) | 404, 409 blocked (`referenced_by_snapshot`, `referenced_by_report`) | `deleteDataset` |
+| GET | `datasets/{id}/versions` | | `DatasetVersionSummary[]`, one per snapshot | 404 | `getDataset` (its `versions`) |
 | GET | `dataset-versions/{id}` | | `DatasetVersion` (settings, fields, grains, bindings, measures, dependents) | 404 | `getVersion` |
-| GET | `dataset-versions/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDeleteVersion` |
-| DELETE | `dataset-versions/{id}` | | `204` | 409 blocked (`published_version`, `referenced_by_release`) | `deleteDraft` |
 | POST | `dataset-versions/{id}/changes/preview` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetPreview<DatasetVersion>` | 400, 409, 422 | edits |
-| POST | `dataset-versions/{id}/changes` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetCommit<DatasetVersion>` | 400, 409 not draft, 422 | `commitChanges` |
-| POST | `dataset-versions/{id}/check` | | `DatasetValidationReport` | | `checkVersion` |
-| POST | `dataset-versions/{id}/validate` | | `DatasetVersionSummary` | 409 transition, 422 | `validateVersion` |
-| POST | `dataset-versions/{id}/publish` | | `DatasetVersionSummary` | 409, 422 | `publishVersion` |
-| POST | `dataset-versions/{id}/reopen` | | `DatasetVersionSummary` | 409 | `reopenVersion` |
-| POST | `dataset-versions/{id}/retire` | | `DatasetVersionSummary` | 409, 422 `release_pins_retired_version` (D13) | `retireVersion` |
+| POST | `dataset-versions/{id}/changes` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetCommit<DatasetVersion>` | 400, 409 not live, 422 | `commitChanges` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` (`state: building`) | 409 cannot be materialized | `materializeField` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization/refresh` | | `DatasetField` | 409 | `refreshMaterialization` |
 | DELETE | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` | 409 | `dematerializeField` |
 
-`publishVersion` validates first when called on a draft (`web` offers Publish from draft); a failed run answers 422
-and the adapter returns the report as data.
+The preview reports every dataset rule's findings in `violations`; the commit is refused with 422 while any remain.
 
 ## JSON field materialization (Agreed, OI-32)
 
@@ -149,16 +131,17 @@ A JSON path field is materialized into a StarRocks asynchronous materialized vie
   view when no column is left).
 - Deleting a dataset over an ordinary (unmanaged) table leaves the table's view as it is, deleted fields' columns
   included; the next `materializeField` or `dematerializeField` on the table redefines it (decided 2026-10-27).
-- These are commands: storage is physical and allowed on any non-retired version, as the `web` contract says.
+- These are commands: storage is physical and allowed on the live version, and they run no commit rules because they do not
+  change what the version means.
 
 ## Managed tables on dataset delete (Agreed, OI-33)
 
 A managed table exists for the datasets over it. When `deleteDataset` passes its delete check (D10), the delete also takes
-every table registered in `qe_managed_source_object` that the dataset's versions read and no version of another dataset
+every table registered in `qe_managed_source_object` that the dataset's live version reads and no version of another dataset
 reads:
 
 - The materialized view the API defined over the table (OI-32) is dropped, then the table, as schema statements of the
-  delete's write plan, so they run before any row is deleted; then the version content, the versions, the table's
+  delete's write plan, so they run before any row is deleted; then the version content, the version, the table's
   registry row and the dataset row are deleted.
 - The drops are planned from what StarRocks still holds, so a retry after a delete that stopped midway drops nothing
   twice and finishes the row deletes. StarRocks keeps a dropped table in its recycle bin for the catalog's retention,
@@ -201,16 +184,17 @@ Kept from the current API (`dataset_version` rules): `source_object_exists`, `ve
 `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is the
 `DatasetTab` the rule belongs to.
 
-Retirement (D13): `release_pins_retired_version`, without a target, because the fix is in the releases module.
+Checks against the rest of live (D3): `bound_dimensions_resolvable`, `mapped_bindings_resolvable`,
+`bridge_bindings_resolvable`, the binding identity rule, and the report checks `report_sources_resolve` and
+`report_factors_apply` of the enabled reports that read the dataset. All are commit rules.
 
 ## Schema mapping
 
 | Contract | Table / column |
 |---|---|
 | `Dataset` | `qe_dataset` |
-| `DatasetVersionSummary`, `DatasetVersionSettings` | `qe_dataset_version` (`properties` JSON as text) |
-| `DatasetVersionSummary.createdAt`, `clonedFromVersionId` | `qe_dataset_version.created_at`, `cloned_from_dataset_version_id` (new, SG-04, OI-12) |
-| `DatasetVersionSummary.releases` | `qe_release_dataset` joined to `qe_semantic_release`, `qe_database_info` |
+| `DatasetVersionSummary`, `DatasetVersionSettings` | `qe_dataset_version` (`properties` JSON as text; `is_enabled`) |
+| `DatasetVersionSummary.createdAt`, `snapshotId` | `qe_dataset_version.created_at`, `snapshot_id` |
 | `DatasetField` | `qe_field`; `materialization` from `materialized_column` plus the materialized view's refresh status (OI-32, SG-07) |
 | `DatasetGrain` | `qe_dataset_grain` + `qe_dataset_grain_field` (ordinal = position) |
 | `DatasetBinding` | `qe_dimension_binding`; `time` = `qe_time_binding` (one-to-one) |
@@ -221,19 +205,18 @@ Retirement (D13): `release_pins_retired_version`, without a target, because the 
 
 | Change | Item |
 |---|---|
-| Keep | Source-object introspection; version create/clone; draft delete; delete blockers |
+| Keep | Source-object introspection; delete blockers |
 | Change | Per-entity field, grain, binding, measure `POST`/`PUT`/`DELETE` become change-set operations |
 | Change | `PUT dataset-versions/{id}` (settings) becomes the `saveSettings` operation |
-| Change | `PUT versions/dataset_version/{id}/status` becomes `validate`, `publish`, `reopen`, `retire` |
-| Change | `POST versions/dataset_version/{id}/validation` becomes `check` |
+| Remove | `PUT versions/dataset_version/{id}/status`, `POST versions/dataset_version/{id}/validation`, version create, clone and delete: every commit validates the live version |
 | Change | `POST datasets` accepts `DatasetCreateInput` (both modes) and returns the list item |
 | Change | `materialize` / `materialized-column` become the materialization sub-resource (OI-32) |
-| New | `delete-check` on datasets and dataset versions, dependents in the version read model, managed-table creation and drop on dataset delete (OI-33), source stats (OI-34) |
+| New | `delete-check` on datasets, dependents in the version read model, managed-table creation and drop on dataset delete (OI-33), source stats (OI-34) |
 | Remove | `PUT datasets/{id}` (identity edits move into the change set) |
 
 ## Decisions applied
 
 [OI-01](90-open-issues.md#oi-01), [OI-09](90-open-issues.md#oi-09), [OI-10](90-open-issues.md#oi-10), [OI-11](90-open-issues.md#oi-11),
-[OI-12](90-open-issues.md#oi-12), [OI-13](90-open-issues.md#oi-13), [OI-17](90-open-issues.md#oi-17), [OI-23](90-open-issues.md#oi-23),
+[OI-13](90-open-issues.md#oi-13), [OI-17](90-open-issues.md#oi-17),
 [OI-32](90-open-issues.md#oi-32), [OI-33](90-open-issues.md#oi-33), [OI-34](90-open-issues.md#oi-34),
-[OI-35](90-open-issues.md#oi-35), [OI-36](90-open-issues.md#oi-36), [OI-39](90-open-issues.md#oi-39).
+[OI-35](90-open-issues.md#oi-35), [OI-36](90-open-issues.md#oi-36).

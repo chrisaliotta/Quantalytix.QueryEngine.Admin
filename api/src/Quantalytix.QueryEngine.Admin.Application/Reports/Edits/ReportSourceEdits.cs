@@ -38,7 +38,7 @@ internal static class ReportSourceEdits
         var created = new ReportSourceRecord
         {
             ReportSourceId = context.Ids.NewId(),
-            ReportId = report.Report.ReportId,
+            ReportVersionId = report.Version.ReportVersionId,
             SourceKey = input.Key,
             DisplayName = input.DisplayName,
             DatasetId = input.DatasetId,

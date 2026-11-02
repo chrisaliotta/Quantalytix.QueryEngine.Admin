@@ -1,60 +1,60 @@
-using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
 /// <summary>
-/// Stores and removes whole bridges, analytical or report: a new bridge with its live version 1, published through the version
-/// workflow so it is pinned by the active assumption set; and a bridge going away with its pins, versions and mappings, children first.
+/// Stores whole bridges, analytical or report: a new bridge with its live version, empty or with copies of another version's mappings.
+/// Mappings name members by key, so they copy as they are, with their factors and weights, under new ids.
 /// </summary>
 public sealed class BridgeStore(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
     ITableGateway<BridgeMappingRecord> mappings,
-    BridgeDrafts drafts,
-    VersionWorkflow workflow,
-    AssumptionPins pins)
+    LiveSnapshot live,
+    IIdGenerator ids,
+    TimeProvider time)
 {
-    /// <summary>Stores a bridge and publishes its version 1.</summary>
+    /// <summary>Stores a bridge with its live version.</summary>
     /// <param name="bridge">The new bridge.</param>
-    /// <param name="cardinality">Version 1's cardinality.</param>
-    /// <param name="allocationMode">Version 1's allocation mode.</param>
-    /// <param name="cloneFromVersionId">A version whose mappings version 1 starts with; null for none.</param>
+    /// <param name="cardinality">The version's cardinality.</param>
+    /// <param name="allocationMode">The version's allocation mode, which the cardinality allows.</param>
+    /// <param name="isEnabled">Whether the engine offers the bridge.</param>
+    /// <param name="cloneFromVersionId">A version whose mappings the live version starts with; null for none.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The bridge and its live version 1.</returns>
+    /// <returns>The bridge and its live version.</returns>
     public async Task<BridgeCreated> CreateAsync(
         BridgeRecord bridge,
         string cardinality,
         string allocationMode,
+        bool isEnabled,
         long? cloneFromVersionId,
         CancellationToken cancellationToken)
     {
         await bridges.InsertAsync(bridge, cancellationToken);
-        var draft = await drafts.CreateAsync(bridge.BridgeId, cardinality, allocationMode, cloneFromVersionId, cancellationToken);
-        await workflow.PublishAsync(VersionKinds.BridgeVersion, draft.BridgeVersionId, cancellationToken);
-        return new BridgeCreated { BridgeId = bridge.BridgeId, VersionId = draft.BridgeVersionId };
+        var version = new BridgeVersionRecord
+        {
+            BridgeVersionId = ids.NextId(),
+            BridgeId = bridge.BridgeId,
+            SnapshotId = await live.IdAsync(cancellationToken),
+            Cardinality = cardinality,
+            AllocationMode = allocationMode,
+            IsEnabled = isEnabled,
+            CreatedAt = time.GetUtcNow().UtcDateTime
+        };
+        await versions.InsertAsync(version, cancellationToken);
+        if (cloneFromVersionId is { } sourceVersionId) await CopyMappingsAsync(sourceVersionId, version.BridgeVersionId, cancellationToken);
+        return new BridgeCreated { BridgeId = bridge.BridgeId, VersionId = version.BridgeVersionId };
     }
 
-    /// <summary>Deletes a bridge nothing needs any more: its pins, every version with its mappings, then the bridge.</summary>
-    /// <param name="bridgeId">The bridge.</param>
-    /// <param name="cancellationToken">Cancels the reads and deletes.</param>
-    /// <returns>A task that completes when the bridge is gone.</returns>
-    public async Task RemoveAsync(long bridgeId, CancellationToken cancellationToken)
+    /// <summary>Copies a version's mappings into another stored version under new ids.</summary>
+    /// <param name="sourceVersionId">The version whose mappings are copied.</param>
+    /// <param name="targetVersionId">The version that receives them, without mappings.</param>
+    /// <param name="cancellationToken">Cancels the read and the write.</param>
+    /// <returns>A task that completes when the copies are written.</returns>
+    public async Task CopyMappingsAsync(long sourceVersionId, long targetVersionId, CancellationToken cancellationToken)
     {
-        await pins.UnpinBridgeAsync(bridgeId, cancellationToken);
-        await RemoveVersionsAsync([.. (await versions.ListAsync(new { BridgeId = bridgeId }, cancellationToken)).Select(version => version.BridgeVersionId)], cancellationToken);
-        await bridges.DeleteAsync(new { BridgeId = bridgeId }, cancellationToken);
-    }
-
-    /// <summary>Deletes versions nothing references, their mappings first.</summary>
-    /// <param name="versionIds">The bridge versions.</param>
-    /// <param name="cancellationToken">Cancels the remaining statement.</param>
-    /// <returns>A task that completes when every row is deleted.</returns>
-    public async Task RemoveVersionsAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
-    {
-        await mappings.DeleteAsync(new { BridgeVersionId = versionIds }, cancellationToken);
-        await versions.DeleteAsync(new { BridgeVersionId = versionIds }, cancellationToken);
+        var copied = await mappings.ListAsync(new { BridgeVersionId = sourceVersionId }, cancellationToken);
+        await mappings.InsertManyAsync([.. copied.Select(mapping => mapping with { BridgeMappingId = ids.NextId(), BridgeVersionId = targetVersionId })], cancellationToken);
     }
 }

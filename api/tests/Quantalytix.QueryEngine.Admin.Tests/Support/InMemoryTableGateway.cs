@@ -18,10 +18,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Support;
 /// Seed through the constructor, pass the gateway where the service expects <see cref="ITableGateway{TRecord}"/>, then assert
 /// on <see cref="All"/>:
 /// <code>
-/// var versions = new InMemoryTableGateway&lt;DimensionVersionRecord&gt;(draft, published);
-/// var store = new DimensionVersionStore(versions);
-/// await store.SetStatusAsync(draft.DimensionVersionId, PublicationStatuses.Validated, DateTime.UnixEpoch, cancellationToken);
-/// Assert.Equal(PublicationStatuses.Validated, versions.All.Single(row => row.DimensionVersionId == draft.DimensionVersionId).Status);
+/// var members = new InMemoryTableGateway&lt;DimensionMemberRecord&gt;(north, south);
+/// var remover = new DimensionVersionRemover(dimensions, roles, versions, levels, members, closure, bands);
+/// await remover.RemoveVersionAsync(north.DimensionVersionId, cancellationToken);
+/// Assert.Empty(members.All.Where(row => row.DimensionVersionId == north.DimensionVersionId));
 /// </code>
 /// </example>
 /// <typeparam name="TRecord">A record from the Metadata feature.</typeparam>

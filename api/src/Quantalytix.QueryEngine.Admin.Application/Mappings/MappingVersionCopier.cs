@@ -1,24 +1,48 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Mappings;
 
-/// <summary>Copies a mapping version into the mapping set's next draft, for the freeze.</summary>
-/// <param name="versions">Reads the version's mapping set.</param>
-/// <param name="drafts">Creates the draft as a copy.</param>
-public sealed class MappingVersionCopier(ITableGateway<MappingVersionRecord> versions, MappingDrafts drafts) : ILivingVersionCopier
+/// <summary>
+/// Copies a mapping version with its entries into a snapshot, for capture and restore. Entries name members by key, so they copy as
+/// they are under new ids.
+/// </summary>
+/// <param name="versions">Reads the source and writes the copy's row.</param>
+/// <param name="entries">Reads, clears and writes the entries.</param>
+/// <param name="ids">Allocates the copies' ids.</param>
+/// <param name="time">Stamps the copy.</param>
+public sealed class MappingVersionCopier(
+    ITableGateway<MappingVersionRecord> versions,
+    ITableGateway<DimensionMappingRecord> entries,
+    IIdGenerator ids,
+    TimeProvider time) : IVersionCopier
 {
-    /// <summary><c>mapping_version</c>.</summary>
-    public string Kind => VersionKinds.MappingVersion;
+    /// <summary><c>mapping_set</c>.</summary>
+    public string Kind => SnapshotKinds.MappingSet;
 
-    /// <summary>Creates the mapping set's next draft as a copy of a version.</summary>
-    /// <param name="sourceVersionId">The version to copy.</param>
+    /// <summary>Copies a version into a snapshot, as a new version or over another version of the mapping set.</summary>
+    /// <param name="versionId">The version to copy.</param>
+    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
+    /// <param name="targetVersionId">The version whose entries the copy replaces, or null for a new version.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The new draft's id.</returns>
-    public async Task<long> CopyAsync(long sourceVersionId, CancellationToken cancellationToken)
+    /// <returns>The copy's id.</returns>
+    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { MappingVersionId = sourceVersionId }, cancellationToken);
-        return (await drafts.CreateAsync(source.MappingSetId, sourceVersionId, cancellationToken)).MappingVersionId;
+        var source = await versions.GetAsync(new { MappingVersionId = versionId }, cancellationToken);
+        var copy = source with { MappingVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
+        if (targetVersionId is { } target)
+        {
+            await entries.DeleteAsync(new { MappingVersionId = target }, cancellationToken);
+            await versions.UpdateAsync(copy, cancellationToken);
+        }
+        else
+        {
+            await versions.InsertAsync(copy, cancellationToken);
+        }
+
+        var copied = await entries.ListAsync(new { MappingVersionId = versionId }, cancellationToken);
+        await entries.InsertManyAsync([.. copied.Select(entry => entry with { DimensionMappingId = ids.NextId(), MappingVersionId = copy.MappingVersionId })], cancellationToken);
+        return copy.MappingVersionId;
     }
 }

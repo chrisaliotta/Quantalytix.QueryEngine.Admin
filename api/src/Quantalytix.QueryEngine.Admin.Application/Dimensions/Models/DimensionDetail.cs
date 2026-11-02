@@ -15,6 +15,6 @@ public sealed record DimensionDetail : DimensionListItem
         Usage = usage;
     }
 
-    /// <summary>The bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources and assumption set pins.</summary>
+    /// <summary>The bindings, mapping sets, bridges, calculation dimensions, report scenarios and report sources of the version's snapshot.</summary>
     public required IReadOnlyList<DimensionUsageReference> Usage { get; init; }
 }

@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The contract's <c>ModelReportUse</c>: a report that reads the model (<c>qe_report.calculation_model_id</c>, OI-44).</summary>
+/// <summary>The contract's <c>ModelReportUse</c>: a report whose version in the model version's snapshot reads it (OI-44).</summary>
 public sealed record ModelReportUse
 {
     /// <summary>The report's id.</summary>

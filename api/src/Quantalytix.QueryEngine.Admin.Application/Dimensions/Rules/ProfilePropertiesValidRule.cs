@@ -9,8 +9,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// </summary>
 public sealed class ProfilePropertiesValidRule : DimensionRule
 {
-    /// <summary>Publication.</summary>
-    public override RuleStage Stage => RuleStage.Publication;
+    /// <summary>Commit.</summary>
+    public override RuleStage Stage => RuleStage.Commit;
 
     /// <summary><c>profile_properties_valid</c>.</summary>
     protected override string Code => "profile_properties_valid";

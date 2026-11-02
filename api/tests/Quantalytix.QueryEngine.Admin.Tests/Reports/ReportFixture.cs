@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Time.Testing;
 using Quantalytix.QueryEngine.Admin.Application.Changes;
-using Quantalytix.QueryEngine.Admin.Application.AssumptionSets;
 using Quantalytix.QueryEngine.Admin.Application.Bindings;
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
 using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
@@ -8,6 +7,7 @@ using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Bridges;
@@ -16,7 +16,7 @@ using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelRows;
-using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
+using static Quantalytix.QueryEngine.Admin.Tests.Support.CatalogRows;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
@@ -24,11 +24,10 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// The tables of one report and the reports module's services over them, wired as the API registers them. Disabled report 60 reads model 40, which has variable
 /// <c>balance</c>, and owns report dimension 500, whose one version 501 holds the rows TOTAL, a group, with LOANS
 /// and CASH, data rows, under it. Its bridge source <c>gl</c> reads GL's <c>balance</c>, which ignores bridge factors, by
-/// <c>as_of_date</c> and classifies GL's rows into account dimension 800, whose published version 801 holds the folder LENDING over
+/// <c>as_of_date</c> and classifies GL's rows into account dimension 800, whose live version 801 holds the folder LENDING over
 /// accounts 1001 and 1003, and account 1002; the source's many-to-many bridge 90 maps 1001 to LOANS and 1002 to CASH in its one
 /// version 91. Profile <c>base</c>, the report's default, picks the source for balance, and column <c>amount</c> returns balance,
-/// so the report passes every report rule. Release 900 is active and pins GL version 11; the active assumption set pins versions
-/// 501, 801 and 91.
+/// so the report passes every report rule. The live snapshot holds GL version 11 and versions 501, 801 and 91.
 /// </summary>
 internal sealed class ReportFixture
 {
@@ -38,7 +37,7 @@ internal sealed class ReportFixture
     /// <summary>The analytical dimension of accounts, which the source's role belongs to.</summary>
     public const long AccountDimensionId = 800;
 
-    /// <summary>The published version of the account dimension.</summary>
+    /// <summary>The live version of the account dimension.</summary>
     public const long AccountVersionId = 801;
 
     /// <summary>The account role GL binds.</summary>
@@ -47,7 +46,7 @@ internal sealed class ReportFixture
     /// <summary>The GL dataset.</summary>
     public const long GlDatasetId = 1;
 
-    /// <summary>The GL version the active release pins.</summary>
+    /// <summary>GL's live version.</summary>
     public const long GlVersionId = 11;
 
     /// <summary>The table GL version 11 reads.</summary>
@@ -62,9 +61,6 @@ internal sealed class ReportFixture
     /// <summary>The bridge's one version, which holds the item mappings.</summary>
     public const long BridgeVersionId = 91;
 
-    /// <summary>The active assumption set.</summary>
-    public const long ActiveSetId = 1;
-
     /// <summary>The tenant's semantic revision before each test.</summary>
     public const long StartingRevision = 7;
 
@@ -74,32 +70,34 @@ internal sealed class ReportFixture
     /// <summary>The clock.</summary>
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 10, 20, 9, 0, 0, TimeSpan.Zero));
 
-    /// <summary>The database info: release 900 is active.</summary>
+    /// <summary>The database info.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 12,
+        MetadataSchemaVersion = 19,
         SemanticRevision = StartingRevision,
-        ActiveSemanticReleaseId = SemanticReleaseId,
         UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
-    /// <summary>The active release pins GL v11.</summary>
-    public InMemoryTableGateway<ReleaseDatasetRecord> Manifest { get; } = new(Pin(GlDatasetId, GlVersionId));
+    /// <summary>The live snapshot.</summary>
+    public InMemoryTableGateway<SnapshotRecord> Snapshots { get; } = new(SnapshotRows.Live());
 
-    /// <summary>The disabled report, which defaults to profile base.</summary>
-    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(ReportRows.Report() with { IsEnabled = false, DefaultProfileKey = "base" });
+    /// <summary>The report.</summary>
+    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(ReportRows.Report());
+
+    /// <summary>The report's disabled live version, which defaults to profile base.</summary>
+    public InMemoryTableGateway<ReportVersionRecord> ReportVersions { get; } = new(ReportRows.Version() with { IsEnabled = false, DefaultProfileKey = "base" });
 
     /// <summary>The report dimension and the account dimension.</summary>
     public InMemoryTableGateway<DimensionRecord> Dimensions { get; } = new(
         Dimension(ReportRows.ReportDimensionId, "balance_sheet") with { DimensionPurpose = DimensionPurposes.Report },
         Dimension(AccountDimensionId, "account"));
 
-    /// <summary>The published versions of both dimensions.</summary>
+    /// <summary>The live versions of both dimensions.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(
-        DimensionRows.Version(StructureVersionId, ReportRows.ReportDimensionId, 1, PublicationStatuses.Published),
-        DimensionRows.Version(AccountVersionId, AccountDimensionId, 1, PublicationStatuses.Published));
+        DimensionRows.Version(StructureVersionId, ReportRows.ReportDimensionId),
+        DimensionRows.Version(AccountVersionId, AccountDimensionId));
 
     /// <summary>No levels.</summary>
     public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new();
@@ -123,9 +121,9 @@ internal sealed class ReportFixture
     /// <summary>The source's bridge.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(BridgeRows.Bridge(BridgeId, AccountDimensionId, ReportRows.ReportDimensionId));
 
-    /// <summary>The bridge's one version, published, which replicates each item into every row its rules name.</summary>
+    /// <summary>The bridge's live version, which replicates each item into every row its rules name.</summary>
     public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(
-        BridgeRows.BridgeVersion(BridgeVersionId, BridgeId, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published));
+        BridgeRows.BridgeVersion(BridgeVersionId, BridgeId, Cardinalities.ManyToMany, AllocationModes.Replicate));
 
     /// <summary>The item mappings: 1001 to LOANS and 1002 to CASH.</summary>
     public InMemoryTableGateway<BridgeMappingRecord> BridgeMappings { get; } = new(
@@ -183,6 +181,9 @@ internal sealed class ReportFixture
     /// <summary>Model 40.</summary>
     public InMemoryTableGateway<CalculationModelRecord> Models { get; } = new(Model());
 
+    /// <summary>Model 40's live version.</summary>
+    public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(Version());
+
     /// <summary>The balance variable.</summary>
     public InMemoryTableGateway<VariableRecord> Variables { get; } = new(Variable(51, "balance"));
 
@@ -192,9 +193,9 @@ internal sealed class ReportFixture
     /// <summary>The GL dataset.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"));
 
-    /// <summary>GL version 11, published, over the table <c>gl_balances</c>.</summary>
+    /// <summary>GL's live version 11 over the table <c>gl_balances</c>.</summary>
     public InMemoryTableGateway<DatasetVersionRecord> DatasetVersions { get; } = new(
-        DatasetRows.Version(GlVersionId) with { DatasetId = GlDatasetId, Status = PublicationStatuses.Published, SourceObject = GlTable });
+        DatasetRows.Version(GlVersionId) with { DatasetId = GlDatasetId, SourceObject = GlTable });
 
     /// <summary>The tenant database's objects and the values their columns hold; none at first.</summary>
     public FixedSourceObjectCatalog Catalog { get; } = new();
@@ -216,32 +217,13 @@ internal sealed class ReportFixture
     /// <summary>GL's balance measure.</summary>
     public InMemoryTableGateway<MeasureRecord> Measures { get; } = new(DatasetRows.Measure(41, GlVersionId, "balance", MeasureKinds.Aggregate));
 
-    /// <summary>The active assumption set.</summary>
-    public InMemoryTableGateway<AssumptionSetRecord> Sets { get; } = new(new AssumptionSetRecord
-    {
-        AssumptionSetId = ActiveSetId,
-        AssumptionSetKey = "active",
-        DisplayName = "Active",
-        Status = AssumptionSetStatuses.Active,
-        CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-    });
-
-    /// <summary>The active set's pins of the report dimension's and the account dimension's versions.</summary>
-    public InMemoryTableGateway<AssumptionSetDimensionRecord> DimensionPins { get; } = new(
-        new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = ReportRows.ReportDimensionId, DimensionVersionId = StructureVersionId },
-        new AssumptionSetDimensionRecord { AssumptionSetId = ActiveSetId, DimensionId = AccountDimensionId, DimensionVersionId = AccountVersionId });
-
-    /// <summary>The active set's pin of the bridge's version.</summary>
-    public InMemoryTableGateway<AssumptionSetBridgeRecord> BridgePins { get; } = new(
-        new AssumptionSetBridgeRecord { AssumptionSetId = ActiveSetId, BridgeId = BridgeId, BridgeVersionId = BridgeVersionId });
-
     /// <summary>The report change set, with the gate and the findings, as the API registers it.</summary>
     /// <returns>The change set over these tables.</returns>
     public ReportChanges Changes()
     {
         var pipeline = new ChangeSetPipeline<ReportSnapshot, ReportOperation, ReportDocument>(
             new ReportAggregate(
-                Loader(), Reports, Members, Closure, Lines, MemberOptions, Styles, Columns, Profiles, Picks, CalculationDimensions, Scenarios, Scopes,
+                Loader(), ReportVersions, Members, Closure, Lines, MemberOptions, Styles, Columns, Profiles, Picks, CalculationDimensions, Scenarios, Scopes,
                 RowParameters, new ReportSourceWrites(Sources, ReportBridges()), SourceVariables, LeftOut),
             [new ReportGateRule(Rules()), new ReportFindingsRule(Rules())],
             [new ReportOperationValidator()],
@@ -254,7 +236,7 @@ internal sealed class ReportFixture
     /// <returns>The queries over these tables.</returns>
     public ReportQueries Queries()
     {
-        return new ReportQueries(Reports, Models, Profiles, Sources, Loader(), Rules(), Diagnostics());
+        return new ReportQueries(Versions(), Models, Profiles, Sources, Live(), Loader(), Rules(), Diagnostics());
     }
 
     /// <summary>The create and enable commands.</summary>
@@ -262,9 +244,11 @@ internal sealed class ReportFixture
     public ReportCommands Commands()
     {
         var models = new ModelSnapshotLoader(
-            Models, Variables, CalculatedMeasures, new MetricAttributionService(new InMemoryTableGateway<MetricAttributionRecord>(), new InMemoryTableGateway<MetricAttributionDriverRecord>()),
-            ParameterService(), Reports, GraphReader());
-        return new ReportCommands(Reports, Dimensions, DimensionService(), PublishedDimensions(), Workflow(), models, Loader(), Rules(), Queries(), Changes(), Revision(), _ids);
+            Models, ModelVersions, Variables, CalculatedMeasures,
+            new MetricAttributionService(new InMemoryTableGateway<MetricAttributionRecord>(), new InMemoryTableGateway<MetricAttributionDriverRecord>()),
+            ParameterService(), Versions(), GraphReader(), Live());
+        return new ReportCommands(
+            Reports, ReportVersions, Dimensions, DimensionService(), DimensionKeys(), models, Loader(), Rules(), Queries(), Changes(), Live(), Revision(), _ids, _time);
     }
 
     /// <summary>The report delete.</summary>
@@ -272,8 +256,7 @@ internal sealed class ReportFixture
     public ReportRemover Remover()
     {
         return new ReportRemover(
-            Reports, DimensionVersions, Profiles, Picks, SourceVariables, LeftOut, Sources, ReportBridges(), CalculationDimensions, Scopes, Scenarios, RowParameters, Lines,
-            Columns, MemberOptions, Styles, DimensionService(), Pins(), Owned(), Revision());
+            Versions(), ReportVersions, Sources, VersionRemover(), ReportBridges(), DimensionService(), DimensionVersions, new SnapshotHolders(Snapshots), Revision());
     }
 
     /// <summary>The parameters of model 40.</summary>
@@ -286,34 +269,55 @@ internal sealed class ReportFixture
     /// <summary>The tenant's semantic revision.</summary>
     public long SemanticRevisionNumber => DatabaseInfo.All.Single().SemanticRevision;
 
-    /// <summary>Sets whether the report is enabled, as the enable command would once its rules pass.</summary>
+    /// <summary>Sets whether the report's live version is enabled, as the enable command would once its rules pass.</summary>
     /// <param name="isEnabled">Whether the report is enabled.</param>
-    /// <returns>A task that completes when the report is stored.</returns>
+    /// <returns>A task that completes when the version is stored.</returns>
     public async Task SetEnabledAsync(bool isEnabled)
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
-        var report = await Reports.GetAsync(new { ReportRows.ReportId }, cancellationToken);
-        await Reports.UpdateAsync(report with { IsEnabled = isEnabled }, cancellationToken);
+        var version = await ReportVersions.GetAsync(new { ReportRows.ReportVersionId }, cancellationToken);
+        await ReportVersions.UpdateAsync(version with { IsEnabled = isEnabled }, cancellationToken);
+    }
+
+    /// <summary>The live snapshot over the snapshot table.</summary>
+    /// <returns>The reader.</returns>
+    public LiveSnapshot Live()
+    {
+        return new LiveSnapshot(Snapshots);
     }
 
     /// <summary>The mappings module's hook that writes report bridges.</summary>
     private ReportBridges ReportBridges()
     {
-        var store = new BridgeStore(Bridges, BridgeVersions, BridgeMappings, new BridgeDrafts(BridgeVersions, BridgeMappings, _ids, _time), Workflow(), Pins());
-        return new ReportBridges(Bridges, BridgeVersions, BridgeMappings, store, _ids);
+        var store = new BridgeStore(Bridges, BridgeVersions, BridgeMappings, Live(), _ids, _time);
+        return new ReportBridges(Bridges, BridgeVersions, BridgeMappings, store, new BridgeVersionRemover(Bridges, BridgeVersions, BridgeMappings), Live(), _ids);
     }
 
     /// <summary>The snapshot loader.</summary>
     private ReportSnapshotLoader Loader()
     {
-        return new ReportSnapshotLoader(Reports, GraphReader(), Owned(), Roles, Datasets);
+        return new ReportSnapshotLoader(Versions(), GraphReader(), Owned(), Roles, DatasetVersions, Live());
+    }
+
+    /// <summary>The reader of the report with its versions.</summary>
+    private ReportVersionReader Versions()
+    {
+        return new ReportVersionReader(Reports, ReportVersions, Live());
+    }
+
+    /// <summary>The remover of a report version's content.</summary>
+    private ReportVersionRemover VersionRemover()
+    {
+        return new ReportVersionRemover(
+            Reports, ReportVersions, Profiles, Picks, SourceVariables, LeftOut, Sources, CalculationDimensions, Scopes, Scenarios, RowParameters, Lines, Columns,
+            MemberOptions, Styles);
     }
 
     /// <summary>The diagnostics builder.</summary>
     private ReportDiagnosticsBuilder Diagnostics()
     {
         return new ReportDiagnosticsBuilder(
-            Roles, PublishedDimensions(), Variables, CalculatedMeasures, ReleaseDatasets(), new DatasetFieldValues(DatasetVersions, Catalog));
+            Roles, DimensionKeys(), Variables, CalculatedMeasures, SnapshotDatasets(), new DatasetFieldValues(DatasetVersions, Catalog));
     }
 
     /// <summary>Every report rule.</summary>
@@ -332,8 +336,8 @@ internal sealed class ReportFixture
     private ReportGraphReader GraphReader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables, LeftOut,
-            BridgeMappings, CalculationDimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Versions(), Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables, LeftOut,
+            BridgeMappings, CalculationDimensions, ModelVersions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, SnapshotDatasets(), DimensionKeys());
     }
 
     /// <summary>The reader of the versions the report owns.</summary>
@@ -342,38 +346,16 @@ internal sealed class ReportFixture
         return new OwnedVersions(DimensionVersions, BridgeVersions);
     }
 
-    /// <summary>The reader of the active release's dataset versions.</summary>
-    private ReleaseDatasets ReleaseDatasets()
+    /// <summary>The reader of a snapshot's dataset versions.</summary>
+    private SnapshotDatasets SnapshotDatasets()
     {
-        return new ReleaseDatasets(DatabaseInfo, Manifest, Datasets, Fields, Bindings, TimeBindings, Measures);
+        return new SnapshotDatasets(Datasets, DatasetVersions, Fields, Bindings, TimeBindings, Measures);
     }
 
-    /// <summary>The reader of dimensions' published versions.</summary>
-    private PublishedDimensionReader PublishedDimensions()
+    /// <summary>The reader of dimensions' versions in a snapshot.</summary>
+    private SnapshotDimensionReader DimensionKeys()
     {
-        return new PublishedDimensionReader(DimensionVersions, Levels, Members, new PublicationSet());
-    }
-
-    /// <summary>The assumption set pins.</summary>
-    private AssumptionPins Pins()
-    {
-        return new AssumptionPins(Sets, DimensionPins, new InMemoryTableGateway<AssumptionSetMappingRecord>(), BridgePins);
-    }
-
-    /// <summary>
-    /// The version workflow over the dimension and bridge versions, without publication rules: the closure builder rebuilds a
-    /// validated dimension version's closure, and the active set pins every published version.
-    /// </summary>
-    private VersionWorkflow Workflow()
-    {
-        var stores = new VersionStoreRegistry([new DimensionVersionStore(DimensionVersions), new BridgeVersionStore(BridgeVersions)]);
-        IVersionLifecycleHandler[] handlers =
-        [
-            new ClosureBuilder(Members, Closure),
-            new ActiveSetPinner(VersionKinds.DimensionVersion, stores, Pins()),
-            new ActiveSetPinner(VersionKinds.BridgeVersion, stores, Pins())
-        ];
-        return new VersionWorkflow(stores, [], [], handlers, new PublicationSet(), Revision(), _time);
+        return new SnapshotDimensionReader(DimensionVersions, Levels, Members);
     }
 
     /// <summary>The semantic revision.</summary>
@@ -386,7 +368,8 @@ internal sealed class ReportFixture
     private ReportDimensions DimensionService()
     {
         var bands = new InMemoryTableGateway<RangeBandRecord>();
-        var drafts = new DimensionDrafts(DimensionVersions, new DimensionVersionCloner(Levels, Members, bands, _ids), _ids, _time);
-        return new ReportDimensions(Dimensions, Roles, Members, drafts, new DimensionVersionRemover(DimensionVersions, Levels, Members, Closure, bands), _ids);
+        var liveVersions = new LiveDimensionVersions(DimensionVersions, new DimensionVersionCloner(Levels, Members, bands, Closure, _ids), Live(), _ids, _time);
+        var remover = new DimensionVersionRemover(Dimensions, Roles, DimensionVersions, Levels, Members, Closure, bands);
+        return new ReportDimensions(Dimensions, Roles, Members, Closure, liveVersions, remover, _ids);
     }
 }

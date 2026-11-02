@@ -9,18 +9,18 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
 /// Confirms <c>calculation_grouping_resolve</c>: a calculation dimension that groups at a level or under an ancestor names a level or
-/// member of the published version of its role's template, which the engine resolves the keys in; a key that version lacks, or a
-/// template with no published version, is reported, because the calculation dimension would group nothing.
+/// member of its role's template's version in the report's snapshot, which the engine resolves the keys in; a key that version lacks,
+/// or a template with no version in the snapshot, is reported, because the calculation dimension would group nothing.
 /// </summary>
 public sealed class CalculationGroupingResolveRuleTests
 {
-    /// <summary>The seeded tables, with version 601 of the region dimension, published, holding level <c>region</c> and member <c>west</c>.</summary>
+    /// <summary>The seeded tables, with live version 601 of the region dimension holding level <c>region</c> and member <c>west</c>.</summary>
     private readonly ReportGraphFixture _fixture = new();
 
     /// <summary>Grouping at the region level resolves.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task GroupingKeysOfThePublishedVersion_Pass()
+    public async Task GroupingKeysOfTheSnapshotsVersion_Pass()
     {
         await SeedRegionsAsync();
         await _fixture.Dimensions.InsertAsync(
@@ -29,7 +29,7 @@ public sealed class CalculationGroupingResolveRuleTests
         Assert.Empty(await _fixture.EvaluateAsync(new CalculationGroupingResolveRule()));
     }
 
-    /// <summary>A level and an ancestor the published version lacks are each reported, as is a template with no published version.</summary>
+    /// <summary>A level and an ancestor the version lacks are each reported, as is a template with no version in the snapshot.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task KeysTheVersionLacks_AreReported()
@@ -47,17 +47,17 @@ public sealed class CalculationGroupingResolveRuleTests
         var violations = await _fixture.EvaluateAsync(new CalculationGroupingResolveRule());
 
         Assert.Equal(
-            ["Report 'balance_sheet' calculation dimension 'east' groups under ancestor member 'east', which is not a member of v1, the published version of its role's dimension.",
-             "Report 'balance_sheet' calculation dimension 'product' names levels or members of its role's dimension, which has no published version.",
-             "Report 'balance_sheet' calculation dimension 'region' groups at level 'district', which is not a level of v1, the published version of its role's dimension."],
+            ["Report 'balance_sheet' calculation dimension 'east' groups under ancestor member 'east', which is not a member of its role's dimension.",
+             "Report 'balance_sheet' calculation dimension 'product' names levels or members of its role's dimension, which has no version in the report's snapshot.",
+             "Report 'balance_sheet' calculation dimension 'region' groups at level 'district', which is not a level of its role's dimension."],
             violations.Select(violation => violation.Message));
     }
 
-    /// <summary>Publishes version 601 of the region dimension with the level <c>region</c> and the member <c>west</c>.</summary>
+    /// <summary>Adds live version 601 of the region dimension with the level <c>region</c> and the member <c>west</c>.</summary>
     private async Task SeedRegionsAsync()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        await _fixture.DimensionVersions.InsertAsync(DimensionRows.Version(601, 600, 1, PublicationStatuses.Published), cancellationToken);
+        await _fixture.DimensionVersions.InsertAsync(DimensionRows.Version(601, 600), cancellationToken);
         await _fixture.Levels.InsertAsync(DimensionRows.Level(1, 601, "region", 1), cancellationToken);
         await _fixture.Members.InsertAsync(DimensionRows.Member(11, 601, "west"), cancellationToken);
     }

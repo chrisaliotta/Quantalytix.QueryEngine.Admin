@@ -12,14 +12,8 @@ public sealed record MappingBindingUsage
     /// <summary>The dataset key.</summary>
     public required string DatasetKey { get; init; }
 
-    /// <summary>The dataset version that holds the binding.</summary>
+    /// <summary>The dataset version that holds the binding, in the same snapshot as the identity's version.</summary>
     public required long DatasetVersionId { get; init; }
-
-    /// <summary>Its version number.</summary>
-    public required int DatasetVersionNumber { get; init; }
-
-    /// <summary>The dataset version's <c>publication_status</c> value.</summary>
-    public required string Status { get; init; }
 
     /// <summary>The field whose values the binding classifies; a bridge binding's is its source binding's.</summary>
     public required string FieldKey { get; init; }

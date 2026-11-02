@@ -27,10 +27,10 @@ public sealed class PublishedMembersTests
             published.Members);
     }
 
-    /// <summary>A dimension whose versions are all retired has no published members.</summary>
+    /// <summary>A dimension the live snapshot does not hold has no published members, even when a frozen snapshot holds it.</summary>
     /// <returns>A task that completes when the members are checked.</returns>
     [Fact]
-    public async Task NoLiveVersion_HasNoPublishedMembers()
+    public async Task OnlyFrozenVersions_HaveNoPublishedMembers()
     {
         var tables = new TenantTables();
         await tables.DimensionVersions.DeleteAsync(new { DimensionVersionId = 102L }, TestContext.Current.CancellationToken);

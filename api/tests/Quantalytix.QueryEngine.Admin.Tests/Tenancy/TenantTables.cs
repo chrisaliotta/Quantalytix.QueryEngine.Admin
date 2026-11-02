@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Overview;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Tenancy;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
@@ -7,55 +8,43 @@ using Quantalytix.QueryEngine.Admin.Tests.Support;
 namespace Quantalytix.QueryEngine.Admin.Tests.Tenancy;
 
 /// <summary>
-/// One small tenant for the tenant module's read tests: release 500 is active and pins loans v11 and deposits v21; fees has no
-/// pinned version. Branch (100) is live in v102 after retiring v101, region (200) is live in v201, and report dimension 300 belongs
-/// to report 601. Bridge 81 joins branch to region; bridge 82 leads into the report dimension, so report 601 owns it.
+/// One small tenant for the tenant module's read tests: the live snapshot holds loans v11, deposits v21 and the disabled fees v31;
+/// frozen snapshot <c>fy2025_close</c> holds loans v12 and branch v101. Branch (100) is live in v102, region (200) in v201, and
+/// report dimension 300 belongs to report 601. Bridge 81 joins branch to region; bridge 82 leads into the report dimension, so
+/// report 601 owns it. Mapping set 62 exists only in the frozen snapshot, so the catalog does not list it.
 /// </summary>
 internal sealed class TenantTables
 {
-    /// <summary>The active release.</summary>
-    public const long ActiveReleaseId = 500;
-
     /// <summary>When every seeded row was created.</summary>
     private static readonly DateTime Created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>The singleton database info row, pointing at the active release.</summary>
+    /// <summary>The singleton database info row.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 18,
+        MetadataSchemaVersion = 19,
         SemanticRevision = 12,
-        ActiveSemanticReleaseId = ActiveReleaseId,
         UpdatedAt = Created
     });
 
-    /// <summary>A published, a draft and a retired release.</summary>
-    public InMemoryTableGateway<SemanticReleaseRecord> Releases { get; } = new(
-        Release(ActiveReleaseId, PublicationStatuses.Published),
-        Release(501, PublicationStatuses.Draft),
-        Release(502, PublicationStatuses.Retired));
-
-    /// <summary>The active release pins loans v11 and deposits v21; the draft release pins loans v12.</summary>
-    public InMemoryTableGateway<ReleaseDatasetRecord> Manifest { get; } = new(
-        new ReleaseDatasetRecord { SemanticReleaseId = ActiveReleaseId, DatasetId = 1, DatasetVersionId = 11 },
-        new ReleaseDatasetRecord { SemanticReleaseId = ActiveReleaseId, DatasetId = 2, DatasetVersionId = 21 },
-        new ReleaseDatasetRecord { SemanticReleaseId = 501, DatasetId = 1, DatasetVersionId = 12 });
+    /// <summary>The live snapshot and one frozen snapshot.</summary>
+    public InMemoryTableGateway<SnapshotRecord> Snapshots { get; } = new(SnapshotRows.Live(), SnapshotRows.Frozen());
 
     /// <summary>Loans, deposits and fees.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(
-        new DatasetRecord { DatasetId = 1, DatasetKey = "loans", DisplayName = "Loans", IsEnabled = true },
-        new DatasetRecord { DatasetId = 2, DatasetKey = "deposits", DisplayName = "Deposits", IsEnabled = true },
-        new DatasetRecord { DatasetId = 3, DatasetKey = "fees", DisplayName = "Fees", IsEnabled = false });
+        new DatasetRecord { DatasetId = 1, DatasetKey = "loans", DisplayName = "Loans" },
+        new DatasetRecord { DatasetId = 2, DatasetKey = "deposits", DisplayName = "Deposits" },
+        new DatasetRecord { DatasetId = 3, DatasetKey = "fees", DisplayName = "Fees" });
 
-    /// <summary>Loans v11 published and v12 draft; deposits v21 published and v22 draft.</summary>
+    /// <summary>Live loans v11, deposits v21 and disabled fees v31; loans v12 in the frozen snapshot.</summary>
     public InMemoryTableGateway<DatasetVersionRecord> DatasetVersions { get; } = new(
-        DatasetVersion(11, 1, PublicationStatuses.Published),
-        DatasetVersion(12, 1, PublicationStatuses.Draft),
-        DatasetVersion(21, 2, PublicationStatuses.Published),
-        DatasetVersion(22, 2, PublicationStatuses.Draft));
+        DatasetVersion(11, 1, SnapshotRows.LiveId),
+        DatasetVersion(12, 1, SnapshotRows.FrozenId),
+        DatasetVersion(21, 2, SnapshotRows.LiveId),
+        DatasetVersion(31, 3, SnapshotRows.LiveId) with { IsEnabled = false });
 
-    /// <summary>Two measures in loans v11, one in deposits v21 and three in the draft loans v12.</summary>
+    /// <summary>Two measures in loans v11, one in deposits v21 and three in the frozen loans v12.</summary>
     public InMemoryTableGateway<MeasureRecord> Measures { get; } = new(Measure(1, 11), Measure(2, 11), Measure(3, 21), Measure(4, 12), Measure(5, 12), Measure(6, 12));
 
     /// <summary>Branch and region, analytical, and report 601's report dimension.</summary>
@@ -64,12 +53,12 @@ internal sealed class TenantTables
         Dimension(200, "region", DimensionPurposes.Analytical),
         Dimension(300, "income_statement_rows", DimensionPurposes.Report));
 
-    /// <summary>Branch v101 retired and v102 live; region v201 live; the report dimension v301 live.</summary>
+    /// <summary>Branch v101 frozen and v102 live; region v201 live; the report dimension v301 live.</summary>
     public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(
-        DimensionVersion(101, PublicationStatuses.Retired),
-        DimensionVersion(102, PublicationStatuses.Published),
-        DimensionVersion(201, PublicationStatuses.Published),
-        DimensionVersion(301, PublicationStatuses.Published));
+        DimensionVersion(101, SnapshotRows.FrozenId),
+        DimensionVersion(102, SnapshotRows.LiveId),
+        DimensionVersion(201, SnapshotRows.LiveId),
+        DimensionVersion(301, SnapshotRows.LiveId));
 
     /// <summary>Branch's only level, in its live version.</summary>
     public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new(new DimensionLevelRecord
@@ -84,7 +73,7 @@ internal sealed class TenantTables
 
     /// <summary>
     /// Branch's live members: roots <c>HQ</c> (sort 0) and <c>EAST</c> (sort 1); under <c>EAST</c>, <c>E2</c> (sort 1, level branch)
-    /// and the unassignable <c>E1</c> (sort 2, level branch). The retired version holds one member of its own.
+    /// and the unassignable <c>E1</c> (sort 2, level branch). The frozen version holds one member of its own.
     /// </summary>
     public InMemoryTableGateway<DimensionMemberRecord> Members { get; } = new(
         Member(1, 102, "E1", parentId: 3, levelId: 103, sortOrder: 2, isAssignable: false),
@@ -102,50 +91,57 @@ internal sealed class TenantTables
         DisplayName = "Booking branch"
     });
 
-    /// <summary>One mapping set into branch.</summary>
-    public InMemoryTableGateway<MappingSetRecord> MappingSets { get; } = new(new MappingSetRecord
-    {
-        MappingSetId = 61,
-        MappingSetKey = "core_branch",
-        SourceNamespace = "core",
-        DimensionId = 100,
-        DisplayName = "Core branch codes"
-    });
+    /// <summary>Two mapping sets into branch.</summary>
+    public InMemoryTableGateway<MappingSetRecord> MappingSets { get; } = new(
+        new MappingSetRecord { MappingSetId = 61, MappingSetKey = "core_branch", SourceNamespace = "core", DimensionId = 100, DisplayName = "Core branch codes" },
+        new MappingSetRecord { MappingSetId = 62, MappingSetKey = "old_branch", SourceNamespace = "old", DimensionId = 100, DisplayName = "Old branch codes" });
+
+    /// <summary>Mapping set 61 live; mapping set 62 only in the frozen snapshot.</summary>
+    public InMemoryTableGateway<MappingVersionRecord> MappingVersions { get; } = new(
+        new MappingVersionRecord { MappingVersionId = 63, MappingSetId = 61, SnapshotId = SnapshotRows.LiveId, CreatedAt = Created },
+        new MappingVersionRecord { MappingVersionId = 64, MappingSetId = 62, SnapshotId = SnapshotRows.FrozenId, CreatedAt = Created });
 
     /// <summary>An analytical bridge from branch to region and a report bridge from region into the report dimension.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(
         Bridge(81, "branch_to_region", 100, 200),
         Bridge(82, "region_to_rows", 200, 300));
 
-    /// <summary>The active assumption set and a historical one.</summary>
-    public InMemoryTableGateway<AssumptionSetRecord> AssumptionSets { get; } = new(
-        AssumptionSet(701, AssumptionSetStatuses.Active),
-        AssumptionSet(702, AssumptionSetStatuses.Historical));
+    /// <summary>Both bridges' live versions.</summary>
+    public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(BridgeVersion(83, 81), BridgeVersion(84, 82));
 
     /// <summary>One calculation model.</summary>
-    public InMemoryTableGateway<CalculationModelRecord> Models { get; } = new(new CalculationModelRecord
+    public InMemoryTableGateway<CalculationModelRecord> Models { get; } = new(new CalculationModelRecord { CalculationModelId = 401, ModelKey = "yield" });
+
+    /// <summary>The model's live version.</summary>
+    public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(new CalculationModelVersionRecord
     {
+        CalculationModelVersionId = 402,
         CalculationModelId = 401,
-        ModelKey = "yield",
+        SnapshotId = SnapshotRows.LiveId,
         DisplayName = "Yield",
         CalendarKey = "gregorian",
         CurrencyCode = "USD",
         FormulaLanguageVersion = "1.0",
         IsEnabled = true,
-        AttributionMethod = "shapley"
+        AttributionMethod = "shapley",
+        CreatedAt = Created
     });
 
-    /// <summary>Report 601 over the model, holding its rows in the report dimension.</summary>
-    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(new ReportRecord
+    /// <summary>Report 601, holding its rows in the report dimension.</summary>
+    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(new ReportRecord { ReportId = 601, ReportKey = "income_statement", ReportDimensionId = 300 });
+
+    /// <summary>The report's live version over the model.</summary>
+    public InMemoryTableGateway<ReportVersionRecord> ReportVersions { get; } = new(new ReportVersionRecord
     {
+        ReportVersionId = 602,
         ReportId = 601,
-        ReportKey = "income_statement",
+        SnapshotId = SnapshotRows.LiveId,
         DisplayName = "Income statement",
         ReportType = "financial",
-        ReportDimensionId = 300,
         CalculationModelId = 401,
         SubtotalPosition = SubtotalPositions.Above,
-        IsEnabled = true
+        IsEnabled = true,
+        CreatedAt = Created
     });
 
     /// <summary>The catalog reader over these tables.</summary>
@@ -153,39 +149,40 @@ internal sealed class TenantTables
     public TenantCatalogReader CatalogReader()
     {
         return new TenantCatalogReader(
-            new TenantInfoReader(DatabaseInfo), Manifest, Datasets, Dimensions, DimensionVersions, Roles, MappingSets, Bridges, Models, Reports, Releases, AssumptionSets);
+            new TenantInfoReader(DatabaseInfo), Live(), Snapshots, Datasets, DatasetVersions, Dimensions, DimensionVersions, Roles, MappingSets, MappingVersions,
+            Bridges, BridgeVersions, Models, ModelVersions, Reports, ReportVersions);
     }
 
     /// <summary>The overview service over these tables.</summary>
     /// <returns>The service.</returns>
     public OverviewService Overview()
     {
-        return new OverviewService(CatalogReader(), DatasetVersions, Measures);
+        return new OverviewService(CatalogReader(), Measures);
     }
 
     /// <summary>The published-members reader over these tables.</summary>
     /// <returns>The reader.</returns>
     public PublishedMembersReader PublishedMembers()
     {
-        return new PublishedMembersReader(DimensionVersions, Levels, Members);
+        return new PublishedMembersReader(Live(), DimensionVersions, Levels, Members);
     }
 
-    /// <summary>A release.</summary>
-    private static SemanticReleaseRecord Release(long semanticReleaseId, string status)
+    /// <summary>The live snapshot over the snapshot table.</summary>
+    private LiveSnapshot Live()
     {
-        return new SemanticReleaseRecord { SemanticReleaseId = semanticReleaseId, ReleaseKey = $"R{semanticReleaseId}", Status = status, CreatedAt = Created };
+        return new LiveSnapshot(Snapshots);
     }
 
-    /// <summary>A dataset version over a table.</summary>
-    private static DatasetVersionRecord DatasetVersion(long datasetVersionId, long datasetId, string status)
+    /// <summary>An enabled dataset version over a table.</summary>
+    private static DatasetVersionRecord DatasetVersion(long datasetVersionId, long datasetId, long snapshotId)
     {
         return new DatasetVersionRecord
         {
             CreatedAt = Created,
             DatasetVersionId = datasetVersionId,
             DatasetId = datasetId,
-            VersionNumber = (int)(datasetVersionId % 10),
-            Status = status,
+            SnapshotId = snapshotId,
+            IsEnabled = true,
             SourceObjectKind = SourceObjectKinds.Table,
             SourceObject = "loan_daily",
             SupportsAggregate = true,
@@ -234,16 +231,15 @@ internal sealed class TenantTables
         };
     }
 
-    /// <summary>A version of the dimension its id's hundreds name, numbered by its last digits.</summary>
-    private static DimensionVersionRecord DimensionVersion(long dimensionVersionId, string status)
+    /// <summary>A version of the dimension its id's hundreds name.</summary>
+    private static DimensionVersionRecord DimensionVersion(long dimensionVersionId, long snapshotId)
     {
         return new DimensionVersionRecord
         {
             CreatedAt = Created,
             DimensionVersionId = dimensionVersionId,
             DimensionId = dimensionVersionId / 100 * 100,
-            VersionNumber = (int)(dimensionVersionId % 100),
-            Status = status
+            SnapshotId = snapshotId
         };
     }
 
@@ -263,7 +259,7 @@ internal sealed class TenantTables
         };
     }
 
-    /// <summary>An enabled bridge.</summary>
+    /// <summary>A bridge.</summary>
     private static BridgeRecord Bridge(long bridgeId, string key, long sourceDimensionId, long targetDimensionId)
     {
         return new BridgeRecord
@@ -272,20 +268,21 @@ internal sealed class TenantTables
             BridgeKey = key,
             DisplayName = key,
             SourceDimensionId = sourceDimensionId,
-            TargetDimensionId = targetDimensionId,
-            IsEnabled = true
+            TargetDimensionId = targetDimensionId
         };
     }
 
-    /// <summary>An assumption set.</summary>
-    private static AssumptionSetRecord AssumptionSet(long assumptionSetId, string status)
+    /// <summary>An enabled, many-to-one live version of a bridge.</summary>
+    private static BridgeVersionRecord BridgeVersion(long bridgeVersionId, long bridgeId)
     {
-        return new AssumptionSetRecord
+        return new BridgeVersionRecord
         {
-            AssumptionSetId = assumptionSetId,
-            AssumptionSetKey = $"SET_{assumptionSetId}",
-            DisplayName = $"Set {assumptionSetId}",
-            Status = status,
+            BridgeVersionId = bridgeVersionId,
+            BridgeId = bridgeId,
+            SnapshotId = SnapshotRows.LiveId,
+            Cardinality = Cardinalities.ManyToOne,
+            AllocationMode = AllocationModes.None,
+            IsEnabled = true,
             CreatedAt = Created
         };
     }

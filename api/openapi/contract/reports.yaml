@@ -51,7 +51,7 @@ paths:
       - $ref: '#/components/parameters/ReportId'
     get:
       operationId: getReport
-      summary: Read a report's whole document.
+      summary: Read a report's whole live document.
       tags: [reports]
       responses:
         '200':
@@ -63,12 +63,31 @@ paths:
     delete:
       operationId: deleteReport
       summary: Delete a report with its report dimension, report bridges and content.
-      description: Never blocked (P12).
+      description: Blocked only while a frozen snapshot holds a version of the report (P12). Advances `semanticRevision`.
       tags: [reports]
       responses:
         '204':
           description: The report and everything it owns were deleted.
         '400': { $ref: './common.yaml#/components/responses/BadRequest' }
+        '404': { $ref: './common.yaml#/components/responses/NotFound' }
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+          description: A frozen snapshot holds a version of the report; `violations` carry `referenced_by_snapshot`.
+
+  /api/tenants/{tenantId}/report-versions/{reportVersionId}:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportVersionId'
+    get:
+      operationId: getReportVersion
+      summary: Read a report version's whole document, live or frozen.
+      tags: [reports]
+      responses:
+        '200':
+          description: The report version as stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDocument' }
         '404': { $ref: './common.yaml#/components/responses/NotFound' }
 
   /api/tenants/{tenantId}/reports/{reportId}/diagnostics:
@@ -190,6 +209,12 @@ components:
       name: reportId
       in: path
       required: true
+      schema: { $ref: './common.yaml#/components/schemas/Id' }
+    ReportVersionId:
+      name: reportVersionId
+      in: path
+      required: true
+      description: A report version id.
       schema: { $ref: './common.yaml#/components/schemas/Id' }
     ReportSourceKey:
       name: sourceKey
@@ -492,14 +517,25 @@ components:
 
     ReportDocument:
       type: object
-      required: [id, key, isEnabled, modelId, reportDimensionId, reportDimensionVersionId, settings, rows, sources, profiles, calculationDimensions, scenarios, variableScopes, columns, styles]
+      description: A report's whole content in one version; the live version is the change set's state.
+      required: [id, key, versionId, snapshotId, isLive, isEnabled, modelId, modelVersionId, reportDimensionId, reportDimensionVersionId, settings, rows, sources, profiles, calculationDimensions, scenarios, variableScopes, columns, styles]
       properties:
         id: { $ref: './common.yaml#/components/schemas/Id' }
         key: { $ref: './common.yaml#/components/schemas/DottedKey' }
+        versionId: { $ref: './common.yaml#/components/schemas/Id' }
+        snapshotId: { $ref: './common.yaml#/components/schemas/Id' }
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         isEnabled: { type: boolean }
         modelId: { $ref: './common.yaml#/components/schemas/Id' }
+        modelVersionId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: The model's version in the same snapshot, whose metrics the report reads.
         reportDimensionId: { $ref: './common.yaml#/components/schemas/Id' }
-        reportDimensionVersionId: { $ref: './common.yaml#/components/schemas/Id' }
+        reportDimensionVersionId:
+          $ref: './common.yaml#/components/schemas/Id'
+          description: The report dimension's version in the same snapshot, whose members are the member rows.
         settings: { $ref: '#/components/schemas/ReportSettings' }
         rows:
           type: array

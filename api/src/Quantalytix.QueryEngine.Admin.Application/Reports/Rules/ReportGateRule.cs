@@ -21,7 +21,7 @@ public sealed class ReportGateRule(ReportRules rules) : ISnapshotRule<ReportSnap
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(ReportSnapshot snapshot, CancellationToken cancellationToken)
     {
         var report = snapshot.Content;
-        if (report.Report.IsEnabled) return await rules.EvaluateAsync([report], cancellationToken);
+        if (report.Version.IsEnabled) return await rules.EvaluateAsync([report], cancellationToken);
         return [.. ReportStylesResolveRule.Unresolved(report), .. DefaultProfileEnabledRule.Unresolved(report)];
     }
 }

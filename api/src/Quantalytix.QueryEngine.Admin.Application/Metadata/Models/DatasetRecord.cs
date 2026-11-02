@@ -11,7 +11,4 @@ public sealed record DatasetRecord
 
     /// <summary>Human-readable label.</summary>
     public required string DisplayName { get; init; }
-
-    /// <summary>Administrative availability flag.</summary>
-    public required bool IsEnabled { get; init; }
 }

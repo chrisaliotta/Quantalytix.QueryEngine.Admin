@@ -2,7 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
-/// <summary>The contract's <c>CalcModel</c>: a calculation model's own settings (<c>qe_calculation_model</c>).</summary>
+/// <summary>
+/// The contract's <c>CalcModel</c>: a calculation model's identity with one version's settings (<c>qe_calculation_model_version</c>).
+/// </summary>
 public record CalcModel
 {
     /// <summary>Creates the settings.</summary>
@@ -16,6 +18,9 @@ public record CalcModel
     protected CalcModel(CalcModel model)
     {
         Id = model.Id;
+        VersionId = model.VersionId;
+        SnapshotId = model.SnapshotId;
+        IsLive = model.IsLive;
         Key = model.Key;
         DisplayName = model.DisplayName;
         CurrencyCode = model.CurrencyCode;
@@ -27,6 +32,15 @@ public record CalcModel
 
     /// <summary>The model's id.</summary>
     public required long Id { get; init; }
+
+    /// <summary>The version whose settings these are.</summary>
+    public required long VersionId { get; init; }
+
+    /// <summary>The snapshot the version belongs to.</summary>
+    public required long SnapshotId { get; init; }
+
+    /// <summary>Whether the version is live, and so editable; a frozen version is read-only.</summary>
+    public required bool IsLive { get; init; }
 
     /// <summary>The model's key, fixed after creation (C9).</summary>
     public required string Key { get; init; }

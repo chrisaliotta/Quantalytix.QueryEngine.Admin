@@ -7,15 +7,15 @@ using Xunit;
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>
-/// Confirms that cloning a dataset version copies its settings and every child row into a new draft whose internal
-/// references point at the copies: grain fields, binding source fields and source bindings, time binding interval ends,
-/// the default time binding, measure components, dependencies and time policies. References to other aggregates keep
-/// their IDs. A clone that still pointed at source rows would let edits to the draft change a published version, and one
+/// Confirms that copying a dataset version, as capture and restore do, copies its settings and every child row into the target
+/// snapshot with internal references pointing at the copies: grain fields, binding source fields and source bindings, time
+/// binding interval ends, the default time binding, measure components, dependencies and time policies. References to other
+/// aggregates keep their IDs. A copy that still pointed at source rows would let edits to live change a frozen snapshot, and one
 /// that remapped outside IDs would bind to dimension content that does not exist.
 /// </summary>
-public sealed class DatasetVersionClonerTests
+public sealed class DatasetVersionCopierTests
 {
-    /// <summary>The published version being cloned, version 3 of dataset 10.</summary>
+    /// <summary>The live version being copied, of dataset 10.</summary>
     private const long SourceVersionId = 100;
 
     /// <summary>The first ID the clone hands out; every seeded ID is smaller.</summary>
@@ -39,10 +39,8 @@ public sealed class DatasetVersionClonerTests
     /// <summary>The dataset version table, holding the source version.</summary>
     private readonly InMemoryTableGateway<DatasetVersionRecord> _versions = new(DatasetRows.Version(SourceVersionId, defaultTimeBindingId: 21) with
     {
-        VersionNumber = 3,
-        Status = PublicationStatuses.Published,
-        Properties = """{"owner":"finance"}""",
-        PublishedAt = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc)
+        IsEnabled = false,
+        Properties = """{"owner":"finance"}"""
     });
 
     /// <summary>The source version's fields.</summary>
@@ -98,22 +96,22 @@ public sealed class DatasetVersionClonerTests
     /// <summary>The aggregate's time policy, on the time binding and the temporalSeries grain.</summary>
     private readonly InMemoryTableGateway<MeasureTimePolicyRecord> _timePolicies = new(DatasetRows.TimePolicy(31, requiredTimeBindingId: 21, selectionDatasetGrainId: 12));
 
-    /// <summary>The clone is a new draft with the given number and no publication time; the source version and its rows are untouched.</summary>
-    /// <returns>A task that completes when the clone is checked.</returns>
+    /// <summary>
+    /// The copy is a new version in the target snapshot with the source's settings and enabled flag; the live version keeps its id,
+    /// and it and its rows are untouched, as a capture must leave live.
+    /// </summary>
+    /// <returns>A task that completes when the copy is checked.</returns>
     [Fact]
-    public async Task Clone_IsANewDraftAndLeavesTheSourceUntouched()
+    public async Task Copy_IsANewVersionInTheTargetSnapshotAndLeavesTheSourceUntouched()
     {
         var clone = await CloneAsync();
 
         Assert.True(clone.DatasetVersionId >= FirstNewId);
-        Assert.Equal(10, clone.DatasetId);
-        Assert.Equal(4, clone.VersionNumber);
-        Assert.Equal(PublicationStatuses.Draft, clone.Status);
-        Assert.Null(clone.PublishedAt);
+        Assert.Equal((10, SnapshotRows.FrozenId, false), (clone.DatasetId, clone.SnapshotId, clone.IsEnabled));
         Assert.Equal("loan_daily", clone.SourceObject);
         Assert.Equal("""{"owner":"finance"}""", clone.Properties);
         Assert.Equal(clone, _versions.All.Single(row => row.DatasetVersionId == clone.DatasetVersionId));
-        Assert.Equal(PublicationStatuses.Published, _versions.All.Single(row => row.DatasetVersionId == SourceVersionId).Status);
+        Assert.Equal(SnapshotRows.LiveId, _versions.All.Single(row => row.DatasetVersionId == SourceVersionId).SnapshotId);
         Assert.Equal(5, _fields.All.Count(row => row.DatasetVersionId == SourceVersionId));
         Assert.Equal(5, _fields.All.Count(row => row.DatasetVersionId == clone.DatasetVersionId));
         Assert.Equal(6, _grainFields.All.Count);
@@ -126,7 +124,7 @@ public sealed class DatasetVersionClonerTests
     /// <summary>Every reference between rows of the version, and the default time binding, points at the copied rows.</summary>
     /// <returns>A task that completes when the clone is checked.</returns>
     [Fact]
-    public async Task Clone_RemapsEveryInternalReference()
+    public async Task Copy_RemapsEveryInternalReference()
     {
         var clone = await CloneAsync();
         var fieldKeys = _fields.All.Where(row => row.DatasetVersionId == clone.DatasetVersionId).ToDictionary(row => row.FieldId, row => row.FieldKey);
@@ -184,12 +182,13 @@ public sealed class DatasetVersionClonerTests
         Assert.Equal(BridgeId, bindings[BindingKinds.Bridge].BridgeId);
     }
 
-    /// <summary>Clones the source version into version 4 of dataset 10 with IDs counting up from <see cref="FirstNewId"/>.</summary>
-    private Task<DatasetVersionRecord> CloneAsync()
+    /// <summary>Copies the source version into the frozen snapshot with IDs counting up from <see cref="FirstNewId"/>.</summary>
+    private async Task<DatasetVersionRecord> CloneAsync()
     {
         var content = new DatasetVersionContentStore(
             _fields, _grains, _grainFields, _bindings, _timeBindings, _measures, _components, _dependencies, _timePolicies);
-        var cloner = new DatasetVersionCloner(_versions, content, new SequentialIdGenerator(FirstNewId), TimeProvider.System);
-        return cloner.CloneAsync(SourceVersionId, 10, 4, TestContext.Current.CancellationToken);
+        var copier = new DatasetVersionCopier(_versions, content, new SequentialIdGenerator(FirstNewId), TimeProvider.System);
+        var copyId = await copier.CopyAsync(SourceVersionId, SnapshotRows.FrozenId, null, TestContext.Current.CancellationToken);
+        return _versions.All.Single(row => row.DatasetVersionId == copyId);
     }
 }

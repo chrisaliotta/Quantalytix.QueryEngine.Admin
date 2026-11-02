@@ -2,6 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
@@ -9,12 +10,14 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// <summary>
 /// The materialization commands of JSON path fields (OI-32). A source object has one asynchronous materialized view holding the
 /// columns its fields name in <c>qe_field.materialized_column</c>; every change of that set redefines the view, which StarRocks then
-/// refreshes, and the last column out drops it. Storage does not change what a version means, so any version that is not retired
-/// accepts these commands; the engine reads <c>materialized_column</c>, so each change advances the semantic revision.
+/// refreshes, and the last column out drops it. The view keeps every column a version names, live or frozen, so frozen snapshots read
+/// on; only the live version's fields change. The engine reads <c>materialized_column</c>, so each change advances the semantic
+/// revision.
 /// </summary>
 public sealed class DatasetMaterializations(
     ITableGateway<DatasetVersionRecord> versions,
     ITableGateway<FieldRecord> fields,
+    LiveSnapshot live,
     IMaterializedViews views,
     SemanticRevision semanticRevision)
 {
@@ -22,7 +25,7 @@ public sealed class DatasetMaterializations(
     /// <param name="versionId">The field's version.</param>
     /// <param name="fieldId">The field.</param>
     /// <param name="cancellationToken">Cancels the reads and statements.</param>
-    /// <returns>The field with its materialization, or the conflict of a retired version or another field kind.</returns>
+    /// <returns>The field with its materialization, or the conflict of a frozen version or another field kind.</returns>
     public async Task<Outcome<DatasetField>> MaterializeAsync(long versionId, long fieldId, CancellationToken cancellationToken)
     {
         var (version, field, refusal) = await TargetAsync(versionId, fieldId, cancellationToken);
@@ -38,7 +41,7 @@ public sealed class DatasetMaterializations(
     /// <param name="versionId">The field's version.</param>
     /// <param name="fieldId">The field.</param>
     /// <param name="cancellationToken">Cancels the reads and the statement.</param>
-    /// <returns>The field, or the conflict of a retired version or a field that is not materialized.</returns>
+    /// <returns>The field, or the conflict of a frozen version or a field that is not materialized.</returns>
     public async Task<Outcome<DatasetField>> RefreshAsync(long versionId, long fieldId, CancellationToken cancellationToken)
     {
         var (version, field, refusal) = await TargetAsync(versionId, fieldId, cancellationToken);
@@ -53,7 +56,7 @@ public sealed class DatasetMaterializations(
     /// <param name="versionId">The field's version.</param>
     /// <param name="fieldId">The field.</param>
     /// <param name="cancellationToken">Cancels the reads and statements.</param>
-    /// <returns>The field without materialization, or the conflict of a retired version or another field kind.</returns>
+    /// <returns>The field without materialization, or the conflict of a frozen version or another field kind.</returns>
     public async Task<Outcome<DatasetField>> DematerializeAsync(long versionId, long fieldId, CancellationToken cancellationToken)
     {
         var (version, field, refusal) = await TargetAsync(versionId, fieldId, cancellationToken);
@@ -74,7 +77,7 @@ public sealed class DatasetMaterializations(
     /// <returns>A task that completes when the view is defined or dropped.</returns>
     public async Task DefineAsync(string sourceObject, CancellationToken cancellationToken)
     {
-        var readers = (await versions.ListAsync(new { SourceObject = sourceObject }, cancellationToken)).Where(version => version.Status != PublicationStatuses.Retired);
+        var readers = await versions.ListAsync(new { SourceObject = sourceObject }, cancellationToken);
         var materialized = (await fields.ListAsync(new { DatasetVersionId = readers.Select(version => version.DatasetVersionId).ToArray() }, cancellationToken))
             .Where(field => field.MaterializedColumn is not null)
             .DistinctBy(field => field.MaterializedColumn, StringComparer.Ordinal)
@@ -113,8 +116,8 @@ public sealed class DatasetMaterializations(
     {
         var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
         var field = await fields.GetAsync(new { FieldId = fieldId }, cancellationToken);
-        if (version.Status == PublicationStatuses.Retired)
-            return (version, field, Refusal.Conflict("Version is retired", $"Version v{version.VersionNumber} is retired; queries do not read it, so there is nothing to store."));
+        if (version.SnapshotId != await live.IdAsync(cancellationToken))
+            return (version, field, Refusal.Conflict(DatasetRefusals.FrozenTitle, $"Version {versionId} belongs to a frozen snapshot; only the live version's fields change."));
         if (field.FieldSourceKind != FieldSourceKinds.JsonPath)
             return (version, field, Refusal.Conflict("Not a JSON path field", $"Field '{field.FieldKey}' is a {field.FieldSourceKind} field; only JSON path fields are materialized."));
         return (version, field, null);

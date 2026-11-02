@@ -67,17 +67,17 @@ paths:
       tags: [mappings]
       responses:
         '200':
-          description: The mapping set with its bindings and assumption set pins.
+          description: The mapping set with its versions and the live bindings that use it.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MappingSetDetail'
+                $ref: '#/components/schemas/MappingSetListItem'
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
     delete:
       operationId: deleteMappingSet
       summary: Delete a mapping set
-      description: Deletes the mapping set and every version when no binding uses it and no historical set pins it (B12).
+      description: Deletes the mapping set with its live version when no live binding uses it and no frozen snapshot holds it (B12).
       tags: [mappings]
       responses:
         '204':
@@ -183,7 +183,7 @@ paths:
       - $ref: '#/components/parameters/MappingVersionId'
     get:
       operationId: getMappingVersion
-      summary: Get a mapping version's content
+      summary: Get a mapping version's content, live or frozen
       tags: [mappings]
       responses:
         '200':
@@ -194,95 +194,6 @@ paths:
                 $ref: '#/components/schemas/MappingVersionContent'
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
-    delete:
-      operationId: deleteMappingVersion
-      summary: Delete a frozen mapping version
-      tags: [mappings]
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: The version is live, or a historical assumption set pins it.
-
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    post:
-      operationId: checkMappingVersion
-      summary: Run the mapping version rules
-      description: Runs every mapping version rule on any version and writes nothing (OI-30).
-      tags: [mappings]
-      responses:
-        '200':
-          description: The rule report.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/ValidationReport'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/freeze:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    post:
-      operationId: freezeMappingVersion
-      summary: Freeze the live mapping version
-      description: >-
-        Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone
-        (12, The version model).
-      tags: [mappings]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: './common.yaml#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MappingFreezeResult'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: The version is not live.
-        '422':
-          $ref: './common.yaml#/components/responses/UnprocessableContent'
-          description: A rule failed; see `violations`. Nothing was written.
-
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/delete-check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    get:
-      operationId: checkDeleteMappingVersion
-      summary: Check whether a mapping version can be deleted
-      tags: [mappings]
-      responses:
-        '200':
-          description: Whether the delete is allowed, and why not.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
   /api/tenants/{tenantId}/bridges:
     parameters:
       - $ref: './common.yaml#/components/parameters/TenantId'
@@ -357,17 +268,17 @@ paths:
       tags: [mappings]
       responses:
         '200':
-          description: The bridge with its bindings and assumption set pins.
+          description: The bridge with its versions and the live bindings that use it.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BridgeDetail'
+                $ref: '#/components/schemas/BridgeListItem'
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
     delete:
       operationId: deleteBridge
       summary: Delete an analytical bridge
-      description: Deletes the bridge and every version when no binding uses it and no historical set pins it (B12).
+      description: Deletes the bridge with its live version when no live binding uses it and no frozen snapshot holds it (B12).
       tags: [mappings]
       responses:
         '204':
@@ -473,7 +384,7 @@ paths:
       - $ref: '#/components/parameters/BridgeVersionId'
     get:
       operationId: getBridgeVersion
-      summary: Get a bridge version's content
+      summary: Get a bridge version's content, live or frozen
       tags: [mappings]
       responses:
         '200':
@@ -484,95 +395,6 @@ paths:
                 $ref: '#/components/schemas/BridgeVersionContent'
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
-    delete:
-      operationId: deleteBridgeVersion
-      summary: Delete a frozen bridge version
-      tags: [mappings]
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: The version is live, a historical assumption set pins it, or the bridge is owned by a report.
-
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
-    post:
-      operationId: checkBridgeVersion
-      summary: Run the bridge version rules
-      description: Runs every bridge version rule on any version and writes nothing (OI-30).
-      tags: [mappings]
-      responses:
-        '200':
-          description: The rule report.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/ValidationReport'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/freeze:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
-    post:
-      operationId: freezeBridgeVersion
-      summary: Freeze the live bridge version
-      description: >-
-        Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone with the
-        same settings and mappings (12, The version model).
-      tags: [mappings]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: './common.yaml#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BridgeFreezeResult'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: The version is not live, or the bridge is owned by a report.
-        '422':
-          $ref: './common.yaml#/components/responses/UnprocessableContent'
-          description: A rule failed; see `violations`. Nothing was written.
-
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/delete-check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
-    get:
-      operationId: checkDeleteBridgeVersion
-      summary: Check whether a bridge version can be deleted
-      tags: [mappings]
-      responses:
-        '200':
-          description: Whether the delete is allowed, and why not.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
 components:
   parameters:
     MappingSetId:
@@ -615,7 +437,7 @@ components:
     MappingDimensionRef:
       type: object
       description: A read-only slice of a dimension, enough to label it and to state which version keys resolve against.
-      required: [id, key, displayName, kind, purpose, publishedVersionId, publishedVersionNumber]
+      required: [id, key, displayName, kind, purpose, versionId]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
@@ -629,16 +451,16 @@ components:
         purpose:
           type: string
           enum: [analytical, report]
-        publishedVersionId:
+        versionId:
           type: [string, 'null']
-          description: The live version, whose members entry and mapping keys resolve against.
-        publishedVersionNumber:
-          type: [integer, 'null']
+          description: >-
+            The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when
+            the snapshot holds none.
 
     MappingBindingUsage:
       type: object
       description: A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers.
-      required: [datasetId, datasetKey, datasetVersionId, datasetVersionNumber, status, fieldKey, roleKey, sourceRoleKey]
+      required: [datasetId, datasetKey, datasetVersionId, fieldKey, roleKey, sourceRoleKey]
       properties:
         datasetId:
           $ref: './common.yaml#/components/schemas/Id'
@@ -646,10 +468,7 @@ components:
           $ref: './common.yaml#/components/schemas/DottedKey'
         datasetVersionId:
           $ref: './common.yaml#/components/schemas/Id'
-        datasetVersionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+          description: The dataset version that holds the binding, in the same snapshot.
         fieldKey:
           $ref: './common.yaml#/components/schemas/Key'
         roleKey:
@@ -658,35 +477,16 @@ components:
           type: [string, 'null']
           description: Bridge bindings only, the role of the binding the bridge remaps; null for mapping sets.
 
-    MappingAssumptionPin:
-      type: object
-      description: An assumption set that pins one version of a mapping set or bridge.
-      required: [assumptionSetId, assumptionSetKey, assumptionSetDisplayName, isActive, versionId, versionNumber]
-      properties:
-        assumptionSetId:
-          $ref: './common.yaml#/components/schemas/Id'
-        assumptionSetKey:
-          type: string
-        assumptionSetDisplayName:
-          type: string
-        isActive:
-          type: boolean
-          description: The active set always pins the live version; historical sets keep the version they captured.
-        versionId:
-          $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-
     MappingViolationCode:
       type: string
       description: Rule codes of mapping versions.
-      enum: [source_key_unique, dimension_version_published, entry_member_in_version, entry_member_assignable]
+      enum: [source_key_unique, dimension_version_in_snapshot, entry_member_in_version, entry_member_assignable]
 
     BridgeViolationCode:
       type: string
       description: Rule codes of bridge versions.
       enum:
-        - endpoint_versions_published
+        - endpoint_versions_in_snapshot
         - mapping_members_in_endpoint_versions
         - cardinality_many_to_one
         - allocation_none
@@ -715,28 +515,19 @@ components:
 
     MappingVersion:
       type: object
-      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
-      required: [id, mappingSetId, versionNumber, status, createdAt, publishedAt, retiredAt, freezeNote]
+      description: The live version (edited in place) or a frozen snapshot's version (read-only) (B10).
+      required: [id, mappingSetId, snapshotId, isLive, createdAt]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
         mappingSetId:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-          description: When it was frozen.
-        freezeNote:
-          type: [string, 'null']
 
     MappingEntry:
       type: object
@@ -754,24 +545,16 @@ components:
 
     MappingVersionSummary:
       type: object
-      required: [id, versionNumber, status, createdAt, publishedAt, retiredAt, freezeNote, entryCount]
+      required: [id, snapshotId, isLive, createdAt, entryCount]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-        freezeNote:
-          type: [string, 'null']
         entryCount:
           type: integer
 
@@ -779,32 +562,25 @@ components:
       allOf:
         - $ref: '#/components/schemas/MappingSet'
         - type: object
-          required: [dimension, versions, publishedEntryCount, bindings]
+          required: [dimension, versions, liveVersionId, liveEntryCount, bindings]
           properties:
             dimension:
               $ref: '#/components/schemas/MappingDimensionRef'
             versions:
               type: array
+              description: One per snapshot holding the mapping set, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/MappingVersionSummary'
-            publishedEntryCount:
+            liveVersionId:
+              $ref: './common.yaml#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveEntryCount:
               type: integer
               description: Entries of the live version.
             bindings:
               type: array
               items:
                 $ref: '#/components/schemas/MappingBindingUsage'
-
-    MappingSetDetail:
-      allOf:
-        - $ref: '#/components/schemas/MappingSetListItem'
-        - type: object
-          required: [pins]
-          properties:
-            pins:
-              type: array
-              items:
-                $ref: '#/components/schemas/MappingAssumptionPin'
 
     MappingCoverage:
       type: object
@@ -844,7 +620,7 @@ components:
       required: [set, content]
       properties:
         set:
-          $ref: '#/components/schemas/MappingSetDetail'
+          $ref: '#/components/schemas/MappingSetListItem'
         content:
           $ref: '#/components/schemas/MappingVersionContent'
 
@@ -897,15 +673,6 @@ components:
         memberKey:
           type: string
           minLength: 1
-
-    MappingFreezeResult:
-      allOf:
-        - $ref: './common.yaml#/components/schemas/FreezeResult'
-        - type: object
-          required: [live]
-          properties:
-            live:
-              $ref: '#/components/schemas/MappingVersionSummary'
 
     MappingSetUpdateOperation:
       type: object
@@ -1035,32 +802,26 @@ components:
 
     BridgeVersion:
       type: object
-      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
-      required: [id, bridgeId, versionNumber, status, cardinality, allocationMode, createdAt, publishedAt, retiredAt, freezeNote]
+      description: The live version (edited in place) or a frozen snapshot's version (read-only) (B10).
+      required: [id, bridgeId, snapshotId, isLive, cardinality, allocationMode, isEnabled, createdAt]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
         bridgeId:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
         cardinality:
           $ref: '#/components/schemas/MappingCardinality'
         allocationMode:
           $ref: '#/components/schemas/MappingAllocationMode'
+        isEnabled:
+          type: boolean
+          description: Whether the engine offers the bridge in the version's snapshot.
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-          description: When it was frozen.
-        freezeNote:
-          type: [string, 'null']
 
     BridgeMapping:
       type: object
@@ -1084,28 +845,20 @@ components:
 
     BridgeVersionSummary:
       type: object
-      required: [id, versionNumber, status, cardinality, allocationMode, createdAt, publishedAt, retiredAt, freezeNote, mappingCount]
+      required: [id, snapshotId, isLive, cardinality, allocationMode, createdAt, mappingCount]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
         cardinality:
           $ref: '#/components/schemas/MappingCardinality'
         allocationMode:
           $ref: '#/components/schemas/MappingAllocationMode'
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-        freezeNote:
-          type: [string, 'null']
         mappingCount:
           type: integer
 
@@ -1113,7 +866,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Bridge'
         - type: object
-          required: [source, target, versions, publishedMappingCount, bindings]
+          required: [source, target, versions, liveVersionId, liveMappingCount, bindings]
           properties:
             source:
               $ref: '#/components/schemas/MappingDimensionRef'
@@ -1121,26 +874,19 @@ components:
               $ref: '#/components/schemas/MappingDimensionRef'
             versions:
               type: array
+              description: One per snapshot holding the bridge, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/BridgeVersionSummary'
-            publishedMappingCount:
+            liveVersionId:
+              $ref: './common.yaml#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveMappingCount:
               type: integer
               description: Mappings of the live version.
             bindings:
               type: array
               items:
                 $ref: '#/components/schemas/MappingBindingUsage'
-
-    BridgeDetail:
-      allOf:
-        - $ref: '#/components/schemas/BridgeListItem'
-        - type: object
-          required: [pins]
-          properties:
-            pins:
-              type: array
-              items:
-                $ref: '#/components/schemas/MappingAssumptionPin'
 
     BridgeSourceAllocation:
       type: object
@@ -1191,7 +937,7 @@ components:
       required: [bridge, content]
       properties:
         bridge:
-          $ref: '#/components/schemas/BridgeDetail'
+          $ref: '#/components/schemas/BridgeListItem'
         content:
           $ref: '#/components/schemas/BridgeVersionContent'
 
@@ -1262,15 +1008,6 @@ components:
         sourceSelection:
           $ref: './common.yaml#/components/schemas/SourceSelection'
           description: Accepted only on report bridges, written by the report editor; absent means `member` (OI-28).
-
-    BridgeFreezeResult:
-      allOf:
-        - $ref: './common.yaml#/components/schemas/FreezeResult'
-        - type: object
-          required: [live]
-          properties:
-            live:
-              $ref: '#/components/schemas/BridgeVersionSummary'
 
     BridgeUpdateOperation:
       type: object

@@ -2,8 +2,7 @@
 # Blueprint: docs/blueprint/12-dimensions.md
 # Holds this module's paths and components only; every operation is tagged `dimensions`. Shared types come from
 # ./common.yaml. Composition and naming rules: ./README.md.
-# The live-and-frozen version model is shared with mapping sets and bridges (OI-14): their files reference
-# `FreezeInput` and specialize `FreezeResult` from here.
+# Every dimension version belongs to one snapshot: the live one is edited in place, frozen ones are read-only.
 openapi: 3.1.0
 info:
   title: Dimensions
@@ -38,7 +37,7 @@ paths:
     post:
       operationId: createDimension
       summary: Create a user dimension with a live version 1
-      description: Creates origin `user`, purpose `analytical`; version 1 is created live (published).
+      description: Creates origin `user`, purpose `analytical`; its version is created live. Advances `semanticRevision`.
       tags: [dimensions]
       requestBody:
         required: true
@@ -234,7 +233,7 @@ paths:
       - $ref: '#/components/parameters/DimensionVersionId'
     get:
       operationId: getDimensionVersion
-      summary: Get the content of a dimension version
+      summary: Get the content of a dimension version, live or frozen
       tags: [dimensions]
       responses:
         '200':
@@ -246,94 +245,6 @@ paths:
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
           description: No such version, or its dimension is owned by a report.
-    delete:
-      operationId: deleteDimensionVersion
-      summary: Delete a frozen dimension version
-      tags: [dimensions]
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: The live version, or pinned by a historical assumption set (see `violations`).
-
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    post:
-      operationId: checkDimensionVersion
-      summary: Run the dimension rules on a version without writing
-      tags: [dimensions]
-      responses:
-        '200':
-          description: The rule report; codes are `DimensionViolationCode` values.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/ValidationReport'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/freeze:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    post:
-      operationId: freezeDimensionVersion
-      summary: Freeze the live version and continue in a new live clone
-      description: >-
-        Runs every dimension rule; when they pass, clones the live version n to n+1 live, retires n with the note,
-        repoints the active assumption set and advances `semantic_revision` (OI-14, OI-15).
-      tags: [dimensions]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: './common.yaml#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DimensionFreezeResult'
-        '400':
-          $ref: './common.yaml#/components/responses/BadRequest'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-        '409':
-          $ref: './common.yaml#/components/responses/Conflict'
-          description: Not the live version, or locked by its profile.
-        '422':
-          $ref: './common.yaml#/components/responses/UnprocessableContent'
-          description: A rule fails; nothing changed.
-
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/delete-check:
-    parameters:
-      - $ref: './common.yaml#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    get:
-      operationId: checkDimensionVersionDelete
-      summary: Check whether a dimension version can be deleted
-      tags: [dimensions]
-      responses:
-        '200':
-          description: The delete check.
-          content:
-            application/json:
-              schema:
-                $ref: './common.yaml#/components/schemas/DeleteCheck'
-        '404':
-          $ref: './common.yaml#/components/responses/NotFound'
-
   /api/tenants/{tenantId}/dimension-versions/{versionId}/members/{memberId}/delete-check:
     parameters:
       - $ref: './common.yaml#/components/parameters/TenantId'
@@ -436,7 +347,7 @@ components:
       type: string
       enum: [open, extend, locked]
       description: >-
-        `locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or
+        `locked` refuses every edit (changed through provisioning, OI-24); `extend` refuses deleting or
         re-keying a required member or role; `open` allows everything except delete (M11).
 
     RangeDataType:
@@ -469,7 +380,7 @@ components:
 
     DimensionUsageKind:
       type: string
-      enum: [dataset_binding, mapping_set, bridge, calculation_dimension, report_scenario, report_source, assumption_set]
+      enum: [dataset_binding, mapping_set, bridge, calculation_dimension, report_scenario, report_source]
 
     # ───────────── profiles ─────────────
 
@@ -594,19 +505,17 @@ components:
 
     DimensionVersion:
       type: object
-      description: >-
-        Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no
-        drafts (M3, OI-14).
-      required: [id, dimensionId, versionNumber, status, rangeDataType, createdAt, publishedAt, retiredAt, supersededBy, freezeNote]
+      description: The live version (edited in place) or a frozen snapshot's version (read-only).
+      required: [id, dimensionId, snapshotId, isLive, rangeDataType, createdAt]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
         dimensionId:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
         rangeDataType:
           description: Range dimensions only.
           oneOf:
@@ -614,40 +523,19 @@ components:
             - type: 'null'
         createdAt:
           $ref: './common.yaml#/components/schemas/Timestamp'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-          description: When the version was frozen (SG-04).
-        supersededBy:
-          type: [integer, 'null']
-          description: Derived; the next version number once frozen (OI-12).
-        freezeNote:
-          type: [string, 'null']
-          description: Why the version was frozen (SG-05, OI-15).
 
     DimensionVersionSummary:
       type: object
-      required: [id, versionNumber, status, publishedAt, retiredAt, supersededBy, freezeNote, memberCount]
+      required: [id, snapshotId, isLive, createdAt, memberCount]
       properties:
         id:
           $ref: './common.yaml#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: './common.yaml#/components/schemas/VersionStatus'
-        publishedAt:
-          type: [string, 'null']
-          format: date-time
-        retiredAt:
-          type: [string, 'null']
-          format: date-time
-        supersededBy:
-          type: [integer, 'null']
-        freezeNote:
-          type: [string, 'null']
+        snapshotId:
+          $ref: './common.yaml#/components/schemas/Id'
+        isLive:
+          type: boolean
+        createdAt:
+          $ref: './common.yaml#/components/schemas/Timestamp'
         memberCount:
           type: integer
 
@@ -757,12 +645,9 @@ components:
           description: Member keys this object names; deleting them is blocked and `dimension_consumers_resolve` requires them.
           items:
             type: string
-        pinsVersion:
-          type: integer
-          description: Assumption sets only; the version number pinned.
         label:
           type: string
-          description: Display label for blocker phrasing, e.g. a dataset version "'loans.details' v3".
+          description: Display label for blocker phrasing, when the name does not say it.
 
     # ───────────── read models ─────────────
 
@@ -770,7 +655,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Dimension'
         - type: object
-          required: [profile, roles, versions, publishedMemberCount]
+          required: [profile, roles, versions, liveVersionId, liveMemberCount]
           properties:
             profile:
               oneOf:
@@ -782,10 +667,14 @@ components:
                 $ref: '#/components/schemas/DimensionRole'
             versions:
               type: array
+              description: One per snapshot holding the dimension, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/DimensionVersionSummary'
-            publishedMemberCount:
-              type: [integer, 'null']
+            liveVersionId:
+              $ref: './common.yaml#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveMemberCount:
+              type: integer
               description: Members in the live version.
 
     DimensionDetail:
@@ -797,8 +686,8 @@ components:
             usage:
               type: array
               description: >-
-                Computed from bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources
-                and assumption set pins.
+                Computed from the live bindings, mapping sets, bridges, calculation dimensions, report scenarios and
+                report sources.
               items:
                 $ref: '#/components/schemas/DimensionUsageReference'
 
@@ -839,18 +728,7 @@ components:
           $ref: './common.yaml#/components/schemas/Id'
         versionId:
           $ref: './common.yaml#/components/schemas/Id'
-          description: The live version 1.
-
-    # ───────────── live-and-frozen versions (shared with mapping sets and bridges) ─────────────
-
-    DimensionFreezeResult:
-      allOf:
-        - $ref: './common.yaml#/components/schemas/FreezeResult'
-        - type: object
-          required: [live]
-          properties:
-            live:
-              $ref: '#/components/schemas/DimensionVersionSummary'
+          description: The live version.
 
     # ───────────── inputs ─────────────
 

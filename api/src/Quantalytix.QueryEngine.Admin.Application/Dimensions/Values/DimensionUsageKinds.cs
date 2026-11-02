@@ -23,7 +23,4 @@ public static class DimensionUsageKinds
 
     /// <summary>A report source that reads a role.</summary>
     public const string ReportSource = "report_source";
-
-    /// <summary>An assumption set that pins a version.</summary>
-    public const string AssumptionSet = "assumption_set";
 }

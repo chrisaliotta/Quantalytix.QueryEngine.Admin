@@ -70,26 +70,24 @@ worked example; every step names its files.
 
 ### 4. Rules
 
-- Migrate each `IPublicationRule` to an `ISnapshotRule<TSnapshot>` (base class `DimensionRule` shows the pattern):
-  `Stage` is `Gate` when the engine reads the change as saved (keys, parents, consumers resolve) and `Publication` for
-  findings that block only validate/publish/freeze. Publication findings come back in `preview.violations` and reflect
-  the pending edits. Content that is live once saved (mapping sets, bridges, B11) uses `Commit`: a preview finding that
-  also refuses the commit with 422, in the same run of the operations.
-- Register in reporting order with `AddSnapshotRule`, plus one `IPublicationRule` bridge (`DimensionVersionRules`) so
-  the version workflow (freeze, publish) runs the same rules on stored versions. Remove the old `IPublicationRule`s.
+- Write each rule as an `ISnapshotRule<TSnapshot>` (base class `DimensionRule` shows the pattern): `Stage` is `Gate`
+  when a change that breaks it must be refused in the preview too (keys, parents, consumers resolve), and `Commit`
+  otherwise. Every saved version is live, so a commit finding comes back in `preview.violations`, reflecting the pending
+  edits, and refuses the commit with 422 in the same run of the operations.
+- Register in reporting order with `AddSnapshotRule`, plus one `IVersionRules` (`DimensionVersionRules`) so restore runs
+  the same rules on stored versions, and the kind's `IVersionCopier` and `IVersionRemover` for capture, restore and
+  snapshot delete.
 - Give violations a `Target` with your module's tab/area and the item id as stored digits
   (`TemporaryIds.PresentStored`); the pipeline rewrites ids of items the change set created to their temporary ids.
 
-### 5. Commands, freeze and deletes
+### 5. Commands and deletes
 
-- Lifecycle commands are services returning `Outcome<T>` or `Refusal?`, never staged.
-- Living kinds (mapping sets, bridges): create version 1 as a draft and `VersionWorkflow.PublishAsync` it (live,
-  pinned by the active set, derived rows built, revision advanced). Freeze through `LivingVersionFreezer.FreezeAsync`
-  (it stamps `retired_at` and `freeze_note`); answer the 200 with the live summary, and let a rule failure surface as
-  the 422 refusal.
+- Commands are services returning `Outcome<T>` or `Refusal?`, never staged.
+- Create inserts the identity and its version in the live snapshot (`LiveSnapshot`), builds derived rows and advances
+  the revision.
 - Delete checks: one pure `<Module>DeleteRules` over the snapshot shared by `GET …/delete-check` and the delete
-  operations, with `DeleteBlockers` and the `DeleteBlockerCodes` list (`referenced_by_<usage kind>`). The active
-  assumption set's pin goes with a deleted identity (`AssumptionPins.Unpin…`); a historical set's pin blocks.
+  operations, with `DeleteBlockers` and the `DeleteBlockerCodes` list (`referenced_by_<usage kind>`). The live version goes with a
+  deleted identity; a frozen snapshot that holds a version of it blocks (`referenced_by_snapshot`).
 
 ### 6. WebApi
 
@@ -118,7 +116,7 @@ worked example; every step names its files.
 - `web/src/lib/<m>/http/adapter.ts`: implement the port over `HttpClient` (tenant client) and
   `createHttpChangeSet<Op, State>`; edits `stage(aggregatePath, { op, ...args })` and derive their return value from the
   preview state; assign `newTempId()` to inputs without an id; strip the `input.`/`patch.` prefix from error keys so
-  forms see the mock's keys; convert a 422 of `validate`/`publish`/`freeze` into the port's data shape.
+  forms see the mock's keys.
 - `client.tsx` picks the adapter with `apiMode` from `@/lib/api/session`.
 - Add your module's cases to a `lib/<m>/<m>-api.parity.test.ts` suite modelled on the dimensions one: each test states
   the behavior it confirms, runs on the mock always and on the HTTP adapter with `QE_LIVE_API=1` (`createLiveHttp` and
@@ -132,8 +130,8 @@ worked example; every step names its files.
   (`UnionDiscriminators`); the OpenAPI union members are typed objects requiring `op` (`UnionMemberSchemaTransformer`).
 - **Generic envelopes.** `ChangeSetPreview<TState>` and `ChangeSetCommit<TState>` need `TState : notnull`, or `state` is
   generated nullable.
-- **Seed data vs gates.** A gate runs on every preview, so a gate the seeded rows already break refuses every edit. Keep
-  property and band checks as publication findings; check profile registries against the seed (Branch requires `BR01`).
+- **Seed data vs gates.** A gate runs on every preview, so a gate the seeded rows already break refuses every edit. Live is
+  always valid, so a seed that breaks a rule must be fixed in the seed; check profile registries against the seed (Branch requires `BR01`).
 - **No transactions.** Load once, plan all writes, let `WritePlan` order them; never write from an operation.
 - **Cost.** A dimension preview loads the aggregate and its usage (about twenty reads). Fine for tenant metadata; do not
   add per-operation reads.
@@ -153,13 +151,13 @@ main checkout, which it reads from the worktree's `.git` file, so `dotnet build`
 
 ## Wave C (R6 reports): starting point and follow-ups
 
-Wave B (mappings and bridges, releases and assumption sets) is merged at contract `contract-v1.2`; the Wave A follow-ups
+Wave B (mappings and bridges, and the version modules that snapshots later replaced) is merged at contract `contract-v1.2`; the Wave A follow-ups
 for R4 and R5 are done. Only the reports operations remain in `ContractAllowList.NotImplemented`, and `Legacy` holds the
 old report endpoints, `VersionStatus` (P6) and `Lookups` (P6).
 
 - **Report bridges:** write them only through the public `Bridges/Services/ReportBridges` service (B9): `CreateAsync`
-  (live version 1, empty or copying another report bridge's rules; its publish advances the revision), `RenameAsync`,
-  `ReplaceRowAsync` (one row's rules), `RemoveRowsAsync` (rows the report dropped) and `DeleteAsync` (pins, version,
+  (a live version, empty or copying another report bridge's rules), `RenameAsync`,
+  `ReplaceRowAsync` (one row's rules), `RemoveRowsAsync` (rows the report dropped) and `DeleteAsync` (version and
   bridge). The writes are immediate, not staged: plan them in the report commit after the report's own rows, so a partial
   commit leaves a harmless residue, and let the report change advance the revision. A bridge counts as a report bridge
   when its target is a report dimension (`BridgeSnapshot.IsReportBridge`; its rules then allow descendant items), and
@@ -167,19 +165,13 @@ old report endpoints, `VersionStatus` (P6) and `Lookups` (P6).
   `BridgeOwnerReader`). The callers mappings
   edited minimally (`ReportSourceService`, `SourceItemService`, `ReportRowService`, `ReportContentRemover`,
   `ReportEditor/BridgeEntries`, `ReportEditorFixture`, `ReportLiveTests`) are yours to rewrite.
-- **Releases:** release checks run `report_sources_resolve` and `report_factors_apply` through
-  `Releases/Rules/ReleaseReportChecks` over the stored manifest only, so a release preview (`unsaved: true`) lacks them.
-  Add an unsaved-manifest scope hook in your folder, such as `ReportGraphReader.ScopeAsync(graphs, versionsByDataset)`
-  next to today's `ScopeAsync(graphs, semanticReleaseId)`, and request the releases change that calls it from the
-  preview. Put the source's key on report rule violation targets so the release screen can link the source. Once releases
-  run the report checks themselves, drop `AddConsumerRule` and `ReportConsumerRule` from
-  `CalculationModelsAndReportsFeatureServiceCollectionExtensions`.
+- **Dataset report checks:** `report_sources_resolve` and `report_factors_apply` run as commit rules of the datasets
+  module for the enabled reports that read the dataset. Put the source's key on report rule violation targets so the
+  dataset screen can link the source.
 - **Models:** move every `lib/model` import (`lib/report/*`, `components/report/*`, `components/reports/*`,
   `app/AppLayout.tsx`'s `ModelsProvider`) to `lib/models/client`, then delete `lib/model`. Keep the model gate's rule
   dependencies (`ModelGateRule`, `ModelFindingsRule` over `ModelChecks`). Instead of picking rules out of
   `ModelChecks`, request a public hook in `CalculationModels` that checks a report against a model's content.
-- **Pins:** a report dimension or bridge going away takes its pins through `AssumptionPins.UnpinDimensionAsync` and
-  `UnpinBridgeAsync` (`ReportBridges.DeleteAsync` already does the bridge's).
-- **Datasets:** deleting a dataset drops each managed table only its versions read, with its materialized view and
+- **Datasets:** deleting a dataset drops each managed table only its live version reads, with its materialized view and
   `qe_managed_source_object` row (decided 2026-10-27, [OI-33](90-open-issues.md#oi-33); `DatasetTableDrops`).
 

@@ -1,16 +1,16 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Reports;
 
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
-/// The model change-set aggregate (blueprint 15): the model row, its variables, calculated measures, parameters and attributions,
-/// saved together. Models are not versioned, so <see cref="ModelGateRule"/> refuses any operation that introduces a model-rule or
-/// report-rule violation before anything is written (C7, OI-42). A commit advances the semantic revision when it changes a model
-/// an enabled report reads.
+/// The model change-set aggregate (blueprint 15): the live version row, its variables, calculated measures, parameters and
+/// attributions, saved together. The live version is what the engine reads, so <see cref="ModelGateRule"/> refuses any operation that
+/// introduces a model-rule or report-rule violation before anything is written (C7, OI-42).
 /// </summary>
 /// <param name="loader">Reads the model and the reports over it.</param>
-/// <param name="models">The model table.</param>
+/// <param name="models">The model version table.</param>
 /// <param name="variables">The variable table.</param>
 /// <param name="measures">The calculated measure table.</param>
 /// <param name="parameters">The parameter table.</param>
@@ -18,7 +18,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// <param name="drivers">The attribution driver table.</param>
 public sealed class ModelChanges(
     ModelSnapshotLoader loader,
-    ITableGateway<CalculationModelRecord> models,
+    ITableGateway<CalculationModelVersionRecord> models,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> measures,
     ITableGateway<ModelParameterRecord> parameters,
@@ -32,13 +32,13 @@ public sealed class ModelChanges(
     /// <summary>The depth of the attribution drivers, below their attribution.</summary>
     private const int DriverDepth = 2;
 
-    /// <summary>Reads the model with the reports over it.</summary>
+    /// <summary>Reads the model's live version with the reports over it.</summary>
     /// <param name="aggregateId">The model.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The snapshot.</returns>
     public Task<ModelSnapshot> LoadAsync(long aggregateId, CancellationToken cancellationToken)
     {
-        return loader.LoadAsync(aggregateId, cancellationToken);
+        return loader.LoadLiveAsync(aggregateId, cancellationToken);
     }
 
     /// <summary>Applies one operation to the model's content.</summary>
@@ -51,7 +51,7 @@ public sealed class ModelChanges(
         return snapshot with { Content = ModelEdits.Apply(snapshot.Content, operation, context) };
     }
 
-    /// <summary>Plans the row writes, the model row last.</summary>
+    /// <summary>Plans the row writes, the version row last.</summary>
     /// <param name="before">The aggregate as stored.</param>
     /// <param name="after">The aggregate with every operation applied.</param>
     /// <param name="plan">The plan.</param>
@@ -62,18 +62,9 @@ public sealed class ModelChanges(
         if (stored.Model != changed.Model) plan.Update(models, WritePlan.Root, changed.Model);
         plan.Sync(variables, ContentDepth, stored.Variables, changed.Variables, row => new { row.VariableId });
         plan.Sync(measures, ContentDepth, stored.Measures, changed.Measures, row => new { row.CalculatedMeasureId });
-        plan.Sync(parameters, ContentDepth, stored.Parameters, changed.Parameters, row => new { row.CalculationModelId, row.ParameterKey });
-        plan.Sync(attributions, ContentDepth, stored.Attributions, changed.Attributions, row => new { row.CalculationModelId, row.MetricKey });
-        plan.Sync(drivers, DriverDepth, stored.Drivers, changed.Drivers, row => new { row.CalculationModelId, row.MetricKey, row.DriverKey });
-    }
-
-    /// <summary>Whether the engine reads the change: any change to a model that an enabled report reads.</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit advances the semantic revision.</returns>
-    public bool IsEngineVisible(ModelSnapshot before, ModelSnapshot after)
-    {
-        return after.Surroundings.Reports.Any(report => report.Report.IsEnabled) && !ModelTableRows.Of(before.Content).SameAs(ModelTableRows.Of(after.Content));
+        plan.Sync(parameters, ContentDepth, stored.Parameters, changed.Parameters, row => new { row.CalculationModelVersionId, row.ParameterKey });
+        plan.Sync(attributions, ContentDepth, stored.Attributions, changed.Attributions, row => new { row.CalculationModelVersionId, row.MetricKey });
+        plan.Sync(drivers, DriverDepth, stored.Drivers, changed.Drivers, row => new { row.CalculationModelVersionId, row.MetricKey, row.DriverKey });
     }
 
     /// <summary>The document of a snapshot; the model change set creates no temporary ids, so every id is stored.</summary>
@@ -83,6 +74,6 @@ public sealed class ModelChanges(
     /// <returns>The document.</returns>
     public Task<ModelDocument> ReadAsync(ModelSnapshot snapshot, Func<long, string> presentId, CancellationToken cancellationToken)
     {
-        return Task.FromResult(ModelReadModels.Document(snapshot.Content, snapshot.Surroundings.Reports.Select(report => report.Report)));
+        return Task.FromResult(ModelReadModels.Document(snapshot.Content, snapshot.Surroundings.LiveSnapshotId, snapshot.Surroundings.Reports.Select(report => new VersionedReport(report.Report, report.Version))));
     }
 }

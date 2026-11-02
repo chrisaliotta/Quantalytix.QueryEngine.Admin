@@ -3,13 +3,14 @@ using Quantalytix.QueryEngine.Admin.Application.Measures;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Datasets;
 
 /// <summary>Builds the dataset rows the dataset tests seed, with the schema defaults for every attribute a test does not care about.</summary>
 internal static class DatasetRows
 {
-    /// <summary>A draft version of dataset 10 over the table <c>loan_daily</c>.</summary>
+    /// <summary>A live version of dataset 10 over the table <c>loan_daily</c>.</summary>
     public static DatasetVersionRecord Version(long versionId, long? defaultTimeBindingId = null)
     {
         return new DatasetVersionRecord
@@ -17,8 +18,8 @@ internal static class DatasetRows
             CreatedAt = DateTime.UnixEpoch,
             DatasetVersionId = versionId,
             DatasetId = 10,
-            VersionNumber = 1,
-            Status = PublicationStatuses.Draft,
+            SnapshotId = SnapshotRows.LiveId,
+            IsEnabled = true,
             SourceObjectKind = SourceObjectKinds.Table,
             SourceObject = "loan_daily",
             SupportsAggregate = true,
@@ -137,8 +138,8 @@ internal static class DatasetRows
     }
 
     /// <summary>
-    /// A snapshot of draft version 100 of <see cref="Version"/> with the given rows, no release pins, the given tenant catalog, and the
-    /// table <c>loan_daily</c> with the given columns.
+    /// A snapshot of live version 100 of <see cref="Version"/> with the given rows, the given tenant catalog, which the live snapshot
+    /// holds, and the table <c>loan_daily</c> with the given columns.
     /// </summary>
     public static DatasetSnapshot Snapshot(
         IReadOnlyList<FieldRecord>? fields = null,
@@ -158,7 +159,7 @@ internal static class DatasetRows
         var measureRows = measures ?? [];
         return new DatasetSnapshot
         {
-            Dataset = new DatasetRecord { DatasetId = 10, DatasetKey = "bank.loans", DisplayName = "Loans", IsEnabled = true },
+            Dataset = new DatasetRecord { DatasetId = 10, DatasetKey = "bank.loans", DisplayName = "Loans" },
             Version = Version(100, defaultTimeBindingId),
             Fields = fields ?? [],
             Grains = grains ?? [],
@@ -172,8 +173,11 @@ internal static class DatasetRows
             ManagedObjects = [],
             Surroundings = new DatasetSurroundings
             {
+                LiveSnapshotId = SnapshotRows.LiveId,
                 TenantVersions = [Version(100, defaultTimeBindingId)],
-                Releases = new DatasetReleaseIndex([], [], null),
+                HeldDimensionIds = (dimensions ?? []).Select(dimension => dimension.DimensionId).ToHashSet(),
+                HeldMappingSetIds = new HashSet<long>(),
+                HeldBridgeIds = (bridges ?? []).Select(bridge => bridge.BridgeId).ToHashSet(),
                 Roles = roles ?? [],
                 Dimensions = dimensions ?? [],
                 MappingSets = [],

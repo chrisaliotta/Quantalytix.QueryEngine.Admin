@@ -24,11 +24,8 @@ public sealed record TenantCatalogDimension
     /// <summary>Whether the dimension is enabled.</summary>
     public required bool IsEnabled { get; init; }
 
-    /// <summary>The live version; null when none is published.</summary>
-    public required long? PublishedVersionId { get; init; }
-
-    /// <summary>The live version's number; null when none is published.</summary>
-    public required int? PublishedVersionNumber { get; init; }
+    /// <summary>The live version.</summary>
+    public required long LiveVersionId { get; init; }
 
     /// <summary>The report that owns a <c>report</c> purpose dimension; null otherwise.</summary>
     public required long? OwnerReportId { get; init; }

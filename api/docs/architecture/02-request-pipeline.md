@@ -1,7 +1,7 @@
 # Request pipeline
 
 [Index](README.md) · [High-level architecture](01-architecture.md) · [Core classes](03-core-classes.md) ·
-[Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
+[Snapshot lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
 ## A tenant request
 
@@ -83,9 +83,9 @@ Every error is `application/problem+json` with one body, `Problem` (`WebApi/Erro
 | 401 | `unauthorized` | title only | No valid bearer token |
 | 403 | `forbidden` | title only | No access to the route tenant, or `SystemAdmin` missing |
 | 404 | `not-found` | title only | `RouteResourceFilter`, a hidden row, an unknown route |
-| 409 | `conflict` | `detail` | A failed precondition: not a draft, not live, owned by a report, locked by a profile, key taken |
+| 409 | `conflict` | `detail` | A failed precondition: the live snapshot relabelled or deleted, a capture that saw the revision change, owned by a report, locked by a profile, key taken |
 | 409 | `delete-blocked` | `detail` and `violations` (the blockers) | A delete whose `DeleteCheck` is not allowed |
-| 422 | `rules-violated` | `violations` | A gate or commit rule in a change set, a failed validate, publish, freeze, enable or activate |
+| 422 | `rules-violated` | `violations` | A gate or commit rule in a change set, a failed enable or restore |
 | 500 | `internal` | `traceId` | Unhandled exceptions |
 
 `errors` is always present (empty unless 400); `detail`, `violations` and `traceId` are omitted when null. A violation is a
@@ -93,8 +93,8 @@ Every error is `application/problem+json` with one body, `Problem` (`WebApi/Erro
 `filter`) that tells the client where to take the user. `Problems.From(Refusal)` maps the Application's four refusal kinds
 (`Invalid`, `Conflict`, `DeleteBlocked`, `RulesViolated`) to 400, 409, 409 and 422.
 
-Read-only rule checks (`POST .../check`) answer `200` with a `ValidationReport` and never write. `validate`, `publish` and
-`freeze` answer `200` with the new state or `422` with the violations, writing nothing on a 422.
+A change-set preview answers the commit rules' violations as findings and never writes. A restore answers `200` with the
+new live state or `422` with the violations, writing nothing on a 422.
 
 ## OpenAPI generation
 
@@ -105,7 +105,7 @@ Transformers registered in `AddAdminOpenApi` make the generated document follow 
 | Transformer | Effect |
 |---|---|
 | `AuthorizationResponsesTransformer` | Adds 401 to every non-anonymous operation and 403 to operations whose `[Authorize]` names a policy, mirroring the contract's `qe/authorization-responses` decorator. No controller or module file declares 401 or 403. |
-| `NotFoundResponseTransformer` | Adds the 404 problem to every operation whose route names a registered route resource. A controller declares 404 by hand only for lookups outside the tables (profile keys, source objects, published members). |
+| `NotFoundResponseTransformer` | Adds the 404 problem to every operation whose route names a registered route resource. A controller declares 404 by hand only for lookups outside the tables (profile keys, source objects, live members). |
 | `StringIdParameterTransformer`, `StringIdSchemaTransformer` | Types id parameters and properties as strings. |
 | `UnionMemberSchemaTransformer` | Types each operation of a union as an object that requires `op`. |
 | `OmittedWhenNullSchemaTransformer` | Makes a property with `JsonIgnoreCondition.WhenWritingNull` optional and non-nullable. |

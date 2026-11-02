@@ -21,7 +21,7 @@ public static class FormulasFitLanguageRule
     /// <returns>One violation per formula and missing feature.</returns>
     public static IEnumerable<RuleViolation> Evaluate(ModelGraph model)
     {
-        var version = model.Model.FormulaLanguageVersion;
+        var version = model.Version.FormulaLanguageVersion;
         var declared = model.Parameters.Select(parameter => parameter.ParameterKey).ToHashSet(StringComparer.Ordinal);
         return model.Formulas
             .OrderBy(formula => formula.Subject, StringComparer.Ordinal)

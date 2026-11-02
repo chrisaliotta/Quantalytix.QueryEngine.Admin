@@ -12,7 +12,7 @@ public static class VocabularyRuleExtensions
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for a string property of the input.</param>
-    /// <param name="vocabulary">The vocabulary the value must belong to, such as <see cref="PublicationStatuses.Definition"/>.</param>
+    /// <param name="vocabulary">The vocabulary the value must belong to, such as <see cref="BindingKinds.Definition"/>.</param>
     /// <returns>The rule, for further configuration.</returns>
     public static IRuleBuilderOptions<T, string?> MustBeIn<T>(this IRuleBuilder<T, string?> rule, Vocabulary vocabulary)
     {

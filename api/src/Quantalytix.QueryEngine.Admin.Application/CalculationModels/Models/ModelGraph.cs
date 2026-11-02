@@ -4,13 +4,17 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 
 /// <summary>
-/// A calculation model's content, as stored or as a change set leaves it: the model row, its metrics, their attributions and its
-/// parameters. The model rules read it alone; the report rules read its metrics and parameters in place of the reports' own.
+/// A calculation model version's content, as stored or as a change set leaves it: the model and version rows, its metrics, their
+/// attributions and its parameters. The model rules read it alone; the report rules read its metrics and parameters in place of the
+/// reports' own.
 /// </summary>
 public sealed record ModelGraph
 {
-    /// <summary>The model, with its formula language and attribution method.</summary>
+    /// <summary>The model identity.</summary>
     public required CalculationModelRecord Model { get; init; }
+
+    /// <summary>The version, with its formula language and attribution method.</summary>
+    public required CalculationModelVersionRecord Version { get; init; }
 
     /// <summary>The model's variables.</summary>
     public required IReadOnlyList<VariableRecord> Variables { get; init; }

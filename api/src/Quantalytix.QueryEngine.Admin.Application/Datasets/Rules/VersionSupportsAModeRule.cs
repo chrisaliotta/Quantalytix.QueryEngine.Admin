@@ -14,6 +14,6 @@ public sealed class VersionSupportsAModeRule : DatasetRule
     protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
         if (snapshot.Version.SupportsAggregate || snapshot.Version.SupportsDetail) yield break;
-        yield return Violation(DatasetTabs.Settings, $"Version v{snapshot.Version.VersionNumber} supports neither aggregate nor detail queries; enable at least one.");
+        yield return Violation(DatasetTabs.Settings, "The version supports neither aggregate nor detail queries; enable at least one.");
     }
 }

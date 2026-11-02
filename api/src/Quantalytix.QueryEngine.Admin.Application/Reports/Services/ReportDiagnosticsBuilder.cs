@@ -11,24 +11,24 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <summary>
 /// Computes a report's diagnostics from its document and its report rules' violations, stored or pending (OI-05): the rules grouped
 /// into the editor's readiness steps, each source's coverage, and each profile's resolution of each variable. A bridge source's items
-/// are the assignable members of the published version of its role's dimension; a rule reaches its item, or with <c>descendants</c>
-/// every item under it. A direct source's items are the values of its field in the active release's version of its dataset, read
+/// are the assignable members of the report snapshot's version of its role's dimension; a rule reaches its item, or with <c>descendants</c>
+/// every item under it. A direct source's items are the values of its field in the report snapshot's version of its dataset, read
 /// through <see cref="DatasetFieldValues"/>; a value reaches the data row of the same key. A direct source whose values cannot be
-/// read in full (an expression field, more values than the read's limit, or a dataset or field the active release lacks) reports
+/// read in full (an expression field, more values than the read's limit, or a dataset or field the snapshot lacks) reports
 /// no row gaps, since no row is known to be missed.
 /// </summary>
 /// <param name="roles">Reads the sources' roles.</param>
-/// <param name="publishedDimensions">Reads the published version of each role's dimension.</param>
+/// <param name="dimensionKeys">Reads each role's dimension's version in the report's snapshot.</param>
 /// <param name="variables">Reads the model's variables.</param>
 /// <param name="measures">Reads the model's calculated measures.</param>
-/// <param name="releaseDatasets">Reads the active release's version of a direct source's dataset.</param>
+/// <param name="snapshotDatasets">Reads the report snapshot's version of a direct source's dataset.</param>
 /// <param name="fieldValues">Reads a direct source's field values.</param>
 public sealed class ReportDiagnosticsBuilder(
     ITableGateway<DimensionRoleRecord> roles,
-    PublishedDimensionReader publishedDimensions,
+    SnapshotDimensionReader dimensionKeys,
     ITableGateway<VariableRecord> variables,
     ITableGateway<CalculatedMeasureRecord> measures,
-    ReleaseDatasets releaseDatasets,
+    SnapshotDatasets snapshotDatasets,
     DatasetFieldValues fieldValues)
 {
     /// <summary>The code of the coverage warnings of the <c>items</c> step, which no report rule raises.</summary>
@@ -68,11 +68,11 @@ public sealed class ReportDiagnosticsBuilder(
         {
             if (source.RoleId is { } roleId)
             {
-                coverage[source.Key] = await BridgeCoverageAsync(source, roleId, cancellationToken);
+                coverage[source.Key] = await BridgeCoverageAsync(source, roleId, document.SnapshotId, cancellationToken);
                 continue;
             }
 
-            var values = await DirectValuesAsync(source, cancellationToken);
+            var values = await DirectValuesAsync(source, document.SnapshotId, cancellationToken);
             coverage[source.Key] = DirectCoverage(values, dataRows);
             if (values is { IsComplete: true }) reached[source.Key] = values.Values.ToHashSet(StringComparer.Ordinal);
         }
@@ -102,15 +102,15 @@ public sealed class ReportDiagnosticsBuilder(
     /// <returns>Its unmapped, multiply mapped and left-out items.</returns>
     public async Task<ReportSourceCoverage> CoverageAsync(ReportDocument document, ReportSource source, CancellationToken cancellationToken)
     {
-        if (source.RoleId is { } roleId) return await BridgeCoverageAsync(source, roleId, cancellationToken);
-        return DirectCoverage(await DirectValuesAsync(source, cancellationToken), DataRows(document));
+        if (source.RoleId is { } roleId) return await BridgeCoverageAsync(source, roleId, document.SnapshotId, cancellationToken);
+        return DirectCoverage(await DirectValuesAsync(source, document.SnapshotId, cancellationToken), DataRows(document));
     }
 
     /// <summary>A bridge source's coverage: the assignable members of its role's dimension, each by the rows its rules reach.</summary>
-    private async Task<ReportSourceCoverage> BridgeCoverageAsync(ReportSource source, long roleId, CancellationToken cancellationToken)
+    private async Task<ReportSourceCoverage> BridgeCoverageAsync(ReportSource source, long roleId, long snapshotId, CancellationToken cancellationToken)
     {
         var role = await roles.GetAsync(new { DimensionRoleId = roleId }, cancellationToken);
-        if (await publishedDimensions.ReadAsync(role.DimensionId, cancellationToken) is not { } items)
+        if (await dimensionKeys.ReadAsync(role.DimensionId, snapshotId, cancellationToken) is not { } items)
             return new ReportSourceCoverage { Unmapped = [], Multi = [], LeftOut = source.LeftOut };
 
         var leftOut = source.LeftOut.ToHashSet(StringComparer.Ordinal);
@@ -142,10 +142,10 @@ public sealed class ReportDiagnosticsBuilder(
         return new ReportSourceCoverage { Unmapped = [.. values?.Values.Where(value => !dataRows.Contains(value)) ?? []], Multi = [], LeftOut = [] };
     }
 
-    /// <summary>A direct source's field values in the active release; null when the release lacks the dataset or field.</summary>
-    private async Task<FieldValues?> DirectValuesAsync(ReportSource source, CancellationToken cancellationToken)
+    /// <summary>A direct source's field values in the report's snapshot; null when the snapshot lacks the dataset or field.</summary>
+    private async Task<FieldValues?> DirectValuesAsync(ReportSource source, long snapshotId, CancellationToken cancellationToken)
     {
-        if (await releaseDatasets.ActiveAsync(source.DatasetId, cancellationToken) is not { } dataset) return null;
+        if ((await snapshotDatasets.ReadAsync(snapshotId, [source.DatasetId], cancellationToken)).GetValueOrDefault(source.DatasetId) is not { } dataset) return null;
         if (!dataset.Fields.TryGetValue(source.FieldKey!, out var field)) return null;
         return await fieldValues.ReadAsync(field, cancellationToken);
     }
@@ -166,7 +166,7 @@ public sealed class ReportDiagnosticsBuilder(
         IReadOnlyDictionary<string, IReadOnlySet<string>> reached,
         CancellationToken cancellationToken)
     {
-        var model = new { CalculationModelId = document.ModelId };
+        var model = new { CalculationModelVersionId = document.ModelVersionId };
         var graph = new FormulaGraph(await variables.ListAsync(model, cancellationToken), await measures.ListAsync(model, cancellationToken));
         var read = document.Columns.Select(column => column.MetricKey)
             .Concat(document.Rows.Select(row => row.CalculatedMeasureKey).OfType<string>())

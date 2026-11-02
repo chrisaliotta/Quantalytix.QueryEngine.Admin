@@ -6,7 +6,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Tenancy;
 
-/// <summary>Serves the tenant catalog every picker reads (OI-13) and the published members of a dimension.</summary>
+/// <summary>Serves the tenant catalog every picker reads (OI-13) and the live members of a dimension.</summary>
 [ApiController]
 [Route("api/tenants/{tenantId}")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
@@ -24,13 +24,13 @@ public sealed class TenantCatalogController(TenantCatalogReader catalog, Publish
         return Ok(await catalog.ReadAsync(cancellationToken));
     }
 
-    /// <summary>Read the members of a dimension's published version.</summary>
+    /// <summary>Read the members of a dimension's live version.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The published version's members.</returns>
-    /// <response code="200">The published version's members, in hierarchy order.</response>
-    /// <response code="404">The dimension does not exist or has no published version.</response>
+    /// <returns>The live version's members.</returns>
+    /// <response code="200">The live version's members, in hierarchy order.</response>
+    /// <response code="404">The dimension does not exist or the live snapshot holds no version of it.</response>
     [HttpGet("dimensions/{dimensionId:long}/published-members", Name = "getPublishedMembers")]
     [ProducesResponseType<PublishedMembers>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PublishedMembers>> GetPublishedMembers(string tenantId, long dimensionId, CancellationToken cancellationToken)

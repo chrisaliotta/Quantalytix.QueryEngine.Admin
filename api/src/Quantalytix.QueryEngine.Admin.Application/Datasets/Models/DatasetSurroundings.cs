@@ -10,11 +10,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// </summary>
 public sealed record DatasetSurroundings
 {
-    /// <summary>Every dataset version of the tenant, which tells who else reads a table.</summary>
-    public required IReadOnlyList<DatasetVersionRecord> TenantVersions { get; init; }
+    /// <summary>The live snapshot, which tells whether the version may change.</summary>
+    public required long LiveSnapshotId { get; init; }
 
-    /// <summary>The release pins of the dataset.</summary>
-    public required DatasetReleaseIndex Releases { get; init; }
+    /// <summary>Every dataset version of the tenant, live and frozen, which tells who else reads a table.</summary>
+    public required IReadOnlyList<DatasetVersionRecord> TenantVersions { get; init; }
 
     /// <summary>Every dimension role of the tenant.</summary>
     public required IReadOnlyList<DimensionRoleRecord> Roles { get; init; }
@@ -27,6 +27,15 @@ public sealed record DatasetSurroundings
 
     /// <summary>Every bridge of the tenant.</summary>
     public required IReadOnlyList<BridgeRecord> Bridges { get; init; }
+
+    /// <summary>The dimensions with a version in the version's snapshot, which its bindings resolve in.</summary>
+    public required IReadOnlySet<long> HeldDimensionIds { get; init; }
+
+    /// <summary>The mapping sets with a version in the version's snapshot.</summary>
+    public required IReadOnlySet<long> HeldMappingSetIds { get; init; }
+
+    /// <summary>The bridges with a version in the version's snapshot.</summary>
+    public required IReadOnlySet<long> HeldBridgeIds { get; init; }
 
     /// <summary>The tables and views datasets can read.</summary>
     public required IReadOnlyList<SourceObject> SourceObjects { get; init; }

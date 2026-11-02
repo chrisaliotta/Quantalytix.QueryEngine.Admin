@@ -30,7 +30,7 @@ public sealed record DimensionBindingRecord
     /// <summary>The existing source binding when the binding kind is <c>bridge</c>.</summary>
     public long? SourceDimensionBindingId { get; init; }
 
-    /// <summary>The bridge when the binding kind is <c>bridge</c>; queries use the version their assumption set pins.</summary>
+    /// <summary>The bridge when the binding kind is <c>bridge</c>; queries use the version their snapshot holds.</summary>
     public long? BridgeId { get; init; }
 
     /// <summary>A <c>ragged_behavior</c> value: what a row whose member lacks a requested ancestor groups under.</summary>

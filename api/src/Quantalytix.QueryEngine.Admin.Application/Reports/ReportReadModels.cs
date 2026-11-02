@@ -7,23 +7,24 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 public static class ReportReadModels
 {
     /// <summary>A report as the library lists it.</summary>
-    /// <param name="report">The report row.</param>
+    /// <param name="report">The report with its live version.</param>
     /// <param name="modelKey">The key of the report's model.</param>
-    /// <param name="profileCount">How many profiles it has.</param>
-    /// <param name="sourceCount">How many sources it has.</param>
+    /// <param name="profileCount">How many profiles the version has.</param>
+    /// <param name="sourceCount">How many sources the version has.</param>
     /// <returns>The summary.</returns>
-    public static ReportSummary Summary(ReportRecord report, string modelKey, int profileCount, int sourceCount)
+    public static ReportSummary Summary(VersionedReport report, string modelKey, int profileCount, int sourceCount)
     {
+        var version = report.Version;
         return new ReportSummary
         {
             Id = report.ReportId,
             Key = report.ReportKey,
-            DisplayName = report.DisplayName,
-            ReportType = report.ReportType,
-            ModelId = report.CalculationModelId,
+            DisplayName = version.DisplayName,
+            ReportType = version.ReportType,
+            ModelId = version.CalculationModelId,
             ModelKey = modelKey,
-            IsEnabled = report.IsEnabled,
-            Periodicity = ReportSettingsColumns.Read(report).Periodicity,
+            IsEnabled = version.IsEnabled,
+            Periodicity = ReportSettingsColumns.Read(version).Periodicity,
             ProfileCount = profileCount,
             SourceCount = sourceCount
         };
@@ -39,11 +40,15 @@ public static class ReportReadModels
         {
             Id = report.Report.ReportId,
             Key = report.ReportKey,
-            IsEnabled = report.Report.IsEnabled,
-            ModelId = report.Report.CalculationModelId,
+            VersionId = report.Version.ReportVersionId,
+            SnapshotId = report.Version.SnapshotId,
+            IsLive = report.Version.SnapshotId == snapshot.Surroundings.LiveSnapshotId,
+            IsEnabled = report.Version.IsEnabled,
+            ModelId = report.Version.CalculationModelId,
+            ModelVersionId = report.ModelVersionId,
             ReportDimensionId = report.Report.ReportDimensionId,
             ReportDimensionVersionId = snapshot.Surroundings.DimensionVersionId,
-            Settings = ReportSettingsColumns.Read(report.Report),
+            Settings = ReportSettingsColumns.Read(report.Version),
             Rows = Rows(report),
             Sources = [.. report.Sources.OrderBy(source => source.SourceKey, StringComparer.Ordinal).Select(source => Source(report, source))],
             Profiles = [.. report.Profiles.OrderBy(profile => profile.ProfileKey, StringComparer.Ordinal).Select(profile => Profile(report, profile))],

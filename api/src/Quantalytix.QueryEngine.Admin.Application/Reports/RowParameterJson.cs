@@ -28,14 +28,14 @@ internal static class RowParameterJson
     }
 
     /// <summary>The stored row of a validated value.</summary>
-    /// <param name="reportId">The report.</param>
+    /// <param name="reportVersionId">The report version.</param>
     /// <param name="rowKey">The row that sets the value.</param>
     /// <param name="parameterKey">The parameter.</param>
     /// <param name="value">A value the row validator let through, which is of the parameter's type.</param>
     /// <returns>The row to store.</returns>
-    public static ReportRowParameterRecord Record(long reportId, string rowKey, string parameterKey, JsonElement value)
+    public static ReportRowParameterRecord Record(long reportVersionId, string rowKey, string parameterKey, JsonElement value)
     {
         var (number, text) = Read(value);
-        return new ReportRowParameterRecord { ReportId = reportId, RowKey = rowKey, ParameterKey = parameterKey, NumberValue = number, TextValue = text };
+        return new ReportRowParameterRecord { ReportVersionId = reportVersionId, RowKey = rowKey, ParameterKey = parameterKey, NumberValue = number, TextValue = text };
     }
 }

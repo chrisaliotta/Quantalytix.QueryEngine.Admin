@@ -21,12 +21,12 @@ public sealed class ReportDefaultsResolveRule : IReportRule
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
         var available = report.EnabledDimensions.ToDictionary(dimension => dimension.DimensionKey, StringComparer.Ordinal);
-        foreach (var key in ReportDefaults.FilterDimensions(report.Report.DefaultFilterJson).Where(key => available.GetValueOrDefault(key) is not { IsFilterable: true }))
+        foreach (var key in ReportDefaults.FilterDimensions(report.Version.DefaultFilterJson).Where(key => available.GetValueOrDefault(key) is not { IsFilterable: true }))
             yield return Violation($"Report '{report.ReportKey}' filters by default on '{key}', which is no filterable calculation dimension of the report.");
-        foreach (var key in ReportDefaults.PivotDimensions(report.Report.DefaultPivotJson).Where(key => available.GetValueOrDefault(key) is not { IsGroupable: true }))
+        foreach (var key in ReportDefaults.PivotDimensions(report.Version.DefaultPivotJson).Where(key => available.GetValueOrDefault(key) is not { IsGroupable: true }))
             yield return Violation($"Report '{report.ReportKey}' breaks out by default by '{key}', which is no groupable calculation dimension of the report.");
         var declared = report.Parameters.Select(parameter => parameter.ParameterKey).ToHashSet(StringComparer.Ordinal);
-        foreach (var name in ReportDefaults.FilterParameters(report.Report.DefaultFilterJson).Where(declared.Contains))
+        foreach (var name in ReportDefaults.FilterParameters(report.Version.DefaultFilterJson).Where(declared.Contains))
             yield return Violation($"Report '{report.ReportKey}' filters by default on @{name}, a parameter of its model, which its rows set and so no request can supply.");
     }
 

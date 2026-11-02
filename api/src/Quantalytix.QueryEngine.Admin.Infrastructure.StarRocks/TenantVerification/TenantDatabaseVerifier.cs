@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks.TenantVerificat
 
 /// <summary>
 /// Opens a candidate tenant connection string with the API's connection settings and reads its <c>qe_database_info</c> row and
-/// its number of active assumption sets. This is the start-of-request check of external input, so any failure, such as a
+/// its number of live snapshots. This is the start-of-request check of external input, so any failure, such as a
 /// malformed string, a refused connection or a missing table, becomes a failure reason instead of an error; only a cancelled
 /// request propagates.
 /// </summary>
@@ -15,15 +15,15 @@ public sealed class TenantDatabaseVerifier(IStarRocksConnectionFactory connectio
 {
     /// <summary>Reads the singleton database info row.</summary>
     private const string DatabaseInfoSql = """
-        SELECT singleton_id, tenant_key, metadata_schema_version, semantic_revision, active_semantic_release_id, updated_at
+        SELECT singleton_id, tenant_key, metadata_schema_version, semantic_revision, updated_at
         FROM qe_database_info
         WHERE singleton_id = 1
         """;
 
-    /// <summary>Counts the assumption sets that hold the default versions.</summary>
-    private const string ActiveAssumptionSetsSql = "SELECT COUNT(*) FROM qe_assumption_set WHERE status = 'active'";
+    /// <summary>Counts the snapshots marked live.</summary>
+    private const string LiveSnapshotsSql = "SELECT COUNT(*) FROM qe_snapshot WHERE is_live";
 
-    /// <summary>Opens the connection string and reads the database's <c>qe_database_info</c> row and active assumption sets.</summary>
+    /// <summary>Opens the connection string and reads the database's <c>qe_database_info</c> row and live snapshots.</summary>
     /// <param name="connectionString">The candidate connection string.</param>
     /// <param name="cancellationToken">Cancels opening and reading.</param>
     /// <returns>The row, or the reason the connection could not be opened or the row read.</returns>
@@ -35,8 +35,8 @@ public sealed class TenantDatabaseVerifier(IStarRocksConnectionFactory connectio
             var command = new CommandDefinition(DatabaseInfoSql, cancellationToken: cancellationToken);
             var info = await connection.QuerySingleOrDefaultAsync<DatabaseInfoRecord>(command);
             if (info is null) return new TenantDatabaseProbe { Failure = "The database's qe_database_info table has no row 1." };
-            var activeSets = await connection.ExecuteScalarAsync<int>(new CommandDefinition(ActiveAssumptionSetsSql, cancellationToken: cancellationToken));
-            return new TenantDatabaseProbe { DatabaseInfo = info, ActiveAssumptionSets = activeSets };
+            var liveSnapshots = await connection.ExecuteScalarAsync<int>(new CommandDefinition(LiveSnapshotsSql, cancellationToken: cancellationToken));
+            return new TenantDatabaseProbe { DatabaseInfo = info, LiveSnapshots = liveSnapshots };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

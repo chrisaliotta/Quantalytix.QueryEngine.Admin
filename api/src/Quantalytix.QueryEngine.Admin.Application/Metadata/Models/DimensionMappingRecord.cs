@@ -12,6 +12,6 @@ public sealed record DimensionMappingRecord
     /// <summary>Actual scalar source value, unique within the mapping version.</summary>
     public required string SourceKeyValue { get; init; }
 
-    /// <summary>The key of the canonical target member, which resolves in the version of the set's dimension an assumption set pins.</summary>
+    /// <summary>The key of the canonical target member, which resolves in the version of the set's dimension its snapshot holds.</summary>
     public required string MemberKey { get; init; }
 }

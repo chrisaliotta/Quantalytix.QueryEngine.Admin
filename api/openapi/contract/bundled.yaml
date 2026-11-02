@@ -19,16 +19,16 @@ tags:
     description: Session, tenant directory, overview, catalog and vocabularies. Blueprint 10-tenant-session-catalog.md.
   - name: datasets
     x-displayName: Datasets
-    description: Datasets, dataset versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
+    description: Datasets, their live and frozen versions, fields, grains, bindings, measures and source objects. Blueprint 11-datasets.md.
   - name: dimensions
     x-displayName: Dimensions
     description: Dimensions, roles, the live and frozen versions, levels, members and range bands. Blueprint 12-dimensions.md.
   - name: mappings
     x-displayName: Mapping sets and bridges
     description: Mapping sets, bridges and their live and frozen versions. Blueprint 13-mappings-and-bridges.md.
-  - name: releases
-    x-displayName: Releases and assumption sets
-    description: Semantic releases, activation and assumption sets. Blueprint 14-releases-and-assumption-sets.md.
+  - name: snapshots
+    x-displayName: Snapshots
+    description: The live snapshot, frozen snapshots, capture, restore and comparison. Blueprint 14-snapshots.md.
   - name: models
     x-displayName: Calculation models
     description: Calculation models, variables, calculated measures, parameters and attributions. Blueprint 15-calculation-models.md.
@@ -133,12 +133,12 @@ paths:
           $ref: '#/components/schemas/Id'
     get:
       operationId: getPublishedMembers
-      summary: Read the members of a dimension's published version
+      summary: Read the members of a dimension's live version
       tags:
         - tenant
       responses:
         '200':
-          description: The published version's members, in hierarchy order.
+          description: The live version's members, in hierarchy order.
           content:
             application/json:
               schema:
@@ -149,7 +149,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-          description: The dimension does not exist or has no published version.
+          description: The dimension does not exist or the live snapshot holds no version of it.
   /api/system/tenants:
     get:
       operationId: listSystemTenants
@@ -370,8 +370,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
     post:
       operationId: createDataset
-      summary: Create a dataset and its draft version 1
-      description: Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a draft whose fields read them.
+      summary: Create a dataset and its live version
+      description: Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a live version whose fields read them. Advances `semanticRevision`.
       tags:
         - datasets
       requestBody:
@@ -382,7 +382,7 @@ paths:
               $ref: '#/components/schemas/DatasetCreateInput'
       responses:
         '201':
-          description: The dataset, with draft version 1.
+          description: The dataset, with its live version.
           content:
             application/json:
               schema:
@@ -420,8 +420,8 @@ paths:
           $ref: '#/components/responses/NotFound'
     delete:
       operationId: deleteDataset
-      summary: Delete a dataset and all its versions
-      description: Allowed only when every version is a draft or validated and no release lists the dataset (D10, OI-17).
+      summary: Delete a dataset and its live version
+      description: Allowed only when no frozen snapshot holds a version of the dataset (D10). Advances `semanticRevision`.
       tags:
         - datasets
       responses:
@@ -445,7 +445,7 @@ paths:
     get:
       operationId: checkDeleteDataset
       summary: Tell whether a dataset can be deleted, and why not
-      description: Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and `referenced_by_release` (a release lists the dataset).
+      description: Never writes. Reasons carry the code `referenced_by_snapshot` (a frozen snapshot holds a version of the dataset).
       tags:
         - datasets
       responses:
@@ -461,46 +461,13 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/datasets/{datasetId}/versions:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetIdPath'
-    post:
-      operationId: createDatasetDraft
-      summary: Create a draft version, empty or cloned from another version of the dataset
-      tags:
-        - datasets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DatasetCreateDraftInput'
-      responses:
-        '201':
-          description: The new draft.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The dataset already has an open (draft or validated) version (OI-23).
   /api/tenants/{tenantId}/dataset-versions/{versionId}:
     parameters:
       - $ref: '#/components/parameters/TenantId'
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     get:
       operationId: getDatasetVersion
-      summary: Get the whole content of one dataset version
+      summary: Get the whole content of one dataset version, live or frozen
       tags:
         - datasets
       responses:
@@ -516,56 +483,14 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: deleteDatasetDraft
-      summary: Delete a draft or validated version that no release pins
-      tags:
-        - datasets
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Delete blocked; `violations` are the reasons of the delete check.
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/delete-check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    get:
-      operationId: checkDeleteDatasetVersion
-      summary: Tell whether a dataset version can be deleted, and why not
-      description: Never writes. Reasons carry the codes `published_version` (the version is published or retired) and `referenced_by_release` (a release pins the version).
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The delete check.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteCheck'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes/preview:
     parameters:
       - $ref: '#/components/parameters/TenantId'
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     post:
       operationId: previewDatasetChanges
-      summary: Apply staged operations to a dataset version in memory and return the result
-      description: Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01).
+      summary: Apply staged operations to the live dataset version in memory and return the result
+      description: 'Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01). `violations` are the commit rules'' findings. Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `bound_dimensions_resolvable`, `mapped_bindings_resolvable`, `bridge_bindings_resolvable`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`, and the report rules `report_sources_resolve` and `report_factors_apply` of the enabled reports over the dataset. Each violation''s `target.area` is a `DatasetTab`.'
       tags:
         - datasets
       requestBody:
@@ -591,7 +516,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.
+          description: The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents.
         '422':
           $ref: '#/components/responses/UnprocessableContent'
   /api/tenants/{tenantId}/dataset-versions/{versionId}/changes:
@@ -600,8 +525,8 @@ paths:
       - $ref: '#/components/parameters/DatasetVersionIdPath'
     post:
       operationId: commitDatasetChanges
-      summary: Apply and write staged operations to a dataset version
-      description: Replays the operations onto the stored version (last write wins, OI-02) and writes them; any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column.
+      summary: Apply and write staged operations to the live dataset version
+      description: Replays the operations onto the stored version (last write wins, OI-02) and writes them; a commit-rule finding refuses with 422. Any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column. Advances `semanticRevision`.
       tags:
         - datasets
       requestBody:
@@ -627,152 +552,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents.
+          description: The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents.
         '422':
           $ref: '#/components/responses/UnprocessableContent'
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: checkDatasetVersion
-      summary: Run the publication rules on a dataset version without writing
-      description: 'Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation''s `target.area` is a `DatasetTab`.'
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The rule report.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationReport'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/validate:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: validateDatasetVersion
-      summary: Move a draft to validated when every publication rule passes
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The validated version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not a draft.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A publication rule fails; nothing was written.
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/publish:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: publishDatasetVersion
-      summary: Publish a draft or validated version when every publication rule passes
-      description: A draft is validated first, in the same call.
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The published version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not a draft or validated.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A publication rule fails; nothing was written.
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/reopen:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: reopenDatasetVersion
-      summary: Return a validated version to draft
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The draft.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not validated.
-  /api/tenants/{tenantId}/dataset-versions/{versionId}/retire:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DatasetVersionIdPath'
-    post:
-      operationId: retireDatasetVersion
-      summary: Retire a published version that the active release does not pin
-      tags:
-        - datasets
-      responses:
-        '200':
-          description: The retired version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetVersionSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not published.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: The active release pins the version.
   /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -781,7 +563,7 @@ paths:
     post:
       operationId: materializeDatasetField
       summary: Add a JSON path field to its source object's materialized view
-      description: 'Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on any non-retired version: storage does not change what the version means.'
+      description: Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on the live version only.
       tags:
         - datasets
       responses:
@@ -801,7 +583,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The version is retired or the field is not a JSON path field.
+          description: The version is frozen or the field is not a JSON path field.
     delete:
       operationId: dematerializeDatasetField
       summary: Remove a field's column from the materialized view
@@ -825,7 +607,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The version is retired or the field is not a JSON path field.
+          description: The version is frozen or the field is not a JSON path field.
   /api/tenants/{tenantId}/dataset-versions/{versionId}/fields/{fieldId}/materialization/refresh:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -853,7 +635,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The version is retired or the field is not materialized.
+          description: The version is frozen or the field is not materialized.
   /api/tenants/{tenantId}/dimensions:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -887,7 +669,7 @@ paths:
     post:
       operationId: createDimension
       summary: Create a user dimension with a live version 1
-      description: Creates origin `user`, purpose `analytical`; version 1 is created live (published).
+      description: Creates origin `user`, purpose `analytical`; its version is created live. Advances `semanticRevision`.
       tags:
         - dimensions
       requestBody:
@@ -1114,7 +896,7 @@ paths:
       - $ref: '#/components/parameters/DimensionVersionId'
     get:
       operationId: getDimensionVersion
-      summary: Get the content of a dimension version
+      summary: Get the content of a dimension version, live or frozen
       tags:
         - dimensions
       responses:
@@ -1131,108 +913,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
           description: No such version, or its dimension is owned by a report.
-    delete:
-      operationId: deleteDimensionVersion
-      summary: Delete a frozen dimension version
-      tags:
-        - dimensions
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The live version, or pinned by a historical assumption set (see `violations`).
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    post:
-      operationId: checkDimensionVersion
-      summary: Run the dimension rules on a version without writing
-      tags:
-        - dimensions
-      responses:
-        '200':
-          description: The rule report; codes are `DimensionViolationCode` values.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationReport'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/freeze:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    post:
-      operationId: freezeDimensionVersion
-      summary: Freeze the live version and continue in a new live clone
-      description: Runs every dimension rule; when they pass, clones the live version n to n+1 live, retires n with the note, repoints the active assumption set and advances `semantic_revision` (OI-14, OI-15).
-      tags:
-        - dimensions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DimensionFreezeResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not the live version, or locked by its profile.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A rule fails; nothing changed.
-  /api/tenants/{tenantId}/dimension-versions/{versionId}/delete-check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/DimensionVersionId'
-    get:
-      operationId: checkDimensionVersionDelete
-      summary: Check whether a dimension version can be deleted
-      tags:
-        - dimensions
-      responses:
-        '200':
-          description: The delete check.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteCheck'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /api/tenants/{tenantId}/dimension-versions/{versionId}/members/{memberId}/delete-check:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -1371,11 +1051,11 @@ paths:
         - mappings
       responses:
         '200':
-          description: The mapping set with its bindings and assumption set pins.
+          description: The mapping set with its versions and the live bindings that use it.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MappingSetDetail'
+                $ref: '#/components/schemas/MappingSetListItem'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1385,7 +1065,7 @@ paths:
     delete:
       operationId: deleteMappingSet
       summary: Delete a mapping set
-      description: Deletes the mapping set and every version when no binding uses it and no historical set pins it (B12).
+      description: Deletes the mapping set with its live version when no live binding uses it and no frozen snapshot holds it (B12).
       tags:
         - mappings
       responses:
@@ -1503,7 +1183,7 @@ paths:
       - $ref: '#/components/parameters/MappingVersionId'
     get:
       operationId: getMappingVersion
-      summary: Get a mapping version's content
+      summary: Get a mapping version's content, live or frozen
       tags:
         - mappings
       responses:
@@ -1513,109 +1193,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MappingVersionContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: deleteMappingVersion
-      summary: Delete a frozen mapping version
-      tags:
-        - mappings
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The version is live, or a historical assumption set pins it.
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    post:
-      operationId: checkMappingVersion
-      summary: Run the mapping version rules
-      description: Runs every mapping version rule on any version and writes nothing (OI-30).
-      tags:
-        - mappings
-      responses:
-        '200':
-          description: The rule report.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationReport'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/freeze:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    post:
-      operationId: freezeMappingVersion
-      summary: Freeze the live mapping version
-      description: Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone (12, The version model).
-      tags:
-        - mappings
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MappingFreezeResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The version is not live.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A rule failed; see `violations`. Nothing was written.
-  /api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/delete-check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/MappingVersionId'
-    get:
-      operationId: checkDeleteMappingVersion
-      summary: Check whether a mapping version can be deleted
-      tags:
-        - mappings
-      responses:
-        '200':
-          description: Whether the delete is allowed, and why not.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteCheck'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1704,11 +1281,11 @@ paths:
         - mappings
       responses:
         '200':
-          description: The bridge with its bindings and assumption set pins.
+          description: The bridge with its versions and the live bindings that use it.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BridgeDetail'
+                $ref: '#/components/schemas/BridgeListItem'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1718,7 +1295,7 @@ paths:
     delete:
       operationId: deleteBridge
       summary: Delete an analytical bridge
-      description: Deletes the bridge and every version when no binding uses it and no historical set pins it (B12).
+      description: Deletes the bridge with its live version when no live binding uses it and no frozen snapshot holds it (B12).
       tags:
         - mappings
       responses:
@@ -1836,7 +1413,7 @@ paths:
       - $ref: '#/components/parameters/BridgeVersionId'
     get:
       operationId: getBridgeVersion
-      summary: Get a bridge version's content
+      summary: Get a bridge version's content, live or frozen
       tags:
         - mappings
       responses:
@@ -1852,148 +1429,44 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: deleteBridgeVersion
-      summary: Delete a frozen bridge version
-      tags:
-        - mappings
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The version is live, a historical assumption set pins it, or the bridge is owned by a report.
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/check:
+  /api/tenants/{tenantId}/snapshots:
     parameters:
       - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
-    post:
-      operationId: checkBridgeVersion
-      summary: Run the bridge version rules
-      description: Runs every bridge version rule on any version and writes nothing (OI-30).
+    get:
+      operationId: listSnapshots
+      summary: List the live snapshot and the frozen ones with their version counts
       tags:
-        - mappings
+        - snapshots
       responses:
         '200':
-          description: The rule report.
+          description: The live snapshot and every frozen one, newest capture first.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationReport'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/SnapshotList'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/freeze:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
     post:
-      operationId: freezeBridgeVersion
-      summary: Freeze the live bridge version
-      description: Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone with the same settings and mappings (12, The version model).
+      operationId: captureSnapshot
+      summary: Capture every live version into a new frozen snapshot
+      description: Copies every live version of the six kinds, report dimensions and report bridges included, then stores the snapshot. The semantic revision is read before and after the copies; when a commit landed in between, the copies are deleted and the capture is refused with 409. Advances `semanticRevision`.
       tags:
-        - mappings
+        - snapshots
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FreezeInput'
-      responses:
-        '200':
-          description: Frozen; `live` is the new live version.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BridgeFreezeResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The version is not live, or the bridge is owned by a report.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A rule failed; see `violations`. Nothing was written.
-  /api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/delete-check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/BridgeVersionId'
-    get:
-      operationId: checkDeleteBridgeVersion
-      summary: Check whether a bridge version can be deleted
-      tags:
-        - mappings
-      responses:
-        '200':
-          description: Whether the delete is allowed, and why not.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteCheck'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/releases:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: listReleases
-      summary: List releases with their activity and their difference from the active release
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Every release, newest first.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ReleaseListItem'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      operationId: createRelease
-      summary: Create a draft release, empty or copying another release's manifest
-      tags:
-        - releases
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateReleaseInput'
+              $ref: '#/components/schemas/CaptureSnapshotInput'
       responses:
         '201':
-          description: The new draft.
+          description: The new frozen snapshot.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Release'
+                $ref: '#/components/schemas/Snapshot'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2002,59 +1475,109 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: The key is taken.
-  /api/tenants/{tenantId}/releases/diff:
+          description: The key is taken, or live changed during the capture.
+  /api/tenants/{tenantId}/snapshots/capture-preview:
     parameters:
       - $ref: '#/components/parameters/TenantId'
     get:
-      operationId: diffReleases
-      summary: Compare the manifests of two releases
+      operationId: previewSnapshotCapture
+      summary: Count the live versions a capture would copy
       tags:
-        - releases
+        - snapshots
+      responses:
+        '200':
+          description: The live versions of each kind.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotCounts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tenants/{tenantId}/snapshots/compare:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      operationId: compareSnapshots
+      summary: Compare the identities and versions two snapshots hold
+      tags:
+        - snapshots
       parameters:
-        - $ref: '#/components/parameters/ReleaseDiffFrom'
-        - $ref: '#/components/parameters/ReleaseDiffTo'
+        - $ref: '#/components/parameters/SnapshotCompareFrom'
+        - $ref: '#/components/parameters/SnapshotCompareTo'
       responses:
         '200':
-          description: What changes going from `from` to `to`.
+          description: What `to` holds that `from` does not, the reverse, and what both hold.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReleaseDiff'
+                $ref: '#/components/schemas/SnapshotComparison'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-          description: '`from` or `to` names no release.'
-  /api/tenants/{tenantId}/releases/{releaseId}:
+          description: '`from` or `to` names no snapshot.'
+  /api/tenants/{tenantId}/snapshots/{snapshotId}:
     parameters:
       - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
+      - $ref: '#/components/parameters/SnapshotIdPath'
     get:
-      operationId: getRelease
-      summary: Get a release with its manifest and activation history
+      operationId: getSnapshot
+      summary: Get a snapshot with the version it holds of each identity and its restores
       tags:
-        - releases
+        - snapshots
       responses:
         '200':
-          description: The release.
+          description: The snapshot.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReleaseDetail'
+                $ref: '#/components/schemas/SnapshotDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: deleteRelease
-      summary: Delete a draft release and its manifest
+    put:
+      operationId: relabelSnapshot
+      summary: Change a frozen snapshot's display name and description
+      description: The key and the versions never change. Does not advance `semanticRevision`.
       tags:
-        - releases
+        - snapshots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelabelSnapshotInput'
+      responses:
+        '200':
+          description: The relabelled snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The live snapshot.
+    delete:
+      operationId: deleteSnapshot
+      summary: Delete a frozen snapshot with every version it holds
+      description: Deletes the snapshot, its restore log and every version it holds with their content, and each identity no other snapshot holds. Advances `semanticRevision`.
+      tags:
+        - snapshots
       responses:
         '204':
           description: Deleted.
@@ -2068,234 +1591,20 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: Not a draft.
-  /api/tenants/{tenantId}/releases/{releaseId}/changes/preview:
+          description: The live snapshot.
+  /api/tenants/{tenantId}/snapshots/{snapshotId}/restore:
     parameters:
       - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
+      - $ref: '#/components/parameters/SnapshotIdPath'
     post:
-      operationId: previewReleaseChanges
-      summary: Apply staged manifest operations in memory, then check and diff the result
+      operationId: restoreSnapshot
+      summary: Make live equal a frozen snapshot
+      description: Every version the snapshot holds must first pass its kind's rules against the database as it is now; any violation refuses with 422 and nothing changes. Then each frozen version replaces its identity's live content, or joins live when live lacks the identity; the live version of an identity the snapshot lacks is deleted, with the identity when no frozen snapshot holds it. The restore is logged. Advances `semanticRevision`.
       tags:
-        - releases
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReleaseChangeSetRequest'
+        - snapshots
       responses:
         '200':
-          description: The operations apply; nothing was written.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseChangeSetPreview'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not a draft.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A pinned version is not one of its dataset's versions or is not published.
-  /api/tenants/{tenantId}/releases/{releaseId}/changes:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: commitReleaseChanges
-      summary: Apply and write staged manifest operations
-      tags:
-        - releases
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReleaseChangeSetRequest'
-      responses:
-        '200':
-          description: Every operation applied and was written.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseChangeSetCommit'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not a draft.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A pinned version is not one of its dataset's versions or is not published.
-  /api/tenants/{tenantId}/releases/{releaseId}/check:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: checkRelease
-      summary: Run the release rules over the saved manifest without writing
-      tags:
-        - releases
-      responses:
-        '200':
-          description: The rule findings; `unsaved` is false.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseCheckReport'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/tenants/{tenantId}/releases/{releaseId}/validate:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: validateRelease
-      summary: Move a draft to validated when every release rule passes
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Validated; the report has no violations.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseTransitionResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not a draft.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A release rule fails; `violations` are `ReleaseViolation`s.
-  /api/tenants/{tenantId}/releases/{releaseId}/publish:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: publishRelease
-      summary: Publish a validated release and compute its content hash
-      description: Publishing activates and retires nothing.
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Published; `release.contentHash` is set and the report has no violations.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseTransitionResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not validated.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: A release rule fails; `violations` are `ReleaseViolation`s.
-  /api/tenants/{tenantId}/releases/{releaseId}/reopen:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: backToDraft
-      summary: Return a validated release to draft
-      tags:
-        - releases
-      responses:
-        '200':
-          description: A draft again.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Release'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not validated.
-  /api/tenants/{tenantId}/releases/{releaseId}/retire:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: retireRelease
-      summary: Retire a published release that is not active
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Retired.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Release'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: Not published.
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-          description: '`release_not_active`: the release is the active one.'
-  /api/tenants/{tenantId}/releases/{releaseId}/activate:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ReleaseIdPath'
-    post:
-      operationId: activateRelease
-      summary: Make a published release the active one
-      description: Sets the tenant's active release, writes an activation log row and advances `semanticRevision`. Activating an older release is a rollback. Every enabled report is re-checked against the release first.
-      tags:
-        - releases
-      responses:
-        '200':
-          description: 'The tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`. The activation log row appears in the release detail''s `activations`.'
+          description: The tenant state the restore produced.
           content:
             application/json:
               schema:
@@ -2310,236 +1619,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: Not published.
+          description: The live snapshot.
         '422':
           $ref: '#/components/responses/UnprocessableContent'
-          description: An enabled report's rules fail on the release.
-  /api/tenants/{tenantId}/manifest-datasets:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: listManifestDatasets
-      summary: List the datasets a manifest can pin, with every version
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Every dataset with its versions, newest version first.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ManifestDataset'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /api/tenants/{tenantId}/identities:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: listIdentities
-      summary: List the dimensions, mapping sets and bridges an assumption set pins, with their versions
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Every identity, report-owned ones included.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PinIdentity'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /api/tenants/{tenantId}/report-reads:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: listReportReads
-      summary: List what each report reads from releases and assumption sets
-      tags:
-        - releases
-      responses:
-        '200':
-          description: Every report with its sources and the identities it reads.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ReleaseReportRef'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /api/tenants/{tenantId}/assumption-sets:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: listSets
-      summary: List the active set and the historical sets with their pin counts
-      tags:
-        - releases
-      responses:
-        '200':
-          description: The active set and every historical set, newest capture first.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AssumptionSetList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      operationId: captureSet
-      summary: Capture the active set's analytical pins and the active release into a historical set
-      description: Report dimensions and bridges into them are left out. Advances `semanticRevision`.
-      tags:
-        - releases
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CaptureSetInput'
-      responses:
-        '201':
-          description: The new historical set.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AssumptionSet'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The key is taken.
-  /api/tenants/{tenantId}/assumption-sets/capture-preview:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: capturePreview
-      summary: Count what a capture would pin and leave out
-      tags:
-        - releases
-      responses:
-        '200':
-          description: The counts and the release a capture would record.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SetCapturePreview'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-  /api/tenants/{tenantId}/assumption-sets/compare:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-    get:
-      operationId: compareSets
-      summary: Compare the pins and the releases of two assumption sets
-      tags:
-        - releases
-      parameters:
-        - $ref: '#/components/parameters/SetCompareFrom'
-        - $ref: '#/components/parameters/SetCompareTo'
-      responses:
-        '200':
-          description: What `to` pins differently from `from`, and how their releases differ.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SetComparison'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-          description: '`from` or `to` names no assumption set.'
-  /api/tenants/{tenantId}/assumption-sets/{setId}:
-    parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/AssumptionSetIdPath'
-    get:
-      operationId: getSet
-      summary: Get an assumption set with its pins and, for a historical set, per-report readiness
-      tags:
-        - releases
-      responses:
-        '200':
-          description: The assumption set.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SetDetail'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      operationId: relabelSet
-      summary: Change a historical set's display name and description
-      description: The key, the pins and the release never change. Does not advance `semanticRevision`.
-      tags:
-        - releases
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RelabelSetInput'
-      responses:
-        '200':
-          description: The relabelled set.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AssumptionSet'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The active set.
-    delete:
-      operationId: deleteSet
-      summary: Delete a historical set and its pins
-      description: Advances `semanticRevision`.
-      tags:
-        - releases
-      responses:
-        '204':
-          description: Deleted.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-          description: The active set.
+          description: A version breaks a rule; nothing was restored.
   /api/tenants/{tenantId}/calculation-models:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -2594,7 +1677,7 @@ paths:
       - $ref: '#/components/parameters/ModelId'
     get:
       operationId: getModel
-      summary: Read one model with its variables, measures, parameters, attributions, effective drivers and readers.
+      summary: Read one model's live version with its variables, measures, parameters, attributions, effective drivers and readers.
       tags:
         - models
       responses:
@@ -2612,7 +1695,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     delete:
       operationId: deleteModel
-      summary: Delete a model that no report reads (command, C8).
+      summary: Delete a model that no live report reads and no frozen snapshot holds (command, C8).
       tags:
         - models
       responses:
@@ -2628,7 +1711,29 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-          description: A report reads the model; `violations` carry `referenced_by_report` per report.
+          description: A live report reads the model or a frozen snapshot holds it; `violations` carry `referenced_by_report` per report and `referenced_by_snapshot`.
+  /api/tenants/{tenantId}/calculation-model-versions/{modelVersionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ModelVersionId'
+    get:
+      operationId: getModelVersion
+      summary: Read one model version, live or frozen, with its content, effective drivers and the reports of its snapshot that read it.
+      tags:
+        - models
+      responses:
+        '200':
+          description: The model version's document.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDocument'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/tenants/{tenantId}/calculation-models/{modelId}/delete-check:
     parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -2657,7 +1762,7 @@ paths:
       - $ref: '#/components/parameters/ModelId'
     post:
       operationId: checkFormula
-      summary: Parse a formula against the saved model and report errors, reads, parameters and the language it needs (OI-43).
+      summary: Parse a formula against the saved live version and report errors, reads, parameters and the language it needs (OI-43).
       tags:
         - models
       requestBody:
@@ -2802,7 +1907,7 @@ paths:
       - $ref: '#/components/parameters/ReportId'
     get:
       operationId: getReport
-      summary: Read a report's whole document.
+      summary: Read a report's whole live document.
       tags:
         - reports
       responses:
@@ -2821,7 +1926,7 @@ paths:
     delete:
       operationId: deleteReport
       summary: Delete a report with its report dimension, report bridges and content.
-      description: Never blocked (P12).
+      description: Blocked only while a frozen snapshot holds a version of the report (P12). Advances `semanticRevision`.
       tags:
         - reports
       responses:
@@ -2829,6 +1934,31 @@ paths:
           description: The report and everything it owns were deleted.
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: A frozen snapshot holds a version of the report; `violations` carry `referenced_by_snapshot`.
+  /api/tenants/{tenantId}/report-versions/{reportVersionId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/ReportVersionId'
+    get:
+      operationId: getReportVersion
+      summary: Read a report version's whole document, live or frozen.
+      tags:
+        - reports
+      responses:
+        '200':
+          description: The report version as stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDocument'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3018,13 +2148,6 @@ components:
       type: string
       format: date-time
       description: ISO 8601 UTC timestamp.
-    VersionStatus:
-      type: string
-      enum:
-        - draft
-        - validated
-        - published
-        - retired
     DimensionKind:
       type: string
       enum:
@@ -3042,11 +2165,6 @@ components:
       enum:
         - system
         - user
-    AssumptionSetStatus:
-      type: string
-      enum:
-        - active
-        - historical
     BindingKind:
       type: string
       enum:
@@ -3167,7 +2285,7 @@ components:
       properties:
         area:
           type: string
-          description: Module-specific area such as a dataset tab, a dimension tab, a release manifest row or a report section.
+          description: Module-specific area such as a dataset tab, a dimension tab or a report section.
         itemId:
           $ref: '#/components/schemas/Id'
         itemKey:
@@ -3210,9 +2328,6 @@ components:
       enum:
         - not_removable
         - system_dimension
-        - published_version
-        - live_version
-        - has_published_versions
         - has_children
         - required_by_profile
         - assigned_by_bands
@@ -3225,25 +2340,8 @@ components:
         - referenced_by_calculation_dimension
         - referenced_by_report_scenario
         - referenced_by_report_source
-        - referenced_by_assumption_set
-        - referenced_by_release
+        - referenced_by_snapshot
         - referenced_by_report
-    ValidationReport:
-      type: object
-      description: Answer of a read-only `check`; never writes.
-      required:
-        - versionId
-        - checkedAt
-        - violations
-      properties:
-        versionId:
-          $ref: '#/components/schemas/Id'
-        checkedAt:
-          $ref: '#/components/schemas/Timestamp'
-        violations:
-          type: array
-          items:
-            $ref: '#/components/schemas/Violation'
     ChangeSetRequest:
       type: object
       description: 'Body of `POST <aggregate>/changes/preview` and `POST <aggregate>/changes` (OI-01). Generic over the aggregate''s operation union: an aggregate specializes it with `allOf` and a narrowed `operations.items` (see README.md).'
@@ -3265,7 +2363,7 @@ components:
           description: The aggregate content after the operations apply; what the editor renders.
         violations:
           type: array
-          description: Publication-rule findings that do not block saving.
+          description: Commit-rule findings, which refuse the commit while any remains.
           items:
             $ref: '#/components/schemas/Violation'
     ChangeSetCommit:
@@ -3282,28 +2380,6 @@ components:
           description: Temporary id (`tmp:<uuid>`) to the real id of each item the commit created.
           additionalProperties:
             $ref: '#/components/schemas/Id'
-    FreezeInput:
-      type: object
-      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
-      required:
-        - note
-      properties:
-        note:
-          type:
-            - string
-            - 'null'
-          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
-    FreezeResult:
-      type: object
-      description: '200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web HTTP adapter turns the 422 into the port''s `live: null` (01, Results and errors).'
-      required:
-        - report
-        - live
-      properties:
-        report:
-          $ref: '#/components/schemas/ValidationReport'
-        live:
-          description: The new live version.
     Grouping:
       description: How a role's members group.
       oneOf:
@@ -3551,7 +2627,6 @@ components:
         - tenantKey
         - metadataSchemaVersion
         - semanticRevision
-        - activeReleaseId
       properties:
         tenantKey:
           type: string
@@ -3562,11 +2637,6 @@ components:
           type: integer
           format: int64
           description: Advances once per commit or command that changes what the engine reads.
-        activeReleaseId:
-          type:
-            - string
-            - 'null'
-          description: The release runtime queries use; null when the tenant has none.
     TenantOverview:
       description: The tenant at a glance for the overview screen.
       allOf:
@@ -3574,12 +2644,9 @@ components:
         - type: object
           required:
             - counts
-            - drafts
           properties:
             counts:
               $ref: '#/components/schemas/TenantOverviewCounts'
-            drafts:
-              $ref: '#/components/schemas/TenantOverviewDrafts'
     TenantOverviewCounts:
       type: object
       description: How much metadata the tenant holds.
@@ -3588,11 +2655,10 @@ components:
         - dimensions
         - mappingSets
         - bridges
-        - releases
-        - assumptionSets
+        - frozenSnapshots
         - models
         - reports
-        - activeMeasures
+        - liveMeasures
       properties:
         datasets:
           type: integer
@@ -3604,31 +2670,18 @@ components:
         bridges:
           type: integer
           description: Analytical bridges; report-owned bridges are not counted (OI-22).
-        releases:
-          type: integer
-        assumptionSets:
+        frozenSnapshots:
           type: integer
         models:
           type: integer
         reports:
           type: integer
-        activeMeasures:
+        liveMeasures:
           type: integer
-          description: Measures of the dataset versions the active release pins.
-    TenantOverviewDrafts:
-      type: object
-      description: 'Work in progress: the kinds that still have a draft status. Dimensions, mapping sets and bridges follow the living lifecycle and have no drafts (OI-14).'
-      required:
-        - datasetVersions
-        - releases
-      properties:
-        datasetVersions:
-          type: integer
-        releases:
-          type: integer
+          description: Measures of the live dataset versions, which requests that name no snapshot read.
     TenantCatalog:
       type: object
-      description: The union of what every module's pickers and cross-module links read (OI-13).
+      description: 'The union of what every module''s pickers and cross-module links read (OI-13): every identity the live snapshot holds, and every snapshot.'
       required:
         - tenant
         - datasets
@@ -3638,8 +2691,7 @@ components:
         - bridges
         - models
         - reports
-        - releases
-        - assumptionSets
+        - snapshots
       properties:
         tenant:
           $ref: '#/components/schemas/TenantInfo'
@@ -3671,14 +2723,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TenantCatalogReport'
-        releases:
+        snapshots:
           type: array
+          description: The live snapshot first, then frozen ones by key.
           items:
-            $ref: '#/components/schemas/TenantCatalogRelease'
-        assumptionSets:
-          type: array
-          items:
-            $ref: '#/components/schemas/TenantCatalogAssumptionSet'
+            $ref: '#/components/schemas/TenantCatalogSnapshot'
     TenantCatalogDataset:
       type: object
       required:
@@ -3686,7 +2735,7 @@ components:
         - key
         - displayName
         - isEnabled
-        - activeVersionId
+        - liveVersionId
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -3696,11 +2745,9 @@ components:
           type: string
         isEnabled:
           type: boolean
-        activeVersionId:
-          type:
-            - string
-            - 'null'
-          description: The dataset version the active release pins; null when it pins none.
+        liveVersionId:
+          $ref: '#/components/schemas/Id'
+          description: The live version.
     TenantCatalogDimension:
       type: object
       required:
@@ -3711,8 +2758,7 @@ components:
         - purpose
         - origin
         - isEnabled
-        - publishedVersionId
-        - publishedVersionNumber
+        - liveVersionId
         - ownerReportId
       properties:
         id:
@@ -3729,15 +2775,9 @@ components:
           $ref: '#/components/schemas/DefinitionOrigin'
         isEnabled:
           type: boolean
-        publishedVersionId:
-          type:
-            - string
-            - 'null'
-          description: The live version; null when none is published.
-        publishedVersionNumber:
-          type:
-            - integer
-            - 'null'
+        liveVersionId:
+          $ref: '#/components/schemas/Id'
+          description: The live version.
         ownerReportId:
           type:
             - string
@@ -3838,30 +2878,14 @@ components:
           $ref: '#/components/schemas/Id'
         reportDimensionId:
           $ref: '#/components/schemas/Id'
-    TenantCatalogRelease:
+    TenantCatalogSnapshot:
       type: object
-      description: A release has a key and no display name (OI-39).
-      required:
-        - id
-        - key
-        - status
-        - isActive
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        key:
-          type: string
-        status:
-          $ref: '#/components/schemas/VersionStatus'
-        isActive:
-          type: boolean
-    TenantCatalogAssumptionSet:
-      type: object
+      description: A snapshot a request or a comparison can name.
       required:
         - id
         - key
         - displayName
-        - status
+        - isLive
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -3869,11 +2893,11 @@ components:
           type: string
         displayName:
           type: string
-        status:
-          $ref: '#/components/schemas/AssumptionSetStatus'
+        isLive:
+          type: boolean
     PublishedMembers:
       type: object
-      description: The members of a dimension's published version, fetched per picker.
+      description: The members of a dimension's live version, fetched per picker.
       required:
         - dimensionId
         - versionId
@@ -3914,8 +2938,6 @@ components:
       type: object
       description: Every enumeration a select renders, keyed by name (OI-11). Values are the schema's; open vocabularies (`expressionLanguageVersion`, `displayFormat`, `timeZone`) list the offered values of a free-text column.
       required:
-        - versionStatus
-        - assumptionSetStatus
         - dataType
         - measureOutputDataType
         - sourceObjectKind
@@ -3973,26 +2995,6 @@ components:
         - layout
         - provider
       properties:
-        versionStatus:
-          type: array
-          items:
-            allOf:
-              - $ref: '#/components/schemas/VocabularyTerm'
-              - required:
-                  - value
-                properties:
-                  value:
-                    $ref: '#/components/schemas/VersionStatus'
-        assumptionSetStatus:
-          type: array
-          items:
-            allOf:
-              - $ref: '#/components/schemas/VocabularyTerm'
-              - required:
-                  - value
-                properties:
-                  value:
-                    $ref: '#/components/schemas/AssumptionSetStatus'
         dataType:
           type: array
           items:
@@ -4898,7 +3900,7 @@ components:
           description: The API added the column on a field's behalf (`createColumn`).
     Dataset:
       type: object
-      description: The dataset identity (`qe_dataset`), shared by every version.
+      description: The dataset identity (`qe_dataset`), shared by every version, with one version's enabled flag.
       required:
         - id
         - key
@@ -4913,90 +3915,61 @@ components:
           type: string
         isEnabled:
           type: boolean
+          description: The live version's flag, or a frozen version's own.
     DatasetPatch:
       type: object
-      description: Identity edits; the key is fixed after creation (OI-36).
+      description: Identity edits and the live version's enabled flag; the key is fixed after creation (OI-36).
       properties:
         displayName:
           type: string
         isEnabled:
           type: boolean
-    DatasetReleasePin:
-      type: object
-      description: A release that pins the version.
-      required:
-        - releaseId
-        - releaseKey
-        - isActive
-      properties:
-        releaseId:
-          $ref: '#/components/schemas/Id'
-        releaseKey:
-          type: string
-        isActive:
-          type: boolean
     DatasetVersionSummary:
       type: object
+      description: One version of a dataset and the snapshot it belongs to.
       required:
         - id
         - datasetId
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - sourceObject
         - createdAt
-        - publishedAt
-        - clonedFromVersionId
-        - releases
       properties:
         id:
           $ref: '#/components/schemas/Id'
         datasetId:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         sourceObject:
           type: string
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          oneOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
-        clonedFromVersionId:
-          type:
-            - string
-            - 'null'
-          description: The version this one was cloned from (SG-04, OI-12).
-        releases:
-          type: array
-          items:
-            $ref: '#/components/schemas/DatasetReleasePin'
     DatasetListItem:
       allOf:
         - $ref: '#/components/schemas/Dataset'
         - type: object
           required:
             - versions
-            - activeVersionId
+            - liveVersionId
             - storage
           properties:
             versions:
               type: array
-              description: Newest first.
+              description: One per snapshot holding the dataset, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/DatasetVersionSummary'
-            activeVersionId:
-              type:
-                - string
-                - 'null'
-              description: The version the active release pins; what the engine reads.
+            liveVersionId:
+              $ref: '#/components/schemas/Id'
+              description: The live version, which change sets edit and requests that name no snapshot read.
             storage:
               oneOf:
                 - $ref: '#/components/schemas/DatasetSourceObjectStats'
                 - type: 'null'
-              description: Statistics of the latest version's source object.
+              description: Statistics of the live version's source object.
     DatasetVersionSettings:
       type: object
       required:
@@ -5606,7 +4579,7 @@ components:
           type: string
     DatasetCreateWithNewTableInput:
       type: object
-      description: Creates and registers a managed table with these columns (possibly none), then a draft whose fields read them.
+      description: Creates and registers a managed table with these columns (possibly none), then a live version whose fields read them.
       required:
         - mode
         - key
@@ -5626,38 +4599,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DatasetNewColumnInput'
-    DatasetCreateDraftInput:
-      oneOf:
-        - $ref: '#/components/schemas/DatasetCreateEmptyDraftInput'
-        - $ref: '#/components/schemas/DatasetCloneDraftInput'
-      discriminator:
-        propertyName: mode
-        mapping:
-          empty: '#/components/schemas/DatasetCreateEmptyDraftInput'
-          clone: '#/components/schemas/DatasetCloneDraftInput'
-    DatasetCreateEmptyDraftInput:
-      type: object
-      required:
-        - mode
-        - sourceObjectKind
-        - sourceObject
-      properties:
-        mode:
-          const: empty
-        sourceObjectKind:
-          $ref: '#/components/schemas/DatasetSourceObjectKind'
-        sourceObject:
-          type: string
-    DatasetCloneDraftInput:
-      type: object
-      required:
-        - mode
-        - fromVersionId
-      properties:
-        mode:
-          const: clone
-        fromVersionId:
-          $ref: '#/components/schemas/Id'
     DatasetOperation:
       description: One staged edit of a dataset version, named after the `DatasetsApi` edit method it records.
       oneOf:
@@ -5690,7 +4631,7 @@ components:
           deleteMeasure: '#/components/schemas/DatasetDeleteMeasureOperation'
     DatasetUpdateDatasetOperation:
       type: object
-      description: Edits the dataset identity; the only operation a version that is not a draft accepts.
+      description: Edits the display name and the live version's enabled flag.
       required:
         - op
         - patch
@@ -5711,7 +4652,7 @@ components:
           $ref: '#/components/schemas/DatasetVersionSettings'
     DatasetRenameSourceTableOperation:
       type: object
-      description: Renames the managed table the draft reads; refused while a published version reads it (OI-33).
+      description: Renames the managed table the live version reads; refused while another version, live or frozen, reads it (OI-33).
       required:
         - op
         - tableName
@@ -5848,7 +4789,7 @@ components:
         - open
         - extend
         - locked
-      description: '`locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).'
+      description: '`locked` refuses every edit (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).'
     RangeDataType:
       type: string
       enum:
@@ -5894,7 +4835,6 @@ components:
         - calculation_dimension
         - report_scenario
         - report_source
-        - assumption_set
     DimensionPropertyField:
       type: object
       description: One member property of a profile's schema; the server validates system dimension members against it (OI-18).
@@ -6054,27 +4994,23 @@ components:
           type: string
     DimensionVersion:
       type: object
-      description: Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no drafts (M3, OI-14).
+      description: The live version (edited in place) or a frozen snapshot's version (read-only).
       required:
         - id
         - dimensionId
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - rangeDataType
         - createdAt
-        - publishedAt
-        - retiredAt
-        - supersededBy
-        - freezeNote
       properties:
         id:
           $ref: '#/components/schemas/Id'
         dimensionId:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
         rangeDataType:
           description: Range dimensions only.
           oneOf:
@@ -6082,63 +5018,23 @@ components:
             - type: 'null'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-          description: When the version was frozen (SG-04).
-        supersededBy:
-          type:
-            - integer
-            - 'null'
-          description: Derived; the next version number once frozen (OI-12).
-        freezeNote:
-          type:
-            - string
-            - 'null'
-          description: Why the version was frozen (SG-05, OI-15).
     DimensionVersionSummary:
       type: object
       required:
         - id
-        - versionNumber
-        - status
-        - publishedAt
-        - retiredAt
-        - supersededBy
-        - freezeNote
+        - snapshotId
+        - isLive
+        - createdAt
         - memberCount
       properties:
         id:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        supersededBy:
-          type:
-            - integer
-            - 'null'
-        freezeNote:
-          type:
-            - string
-            - 'null'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
         memberCount:
           type: integer
     DimensionRole:
@@ -6282,12 +5178,9 @@ components:
           description: Member keys this object names; deleting them is blocked and `dimension_consumers_resolve` requires them.
           items:
             type: string
-        pinsVersion:
-          type: integer
-          description: Assumption sets only; the version number pinned.
         label:
           type: string
-          description: Display label for blocker phrasing, e.g. a dataset version "'loans.details' v3".
+          description: Display label for blocker phrasing, when the name does not say it.
     DimensionListItem:
       allOf:
         - $ref: '#/components/schemas/Dimension'
@@ -6296,7 +5189,8 @@ components:
             - profile
             - roles
             - versions
-            - publishedMemberCount
+            - liveVersionId
+            - liveMemberCount
           properties:
             profile:
               oneOf:
@@ -6308,12 +5202,14 @@ components:
                 $ref: '#/components/schemas/DimensionRole'
             versions:
               type: array
+              description: One per snapshot holding the dimension, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/DimensionVersionSummary'
-            publishedMemberCount:
-              type:
-                - integer
-                - 'null'
+            liveVersionId:
+              $ref: '#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveMemberCount:
+              type: integer
               description: Members in the live version.
     DimensionDetail:
       allOf:
@@ -6324,7 +5220,7 @@ components:
           properties:
             usage:
               type: array
-              description: Computed from bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources and assumption set pins.
+              description: Computed from the live bindings, mapping sets, bridges, calculation dimensions, report scenarios and report sources.
               items:
                 $ref: '#/components/schemas/DimensionUsageReference'
     DimensionVersionContent:
@@ -6370,16 +5266,7 @@ components:
           $ref: '#/components/schemas/Id'
         versionId:
           $ref: '#/components/schemas/Id'
-          description: The live version 1.
-    DimensionFreezeResult:
-      allOf:
-        - $ref: '#/components/schemas/FreezeResult'
-        - type: object
-          required:
-            - live
-          properties:
-            live:
-              $ref: '#/components/schemas/DimensionVersionSummary'
+          description: The live version.
     CreateDimensionInput:
       type: object
       required:
@@ -6810,8 +5697,7 @@ components:
         - displayName
         - kind
         - purpose
-        - publishedVersionId
-        - publishedVersionNumber
+        - versionId
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6831,15 +5717,11 @@ components:
           enum:
             - analytical
             - report
-        publishedVersionId:
+        versionId:
           type:
             - string
             - 'null'
-          description: The live version, whose members entry and mapping keys resolve against.
-        publishedVersionNumber:
-          type:
-            - integer
-            - 'null'
+          description: The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none.
     MappingBindingUsage:
       type: object
       description: A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers.
@@ -6847,8 +5729,6 @@ components:
         - datasetId
         - datasetKey
         - datasetVersionId
-        - datasetVersionNumber
-        - status
         - fieldKey
         - roleKey
         - sourceRoleKey
@@ -6859,10 +5739,7 @@ components:
           $ref: '#/components/schemas/DottedKey'
         datasetVersionId:
           $ref: '#/components/schemas/Id'
-        datasetVersionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+          description: The dataset version that holds the binding, in the same snapshot.
         fieldKey:
           $ref: '#/components/schemas/Key'
         roleKey:
@@ -6872,43 +5749,19 @@ components:
             - string
             - 'null'
           description: Bridge bindings only, the role of the binding the bridge remaps; null for mapping sets.
-    MappingAssumptionPin:
-      type: object
-      description: An assumption set that pins one version of a mapping set or bridge.
-      required:
-        - assumptionSetId
-        - assumptionSetKey
-        - assumptionSetDisplayName
-        - isActive
-        - versionId
-        - versionNumber
-      properties:
-        assumptionSetId:
-          $ref: '#/components/schemas/Id'
-        assumptionSetKey:
-          type: string
-        assumptionSetDisplayName:
-          type: string
-        isActive:
-          type: boolean
-          description: The active set always pins the live version; historical sets keep the version they captured.
-        versionId:
-          $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
     MappingViolationCode:
       type: string
       description: Rule codes of mapping versions.
       enum:
         - source_key_unique
-        - dimension_version_published
+        - dimension_version_in_snapshot
         - entry_member_in_version
         - entry_member_assignable
     BridgeViolationCode:
       type: string
       description: Rule codes of bridge versions.
       enum:
-        - endpoint_versions_published
+        - endpoint_versions_in_snapshot
         - mapping_members_in_endpoint_versions
         - cardinality_many_to_one
         - allocation_none
@@ -6938,42 +5791,24 @@ components:
           $ref: '#/components/schemas/Id'
     MappingVersion:
       type: object
-      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
+      description: The live version (edited in place) or a frozen snapshot's version (read-only) (B10).
       required:
         - id
         - mappingSetId
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - createdAt
-        - publishedAt
-        - retiredAt
-        - freezeNote
       properties:
         id:
           $ref: '#/components/schemas/Id'
         mappingSetId:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-          description: When it was frozen.
-        freezeNote:
-          type:
-            - string
-            - 'null'
     MappingEntry:
       type: object
       required:
@@ -6995,36 +5830,19 @@ components:
       type: object
       required:
         - id
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - createdAt
-        - publishedAt
-        - retiredAt
-        - freezeNote
         - entryCount
       properties:
         id:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        freezeNote:
-          type:
-            - string
-            - 'null'
         entryCount:
           type: integer
     MappingSetListItem:
@@ -7034,33 +5852,27 @@ components:
           required:
             - dimension
             - versions
-            - publishedEntryCount
+            - liveVersionId
+            - liveEntryCount
             - bindings
           properties:
             dimension:
               $ref: '#/components/schemas/MappingDimensionRef'
             versions:
               type: array
+              description: One per snapshot holding the mapping set, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/MappingVersionSummary'
-            publishedEntryCount:
+            liveVersionId:
+              $ref: '#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveEntryCount:
               type: integer
               description: Entries of the live version.
             bindings:
               type: array
               items:
                 $ref: '#/components/schemas/MappingBindingUsage'
-    MappingSetDetail:
-      allOf:
-        - $ref: '#/components/schemas/MappingSetListItem'
-        - type: object
-          required:
-            - pins
-          properties:
-            pins:
-              type: array
-              items:
-                $ref: '#/components/schemas/MappingAssumptionPin'
     MappingCoverage:
       type: object
       description: Assignable members of the dimension's live version and those no entry maps to.
@@ -7103,7 +5915,7 @@ components:
         - content
       properties:
         set:
-          $ref: '#/components/schemas/MappingSetDetail'
+          $ref: '#/components/schemas/MappingSetListItem'
         content:
           $ref: '#/components/schemas/MappingVersionContent'
     CreateMappingSetInput:
@@ -7161,15 +5973,6 @@ components:
         memberKey:
           type: string
           minLength: 1
-    MappingFreezeResult:
-      allOf:
-        - $ref: '#/components/schemas/FreezeResult'
-        - type: object
-          required:
-            - live
-          properties:
-            live:
-              $ref: '#/components/schemas/MappingVersionSummary'
     MappingSetUpdateOperation:
       type: object
       required:
@@ -7310,48 +6113,34 @@ components:
             - type: 'null'
     BridgeVersion:
       type: object
-      description: Stored `published` is the live version and `retired` a frozen snapshot (B10).
+      description: The live version (edited in place) or a frozen snapshot's version (read-only) (B10).
       required:
         - id
         - bridgeId
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - cardinality
         - allocationMode
+        - isEnabled
         - createdAt
-        - publishedAt
-        - retiredAt
-        - freezeNote
       properties:
         id:
           $ref: '#/components/schemas/Id'
         bridgeId:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
         cardinality:
           $ref: '#/components/schemas/MappingCardinality'
         allocationMode:
           $ref: '#/components/schemas/MappingAllocationMode'
+        isEnabled:
+          type: boolean
+          description: Whether the engine offers the bridge in the version's snapshot.
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-          description: When it was frozen.
-        freezeNote:
-          type:
-            - string
-            - 'null'
     BridgeMapping:
       type: object
       required:
@@ -7382,42 +6171,25 @@ components:
       type: object
       required:
         - id
-        - versionNumber
-        - status
+        - snapshotId
+        - isLive
         - cardinality
         - allocationMode
         - createdAt
-        - publishedAt
-        - retiredAt
-        - freezeNote
         - mappingCount
       properties:
         id:
           $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-        status:
-          $ref: '#/components/schemas/VersionStatus'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
         cardinality:
           $ref: '#/components/schemas/MappingCardinality'
         allocationMode:
           $ref: '#/components/schemas/MappingAllocationMode'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        retiredAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        freezeNote:
-          type:
-            - string
-            - 'null'
         mappingCount:
           type: integer
     BridgeListItem:
@@ -7428,7 +6200,8 @@ components:
             - source
             - target
             - versions
-            - publishedMappingCount
+            - liveVersionId
+            - liveMappingCount
             - bindings
           properties:
             source:
@@ -7437,26 +6210,19 @@ components:
               $ref: '#/components/schemas/MappingDimensionRef'
             versions:
               type: array
+              description: One per snapshot holding the bridge, the live version first, then frozen ones newest first.
               items:
                 $ref: '#/components/schemas/BridgeVersionSummary'
-            publishedMappingCount:
+            liveVersionId:
+              $ref: '#/components/schemas/Id'
+              description: The live version, which change sets edit.
+            liveMappingCount:
               type: integer
               description: Mappings of the live version.
             bindings:
               type: array
               items:
                 $ref: '#/components/schemas/MappingBindingUsage'
-    BridgeDetail:
-      allOf:
-        - $ref: '#/components/schemas/BridgeListItem'
-        - type: object
-          required:
-            - pins
-          properties:
-            pins:
-              type: array
-              items:
-                $ref: '#/components/schemas/MappingAssumptionPin'
     BridgeSourceAllocation:
       type: object
       description: One source member's targets and the sum of its allocation weights.
@@ -7510,7 +6276,7 @@ components:
         - content
       properties:
         bridge:
-          $ref: '#/components/schemas/BridgeDetail'
+          $ref: '#/components/schemas/BridgeListItem'
         content:
           $ref: '#/components/schemas/BridgeVersionContent'
     CreateBridgeInput:
@@ -7590,15 +6356,6 @@ components:
         sourceSelection:
           $ref: '#/components/schemas/SourceSelection'
           description: Accepted only on report bridges, written by the report editor; absent means `member` (OI-28).
-    BridgeFreezeResult:
-      allOf:
-        - $ref: '#/components/schemas/FreezeResult'
-        - type: object
-          required:
-            - live
-          properties:
-            live:
-              $ref: '#/components/schemas/BridgeVersionSummary'
     BridgeUpdateOperation:
       type: object
       required:
@@ -7710,809 +6467,225 @@ components:
           properties:
             state:
               $ref: '#/components/schemas/BridgeEditState'
-    ReleaseKey:
+    SnapshotKey:
       type: string
-      pattern: ^[A-Za-z0-9][A-Za-z0-9_.\-/]{0,127}$
-      description: Natural key of a release, fixed after creation; screens show it as the release's name (R7, OI-39).
+      pattern: ^[A-Za-z][A-Za-z0-9_]{0,127}$
+      description: Natural key of a snapshot, fixed after capture; requests name the snapshot by it. The live snapshot is `live`.
       examples:
-        - prod/2026-q4
-    Release:
-      type: object
-      description: One row of `qe_semantic_release`.
-      required:
-        - id
-        - key
-        - status
-        - createdAt
-        - publishedAt
-        - contentHash
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        key:
-          $ref: '#/components/schemas/ReleaseKey'
-        status:
-          $ref: '#/components/schemas/VersionStatus'
-        createdAt:
-          $ref: '#/components/schemas/Timestamp'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        contentHash:
-          type:
-            - string
-            - 'null'
-          description: Hash of the sorted manifest (`datasetId`, `datasetVersionId` pairs), computed on publish (OI-41).
-    ReleaseActivation:
-      type: object
-      description: One row of the activation log, `qe_release_activation` (OI-40).
-      required:
-        - releaseId
-        - previousReleaseId
-        - activatedAt
-        - activatedBy
-      properties:
-        releaseId:
-          $ref: '#/components/schemas/Id'
-        previousReleaseId:
-          type:
-            - string
-            - 'null'
-          description: The release that was active before; null for the tenant's first activation.
-        activatedAt:
-          $ref: '#/components/schemas/Timestamp'
-        activatedBy:
-          type: string
-          description: The token subject of the caller.
-    ReleaseListItem:
-      allOf:
-        - $ref: '#/components/schemas/Release'
-        - type: object
-          required:
-            - isActive
-            - datasetCount
-            - diffVsActive
-            - activatedAt
-            - activatedBy
-          properties:
-            isActive:
-              type: boolean
-            datasetCount:
-              type: integer
-              minimum: 0
-            diffVsActive:
-              description: What activating this release would change; null for the active release itself.
-              oneOf:
-                - $ref: '#/components/schemas/ReleaseDiff'
-                - type: 'null'
-            activatedAt:
-              type:
-                - string
-                - 'null'
-              format: date-time
-              description: When the active release was last activated; null for every other release.
-            activatedBy:
-              type:
-                - string
-                - 'null'
-              description: Who last activated the active release; null for every other release.
-    ManifestEntry:
-      type: object
-      description: One pinned dataset version, a row of `qe_release_dataset`.
-      required:
-        - datasetId
-        - datasetVersionId
-      properties:
-        datasetId:
-          $ref: '#/components/schemas/Id'
-        datasetVersionId:
-          $ref: '#/components/schemas/Id'
-    ReleaseDetail:
-      type: object
-      description: A release page's read model; also the state of a manifest change set.
-      required:
-        - release
-        - isActive
-        - manifest
-        - activations
-      properties:
-        release:
-          $ref: '#/components/schemas/Release'
-        isActive:
-          type: boolean
-        manifest:
-          type: array
-          items:
-            $ref: '#/components/schemas/ManifestEntry'
-        activations:
-          type: array
-          description: Every activation of this release, newest first.
-          items:
-            $ref: '#/components/schemas/ReleaseActivation'
-    ReleaseDiffEntry:
-      type: object
-      required:
-        - datasetId
-        - versionId
-      properties:
-        datasetId:
-          $ref: '#/components/schemas/Id'
-        versionId:
-          $ref: '#/components/schemas/Id'
-          description: The pinned dataset version.
-    ReleaseDiffRemoval:
-      allOf:
-        - $ref: '#/components/schemas/ReleaseDiffEntry'
-        - type: object
-          required:
-            - readBy
-          properties:
-            readBy:
-              type: array
-              description: Keys of the enabled reports with a source on the dataset.
-              items:
-                type: string
-    ReleaseDiffChange:
-      type: object
-      required:
-        - datasetId
-        - fromVersionId
-        - toVersionId
-      properties:
-        datasetId:
-          $ref: '#/components/schemas/Id'
-        fromVersionId:
-          $ref: '#/components/schemas/Id'
-        toVersionId:
-          $ref: '#/components/schemas/Id'
-    ReleaseDiff:
-      type: object
-      description: The manifest set difference going from one release to another (OI-38).
-      required:
-        - fromReleaseId
-        - toReleaseId
-        - added
-        - removed
-        - changed
-        - unchanged
-      properties:
-        fromReleaseId:
-          $ref: '#/components/schemas/Id'
-        toReleaseId:
-          $ref: '#/components/schemas/Id'
-        added:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseDiffEntry'
-        removed:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseDiffRemoval'
-        changed:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseDiffChange'
-        unchanged:
-          type: integer
-          minimum: 0
-          description: Datasets pinned at the same version in both.
-    ReleaseRuleCode:
+        - fy2026_q3_close
+    SnapshotKind:
       type: string
-      description: The release rules, in the order the API runs them.
-      enum:
-        - manifest_not_empty
-        - pinned_version_belongs_to_dataset
-        - pinned_version_published
-        - bound_dimensions_resolvable
-        - mapped_bindings_resolvable
-        - bridge_bindings_resolvable
-        - report_sources_resolve
-        - report_factors_apply
-    ReleaseTargetArea:
-      type: string
-      description: What a release finding points at; the identity kinds name a dimension, mapping set or bridge.
+      description: The identities a snapshot holds one version of, in capture order.
       enum:
         - dataset
         - dimension
         - mapping_set
         - bridge
+        - calculation_model
         - report
-    ReleaseViolationTarget:
-      description: A dataset (`itemId` = dataset id), an identity (`area` = its kind, `itemId` = identity id) or a report source (`itemId` = report id, `itemKey` = source key).
-      allOf:
-        - $ref: '#/components/schemas/ViolationTarget'
-        - type: object
-          required:
-            - area
-            - itemId
-          properties:
-            area:
-              $ref: '#/components/schemas/ReleaseTargetArea'
-    ReleaseViolation:
-      allOf:
-        - $ref: '#/components/schemas/Violation'
-        - type: object
-          required:
-            - code
-            - datasetId
-          properties:
-            code:
-              $ref: '#/components/schemas/ReleaseRuleCode'
-            datasetId:
-              type:
-                - string
-                - 'null'
-              description: The manifest row the finding belongs to, for inline issue icons.
-            target:
-              $ref: '#/components/schemas/ReleaseViolationTarget'
-    ReleaseCheckReport:
+    Snapshot:
       type: object
-      required:
-        - releaseId
-        - unsaved
-        - checkedAt
-        - violations
-      properties:
-        releaseId:
-          $ref: '#/components/schemas/Id'
-        unsaved:
-          type: boolean
-          description: True when the rules ran over staged, unsaved manifest operations (a change-set preview).
-        checkedAt:
-          $ref: '#/components/schemas/Timestamp'
-        violations:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseViolation'
-    ReleaseTransitionResult:
-      type: object
-      description: Answer of `validate` and `publish`.
-      required:
-        - release
-        - report
-      properties:
-        release:
-          $ref: '#/components/schemas/Release'
-        report:
-          $ref: '#/components/schemas/ReleaseCheckReport'
-    CreateReleaseInput:
-      type: object
-      required:
-        - key
-        - copyFromReleaseId
-      properties:
-        key:
-          $ref: '#/components/schemas/ReleaseKey'
-        copyFromReleaseId:
-          type:
-            - string
-            - 'null'
-          description: The release whose manifest the draft starts from; null starts empty.
-    ReleaseSaveManifestOperation:
-      type: object
-      description: Replaces the whole manifest; the release editor keeps the manifest as its pending state.
-      required:
-        - op
-        - manifest
-      properties:
-        op:
-          const: saveManifest
-        manifest:
-          type: array
-          items:
-            $ref: '#/components/schemas/ManifestEntry'
-    ReleaseOperation:
-      oneOf:
-        - $ref: '#/components/schemas/ReleaseSaveManifestOperation'
-      discriminator:
-        propertyName: op
-        mapping:
-          saveManifest: '#/components/schemas/ReleaseSaveManifestOperation'
-    ReleaseChangeSetRequest:
-      allOf:
-        - $ref: '#/components/schemas/ChangeSetRequest'
-        - type: object
-          required:
-            - operations
-          properties:
-            operations:
-              type: array
-              items:
-                $ref: '#/components/schemas/ReleaseOperation'
-    ReleaseChangeSetPreview:
-      allOf:
-        - $ref: '#/components/schemas/ChangeSetPreview'
-        - type: object
-          required:
-            - state
-            - violations
-            - report
-            - diffVsActive
-          properties:
-            state:
-              $ref: '#/components/schemas/ReleaseDetail'
-            violations:
-              type: array
-              description: The same findings as `report.violations`.
-              items:
-                $ref: '#/components/schemas/ReleaseViolation'
-            report:
-              $ref: '#/components/schemas/ReleaseCheckReport'
-              description: The release rules over the pending manifest; `unsaved` is true (OI-37).
-            diffVsActive:
-              description: The pending manifest compared with the active release; null when no release is active.
-              oneOf:
-                - $ref: '#/components/schemas/ReleaseDiff'
-                - type: 'null'
-    ReleaseChangeSetCommit:
-      allOf:
-        - $ref: '#/components/schemas/ChangeSetCommit'
-        - type: object
-          required:
-            - state
-          properties:
-            state:
-              $ref: '#/components/schemas/ReleaseDetail'
-    ManifestBinding:
-      type: object
-      description: A binding of a dataset version, with the identities it resolves through.
-      required:
-        - displayName
-        - kind
-        - dimensionId
-        - mappingSetId
-        - bridgeId
-      properties:
-        displayName:
-          type: string
-        kind:
-          $ref: '#/components/schemas/BindingKind'
-        dimensionId:
-          $ref: '#/components/schemas/Id'
-        mappingSetId:
-          type:
-            - string
-            - 'null'
-        bridgeId:
-          type:
-            - string
-            - 'null'
-    ManifestMeasure:
-      type: object
-      required:
-        - key
-        - appliesBridgeFactors
-      properties:
-        key:
-          type: string
-        appliesBridgeFactors:
-          type: boolean
-    ManifestDatasetVersion:
-      type: object
-      required:
-        - id
-        - versionNumber
-        - status
-        - publishedAt
-        - bindings
-        - measures
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-          minimum: 1
-        status:
-          $ref: '#/components/schemas/VersionStatus'
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          format: date-time
-        bindings:
-          type: array
-          items:
-            $ref: '#/components/schemas/ManifestBinding'
-        measures:
-          type: array
-          items:
-            $ref: '#/components/schemas/ManifestMeasure'
-    ManifestDataset:
-      type: object
-      description: A dataset as the manifest editor shows it, with every version.
-      required:
-        - id
-        - key
-        - displayName
-        - isEnabled
-        - versions
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        key:
-          $ref: '#/components/schemas/DottedKey'
-        displayName:
-          type: string
-        isEnabled:
-          type: boolean
-        versions:
-          type: array
-          description: Newest first.
-          items:
-            $ref: '#/components/schemas/ManifestDatasetVersion'
-    PinKind:
-      type: string
-      enum:
-        - dimension
-        - mapping_set
-        - bridge
-    PinIdentityVersion:
-      type: object
-      description: A version of a living kind; it is live (published) or frozen (retired) (OI-14).
-      required:
-        - id
-        - versionNumber
-        - status
-        - publishedAt
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        versionNumber:
-          type: integer
-          minimum: 1
-        status:
-          type: string
-          enum:
-            - published
-            - retired
-        publishedAt:
-          $ref: '#/components/schemas/Timestamp'
-    PinIdentity:
-      type: object
-      description: A dimension, mapping set or bridge that an assumption set pins a version of.
-      required:
-        - kind
-        - id
-        - key
-        - displayName
-        - dimensionId
-        - reportId
-        - createdAt
-        - versions
-      properties:
-        kind:
-          $ref: '#/components/schemas/PinKind'
-        id:
-          $ref: '#/components/schemas/Id'
-        key:
-          type: string
-          description: A dimension key, or a mapping set or bridge dotted key.
-        displayName:
-          type: string
-        dimensionId:
-          $ref: '#/components/schemas/Id'
-          description: The dimension itself, a mapping set's dimension, or a bridge's target dimension.
-        reportId:
-          type:
-            - string
-            - 'null'
-          description: The owning report of a report dimension or of a bridge into one.
-        createdAt:
-          $ref: '#/components/schemas/Timestamp'
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PinIdentityVersion'
-    ReleaseReportSource:
-      type: object
-      required:
-        - key
-        - datasetId
-        - usesFactors
-        - measureKeys
-      properties:
-        key:
-          type: string
-        datasetId:
-          $ref: '#/components/schemas/Id'
-        usesFactors:
-          type: boolean
-          description: The source adds items into rows with factors other than 1, computed from the report's bridges.
-        measureKeys:
-          type: array
-          items:
-            type: string
-    ReleaseReportRead:
-      type: object
-      required:
-        - kind
-        - identityId
-      properties:
-        kind:
-          $ref: '#/components/schemas/PinKind'
-        identityId:
-          $ref: '#/components/schemas/Id'
-    ReleaseReportRef:
-      type: object
-      description: What a report reads from a release (its sources) and from an assumption set (its identities).
-      required:
-        - id
-        - key
-        - displayName
-        - isEnabled
-        - sources
-        - reads
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        key:
-          type: string
-        displayName:
-          type: string
-        isEnabled:
-          type: boolean
-        sources:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseReportSource'
-        reads:
-          type: array
-          description: The analytical identities the report reads, computed by the server.
-          items:
-            $ref: '#/components/schemas/ReleaseReportRead'
-    AssumptionSetKey:
-      type: string
-      pattern: ^[A-Za-z][A-Za-z0-9_]{0,127}$
-      description: Natural key of an assumption set, fixed after creation (R11); requests name the set by it.
-      examples:
-        - fy2026_q3_close
-    AssumptionSet:
-      type: object
-      description: One row of `qe_assumption_set`.
+      description: One row of `qe_snapshot`.
       required:
         - id
         - key
         - displayName
         - description
-        - status
-        - releaseId
+        - isLive
         - capturedAt
+        - capturedBy
         - createdAt
       properties:
         id:
           $ref: '#/components/schemas/Id'
         key:
-          $ref: '#/components/schemas/AssumptionSetKey'
+          $ref: '#/components/schemas/SnapshotKey'
         displayName:
           type: string
         description:
           type:
             - string
             - 'null'
-        status:
-          $ref: '#/components/schemas/AssumptionSetStatus'
-        releaseId:
-          type:
-            - string
-            - 'null'
-          description: The captured release; null for the active set, which reads the active release.
+        isLive:
+          type: boolean
+          description: The live snapshot is edited in place; it is never relabelled, deleted or restored.
         capturedAt:
           type:
             - string
             - 'null'
           format: date-time
-        createdAt:
-          $ref: '#/components/schemas/Timestamp'
-    SetListItem:
-      allOf:
-        - $ref: '#/components/schemas/AssumptionSet'
-        - type: object
-          required:
-            - pinCount
-            - livePins
-            - changedSinceCapture
-          properties:
-            pinCount:
-              type: integer
-              minimum: 0
-            livePins:
-              type: integer
-              minimum: 0
-              description: Pins whose version is still published.
-            changedSinceCapture:
-              type: integer
-              minimum: 0
-              description: Pins whose identity now publishes another version; 0 for the active set.
-    AssumptionSetList:
-      type: object
-      required:
-        - active
-        - historical
-      properties:
-        active:
-          $ref: '#/components/schemas/SetListItem'
-        historical:
-          type: array
-          description: Newest capture first.
-          items:
-            $ref: '#/components/schemas/SetListItem'
-    PinState:
-      type: string
-      description: '`live`: the pinned version is published; `frozen`: it is retired; `report_owned`: the identity belongs to a report (active set only, captures leave these out).'
-      enum:
-        - live
-        - frozen
-        - report_owned
-    PinRow:
-      type: object
-      required:
-        - kind
-        - identityId
-        - versionId
-        - publishedVersionId
-        - state
-      properties:
-        kind:
-          $ref: '#/components/schemas/PinKind'
-        identityId:
-          $ref: '#/components/schemas/Id'
-        versionId:
-          $ref: '#/components/schemas/Id'
-        publishedVersionId:
+          description: When a frozen snapshot was captured; null for the live snapshot.
+        capturedBy:
           type:
             - string
             - 'null'
-          description: The identity's published version now.
-        state:
-          $ref: '#/components/schemas/PinState'
-    SetReadinessReason:
+          description: The token subject of whoever captured a frozen snapshot; null for the live snapshot.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    SnapshotCounts:
       type: object
+      description: How many versions a snapshot holds, or a capture would copy, of each kind.
       required:
-        - message
-        - target
-      properties:
-        message:
-          type: string
-        target:
-          $ref: '#/components/schemas/ReleaseViolationTarget'
-    SetReadiness:
-      type: object
-      description: 'Whether a report comparison can name the set: every analytical identity the report reads is pinned and every source dataset is in the set''s release.'
-      required:
-        - reportId
-        - ready
-        - reasons
-      properties:
-        reportId:
-          $ref: '#/components/schemas/Id'
-        ready:
-          type: boolean
-        reasons:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetReadinessReason'
-    SetDetail:
-      type: object
-      required:
-        - set
-        - readsReleaseId
-        - pins
-        - readiness
-      properties:
-        set:
-          $ref: '#/components/schemas/AssumptionSet'
-        readsReleaseId:
-          $ref: '#/components/schemas/Id'
-          description: The release the set reads; the active release for the active set.
-        pins:
-          type: array
-          items:
-            $ref: '#/components/schemas/PinRow'
-        readiness:
-          description: One entry per enabled report for a historical set; null for the active set.
-          oneOf:
-            - type: array
-              items:
-                $ref: '#/components/schemas/SetReadiness'
-            - type: 'null'
-    SetPinEntry:
-      type: object
-      required:
-        - kind
-        - identityId
-        - versionId
-      properties:
-        kind:
-          $ref: '#/components/schemas/PinKind'
-        identityId:
-          $ref: '#/components/schemas/Id'
-        versionId:
-          $ref: '#/components/schemas/Id'
-    SetPinChange:
-      type: object
-      required:
-        - kind
-        - identityId
-        - fromVersionId
-        - toVersionId
-      properties:
-        kind:
-          $ref: '#/components/schemas/PinKind'
-        identityId:
-          $ref: '#/components/schemas/Id'
-        fromVersionId:
-          $ref: '#/components/schemas/Id'
-        toVersionId:
-          $ref: '#/components/schemas/Id'
-    SetComparison:
-      type: object
-      description: What `toSetId` pins differently from `fromSetId`; report-owned identities are left out.
-      required:
-        - fromSetId
-        - toSetId
-        - added
-        - removed
-        - changed
-        - unchanged
-        - release
-      properties:
-        fromSetId:
-          $ref: '#/components/schemas/Id'
-        toSetId:
-          $ref: '#/components/schemas/Id'
-        added:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetPinEntry'
-        removed:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetPinEntry'
-        changed:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetPinChange'
-        unchanged:
-          type: integer
-          minimum: 0
-        release:
-          description: The difference of the two sets' releases; null when both read the same release.
-          oneOf:
-            - $ref: '#/components/schemas/ReleaseDiff'
-            - type: 'null'
-    SetCapturePreview:
-      type: object
-      required:
+        - datasets
         - dimensions
         - mappingSets
         - bridges
-        - leftOutDimensions
-        - leftOutBridges
-        - releaseId
+        - calculationModels
+        - reports
       properties:
+        datasets:
+          type: integer
+          minimum: 0
         dimensions:
           type: integer
           minimum: 0
+          description: Report dimensions included.
         mappingSets:
           type: integer
           minimum: 0
         bridges:
           type: integer
           minimum: 0
-        leftOutDimensions:
+          description: Report bridges included.
+        calculationModels:
           type: integer
           minimum: 0
-          description: Report dimensions a capture leaves out.
-        leftOutBridges:
+        reports:
           type: integer
           minimum: 0
-          description: Bridges into report dimensions a capture leaves out.
-        releaseId:
+    SnapshotRestore:
+      type: object
+      description: One row of the restore log, `qe_snapshot_restore`.
+      required:
+        - snapshotId
+        - restoredAt
+        - restoredBy
+      properties:
+        snapshotId:
           $ref: '#/components/schemas/Id'
-          description: The active release, which the capture records.
-    CaptureSetInput:
+        restoredAt:
+          $ref: '#/components/schemas/Timestamp'
+        restoredBy:
+          type: string
+          description: The token subject of the caller.
+    SnapshotListItem:
+      allOf:
+        - $ref: '#/components/schemas/Snapshot'
+        - type: object
+          required:
+            - counts
+            - lastRestore
+          properties:
+            counts:
+              $ref: '#/components/schemas/SnapshotCounts'
+            lastRestore:
+              description: The snapshot's latest restore into live; null when never restored, and always for the live snapshot.
+              oneOf:
+                - $ref: '#/components/schemas/SnapshotRestore'
+                - type: 'null'
+    SnapshotList:
+      type: object
+      required:
+        - live
+        - frozen
+      properties:
+        live:
+          $ref: '#/components/schemas/SnapshotListItem'
+        frozen:
+          type: array
+          description: Newest capture first.
+          items:
+            $ref: '#/components/schemas/SnapshotListItem'
+    SnapshotEntry:
+      type: object
+      description: The version a snapshot holds of one identity; the kind's version read shows it.
+      required:
+        - kind
+        - identityId
+        - key
+        - displayName
+        - versionId
+      properties:
+        kind:
+          $ref: '#/components/schemas/SnapshotKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+        displayName:
+          type: string
+          description: The identity's name; a model's or report's as its version names it.
+        versionId:
+          $ref: '#/components/schemas/Id'
+    SnapshotDetail:
+      type: object
+      required:
+        - snapshot
+        - entries
+        - restores
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/Snapshot'
+        entries:
+          type: array
+          description: Kind by kind in capture order, each by key.
+          items:
+            $ref: '#/components/schemas/SnapshotEntry'
+        restores:
+          type: array
+          description: Restores of the snapshot into live, newest first; none for the live snapshot.
+          items:
+            $ref: '#/components/schemas/SnapshotRestore'
+    SnapshotPair:
+      type: object
+      description: An identity both compared snapshots hold, with each one's version.
+      required:
+        - kind
+        - identityId
+        - key
+        - fromVersionId
+        - toVersionId
+      properties:
+        kind:
+          $ref: '#/components/schemas/SnapshotKind'
+        identityId:
+          $ref: '#/components/schemas/Id'
+        key:
+          type: string
+        fromVersionId:
+          $ref: '#/components/schemas/Id'
+        toVersionId:
+          $ref: '#/components/schemas/Id'
+    SnapshotComparison:
+      type: object
+      description: What `toSnapshotId` holds that `fromSnapshotId` does not, the reverse, and what both hold.
+      required:
+        - fromSnapshotId
+        - toSnapshotId
+        - added
+        - removed
+        - common
+      properties:
+        fromSnapshotId:
+          $ref: '#/components/schemas/Id'
+        toSnapshotId:
+          $ref: '#/components/schemas/Id'
+        added:
+          type: array
+          description: Identities only `to` holds, with `to`'s version.
+          items:
+            $ref: '#/components/schemas/SnapshotEntry'
+        removed:
+          type: array
+          description: Identities only `from` holds, with `from`'s version.
+          items:
+            $ref: '#/components/schemas/SnapshotEntry'
+        common:
+          type: array
+          description: Identities both hold, with both versions.
+          items:
+            $ref: '#/components/schemas/SnapshotPair'
+    CaptureSnapshotInput:
       type: object
       required:
         - key
@@ -8520,7 +6693,7 @@ components:
         - description
       properties:
         key:
-          $ref: '#/components/schemas/AssumptionSetKey'
+          $ref: '#/components/schemas/SnapshotKey'
         displayName:
           type: string
           minLength: 1
@@ -8529,7 +6702,7 @@ components:
             - string
             - 'null'
           maxLength: 1024
-    RelabelSetInput:
+    RelabelSnapshotInput:
       type: object
       required:
         - displayName
@@ -8568,9 +6741,12 @@ components:
         - int32
     CalcModel:
       type: object
-      description: The model's own settings (`qe_calculation_model`).
+      description: The model's identity with one version's settings (`qe_calculation_model_version`).
       required:
         - id
+        - versionId
+        - snapshotId
+        - isLive
         - key
         - displayName
         - currencyCode
@@ -8581,6 +6757,13 @@ components:
       properties:
         id:
           $ref: '#/components/schemas/Id'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         key:
           $ref: '#/components/schemas/DottedKey'
           description: Fixed after creation (C9).
@@ -8750,7 +6933,7 @@ components:
             $ref: '#/components/schemas/AttributionDriver'
     ModelReportUse:
       type: object
-      description: A report that reads the model (`qe_report.calculation_model_id`, OI-44).
+      description: A report whose version in the model version's snapshot reads it (OI-44).
       required:
         - reportId
         - reportKey
@@ -9551,11 +7734,16 @@ components:
       pattern: ^#[0-9A-Fa-f]{6}$
     ReportDocument:
       type: object
+      description: A report's whole content in one version; the live version is the change set's state.
       required:
         - id
         - key
+        - versionId
+        - snapshotId
+        - isLive
         - isEnabled
         - modelId
+        - modelVersionId
         - reportDimensionId
         - reportDimensionVersionId
         - settings
@@ -9572,14 +7760,25 @@ components:
           $ref: '#/components/schemas/Id'
         key:
           $ref: '#/components/schemas/DottedKey'
+        versionId:
+          $ref: '#/components/schemas/Id'
+        snapshotId:
+          $ref: '#/components/schemas/Id'
+        isLive:
+          type: boolean
+          description: The live version is editable; a frozen version is read-only.
         isEnabled:
           type: boolean
         modelId:
           $ref: '#/components/schemas/Id'
+        modelVersionId:
+          $ref: '#/components/schemas/Id'
+          description: The model's version in the same snapshot, whose metrics the report reads.
         reportDimensionId:
           $ref: '#/components/schemas/Id'
         reportDimensionVersionId:
           $ref: '#/components/schemas/Id'
+          description: The report dimension's version in the same snapshot, whose members are the member rows.
         settings:
           $ref: '#/components/schemas/ReportSettings'
         rows:
@@ -10165,44 +8364,24 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Id'
-    ReleaseIdPath:
-      name: releaseId
+    SnapshotIdPath:
+      name: snapshotId
       in: path
       required: true
       schema:
         $ref: '#/components/schemas/Id'
-    ReleaseDiffFrom:
+    SnapshotCompareFrom:
       name: from
       in: query
       required: true
-      description: The release compared from.
+      description: The snapshot compared from.
       schema:
         $ref: '#/components/schemas/Id'
-    ReleaseDiffTo:
+    SnapshotCompareTo:
       name: to
       in: query
       required: true
-      description: The release compared to.
-      schema:
-        $ref: '#/components/schemas/Id'
-    AssumptionSetIdPath:
-      name: setId
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/Id'
-    SetCompareFrom:
-      name: from
-      in: query
-      required: true
-      description: The assumption set compared from.
-      schema:
-        $ref: '#/components/schemas/Id'
-    SetCompareTo:
-      name: to
-      in: query
-      required: true
-      description: The assumption set compared to.
+      description: The snapshot compared to.
       schema:
         $ref: '#/components/schemas/Id'
     ModelId:
@@ -10212,10 +8391,24 @@ components:
       description: The calculation model id.
       schema:
         $ref: '#/components/schemas/Id'
+    ModelVersionId:
+      name: modelVersionId
+      in: path
+      required: true
+      description: A calculation model version id.
+      schema:
+        $ref: '#/components/schemas/Id'
     ReportId:
       name: reportId
       in: path
       required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    ReportVersionId:
+      name: reportVersionId
+      in: path
+      required: true
+      description: A report version id.
       schema:
         $ref: '#/components/schemas/Id'
     ReportSourceKey:
@@ -10250,7 +8443,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: A precondition failed (not a draft, not editable, owned by a report, delete blocked, release not published).
+      description: A precondition failed (a frozen version, not editable, owned by a report, delete blocked, the live snapshot).
       content:
         application/problem+json:
           schema:

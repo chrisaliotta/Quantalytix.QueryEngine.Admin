@@ -50,20 +50,20 @@ public sealed class MappingSetsController(MappingQueries queries, MappingCommand
         return outcome.Succeeded ? StatusCode(StatusCodes.Status201Created, outcome.Value) : Problems.From(outcome.Refusal).ToResult();
     }
 
-    /// <summary>Reads a mapping set with its bindings and assumption set pins.</summary>
+    /// <summary>Reads a mapping set with its versions and the live bindings that use it.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="mappingSetId">The mapping set.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The detail.</returns>
     /// <response code="200">The detail read model.</response>
     [HttpGet("{mappingSetId:long}")]
-    [ProducesResponseType<MappingSetDetail>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<MappingSetDetail>> Get(string tenantId, long mappingSetId, CancellationToken cancellationToken)
+    [ProducesResponseType<MappingSetListItem>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<MappingSetListItem>> Get(string tenantId, long mappingSetId, CancellationToken cancellationToken)
     {
         return Ok(await queries.DetailAsync(mappingSetId, cancellationToken));
     }
 
-    /// <summary>Deletes a mapping set and every version when no binding uses it and no historical set pins it (B12).</summary>
+    /// <summary>Deletes a mapping set with its live version when no live binding uses it and no frozen snapshot holds it (B12).</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="mappingSetId">The mapping set.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>

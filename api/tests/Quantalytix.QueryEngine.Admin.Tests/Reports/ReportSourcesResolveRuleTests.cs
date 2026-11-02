@@ -1,43 +1,43 @@
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Xunit;
-using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
+using static Quantalytix.QueryEngine.Admin.Tests.Support.CatalogRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportGraphFixture;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// Confirms <c>report_sources_resolve</c>: a source that reads a dataset the release does not pin is reported; a direct source's
-/// field must be an enabled field of the pinned dataset version, and a bridge source's role must have an enabled binding into
+/// Confirms <c>report_sources_resolve</c>: a source that reads a dataset the snapshot does not hold is reported; a direct source's
+/// field must be an enabled field of the snapshot's dataset version, and a bridge source's role must have an enabled binding into
 /// members there; and its time field and each supplied variable's measure and filter fields must resolve. The engine trusts these
-/// keys. The rule checks a report against the active release, and every enabled report when a release is validated.
+/// keys. The rule checks a report against its snapshot, and every enabled report reading a dataset when that dataset is committed.
 /// </summary>
 public sealed class ReportSourcesResolveRuleTests
 {
     /// <summary>The seeded tables.</summary>
     private readonly ReportGraphFixture _fixture = new();
 
-    /// <summary>The seeded GL source resolves, in the active release and for the release being validated.</summary>
+    /// <summary>The seeded GL source resolves, for the report and for a commit to GL.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task ResolvingSource_Passes()
     {
         Assert.Empty(await _fixture.EvaluateAsync(new ReportSourcesResolveRule()));
-        Assert.Empty(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), SemanticReleaseId));
+        Assert.Empty(await _fixture.EvaluateGlReadersAsync(new ReportSourcesResolveRule()));
     }
 
-    /// <summary>A source of the loans dataset, which the release does not pin, is reported for the release and for the report itself.</summary>
+    /// <summary>A source of the loans dataset, which the snapshot does not hold, is reported for a commit to GL and for the report itself.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
-    public async Task SourceOfAnUnpinnedDataset_IsReported()
+    public async Task SourceOfADatasetTheSnapshotLacks_IsReported()
     {
         await _fixture.Sources.InsertAsync(Source(72, "loans", LoansDatasetId), TestContext.Current.CancellationToken);
 
-        var violation = Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportSourcesResolveRule(), SemanticReleaseId));
+        var violation = Assert.Single(await _fixture.EvaluateGlReadersAsync(new ReportSourcesResolveRule()));
 
         Assert.Equal(ReportSourcesResolveRule.Code, violation.Code);
-        Assert.Equal("Report 'balance_sheet' source 'loans' reads dataset 'loans', which the release does not pin.", violation.Message);
+        Assert.Equal("Report 'balance_sheet' source 'loans' reads dataset 'loans', which the snapshot does not hold.", violation.Message);
         Assert.Equal(violation.Message, Assert.Single(await _fixture.EvaluateAsync(new ReportSourcesResolveRule())).Message);
     }
 

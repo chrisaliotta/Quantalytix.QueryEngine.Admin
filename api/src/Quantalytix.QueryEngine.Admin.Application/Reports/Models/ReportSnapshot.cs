@@ -15,12 +15,15 @@ public sealed record ReportSnapshot
 /// <summary>What a report change set reads once outside the report.</summary>
 public sealed record ReportSurroundings
 {
-    /// <summary>The report dimension's one version, which holds the member rows.</summary>
+    /// <summary>The live snapshot, which tells whether the version is live.</summary>
+    public required long LiveSnapshotId { get; init; }
+
+    /// <summary>The report dimension's version in the report version's snapshot, which holds the member rows.</summary>
     public required long DimensionVersionId { get; init; }
 
     /// <summary>Every role of the tenant, which sources, calculation dimensions and scenarios name.</summary>
     public required IReadOnlyList<DimensionRoleRecord> Roles { get; init; }
 
-    /// <summary>Every dataset of the tenant by id, which sources name.</summary>
+    /// <summary>Every dataset the report version's snapshot holds, by id, which sources name.</summary>
     public required IReadOnlySet<long> DatasetIds { get; init; }
 }

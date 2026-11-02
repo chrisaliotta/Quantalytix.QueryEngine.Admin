@@ -10,13 +10,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// <param name="parameters">The parameter table.</param>
 public sealed class ModelParameterService(ITableGateway<ModelParameterRecord> parameters)
 {
-    /// <summary>Lists a model's parameters.</summary>
-    /// <param name="calculationModelId">The calculation model.</param>
+    /// <summary>Lists a model version's parameters.</summary>
+    /// <param name="modelVersionId">The calculation model version.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The parameters by key.</returns>
-    public async Task<IReadOnlyList<ModelParameter>> ListAsync(long calculationModelId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ModelParameter>> ListAsync(long modelVersionId, CancellationToken cancellationToken)
     {
-        var rows = await parameters.ListAsync(new { CalculationModelId = calculationModelId }, cancellationToken);
+        var rows = await parameters.ListAsync(new { CalculationModelVersionId = modelVersionId }, cancellationToken);
         return
         [
             .. rows.OrderBy(row => row.ParameterKey, StringComparer.Ordinal).Select(row => new ModelParameter
@@ -33,14 +33,14 @@ public sealed class ModelParameterService(ITableGateway<ModelParameterRecord> pa
     }
 
     /// <summary>The row a model's parameter is stored as.</summary>
-    /// <param name="calculationModelId">The calculation model.</param>
+    /// <param name="modelVersionId">The calculation model version.</param>
     /// <param name="parameter">The parameter.</param>
     /// <returns>The row.</returns>
-    public static ModelParameterRecord ToRecord(long calculationModelId, ModelParameter parameter)
+    public static ModelParameterRecord ToRecord(long modelVersionId, ModelParameter parameter)
     {
         return new ModelParameterRecord
         {
-            CalculationModelId = calculationModelId,
+            CalculationModelVersionId = modelVersionId,
             ParameterKey = parameter.ParameterKey,
             DisplayName = parameter.DisplayName,
             ValueType = parameter.ValueType,

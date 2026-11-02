@@ -2,15 +2,15 @@ using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 
 /// <summary>
-/// Confirms the dimension lifecycle the manager relies on (blueprint 12, OI-14): a new dimension starts with a live version 1 that
-/// the active assumption set pins; a profile defines its system dimension with the required roles and members; freezing the live
-/// version continues in a live clone and keeps the note on the frozen one; only a frozen version can be deleted; and a dimension
-/// that nothing references is deleted with its versions and pin.
+/// Confirms the dimension lifecycle the manager relies on (blueprint 12): a new dimension starts with a version in the live
+/// snapshot; a profile defines its system dimension with the required roles and members; a dimension a frozen snapshot holds cannot
+/// be deleted; and a dimension that nothing references is deleted with its versions and roles.
 /// </summary>
 public sealed class DimensionCommandsTests
 {
@@ -20,17 +20,17 @@ public sealed class DimensionCommandsTests
     /// <summary>The test's cancellation token.</summary>
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    /// <summary>A created dimension's version 1 is live, the active set pins it, and its first role exists.</summary>
+    /// <summary>A created dimension's version is in the live snapshot, its first role exists, and the revision advances.</summary>
     /// <returns>A task that completes when the dimension is checked.</returns>
     [Fact]
-    public async Task Create_StartsWithAPinnedLiveVersion()
+    public async Task Create_StartsWithALiveVersion()
     {
         var outcome = await _fixture.Commands().CreateAsync(Input("Region", "region"), Token);
 
         Assert.True(outcome.Succeeded);
         var version = _fixture.Versions.All.Single(row => row.DimensionVersionId == outcome.Value.VersionId);
-        Assert.Equal((1, PublicationStatuses.Published), (version.VersionNumber, version.Status));
-        Assert.Contains(_fixture.Pins.All, pin => pin.DimensionId == outcome.Value.DimensionId && pin.DimensionVersionId == version.DimensionVersionId);
+        Assert.Equal((outcome.Value.DimensionId, SnapshotRows.LiveId), (version.DimensionId, version.SnapshotId));
+        Assert.Equal(DimensionFixture.StartingRevision + 1, _fixture.Revision);
         Assert.Contains(_fixture.Roles.All, role => role.DimensionId == outcome.Value.DimensionId && role.DimensionRoleKey == "region");
     }
 
@@ -58,34 +58,21 @@ public sealed class DimensionCommandsTests
         Assert.Equal(["BRANCH", "MOBILE", "ONLINE"], _fixture.Members.All.Where(row => row.DimensionVersionId == outcome.Value.VersionId).Select(row => row.MemberKey).Order(StringComparer.Ordinal));
     }
 
-    /// <summary>
-    /// Freezing the live version retires it with the note and its retirement time, and continues in a live version 2 holding a
-    /// copy of its members; the frozen version can then be deleted, the live one cannot.
-    /// </summary>
-    /// <returns>A task that completes when the versions are checked.</returns>
+    /// <summary>A dimension a frozen snapshot holds cannot be deleted, because restoring that snapshot would need it.</summary>
+    /// <returns>A task that completes when the refusal is checked.</returns>
     [Fact]
-    public async Task Freeze_ContinuesInALiveClone()
+    public async Task Delete_IsBlockedByAFrozenSnapshot()
     {
-        await _fixture.Members.InsertAsync(DimensionRows.Member(1, DimensionFixture.LiveVersionId, "NORTH"), Token);
-        var commands = _fixture.Commands();
+        var refusal = await _fixture.Commands().DeleteAsync(DimensionFixture.DimensionId, Token);
 
-        var outcome = await commands.FreezeAsync(DimensionFixture.LiveVersionId, " FY26 close ", Token);
-
-        Assert.True(outcome.Succeeded);
-        Assert.Equal(2, outcome.Value.Live.VersionNumber);
-        Assert.Equal(1, outcome.Value.Live.MemberCount);
-        var frozen = _fixture.Versions.All.Single(row => row.DimensionVersionId == DimensionFixture.LiveVersionId);
-        Assert.Equal((PublicationStatuses.Retired, "FY26 close"), (frozen.Status, frozen.FreezeNote));
-        Assert.NotNull(frozen.RetiredAt);
-        Assert.Null(await commands.DeleteVersionAsync(DimensionFixture.LiveVersionId, Token));
-        var live = _fixture.Versions.All.Single(row => row.Status == PublicationStatuses.Published).DimensionVersionId;
-        Assert.Equal(RefusalKind.DeleteBlocked, (await commands.DeleteVersionAsync(live, Token))!.Kind);
+        Assert.Equal([DeleteBlockerCodes.ReferencedBySnapshot], refusal!.Violations.Select(reason => reason.Code));
+        Assert.Equal(2, _fixture.Versions.All.Count);
     }
 
-    /// <summary>A dimension nothing references is deleted with its versions, roles and active-set pin.</summary>
+    /// <summary>A dimension nothing references is deleted with its versions and roles.</summary>
     /// <returns>A task that completes when the delete is checked.</returns>
     [Fact]
-    public async Task Delete_RemovesTheDimensionWithItsPin()
+    public async Task Delete_RemovesTheDimensionWithItsVersionsAndRoles()
     {
         var commands = _fixture.Commands();
         var created = (await commands.CreateAsync(Input("Region", "region"), Token)).Value!;
@@ -94,7 +81,7 @@ public sealed class DimensionCommandsTests
 
         Assert.DoesNotContain(_fixture.Dimensions.All, row => row.DimensionId == created.DimensionId);
         Assert.DoesNotContain(_fixture.Versions.All, row => row.DimensionId == created.DimensionId);
-        Assert.DoesNotContain(_fixture.Pins.All, pin => pin.DimensionId == created.DimensionId);
+        Assert.DoesNotContain(_fixture.Roles.All, row => row.DimensionId == created.DimensionId);
     }
 
     /// <summary>A categorical user dimension with a first role.</summary>

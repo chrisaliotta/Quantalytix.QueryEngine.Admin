@@ -22,13 +22,12 @@ allow-list; the old web app was removed and the new one (developed as `web2`) no
 
 | Source                                                                                                                                              | Role                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Database schema, design revision 2.27.0](../../../database/srdb_ebm/README.md) (`schema/01_tables`, `docs/schema/Query_Engine_Database_Schema.md`) | **Authoritative.** Tables, columns, allowed values and publication rules. |
+| [Database schema, design revision 3.0.0](../../../database/srdb_ebm/README.md) (`schema/01_tables`, `docs/schema/Query_Engine_Database_Schema.md`) | **Authoritative.** Tables, columns, allowed values and commit rules.      |
 | [Query engine README](../../../Quantalytix.QueryEngine/README.md)                                                                                   | What the engine reads, trusts and refuses; report run contract 2.1.       |
 | [Current Admin API README](../../api/README.md), `api/openapi/admin-api.json`, `api/docs/architecture/`                                             | The API being rebuilt: about 160 operations in 43 controllers.            |
 | [Dimensions concept](../concepts/dimensions.md)                                                                                                     | Dimension model, lifecycle and proposed profiles.                         |
 | [Dimension manager brief](../requirements/dimension-manager-prototype.md)                                                                           | Dimension manager behaviors.                                              |
 | [Mappings and bridges brief](../requirements/mappings-and-bridges-prototype.md), [rev. 2 in web](../../web/docs/mappings-and-bridges.md)          | Mapping sets and bridges.                                                 |
-| [Releases and assumption sets brief](../requirements/releases-and-assumption-sets-prototype.md)                                                     | Releases, activation, capture.                                            |
 | `web` [prototype](../../web/src/lib)                                                                                                              | Module ports, read models, mock rules; report and model stores.           |
 
 ## Reading order
@@ -44,7 +43,7 @@ allow-list; the old web app was removed and the new one (developed as `web2`) no
    - [11 Datasets](11-datasets.md)
    - [12 Dimensions](12-dimensions.md)
    - [13 Mapping sets and bridges](13-mappings-and-bridges.md)
-   - [14 Releases and assumption sets](14-releases-and-assumption-sets.md)
+   - [14 Snapshots](14-snapshots.md)
    - [15 Calculation models](15-calculation-models.md)
    - [16 Reports](16-reports.md)
 7. [90 Open issues](90-open-issues.md) and [91 Schema gaps](91-schema-gaps.md).
@@ -83,11 +82,11 @@ current API" table says keep, change, new or remove).
 | Current controller | Blueprint |
 |---|---|
 | `SessionController`, `TenantsController`, `SystemTenantsController`, `VocabulariesController`, `OverviewController`, `LookupsController`, `DevelopmentTokenController` | [10](10-tenant-session-catalog.md) |
-| `VersionStatusController` (`PUT versions/{kind}/{id}/status`, `POST versions/{kind}/{id}/validation`) | Replaced by per-kind `validate`, `publish`, `reopen`, `retire`, `freeze` and `check` endpoints ([01](01-api-conventions.md#routing-and-tenancy-agreed)) in 11–14 |
+| `VersionStatusController` (`PUT versions/{kind}/{id}/status`, `POST versions/{kind}/{id}/validation`) | Removed: live versions are validated on every commit, and snapshots replace version lifecycles ([14](14-snapshots.md)) |
 | `DatasetsController`, `DatasetVersionsController`, `FieldsController`, `GrainsController`, `BindingsController`, `MeasuresController`, `SourceObjectsController` | [11](11-datasets.md) |
 | `DimensionsController`, `DimensionRolesController`, `DimensionVersionsController`, `DimensionLevelsController`, `DimensionMembersController`, `RangeBandsController` | [12](12-dimensions.md) |
 | `MappingSetsController`, `MappingVersionsController`, `MappingEntriesController`, `BridgesController`, `BridgeVersionsController`, `BridgeMappingsController` | [13](13-mappings-and-bridges.md) |
-| `ReleasesController`, `AssumptionSetsController` | [14](14-releases-and-assumption-sets.md) |
+| `ReleasesController`, `AssumptionSetsController` | Replaced by `SnapshotsController`, [14](14-snapshots.md) |
 | `CalculationModelsController`, `VariablesController`, `CalculatedMeasuresController`, `MetricAttributionsController`, `ModelParametersController` | [15](15-calculation-models.md) |
 | `ReportsController`, `ReportEditorController`, `ReportSourcesController`, `SourceProfilesController`, `CalculationDimensionsController`, `ReportScenariosController`, `ReportVariableScopesController`, `ReportColumnsController`, `ReportStylesController` | [16](16-reports.md) |
 
@@ -97,6 +96,7 @@ Record resolved open issues here, newest first, with the date, the issue, the ch
 
 | Date | Issue | Decision | By |
 |---|---|---|---|
+| 2026-11-02 | Snapshot versioning | Snapshots replace semantic releases, draft and publish versioning, freeze and assumption sets. One live snapshot is edited in place and validated on every commit; capture copies every live version of all six kinds into a frozen snapshot, and restore copies one back ([14](14-snapshots.md)). | User |
 | 2026-10-27 | [OI-32](90-open-issues.md#oi-32) | Deleting a dataset over an ordinary (unmanaged) table neither redefines nor drops the table's materialized view; the next materialize or dematerialize on the table redefines it without the deleted fields' columns. | User |
 | 2026-10-27 | [OI-33](90-open-issues.md#oi-33) | Deleting a dataset drops each registered managed table that only its versions read, with the materialized view the API defined over it, and deletes the table's `qe_managed_source_object` row, as write-plan schema statements of the delete. | User |
 | 2026-10-27 | [OI-29](90-open-issues.md#oi-29) | The dotted key pattern (`DottedKey`) extends to dataset, calculation model and report keys, as the seed writes them. | Integrator, G1 |

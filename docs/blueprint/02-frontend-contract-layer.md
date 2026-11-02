@@ -24,14 +24,14 @@ The `web` side follows it in two ways:
 ```
 web/src/lib/
   api/
-    contract.ts        shared kernel: ApiResult, Problem, Violation, DeleteCheck, VersionStatus, Vocabulary, ids
+    contract.ts        shared kernel: ApiResult, Problem, Violation, DeleteCheck, SnapshotKind, Vocabulary, ids
     http.ts            fetch wrapper: base URL, tenant prefix, bearer token, problem parsing, 401 handling
     schema.d.ts        generated from api/openapi/contract/bundled.yaml; imported only by */http/*.ts
     changes.ts         ChangeSetPort, the mock snapshot change set, the HTTP change set (moved from lib/changes.ts)
   session/
     contract.ts        Session, role, tenant list
     client.tsx         SessionProvider, useSession, useTenant
-  <module>/            datasets, dimensions, mappings, releases, models, reports
+  <module>/            datasets, dimensions, mappings, snapshots, models, reports
     contract.ts        read models, inputs, operations, the port interface, shared module rules (labels, tab lists)
     http/adapter.ts    implements the port over HTTP
     mock/adapter.ts    implements the port in memory (kept for tests and offline prototyping)
@@ -46,7 +46,7 @@ component that uses them.
 ## Shared kernel: `lib/api/contract.ts` (Agreed)
 
 Replaces the separate `ApiResult`/`ProblemDetails` declarations in `datasets/contract.ts`,
-`dimensions/contract.ts` and `releases/contract.ts` (they disagree on `status` and on extra members such as
+`dimensions/contract.ts` and the former `releases/contract.ts` (they disagree on `status` and on extra members such as
 `dependents`).
 
 ```ts
@@ -55,10 +55,10 @@ export const newTempId = (): Id => `tmp:${crypto.randomUUID()}`  // items create
 export const KEY_PATTERN: RegExp                                     // Key
 export const DOTTED_KEY_PATTERN: RegExp                              // DottedKey: datasets, models, reports, mapping sets, bridges
 
-export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
+export type SnapshotKind = 'dataset' | 'dimension' | 'mapping_set' | 'bridge' | 'calculation_model' | 'report'
 
 // Vocabularies more than one module reads
-export type DimensionKind, DimensionPurpose, DefinitionOrigin, AssumptionSetStatus, BindingKind, Periodicity,
+export type DimensionKind, DimensionPurpose, DefinitionOrigin, BindingKind, Periodicity,
   MeasureKind, ComponentRole, RoundingMode, SourceSelection, VariableMissingBehavior
 
 export interface Problem { /* see 01-api-conventions.md#problem-body */ }
@@ -66,12 +66,9 @@ export interface Violation { code: string; message: string; target?: ViolationTa
 export interface ViolationTarget { area: string; itemId?: string; itemKey?: string; filter?: string }
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem }
 
-export interface ValidationReport { versionId: Id; checkedAt: string; violations: Violation[] }
 export interface DeleteCheck { allowed: boolean; message: string | null; reasons: DeleteBlocker[] }
 export interface DeleteBlocker extends Violation { code: DeleteBlockerCode }   // one list, 01 "Delete checks"
 
-export interface FreezeInput { note: string | null }
-export interface FreezeResult<V> { report: ValidationReport; live: V | null }  // dimensions, mapping sets, bridges
 export type Grouping = { mode: 'member' } | { mode: 'level'; levelKey: string } | { mode: 'ancestor'; memberKey: string } | { mode: 'depth'; depth: number }
 export type FilterNode = /* the engine's structured filterNode over FilterOperand */
 
@@ -95,7 +92,7 @@ base schemas that each aggregate specializes with `allOf` (see the contract READ
 `forTenant(tenantId)` returns a client rooted at `/api/tenants/{tenantId}`. Every `401` calls `onUnauthorized` before
 the problem is returned. The session layer creates the client once; HTTP adapters receive it.
 
-Module contracts re-export what they use (`export type { ApiResult, VersionStatus } from '@/lib/api/contract'`) and
+Module contracts re-export what they use (`export type { ApiResult, SnapshotKind } from '@/lib/api/contract'`) and
 extend `Violation` codes with module unions where useful:
 
 ```ts
@@ -104,7 +101,7 @@ export interface DimensionViolation extends Violation { code: DimensionViolation
 ```
 
 **Delta:** `web` violation codes are camelCase in dimensions (`duplicateMemberKey`, `bandOverlap`) and snake_case in
-mappings and releases. The API's rule codes are snake_case. Contracts adopt the API codes (OI-11).
+mappings and the former releases. The API's rule codes are snake_case. Contracts adopt the API codes (OI-11).
 
 ## Ports
 
@@ -114,7 +111,7 @@ A port is an interface of async methods grouped as reads, edits and commands.
 |---|---|---|
 | Reads | Return read models; see pending state when called through the staged port | `GET` |
 | Edits | Stage an operation; validated by preview; applied on Save | `POST <aggregate>/changes/preview`, then `POST <aggregate>/changes` |
-| Commands | Run on saved state immediately; refused while edits are pending | `POST`/`DELETE` lifecycle endpoints |
+| Commands | Run on saved state immediately; refused while edits are pending | `POST`/`DELETE` command endpoints |
 
 The edit and command lists are part of the contract, declared next to the port, as `dimensions/client.tsx` and
 `datasets/client.tsx` do today (`DIMENSION_EDITS`, `DIMENSION_COMMANDS`). They move into
@@ -155,9 +152,8 @@ reads from `pending()` while it is not null. `stage` strips the `operations[n].`
 
 ### Commit scope
 
-One change set per aggregate root (one dataset version, one dimension, one mapping set, one analytical bridge, one
-draft release, one model, one report). A dimension, mapping set or bridge change set covers its identity and its live
-version; a frozen version accepts none (OI-14). `useStagedApi` already scopes by `dimension:<id>` and `dataset:<id>`.
+One change set per aggregate root (one dataset, one dimension, one mapping set, one analytical bridge, one model, one
+report). Each change set covers its identity and its live version; a frozen snapshot's versions accept none. `useStagedApi` already scopes by `dimension:<id>` and `dataset:<id>`.
 
 The navigation guard (`ChangesProvider.resolve`) saves every dirty scope in sequence. Saves across aggregates are not
 atomic and the blueprint does not make them so; a failed save stops the sequence and keeps the user on the page
@@ -167,11 +163,11 @@ atomic and the blueprint does not make them so; a failed save stops the sequence
 
 | Module | Today in `web` | Target |
 |---|---|---|
-| Datasets | Port + `ChangeSetPort` + staged proxy | Keep; add HTTP adapter; move `createDataset` from edits to commands (it creates an aggregate, it does not edit one) |
-| Dimensions | Port + `ChangeSetPort` + staged proxy | Keep; HTTP adapter; `freezeVersion` on the living lifecycle; `listHiddenDimensions` removed (OI-14, OI-22) |
-| Mapping sets, bridges | Port with drafts; edits write immediately | `MappingsApi` extends `ChangeSetPort`; edits staged per mapping set or bridge; drafts, validate, publish and reopen replaced by `freeze` like dimensions (OI-01, OI-14) |
-| Releases | Port; manifest kept in component state, saved with `saveManifest` | `saveManifest` becomes the release aggregate's single edit; `checkRelease(id, manifest)` becomes a preview |
-| Calculation models | React store with per-model drafts, rules in the browser | New `ModelsApi` port extending `ChangeSetPort`; refusals come from preview (OI-42); formulas checked by `checkFormula` (OI-43) |
+| Datasets | Port + `ChangeSetPort` + staged proxy | Keep; add HTTP adapter; move `createDataset` from edits to commands (it creates an aggregate, it does not edit one); the draft, publish, retire and clone actions are removed |
+| Dimensions | Port + `ChangeSetPort` + staged proxy | Keep; HTTP adapter; `listHiddenDimensions` removed (OI-14, OI-22) |
+| Mapping sets, bridges | Port with versions; edits write immediately | `MappingsApi` extends `ChangeSetPort`; edits staged per mapping set or bridge; drafts, validate, publish and reopen removed: the live version is edited like a dimension's (OI-01, OI-14) |
+| Snapshots | Releases and assumption sets ports | New `SnapshotsApi` port of reads and commands, no change set ([14](14-snapshots.md)) |
+| Calculation models | React store with per-model pending copies, rules in the browser | New `ModelsApi` port extending `ChangeSetPort`; refusals come from preview (OI-42); formulas checked by `checkFormula` (OI-43) |
 | Reports | React store holding whole `ReportState` documents | New `ReportsApi` port extending `ChangeSetPort`, over the `ReportDocument` read model ([16](16-reports.md)) |
 
 ## Caching and SWR keys (Agreed)
@@ -180,8 +176,8 @@ atomic and the blueprint does not make them so; a failed save stops the sequence
   `['dim', tenantId, 'version', versionId]`. Today's keys omit the tenant (`['dim', ...]`, `['ds', ...]`); adding it
   makes a tenant switch safe.
 - A successful commit or command revalidates the module's keys for that aggregate plus the keys the response lists in
-  `affects?: string[][]` (optional field) for cross-module effects, such as freezing a dimension version changing
-  assumption set pins.
+  `affects?: string[][]` (optional field) for cross-module effects, such as a restore changing every module's live
+  versions.
 - Pending state is never written into SWR's cache; the staged port serves it.
 
 ## Error mapping
@@ -190,7 +186,7 @@ atomic and the blueprint does not make them so; a failed save stops the sequence
   set the adapter strips the `operations[n].` prefix.
 - `Problem.violations[].target` drives "go to" links: `area` names a tab or section, `itemId` opens the item, `filter`
   narrows a table. This replaces `Violation.tab` (dimensions), `PublicationViolation.tab` (datasets),
-  `Violation.filter` (mappings) and `ReleaseViolation.target` (releases) with one shape.
+  and `Violation.filter` (mappings) with one shape.
 - `401` clears the session and routes to sign-in; `403` (wrong tenant, or `/api/system/*` without `SystemAdmin`)
   shows a not-allowed page; `404` on a detail route shows the
   module's "doesn't exist or isn't available" message.

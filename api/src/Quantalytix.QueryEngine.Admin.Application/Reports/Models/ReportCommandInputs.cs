@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// The contract's <c>ReportCreateInput</c>: a new, disabled report over a model, with a single root row, the published rows of a
+/// The contract's <c>ReportCreateInput</c>: a new, disabled report over a model, with a single root row, the live rows of a
 /// start-from dimension, or a copy of another report (which is also how a report changes its model, OI-47).
 /// </summary>
 public sealed record ReportCreateInput
@@ -20,7 +20,7 @@ public sealed record ReportCreateInput
     /// <summary>The calculation model the report reads; fixed.</summary>
     public required long ModelId { get; init; }
 
-    /// <summary>A categorical or hierarchical dimension whose published members become the rows.</summary>
+    /// <summary>A categorical or hierarchical dimension whose live members become the rows.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? StartFromDimensionId { get; init; }
 

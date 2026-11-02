@@ -24,7 +24,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 [JsonDerivedType(typeof(DatasetDeleteMeasureOperation), "deleteMeasure")]
 public abstract record DatasetOperation;
 
-/// <summary><c>updateDataset</c>: changes the identity fields; the only operation a version that is not a draft accepts.</summary>
+/// <summary><c>updateDataset</c>: changes the display name and the live version's enabled flag.</summary>
 public sealed record DatasetUpdateDatasetOperation : DatasetOperation
 {
     /// <summary>The fields to change.</summary>
@@ -38,7 +38,7 @@ public sealed record DatasetSaveSettingsOperation : DatasetOperation
     public required DatasetVersionSettings Settings { get; init; }
 }
 
-/// <summary><c>renameSourceTable</c>: renames the managed table the draft reads, while no other version reads it (OI-33).</summary>
+/// <summary><c>renameSourceTable</c>: renames the managed table the live version reads, while no other version reads it (OI-33).</summary>
 public sealed record DatasetRenameSourceTableOperation : DatasetOperation
 {
     /// <summary>The table's new name.</summary>

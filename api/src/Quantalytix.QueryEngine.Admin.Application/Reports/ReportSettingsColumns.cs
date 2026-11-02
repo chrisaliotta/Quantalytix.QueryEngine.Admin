@@ -21,7 +21,7 @@ public static class ReportSettingsColumns
     /// <summary>The settings of a report row.</summary>
     /// <param name="report">The report.</param>
     /// <returns>The typed settings.</returns>
-    public static ReportSettings Read(ReportRecord report)
+    public static ReportSettings Read(ReportVersionRecord report)
     {
         var settings = Object(report.DefaultSettingsJson);
         return new ReportSettings
@@ -41,7 +41,7 @@ public static class ReportSettingsColumns
     /// <param name="report">The report.</param>
     /// <param name="patch">The settings to change.</param>
     /// <returns>The report as the patch leaves it.</returns>
-    public static ReportRecord Apply(ReportRecord report, ReportSettingsPatch patch)
+    public static ReportVersionRecord Apply(ReportVersionRecord report, ReportSettingsPatch patch)
     {
         var settings = Object(report.DefaultSettingsJson);
         if (patch.SetsPeriodicity) settings["periodicity"] = patch.Periodicity;
@@ -63,7 +63,7 @@ public static class ReportSettingsColumns
     /// <param name="key">The dimension's key.</param>
     /// <param name="renamedTo">Its new key; null when it is deleted.</param>
     /// <returns>The report with its defaults rewritten.</returns>
-    public static ReportRecord WithDimension(ReportRecord report, string key, string? renamedTo)
+    public static ReportVersionRecord WithDimension(ReportVersionRecord report, string key, string? renamedTo)
     {
         return report with
         {

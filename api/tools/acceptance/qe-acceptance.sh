@@ -2,32 +2,28 @@
 # End-to-end acceptance of Query Engine Admin (contract-v1.2): a dataset authored through the admin API reaches the query engine.
 #
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
-#     Creates dataset ${PREFIX}loans over loan_daily (draft version 1 gets a field per readable column) and commits one change set
-#     on the draft: 2 grains, a mapped binding of the seed branch role through the seed mapping set loan.branch, a time binding on
-#     the seed Calendar dimension, 4 measures and the default time binding; then validates and publishes it. It creates calculation
-#     model ${PREFIX}margin in US dollars and commits its 2 variables, a yield measure and enabling it. It creates report
-#     ${PREFIX}margin over the model, its report dimension a copy of the seed MarginStatement dimension, and commits one change set:
-#     2 GL monthly bridge sources on the seed account role (gl_balance takes the seed report's gl_monthly rules row by row,
-#     gl_income copies gl_balance's rules), their variables, profile default picking both, a branch calculation dimension, 3
-#     columns, ASSETS as a header and a formula row; then it enables the report. It captures assumption set ${PREFIX}backtest,
-#     which keeps the release active at that moment. Then it creates release ${PREFIX}acceptance as a copy of the active release,
-#     commits its manifest plus the dataset version, validates, publishes and activates it, renames the report's yield column
-#     through a report change set, checks GetCatalog, Execute, GetReportCatalog (which must show the renamed column) and
-#     ExecuteReport on the engine, checks that GetCatalog naming ${PREFIX}backtest still reads the release it captured, and
-#     re-activates the release that was active before.
+#     Creates dataset ${PREFIX}loans over loan_daily (its live version gets a field per readable column) and commits one change set
+#     on it: 2 grains, a mapped binding of the seed branch role through the seed mapping set loan.branch, a time binding on the seed
+#     Calendar dimension, 4 measures and the default time binding. It creates calculation model ${PREFIX}margin in US dollars and
+#     commits its 2 variables, a yield measure and enabling it. It creates report ${PREFIX}margin over the model, its report
+#     dimension a copy of the seed MarginStatement dimension, and commits one change set: 2 GL monthly bridge sources on the seed
+#     account role (gl_balance takes the seed report's gl_monthly rules row by row, gl_income copies gl_balance's rules), their
+#     variables, profile default picking both, a branch calculation dimension, 3 columns, ASSETS as a header and a formula row; then
+#     it enables the report. It captures snapshot ${PREFIX}backtest, renames the report's yield column through a report change set,
+#     checks GetCatalog, Execute, GetReportCatalog (which must show the renamed column) and ExecuteReport on the engine, checks that
+#     GetCatalog naming ${PREFIX}backtest reads that snapshot and lists the dataset, and deletes the snapshot again.
 #   PREFIX=zz_live_ DATASET_KEY=zz_bm_loans MEASURES="zzBmBalance zzBmRate zzBmBalanceRate zzBmEndingBalance" ./qe-acceptance.sh
-#     Releases an existing dataset's latest published version instead of authoring one.
+#     Queries an existing dataset's live version instead of authoring one.
 #   PREFIX=zz_w2_ AUTHOR_CHECK_ONLY=1 ./qe-acceptance.sh
-#     Authors and validates ${PREFIX}loans, reopens it to draft, then deletes it: the authoring path without leaving objects.
+#     Authors ${PREFIX}loans, whose change set must pass every dataset rule, then deletes it: the authoring path without leaving objects.
 #
 # Ids are strings in every request and response. Run it outside the shell sandbox: it calls localhost and StarRocks. It needs
 # curl, python3 and the .NET 10 SDK, and the admin API running in Development at $ADMIN. When $ENGINE does not answer, it starts
 # the engine host from its built DLL under $QueryEngineRoot (or $ENGINE_HOST_DIR) and stops it at the end. It writes to tenant
-# $TENANT, development by default, and never prints the control-plane connection string. While it runs, its release is the
-# tenant's active release, so don't run the engine's golden cases at the same time.
-# It leaves ${PREFIX}loans (published v1, when authored), the ${PREFIX}margin model and report (enabled) with the report's
-# dimension and bridges, ${PREFIX}acceptance (published, inactive) and ${PREFIX}backtest until the seed kit is reloaded. Their keys
-# stay taken, so every run needs a new PREFIX.
+# $TENANT, development by default, and never prints the control-plane connection string. Everything it saves is live at once, so
+# don't run the engine's golden cases at the same time.
+# It leaves ${PREFIX}loans (when authored) and the ${PREFIX}margin model and report (enabled) with the report's dimension and
+# bridges until the seed kit is reloaded. Their keys stay taken, so every run needs a new PREFIX.
 set -euo pipefail
 : "${PREFIX:?Set PREFIX, for example PREFIX=zz_w2_}"
 ADMIN=${ADMIN:-http://localhost:5186}
@@ -44,7 +40,7 @@ LIVE_COLUMN_NAME="Yield (live edit)"
 SECRETS=$HOME/.microsoft/usersecrets/Quantalytix.QueryEngine.Admin.WebApi.Development/secrets.json
 API=$ADMIN/api/tenants/$TENANT
 W=$(mktemp -d /tmp/qe-acceptance.XXXXXX)
-ORIGINAL=""
+SNAPSHOT=""
 PASSED=0
 
 TOKEN=$(curl -sf -m 30 -X POST "$ADMIN/development/token" -H 'Content-Type: application/json' \
@@ -73,7 +69,7 @@ changes() {
   call POST "$path/changes" 200 "$(python3 -c "$script" "$W" "$@")"
 }
 
-# The seed objects every mode names, by key: datasets, dimensions, roles, mapping sets, reports and releases.
+# The seed objects every mode names, by key: datasets, dimensions, roles, mapping sets, reports and snapshots.
 read_catalog() {
   call GET /catalog 200
   keep catalog
@@ -86,7 +82,7 @@ author_dataset() {
   DATASET_KEY=${PREFIX}loans
   call POST /datasets 201 "{\"mode\":\"existing\",\"key\":\"$DATASET_KEY\",\"displayName\":\"$DATASET_KEY acceptance\",\"sourceObjectKind\":\"table\",\"sourceObject\":\"loan_daily\"}"
   DATASET=$(py "r['id']")
-  VERSION=$(py "r['versions'][0]['id']")
+  VERSION=$(py "r['liveVersionId']")
   local V=/dataset-versions/$VERSION
   call GET "$V" 200
   keep version
@@ -132,25 +128,21 @@ operations = [
 print(json.dumps({"operations": operations}))' "$(cat_id dimensions Calendar)" "$(cat_id mappingSets loan.branch)" "$(cat_id roles branch)"
   echo "Dataset content: $(py "[(k, len(r['state'][k])) for k in ['fields', 'grains', 'bindings', 'measures']]")"
 
-  call POST "$V/validate" 200
   if [ "${AUTHOR_CHECK_ONLY:-}" = 1 ]; then
-    call POST "$V/reopen" 200
     call DELETE "/datasets/$DATASET" 204
-    echo "PASS (authoring only): $DATASET_KEY validated, reopened, then deleted."
+    echo "PASS (authoring only): $DATASET_KEY committed, then deleted."
     rm -rf "$W"
     exit 0
   fi
-  call POST "$V/publish" 200
 }
 
-# Creates model ${PREFIX}margin, which holds the metrics and has no versions to publish, and builds report ${PREFIX}margin over it
+# Creates model ${PREFIX}margin, which holds the metrics, and builds report ${PREFIX}margin over it
 # in one report change set. The report's own report dimension starts as a copy of the seed MarginStatement dimension, whose
 # members are its rows. Two sources bridge from the seed account role, which each GL dataset binds: gl_balance takes the rules of
 # the seed report's gl_monthly source row by row, and gl_income starts as a copy of gl_balance's rules. Profile default picks both
 # for the variables they supply. The branch calculation dimension on the seed branch role, the columns, ASSETS as a header and a
 # formula row follow, and enabling the report checks it against every report rule.
-# Sources name keys and roles only: the active release decides which dataset versions they resolve in, and the active assumption
-# set which dimension and bridge versions.
+# Sources name keys and roles only: they resolve in the dataset, dimension and bridge versions of the report's snapshot, live here.
 author_report() {
   REPORT_KEY=${PREFIX}margin
   call POST /calculation-models 201 "{\"key\":\"$REPORT_KEY\",\"displayName\":\"$REPORT_KEY acceptance\",\"currencyCode\":\"USD\",\"formulaLanguage\":\"1.0\",\"attributionMethod\":\"shapley\"}"
@@ -224,10 +216,10 @@ columns = [dict(c, displayName=sys.argv[2]) if c["key"] == "yield" else c for c 
 print(json.dumps({"operations": [{"op": "setColumns", "columns": columns}]}))' "$LIVE_COLUMN_NAME"
 }
 
-find_published_version() {
+find_live_version() {
   DATASET=$(cat_id datasets "$DATASET_KEY")
   call GET "/datasets/$DATASET" 200
-  VERSION=$(py "max((v for v in r['versions'] if v['status'] == 'published'), key=lambda v: v['versionNumber'])['id']")
+  VERSION=$(py "r['liveVersionId']")
 }
 
 start_engine() {
@@ -245,42 +237,23 @@ start_engine() {
   echo "The engine did not start; see $W/engine.log"; exit 1
 }
 
-restore() {
-  if [ -n "$ORIGINAL" ]; then
-    call POST "/releases/$ORIGINAL/activate" 200
-    call GET /overview 200
-    echo "Active release: $(py "r['activeReleaseId']") (expected $ORIGINAL, $ORIGINAL_KEY)"
-  fi
+cleanup() {
+  if [ -n "$SNAPSHOT" ]; then call DELETE "/snapshots/$SNAPSHOT" 204; fi
   if [ -f "$W/engine.pid" ]; then kill "$(cat "$W/engine.pid")"; fi
   if [ "$PASSED" = 1 ]; then rm -rf "$W"; else echo "Kept $W for inspection."; fi
 }
 
 read_catalog
-if [ -n "${DATASET_KEY:-}" ]; then find_published_version; else author_dataset; fi
+if [ -n "${DATASET_KEY:-}" ]; then find_live_version; else author_dataset; fi
 echo "Dataset $DATASET_KEY: version $VERSION"
 author_report
 echo "Report $REPORT_KEY: enabled, over model $MODEL"
 
-ORIGINAL_ID=$(python3 -c "import json; print([x['id'] for x in json.load(open('$W/catalog.json'))['releases'] if x['isActive']][0])")
-ORIGINAL_KEY=$(python3 -c "import json; print([x['key'] for x in json.load(open('$W/catalog.json'))['releases'] if x['isActive']][0])")
-call POST /assumption-sets 201 "{\"key\":\"${PREFIX}backtest\",\"displayName\":\"${PREFIX}backtest\",\"description\":null}"
-echo "Captured ${PREFIX}backtest on release $(py "r['releaseId']") (expected $ORIGINAL_ID)"
-call POST /releases 201 "{\"key\":\"${PREFIX}acceptance\",\"copyFromReleaseId\":\"$ORIGINAL_ID\"}"
-RELEASE=$(py "r['id']")
-call GET "/releases/$RELEASE" 200
-keep release
-changes "/releases/$RELEASE" '
-import json, sys
-w, dataset, version = sys.argv[1:4]
-manifest = [entry for entry in json.load(open(f"{w}/release.json"))["manifest"] if entry["datasetId"] != dataset]
-print(json.dumps({"operations": [{"op": "saveManifest", "manifest": [{"datasetId": e["datasetId"], "datasetVersionId": e["datasetVersionId"]} for e in manifest]
-                                  + [{"datasetId": dataset, "datasetVersionId": version}]}]}))' "$DATASET" "$VERSION"
-call POST "/releases/$RELEASE/validate" 200
-call POST "/releases/$RELEASE/publish" 200
-ORIGINAL=$ORIGINAL_ID
-trap restore EXIT
-call POST "/releases/$RELEASE/activate" 200
-echo "Active release: $(py "r['activeReleaseId']") (expected $RELEASE), semantic revision $(py "r['semanticRevision']")"
+trap cleanup EXIT
+call POST /snapshots 201 "{\"key\":\"${PREFIX}backtest\",\"displayName\":\"${PREFIX}backtest\",\"description\":null}"
+SNAPSHOT=$(py "r['id']")
+call GET /overview 200
+echo "Captured ${PREFIX}backtest, semantic revision $(py "r['semanticRevision']")"
 rename_yield_column
 
 start_engine
@@ -309,13 +282,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 
-// Usage: dotnet run hub.cs -- <engineUrl> <tenant> <expectedReleaseKey> <datasetKey> <requestFile> <reportKey> <reportRequestFile> <liveColumnName> <backtestSet> <backtestReleaseKey>
-// Exits 0 when GetCatalog reports the expected release and lists the dataset, every query of the request returns rows,
-// GetReportCatalog lists the report with the live-edited column name, every table of the report request returns rows, and
-// GetCatalog naming the captured set reports the release that was active when it was captured.
-var (engineUrl, tenant, expectedReleaseKey, datasetKey, requestFile) = (args[0], args[1], args[2], args[3], args[4]);
-var (reportKey, reportRequestFile, liveColumnName) = (args[5], args[6], args[7]);
-var (backtestSet, backtestReleaseKey) = (args[8], args[9]);
+// Usage: dotnet run hub.cs -- <engineUrl> <tenant> <datasetKey> <requestFile> <reportKey> <reportRequestFile> <liveColumnName> <backtestSnapshot>
+// Exits 0 when GetCatalog reads the live snapshot and lists the dataset, every query of the request returns rows, GetReportCatalog
+// lists the report with the live-edited column name, every table of the report request returns rows, and GetCatalog naming the
+// captured snapshot reads that snapshot and lists the dataset.
+var (engineUrl, tenant, datasetKey, requestFile) = (args[0], args[1], args[2], args[3]);
+var (reportKey, reportRequestFile, liveColumnName, backtestSnapshot) = (args[4], args[5], args[6], args[7]);
 
 using var http = new HttpClient();
 var tokenResponse = await http.PostAsJsonAsync($"{engineUrl}/development/token", new { tenantId = tenant, systemAdmin = true });
@@ -328,9 +300,9 @@ await using var connection = new HubConnectionBuilder()
 await connection.StartAsync();
 
 var catalog = await connection.InvokeAsync<JsonElement>("GetCatalog", new { datasetIds = (string[]?)null, includeMembers = false });
-var releaseKey = catalog.GetProperty("releaseKey").GetString();
+var snapshotKey = catalog.GetProperty("snapshotKey").GetString();
 var datasets = catalog.GetProperty("datasets").EnumerateArray().ToList();
-Console.WriteLine($"GetCatalog: releaseKey={releaseKey} semanticRevision={catalog.GetProperty("semanticRevision")} datasets={datasets.Count}");
+Console.WriteLine($"GetCatalog: snapshotKey={snapshotKey} semanticRevision={catalog.GetProperty("semanticRevision")} datasets={datasets.Count}");
 var dataset = datasets.FirstOrDefault(item => item.GetProperty("id").GetString() == datasetKey);
 if (dataset.ValueKind == JsonValueKind.Undefined)
 {
@@ -375,7 +347,7 @@ foreach (var result in response.GetProperty("queries").EnumerateArray())
 
 var reportCatalog = await connection.InvokeAsync<JsonElement>("GetReportCatalog", new { reportKeys = new[] { reportKey } });
 var catalogReports = reportCatalog.GetProperty("reports").EnumerateArray().ToList();
-Console.WriteLine($"GetReportCatalog: releaseKey={Text(reportCatalog, "releaseKey")} reports={catalogReports.Count}");
+Console.WriteLine($"GetReportCatalog: snapshotKey={Text(reportCatalog, "snapshotKey")} reports={catalogReports.Count}");
 foreach (var item in catalogReports)
 {
     Console.WriteLine($"  report {Text(item, "key")} model={Text(item, "modelKey")} currency={Text(item, "currencyCode")} reportDimension={Text(item, "reportDimensionKey")} columns={item.GetProperty("columns").GetArrayLength()} lines={item.GetProperty("lines").GetArrayLength()}");
@@ -399,14 +371,15 @@ foreach (var table in tables)
     }
 }
 
-var backtest = await connection.InvokeAsync<JsonElement>("GetCatalog", new { datasetIds = Array.Empty<string>(), includeMembers = false, assumptionSet = backtestSet });
-var capturedReleaseKey = Text(backtest, "releaseKey");
-Console.WriteLine($"GetCatalog {backtestSet}: releaseKey={capturedReleaseKey}");
+var backtest = await connection.InvokeAsync<JsonElement>("GetCatalog", new { datasetIds = new[] { datasetKey }, includeMembers = false, snapshot = backtestSnapshot });
+var capturedSnapshotKey = Text(backtest, "snapshotKey");
+var capturedDatasets = backtest.GetProperty("datasets").GetArrayLength();
+Console.WriteLine($"GetCatalog {backtestSnapshot}: snapshotKey={capturedSnapshotKey} datasets={capturedDatasets}");
 
-var passed = releaseKey == expectedReleaseKey && allReturnedRows && catalogReports.Count == 1 && liveEditServed && everyTableReturnedRows
-    && capturedReleaseKey == backtestReleaseKey;
-Console.WriteLine(passed ? "PASS" : $"FAIL: expected release {expectedReleaseKey}, rows from every query, report {reportKey} in the report catalog with column '{liveColumnName}', rows in every report table, and release {backtestReleaseKey} for set {backtestSet}.");
+var passed = snapshotKey == "live" && allReturnedRows && catalogReports.Count == 1 && liveEditServed && everyTableReturnedRows
+    && capturedSnapshotKey == backtestSnapshot && capturedDatasets == 1;
+Console.WriteLine(passed ? "PASS" : $"FAIL: expected the live snapshot, rows from every query, report {reportKey} in the report catalog with column '{liveColumnName}', rows in every report table, and dataset {datasetKey} in snapshot {backtestSnapshot}.");
 return passed ? 0 : 1;
 EOF
-dotnet run "$W/hub/hub.cs" -- "$ENGINE" "$TENANT" "${PREFIX}acceptance" "$DATASET_KEY" "$W/request.json" "$REPORT_KEY" "$W/report.json" "$LIVE_COLUMN_NAME" "${PREFIX}backtest" "$ORIGINAL_KEY" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
+dotnet run "$W/hub/hub.cs" -- "$ENGINE" "$TENANT" "$DATASET_KEY" "$W/request.json" "$REPORT_KEY" "$W/report.json" "$LIVE_COLUMN_NAME" "${PREFIX}backtest" 2>&1 | grep -v -E 'warning (NU|IL)[0-9]+'
 PASSED=1

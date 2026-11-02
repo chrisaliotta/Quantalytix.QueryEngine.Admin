@@ -60,31 +60,34 @@ isolates screens behind ports, and the blueprint keeps that boundary.
   list is presentation; deciding that a row is invalid is not. `web` currently runs real rules in the browser:
   `lib/mappings/rules.ts`, `lib/model/rules.ts` and the report's `coverage.ts`, `profiles.ts` and `scenarios.ts`. Those
   move behind check endpoints and read-model diagnostics; formulas are checked by `formula-check` (OI-43).
-- **Validate once, at the boundary.** Input validators run when a request enters the Application; publication rules
-  run when a version is validated or an aggregate is committed. Deeper layers assume valid input.
+- **Validate once, at the boundary.** Input validators run when a request enters the Application; gate and commit rules
+  run when an aggregate is committed or a snapshot is restored. Deeper layers assume valid input.
 
 ## Aggregates
 
 The API is organized around the aggregates a user edits and saves as one unit. Each has one change set
 ([01, change-set protocol](01-api-conventions.md#change-set-protocol-agreed-oi-01)).
 
-| Aggregate | Root | Edited content | Lifecycle |
-|---|---|---|---|
-| Dataset version | `qe_dataset_version` | settings, fields, grains, bindings (+ time binding), measures (+ components, time policy) | strict: draft, validated, published, retired |
-| Dimension | `qe_dimension` + its live version | identity flags, roles, the live version's levels, members, range bands | living, live-and-frozen: one live version edited in place, frozen snapshots (OI-14) |
-| Mapping set | `qe_mapping_set` + its live version | identity, entries | living, live-and-frozen (OI-14) |
-| Bridge | `qe_bridge` + its live version | identity, cardinality, allocation, mappings (analytical bridges only) | living, live-and-frozen (OI-14) |
-| Release | `qe_semantic_release` | manifest | strict |
-| Assumption set | `qe_assumption_set` | label and description (historical only) | captured, never edited |
-| Calculation model | `qe_calculation_model` | settings, variables, calculated measures, parameters, attributions | not versioned; every write gated |
-| Report | `qe_report` | settings, rows, sources, profiles, calculation dimensions, scenarios, scopes, columns, styles, plus its report dimension and report bridges | not versioned; enabled reports gated |
+Every aggregate is an identity with its version in the live snapshot. The live version is edited in place, every commit runs
+the gate and commit rules, and frozen snapshots hold read-only copies ([14](14-snapshots.md)).
+
+| Aggregate | Root | Edited content |
+|---|---|---|
+| Dataset | `qe_dataset` + its live version | identity, settings, enabled flag, fields, grains, bindings (+ time binding), measures (+ components, time policy) |
+| Dimension | `qe_dimension` + its live version | identity flags, roles, the live version's levels, members, range bands |
+| Mapping set | `qe_mapping_set` + its live version | identity, entries |
+| Bridge | `qe_bridge` + its live version | identity, enabled flag, cardinality, allocation, mappings (analytical bridges only) |
+| Calculation model | `qe_calculation_model` + its live version | settings, variables, calculated measures, parameters, attributions |
+| Report | `qe_report` + its live version | settings, rows, sources, profiles, calculation dimensions, scenarios, scopes, columns, styles, plus its report dimension and report bridges |
+
+Snapshots themselves have no change set: capture, restore, relabel and delete are commands.
 
 ## The engine boundary (Agreed)
 
-- The engine reads metadata only through `vw_qe_*` views and caches snapshots by tenant, release,
-  `semantic_revision`, assumption set and dataset. Every committed change the engine can see must advance
+- The engine reads metadata only through `vw_qe_*` views and caches metadata by tenant, snapshot,
+  `semantic_revision` and dataset or report. Every committed change the engine can see must advance
   `qe_database_info.semantic_revision` exactly once per commit ([01](01-api-conventions.md#semantic-revision-agreed)).
-- The engine lists and runs **enabled** reports only, on the active assumption set. Report preview and run from the
+- The engine lists and runs **enabled** reports only, on the live snapshot unless a comparison names a frozen one. Report preview and run from the
   admin are out of scope for this refactor (OI-53).
 - The engine has no formula-validation endpoint. The Admin API references `Quantalytix.QueryEngine.Domain` for
   `ExpressionParser` and must type-check formulas itself (OI-43).

@@ -19,10 +19,13 @@ public sealed record ModelSnapshot
 /// </summary>
 public sealed record ModelSurroundings
 {
+    /// <summary>The live snapshot, which tells whether the version is live.</summary>
+    public required long LiveSnapshotId { get; init; }
+
     /// <summary>The reports that read the model, enabled or not, each as it stands, by report key.</summary>
     public required IReadOnlyList<ReportGraph> Reports { get; init; }
 
-    /// <summary>The active release and dimension versions the reports are checked against; null when no report reads the model.</summary>
+    /// <summary>The snapshot's dataset and dimension versions the reports are checked against; null when no report reads the model.</summary>
     public required ReportScope? Scope { get; init; }
 
     /// <summary>The violations of the model as stored.</summary>

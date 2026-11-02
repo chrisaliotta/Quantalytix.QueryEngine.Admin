@@ -4,7 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
-/// <c>report_sources_resolve</c>: every source of a report reads a dataset the release pins, and every key it names resolves in
+/// <c>report_sources_resolve</c>: every source of a report reads a dataset its snapshot holds, and every key it names resolves in
 /// that dataset version. A direct source's field is enabled, and a bridge source's role has an enabled binding into members, which
 /// its bridge remaps; its time field has a time binding; and each variable it supplies reads an enabled measure through a filter
 /// over enabled, filterable fields. The engine trusts these keys, so a key that does not resolve would fail the report at run time.
@@ -14,9 +14,9 @@ public sealed class ReportSourcesResolveRule : IReportRule
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "report_sources_resolve";
 
-    /// <summary>Reports every source key that does not resolve in the release.</summary>
+    /// <summary>Reports every source key that does not resolve in the snapshot.</summary>
     /// <param name="report">The report.</param>
-    /// <param name="scope">Holds the release's dataset versions.</param>
+    /// <param name="scope">Holds the snapshot's dataset versions.</param>
     /// <returns>One violation per unresolved key.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
@@ -26,7 +26,7 @@ public sealed class ReportSourcesResolveRule : IReportRule
             var subject = $"Report '{report.ReportKey}' source '{source.SourceKey}'";
             if (!scope.Datasets.TryGetValue(source.DatasetId, out var dataset))
             {
-                yield return Violation(source.SourceKey, $"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the release does not pin.");
+                yield return Violation(source.SourceKey, $"{subject} reads dataset '{scope.DatasetKeys[source.DatasetId]}', which the snapshot does not hold.");
                 continue;
             }
 

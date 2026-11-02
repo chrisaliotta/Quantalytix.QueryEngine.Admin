@@ -13,9 +13,9 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Changes;
 /// Confirms the change-set protocol every module's editor relies on (blueprint 01, "Change-set protocol", OI-01): operations
 /// apply in order to the aggregate as stored; the first one whose input fails its validator, or that cannot apply, refuses the
 /// whole set with errors keyed by its index (<c>operations[1].key</c>); a gate refuses with 422; a refused commit writes nothing;
-/// a preview writes nothing and reports publication and commit findings; a commit rule refuses the commit with 422; a commit
-/// writes the difference, advances the semantic revision
-/// once when the engine reads the aggregate, and maps each temporary id to the real id it got. A small member-list aggregate
+/// a preview writes nothing and reports commit findings; a commit rule refuses the commit with 422; a commit writes the difference,
+/// advances the semantic revision once, because everything saved is live and the engine reads it, and maps each temporary id to
+/// the real id it got. A small member-list aggregate
 /// over one dimension version stands in for a module's.
 /// </summary>
 public sealed class ChangeSetPipelineTests
@@ -28,7 +28,7 @@ public sealed class ChangeSetPipelineTests
 
     /// <summary>The dimension version the aggregate is.</summary>
     private readonly InMemoryTableGateway<DimensionVersionRecord> _versions = new(
-        new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "published" });
+        new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, SnapshotId = SnapshotRows.LiveId });
 
     /// <summary>The version's members.</summary>
     private readonly InMemoryTableGateway<DimensionMemberRecord> _members = new(WritePlanTests.Member(1, "CA"), WritePlanTests.Member(2, "NY"));
@@ -38,7 +38,7 @@ public sealed class ChangeSetPipelineTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 18,
+        MetadataSchemaVersion = 19,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });
@@ -65,18 +65,6 @@ public sealed class ChangeSetPipelineTests
         var outcome = await Pipeline().CommitAsync(10, Request(new AddMember("tmp:a", "TX"), new RenameMember("tmp:a", "TEX")), Token);
 
         Assert.Equal(["CA", "NY", "TEX"], outcome.Value!.State);
-    }
-
-    /// <summary>A commit to an aggregate the engine does not read writes without advancing the revision.</summary>
-    /// <returns>A task that completes when the commit is checked.</returns>
-    [Fact]
-    public async Task Commit_OfAnEngineInvisibleChange_KeepsTheRevision()
-    {
-        await _versions.UpdateAsync(_versions.All[0] with { Status = "draft" }, Token);
-
-        await Pipeline().CommitAsync(10, Request(new AddMember("tmp:a", "TX")), Token);
-
-        Assert.Equal(StartingRevision, Revision());
     }
 
     /// <summary>An operation whose input fails its validator refuses the set with 400, keyed by the operation's index; nothing is written.</summary>
@@ -122,7 +110,7 @@ public sealed class ChangeSetPipelineTests
         Assert.Equal(2, _members.All.Count);
     }
 
-    /// <summary>A preview answers the pending state with the publication findings and writes nothing.</summary>
+    /// <summary>A preview answers the pending state with the commit findings and writes nothing.</summary>
     /// <returns>A task that completes when the preview is checked.</returns>
     [Fact]
     public async Task Preview_AnswersThePendingStateAndFindingsWithoutWriting()
@@ -143,7 +131,7 @@ public sealed class ChangeSetPipelineTests
     [Fact]
     public async Task CommitRule_IsAPreviewFindingThatRefusesTheCommit()
     {
-        var pipeline = Pipeline(new NotEmptyRule(RuleStage.Commit));
+        var pipeline = Pipeline();
         var request = Request(new RemoveMember("1"), new RemoveMember("2"));
 
         var preview = await pipeline.PreviewAsync(10, request, Token);
@@ -165,13 +153,12 @@ public sealed class ChangeSetPipelineTests
         return new ChangeSetRequest<MemberOperation> { Operations = operations };
     }
 
-    /// <summary>The pipeline over the test aggregate, its gate and its operation validator.</summary>
-    /// <param name="notEmpty">The members-present rule; a publication rule by default.</param>
-    private ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>> Pipeline(NotEmptyRule? notEmpty = null)
+    /// <summary>The pipeline over the test aggregate, its gate, its commit rule and its operation validator.</summary>
+    private ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>> Pipeline()
     {
         return new ChangeSetPipeline<MemberList, MemberOperation, IReadOnlyList<string>>(
             new MemberListAggregate(_versions, _members),
-            [new KeysUniqueGate(), notEmpty ?? new NotEmptyRule(RuleStage.Publication)],
+            [new KeysUniqueGate(), new NotEmptyRule()],
             [new MemberOperationValidator()],
             new SequentialIdGenerator(FirstNewId),
             new SemanticRevision(_databaseInfo, new FakeTimeProvider()));
@@ -244,15 +231,14 @@ public sealed class ChangeSetPipelineTests
         }
     }
 
-    /// <summary>A finding rule: the list has members.</summary>
-    /// <param name="stage">Publication or commit.</param>
-    private sealed class NotEmptyRule(RuleStage stage) : ISnapshotRule<MemberList>
+    /// <summary>A commit rule: the list has members.</summary>
+    private sealed class NotEmptyRule : ISnapshotRule<MemberList>
     {
         /// <summary>The rule code.</summary>
         public const string Code = "members_present";
 
-        /// <summary>The stage the test gives it.</summary>
-        public RuleStage Stage => stage;
+        /// <summary>A commit rule.</summary>
+        public RuleStage Stage => RuleStage.Commit;
 
         /// <summary>One violation when there are no members.</summary>
         /// <param name="snapshot">The member list.</param>
@@ -314,15 +300,6 @@ public sealed class ChangeSetPipelineTests
         public void Plan(MemberList before, MemberList after, WritePlan plan)
         {
             plan.Sync(members, 1, before.Members, after.Members, member => new { member.DimensionMemberId });
-        }
-
-        /// <summary>The engine reads a published version.</summary>
-        /// <param name="before">The stored list.</param>
-        /// <param name="after">The changed list.</param>
-        /// <returns>Whether the version is published.</returns>
-        public bool IsEngineVisible(MemberList before, MemberList after)
-        {
-            return before.Version.Status == "published";
         }
 
         /// <summary>The member keys, in order.</summary>

@@ -17,8 +17,14 @@ public sealed record DimensionSurroundings
     /// <summary>The role keys of every other dimension of the tenant, ignoring case, which a new role key must avoid.</summary>
     public required IReadOnlySet<string> OtherRoleKeys { get; init; }
 
-    /// <summary>Every version of the dimension as stored.</summary>
+    /// <summary>The live snapshot, which tells whether the version may change.</summary>
+    public required long LiveSnapshotId { get; init; }
+
+    /// <summary>Every version of the dimension as stored, one per snapshot.</summary>
     public required IReadOnlyList<DimensionVersionRecord> Versions { get; init; }
+
+    /// <summary>The keys of the frozen snapshots holding a version of the dimension, which block deleting it.</summary>
+    public required IReadOnlyList<string> FrozenSnapshotKeys { get; init; }
 
     /// <summary>The member count of every version, by version id.</summary>
     public required IReadOnlyDictionary<long, int> MemberCounts { get; init; }

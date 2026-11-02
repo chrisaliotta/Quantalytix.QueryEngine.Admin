@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.WebApi.Routing;
 
@@ -10,9 +11,10 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
 {
     /// <summary>
     /// Registers the Calculation models slice through <see cref="CalculationModelsFeatureServiceCollectionExtensions"/>, then the
-    /// reports slice, all scoped: its route resource, its reads and commands, the report change-set aggregate with the report gate,
-    /// which refuses a change that leaves an enabled report breaking a rule, and the findings of a disabled one, and the report rules
-    /// in reporting order, which enabling, the gate, the model gate and the release checks run.
+    /// reports slice, all scoped: its route resources, its reads and commands, the report change-set aggregate with the report gate,
+    /// which refuses a change that leaves an enabled report breaking a rule, and the findings of a disabled one, the kind's version
+    /// rules, copier and remover that snapshots use, and the report rules in reporting order, which enabling, the gate, the model gate
+    /// and the dataset commit run.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
@@ -20,6 +22,7 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
     {
         services.AddCalculationModelsFeature();
         services.AddRouteResource<ReportRecord>("reports", id => new { ReportId = id });
+        services.AddRouteResource<ReportVersionRecord>("report-versions", id => new { ReportVersionId = id });
 
         services.AddScoped<ReportQueries>();
         services.AddScoped<ReportCommands>();
@@ -28,10 +31,15 @@ public static class CalculationModelsAndReportsFeatureServiceCollectionExtension
         services.AddScoped<ReportDiagnosticsBuilder>();
         services.AddScoped<ReportSnapshotLoader>();
         services.AddScoped<ReportGraphReader>();
+        services.AddScoped<ReportVersionReader>();
         services.AddScoped<ReportRules>();
         services.AddScoped<OwnedVersions>();
-        services.AddScoped<ReleaseDatasets>();
+        services.AddScoped<SnapshotDatasets>();
         services.AddScoped<ReportSourceWrites>();
+        services.AddScoped<ReportVersionRemover>();
+        services.AddScoped<IVersionRemover>(provider => provider.GetRequiredService<ReportVersionRemover>());
+        services.AddScoped<IVersionCopier, ReportVersionCopier>();
+        services.AddScoped<IVersionRules, ReportVersionRules>();
 
         services.AddChangeSetAggregate<ReportAggregate, ReportSnapshot, ReportOperation, ReportDocument>();
         services.AddSnapshotRule<ReportSnapshot, ReportGateRule>();

@@ -103,7 +103,7 @@ public sealed class WritePlanTests
     /// <summary>A dimension version row.</summary>
     private static DimensionVersionRecord Version()
     {
-        return new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, VersionNumber = 1, Status = "published" };
+        return new DimensionVersionRecord { CreatedAt = DateTime.UnixEpoch, DimensionVersionId = 10, DimensionId = 1, SnapshotId = SnapshotRows.LiveId };
     }
 
     /// <summary>A level row of version 10.</summary>

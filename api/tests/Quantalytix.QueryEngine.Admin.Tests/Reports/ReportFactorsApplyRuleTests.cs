@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Reports;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Bridges;
 using Xunit;
-using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
+using static Quantalytix.QueryEngine.Admin.Tests.Support.CatalogRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportGraphFixture;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 
@@ -12,14 +12,14 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 /// Confirms <c>report_factors_apply</c>: a bridge source whose rules take items with a factor other than 1, such as -1 to take an
 /// item back out of a folder's row, supplies only variables whose measures apply bridge factors. The engine multiplies by a bridge
 /// factor only for those measures, so the factor would otherwise change nothing the report shows. The rule checks a report against
-/// the active release, and every enabled report when a release is validated, because a new dataset version can change a measure.
+/// its snapshot, and every enabled report reading a dataset when that dataset is committed, because a dataset edit can change a measure.
 /// </summary>
 public sealed class ReportFactorsApplyRuleTests
 {
     /// <summary>The seeded tables.</summary>
     private readonly ReportGraphFixture _fixture = new();
 
-    /// <summary>GL's rule taking 1001 at -1 is reported while GL's balance ignores bridge factors, for the report and for the release.</summary>
+    /// <summary>GL's rule taking 1001 at -1 is reported while GL's balance ignores bridge factors, for the report and for a commit to GL.</summary>
     /// <returns>A task that completes when the rule is checked.</returns>
     [Fact]
     public async Task FactorOnAMeasureIgnoringFactors_IsReported()
@@ -34,7 +34,7 @@ public sealed class ReportFactorsApplyRuleTests
             violation.Message);
         Assert.Equal(
             violation.Message,
-            Assert.Single(await _fixture.EvaluateReleaseAsync(new ReportFactorsApplyRule(), SemanticReleaseId)).Message);
+            Assert.Single(await _fixture.EvaluateGlReadersAsync(new ReportFactorsApplyRule())).Message);
     }
 
     /// <summary>Whole rules pass whatever the measure does, and a factor passes once the measure applies bridge factors.</summary>

@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Tests.Support;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Mappings;
 
@@ -18,16 +19,15 @@ internal static class MappingRows
         };
     }
 
-    /// <summary>A version of a mapping set.</summary>
-    public static MappingVersionRecord MappingVersion(long mappingVersionId, long mappingSetId, int versionNumber, string status)
+    /// <summary>A version of a mapping set in a snapshot, live by default.</summary>
+    public static MappingVersionRecord MappingVersion(long mappingVersionId, long mappingSetId, long snapshotId = SnapshotRows.LiveId)
     {
         return new MappingVersionRecord
         {
             CreatedAt = DateTime.UnixEpoch,
             MappingVersionId = mappingVersionId,
             MappingSetId = mappingSetId,
-            VersionNumber = versionNumber,
-            Status = status
+            SnapshotId = snapshotId
         };
     }
 

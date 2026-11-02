@@ -43,7 +43,7 @@ internal static class ReportRowEdits
             RowParameters =
             [
                 .. placed.RowParameters.Where(value => value.RowKey != row.Key),
-                .. row.Parameters.Select(value => RowParameterJson.Record(report.Report.ReportId, row.Key, value.Key, value.Value))
+                .. row.Parameters.Select(value => RowParameterJson.Record(report.Version.ReportVersionId, row.Key, value.Key, value.Value))
             ]
         };
         return Place(placed, row.Key, row.ParentKey, save.Index);
@@ -137,7 +137,7 @@ internal static class ReportRowEdits
             }
             : stored with { DisplayName = row.Label, ParentDimensionMemberId = parentId, IsAssignable = isAssignable };
         ReportMemberOptionRecord[] option = !row.IsVisible || !row.ShowsValues || row.StyleKey is not null
-            ? [new ReportMemberOptionRecord { ReportId = report.Report.ReportId, MemberKey = row.Key, IsVisible = row.IsVisible, ShowsValues = row.ShowsValues, StyleKey = row.StyleKey }]
+            ? [new ReportMemberOptionRecord { ReportVersionId = report.Version.ReportVersionId, MemberKey = row.Key, IsVisible = row.IsVisible, ShowsValues = row.ShowsValues, StyleKey = row.StyleKey }]
             : [];
         return report with
         {
@@ -152,7 +152,7 @@ internal static class ReportRowEdits
         var line = new ReportLineRecord
         {
             ReportLineId = stored?.ReportLineId ?? context.Ids.NewId(),
-            ReportId = report.Report.ReportId,
+            ReportVersionId = report.Version.ReportVersionId,
             LineKey = row.Key,
             DisplayName = row.Label,
             LineKind = row.Kind,

@@ -16,8 +16,8 @@ public static class Problems
         return Create(StatusCodes.Status400BadRequest, ProblemTypes.InvalidInput, "The request is not valid.") with { Errors = errors };
     }
 
-    /// <summary>The 409 for a failed precondition, such as a version that is not a draft.</summary>
-    /// <param name="title">The short summary, such as <c>Version is not a draft</c>.</param>
+    /// <summary>The 409 for a failed precondition, such as a version that is frozen.</summary>
+    /// <param name="title">The short summary, such as <c>Version is frozen</c>.</param>
     /// <param name="detail">What failed.</param>
     /// <returns>The problem.</returns>
     public static Problem Conflict(string title, string detail)

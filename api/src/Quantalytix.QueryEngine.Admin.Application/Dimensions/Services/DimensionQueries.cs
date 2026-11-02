@@ -1,13 +1,14 @@
 using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Versioning;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// The dimension manager's reads: lists, profiles, detail, version content, rule checks and delete checks. Report dimensions are
-/// not this module's (M8): every read of one answers null, which the API answers 404.
+/// The dimension manager's reads: lists of the dimensions the live snapshot holds, profiles, detail, the content of a live or frozen
+/// version, and delete checks. Report dimensions are not this module's (M8): every read of one answers null, which the API answers
+/// 404.
 /// </summary>
 public sealed class DimensionQueries(
     ITableGateway<DimensionRecord> dimensions,
@@ -15,8 +16,7 @@ public sealed class DimensionQueries(
     ITableGateway<DimensionVersionRecord> versions,
     ITableGateway<DimensionMemberRecord> members,
     DimensionSnapshotLoader loader,
-    DimensionRules rules,
-    TimeProvider time)
+    LiveSnapshot live)
 {
     /// <summary>Lists the analytical dimensions of one origin; system dimensions only when the manager shows their profile.</summary>
     /// <param name="origin">A <c>definition_origin</c> value.</param>
@@ -27,6 +27,7 @@ public sealed class DimensionQueries(
         var listed = (await dimensions.ListAsync(new { DefinitionOrigin = origin, DimensionPurpose = DimensionPurposes.Analytical }, cancellationToken))
             .Where(dimension => DimensionProfiles.Of(dimension.DimensionProfileKey) is null or { Visibility: DimensionProfiles.ManagerVisibility })
             .ToList();
+        var liveSnapshotId = await live.IdAsync(cancellationToken);
         var ids = listed.Select(dimension => dimension.DimensionId).ToArray();
         var rolesOf = (await roles.ListAsync(new { DimensionId = ids }, cancellationToken)).ToLookup(role => role.DimensionId);
         var versionsOf = (await versions.ListAsync(new { DimensionId = ids }, cancellationToken)).ToLookup(version => version.DimensionId);
@@ -36,11 +37,12 @@ public sealed class DimensionQueries(
         return
         [
             .. listed
+                .Where(dimension => versionsOf[dimension.DimensionId].Any(version => version.SnapshotId == liveSnapshotId))
                 .Select(dimension =>
                 {
                     var own = versionsOf[dimension.DimensionId].ToList();
                     var memberCounts = own.ToDictionary(version => version.DimensionVersionId, version => counts.GetValueOrDefault(version.DimensionVersionId));
-                    return DimensionReadModels.ListItem(dimension, rolesOf[dimension.DimensionId], own, memberCounts, TemporaryIds.PresentStored);
+                    return DimensionReadModels.ListItem(dimension, rolesOf[dimension.DimensionId], own, liveSnapshotId, memberCounts, TemporaryIds.PresentStored);
                 })
                 .OrderBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
         ];
@@ -81,17 +83,6 @@ public sealed class DimensionQueries(
         return await VersionAsync(versionId, cancellationToken) is { } snapshot ? DimensionReadModels.Content(snapshot, TemporaryIds.PresentStored) : null;
     }
 
-    /// <summary>Runs every dimension rule on a version and changes nothing.</summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The report, or null for a report dimension's version.</returns>
-    public async Task<ValidationReport?> CheckAsync(long versionId, CancellationToken cancellationToken)
-    {
-        if (await VersionAsync(versionId, cancellationToken) is not { } snapshot) return null;
-        var checkedAt = time.GetUtcNow().UtcDateTime;
-        return new ValidationReport { VersionId = versionId, CheckedAt = checkedAt, Violations = await rules.EvaluateAsync(snapshot, cancellationToken) };
-    }
-
     /// <summary>Checks whether a dimension can be deleted.</summary>
     /// <param name="dimensionId">The dimension.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
@@ -99,15 +90,6 @@ public sealed class DimensionQueries(
     public async Task<DeleteCheck?> DimensionDeleteCheckAsync(long dimensionId, CancellationToken cancellationToken)
     {
         return await LiveAsync(dimensionId, cancellationToken) is { } snapshot ? DimensionDeleteRules.Dimension(snapshot) : null;
-    }
-
-    /// <summary>Checks whether a version can be deleted.</summary>
-    /// <param name="versionId">The dimension version.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The check, or null for a report dimension's version.</returns>
-    public async Task<DeleteCheck?> VersionDeleteCheckAsync(long versionId, CancellationToken cancellationToken)
-    {
-        return await VersionAsync(versionId, cancellationToken) is { } snapshot ? DimensionDeleteRules.Version(snapshot) : null;
     }
 
     /// <summary>Checks whether a member can be deleted.</summary>

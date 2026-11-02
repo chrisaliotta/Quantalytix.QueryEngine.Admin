@@ -23,7 +23,7 @@ public static class ModelEdits
     {
         return operation switch
         {
-            ModelUpdateModelOperation update => content with { Model = Patched(content.Model, update.Patch) },
+            ModelUpdateModelOperation update => content with { Version = Patched(content.Version, update.Patch) },
             ModelSaveVariableOperation save => SaveVariable(content, save, context),
             ModelDeleteVariableOperation delete => Has(content.VariableKeys, delete.Key, "key", "variable", context)
                 ? WithoutAttribution(content with { Variables = [.. content.Variables.Where(variable => variable.VariableKey != delete.Key)] }, delete.Key)
@@ -44,8 +44,8 @@ public static class ModelEdits
         };
     }
 
-    /// <summary>The model row with a patch's settings.</summary>
-    private static CalculationModelRecord Patched(CalculationModelRecord model, CalcModelPatch patch)
+    /// <summary>The version row with a patch's settings.</summary>
+    private static CalculationModelVersionRecord Patched(CalculationModelVersionRecord model, CalcModelPatch patch)
     {
         return model with
         {
@@ -66,7 +66,7 @@ public static class ModelEdits
         var row = new VariableRecord
         {
             VariableId = stored?.VariableId ?? context.Ids.NewId(),
-            CalculationModelId = content.Model.CalculationModelId,
+            CalculationModelVersionId = content.Version.CalculationModelVersionId,
             VariableKey = save.Input.Key,
             DisplayName = save.Input.DisplayName,
             MissingBehavior = save.Input.MissingBehavior,
@@ -84,7 +84,7 @@ public static class ModelEdits
         var row = new CalculatedMeasureRecord
         {
             CalculatedMeasureId = stored?.CalculatedMeasureId ?? context.Ids.NewId(),
-            CalculationModelId = content.Model.CalculationModelId,
+            CalculationModelVersionId = content.Version.CalculationModelVersionId,
             MeasureKey = save.Input.Key,
             DisplayName = save.Input.DisplayName,
             ExpressionText = save.Input.Formula,

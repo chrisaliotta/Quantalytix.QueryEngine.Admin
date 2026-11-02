@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// <c>report_items_resolve</c>: the report's rows are one tree, and every key that names a row or an item resolves. The report
 /// dimension has one root; member options, the parents of overlay rows that are no overlay row, and variable scopes name members of
 /// the report dimension; no overlay row has a member's key, because rows are keyed by both. Each bridge source's rules add into data
-/// rows and take members of the published version of their role's dimension, an assignable one when a rule takes the member alone.
+/// rows and take members of the snapshot's version of their role's dimension, an assignable one when a rule takes the member alone.
 /// </summary>
 public sealed class ReportItemsResolveRule : IReportRule
 {
@@ -16,7 +16,7 @@ public sealed class ReportItemsResolveRule : IReportRule
 
     /// <summary>Reports every row or item key that does not resolve, and a tree without one root.</summary>
     /// <param name="report">The report.</param>
-    /// <param name="scope">Holds the published versions of the sources' role dimensions.</param>
+    /// <param name="scope">Holds the snapshot's versions of the sources' role dimensions.</param>
     /// <returns>The violations found.</returns>
     public IEnumerable<RuleViolation> Evaluate(ReportGraph report, ReportScope scope)
     {
@@ -47,7 +47,7 @@ public sealed class ReportItemsResolveRule : IReportRule
                 var at = $"{subject} source '{source.SourceKey}' maps '{rule.ItemKey}' into '{rule.RowKey}'";
                 if (!dataKeys.Contains(rule.RowKey)) yield return Violation($"{at}, which is no data row.", target);
                 if (items is null || !items.MemberKeys.Contains(rule.ItemKey))
-                    yield return Violation($"{at}, which is no member of the published version of its role's dimension.", target);
+                    yield return Violation($"{at}, which is no member of its role's dimension.", target);
                 else if (rule.Selection == SourceSelections.Member && items.UnassignableMemberKeys.Contains(rule.ItemKey))
                     yield return Violation($"{at}, which takes no values of its own; take every item under it instead.", target);
             }

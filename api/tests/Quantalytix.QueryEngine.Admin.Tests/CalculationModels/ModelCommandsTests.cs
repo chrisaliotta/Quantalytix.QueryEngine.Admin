@@ -65,11 +65,13 @@ public sealed class ModelCommandsTests
     [Fact]
     public async Task DeleteOfAModelNoReportReads_DeletesItsContent()
     {
+        await _fixture.Tables.ReportVersions.DeleteAsync(new { ReportId = Reports.ReportRows.ReportId }, Token);
         await _fixture.Tables.Reports.DeleteAsync(new { ReportId = Reports.ReportRows.ReportId }, Token);
 
         Assert.True((await _fixture.Queries().DeleteCheckAsync(ModelRows.CalculationModelId, Token)).Allowed);
         Assert.Null(await _fixture.Commands().DeleteAsync(ModelRows.CalculationModelId, Token));
         Assert.Empty(_fixture.Tables.Models.All);
+        Assert.Empty(_fixture.Tables.ModelVersions.All);
         Assert.Empty(_fixture.Tables.Variables.All);
         Assert.Empty(_fixture.Tables.CalculatedMeasures.All);
     }

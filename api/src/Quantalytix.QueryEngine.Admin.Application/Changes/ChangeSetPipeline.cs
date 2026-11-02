@@ -8,10 +8,10 @@ namespace Quantalytix.QueryEngine.Admin.Application.Changes;
 /// <summary>
 /// The change-set protocol (blueprint 01, OI-01) for one aggregate, generalizing <c>ReportChanges</c> and <c>ModelChanges</c>:
 /// load the aggregate as stored, then for each operation in order validate its input and apply it in memory, then run the gates
-/// on the result. A preview stops there and reports the findings of the publication and commit rules. A commit runs the commit
-/// rules, then plans the row writes, makes them in <see cref="WritePlan"/> order, advances the semantic revision once when the
-/// engine reads the change, and answers the aggregate as stored with the real ids of the temporary ones. Any refusal writes
-/// nothing. Findings name the items the change set created by their temporary ids, like the preview's state.
+/// on the result. A preview stops there and reports the findings of the commit rules. A commit runs the commit rules, then plans
+/// the row writes, makes them in <see cref="WritePlan"/> order, advances the semantic revision once, because every aggregate is
+/// live content the engine reads and a capture checks the revision, and answers the aggregate as stored with the real ids of the
+/// temporary ones. Any refusal writes nothing. Findings name the items the change set created by their temporary ids, like the preview's state.
 /// </summary>
 /// <typeparam name="TSnapshot">The aggregate's in-memory content.</typeparam>
 /// <typeparam name="TOperation">The aggregate's operation union.</typeparam>
@@ -37,7 +37,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
     /// <param name="aggregateId">The aggregate root's id.</param>
     /// <param name="request">The operations so far.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
-    /// <returns>The pending state with the publication and commit findings, or the refusal of the first operation or gate that fails.</returns>
+    /// <returns>The pending state with the commit findings, or the refusal of the first operation or gate that fails.</returns>
     public async Task<Outcome<ChangeSetPreview<TState>>> PreviewAsync(
         long aggregateId,
         ChangeSetRequest<TOperation> request,
@@ -48,7 +48,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         return Outcome<ChangeSetPreview<TState>>.Success(new ChangeSetPreview<TState>
         {
             State = await aggregate.ReadAsync(applied.After, applied.Ids.Present, cancellationToken),
-            Violations = await EvaluateAsync([RuleStage.Publication, RuleStage.Commit], applied.After, applied.Ids, cancellationToken)
+            Violations = await EvaluateAsync([RuleStage.Commit], applied.After, applied.Ids, cancellationToken)
         });
     }
 
@@ -69,7 +69,7 @@ public sealed class ChangeSetPipeline<TSnapshot, TOperation, TState>(
         var plan = new WritePlan();
         aggregate.Plan(applied.Before, applied.After, plan);
         await plan.ExecuteAsync(cancellationToken);
-        if (aggregate.IsEngineVisible(applied.Before, applied.After)) await semanticRevision.AdvanceAsync(cancellationToken);
+        await semanticRevision.AdvanceAsync(cancellationToken);
         return Outcome<ChangeSetCommit<TState>>.Success(new ChangeSetCommit<TState>
         {
             State = await aggregate.ReadAsync(await aggregate.LoadAsync(aggregateId, cancellationToken), TemporaryIds.PresentStored, cancellationToken),

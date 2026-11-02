@@ -73,12 +73,12 @@ public sealed class ReportRowParametersResolveRuleTests
     /// <summary>A row's text value of a parameter.</summary>
     private static ReportRowParameterRecord Text(string rowKey, string parameterKey, string text)
     {
-        return new ReportRowParameterRecord { ReportId = ReportId, RowKey = rowKey, ParameterKey = parameterKey, TextValue = text };
+        return new ReportRowParameterRecord { ReportVersionId = ReportVersionId, RowKey = rowKey, ParameterKey = parameterKey, TextValue = text };
     }
 
     /// <summary>A row's number value of a parameter.</summary>
     private static ReportRowParameterRecord Number(string rowKey, string parameterKey, decimal number)
     {
-        return new ReportRowParameterRecord { ReportId = ReportId, RowKey = rowKey, ParameterKey = parameterKey, NumberValue = number };
+        return new ReportRowParameterRecord { ReportVersionId = ReportVersionId, RowKey = rowKey, ParameterKey = parameterKey, NumberValue = number };
     }
 }

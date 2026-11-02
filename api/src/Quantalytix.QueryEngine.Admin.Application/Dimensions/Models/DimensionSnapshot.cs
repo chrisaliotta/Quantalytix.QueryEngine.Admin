@@ -1,6 +1,4 @@
-using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
@@ -8,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// The dimension aggregate in memory: the identity row, its roles and one version's content (the live version for a change
 /// set), with what surrounds it as stored. Operations, rules, delete checks and read models all work on these values.
 /// </summary>
-public sealed record DimensionSnapshot : IVersionSnapshot
+public sealed record DimensionSnapshot
 {
     /// <summary>The dimension.</summary>
     public required DimensionRecord Dimension { get; init; }
@@ -34,14 +32,11 @@ public sealed record DimensionSnapshot : IVersionSnapshot
     /// <summary>What surrounds the aggregate, read when it was loaded.</summary>
     public required DimensionSurroundings Surroundings { get; init; }
 
-    /// <summary><c>dimension_version</c>.</summary>
-    public string Kind => VersionKinds.DimensionVersion;
-
     /// <summary>The version's id.</summary>
     public long VersionId => Version.DimensionVersionId;
 
     /// <summary>Whether the version is the live one, which consumers read and change sets edit.</summary>
-    public bool IsLive => Version.Status == PublicationStatuses.Published;
+    public bool IsLive => Version.SnapshotId == Surroundings.LiveSnapshotId;
 
     /// <summary>The profile's edit policy; null for a dimension without a profile.</summary>
     public string? EditPolicy => Profile?.EditPolicy;

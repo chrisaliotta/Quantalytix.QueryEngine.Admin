@@ -2,7 +2,7 @@ using Quantalytix.QueryEngine.Admin.Application.Metadata;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
-/// <summary>Every child row of one or more dataset versions, as cloning and draft deletion read them.</summary>
+/// <summary>Every child row of one or more dataset versions, as copying and removing versions read them.</summary>
 public sealed record DatasetVersionContent
 {
     /// <summary>The fields.</summary>

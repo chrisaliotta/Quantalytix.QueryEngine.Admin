@@ -10,8 +10,8 @@ public sealed record CalculationDimensionRecord
     /// <summary>Primary key.</summary>
     public required long CalculationDimensionId { get; init; }
 
-    /// <summary>The owning report.</summary>
-    public required long ReportId { get; init; }
+    /// <summary>The owning report version.</summary>
+    public required long ReportVersionId { get; init; }
 
     /// <summary>Key, unique among the report's calculation dimensions.</summary>
     public required string DimensionKey { get; init; }
@@ -19,7 +19,7 @@ public sealed record CalculationDimensionRecord
     /// <summary>Human-readable name.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>The role every source reads; queries use the version of its dimension their assumption set pins.</summary>
+    /// <summary>The role every source reads; queries use the version of its dimension their snapshot holds.</summary>
     public required long DimensionRoleId { get; init; }
 
     /// <summary>A <c>grouping_mode</c> value: how the role's members group by default.</summary>

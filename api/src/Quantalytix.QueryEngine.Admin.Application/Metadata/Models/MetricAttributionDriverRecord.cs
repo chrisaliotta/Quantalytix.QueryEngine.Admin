@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Metadata;
 /// </summary>
 public sealed record MetricAttributionDriverRecord
 {
-    /// <summary>The owning model; first part of the primary key.</summary>
-    public required long CalculationModelId { get; init; }
+    /// <summary>The owning model version; first part of the primary key.</summary>
+    public required long CalculationModelVersionId { get; init; }
 
     /// <summary>The key of the metric attributed; second part of the primary key.</summary>
     public required string MetricKey { get; init; }

@@ -21,9 +21,6 @@ public sealed record MappingDimensionRef
     /// <summary>A <c>dimension_purpose</c> value.</summary>
     public required string Purpose { get; init; }
 
-    /// <summary>The live version, whose members entry and mapping keys resolve against; null while there is none.</summary>
-    public required long? PublishedVersionId { get; init; }
-
-    /// <summary>The live version's number; null while there is none.</summary>
-    public required int? PublishedVersionNumber { get; init; }
+    /// <summary>The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when it holds none.</summary>
+    public required long? VersionId { get; init; }
 }

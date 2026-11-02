@@ -10,8 +10,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 /// </summary>
 public sealed class RangeDataTypeMatchesKindRule : DimensionRule
 {
-    /// <summary>Publication: a range dimension is created before its type is chosen.</summary>
-    public override RuleStage Stage => RuleStage.Publication;
+    /// <summary>Commit: a range dimension saves only with a range data type.</summary>
+    public override RuleStage Stage => RuleStage.Commit;
 
     /// <summary><c>range_data_type_matches_kind</c>.</summary>
     protected override string Code => "range_data_type_matches_kind";
@@ -23,8 +23,8 @@ public sealed class RangeDataTypeMatchesKindRule : DimensionRule
     {
         var isRange = snapshot.Dimension.DimensionKind == DimensionKinds.Range;
         if (isRange && snapshot.Version.RangeDataType is null)
-            yield return Violation(DimensionTabs.Properties, $"Range dimension '{snapshot.Dimension.DimensionKey}' needs a range data type on v{snapshot.Version.VersionNumber}.");
+            yield return Violation(DimensionTabs.Properties, $"Range dimension '{snapshot.Dimension.DimensionKey}' needs a range data type.");
         if (!isRange && snapshot.Version.RangeDataType is not null)
-            yield return Violation(DimensionTabs.Properties, $"Dimension '{snapshot.Dimension.DimensionKey}' is {snapshot.Dimension.DimensionKind}, so v{snapshot.Version.VersionNumber} must not have a range data type.");
+            yield return Violation(DimensionTabs.Properties, $"Dimension '{snapshot.Dimension.DimensionKey}' is {snapshot.Dimension.DimensionKind}, so its version must not have a range data type.");
     }
 }

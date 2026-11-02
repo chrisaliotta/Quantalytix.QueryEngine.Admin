@@ -2,8 +2,8 @@
 
 An ASP.NET Core Web API on .NET 10 that authors the semantic metadata the Quantalytix query engine reads from StarRocks:
 datasets with their fields, grains, bindings and measures; dimensions with their roles, levels, members and range bands;
-mapping sets, bridges, semantic releases and assumption sets; calculation models; reports; and the control plane's tenant
-directory. The engine reads the metadata only through the tenant database's `vw_qe_*` views. The API never calls the engine.
+mapping sets and bridges; calculation models; reports; the snapshots that capture and restore all of them; and the control
+plane's tenant directory. The engine reads the metadata only through the tenant database's `vw_qe_*` views. The API never calls the engine.
 
 The API is contract-first. The hand-authored OpenAPI contract in [`openapi/contract/`](openapi/contract/README.md) is the
 source of truth, the C# request and response types are written by hand to match it, and a conformance test fails the build
@@ -13,12 +13,12 @@ change-set API.
 | Project | Holds |
 |---|---|
 | `src/Quantalytix.QueryEngine.Admin.WebApi` | Controllers, authentication and authorization, the error shape, the route existence filter, JSON conventions, OpenAPI generation, feature registration |
-| `src/Quantalytix.QueryEngine.Admin.Application` | Read models, change-set aggregates and their operations, snapshot rules, lifecycle commands, the version workflow, and the interfaces Infrastructure implements |
+| `src/Quantalytix.QueryEngine.Admin.Application` | Read models, change-set aggregates and their operations, snapshot rules, snapshot capture and restore, the version copiers, and the interfaces Infrastructure implements |
 | `src/Quantalytix.QueryEngine.Admin.Infrastructure.StarRocks` | Table gateways (Dapper over MySqlConnector), id generation, source-object introspection, managed-table and materialized-view DDL, tenant connection checks |
 | `tests/Quantalytix.QueryEngine.Admin.Tests` | xUnit v3 tests on Microsoft.Testing.Platform, including the contract conformance test |
 
 The [architecture pages](docs/architecture/README.md) describe the layers, the request pipeline, the change-set pipeline,
-the version lifecycle, each feature module and the main request flows. The design decisions behind them are in the
+the snapshot lifecycle, each feature module and the main request flows. The design decisions behind them are in the
 [blueprint](../docs/blueprint/README.md).
 
 ## Prerequisites
@@ -26,10 +26,10 @@ the version lifecycle, each feature module and the main request flows. The desig
 - The .NET 10 SDK, and Node with pnpm for the contract tooling.
 - A checkout of the query engine, `Quantalytix.QueryEngine`. The Application project references its
   `Quantalytix.QueryEngine.Domain` project for the expression parser.
-- The seed kit, `database/srdb_ebm`, at design revision 2.27.0. The tests read its schema build script,
-  `ddl_srdb_bi_v2_27.sql`.
-- A tenant database at metadata schema version 18 with exactly one active assumption set, as the seed kit's build script
-  creates it. Tenant connection verification refuses any other schema version and any other number of active sets.
+- The seed kit, `database/srdb_ebm`, at design revision 3.0.0. The tests read its schema build script,
+  `ddl_srdb_bi_v3_0.sql`.
+- A tenant database at metadata schema version 19 with exactly one live snapshot, as the seed kit's build script and seed
+  create it. Tenant connection verification refuses any other schema version and any other number of live snapshots.
 - Network access to the StarRocks cluster for every endpoint that reads or writes metadata.
 
 ## Configuration
@@ -79,7 +79,7 @@ To run `web` against the API, start the API as above, then run `pnpm dev` in `we
 
 An API change starts in the contract:
 
-1. Edit the module file under `openapi/contract/` (`datasets.yaml`, `dimensions.yaml`, `mappings.yaml`, `releases.yaml`,
+1. Edit the module file under `openapi/contract/` (`datasets.yaml`, `dimensions.yaml`, `mappings.yaml`, `snapshots.yaml`,
    `models.yaml`, `reports.yaml`, `tenant.yaml`, or the shared `common.yaml`). The
    [contract README](openapi/contract/README.md) describes the files and the authoring rules.
 2. From the repository root, lint and bundle it. This writes `openapi/contract/bundled.yaml`:
@@ -133,8 +133,7 @@ default and also on the HTTP adapters against a running API with `QE_LIVE_API=1`
 
 [Live verification](../docs/blueprint/04-live-verification.md) lists the checks to run against a live tenant after a
 change. `tools/acceptance/qe-acceptance.sh` proves end to end that metadata authored through the API reaches the engine: it
-authors a dataset, a calculation model and a report, releases and activates the dataset version, and runs catalog and query
-requests on the engine. Its header documents its modes, environment variables and the objects it leaves behind. Run it
+authors a dataset, a calculation model and a report in the live snapshot, and runs catalog and query requests on the engine. Its header documents its modes, environment variables and the objects it leaves behind. Run it
 outside any shell sandbox with the API on `http://localhost:5186` (or set `ADMIN`), `QueryEngineRoot` set, and a new
 `PREFIX` per run:
 

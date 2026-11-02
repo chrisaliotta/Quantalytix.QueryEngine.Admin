@@ -1,5 +1,5 @@
 # Shared kernel of the Admin API contract: ids, keys, problems, delete checks, rule reports, change-set envelopes,
-# vocabularies read by more than one module, freeze, grouping and filter shapes, vocabulary terms, the tenant route
+# vocabularies read by more than one module, grouping and filter shapes, vocabulary terms, the tenant route
 # parameter and the standard error responses.
 # Blueprint: docs/blueprint/01-api-conventions.md. Mirrored by web/src/lib/api/contract.ts.
 # Owner: integrator. Module files reference these components as ./common.yaml#/components/...
@@ -34,10 +34,6 @@ components:
       format: date-time
       description: ISO 8601 UTC timestamp.
 
-    VersionStatus:
-      type: string
-      enum: [draft, validated, published, retired]
-
     # ───────────── vocabularies read by more than one module (labels: GET /api/vocabularies) ─────────────
 
     DimensionKind:
@@ -51,10 +47,6 @@ components:
     DefinitionOrigin:
       type: string
       enum: [system, user]
-
-    AssumptionSetStatus:
-      type: string
-      enum: [active, historical]
 
     BindingKind:
       type: string
@@ -146,7 +138,7 @@ components:
       properties:
         area:
           type: string
-          description: Module-specific area such as a dataset tab, a dimension tab, a release manifest row or a report section.
+          description: Module-specific area such as a dataset tab, a dimension tab or a report section.
         itemId:
           $ref: '#/components/schemas/Id'
         itemKey:
@@ -188,9 +180,6 @@ components:
       enum:
         - not_removable
         - system_dimension
-        - published_version
-        - live_version
-        - has_published_versions
         - has_children
         - required_by_profile
         - assigned_by_bands
@@ -203,23 +192,8 @@ components:
         - referenced_by_calculation_dimension
         - referenced_by_report_scenario
         - referenced_by_report_source
-        - referenced_by_assumption_set
-        - referenced_by_release
+        - referenced_by_snapshot
         - referenced_by_report
-
-    ValidationReport:
-      type: object
-      description: Answer of a read-only `check`; never writes.
-      required: [versionId, checkedAt, violations]
-      properties:
-        versionId:
-          $ref: '#/components/schemas/Id'
-        checkedAt:
-          $ref: '#/components/schemas/Timestamp'
-        violations:
-          type: array
-          items:
-            $ref: '#/components/schemas/Violation'
 
     ChangeSetRequest:
       type: object
@@ -244,7 +218,7 @@ components:
           description: The aggregate content after the operations apply; what the editor renders.
         violations:
           type: array
-          description: Publication-rule findings that do not block saving.
+          description: Commit-rule findings, which refuse the commit while any remains.
           items:
             $ref: '#/components/schemas/Violation'
 
@@ -262,29 +236,6 @@ components:
           description: Temporary id (`tmp:<uuid>`) to the real id of each item the commit created.
           additionalProperties:
             $ref: '#/components/schemas/Id'
-
-    FreezeInput:
-      type: object
-      description: Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14).
-      required: [note]
-      properties:
-        note:
-          type: [string, 'null']
-          description: Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15).
-
-    FreezeResult:
-      type: object
-      description: >-
-        200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic
-        over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422
-        and changes nothing, so a 200 always carries a non-null `live`; the web HTTP adapter turns the 422 into the
-        port's `live: null` (01, Results and errors).
-      required: [report, live]
-      properties:
-        report:
-          $ref: '#/components/schemas/ValidationReport'
-        live:
-          description: The new live version.
 
     Grouping:
       description: How a role's members group.
@@ -453,7 +404,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: A precondition failed (not a draft, not editable, owned by a report, delete blocked, release not published).
+      description: A precondition failed (a frozen version, not editable, owned by a report, delete blocked, the live snapshot).
       content:
         application/problem+json:
           schema:

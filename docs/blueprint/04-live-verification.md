@@ -7,7 +7,7 @@ what passing looks like; run them in order, because later items assume the earli
 
 ## Prerequisites
 
-- The schema kit at design revision 2.27.0 (metadata schema version 18) applied to the cluster with `sql-run`, and the seed
+- The schema kit at design revision 3.0.0 (metadata schema version 19) applied to the cluster with `sql-run`, and the seed
   kit loaded into tenant `development` (gate G2 of the refactor plan). The API refuses a tenant at another schema version.
 - The admin API running in Development (`dotnet run` in `api/src/Quantalytix.QueryEngine.Admin.WebApi`, see
   [the API README](../../api/README.md)) with the control-plane connection string in its user secrets.
@@ -35,14 +35,15 @@ PREFIX=zz_p6c_ DATASET_KEY=zz_p6b_loans MEASURES="balance avgRate balanceRate en
 ```
 
 Passing: every call answers the status the script expects, the authoring-only mode ends with `PASS (authoring only)`, and the
-full modes end with the engine checks passing and the original release active again. These calls are the first to run
+full modes end with the engine checks passing. These calls are the first to run
 against StarRocks, so they verify behavior that the in-memory tests can't check:
 
 - the write plan's statement order, given that StarRocks has no transactions (deletes deepest-first, then updates and
   inserts shallowest-first);
 - `tmp:` ids that later operations in the same change set reference;
 - report bridges created and written through the report change set;
-- the semantic revision advancing so the engine reloads after a live edit.
+- the semantic revision advancing so the engine reloads after a live edit;
+- a snapshot capture copying every live version, and a restore making live equal it.
 
 ## 3. web against the live API
 
@@ -51,33 +52,32 @@ Copy `web/.env.example` to `web/.env.local` (it sets `VITE_API_MODE=http` and `V
 
 | Module | Check |
 |---|---|
-| Tenant and catalog | The overview counts and drafts match the tenant; switching tenants as a system administrator works. |
-| Datasets | Create a dataset over an existing table; edit fields, grains, bindings and measures in one change set with preview and commit; validate, publish, reopen, delete a draft; source object statistics and distinct values load. |
-| Dimensions | Edit the live version's levels, members and range bands; freeze; a blocked delete shows its reasons. |
-| Mapping sets and bridges | Edit entries and mappings on the live version; freeze; report-owned bridges read as owned. |
-| Releases and assumption sets | Edit a draft manifest, validate, publish, activate and restore the original; capture an assumption set. |
+| Tenant and catalog | The overview counts match the tenant and the tenant chip shows the live revision; switching tenants as a system administrator works. |
+| Datasets | Create a dataset over an existing table; edit fields, grains, bindings and measures in one change set with preview and commit, a commit-rule finding blocking Save until it is fixed; source object statistics and distinct values load. |
+| Dimensions | Edit the live version's levels, members and range bands; a blocked delete shows its reasons. |
+| Mapping sets and bridges | Edit entries and mappings on the live version; report-owned bridges read as owned. |
+| Snapshots | Capture a snapshot, browse it read-only, compare it with live, edit live, restore the snapshot and see live return to it; relabel and delete the snapshot. |
 | Calculation models | Edit variables and measures; the formula check reports errors in place. |
 | Reports | Edit sources and rules, profiles, columns and rows in one change set; coverage lists unmapped items, including a direct source's values; enable and disable. |
 
 Passing: every commit answers 200 and the screen shows the stored state; every refusal shows the API's problem on the
 item it targets; no console errors.
 
-## 4. Dataset retirement and managed-table drop
+## 4. Frozen-snapshot guards and managed-table drop
 
-Two follow-ups decided after integration ([11 Datasets](11-datasets.md) D13 and D14) are covered by in-memory tests and the
-mock parity suite. On a live tenant, first run the datasets parity suite over the HTTP adapter:
+Two rules ([11 Datasets](11-datasets.md) D10, D13 and D14) need StarRocks to check. On a live tenant, first run the datasets parity suite over the HTTP adapter:
 
 ```bash
 cd web
 QE_LIVE_API=1 pnpm vitest run src/lib/datasets
 ```
 
-It refuses retiring the version the active release pins (so the tenant needs an active release that pins a dataset
-version), and creates a dataset over a new managed table, deletes it, and expects the table to leave the source object
+It creates a dataset over a new managed table, deletes it, and expects the table to leave the source object
 list. Then check StarRocks itself, with `PREFIX` a new prefix per run:
 
-1. **Retire guard.** `POST dataset-versions/{id}/retire` on the version the active release pins answers 422 with one
-   violation `release_pins_retired_version`, and `GET dataset-versions/{id}` still reads `published`.
+1. **Frozen guard.** With a snapshot captured that holds a dataset, deleting the dataset answers 409 with the blocker
+   `referenced_by_snapshot`, and renaming its managed table in a change set answers 422; after deleting the snapshot
+   both succeed.
 2. **Table dropped.** Create a dataset with `mode: 'new'`, table `${PREFIX}drop_t`, and one `json` column, then
    `SHOW TABLES LIKE '${PREFIX}drop_t'` lists it and `qe_managed_source_object` has its row. Delete the dataset (204).
    `SHOW TABLES LIKE '${PREFIX}drop_t'` is empty, `SELECT * FROM qe_managed_source_object WHERE source_object =

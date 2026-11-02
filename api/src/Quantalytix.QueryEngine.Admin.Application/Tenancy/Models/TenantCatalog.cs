@@ -2,7 +2,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Tenancy;
 
 /// <summary>
 /// The contract's <c>TenantCatalog</c>: the names and ids every module's pickers and cross-module links read (OI-13), each list
-/// by key. Report-owned dimensions and bridges are included only so references resolve (OI-22).
+/// by key: every identity the live snapshot holds, with its live version, and every snapshot. Report-owned dimensions and bridges are
+/// included only so references resolve (OI-22).
 /// </summary>
 public sealed record TenantCatalog
 {
@@ -30,9 +31,6 @@ public sealed record TenantCatalog
     /// <summary>Every report.</summary>
     public required IReadOnlyList<TenantCatalogReport> Reports { get; init; }
 
-    /// <summary>Every release.</summary>
-    public required IReadOnlyList<TenantCatalogRelease> Releases { get; init; }
-
-    /// <summary>Every assumption set.</summary>
-    public required IReadOnlyList<TenantCatalogAssumptionSet> AssumptionSets { get; init; }
+    /// <summary>Every snapshot, the live one first.</summary>
+    public required IReadOnlyList<TenantCatalogSnapshot> Snapshots { get; init; }
 }

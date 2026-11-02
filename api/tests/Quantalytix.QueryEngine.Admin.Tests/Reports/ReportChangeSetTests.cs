@@ -100,7 +100,7 @@ public sealed class ReportChangeSetTests
     [Fact]
     public async Task DeleteRow_RemovesItsBridgeRulesAndScopes()
     {
-        await _fixture.Scopes.InsertAsync(new ReportVariableScopeRecord { ReportId = ReportId, VariableKey = "balance", ScopeMemberKey = "LOANS", SelectionScope = SelectionScopes.Exact }, Token);
+        await _fixture.Scopes.InsertAsync(new ReportVariableScopeRecord { ReportVersionId = ReportRows.ReportVersionId, VariableKey = "balance", ScopeMemberKey = "LOANS", SelectionScope = SelectionScopes.Exact }, Token);
 
         var outcome = await _fixture.Changes().CommitAsync(ReportId, Request(new ReportDeleteRowOperation { Key = "LOANS" }), Token);
 
@@ -140,25 +140,41 @@ public sealed class ReportChangeSetTests
         Assert.Equal(2, _fixture.BridgeMappings.All.Count(mapping => mapping.BridgeVersionId == version.BridgeVersionId));
     }
 
-    /// <summary>Deleting a source deletes its report bridge and clears the profile picks that name it (OI-56).</summary>
+    /// <summary>
+    /// Deleting a source deletes its report bridge and clears the profile picks that name it (OI-56). The change set repoints the
+    /// profile at a direct source first, because a report whose profile picks no source for a variable it reads cannot be saved.
+    /// </summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]
     public async Task DeleteSource_DeletesItsBridgeAndClearsItsPicks()
     {
-        var outcome = await _fixture.Changes().CommitAsync(ReportId, Request(new ReportDeleteSourceOperation { Key = "gl" }), Token);
+        await _fixture.Sources.InsertAsync(ReportRows.Source(71, "gl_direct", GlDatasetId), Token);
+        await _fixture.SourceVariables.InsertAsync(ReportRows.SourceVariable(71, "balance"), Token);
+        var repoint = new ReportSaveProfileOperation
+        {
+            OriginalKey = "base",
+            Profile = new ReportProfile { Key = "base", DisplayName = "base", IsEnabled = true, Picks = new Dictionary<string, string> { ["balance"] = "gl_direct" } }
+        };
+
+        var outcome = await _fixture.Changes().CommitAsync(ReportId, Request(repoint, new ReportDeleteSourceOperation { Key = "gl" }), Token);
 
         Assert.True(outcome.Succeeded);
-        Assert.Empty(_fixture.Sources.All);
-        Assert.Empty(_fixture.Picks.All);
+        Assert.Equal(["gl_direct"], _fixture.Sources.All.Select(source => source.SourceKey));
+        Assert.Equal([71L], _fixture.Picks.All.Select(pick => pick.ReportSourceId));
         Assert.DoesNotContain(_fixture.Bridges.All, bridge => bridge.BridgeId == BridgeId);
         Assert.Empty(_fixture.BridgeMappings.All);
     }
 
-    /// <summary>A row's rules replace that row's mappings in the source's bridge; a folder rule takes every item under it (P7).</summary>
+    /// <summary>
+    /// A row's rules replace that row's mappings in the source's bridge; a folder rule takes every item under it (P7). GL's balance
+    /// applies bridge factors here, so the -1 exclusion passes <c>report_factors_apply</c>.
+    /// </summary>
     /// <returns>A task that completes when the commit is checked.</returns>
     [Fact]
     public async Task SetRowRules_ReplacesOneRowsMappings()
     {
+        var balance = _fixture.Measures.All.Single();
+        await _fixture.Measures.UpdateAsync(balance with { BridgeFactorBehavior = BridgeFactorBehaviors.Value }, Token);
         ReportSourceRule[] rules =
         [
             new() { ItemKey = "LENDING", Selection = SourceSelections.Descendants, Factor = 1m },
@@ -218,7 +234,7 @@ public sealed class ReportChangeSetTests
                 SaveDimension("other"),
                 new ReportUpdateSettingsOperation { Patch = new ReportSettingsPatch { DefaultBreakout = ["account", "other"], DefaultFilter = filter } }),
             Token)).Value!;
-        Assert.Contains("\"level\":\"group\"", _fixture.Reports.All.Single().DefaultFilterJson);
+        Assert.Contains("\"level\":\"group\"", _fixture.ReportVersions.All.Single().DefaultFilterJson);
         Assert.Equal("group", saved.State.Settings.DefaultFilter!.Json["operands"]![0]!["left"]!["grouping"]!["levelKey"]!.GetValue<string>());
 
         var deleted = (await _fixture.Changes().CommitAsync(ReportId, Request(new ReportDeleteCalculationDimensionOperation { Key = "account" }), Token)).Value!;
@@ -285,20 +301,15 @@ public sealed class ReportChangeSetTests
         Assert.Single(_fixture.Columns.All);
     }
 
-    /// <summary>The engine reads an enabled report as it stands, so its commit advances the semantic revision; a disabled one's does not.</summary>
-    /// <param name="isEnabled">Whether the report is enabled.</param>
+    /// <summary>A commit edits the live version, which the engine reads, so it advances the semantic revision.</summary>
     /// <returns>A task that completes when the commit is checked.</returns>
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Commit_AdvancesTheRevisionOnlyForAnEnabledReport(bool isEnabled)
+    [Fact]
+    public async Task Commit_AdvancesTheRevision()
     {
-        await _fixture.SetEnabledAsync(isEnabled);
-
         await _fixture.Changes().CommitAsync(ReportId, Request(new ReportUpdateSettingsOperation { Patch = new ReportSettingsPatch { DisplayName = "Renamed" } }), Token);
 
-        Assert.Equal("Renamed", _fixture.Reports.All.Single().DisplayName);
-        Assert.Equal(isEnabled ? StartingRevision + 1 : StartingRevision, _fixture.SemanticRevisionNumber);
+        Assert.Equal("Renamed", _fixture.ReportVersions.All.Single().DisplayName);
+        Assert.Equal(StartingRevision + 1, _fixture.SemanticRevisionNumber);
     }
 
     /// <summary>
@@ -319,7 +330,7 @@ public sealed class ReportChangeSetTests
     }
 
     /// <summary>
-    /// A direct source's items are the values of its field in the active release's dataset version: a value that names no data row is
+    /// A direct source's items are the values of its field in the snapshot's dataset version: a value that names no data row is
     /// unmapped, and a data row no value names is a gap of the profile that picks the source. A field with more values than the read's
     /// limit reports no gaps, since the values it did not read may name the row.
     /// </summary>

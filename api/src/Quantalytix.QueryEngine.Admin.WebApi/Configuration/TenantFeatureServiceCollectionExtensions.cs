@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.WebApi.Configuration;
 public static class TenantFeatureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the tenant module, all scoped: the tenant info, catalog and published-member readers, the overview, and the tenant
+    /// Registers the tenant module, all scoped: the tenant info, catalog and live-member readers, the overview, and the tenant
     /// directory with its connection verification and masking.
     /// </summary>
     /// <param name="services">The service collection.</param>

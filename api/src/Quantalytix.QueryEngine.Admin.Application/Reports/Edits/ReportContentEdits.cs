@@ -25,12 +25,12 @@ internal static class ReportContentEdits
         var profileId = stored?.CalculationSourceProfileId ?? context.Ids.NewId();
         var record = new SourceProfileRecord
         {
-            CalculationSourceProfileId = profileId, ReportId = report.Report.ReportId, ProfileKey = profile.Key, DisplayName = profile.DisplayName, IsEnabled = profile.IsEnabled
+            CalculationSourceProfileId = profileId, ReportVersionId = report.Version.ReportVersionId, ProfileKey = profile.Key, DisplayName = profile.DisplayName, IsEnabled = profile.IsEnabled
         };
-        var renamesDefault = save.OriginalKey is not null && report.Report.DefaultProfileKey == save.OriginalKey;
+        var renamesDefault = save.OriginalKey is not null && report.Version.DefaultProfileKey == save.OriginalKey;
         return report with
         {
-            Report = renamesDefault ? report.Report with { DefaultProfileKey = profile.Key } : report.Report,
+            Version = renamesDefault ? report.Version with { DefaultProfileKey = profile.Key } : report.Version,
             Profiles = [.. report.Profiles.Where(other => other.CalculationSourceProfileId != profileId), record],
             Picks =
             [
@@ -63,7 +63,7 @@ internal static class ReportContentEdits
         var record = new CalculationDimensionRecord
         {
             CalculationDimensionId = stored?.CalculationDimensionId ?? context.Ids.NewId(),
-            ReportId = report.Report.ReportId,
+            ReportVersionId = report.Version.ReportVersionId,
             DimensionKey = input.Key,
             DisplayName = input.DisplayName,
             DimensionRoleId = input.RoleId,
@@ -84,7 +84,7 @@ internal static class ReportContentEdits
         var renamed = stored is not null && stored.DimensionKey != input.Key;
         return report with
         {
-            Report = renamed ? ReportSettingsColumns.WithDimension(report.Report, stored!.DimensionKey, input.Key) : report.Report,
+            Version = renamed ? ReportSettingsColumns.WithDimension(report.Version, stored!.DimensionKey, input.Key) : report.Version,
             Dimensions = [.. report.Dimensions.Where(other => other.CalculationDimensionId != record.CalculationDimensionId), record]
         };
     }
@@ -95,7 +95,7 @@ internal static class ReportContentEdits
         if (ReportEdits.Named(report.Dimensions, dimension => dimension.DimensionKey, delete.Key, "calculation dimension", context) is not { } dimension) return report;
         return report with
         {
-            Report = ReportSettingsColumns.WithDimension(report.Report, delete.Key, null),
+            Version = ReportSettingsColumns.WithDimension(report.Version, delete.Key, null),
             Dimensions = [.. report.Dimensions.Where(other => other != dimension)]
         };
     }
@@ -123,7 +123,7 @@ internal static class ReportContentEdits
 
         if (context.Refused) return snapshot.Content;
         var report = snapshot.Content;
-        return report with { Scenarios = [.. set.RoleIds.Select(roleId => new ReportScenarioRecord { ReportId = report.Report.ReportId, DimensionRoleId = roleId })] };
+        return report with { Scenarios = [.. set.RoleIds.Select(roleId => new ReportScenarioRecord { ReportVersionId = report.Version.ReportVersionId, DimensionRoleId = roleId })] };
     }
 
     /// <summary>Replaces the variable scopes, one per variable (OI-50).</summary>
@@ -135,7 +135,7 @@ internal static class ReportContentEdits
             [
                 .. set.Scopes.Select(scope => new ReportVariableScopeRecord
                 {
-                    ReportId = report.Report.ReportId, VariableKey = scope.VariableKey, ScopeMemberKey = scope.ScopeMemberKey, SelectionScope = scope.SelectionScope
+                    ReportVersionId = report.Version.ReportVersionId, VariableKey = scope.VariableKey, ScopeMemberKey = scope.ScopeMemberKey, SelectionScope = scope.SelectionScope
                 })
             ]
         };
@@ -161,7 +161,7 @@ internal static class ReportContentEdits
                 .. set.Columns.Select((column, index) => new ReportColumnRecord
                 {
                     ReportColumnId = stored.GetValueOrDefault(column.Key)?.ReportColumnId ?? context.Ids.NewId(),
-                    ReportId = report.Report.ReportId,
+                    ReportVersionId = report.Version.ReportVersionId,
                     ColumnKey = column.Key,
                     DisplayName = column.DisplayName,
                     ValueKind = column.ValueKind,
@@ -181,7 +181,7 @@ internal static class ReportContentEdits
         var style = save.Style;
         var record = new ReportStyleRecord
         {
-            ReportId = report.Report.ReportId,
+            ReportVersionId = report.Version.ReportVersionId,
             StyleKey = style.Key,
             DisplayName = style.DisplayName,
             DefaultRole = style.DefaultRole,

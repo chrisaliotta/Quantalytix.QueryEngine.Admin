@@ -34,12 +34,6 @@ public interface IChangeSetAggregate<TSnapshot, in TOperation, TState>
     /// <param name="plan">The plan to add the writes to; it orders them.</param>
     void Plan(TSnapshot before, TSnapshot after, WritePlan plan);
 
-    /// <summary>Whether the engine reads the change, so the commit advances the semantic revision (blueprint 01, Semantic revision).</summary>
-    /// <param name="before">The aggregate as stored.</param>
-    /// <param name="after">The aggregate with every operation applied.</param>
-    /// <returns>True when the commit must advance the revision.</returns>
-    bool IsEngineVisible(TSnapshot before, TSnapshot after);
-
     /// <summary>The read model of a snapshot: the pending content for a preview, the stored content after a commit.</summary>
     /// <param name="snapshot">The aggregate.</param>
     /// <param name="presentId">

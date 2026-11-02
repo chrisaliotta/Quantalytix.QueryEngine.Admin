@@ -1,7 +1,7 @@
 # High-level architecture
 
 [Index](README.md) · [Request pipeline](02-request-pipeline.md) · [Core classes](03-core-classes.md) ·
-[Version lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
+[Snapshot lifecycle](04-version-lifecycle.md) · [Feature classes](05-feature-classes.md) · [Key actions](06-key-actions.md)
 
 ## Layers
 
@@ -15,7 +15,7 @@ flowchart LR
     end
     subgraph Host [Admin API host]
         Api["WebApi: controllers, filters, problems"]
-        App["Application: aggregates, rules, commands, workflow"]
+        App["Application: aggregates, rules, commands, snapshots"]
         Infra["Infrastructure.StarRocks: gateways, catalog, DDL"]
     end
     Http -->|"JSON over HTTP, bearer token"| Api
@@ -33,14 +33,14 @@ flowchart LR
 | Layer | Owns | Does not |
 |---|---|---|
 | WebApi | Routing, authentication, tenant access, binding, the 404 existence check, input validators, mapping refusals to problems | Hold business rules |
-| Application | Read models, change-set aggregates and operations, snapshot rules, lifecycle commands, the version workflow, delete checks | Write SQL |
+| Application | Read models, change-set aggregates and operations, snapshot rules, snapshot capture and restore, version copiers, delete checks | Write SQL |
 | Infrastructure.StarRocks | Table gateways, id generation, `information_schema` reads, managed-table and materialized-view DDL, tenant routing and verification | Hold rules |
 
 Application reaches StarRocks only through interfaces it declares: `ITableGateway<TRecord>`, `IIdGenerator`,
 `ISourceObjectCatalog`, `IManagedTables`, `IMaterializedViews`, `ITenantDatabaseVerifier` and `IConnectionStringMasker`.
 A request to a tenant route reads the tenant's connection string from `query_control.qe_tenant_directory` and opens that
-tenant's database. The engine loads metadata through the `vw_qe_*` views, caches it by tenant and
-`qe_database_info.semantic_revision`, and reads dataset versions only through the active release.
+tenant's database. The engine loads metadata through the `vw_qe_*` views, caches it by tenant, snapshot and
+`qe_database_info.semantic_revision`, and reads the live snapshot unless a request names another.
 
 ## Projects
 
@@ -58,14 +58,14 @@ flowchart TB
 ```
 
 Application references the engine's `Domain` project for `ExpressionParser`, so the API accepts exactly the expressions the
-engine parses. The test project copies the seed kit's `ddl_srdb_bi_v2_27.sql` from `SeedKitRoot` and the two OpenAPI
+engine parses. The test project copies the seed kit's `ddl_srdb_bi_v3_0.sql` from `SeedKitRoot` and the two OpenAPI
 documents into its output.
 
 ## The contract-first rule
 
 1. The hand-authored contract in [`api/openapi/contract/`](../../openapi/contract/README.md) is the source of truth: a root
    `admin-api.yaml`, the shared kernel `common.yaml`, and one file per module (`tenant`, `datasets`, `dimensions`,
-   `mappings`, `releases`, `models`, `reports`). `pnpm contract:bundle` composes and bundles them into `bundled.yaml`.
+   `mappings`, `snapshots`, `models`, `reports`). `pnpm contract:bundle` composes and bundles them into `bundled.yaml`.
 2. C# request and response types are written by hand to match the contract's schemas by name, property, type and
    nullability. No server code is generated.
 3. The build generates `api/openapi/admin-api.json` from the C# code, with transformers that apply the API's conventions
@@ -89,13 +89,13 @@ documents into its output.
 | 7 | `AddAdminOpenApi` | The OpenAPI document and its transformers |
 | 8 | `AddAdminCors` | A default policy for `Cors:AllowedOrigins` |
 | 9 | `AddHealthChecks` | `/health` |
-| 10 | `AddAdminApplication` | The version stores, `VersionStoreRegistry`, `PublicationSet`, `VersionWorkflow`, a `PredecessorRetirer` per living kind, `SemanticRevision`, `LivingVersionFreezer` |
+| 10 | `AddAdminApplication` | `LiveSnapshot`, `SemanticRevision`, `SnapshotCommands`, `SnapshotQueries` |
 | 11 | `AddStarRocksInfrastructure` | Connections, `ITableGateway<>`, `IIdGenerator`, `TimeProvider` |
-| 12 to 18 | `AddTenantFeature`, `AddDatasetsFeature`, `AddDimensionsFeature`, `AddMappingsAndBridgesFeature`, `AddBindingsAndMeasuresFeature`, `AddReleasesAndSystemFeature`, `AddCalculationModelsAndReportsFeature` | Each module's route resources, services, change-set aggregate, snapshot rules, publication rules, lifecycle handlers and copiers |
+| 12 to 18 | `AddTenantFeature`, `AddDatasetsFeature`, `AddDimensionsFeature`, `AddMappingsAndBridgesFeature`, `AddBindingsAndMeasuresFeature`, `AddSnapshotsAndSystemFeature`, `AddCalculationModelsAndReportsFeature` | Each module's route resources, services, change-set aggregate, snapshot rules, and its kind's `IVersionCopier`, `IVersionRemover` and `IVersionRules` |
 
 The middleware runs `UseExceptionHandler` and `UseStatusCodePages` (both write a `Problem`), then `UseCors`,
 `UseAuthentication`, `UseAuthorization`, and maps OpenAPI, the controllers and `/health`. Services are scoped to the request.
-Snapshot rules and lifecycle handlers run in registration order.
+Snapshot rules run in registration order.
 
 ## Feature map
 
@@ -107,14 +107,13 @@ Paths after the first in a row are relative to `/api/tenants/{tenantId}`. Tenant
 | Session and tenants | `/api/me`, `/api/tenants`, `/api/vocabularies`, `catalog`, `dimensions/{id}/published-members`, `overview` | none |
 | System tenants | `/api/system/tenants` | none |
 | Source objects | `source-objects`, `source-objects/{kind}/{name}/columns` | none |
-| Datasets | `datasets`, `datasets/{id}/versions`, `dataset-versions/{id}` with `changes`, `check`, `validate`, `publish`, `reopen`, `retire`, `fields/{id}/materialization` | dataset version (with its bindings and measures) |
-| Dimensions | `dimensions`, `dimension-profiles`, `dimension-roles/{id}/delete-check`, `dimension-versions/{id}` with `check`, `freeze`, member and level delete checks | dimension with its live version |
-| Mappings | `mapping-sets`, `mapping-versions/{id}` with `check`, `freeze` | mapping set with its live version |
-| Bridges | `bridges`, `bridge-versions/{id}` with `check`, `freeze` | analytical bridge with its live version |
-| Releases | `releases`, `releases/diff`, `releases/{id}` with `check`, `validate`, `publish`, `reopen`, `retire`, `activate`; `manifest-datasets`, `identities`, `report-reads` | draft release manifest |
-| Assumption sets | `assumption-sets`, `assumption-sets/capture-preview`, `assumption-sets/compare` | none |
-| Calculation models | `calculation-models`, `calculation-models/{id}/formula-check` | calculation model |
-| Reports | `reports`, `reports/{id}/diagnostics`, `reports/{id}/sources/{sourceKey}/unmapped`, `reports/{id}/enabled` | report |
+| Datasets | `datasets`, `datasets/{id}/versions`, `dataset-versions/{id}` with `changes`, `fields/{id}/materialization` | dataset with its live version (with its bindings and measures) |
+| Dimensions | `dimensions`, `dimension-profiles`, `dimension-roles/{id}/delete-check`, `dimension-versions/{id}` with member and level delete checks | dimension with its live version |
+| Mappings | `mapping-sets`, `mapping-versions/{id}` | mapping set with its live version |
+| Bridges | `bridges`, `bridge-versions/{id}` | analytical bridge with its live version |
+| Snapshots | `snapshots` with capture, the capture preview, compare, and per snapshot restore, relabel and delete | none |
+| Calculation models | `calculation-models`, `calculation-models/{id}/formula-check` | calculation model with its live version |
+| Reports | `reports`, `reports/{id}/diagnostics`, `reports/{id}/sources/{sourceKey}/unmapped`, `reports/{id}/enabled` | report with its live version |
 
 Every aggregate has `POST .../changes/preview` and `POST .../changes`. Datasets, dataset versions, dimensions, dimension
 versions, mapping sets, mapping versions, bridges, bridge versions and calculation models have `GET .../delete-check` next

@@ -21,7 +21,7 @@ public static class ReportEdits
     {
         var content = operation switch
         {
-            ReportUpdateSettingsOperation update => snapshot.Content with { Report = ReportSettingsColumns.Apply(snapshot.Content.Report, update.Patch) },
+            ReportUpdateSettingsOperation update => snapshot.Content with { Version = ReportSettingsColumns.Apply(snapshot.Content.Version, update.Patch) },
             ReportSaveRowOperation save => ReportRowEdits.Save(snapshot, save, context),
             ReportMoveRowOperation move => ReportRowEdits.Move(snapshot.Content, move, context),
             ReportDeleteRowOperation delete => ReportRowEdits.Delete(snapshot.Content, delete, context),

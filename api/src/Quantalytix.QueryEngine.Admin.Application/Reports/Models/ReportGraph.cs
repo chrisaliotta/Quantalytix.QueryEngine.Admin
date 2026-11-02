@@ -9,10 +9,13 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 /// </summary>
 public sealed record ReportGraph
 {
-    /// <summary>The report, with its settings.</summary>
+    /// <summary>The report identity.</summary>
     public required ReportRecord Report { get; init; }
 
-    /// <summary>The members of the report dimension's version, which are the report's member rows.</summary>
+    /// <summary>The report version, with its settings.</summary>
+    public required ReportVersionRecord Version { get; init; }
+
+    /// <summary>The members of the report dimension's version in the report version's snapshot, which are the report's member rows.</summary>
     public required IReadOnlyList<DimensionMemberRecord> Members { get; init; }
 
     /// <summary>The report's overlay rows.</summary>
@@ -56,6 +59,9 @@ public sealed record ReportGraph
 
     /// <summary>The report's calculation dimensions, enabled or not.</summary>
     public required IReadOnlyList<CalculationDimensionRecord> Dimensions { get; init; }
+
+    /// <summary>The model's version in the report version's snapshot, whose metrics and parameters the report reads.</summary>
+    public required long ModelVersionId { get; init; }
 
     /// <summary>The model's variables.</summary>
     public required IReadOnlyList<VariableRecord> Variables { get; init; }

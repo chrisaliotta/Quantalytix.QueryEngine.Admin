@@ -2,27 +2,30 @@ using Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 using Quantalytix.QueryEngine.Admin.Application.Dimensions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Reports;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Bridges;
+using Quantalytix.QueryEngine.Admin.Tests.CalculationModels;
+using Quantalytix.QueryEngine.Admin.Tests.Datasets;
 using Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using static Quantalytix.QueryEngine.Admin.Tests.CalculationModels.ModelRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Datasets.DatasetRows;
-using static Quantalytix.QueryEngine.Admin.Tests.Releases.ReleaseRows;
+using static Quantalytix.QueryEngine.Admin.Tests.Support.CatalogRows;
 using static Quantalytix.QueryEngine.Admin.Tests.Reports.ReportRows;
 
 namespace Quantalytix.QueryEngine.Admin.Tests.Reports;
 
 /// <summary>
-/// The tables the report rules read, seeded with one enabled report that resolves. Release 900 is active and pins GL version 11,
+/// The tables the report rules read, seeded with one enabled report that resolves. The live snapshot holds GL version 11,
 /// whose <c>gl_account</c> binds role <c>gl_account</c> of account dimension 800, whose <c>as_of_date</c> is a time binding and
 /// whose <c>region</c> binds role <c>region</c> of region dimension 600. Report <c>balance_sheet</c> over dimension 500 reads model
 /// 40, which has variable <c>balance</c> and calculated measure <c>yield</c>. The report returns <c>balance</c> in column
 /// <c>amount</c>, scopes it to member <c>assets</c>, fills it from source <c>gl</c>, which reads GL's <c>balance</c> with the row
 /// keys <c>gl_account</c> holds, picks that source in the profile <c>base</c> it defaults to, and breaks out by calculation
 /// dimension <c>region</c> on the region role. Version 501 of dimension 500 is its one version, with <c>total</c> at the root and
-/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but is not pinned. Tests
+/// <c>assets</c> under it; bridge 95 leads from accounts into dimension 500. The loans dataset exists but the snapshot holds no version of it. Tests
 /// change rows to break one thing.
 /// </summary>
 internal sealed class ReportGraphFixture
@@ -33,10 +36,10 @@ internal sealed class ReportGraphFixture
     /// <summary>The loans dataset.</summary>
     public const long LoansDatasetId = 2;
 
-    /// <summary>The GL version the release pins.</summary>
+    /// <summary>GL's live version.</summary>
     public const long GlVersionId = 11;
 
-    /// <summary>The loans version, which a test can pin.</summary>
+    /// <summary>The loans version, which a test can add to the live snapshot.</summary>
     public const long LoansVersionId = 21;
 
     /// <summary>The GL source.</summary>
@@ -57,22 +60,24 @@ internal sealed class ReportGraphFixture
     /// <summary>The region role GL's <c>region</c> binds, which the region calculation dimension reads.</summary>
     public const long RegionRoleId = 86;
 
-    /// <summary>The database info: release 900 is active.</summary>
+    /// <summary>The database info.</summary>
     public InMemoryTableGateway<DatabaseInfoRecord> DatabaseInfo { get; } = new(new DatabaseInfoRecord
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 12,
+        MetadataSchemaVersion = 19,
         SemanticRevision = 1,
-        ActiveSemanticReleaseId = SemanticReleaseId,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
     });
 
-    /// <summary>The release pins GL v11.</summary>
-    public InMemoryTableGateway<ReleaseDatasetRecord> Manifest { get; } = new(Pin(GlDatasetId, GlVersionId));
+    /// <summary>The live snapshot.</summary>
+    public InMemoryTableGateway<SnapshotRecord> Snapshots { get; } = new(SnapshotRows.Live());
 
-    /// <summary>The balance sheet report, which defaults to the base profile.</summary>
-    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(Report() with { DefaultProfileKey = "base" });
+    /// <summary>The balance sheet report.</summary>
+    public InMemoryTableGateway<ReportRecord> Reports { get; } = new(Report());
+
+    /// <summary>The report's live version, which defaults to the base profile.</summary>
+    public InMemoryTableGateway<ReportVersionRecord> ReportVersions { get; } = new(ReportRows.Version() with { DefaultProfileKey = "base" });
 
     /// <summary>The amount column, which returns the balance variable.</summary>
     public InMemoryTableGateway<ReportColumnRecord> Columns { get; } = new(Column(1, "amount", ReportValueKinds.Variable, "balance", 1));
@@ -121,6 +126,9 @@ internal sealed class ReportGraphFixture
     /// <summary>Model 40.</summary>
     public InMemoryTableGateway<CalculationModelRecord> Models { get; } = new(Model());
 
+    /// <summary>Model 40's live version.</summary>
+    public InMemoryTableGateway<CalculationModelVersionRecord> ModelVersions { get; } = new(ModelRows.Version());
+
     /// <summary>The balance variable.</summary>
     public InMemoryTableGateway<VariableRecord> Variables { get; } = new(Variable(51, "balance"));
 
@@ -139,7 +147,10 @@ internal sealed class ReportGraphFixture
     /// <summary>The GL and loans datasets.</summary>
     public InMemoryTableGateway<DatasetRecord> Datasets { get; } = new(Dataset(GlDatasetId, "gl"), Dataset(LoansDatasetId, "loans"));
 
-    /// <summary>GL's fields, and the loans fields a test reads once it pins loans; <c>memo</c> is neither filterable nor groupable.</summary>
+    /// <summary>GL's live version.</summary>
+    public InMemoryTableGateway<DatasetVersionRecord> DatasetVersions { get; } = new(DatasetRows.Version(GlVersionId) with { DatasetId = GlDatasetId });
+
+    /// <summary>GL's fields, and the loans fields a test reads once it holds loans; <c>memo</c> is neither filterable nor groupable.</summary>
     public InMemoryTableGateway<FieldRecord> Fields { get; } = new(
         ColumnField(1, GlVersionId, "gl_account", "gl_account"),
         ColumnField(2, GlVersionId, "as_of_date", "as_of_date", DataTypes.Date),
@@ -164,15 +175,15 @@ internal sealed class ReportGraphFixture
     /// <summary>The bridge from accounts into the report's dimension.</summary>
     public InMemoryTableGateway<BridgeRecord> Bridges { get; } = new(BridgeRows.Bridge(AccountBridgeId, AccountDimensionId, ReportDimensionId));
 
-    /// <summary>The bridge's one version, published.</summary>
+    /// <summary>The bridge's live version.</summary>
     public InMemoryTableGateway<BridgeVersionRecord> BridgeVersions { get; } = new(
-        BridgeRows.BridgeVersion(AccountBridgeVersionId, AccountBridgeId, 1, Cardinalities.ManyToMany, AllocationModes.Replicate, PublicationStatuses.Published));
+        BridgeRows.BridgeVersion(AccountBridgeVersionId, AccountBridgeId, Cardinalities.ManyToMany, AllocationModes.Replicate));
 
     /// <summary>The bridge's rules; none until a test makes GL a bridge source.</summary>
     public InMemoryTableGateway<BridgeMappingRecord> BridgeMappings { get; } = new();
 
-    /// <summary>Version 501 of the report dimension, its one version, published.</summary>
-    public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(501, ReportDimensionId, 1, PublicationStatuses.Published));
+    /// <summary>Version 501 of the report dimension, its live version.</summary>
+    public InMemoryTableGateway<DimensionVersionRecord> DimensionVersions { get; } = new(DimensionRows.Version(501, ReportDimensionId));
 
     /// <summary>No levels.</summary>
     public InMemoryTableGateway<DimensionLevelRecord> Levels { get; } = new();
@@ -182,12 +193,12 @@ internal sealed class ReportGraphFixture
         DimensionRows.Member(1, 501, "total"),
         DimensionRows.Member(2, 501, "assets", parentId: 1));
 
-    /// <summary>Pins loans v21, with a binding of its <c>gl_account</c> to the account role and a time binding of its as-of date.</summary>
+    /// <summary>Adds loans v21 to the live snapshot, with a binding of its <c>gl_account</c> to the account role and a time binding of its as-of date.</summary>
     /// <returns>A task that completes when the rows are stored.</returns>
-    public async Task PinLoansAsync()
+    public async Task HoldLoansAsync()
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
-        await Manifest.InsertAsync(Pin(LoansDatasetId, LoansVersionId), cancellationToken);
+        await DatasetVersions.InsertAsync(DatasetRows.Version(LoansVersionId) with { DatasetId = LoansDatasetId }, cancellationToken);
         await Bindings.InsertAsync(Binding(34, LoansVersionId, AccountRoleId, AccountDimensionId, BindingKinds.Direct) with { SourceFieldId = 5 }, cancellationToken);
         await Bindings.InsertAsync(Binding(35, LoansVersionId, null, 700, BindingKinds.Time) with { SourceFieldId = 6 }, cancellationToken);
         await TimeBindings.InsertAsync(TimeBinding(35), cancellationToken);
@@ -199,8 +210,15 @@ internal sealed class ReportGraphFixture
     public ReportGraphReader Reader()
     {
         return new ReportGraphReader(
-            Reports, Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables, LeftOut,
-            BridgeMappings, Dimensions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, ReleaseDatasets(), PublishedDimensions());
+            Versions(), Owned(), Members, Columns, Lines, MemberOptions, Styles, RowParameters, Scopes, Scenarios, Profiles, Picks, Sources, SourceVariables, LeftOut,
+            BridgeMappings, Dimensions, ModelVersions, Variables, CalculatedMeasures, ParameterService(), Datasets, Roles, SnapshotDatasets(), DimensionKeys());
+    }
+
+    /// <summary>The reader of reports with their versions over these tables.</summary>
+    /// <returns>The reader.</returns>
+    public ReportVersionReader Versions()
+    {
+        return new ReportVersionReader(Reports, ReportVersions, new LiveSnapshot(Snapshots));
     }
 
     /// <summary>The parameters of model 40 over these tables.</summary>
@@ -224,18 +242,18 @@ internal sealed class ReportGraphFixture
         return new OwnedVersions(DimensionVersions, BridgeVersions);
     }
 
-    /// <summary>The release dataset reader over these tables.</summary>
-    /// <returns>A reader of the pinned dataset versions.</returns>
-    public ReleaseDatasets ReleaseDatasets()
+    /// <summary>The snapshot dataset reader over these tables.</summary>
+    /// <returns>A reader of a snapshot's dataset versions.</returns>
+    public SnapshotDatasets SnapshotDatasets()
     {
-        return new ReleaseDatasets(DatabaseInfo, Manifest, Datasets, Fields, Bindings, TimeBindings, Measures);
+        return new SnapshotDatasets(Datasets, DatasetVersions, Fields, Bindings, TimeBindings, Measures);
     }
 
-    /// <summary>The published dimension reader over these tables.</summary>
-    /// <returns>A reader of the dimensions' published versions.</returns>
-    public PublishedDimensionReader PublishedDimensions()
+    /// <summary>The snapshot dimension reader over these tables.</summary>
+    /// <returns>A reader of the dimensions' versions in a snapshot.</returns>
+    public SnapshotDimensionReader DimensionKeys()
     {
-        return new PublishedDimensionReader(DimensionVersions, Levels, Members, new PublicationSet());
+        return new SnapshotDimensionReader(DimensionVersions, Levels, Members);
     }
 
     /// <summary>Every report rule, over these tables.</summary>
@@ -251,27 +269,26 @@ internal sealed class ReportGraphFixture
         return new ReportRules(rules, Reader());
     }
 
-    /// <summary>Checks the report as it stands against one rule, in the scope of the active release.</summary>
+    /// <summary>Checks the report's live version as it stands against one rule, in the scope of the live snapshot.</summary>
     /// <param name="rule">The rule.</param>
     /// <returns>The rule's violations.</returns>
     public async Task<IReadOnlyList<RuleViolation>> EvaluateAsync(IReportRule rule)
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
         var reader = Reader();
-        var report = await reader.ReadAsync(await Reports.GetAsync(new { ReportId }, cancellationToken), cancellationToken);
-        return [.. rule.Evaluate(report, await reader.ScopeAsync([report], null, cancellationToken))];
+        var report = await reader.ReadAsync(await Versions().LiveAsync(ReportId, cancellationToken), cancellationToken);
+        return [.. rule.Evaluate(report, await reader.ScopeAsync([report], SnapshotRows.LiveId, cancellationToken))];
     }
 
-    /// <summary>Checks the enabled reports a release being validated serves against one rule.</summary>
+    /// <summary>Checks the enabled reports that read GL against one rule, as a commit to GL's live version does.</summary>
     /// <param name="rule">The rule.</param>
-    /// <param name="semanticReleaseId">The release being validated.</param>
     /// <returns>The rule's violations.</returns>
-    public async Task<IReadOnlyList<RuleViolation>> EvaluateReleaseAsync(IReportRule rule, long semanticReleaseId)
+    public async Task<IReadOnlyList<RuleViolation>> EvaluateGlReadersAsync(IReportRule rule)
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
         var reader = Reader();
-        var reports = await reader.EnabledAsync(cancellationToken);
-        var scope = await reader.ScopeAsync(reports, semanticReleaseId, cancellationToken);
+        var reports = await reader.EnabledReadingAsync(SnapshotRows.LiveId, GlDatasetId, cancellationToken);
+        var scope = await reader.ScopeAsync(reports, SnapshotRows.LiveId, cancellationToken);
         return [.. reports.SelectMany(report => rule.Evaluate(report, scope))];
     }
 }

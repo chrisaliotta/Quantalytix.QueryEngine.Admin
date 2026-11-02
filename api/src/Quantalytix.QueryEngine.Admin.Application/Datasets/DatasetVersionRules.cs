@@ -1,18 +1,19 @@
+using Quantalytix.QueryEngine.Admin.Application.Changes;
+using Quantalytix.QueryEngine.Admin.Application.Snapshots;
 using Quantalytix.QueryEngine.Admin.Application.Versioning;
-using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 
 /// <summary>
-/// The dataset snapshot rules as the version workflow's one <c>dataset_version</c> publication rule, so validate and publish run on
-/// the stored version the same rules a change set's preview runs on its pending result.
+/// The dataset snapshot rules as the dataset kind's <see cref="IVersionRules"/>, so restore runs on a stored version the same rules
+/// a change set's commit runs on its pending result.
 /// </summary>
 /// <param name="loader">Reads the version as a snapshot.</param>
 /// <param name="rules">Runs every dataset rule.</param>
-public sealed class DatasetVersionRules(DatasetSnapshotLoader loader, DatasetRules rules) : IPublicationRule
+public sealed class DatasetVersionRules(DatasetSnapshotLoader loader, SnapshotRuleRunner<DatasetSnapshot> rules) : IVersionRules
 {
-    /// <summary><c>dataset_version</c>.</summary>
-    public string Kind => VersionKinds.DatasetVersion;
+    /// <summary><c>dataset</c>.</summary>
+    public string Kind => SnapshotKinds.Dataset;
 
     /// <summary>Runs every dataset rule on a stored version.</summary>
     /// <param name="versionId">The dataset version.</param>

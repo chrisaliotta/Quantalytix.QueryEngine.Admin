@@ -8,7 +8,7 @@ using Quantalytix.QueryEngine.Admin.WebApi.Errors;
 
 namespace Quantalytix.QueryEngine.Admin.WebApi.Datasets;
 
-/// <summary>The dataset manager (blueprint 11): the list, create, the dataset, its delete and delete check, and new drafts.</summary>
+/// <summary>The dataset manager (blueprint 11): the list, create, the dataset, and its delete and delete check.</summary>
 [ApiController]
 [Route("api/tenants/{tenantId}/datasets")]
 [Authorize(Policy = AdminPolicies.TenantAccess)]
@@ -26,12 +26,12 @@ public sealed class DatasetsController(DatasetQueries queries, DatasetCommands c
         return Ok(await queries.ListAsync(cancellationToken));
     }
 
-    /// <summary>Creates a dataset over an existing table or view, or over a new managed table, with draft version 1.</summary>
+    /// <summary>Creates a dataset over an existing table or view, or over a new managed table, with its live version.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="input">The new dataset.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The dataset.</returns>
-    /// <response code="201">Created with draft version 1.</response>
+    /// <response code="201">Created with its live version.</response>
     /// <response code="400">The input breaks a field rule.</response>
     /// <response code="409">The dataset key or the table name is taken.</response>
     [HttpPost]
@@ -56,7 +56,7 @@ public sealed class DatasetsController(DatasetQueries queries, DatasetCommands c
         return Ok(await queries.GetAsync(datasetId, cancellationToken));
     }
 
-    /// <summary>Deletes a dataset whose versions are all drafts or validated and that no release lists.</summary>
+    /// <summary>Deletes a dataset with its live version when no frozen snapshot holds it.</summary>
     /// <param name="tenantId">The tenant.</param>
     /// <param name="datasetId">The dataset.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
@@ -78,30 +78,12 @@ public sealed class DatasetsController(DatasetQueries queries, DatasetCommands c
     /// <param name="datasetId">The dataset.</param>
     /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
     /// <returns>The delete check.</returns>
-    /// <response code="200">The delete check; codes <c>has_published_versions</c> and <c>referenced_by_release</c>.</response>
+    /// <response code="200">The delete check; code <c>referenced_by_snapshot</c>.</response>
     [HttpGet("{datasetId:long}/delete-check")]
     [ProducesResponseType<DeleteCheck>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DeleteCheck>> CheckDelete(string tenantId, long datasetId, CancellationToken cancellationToken)
     {
         return Ok(await queries.DatasetDeleteCheckAsync(datasetId, cancellationToken));
-    }
-
-    /// <summary>Creates a draft version, empty or cloned from another version of the dataset.</summary>
-    /// <param name="tenantId">The tenant.</param>
-    /// <param name="datasetId">The dataset.</param>
-    /// <param name="input">The draft's source object, or the version to clone.</param>
-    /// <param name="cancellationToken">Cancelled when the client disconnects.</param>
-    /// <returns>The draft.</returns>
-    /// <response code="201">The new draft.</response>
-    /// <response code="400">The input breaks a field rule, or the clone source is not a version of the dataset.</response>
-    /// <response code="409">The dataset already has an open (draft or validated) version.</response>
-    [HttpPost("{datasetId:long}/versions")]
-    [ProducesResponseType<DatasetVersionSummary>(StatusCodes.Status201Created)]
-    [ProducesResponseType<Problem>(StatusCodes.Status400BadRequest, ProblemWriter.ContentType)]
-    [ProducesResponseType<Problem>(StatusCodes.Status409Conflict, ProblemWriter.ContentType)]
-    public async Task<ActionResult<DatasetVersionSummary>> CreateDraft(string tenantId, long datasetId, DatasetCreateDraftInput input, CancellationToken cancellationToken)
-    {
-        return Created(await commands.CreateDraftAsync(datasetId, input, cancellationToken));
     }
 
     /// <summary>201 with the created value, or the refusal's problem.</summary>

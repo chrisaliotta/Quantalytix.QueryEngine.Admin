@@ -11,7 +11,4 @@ public record TenantInfo
 
     /// <summary>Advances once per commit or command that changes what the engine reads.</summary>
     public required long SemanticRevision { get; init; }
-
-    /// <summary>The release runtime queries use; null when the tenant has none.</summary>
-    public required long? ActiveReleaseId { get; init; }
 }
