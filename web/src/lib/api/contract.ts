@@ -14,14 +14,17 @@ export const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
 /** `DottedKey`: dataset, calculation model, report, mapping set and bridge keys (OI-29). */
 export const DOTTED_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.]*$/
 
-export type VersionStatus = 'draft' | 'validated' | 'published' | 'retired'
+/** Where a version of any kind sits: every version belongs to one snapshot, the live one (edited in place) or a frozen one (read-only). */
+export interface SnapshotMembership {
+  snapshotId: Id
+  isLive: boolean
+}
 
 /* ───────────────────────── Vocabularies read by more than one module ───────────────────────── */
 
 export type DimensionKind = 'categorical' | 'hierarchical' | 'range' | 'time'
 export type DimensionPurpose = 'analytical' | 'report'
 export type DefinitionOrigin = 'system' | 'user'
-export type AssumptionSetStatus = 'active' | 'historical'
 export type BindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 export type Periodicity = 'day' | 'month' | 'quarter' | 'year'
 export type MeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized'
@@ -56,7 +59,7 @@ export interface Violation {
 }
 
 export interface ViolationTarget {
-  /** Module-specific area: a dataset tab, a dimension tab, a release manifest row, a report section. */
+  /** Module-specific area: a dataset tab, a dimension tab, a report section. */
   area: string
   itemId?: Id
   itemKey?: string
@@ -65,13 +68,6 @@ export interface ViolationTarget {
 }
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem }
-
-/** Answer of a read-only `check`. */
-export interface ValidationReport {
-  versionId: Id
-  checkedAt: string
-  violations: Violation[]
-}
 
 /** Answer of `GET <resource>/delete-check`; a blocked `DELETE` answers 409 with the same violations. */
 export interface DeleteCheck {
@@ -85,9 +81,6 @@ export interface DeleteCheck {
 export type DeleteBlockerCode =
   | 'not_removable'
   | 'system_dimension'
-  | 'published_version'
-  | 'live_version'
-  | 'has_published_versions'
   | 'has_children'
   | 'required_by_profile'
   | 'assigned_by_bands'
@@ -100,23 +93,11 @@ export type DeleteBlockerCode =
   | 'referenced_by_calculation_dimension'
   | 'referenced_by_report_scenario'
   | 'referenced_by_report_source'
-  | 'referenced_by_assumption_set'
-  | 'referenced_by_release'
+  | 'referenced_by_snapshot'
   | 'referenced_by_report'
 
 export interface DeleteBlocker extends Violation {
   code: DeleteBlockerCode
-}
-
-/** Body of a freeze for dimensions, mapping sets and bridges (OI-14). */
-export interface FreezeInput {
-  note: string | null
-}
-
-/** The port's freeze answer for any living kind; `live` is null when a rule failed and nothing changed. */
-export interface FreezeResult<V> {
-  report: ValidationReport
-  live: V | null
 }
 
 /** How a role's members group. */
@@ -150,7 +131,7 @@ export interface ChangeSetRequest<Op> {
   operations: Op[]
 }
 
-/** 200 answer of a preview: the aggregate after the operations, and the rule findings that do not block saving. */
+/** 200 answer of a preview: the aggregate after the operations, and the commit-rule findings, which refuse the commit while any remains. */
 export interface ChangeSetPreview<State> {
   state: State
   violations: Violation[]

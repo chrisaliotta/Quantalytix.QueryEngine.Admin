@@ -49,6 +49,7 @@ const OPTS = { revalidateOnFocus: false }
 export const modelKeys = {
   list: ['models', 'list'] as const,
   model: (id: Id) => ['models', 'model', id] as const,
+  version: (versionId: Id) => ['models', 'version', versionId] as const,
   deleteCheck: (id: Id) => ['models', 'deleteCheck', id] as const,
   formula: (id: Id, formula: string, selfKey: string | null) => ['models', 'formula', id, formula, selfKey] as const,
 }
@@ -61,6 +62,12 @@ export function useModelList() {
 export function useModelDocument(id: Id | null) {
   const api = useModelsApi()
   return useSWR(id ? modelKeys.model(id) : null, () => unwrap(api.getModel(id!)), { ...OPTS, keepPreviousData: true })
+}
+
+/** One model version, live or frozen; a null id skips the request. */
+export function useModelVersion(versionId: Id | null) {
+  const api = useModelsApi()
+  return useSWR(versionId ? modelKeys.version(versionId) : null, () => unwrap(api.getModelVersion(versionId!)), OPTS)
 }
 
 /** Fetches blockers when a delete dialog opens; a null id skips the request. */

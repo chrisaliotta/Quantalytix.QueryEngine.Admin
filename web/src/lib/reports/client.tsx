@@ -50,6 +50,7 @@ const OPTS = { revalidateOnFocus: false }
 export const reportKeys = {
   list: ['reports', 'list'] as const,
   report: (id: Id) => ['reports', 'report', id] as const,
+  version: (versionId: Id) => ['reports', 'version', versionId] as const,
   diagnostics: (id: Id) => ['reports', 'diagnostics', id] as const,
   unmapped: (id: Id, sourceKey: string) => ['reports', 'unmapped', id, sourceKey] as const,
 }
@@ -62,6 +63,12 @@ export function useReportList() {
 export function useReportDocument(id: Id | null) {
   const api = useReportsApi()
   return useSWR(id ? reportKeys.report(id) : null, () => unwrap(api.getReport(id!)), { ...OPTS, keepPreviousData: true })
+}
+
+/** One report version, live or frozen; a null id skips the request. */
+export function useReportVersion(versionId: Id | null) {
+  const api = useReportsApi()
+  return useSWR(versionId ? reportKeys.version(versionId) : null, () => unwrap(api.getReportVersion(versionId!)), OPTS)
 }
 
 /** The open report's readiness, coverage and resolution: the pending state's while edits are staged (OI-05). */

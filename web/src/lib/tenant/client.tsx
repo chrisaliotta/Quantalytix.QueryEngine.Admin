@@ -26,7 +26,7 @@ export function useTenantCatalog() {
   return useSWR(tenantKeys.catalog, () => tenantApi.getCatalog(), OPTS)
 }
 
-/** Members of a dimension's published version, null when none is published; a null id skips the request. */
+/** Members of a dimension's live version, null when the dimension does not exist; a null id skips the request. */
 export function usePublishedMembers(dimensionId: Id | null) {
   return useSWR(dimensionId ? tenantKeys.publishedMembers(dimensionId) : null, () => tenantApi.getPublishedMembers(dimensionId!), OPTS)
 }

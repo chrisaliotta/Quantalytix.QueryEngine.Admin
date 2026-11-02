@@ -8,11 +8,9 @@ import type {
   DeleteCheck,
   DimensionKind,
   DimensionPurpose,
-  FreezeResult,
   Id,
   Periodicity,
-  ValidationReport,
-  VersionStatus,
+  SnapshotMembership,
   Violation,
   ViolationTarget,
 } from '@/lib/api/contract'
@@ -23,7 +21,7 @@ import type {
  * adapter in ./mock implements it in memory, and an HTTP adapter can replace it without touching the UI.
  */
 
-export type { ApiResult, DefinitionOrigin, DeleteBlocker, DeleteBlockerCode, DeleteCheck, DimensionKind, DimensionPurpose, FreezeInput, FreezeResult, Id, Periodicity, Problem, ValidationReport, VersionStatus, Violation } from '@/lib/api/contract'
+export type { ApiResult, DefinitionOrigin, DeleteBlocker, DeleteBlockerCode, DeleteCheck, DimensionKind, DimensionPurpose, Id, Periodicity, Problem, Violation } from '@/lib/api/contract'
 
 /* ───────────────────────── vocabularies ───────────────────────── */
 
@@ -54,11 +52,7 @@ export interface DimensionViolation extends Violation {
   target?: ViolationTarget & { area: DimensionTab }
 }
 
-export interface DimensionValidationReport extends ValidationReport {
-  violations: DimensionViolation[]
-}
-
-export type DimensionUsageKind = 'dataset_binding' | 'mapping_set' | 'bridge' | 'calculation_dimension' | 'report_scenario' | 'report_source' | 'assumption_set'
+export type DimensionUsageKind = 'dataset_binding' | 'mapping_set' | 'bridge' | 'calculation_dimension' | 'report_scenario' | 'report_source'
 
 /* ───────────────────────── profiles ───────────────────────── */
 
@@ -117,28 +111,17 @@ export interface DimensionOwnerReport {
   reportName: string
 }
 
-export interface DimensionVersion {
+/** The live version (edited in place) or a frozen snapshot's version (read-only). */
+export interface DimensionVersion extends SnapshotMembership {
   id: Id
   dimensionId: Id
-  versionNumber: number
-  status: VersionStatus
   rangeDataType: RangeDataType | null
   createdAt: string
-  publishedAt: string | null
-  retiredAt: string | null
-  supersededBy: number | null
-  /** Why the version was frozen, e.g. "FY26 close". */
-  freezeNote: string | null
 }
 
-export interface DimensionVersionSummary {
+export interface DimensionVersionSummary extends SnapshotMembership {
   id: Id
-  versionNumber: number
-  status: VersionStatus
-  publishedAt: string | null
-  retiredAt: string | null
-  supersededBy: number | null
-  freezeNote: string | null
+  createdAt: string
   memberCount: number
 }
 
@@ -193,9 +176,7 @@ export interface DimensionUsageReference {
   roleKey?: string
   /** Member keys this object names; deleting them is blocked and the live version must keep them. */
   memberKeys?: string[]
-  /** For assumption sets: the version number pinned. */
-  pinsVersion?: number
-  /** Dataset bindings: dataset version label for blocker phrasing, e.g. "'loans.details' v3". */
+  /** Display label for blocker phrasing, when the name does not say it. */
   label?: string
 }
 
@@ -204,9 +185,12 @@ export interface DimensionUsageReference {
 export interface DimensionListItem extends Dimension {
   profile: DimensionProfile | null
   roles: DimensionRole[]
+  /** One per snapshot holding the dimension: the live version first, then frozen ones newest first. */
   versions: DimensionVersionSummary[]
+  /** The live version, which change sets edit. */
+  liveVersionId: Id
   /** Members in the live version. */
-  publishedMemberCount: number | null
+  liveMemberCount: number
 }
 
 export interface DimensionDetail extends DimensionListItem {
@@ -229,12 +213,6 @@ export interface DimensionEditState {
 export interface DimensionCreated {
   dimensionId: Id
   versionId: Id
-}
-
-/* ───────────────────────── live-and-frozen versions ───────────────────────── */
-
-export interface DimensionFreezeResult extends FreezeResult<DimensionVersionSummary> {
-  report: DimensionValidationReport
 }
 
 /* ───────────────────────── inputs ───────────────────────── */
@@ -311,7 +289,6 @@ export interface DimensionMemberImportResult {
 
 export type DimensionDeleteTarget =
   | { type: 'dimension'; dimensionId: Id }
-  | { type: 'version'; versionId: Id }
   | { type: 'member'; versionId: Id; memberId: Id }
   | { type: 'level'; versionId: Id; levelId: Id }
   | { type: 'role'; roleId: Id }
@@ -339,15 +316,17 @@ export type DimensionChangeSetCommit = ChangeSetCommit<DimensionEditState>
 
 /* ───────────────────────── the port ───────────────────────── */
 
-/** Edits stage into the dimension's change set and apply on `commitChanges`; see lib/api/changes.ts. */
+/**
+ * Edits stage into the dimension's change set (its identity and live version) and apply on `commitChanges`, which the commit rules
+ * refuse while any finding remains; see lib/api/changes.ts. Frozen versions are read-only.
+ */
 export interface DimensionsApi extends ChangeSetPort {
   /** Analytical dimensions only; report-owned dimensions are reached from their report. */
   listDimensions(origin: DefinitionOrigin): Promise<DimensionListItem[]>
   listAvailableProfiles(): Promise<AvailableDimensionProfile[]>
   getDimension(id: Id): Promise<ApiResult<DimensionDetail>>
+  /** Any version, live or frozen. */
   getVersion(versionId: Id): Promise<ApiResult<DimensionVersionContent>>
-  /** Runs the rules without changing anything. */
-  checkVersion(versionId: Id): Promise<ApiResult<DimensionValidationReport>>
   checkDelete(target: DimensionDeleteTarget): Promise<DeleteCheck>
 
   updateDimension(id: Id, patch: DimensionPatch): Promise<ApiResult<Dimension>>
@@ -370,14 +349,8 @@ export interface DimensionsApi extends ChangeSetPort {
 
   createDimension(input: CreateDimensionInput): Promise<ApiResult<DimensionCreated>>
   defineSystemDimension(profileKey: string): Promise<ApiResult<DimensionCreated>>
+  /** Allowed only while no frozen snapshot holds a version of it. */
   deleteDimension(id: Id): Promise<ApiResult<null>>
-  /**
-   * Freezes the live version as a read-only snapshot and continues in a new live version cloned from it.
-   * Rules run first; on violations nothing changes and `live` is null.
-   */
-  freezeVersion(versionId: Id, note: string | null): Promise<ApiResult<DimensionFreezeResult>>
-  /** Frozen versions only; the live version can't be deleted. */
-  deleteVersion(versionId: Id): Promise<ApiResult<null>>
 }
 
 /** Port methods staged into the dimension change set; each is one `DimensionOperation`. */
@@ -398,7 +371,7 @@ export const DIMENSION_EDITS = [
 ] as const satisfies readonly (keyof DimensionsApi & DimensionOperation['op'])[]
 
 /** Port methods that run on saved state immediately and are refused while edits are pending. */
-export const DIMENSION_COMMANDS = ['createDimension', 'defineSystemDimension', 'deleteDimension', 'freezeVersion', 'deleteVersion'] as const satisfies readonly (keyof DimensionsApi)[]
+export const DIMENSION_COMMANDS = ['createDimension', 'defineSystemDimension', 'deleteDimension'] as const satisfies readonly (keyof DimensionsApi)[]
 
 /* ───────────────────────── shared rules ───────────────────────── */
 
@@ -421,7 +394,6 @@ export const USAGE_KIND_LABEL: Record<DimensionUsageKind, string> = {
   calculation_dimension: 'Calculation dimension',
   report_scenario: 'Report scenario',
   report_source: 'Report source',
-  assumption_set: 'Assumption set',
 }
 
 export const POLICY_TEXT: Record<DimensionEditPolicy, (owner: string) => string> = {
@@ -447,18 +419,7 @@ export function tabsForKind(kind: DimensionKind, purpose: DimensionPurpose = 'an
 /** Tabs whose content is versioned on its own, independent of the dimension version. */
 export const SELF_VERSIONED_TABS: DimensionTab[] = ['mappings', 'bridges']
 
-/**
- * Dimensions have one live version (stored as `published`) that is edited in place, plus frozen snapshots
- * (stored as `retired`). There are no drafts.
- */
-export const VERSION_LABEL: Partial<Record<VersionStatus, string>> = { published: 'live', retired: 'frozen' }
-export const versionLabel = (s: VersionStatus) => VERSION_LABEL[s] ?? s
-
 /** Only the live version is editable, and only when the dimension isn't locked. */
-export function isVersionEditable(status: VersionStatus, policy: DimensionEditPolicy | null) {
-  return policy !== 'locked' && status === 'published'
-}
-
-export function defaultVersion(versions: DimensionVersionSummary[]) {
-  return versions.find((v) => v.status === 'published') ?? [...versions].sort((a, b) => b.versionNumber - a.versionNumber)[0]
+export function isVersionEditable(version: SnapshotMembership, policy: DimensionEditPolicy | null) {
+  return policy !== 'locked' && version.isLive
 }

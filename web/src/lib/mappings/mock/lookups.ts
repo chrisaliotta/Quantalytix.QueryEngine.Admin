@@ -9,16 +9,13 @@ const delay = () => new Promise((r) => setTimeout(r, 60))
  */
 export function createMockMappingLookups(): MappingLookups {
   const db = createSeed()
-  const liveOf = (dimensionId: string) => db.versions.find((v) => v.dimensionId === dimensionId && v.status === 'published')
+  const liveOf = (dimensionId: string) => db.versions.find((v) => v.dimensionId === dimensionId && v.isLive)
 
   return {
     async getCatalog() {
       await delay()
       return {
-        dimensions: db.dimensions.map(({ id, key, displayName, kind, purpose }) => {
-          const live = liveOf(id)
-          return { id, key, displayName, kind, purpose, publishedVersionId: live?.id ?? null, publishedVersionNumber: live?.versionNumber ?? null }
-        }),
+        dimensions: db.dimensions.map(({ id, key, displayName, kind, purpose }) => ({ id, key, displayName, kind, purpose, liveVersionId: liveOf(id)!.id })),
       }
     },
     async getPublishedMembers(dimensionId) {

@@ -18,8 +18,8 @@ function duplicates<T>(items: T[], key: (x: T) => string) {
   return items.filter((x) => (seen.get(key(x)) ?? 0) > 1)
 }
 
-/** Every publication rule over one version. Runs on check, validate and publish. */
-export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, columnsOf: (name: string) => DatasetSourceColumn[] | null): DatasetViolation[] {
+/** Every commit rule over one version. A commit that leaves any finding is refused. */
+export function commitViolations(v: StoredVersion, catalog: TenantCatalog, columnsOf: (name: string) => DatasetSourceColumn[] | null): DatasetViolation[] {
   const out: DatasetViolation[] = []
   const push = (code: string, area: DatasetTab, item: { id: string; key: string } | null, message: string) =>
     out.push({ code, message, target: item ? { area, itemId: item.id, itemKey: item.key } : { area } })
@@ -118,7 +118,7 @@ export function publicationViolations(v: StoredVersion, catalog: TenantCatalog, 
         push('bridge_binding_route', 'bindings', item, loops ? 'The chain of source bindings loops.' : "The bridge must lead from the source binding's dimension into the role's dimension.")
     }
     if (b.unmappedBehavior === 'unknown' && b.unknownMemberKey && d && !publishedMembers[d.id]?.members.some((m) => m.key === b.unknownMemberKey))
-      push('unknown_members_in_version', 'bindings', item, `'${b.unknownMemberKey}' is not a member of ${d.displayName}'s published version.`)
+      push('unknown_members_in_version', 'bindings', item, `'${b.unknownMemberKey}' is not a member of ${d.displayName}'s live version.`)
     if (b.bindingKind === 'time' && b.time) {
       const native = b.time.nativePeriodicity
       const finer = native ? b.time.allowedPeriodicities.filter((p) => PERIOD_RANK[p] < PERIOD_RANK[native]) : []

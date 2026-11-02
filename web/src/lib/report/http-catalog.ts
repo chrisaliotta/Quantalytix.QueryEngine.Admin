@@ -33,7 +33,6 @@ function dimensionOf(dim: TenantCatalogDimension, members: PublishedMember[]): D
   return {
     key: dim.key,
     name: dim.displayName,
-    version: dim.publishedVersionNumber ?? 0,
     levels: levels.map((key) => ({ key, label: key })),
     members: tree<DimNode>(members, (m, children) => ({
       key: m.key,
@@ -44,8 +43,6 @@ function dimensionOf(dim: TenantCatalogDimension, members: PublishedMember[]): D
   }
 }
 
-/** The version the editor reads a dataset's shape from: the one the active release pins, else the newest published, else the newest. */
-const versionOf = (d: DatasetListItem) => d.activeVersionId ?? d.versions.find((v) => v.status === 'published')?.id ?? d.versions[0]?.id
 
 function datasetOf(item: DatasetListItem, version: DatasetVersion, roleKey: Map<Id, string>): Dataset {
   const fieldKey = new Map(version.fields.map((f) => [f.id, f.key]))
@@ -78,7 +75,7 @@ function register(catalog: TenantCatalog, roles: TenantCatalogRole[], members: M
 
 export async function loadReportCatalog(): Promise<ReportCatalog> {
   const catalog = await tenantApi.getCatalog()
-  const analytical = new Set(catalog.dimensions.filter((d) => d.ownerReportId === null && d.publishedVersionId !== null).map((d) => d.id))
+  const analytical = new Set(catalog.dimensions.filter((d) => d.ownerReportId === null).map((d) => d.id))
   const roles = catalog.roles.filter((r) => analytical.has(r.dimensionId))
   const roleKey = new Map(roles.map((r) => [r.id, r.key]))
 
@@ -86,8 +83,8 @@ export async function loadReportCatalog(): Promise<ReportCatalog> {
   const members = new Map<Id, PublishedMember[]>(published)
 
   const datasetsApi = createHttpDatasetsApi(tenantHttp)
-  const items = (await datasetsApi.listDatasets()).filter((d) => versionOf(d))
-  const versions = await Promise.all(items.map((d) => unwrap(datasetsApi.getVersion(versionOf(d)!))))
+  const items = await datasetsApi.listDatasets()
+  const versions = await Promise.all(items.map((d) => unwrap(datasetsApi.getVersion(d.liveVersionId))))
 
   register(catalog, roles, members)
   return {

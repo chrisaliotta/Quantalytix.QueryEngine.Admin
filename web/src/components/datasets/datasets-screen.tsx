@@ -8,7 +8,7 @@ import { ListPage } from '@/components/shell/page-shell'
 import { useDatasetList, useDatasetsApi, useSourceObjects, useVocabularies } from '@/lib/datasets/client'
 import type { DatasetCreateInput, DatasetSourceObjectKind, DatasetSourceObjectStats } from '@/lib/datasets/contract'
 import { DatasetDetail } from './dataset-detail'
-import { FormRow, ProblemBanner, StatusBadge, Td, Th, VocabSelect, useApiCall } from './shared'
+import { FormRow, ProblemBanner, Td, Th, VocabSelect, useApiCall } from './shared'
 
 export function DatasetsScreen({ datasetId, onSelect }: { datasetId: string | null; onSelect: (id: string | null) => void }) {
   if (datasetId) return <DatasetDetail key={datasetId} datasetId={datasetId} onBack={() => onSelect(null)} />
@@ -25,7 +25,7 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <ListPage
       title="Datasets"
-      description="Describe a tenant table or view so the engine can read it: fields, grains, dimension bindings and measures, versioned and published through releases."
+      description="Describe a tenant table or view so the engine can read it: fields, grains, dimension bindings and measures, edited live and checked on every save; snapshots freeze copies."
       actions={
         <>
           <Button variant="outline" onClick={() => setCreating('existing')}>
@@ -50,23 +50,20 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
                 <Th>Source</Th>
                 <Th className="text-right">Records</Th>
                 <Th className="text-right">Size on disk</Th>
-                <Th>Latest version</Th>
-                <Th>Engine reads</Th>
-                <Th className="text-right">Versions</Th>
+                <Th className="text-right">Frozen copies</Th>
                 <Th>Status</Th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {isLoading && (
                 <tr>
-                  <Td colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <Td colSpan={6} className="py-8 text-center text-muted-foreground">
                     Loading datasets…
                   </Td>
                 </tr>
               )}
               {rows.map((d) => {
-                const latest = d.versions[0]
-                const active = d.versions.find((v) => v.id === d.activeVersionId)
+                const live = d.versions[0]
                 return (
                   <tr key={d.id} className="hover:bg-muted/40">
                     <Td>
@@ -75,19 +72,9 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
                         <span className="font-mono text-xs text-muted-foreground">{d.key}</span>
                       </button>
                     </Td>
-                    <Td className="font-mono text-xs">{latest?.sourceObject ?? '—'}</Td>
+                    <Td className="font-mono text-xs">{live.sourceObject}</Td>
                     <StorageCells storage={d.storage} />
-                    <Td>{latest ? <StatusBadge status={latest.status} label={`v${latest.versionNumber} · ${latest.status}`} /> : '—'}</Td>
-                    <Td>
-                      {active ? (
-                        <span className="font-mono text-xs">
-                          v{active.versionNumber} <span className="text-muted-foreground">in {active.releases.find((r) => r.isActive)?.releaseKey}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Not in the active release</span>
-                      )}
-                    </Td>
-                    <Td className="text-right tabular-nums">{d.versions.length}</Td>
+                    <Td className="text-right tabular-nums">{d.versions.length - 1}</Td>
                     <Td>
                       <span className="inline-flex items-center gap-1.5 text-xs">
                         <span aria-hidden className={d.isEnabled ? 'size-2 rounded-full bg-primary' : 'size-2 rounded-full bg-muted-foreground/40'} />
@@ -99,7 +86,7 @@ function DatasetList({ onOpen }: { onOpen: (id: string) => void }) {
               })}
               {!isLoading && !rows.length && (
                 <tr>
-                  <Td colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <Td colSpan={6} className="py-8 text-center text-muted-foreground">
                     {q ? 'No datasets match.' : 'No datasets yet.'}
                   </Td>
                 </tr>
@@ -152,7 +139,7 @@ function StorageCells({ storage }: { storage: DatasetSourceObjectStats | null })
 const CREATE_COPY = {
   existing: {
     title: 'Add existing dataset',
-    description: 'Links a table or view that already exists. Draft version 1 maps every readable column to a field.',
+    description: 'Links a table or view that already exists. Its live version maps every readable column to a field.',
     action: 'Add dataset',
     pending: 'Adding…',
   },

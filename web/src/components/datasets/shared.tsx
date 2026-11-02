@@ -1,13 +1,12 @@
 import { ArrowLeftIcon, LockIcon, OctagonXIcon, PlusIcon, XIcon } from 'lucide-react'
 import { useChangeScope } from '@/components/shell/changes'
 import { useCallback, useId, useState, type MouseEvent, type ReactNode } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useRefreshDatasets } from '@/lib/datasets/client'
 import type { VocabularyTerm } from '@/lib/api/contract'
-import type { ApiResult, DatasetTab, DatasetDependent, Problem, VersionStatus, Violation } from '@/lib/datasets/contract'
+import type { ApiResult, DatasetTab, DatasetDependent, Problem, Violation } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
@@ -54,6 +53,7 @@ export function RowEditActions({
   const scope = useChangeScope()
   const dirty = (scope?.count ?? 0) > 0
   const busy = creating || !!scope?.saving
+  const blocked = !adding && !!scope?.violations.length
   if (!adding && !dirty) {
     return (
       <Button variant="outline" onClick={onStartNew}>
@@ -70,7 +70,7 @@ export function RowEditActions({
       <Button variant="ghost" disabled={busy} onClick={() => (adding ? onCancelNew() : void scope?.discard())}>
         Cancel
       </Button>
-      <Button disabled={busy || (adding && !canCreate)} onClick={save}>
+      <Button disabled={busy || blocked || (adding && !canCreate)} onClick={save} title={blocked ? 'Fix the rule findings before saving' : undefined}>
         {busy ? 'Saving…' : 'Save'}
       </Button>
     </div>
@@ -113,21 +113,6 @@ export function Chip({ children, tone = 'default', className, title }: { childre
     >
       {children}
     </span>
-  )
-}
-
-export const STATUS_TONE: Record<VersionStatus, string> = {
-  draft: 'border-warning/50 bg-warning-muted text-warning-foreground',
-  validated: 'border-primary/40 bg-primary/10 text-primary',
-  published: 'border-transparent bg-primary text-primary-foreground',
-  retired: 'text-muted-foreground',
-}
-
-export function StatusBadge({ status, label }: { status: VersionStatus; label?: string }) {
-  return (
-    <Badge variant="outline" className={cn('capitalize', STATUS_TONE[status])}>
-      {label ?? status}
-    </Badge>
   )
 }
 
@@ -314,31 +299,6 @@ export function ProblemBanner({ problem, onDismiss, onOpen }: { problem: Problem
         >
           <XIcon className="size-4" />
         </button>
-      )}
-    </div>
-  )
-}
-
-export function ReadOnlyBanner({ status, versionNumber, onClone }: { status: VersionStatus; versionNumber: number; onClone?: () => void }) {
-  const why =
-    status === 'validated'
-      ? 'It passed validation and is waiting to be published. Return it to draft to keep editing.'
-      : status === 'published'
-        ? 'Published versions are immutable. Clone it into a new draft to make changes.'
-        : 'Retired versions are kept for reference only.'
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
-      <LockIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-      <p className="min-w-0 flex-1 text-pretty">
-        <span className="font-medium">
-          Version {versionNumber} is {status} and read-only.
-        </span>{' '}
-        <span className="text-muted-foreground">{why}</span>
-      </p>
-      {onClone && status !== 'validated' && (
-        <Button size="sm" variant="outline" onClick={onClone}>
-          Clone into new draft
-        </Button>
       )}
     </div>
   )

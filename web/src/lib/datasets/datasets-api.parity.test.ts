@@ -8,8 +8,8 @@ import { createMockDatasetsApi } from './mock/adapter'
 /**
  * Parity rule (blueprint 00, 02): the mock and HTTP adapters answer the `DatasetsApi` port the same way, so screens built on the
  * mock keep working against the API. Every test runs on the mock; with `QE_LIVE_API=1` it also runs on the HTTP adapter against a
- * live tenant. Live tests create a dataset over an existing table, delete it when they finish, never publish (a published version
- * cannot be deleted) and never assume an id format.
+ * live tenant. Live tests create a dataset over an existing table, delete it when they finish, never capture it into a snapshot
+ * (a dataset a frozen snapshot holds cannot be deleted) and never assume an id format.
  */
 
 const adapters = [
@@ -48,8 +48,8 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     api = await create()
   })
 
-  /** A dataset over the tenant's first table, deleted when the test finishes, with its draft version 1. */
-  async function draftDataset() {
+  /** A dataset over the tenant's first table, deleted when the test finishes, with its live version. */
+  async function liveDataset() {
     const table = (await api.listSourceObjects()).find((s) => s.kind === 'table')!
     const key = uniqueKey()
     const dataset = await unwrap(api.createDataset({ mode: 'existing', key, displayName: key, sourceObjectKind: 'table', sourceObject: table.name }))
@@ -57,19 +57,19 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
       await api.discardChanges()
       await api.deleteDataset(dataset.id)
     })
-    return { dataset, versionId: dataset.versions[0].id }
+    return { dataset, versionId: dataset.liveVersionId }
   }
 
-  /** The key of a field draft version 1 made from a column. */
+  /** The key of a field the live version made from a column. */
   async function columnFieldKey(versionId: Id) {
     return (await unwrap(api.getVersion(versionId))).fields[0].key
   }
 
-  /** A dataset over an existing table starts with draft version 1, whose fields read the table's readable columns. */
-  it('creates a dataset with a draft version 1 over an existing table', async () => {
-    const { dataset, versionId } = await draftDataset()
+  /** A dataset over an existing table starts with only its live version, whose fields read the table's readable columns. */
+  it('creates a dataset with its live version over an existing table', async () => {
+    const { dataset, versionId } = await liveDataset()
 
-    expect(dataset.versions).toMatchObject([{ id: versionId, versionNumber: 1, status: 'draft' }])
+    expect(dataset.versions).toMatchObject([{ id: versionId, isLive: true }])
     const version = await unwrap(api.getVersion(versionId))
     expect(version.fields.length).toBeGreaterThan(0)
     expect(version.fields.every((f) => f.fieldSourceKind === 'column')).toBe(true)
@@ -78,7 +78,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
 
   /** Dataset keys are fixed and unique (D4, OI-36): a second dataset with the same key is refused. */
   it('refuses a taken dataset key', async () => {
-    const { dataset } = await draftDataset()
+    const { dataset } = await liveDataset()
     const table = (await api.listSourceObjects()).find((s) => s.kind === 'table')!
 
     const taken = await api.createDataset({ mode: 'existing', key: dataset.key, displayName: 'Again', sourceObjectKind: 'table', sourceObject: table.name })
@@ -91,7 +91,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
    * the batch, and the commit's `idMap` turns every temporary id into the stored id.
    */
   it('stages a field and a grain over it until commit and maps temporary ids', async () => {
-    const { versionId } = await draftDataset()
+    const { versionId } = await liveDataset()
     const readsKey = await columnFieldKey(versionId)
 
     api.beginChanges()
@@ -110,7 +110,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
 
   /** An identity edit is staged with the version's content: reads show the pending display name until the commit stores it. */
   it('stages an identity edit until commit', async () => {
-    const { dataset, versionId } = await draftDataset()
+    const { dataset, versionId } = await liveDataset()
 
     api.beginChanges()
     const pending = await unwrap(api.updateDataset(dataset.id, { displayName: 'Parity renamed' }))
@@ -124,7 +124,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
 
   /** Discard drops every pending edit; nothing reaches the stored version. */
   it('discards pending edits', async () => {
-    const { versionId } = await draftDataset()
+    const { versionId } = await liveDataset()
     const readsKey = await columnFieldKey(versionId)
 
     api.beginChanges()
@@ -137,7 +137,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
 
   /** Field keys are unique per version (D4): a duplicate is refused as invalid input on `key`. */
   it('refuses a duplicate field key', async () => {
-    const { versionId } = await draftDataset()
+    const { versionId } = await liveDataset()
     const readsKey = await columnFieldKey(versionId)
 
     api.beginChanges()
@@ -151,7 +151,7 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
 
   /** A field a grain reads by id is not deleted, and the version's dependents name the grain (OI-35). */
   it('refuses deleting a field that a grain reads', async () => {
-    const { versionId } = await draftDataset()
+    const { versionId } = await liveDataset()
     const field = (await unwrap(api.getVersion(versionId))).fields[0]
 
     api.beginChanges()
@@ -164,44 +164,42 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     expect(dependents).toContainEqual(expect.objectContaining({ tab: 'grains', itemId: grain.id, blocksDelete: true }))
   })
 
-  /** A dataset has at most one open version (OI-23): another draft while version 1 is a draft is a conflict. */
-  it('refuses a second open version', async () => {
-    const { dataset, versionId } = await draftDataset()
+  /** Live is valid after every commit: a staged edit that breaks a commit rule is reported by the preview and refuses the commit. */
+  it('refuses committing an edit that breaks a commit rule', async () => {
+    const { versionId } = await liveDataset()
 
-    const second = await api.createDraft(dataset.id, { mode: 'clone', fromVersionId: versionId })
+    api.beginChanges()
+    await unwrap(api.saveField(versionId, expressionField('parityBroken', 'parityMissing')))
 
-    expect(second.ok).toBe(false)
-    if (!second.ok) expect(second.problem.status).toBe(409)
+    expect(api.pendingViolations().map((v) => v.code)).toContain('expression_field_references')
+    const refused = await api.commitChanges()
+    expect(refused.ok ? 200 : refused.problem.status).toBe(422)
   })
 
-  /** A draft that no release pins can be deleted (OI-17); its delete check says so. */
-  it('allows deleting an unpinned draft', async () => {
-    const { versionId } = await draftDataset()
+  /** A frozen snapshot's version never changes: an edit staged on it is refused with 409. Live, this needs a captured dataset. */
+  it('refuses editing a frozen version', async () => {
+    const frozen = (await api.listDatasets()).flatMap((d) => d.versions).find((v) => !v.isLive)!
+    const readsKey = await columnFieldKey(frozen.id)
 
-    const check = await api.checkDeleteVersion(versionId)
+    api.beginChanges()
+    const refused = await api.saveField(frozen.id, expressionField('parityFrozen', readsKey))
+    await api.discardChanges()
 
-    expect(check).toMatchObject({ allowed: true, reasons: [] })
+    expect(refused.ok ? 200 : refused.problem.status).toBe(409)
   })
 
-  /**
-   * The engine reads a dataset only through the version the active release pins (D2), so retiring that version is refused with 422
-   * `release_pins_retired_version` and nothing changes. Live, this needs a tenant whose active release pins a dataset version.
-   */
-  it('refuses retiring the version the active release pins', async () => {
-    const pinned = (await api.listDatasets()).find((d) => d.activeVersionId)!
+  /** D10: a dataset a frozen snapshot holds a version of cannot be deleted; its delete check names the snapshot. */
+  it('refuses deleting a dataset a frozen snapshot holds', async () => {
+    const held = (await api.listDatasets()).find((d) => d.versions.some((v) => !v.isLive))!
 
-    const refused = await api.retireVersion(pinned.activeVersionId!)
+    const check = await api.checkDeleteDataset(held.id)
 
-    expect(refused.ok).toBe(false)
-    if (refused.ok) return
-    expect(refused.problem.status).toBe(422)
-    expect(refused.problem.violations?.map((v) => v.code)).toEqual(['release_pins_retired_version'])
-    const after = await unwrap(api.getVersion(pinned.activeVersionId!))
-    expect(after.status).toBe('published')
+    expect(check.allowed).toBe(false)
+    expect(check.reasons.map((r) => r.code)).toContain('referenced_by_snapshot')
   })
 
-  /** A dataset whose versions are all drafts deletes, after which it is not found. */
-  it('deletes a dataset of drafts', async () => {
+  /** A dataset only live holds deletes, after which it is not found. */
+  it('deletes a dataset only live holds', async () => {
     const table = (await api.listSourceObjects()).find((s) => s.kind === 'table')!
     const key = uniqueKey()
     const dataset = await unwrap(api.createDataset({ mode: 'existing', key, displayName: key, sourceObjectKind: 'table', sourceObject: table.name }))

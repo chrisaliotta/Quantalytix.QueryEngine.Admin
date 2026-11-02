@@ -63,13 +63,14 @@ describe.each(adapters)('DimensionsApi port over the $name adapter', ({ create }
     return unwrap(api.getVersion(versionId))
   }
 
-  /** M2: a created user dimension starts with a live version 1 and is listed under origin `user` only. */
-  it('creates a user dimension whose version 1 is live', async () => {
+  /** M2: a created user dimension starts with only its live version and is listed under origin `user` only. */
+  it('creates a user dimension with its live version', async () => {
     const { dimensionId, versionId } = await userDimension()
 
     const detail = await unwrap(api.getDimension(dimensionId))
     expect(detail.origin).toBe('user')
-    expect(detail.versions).toMatchObject([{ id: versionId, versionNumber: 1, status: 'published' }])
+    expect(detail.liveVersionId).toBe(versionId)
+    expect(detail.versions).toMatchObject([{ id: versionId, isLive: true }])
     expect((await api.listDimensions('user')).map((d) => d.id)).toContain(dimensionId)
     expect((await api.listDimensions('system')).map((d) => d.id)).not.toContain(dimensionId)
   })
@@ -138,28 +139,42 @@ describe.each(adapters)('DimensionsApi port over the $name adapter', ({ create }
     expect(check.reasons.map((r) => r.code)).toContain('has_children')
   })
 
-  /** OI-14: freezing the live version retires it and continues in a new live version n+1. */
-  it('freezes the live version into a new live version', async () => {
-    const { dimensionId, versionId } = await userDimension()
+  /** Live is valid after every commit: overlapping bands are a commit-rule finding that refuses the commit until fixed. */
+  it('refuses committing bands that overlap', async () => {
+    const key = uniqueKey()
+    const { dimensionId, versionId } = await unwrap(
+      api.createDimension({ key, displayName: key, kind: 'range', rangeDataType: 'decimal', firstRole: { key: `${key}Role`, displayName: key }, isEnabled: true, isRemovable: true }),
+    )
+    onTestFinished(async () => {
+      await api.discardChanges()
+      await api.deleteDimension(dimensionId)
+    })
 
-    const { live } = await unwrap(api.freezeVersion(versionId, 'Parity freeze'))
+    api.beginChanges()
+    const low = await unwrap(api.saveMember(versionId, memberInput('Low')))
+    const high = await unwrap(api.saveMember(versionId, memberInput('High')))
+    await unwrap(
+      api.saveBands(versionId, [
+        { ordinal: 1, memberId: low.id, lower: null, upper: 100, lowerInclusive: false, upperInclusive: false },
+        { ordinal: 2, memberId: high.id, lower: 50, upper: null, lowerInclusive: true, upperInclusive: false },
+      ]),
+    )
 
-    expect(live).toMatchObject({ versionNumber: 2, status: 'published' })
-    const versions = (await unwrap(api.getDimension(dimensionId))).versions
-    expect(versions.find((v) => v.id === versionId)?.status).toBe('retired')
+    expect(api.pendingViolations().map((v) => v.code)).toContain('bands_non_overlapping')
+    const refused = await api.commitChanges()
+    expect(refused.ok ? 200 : refused.problem.status).toBe(422)
   })
 
-  /** Only frozen versions can be deleted; deleting the live version is a conflict. */
-  it('deletes a frozen version and refuses the live one', async () => {
-    const { dimensionId, versionId } = await userDimension()
-    const { live } = await unwrap(api.freezeVersion(versionId, null))
+  /** A frozen snapshot's version never changes: an edit staged on it is refused with 409. Live, this needs a captured dimension. */
+  it('refuses editing a frozen version', async () => {
+    const all = [...(await api.listDimensions('system')), ...(await api.listDimensions('user'))]
+    const frozen = all.flatMap((d) => d.versions).find((v) => !v.isLive)!
 
-    const refused = await api.deleteVersion(live!.id)
-    expect(refused.ok).toBe(false)
-    if (!refused.ok) expect(refused.problem.status).toBe(409)
+    api.beginChanges()
+    const refused = await api.saveMember(frozen.id, memberInput('ParityFrozen'))
+    await api.discardChanges()
 
-    await unwrap(api.deleteVersion(versionId))
-    expect((await unwrap(api.getDimension(dimensionId))).versions.map((v) => v.id)).toEqual([live!.id])
+    expect(refused.ok ? 200 : refused.problem.status).toBe(409)
   })
 
   /** A removable user dimension deletes, after which it is not found. */

@@ -13,12 +13,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import type { ChangeSetPort } from '@/lib/api/changes'
+import type { Violation } from '@/lib/api/contract'
 
 /** One editor's pending batch. `count` is 0 when everything is saved. */
 export interface ChangeScope {
   id: string
   label: string
   count: number
+  /** Commit-rule findings on the pending batch; Save is blocked while any remains. */
+  violations: Violation[]
   saving: boolean
   save: () => Promise<boolean>
   discard: () => Promise<void>
@@ -134,7 +137,7 @@ export function useChangeScope() {
   return useContext(ScopeContext)
 }
 
-/** True while the surrounding editor has unsaved edits; lifecycle actions should be disabled. */
+/** True while the surrounding editor has unsaved edits; commands should be disabled. */
 export function useHasPendingChanges() {
   return (useContext(ScopeContext)?.count ?? 0) > 0
 }
@@ -145,18 +148,22 @@ type AnyResult = { ok: boolean } | unknown
 const failed = (r: AnyResult) => typeof r === 'object' && r !== null && 'ok' in r && (r as { ok: boolean }).ok === false
 
 /**
- * Wraps a module port so edits stage into its change set and lifecycle commands refuse to run over unsaved edits.
- * Screens keep calling the same methods; only Save commits them.
+ * Wraps a module port so edits stage into its change set and commands refuse to run over unsaved edits.
+ * Screens keep calling the same methods; only Save commits them, and only once the batch has no commit-rule findings.
  */
 export function useStagedApi<Api extends ChangeSetPort>(
   base: Api,
   opts: { id: string; label: string; edits: readonly (keyof Api)[]; commands: readonly (keyof Api)[]; onSettled: () => unknown },
 ): { api: Api; scope: ChangeScope } {
   const [count, setCount] = useState(0)
+  const [violations, setViolations] = useState<Violation[]>([])
   const [saving, setSaving] = useState(false)
   const onSettled = useRef(opts.onSettled)
   onSettled.current = opts.onSettled
-  const settle = () => onSettled.current()
+  const settle = () => {
+    setViolations(base.pendingViolations())
+    return onSettled.current()
+  }
   const edits = useRef(new Set<PropertyKey>(opts.edits))
   const commands = useRef(new Set<PropertyKey>(opts.commands))
   const history = useHistory()
@@ -181,6 +188,7 @@ export function useStagedApi<Api extends ChangeSetPort>(
               }
               const after = target.captureState()
               setCount((c) => c + 1)
+              setViolations(target.pendingViolations())
               history.record(
                 scopeId.current,
                 humanize(String(prop)),
@@ -225,6 +233,7 @@ export function useStagedApi<Api extends ChangeSetPort>(
     setSaving(false)
     if (!result.ok) {
       toast.error(result.problem.title, { description: result.problem.detail })
+      setViolations(result.problem.violations ?? [])
       return false
     }
     setCount((n) => {
@@ -258,7 +267,7 @@ export function useStagedApi<Api extends ChangeSetPort>(
     }
   }, [base, opts.id, history])
 
-  const scope = useMemo(() => ({ id: opts.id, label: opts.label, count, saving, save, discard }), [opts.id, opts.label, count, saving, save, discard])
+  const scope = useMemo(() => ({ id: opts.id, label: opts.label, count, violations, saving, save, discard }), [opts.id, opts.label, count, violations, saving, save, discard])
   return { api, scope }
 }
 
@@ -294,13 +303,19 @@ export function HistoryButtons() {
   )
 }
 
-/** Header save bar: amber dot + count, Discard, Save (⌘S). Renders from the nearest scope unless props are passed. */
+const findings = (n: number) => `${n} rule finding${n === 1 ? '' : 's'} to fix`
+
+/**
+ * Header save bar: amber dot + count, Discard, Save (⌘S). Renders from the nearest scope unless props are passed. Save is
+ * blocked while the scope's batch has commit-rule findings.
+ */
 export function UnsavedChangesBar(props: { count?: number; saving?: boolean; onSave?: () => void; onDiscard?: () => void; idleLabel?: string }) {
   const scope = useChangeScope()
   const count = props.count ?? scope?.count ?? 0
   const saving = props.saving ?? scope?.saving ?? false
+  const blocking = scope?.violations.length ?? 0
   const save = () => {
-    if (count === 0 || saving) return
+    if (count === 0 || saving || blocking > 0) return
     if (props.onSave) props.onSave()
     else void scope?.save()
   }
@@ -327,10 +342,15 @@ export function UnsavedChangesBar(props: { count?: number; saving?: boolean; onS
             <span aria-hidden className="size-2 rounded-full bg-warning" />
             {props.count === undefined && scope ? plural(count) : 'Unsaved changes'}
           </span>
+          {blocking > 0 && (
+            <span role="status" className="text-sm whitespace-nowrap text-destructive" title={scope?.violations.map((v) => v.message).join('\n')}>
+              {findings(blocking)}
+            </span>
+          )}
           <Button variant="ghost" size="sm" disabled={saving} onClick={doDiscard}>
             Discard
           </Button>
-          <Button size="sm" disabled={saving} onClick={save}>
+          <Button size="sm" disabled={saving || blocking > 0} onClick={save}>
             {saving ? 'Saving…' : 'Save'}
             <kbd className="ml-1 hidden font-sans text-xs opacity-70 sm:inline">⌘S</kbd>
           </Button>

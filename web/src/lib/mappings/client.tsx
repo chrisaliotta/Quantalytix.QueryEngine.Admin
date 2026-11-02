@@ -8,14 +8,9 @@ import {
   BRIDGE_EDITS,
   MAPPING_SET_EDITS,
   MAPPINGS_COMMANDS,
-  type ApiResult,
-  type BridgeVersionSummary,
-  type FreezeResult,
   type Id,
   type MappingsApi,
   type MappingsDirectory,
-  type MappingVersionSummary,
-  type ValidationReport,
 } from './contract'
 import { createTenantDirectory } from './directory'
 import { createHttpMappingsApi } from './http/adapter'
@@ -84,8 +79,6 @@ export function BridgeEditScope({ bridgeId, label, children }: { bridgeId: Id; l
 const OPTS = { revalidateOnFocus: false }
 const CHECK_OPTS = { ...OPTS, revalidateOnMount: true, dedupingInterval: 0 }
 
-export type VersionKind = 'mapping' | 'bridge'
-
 export const mapKeys = {
   refs: ['map', 'refs'] as const,
   members: (dimensionId: Id) => ['map', 'members', dimensionId] as const,
@@ -99,7 +92,6 @@ export const mapKeys = {
   counts: ['map', 'counts'] as const,
   deleteSet: (id: Id) => ['map', 'deleteSet', id] as const,
   deleteBridge: (id: Id) => ['map', 'deleteBridge', id] as const,
-  deleteVersion: (kind: VersionKind, id: Id) => ['map', 'deleteVersion', kind, id] as const,
 }
 
 export function useDimensionRefs() {
@@ -181,26 +173,6 @@ export function useBridgeDeleteCheck(id: Id | null) {
   const api = useMappingsApi()
   return useSWR(id ? mapKeys.deleteBridge(id) : null, () => api.checkDeleteBridge(id!), CHECK_OPTS)
 }
-export function useVersionDeleteCheck(kind: VersionKind, versionId: Id | null) {
-  const api = useMappingsApi()
-  const check = kind === 'mapping' ? api.checkDeleteMappingVersion : api.checkDeleteBridgeVersion
-  return useSWR(versionId ? mapKeys.deleteVersion(kind, versionId) : null, () => check(versionId!), CHECK_OPTS)
-}
-
-export interface VersionCommands {
-  check(versionId: Id): Promise<ApiResult<ValidationReport>>
-  freeze(versionId: Id, note: string | null): Promise<ApiResult<FreezeResult<MappingVersionSummary | BridgeVersionSummary>>>
-  remove(versionId: Id): Promise<ApiResult<null>>
-}
-
-/** The lifecycle commands of one version kind, so both editors share one version bar. */
-export function useVersionCommands(kind: VersionKind): VersionCommands {
-  const api = useMappingsApi()
-  return kind === 'mapping'
-    ? { check: api.checkMappingVersion, freeze: api.freezeMappingVersion, remove: api.deleteMappingVersion }
-    : { check: api.checkBridgeVersion, freeze: api.freezeBridgeVersion, remove: api.deleteBridgeVersion }
-}
-
 /** Revalidates every mapping and bridge read. */
 export function useRefreshMappings() {
   const { mutate } = useSWRConfig()

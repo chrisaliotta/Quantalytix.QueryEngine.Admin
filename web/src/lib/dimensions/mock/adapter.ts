@@ -13,9 +13,9 @@ import {
   type DimensionMemberPosition,
   type Problem,
   type RangeBand,
-  type DimensionValidationReport,
   type DimensionVersionSummary,
 } from '../contract'
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import { descendantIds, indexTree } from '../tree'
 import { createSeed, type Db } from './data'
 import { checkDelete, validate } from './rules'
@@ -44,31 +44,21 @@ const fail = (title: string, errors: Record<string, string[]> = {}, status: Prob
 })
 const notFound = (what: string) => fail(`${what} not found`, {}, 404)
 
-/**
- * Seeds predate the no-draft model. Fold any open draft into the live line: an existing live version is frozen
- * and the draft becomes live; a lone draft simply goes live.
- */
-function normalizeVersions(db: Db) {
-  for (const d of db.dimensions) {
-    const versions = db.versions.filter((v) => v.dimensionId === d.id).sort((a, b) => a.versionNumber - b.versionNumber)
-    const open = versions.filter((v) => v.status === 'draft' || v.status === 'validated').at(-1)
-    if (!open) continue
-    for (const v of versions) {
-      if (v === open) continue
-      if (v.status === 'published' || v.status === 'draft' || v.status === 'validated') {
-        v.status = 'retired'
-        v.retiredAt = v.retiredAt ?? open.createdAt
-        v.supersededBy = open.versionNumber
-      }
-    }
-    open.status = 'published'
-    open.publishedAt = open.publishedAt ?? open.createdAt
+/** Everything one dimension's change set can edit: its identity, roles and live content. */
+function slice(db: Db, dimensionId: string) {
+  const versionIds = new Set(db.versions.filter((v) => v.dimensionId === dimensionId).map((v) => v.id))
+  return {
+    dimension: db.dimensions.find((d) => d.id === dimensionId),
+    roles: db.roles.filter((r) => r.dimensionId === dimensionId),
+    versions: db.versions.filter((v) => versionIds.has(v.id)),
+    members: db.members.filter((m) => versionIds.has(m.versionId)),
+    levels: db.levels.filter((l) => versionIds.has(l.versionId)),
+    bands: [...versionIds].map((id) => db.bands[id]),
   }
 }
 
 export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi {
   const db = seed
-  normalizeVersions(db)
 
   function provisionSystemDimension(p: DimensionProfile) {
     const dimensionId = newId('dim')
@@ -76,7 +66,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     db.dimensions.push({ id: dimensionId, key: p.displayName.replace(/\s+/g, ''), displayName: p.displayName, kind: p.kind, origin: 'system', purpose: 'analytical', ownerReport: null, profileKey: p.key, isEnabled: true, isRemovable: false })
     for (const k of p.requiredRoleKeys) db.roles.push({ id: newId('role'), dimensionId, key: k, displayName: name(k), description: null })
     const versionId = newId('ver')
-    db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null, freezeNote: null })
+    db.versions.push({ id: versionId, dimensionId, snapshotId: LIVE_SNAPSHOT_ID, isLive: true, rangeDataType: null, createdAt: today() })
     p.requiredMemberKeys.forEach((k, i) =>
       db.members.push({ id: newId('mbr'), versionId, key: k, displayName: name(k), description: null, parentId: null, levelId: null, isAssignable: true, sortOrder: i + 1, properties: {} }),
     )
@@ -99,28 +89,20 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
   const reachable = (d: Dimension) => d.purpose === 'analytical' && resolvable(d)
 
   function summary(v: DimensionVersion): DimensionVersionSummary {
-    return {
-      id: v.id,
-      versionNumber: v.versionNumber,
-      status: v.status,
-      publishedAt: v.publishedAt,
-      retiredAt: v.retiredAt,
-      supersededBy: v.supersededBy,
-      freezeNote: v.freezeNote,
-      memberCount: db.members.filter((m) => m.versionId === v.id).length,
-    }
+    return { id: v.id, snapshotId: v.snapshotId, isLive: v.isLive, createdAt: v.createdAt, memberCount: db.members.filter((m) => m.versionId === v.id).length }
   }
   function listItem(d: Dimension): DimensionListItem {
-    const versions = db.versions
-      .filter((v) => v.dimensionId === d.id)
-      .sort((a, b) => a.versionNumber - b.versionNumber)
-      .map(summary)
+    const own = db.versions.filter((v) => v.dimensionId === d.id)
+    const live = own.find((v) => v.isLive)!
+    const frozen = own.filter((v) => !v.isLive).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    const versions = [live, ...frozen].map(summary)
     return {
       ...d,
       profile: profileOf(d),
       roles: db.roles.filter((r) => r.dimensionId === d.id),
       versions,
-      publishedMemberCount: versions.find((v) => v.status === 'published')?.memberCount ?? null,
+      liveVersionId: live.id,
+      liveMemberCount: versions[0].memberCount,
     }
   }
 
@@ -130,7 +112,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     if (!found) return { error: notFound('Version') }
     const { v, d } = found
     if (policyOf(d) === 'locked') return { error: fail('Read-only', {}, 409, `${d.displayName} is managed by ${profileOf(d)!.owner}.`) }
-    if (v.status !== 'published') return { error: fail('Read-only version', {}, 409, `Version ${v.versionNumber} is frozen.`) }
+    if (!v.isLive) return { error: fail('Read-only version', {}, 409, 'A frozen snapshot holds this version, so it never changes.') }
     return { v, d }
   }
 
@@ -151,35 +133,14 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
     return out
   }
 
-  function copyVersionContent(fromId: string, toId: string) {
-    const levelMap = new Map<string, string>()
-    for (const l of db.levels.filter((x) => x.versionId === fromId)) {
-      const id = newId('lvl')
-      levelMap.set(l.id, id)
-      db.levels.push({ ...clone(l), id, versionId: toId })
-    }
-    const memberMap = new Map<string, string>()
-    const source = db.members.filter((x) => x.versionId === fromId)
-    for (const m of source) memberMap.set(m.id, newId('mbr'))
-    for (const m of source)
-      db.members.push({
-        ...clone(m),
-        id: memberMap.get(m.id)!,
-        versionId: toId,
-        parentId: m.parentId ? (memberMap.get(m.parentId) ?? null) : null,
-        levelId: m.levelId ? (levelMap.get(m.levelId) ?? null) : null,
-      })
-    if (db.bands[fromId]) db.bands[toId] = db.bands[fromId].map((b) => ({ ...b, memberId: memberMap.get(b.memberId) ?? b.memberId }))
-  }
-
-  function report(versionId: string): DimensionValidationReport {
-    return { versionId, checkedAt: new Date().toISOString(), violations: validate(db, versionId) }
-  }
-
   return {
     ...createSnapshotChangeSet(
       () => db,
       (snapshot) => Object.assign(db, snapshot),
+      (before) => {
+        const touched = new Set([...db.dimensions, ...before.dimensions].map((d) => d.id).filter((id) => JSON.stringify(slice(db, id)) !== JSON.stringify(slice(before, id))))
+        return db.versions.filter((v) => v.isLive && touched.has(v.dimensionId)).flatMap((v) => validate(db, v.id))
+      },
     ),
     async listDimensions(origin) {
       await wait()
@@ -240,7 +201,7 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
       db.dimensions.push({ id: dimensionId, key, displayName: input.displayName.trim(), kind: input.kind, origin: 'user', purpose: 'analytical', ownerReport: null, profileKey: null, isEnabled: input.isEnabled, isRemovable: input.isRemovable })
       if (input.firstRole && input.kind !== 'time') db.roles.push({ id: newId('role'), dimensionId, key: input.firstRole.key.trim(), displayName: input.firstRole.displayName.trim(), description: null })
       const versionId = newId('ver')
-      db.versions.push({ id: versionId, dimensionId, versionNumber: 1, status: 'published', rangeDataType: input.kind === 'range' ? input.rangeDataType : null, createdAt: today(), publishedAt: today(), retiredAt: null, supersededBy: null, freezeNote: null })
+      db.versions.push({ id: versionId, dimensionId, snapshotId: LIVE_SNAPSHOT_ID, isLive: true, rangeDataType: input.kind === 'range' ? input.rangeDataType : null, createdAt: today() })
       db.usage[dimensionId] = []
       return ok({ dimensionId, versionId })
     },
@@ -293,60 +254,6 @@ export function createMockDimensionsApi(seed: Db = createSeed()): DimensionsApi 
         db.bands[versionId] = db.bands[versionId].map((b) => ({ ...b, lower: null, upper: null }))
       g.v.rangeDataType = patch.rangeDataType
       return ok(g.v)
-    },
-
-    async checkVersion(versionId) {
-      await wait()
-      if (!dimOf(versionId)) return notFound('Version')
-      return ok(report(versionId))
-    },
-
-    async freezeVersion(versionId, note) {
-      await wait()
-      const g = editGuard(versionId)
-      if ('error' in g) return g.error!
-      const { v, d } = g
-      const r = report(versionId)
-      if (r.violations.length) return ok({ report: r, live: null })
-      const versions = db.versions.filter((x) => x.dimensionId === d.id)
-      const next: DimensionVersion = {
-        id: newId('ver'),
-        dimensionId: d.id,
-        versionNumber: Math.max(...versions.map((x) => x.versionNumber)) + 1,
-        status: 'published',
-        rangeDataType: v.rangeDataType,
-        createdAt: today(),
-        publishedAt: today(),
-        retiredAt: null,
-        supersededBy: null,
-        freezeNote: null,
-      }
-      v.status = 'retired'
-      v.retiredAt = today()
-      v.supersededBy = next.versionNumber
-      v.freezeNote = note?.trim() || null
-      db.versions.push(next)
-      copyVersionContent(v.id, next.id)
-      for (const u of db.usage[d.id] ?? []) if (u.kind === 'assumption_set' && u.name === 'active') {
-        u.pinsVersion = next.versionNumber
-        u.detail = `active → v${next.versionNumber}`
-      }
-      return ok({ report: r, live: summary(next) })
-    },
-
-    async deleteVersion(versionId) {
-      await wait()
-      const found = dimOf(versionId)
-      if (!found) return notFound('Version')
-      if (found.v.status === 'published') return fail('Cannot delete', {}, 409, `v${found.v.versionNumber} is the live version.`)
-      const c = checkDelete(db, { type: 'version', versionId })
-      if (!c.allowed) return fail('Cannot delete', {}, 409, c.message ?? undefined)
-      if (db.versions.filter((x) => x.dimensionId === found.d.id).length === 1) return fail('Cannot delete', {}, 409, `Version ${found.v.versionNumber} is the only version. Delete the dimension instead.`)
-      db.versions = db.versions.filter((x) => x.id !== versionId)
-      db.members = db.members.filter((m) => m.versionId !== versionId)
-      db.levels = db.levels.filter((l) => l.versionId !== versionId)
-      delete db.bands[versionId]
-      return ok(null)
     },
 
     async saveMember(versionId, input) {

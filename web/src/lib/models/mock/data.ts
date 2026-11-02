@@ -1,3 +1,4 @@
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import type { Attribution, AttributionDriver, CalcModel, Id, ModelMeasure, ModelParameter, ModelReportUse, ModelVariable } from '../contract'
 
 /** A model as the mock stores it: the document without its server-computed parts. */
@@ -48,6 +49,9 @@ export function createSeed(): Db {
   const models: StoredModel[] = [
     {
       id: 'model-1',
+      versionId: 'model-1-live',
+      snapshotId: LIVE_SNAPSHOT_ID,
+      isLive: true,
       key: 'bank.margin_model',
       displayName: 'Bank margin',
       currencyCode: 'USD',
@@ -106,6 +110,9 @@ export function createSeed(): Db {
     },
     {
       id: 'model-2',
+      versionId: 'model-2-live',
+      snapshotId: LIVE_SNAPSHOT_ID,
+      isLive: true,
       key: 'consolidated.balances',
       displayName: 'Consolidated balances',
       currencyCode: 'USD',

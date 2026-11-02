@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DatasetEditScope, useDataset, useVersion } from '@/lib/datasets/client'
 import { useSearchParam } from '@/lib/navigation'
-import { useNavigationGuard } from '@/components/shell/changes'
-import type { DatasetTab, DatasetVersion, DatasetValidationReport } from '@/lib/datasets/contract'
+import { useChangeScope, useNavigationGuard } from '@/components/shell/changes'
+import { FrozenVersionNote } from '@/components/snapshots/shared'
+import type { DatasetTab, DatasetVersion } from '@/lib/datasets/contract'
 import { DetailShell, PageMessage, SectionNav, type NavGroup } from '@/components/shell/page-shell'
 import { BindingsSection } from './bindings-section'
 import { DatasetHeader } from './dataset-header'
@@ -13,7 +14,6 @@ import { GrainsSection } from './grains-section'
 import { MeasuresSection } from './measures-section'
 import { ReadinessSection } from './readiness-section'
 import { SettingsSection } from './settings-section'
-import { ReadOnlyBanner } from './shared'
 
 export type Section = DatasetTab | 'readiness'
 
@@ -48,14 +48,10 @@ function DatasetDetailBody({ datasetId, onBack }: { datasetId: string; onBack: (
   const [versionParam, setVersionParam] = useSearchParam('version')
   const [section, setSection] = useState<Section>('fields')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [reports, setReports] = useState<Record<string, DatasetValidationReport>>({})
+  const findings = useChangeScope()!.violations
 
   const versions = dataset?.versions ?? []
-  const selected =
-    versions.find((v) => v.id === versionParam) ??
-    versions.find((v) => v.status === 'draft') ??
-    versions.find((v) => v.id === dataset?.activeVersionId) ??
-    versions[0]
+  const selected = versions.find((v) => v.id === versionParam) ?? versions.find((v) => v.isLive)
   const { data: version } = useVersion(selected?.id ?? null)
 
   useEffect(() => {
@@ -77,8 +73,7 @@ function DatasetDetailBody({ datasetId, onBack }: { datasetId: string; onBack: (
   }
   if (!dataset || !selected) return <PageMessage>Loading dataset…</PageMessage>
 
-  const readOnly = selected.status !== 'draft'
-  const report = reports[selected.id] ?? null
+  const readOnly = !selected.isLive
   const go = (s: Section, itemId: string | null = null) => {
     setSection(s)
     setEditingId(itemId)
@@ -90,10 +85,10 @@ function DatasetDetailBody({ datasetId, onBack }: { datasetId: string; onBack: (
       items: [
         {
           id: 'readiness',
-          label: 'Readiness',
-          icon: report?.violations.length ? BracesIcon : ClipboardCheckIcon,
-          badge: report ? (report.violations.length ? report.violations.length : 'OK') : undefined,
-          tone: report ? (report.violations.length ? 'bad' : 'good') : undefined,
+          label: 'Rule findings',
+          icon: findings.length ? BracesIcon : ClipboardCheckIcon,
+          badge: findings.length || undefined,
+          tone: findings.length ? 'bad' : undefined,
         },
       ],
     },
@@ -112,19 +107,15 @@ function DatasetDetailBody({ datasetId, onBack }: { datasetId: string; onBack: (
               setEditingId(null)
             })
           }
-          onReport={(r) => {
-            setReports((all) => ({ ...all, [r.versionId]: r }))
-            if (r.violations.length) go('readiness')
-          }}
         />
       }
       nav={<SectionNav label="Dataset sections" groups={groups} active={section} onSelect={(s) => go(s)} />}
     >
-      {readOnly && section !== 'readiness' && <ReadOnlyBanner status={selected.status} versionNumber={selected.versionNumber} />}
+      {readOnly && <FrozenVersionNote version={selected} />}
       {!version ? (
         <p className="text-sm text-muted-foreground">Loading version…</p>
       ) : section === 'readiness' ? (
-        <ReadinessSection version={version} report={report} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} onOpen={go} />
+        <ReadinessSection version={version} findings={findings} onOpen={go} />
       ) : (
         <SectionBody section={section} props={{ version, readOnly, editingId, onEdit: setEditingId, onOpen: go }} />
       )}

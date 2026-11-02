@@ -1,12 +1,13 @@
-import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, Problem } from './contract'
+import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, Id, Problem, Violation } from './contract'
 import type { HttpClient } from './http'
 
 /**
  * Universal editing rule: every edit stays pending until the user saves the batch.
  *
  * Each module port implements this change set. The first edit opens it; later edits and reads see the pending state;
- * `commitChanges` applies everything as one batch and `discardChanges` drops it. Lifecycle commands (publish, freeze,
- * delete, activate…) never run while a change set is open.
+ * `commitChanges` applies everything as one batch and `discardChanges` drops it. Commands (create, delete, capture,
+ * restore…) never run while a change set is open. Live is valid after every commit: a commit-rule finding on the pending
+ * state refuses the commit.
  */
 export interface ChangeSetPort {
   beginChanges(): void
@@ -14,15 +15,31 @@ export interface ChangeSetPort {
   commitChanges(): Promise<ApiResult<{ idMap: Record<string, Id> }>>
   discardChanges(): Promise<void>
   hasPendingChanges(): boolean
+  /** Commit-rule findings on the pending state; saving is refused while any remains. Empty when nothing is pending. */
+  pendingViolations(): Violation[]
   /** Opaque copy of the pending state, taken around each edit for undo/redo. */
   captureState(): unknown
   /** Puts a state from `captureState` back. Only called while a change set is open. */
   restoreState(state: unknown): void
 }
 
-/** In-memory change set for mock adapters: snapshot on begin, restore on discard. */
-export function createSnapshotChangeSet<S>(take: () => S, restore: (snapshot: S) => void): ChangeSetPort {
+const rulesViolated = (violations: Violation[]): Problem => ({
+  type: 'urn:qe:problem:rules-violated',
+  title: 'Fix the rule findings before saving',
+  detail: violations[0].message,
+  status: 422,
+  errors: {},
+  violations,
+})
+
+/**
+ * In-memory change set for mock adapters: snapshot on begin, restore on discard. `violations` runs the module's commit rules
+ * over the pending state, which the mock keeps in its store, given the state the batch began from; a found violation refuses
+ * the commit as the API does.
+ */
+export function createSnapshotChangeSet<S>(take: () => S, restore: (snapshot: S) => void, violations: (before: S) => Violation[]): ChangeSetPort {
   let snapshot: S | null = null
+  const pendingViolations = () => (snapshot === null ? [] : violations(snapshot))
   return {
     captureState: () => structuredClone(take()),
     restoreState: (state) => restore(structuredClone(state as S)),
@@ -31,6 +48,8 @@ export function createSnapshotChangeSet<S>(take: () => S, restore: (snapshot: S)
     },
     async commitChanges() {
       await new Promise((r) => setTimeout(r, 160))
+      const found = pendingViolations()
+      if (found.length) return { ok: false as const, problem: rulesViolated(found) }
       snapshot = null
       return { ok: true as const, data: { idMap: {} } }
     },
@@ -39,6 +58,7 @@ export function createSnapshotChangeSet<S>(take: () => S, restore: (snapshot: S)
       snapshot = null
     },
     hasPendingChanges: () => snapshot !== null,
+    pendingViolations,
   }
 }
 
@@ -101,6 +121,7 @@ export function createHttpChangeSet<Op, State>(http: HttpClient): HttpChangeSet<
       staged = null
     },
     hasPendingChanges: () => staged !== null,
+    pendingViolations: () => staged?.preview?.violations ?? [],
     captureState: () => structuredClone(staged),
     restoreState(state) {
       staged = structuredClone(state as Staged<Op, State>)

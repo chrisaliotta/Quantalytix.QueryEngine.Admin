@@ -1,3 +1,4 @@
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import { createSnapshotChangeSet } from '@/lib/api/changes'
 import type {
   ApiResult,
@@ -46,8 +47,11 @@ function effectiveDrivers(model: StoredModel): Record<string, AttributionDriver[
   return out
 }
 
-const settingsOf = ({ id, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled }: StoredModel): CalcModel => ({
+const settingsOf = ({ id, versionId, snapshotId, isLive, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled }: StoredModel): CalcModel => ({
   id,
+  versionId,
+  snapshotId,
+  isLive,
   key,
   displayName,
   currencyCode,
@@ -123,6 +127,7 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
       (rows) => {
         db.models = rows
       },
+      () => db.models.flatMap(violationsOf),
     ),
 
     async listModels() {
@@ -132,6 +137,11 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
     async getModel(id) {
       await wait()
       const model = find(id)
+      return model ? ok(documentOf(model)) : notFound()
+    },
+    async getModelVersion(versionId) {
+      await wait()
+      const model = db.models.find((m) => m.versionId === versionId)
       return model ? ok(documentOf(model)) : notFound()
     },
     async checkFormula(id, formula, selfKey): Promise<ModelFormulaCheck> {
@@ -180,7 +190,8 @@ export function createMockModelsApi(db: Db = createSeed()): ModelsApi {
     async createModel(input) {
       await wait()
       if (db.models.some((m) => m.key === input.key)) return fail(409, 'conflict', 'Key taken', { detail: `A calculation model with key '${input.key}' already exists.` })
-      const model: StoredModel = { ...input, id: `model-${crypto.randomUUID()}`, calendarKey: 'gregorian', isEnabled: false, variables: [], measures: [], parameters: [], attributions: [] }
+      const id = `model-${crypto.randomUUID()}`
+      const model: StoredModel = { ...input, id, versionId: `${id}-live`, snapshotId: LIVE_SNAPSHOT_ID, isLive: true, calendarKey: 'gregorian', isEnabled: false, variables: [], measures: [], parameters: [], attributions: [] }
       db.models.push(model)
       return ok(settingsOf(model))
     },

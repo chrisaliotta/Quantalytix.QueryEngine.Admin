@@ -1,4 +1,4 @@
-import { DatabaseIcon, FileSpreadsheetIcon, MoonIcon, NetworkIcon, RocketIcon, SigmaIcon, SlidersHorizontalIcon, SunIcon, type LucideIcon } from 'lucide-react'
+import { CameraIcon, DatabaseIcon, FileSpreadsheetIcon, MoonIcon, NetworkIcon, SigmaIcon, SunIcon, type LucideIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { matchPath, useLocation } from 'react-router'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -10,8 +10,7 @@ const ITEMS: { path: string; label: string; short: string; icon: LucideIcon }[] 
   { path: paths.models, label: 'Calculation models', short: 'Models', icon: SigmaIcon },
   { path: paths.datasets, label: 'Datasets', short: 'Datasets', icon: DatabaseIcon },
   { path: paths.dimensions, label: 'Dimensions', short: 'Dims', icon: NetworkIcon },
-  { path: paths.releases, label: 'Releases', short: 'Releases', icon: RocketIcon },
-  { path: paths.sets, label: 'Assumption sets', short: 'Sets', icon: SlidersHorizontalIcon },
+  { path: paths.snapshots, label: 'Snapshots', short: 'Snaps', icon: CameraIcon },
 ]
 
 export function AppSidebar() {

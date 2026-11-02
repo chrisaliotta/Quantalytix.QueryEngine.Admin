@@ -1,4 +1,4 @@
-import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, FilterNode, Grouping, Id, Periodicity, SourceSelection, VariableMissingBehavior, Violation } from '@/lib/api/contract'
+import type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, FilterNode, Grouping, Id, Periodicity, SnapshotMembership, SourceSelection, VariableMissingBehavior, Violation } from '@/lib/api/contract'
 import type { ChangeSetPort } from '@/lib/api/changes'
 
 /**
@@ -175,12 +175,17 @@ export interface ReportStyle {
   indent: number | null
 }
 
-export interface ReportDocument {
+/** A report's whole content in one version; the live version is the change set's state, a frozen one is read-only. */
+export interface ReportDocument extends SnapshotMembership {
   id: Id
   key: string
+  versionId: Id
   isEnabled: boolean
   modelId: Id
+  /** The model's version in the same snapshot, whose metrics the report reads. */
+  modelVersionId: Id
   reportDimensionId: Id
+  /** The report dimension's version in the same snapshot, whose members are the member rows. */
   reportDimensionVersionId: Id
   settings: ReportSettings
   /** Hierarchy order. */
@@ -291,7 +296,10 @@ export type ReportChangeSetCommit = ChangeSetCommit<ReportDocument>
  */
 export interface ReportsApi extends ChangeSetPort {
   listReports(): Promise<ReportSummary[]>
+  /** The live version. */
   getReport(id: Id): Promise<ApiResult<ReportDocument>>
+  /** One version, live or frozen. */
+  getReportVersion(versionId: Id): Promise<ApiResult<ReportDocument>>
   /** Stored state; pending state is diagnosed by the change-set preview. */
   getDiagnostics(id: Id): Promise<ReportDiagnostics>
   getUnmappedItems(id: Id, sourceKey: string): Promise<string[]>

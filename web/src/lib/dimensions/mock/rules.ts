@@ -12,7 +12,6 @@ const REF_PHRASE: Record<DimensionUsageKind, string> = {
   calculation_dimension: 'grouped by calculation dimensions',
   report_scenario: 'used as a scenario by reports',
   report_source: 'used by report sources',
-  assumption_set: 'pinned by assumption sets',
 }
 
 const blocker = (code: DeleteBlockerCode, message: string): DeleteBlocker => ({ code, message })
@@ -36,14 +35,8 @@ export function checkDelete(db: Db, target: DimensionDeleteTarget): DeleteCheck 
       const reasons: DeleteBlocker[] = []
       if (!d.isRemovable) reasons.push(blocker('not_removable', 'it is marked not removable'))
       reasons.push(...refBlockers(db.usage[d.id] ?? []))
+      if (db.versions.some((v) => v.dimensionId === d.id && !v.isLive)) reasons.push(blocker('referenced_by_snapshot', 'a frozen snapshot holds a version of it'))
       return result(`Dimension '${d.displayName}'`, reasons)
-    }
-    case 'version': {
-      const v = db.versions.find((x) => x.id === target.versionId)!
-      const reasons: DeleteBlocker[] = []
-      if (v.status === 'published') reasons.push(blocker('live_version', 'it is the live version'))
-      reasons.push(...refBlockers((db.usage[v.dimensionId] ?? []).filter((r) => r.pinsVersion === v.versionNumber)))
-      return result(`Version ${v.versionNumber}`, reasons)
     }
     case 'member': {
       const v = db.versions.find((x) => x.id === target.versionId)!
@@ -57,7 +50,7 @@ export function checkDelete(db: Db, target: DimensionDeleteTarget): DeleteCheck 
       const bands = (db.bands[v.id] ?? []).filter((b) => b.memberId === m.id)
       if (bands.length) reasons.push(blocker('assigned_by_bands', `it is assigned by range bands (${bands.map((b) => b.ordinal).join(', ')})`))
       // Only the live version is read by other objects.
-      if (v.status === 'published') {
+      if (v.isLive) {
         const named = (db.usage[d.id] ?? []).filter((r) => r.memberKeys?.includes(m.key))
         if (named.length) reasons.push(blocker('named_by_consumers', `it is named by ${named.map((r) => `${USAGE_KIND_LABEL[r.kind].toLowerCase()} ${r.label ?? `'${r.name}'`} (${r.detail})`).join(', ')}`))
       }
@@ -117,7 +110,7 @@ export function validate(db: Db, versionId: string): DimensionViolation[] {
   }
 
   if (d.kind === 'range') {
-    if (!v.rangeDataType) out.push(violation('range_data_type_matches_kind', 'properties', 'Set the range data type before freezing.'))
+    if (!v.rangeDataType) out.push(violation('range_data_type_matches_kind', 'properties', 'Set the range data type.'))
     else
       for (const issue of analyzeBands(db.bands[v.id] ?? [], v.rangeDataType, new Set(byId.keys()))) {
         if (issue.kind === 'gap') continue
@@ -140,7 +133,7 @@ export function validate(db: Db, versionId: string): DimensionViolation[] {
       violation(
         'dimension_consumers_resolve',
         'usage',
-        `Keys other objects name are missing from v${v.versionNumber}: ${[...missing].map(([k, by]) => `${k} (${by.join(', ')})`).join('; ')}.`,
+        `Keys other objects name are missing from the live version: ${[...missing].map(([k, by]) => `${k} (${by.join(', ')})`).join('; ')}.`,
       ),
     )
   return out

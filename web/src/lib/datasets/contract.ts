@@ -1,7 +1,7 @@
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, BindingKind, ComponentRole, DeleteCheck, Id, MeasureKind, Periodicity, RoundingMode, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
+import type { ApiResult, BindingKind, ComponentRole, DeleteCheck, Id, MeasureKind, Periodicity, RoundingMode, SnapshotMembership, Violation, ViolationTarget } from '@/lib/api/contract'
 
-export type { ApiResult, BindingKind, ComponentRole, DeleteBlocker, DeleteCheck, Id, MeasureKind, Periodicity, Problem, RoundingMode, ValidationReport, VersionStatus, Violation, ViolationTarget } from '@/lib/api/contract'
+export type { ApiResult, BindingKind, ComponentRole, DeleteBlocker, DeleteCheck, Id, MeasureKind, Periodicity, Problem, RoundingMode, Violation, ViolationTarget } from '@/lib/api/contract'
 
 /**
  * Business contract for the dataset manager. Every type mirrors the schema of the same name in
@@ -74,6 +74,7 @@ export interface DatasetSourceColumn {
 
 /* ───────────────────────── Dataset and versions ───────────────────────── */
 
+/** The dataset identity, with one version's enabled flag: the live version's, or a frozen version's own. */
 export interface Dataset {
   id: Id
   key: string
@@ -81,37 +82,26 @@ export interface Dataset {
   isEnabled: boolean
 }
 
-/** Identity edits; the key is fixed after creation. */
+/** Identity edits and the live version's enabled flag; the key is fixed after creation. */
 export interface DatasetPatch {
   displayName?: string
   isEnabled?: boolean
 }
 
-export interface DatasetReleasePin {
-  releaseId: Id
-  releaseKey: string
-  isActive: boolean
-}
-
-export interface DatasetVersionSummary {
+/** One version of a dataset and the snapshot it belongs to. The live version is editable; a frozen one is read-only. */
+export interface DatasetVersionSummary extends SnapshotMembership {
   id: Id
   datasetId: Id
-  versionNumber: number
-  status: VersionStatus
   sourceObject: string
   createdAt: string
-  publishedAt: string | null
-  /** The version this one was cloned from, if any. */
-  clonedFromVersionId: Id | null
-  releases: DatasetReleasePin[]
 }
 
 export interface DatasetListItem extends Dataset {
-  /** Newest first. */
+  /** One per snapshot holding the dataset: the live version first, then frozen ones newest first. */
   versions: DatasetVersionSummary[]
-  /** The version the active release pins: what the engine currently reads. */
-  activeVersionId: Id | null
-  /** Storage statistics of the latest version's source object. */
+  /** The live version, which change sets edit and requests that name no snapshot read. */
+  liveVersionId: Id
+  /** Storage statistics of the live version's source object. */
   storage: DatasetSourceObjectStats | null
 }
 
@@ -325,13 +315,9 @@ export interface DatasetViolationTarget extends ViolationTarget {
   area: DatasetTab
 }
 
-/** A publication-rule finding; every one points at the tab (and item) to fix. */
+/** A commit-rule finding; every one points at the tab (and item) to fix. */
 export interface DatasetViolation extends Violation {
   target: DatasetViolationTarget
-}
-
-export interface DatasetValidationReport extends ValidationReport {
-  violations: DatasetViolation[]
 }
 
 export interface DatasetSettingsSaveResult {
@@ -360,7 +346,7 @@ export interface DatasetCreateFromExistingInput {
   sourceObject: string
 }
 
-/** Creates a managed table with these columns (possibly none), then a draft whose fields read them. */
+/** Creates a managed table with these columns (possibly none), then a live version whose fields read them. */
 export interface DatasetCreateWithNewTableInput {
   mode: 'new'
   key: string
@@ -370,19 +356,6 @@ export interface DatasetCreateWithNewTableInput {
 }
 
 export type DatasetCreateInput = DatasetCreateFromExistingInput | DatasetCreateWithNewTableInput
-
-export interface DatasetCreateEmptyDraftInput {
-  mode: 'empty'
-  sourceObjectKind: DatasetSourceObjectKind
-  sourceObject: string
-}
-
-export interface DatasetCloneDraftInput {
-  mode: 'clone'
-  fromVersionId: Id
-}
-
-export type DatasetCreateDraftInput = DatasetCreateEmptyDraftInput | DatasetCloneDraftInput
 
 /* ───────────────────────── Change set ───────────────────────── */
 
@@ -403,26 +376,24 @@ export type DatasetOperation =
 
 /* ───────────────────────── Port ───────────────────────── */
 
-/** Draft edits stage into the change set of one dataset version and apply on `commitChanges`; see lib/api/changes.ts. */
+/**
+ * Edits stage into the change set of a dataset's live version and apply on `commitChanges`, which the commit rules refuse while
+ * any finding remains; see lib/api/changes.ts. Frozen versions are read-only.
+ */
 export interface DatasetsApi extends ChangeSetPort {
   // reads
   listSourceObjects(): Promise<DatasetSourceObject[]>
   getSourceColumns(kind: DatasetSourceObjectKind, name: string): Promise<ApiResult<DatasetSourceColumn[]>>
   listDatasets(): Promise<DatasetListItem[]>
   getDataset(datasetId: Id): Promise<ApiResult<DatasetListItem>>
+  /** Any version, live or frozen. */
   getVersion(versionId: Id): Promise<ApiResult<DatasetVersion>>
-  /** Runs the publication rules; never writes. */
-  checkVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
   checkDeleteDataset(datasetId: Id): Promise<DeleteCheck>
-  checkDeleteVersion(versionId: Id): Promise<DeleteCheck>
 
   // edits
   updateDataset(datasetId: Id, patch: DatasetPatch): Promise<ApiResult<Dataset>>
   saveSettings(versionId: Id, settings: DatasetVersionSettings): Promise<ApiResult<DatasetSettingsSaveResult>>
-  /**
-   * Renames the managed table a draft reads. Only allowed while no published version reads it, so no published query
-   * ever saw the old name.
-   */
+  /** Renames the managed table the live version reads. Refused while another version, live or frozen, reads it. */
   renameSourceTable(versionId: Id, tableName: string): Promise<ApiResult<DatasetVersionSettings>>
   saveField(versionId: Id, input: DatasetFieldInput): Promise<ApiResult<DatasetField>>
   deleteField(versionId: Id, fieldId: Id): Promise<ApiResult<null>>
@@ -436,19 +407,11 @@ export interface DatasetsApi extends ChangeSetPort {
 
   // commands
   createDataset(input: DatasetCreateInput): Promise<ApiResult<DatasetListItem>>
+  /** Allowed only while no frozen snapshot holds a version of the dataset. */
   deleteDataset(datasetId: Id): Promise<ApiResult<null>>
-  createDraft(datasetId: Id, input: DatasetCreateDraftInput): Promise<ApiResult<DatasetVersionSummary>>
-  deleteDraft(versionId: Id): Promise<ApiResult<null>>
-  validateVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
-  /** Publishes when every rule passes; otherwise returns the report with the version unchanged. */
-  publishVersion(versionId: Id): Promise<ApiResult<DatasetValidationReport>>
-  /** Validated → draft, so an author can keep editing before publishing. */
-  reopenVersion(versionId: Id): Promise<ApiResult<DatasetVersionSummary>>
-  retireVersion(versionId: Id): Promise<ApiResult<DatasetVersionSummary>>
   /**
    * Asks the engine to add a JSON path field to the source object's materialized view. Returns at once with state
-   * `building`; poll the version for `ready` or `failed`. Allowed on any non-retired version: storage is physical
-   * and does not change what the version means.
+   * `building`; poll the version for `ready` or `failed`. Allowed on the live version only.
    */
   materializeField(versionId: Id, fieldId: Id): Promise<ApiResult<DatasetField>>
   /** Rebuilds the stored value, e.g. after a failure. */
@@ -477,12 +440,6 @@ export const DATASET_EDITS = [
 export const DATASET_COMMANDS = [
   'createDataset',
   'deleteDataset',
-  'createDraft',
-  'deleteDraft',
-  'validateVersion',
-  'publishVersion',
-  'reopenVersion',
-  'retireVersion',
   'materializeField',
   'refreshMaterialization',
   'dematerializeField',

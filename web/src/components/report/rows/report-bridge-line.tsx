@@ -11,8 +11,7 @@ export function ReportBridgeLine({ sourceKey }: { sourceKey: string }) {
   const nav = useAppNav()
   const { data: bridge } = useReportBridge(reportPersistence().bridgeOwnerId(activeId, report), sourceKey)
   if (!bridge) return null
-  const live = bridge.versions.find((v) => v.status === 'published')
-  const draft = bridge.versions.find((v) => v.status === 'draft' || v.status === 'validated')
+  const live = bridge.versions[0]
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -22,8 +21,7 @@ export function ReportBridgeLine({ sourceKey }: { sourceKey: string }) {
         {' · '}
         {bridge.source.displayName} → {bridge.target.displayName}
         {' · '}
-        {live ? `v${live.versionNumber} live, ${live.mappingCount} rows` : 'not published'}
-        {draft && ` · v${draft.versionNumber} ${draft.status}`}
+        {`live, ${live.mappingCount} rows`}
       </span>
       <Button
         variant="link"

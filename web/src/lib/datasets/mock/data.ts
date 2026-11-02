@@ -10,8 +10,8 @@ import type {
   DatasetSourceObject,
   DatasetTimeBinding,
   DatasetVersionSettings,
-  VersionStatus,
 } from '../contract'
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import type { DimensionKind, PublishedMember, TenantCatalogDimension } from '@/lib/tenant/contract'
 import type { PublishedMembers, TenantCatalog, Vocabularies } from '../lookups'
 
@@ -20,12 +20,6 @@ import type { PublishedMembers, TenantCatalog, Vocabularies } from '../lookups'
 const t = <V extends string>(value: V, label: string, description?: string) => ({ value, label, description })
 
 export const vocabularies: Vocabularies = {
-  versionStatus: [
-    t('draft', 'Draft', 'Editable. The engine does not read it.'),
-    t('validated', 'Validated', 'Passed publication rules; ready to publish.'),
-    t('published', 'Published', 'Immutable. A release can pin it.'),
-    t('retired', 'Retired', 'No longer offered to releases.'),
-  ],
   fieldSourceKind: [
     t('column', 'Column', 'Reads a physical column of the source object.'),
     t('json_path', 'JSON path', 'Reads a property inside a JSON column.'),
@@ -162,7 +156,7 @@ export const vocabularies: Vocabularies = {
 
 /* ───────────────────────── Tenant catalog ───────────────────────── */
 
-/** An analytical dimension whose published version is v1; time dimensions are system-defined and have no members. */
+/** An analytical dimension whose live version is v1; time dimensions are system-defined and have no members. */
 const dimension = (id: string, key: string, displayName: string, kind: DimensionKind): TenantCatalogDimension => ({
   id,
   key,
@@ -171,8 +165,7 @@ const dimension = (id: string, key: string, displayName: string, kind: Dimension
   purpose: 'analytical',
   origin: kind === 'time' ? 'system' : 'user',
   isEnabled: true,
-  publishedVersionId: kind === 'time' ? null : `${id}_v1`,
-  publishedVersionNumber: kind === 'time' ? null : 1,
+  liveVersionId: `${id}_v1`,
   ownerReportId: null,
 })
 
@@ -209,17 +202,13 @@ export const catalog: TenantCatalog = {
     { id: 'br_branch_region', key: 'branch_to_region', displayName: 'Branch → region', sourceDimensionId: 'dim_branch', targetDimensionId: 'dim_region', ownerReportId: null },
     { id: 'br_account_cc', key: 'account_to_cost_center', displayName: 'GL account → cost center', sourceDimensionId: 'dim_account', targetDimensionId: 'dim_cost_center', ownerReportId: null },
   ],
-  releases: [
-    { id: 'rel_2026_10', key: '2026.10', status: 'published', isActive: true },
-    { id: 'rel_2026_09', key: '2026.09', status: 'published', isActive: false },
-  ],
 }
 
 const member = (key: string, displayName: string): PublishedMember => ({ key, displayName, parentKey: null, isAssignable: true, levelKey: null })
 const members = (prefix: string, labels: string[]) => labels.map((displayName, i) => member(`${prefix}${String(i + 1).padStart(2, '0')}`, displayName))
 const published = (dimensionId: string, list: PublishedMembers['members']): PublishedMembers => ({ dimensionId, versionId: `${dimensionId}_v1`, members: list })
 
-/** Dimension id → its published version's members. Time dimensions have none. */
+/** Dimension id → its live version's members. Time dimensions have none. */
 export const publishedMembers: Record<string, PublishedMembers> = Object.fromEntries(
   [
     published('dim_branch', [...members('BR', ['Downtown', 'Northside', 'Harbor', 'Westfield', 'Airport']), member('BR_UNK', 'Unknown branch')]),
@@ -431,11 +420,9 @@ const measure = (id: string, key: string, displayName: string, opts: Partial<Dat
 export interface StoredVersion {
   id: string
   datasetId: string
-  versionNumber: number
-  status: VersionStatus
+  snapshotId: string
+  isLive: boolean
   createdAt: string
-  publishedAt: string | null
-  clonedFromVersionId: string | null
   settings: DatasetVersionSettings
   fields: DatasetField[]
   grains: DatasetGrain[]
@@ -443,7 +430,7 @@ export interface StoredVersion {
   measures: DatasetMeasure[]
 }
 
-function loanVersionBody(withDraftChanges: boolean): Omit<StoredVersion, 'id' | 'datasetId' | 'versionNumber' | 'status' | 'createdAt' | 'publishedAt' | 'clonedFromVersionId'> {
+function loanVersionBody(): Omit<StoredVersion, 'id' | 'datasetId' | 'snapshotId' | 'isLive' | 'createdAt'> {
   const fields: DatasetField[] = [
     field('f_loan_id', 'loanId', 'Loan ID', { sourceColumn: 'loan_id', isNullable: false, isGroupable: true }),
     field('f_as_of', 'asOfDate', 'As-of date', { sourceColumn: 'as_of_date', dataType: 'date', isNullable: false, isGroupable: true }),
@@ -466,16 +453,10 @@ function loanVersionBody(withDraftChanges: boolean): Omit<StoredVersion, 'id' | 
     field('f_ltv', 'loanToValue', 'Loan to value', { fieldSourceKind: 'json_path', sourceColumn: 'attributes', jsonPath: '$.collateral.ltv', dataType: 'decimal', numericPrecision: 9, numericScale: 4, unitKey: 'percent', isSortable: false }),
     field('f_rate_x_bal', 'rateTimesBalance', 'Rate × balance', { fieldSourceKind: 'expression', expressionText: '[f.interestRate] * [f.balance]', dataType: 'decimal', numericPrecision: 28, numericScale: 8, isSelectable: false, isSortable: false }),
   ]
-  if (withDraftChanges) {
-    fields.push(
-      field('f_channel', 'originationChannel', 'Origination channel', { sourceColumn: 'origination_channel', isGroupable: true }),
-      field('f_is_open', 'isOpen', 'Is open', { fieldSourceKind: 'expression', expressionText: "[f.status] = 'open'", dataType: 'boolean', isSortable: false }),
-    )
-  }
 
   const grains: DatasetGrain[] = [
     { id: 'g_row', key: 'rowIdentity', grainKind: 'row', fieldIds: ['f_loan_id', 'f_as_of'] },
-    { id: 'g_series', key: 'temporalSeries', grainKind: 'series', fieldIds: withDraftChanges ? ['f_loan_id', 'f_as_of'] : ['f_loan_id'] },
+    { id: 'g_series', key: 'temporalSeries', grainKind: 'series', fieldIds: ['f_loan_id'] },
   ]
 
   const bindings: DatasetBinding[] = [
@@ -542,12 +523,6 @@ function loanVersionBody(withDraftChanges: boolean): Omit<StoredVersion, 'id' | 
     measure('m_yield', 'netYield', 'Net yield', { measureKind: 'formula', aggregationFunction: null, expressionText: '[m.interestIncome] / [m.averageBalance]', outputPrecision: 9, outputScale: 6, unitKey: 'percent' }),
     measure('m_npl_ratio', 'nplRatio', 'NPL ratio', { measureKind: 'formula', aggregationFunction: null, expressionText: '[m.nonPerformingBalance] / [m.endingBalance]', outputPrecision: 9, outputScale: 6, unitKey: 'percent' }),
   ]
-  if (withDraftChanges) {
-    measures.push(
-      measure('m_open_bal', 'openBalance', 'Open balance', { components: [{ role: 'value', fieldId: 'f_balance' }], rowFilterExpression: '[f.isOpen]', unitKey: 'USD', totalBehavior: 'sum_children', timePolicy: endingBalancePolicy }),
-      measure('m_coverage', 'provisionCoverage', 'Provision coverage', { measureKind: 'formula', aggregationFunction: null, expressionText: '[m.provisionBalance] / [m.nonPerformingBalance]', outputPrecision: 9, outputScale: 6, unitKey: 'percent' }),
-    )
-  }
 
   return {
     settings: {
@@ -608,7 +583,7 @@ function glVersionBody(): ReturnType<typeof loanVersionBody> {
   }
 }
 
-/** Re-ids every child so clones never share identities with their source. */
+/** Re-ids every child so copies in other snapshots never share identities with their source. */
 export function reId<T extends ReturnType<typeof loanVersionBody>>(body: T, suffix: string): T {
   const map = new Map<string, string>()
   const id = (old: string) => {
@@ -646,19 +621,20 @@ export const seedDatasets: Dataset[] = [
   { id: 'ds_deposits', key: 'deposits.daily', displayName: 'Daily deposits', isEnabled: false },
 ]
 
+const Q2_2026 = 'snap_q2_2026_close'
+
+/** Live versions edited in place, and the copies the Q2 2026 close froze. */
 export const seedVersions: StoredVersion[] = [
-  { id: 'v_loans_1', datasetId: 'ds_loans', versionNumber: 1, status: 'published', createdAt: '2026-07-02T14:10:00Z', publishedAt: '2026-07-09T16:00:00Z', clonedFromVersionId: null, ...reId(loanVersionBody(false), 'v1') },
-  { id: 'v_loans_2', datasetId: 'ds_loans', versionNumber: 2, status: 'published', createdAt: '2026-09-01T09:30:00Z', publishedAt: '2026-09-18T15:45:00Z', clonedFromVersionId: 'v_loans_1', ...reId(loanVersionBody(false), 'v2') },
-  { id: 'v_loans_3', datasetId: 'ds_loans', versionNumber: 3, status: 'draft', createdAt: '2026-10-14T11:05:00Z', publishedAt: null, clonedFromVersionId: 'v_loans_2', ...loanVersionBody(true) },
-  { id: 'v_gl_1', datasetId: 'ds_gl', versionNumber: 1, status: 'published', createdAt: '2026-06-11T10:00:00Z', publishedAt: '2026-06-20T12:00:00Z', clonedFromVersionId: null, ...glVersionBody() },
+  { id: 'v_loans_live', datasetId: 'ds_loans', snapshotId: LIVE_SNAPSHOT_ID, isLive: true, createdAt: '2026-07-02T14:10:00Z', ...loanVersionBody() },
+  { id: 'v_loans_q2', datasetId: 'ds_loans', snapshotId: Q2_2026, isLive: false, createdAt: '2026-08-01T18:00:00Z', ...reId(loanVersionBody(), 'q2') },
+  { id: 'v_gl_live', datasetId: 'ds_gl', snapshotId: LIVE_SNAPSHOT_ID, isLive: true, createdAt: '2026-06-11T10:00:00Z', ...glVersionBody() },
+  { id: 'v_gl_q2', datasetId: 'ds_gl', snapshotId: Q2_2026, isLive: false, createdAt: '2026-08-01T18:00:00Z', ...reId(glVersionBody(), 'q2') },
   {
-    id: 'v_dep_1',
+    id: 'v_dep_live',
     datasetId: 'ds_deposits',
-    versionNumber: 1,
-    status: 'draft',
+    snapshotId: LIVE_SNAPSHOT_ID,
+    isLive: true,
     createdAt: '2026-10-20T08:15:00Z',
-    publishedAt: null,
-    clonedFromVersionId: null,
     settings: { sourceObjectKind: 'table', sourceObject: 'fact_deposit_daily', supportsAggregate: true, supportsDetail: true, defaultTimeBindingId: null, expressionLanguageVersion: '1.0', securityPolicyKey: null, properties: '{}' },
     fields: [
       field('df_account', 'accountId', 'Account ID', { sourceColumn: 'account_id', isNullable: false, isGroupable: true }),
@@ -670,14 +646,3 @@ export const seedVersions: StoredVersion[] = [
     measures: [],
   },
 ]
-
-export const seedReleasePins: Record<string, { datasetId: string; versionId: string }[]> = {
-  rel_2026_10: [
-    { datasetId: 'ds_loans', versionId: 'v_loans_2' },
-    { datasetId: 'ds_gl', versionId: 'v_gl_1' },
-  ],
-  rel_2026_09: [
-    { datasetId: 'ds_loans', versionId: 'v_loans_1' },
-    { datasetId: 'ds_gl', versionId: 'v_gl_1' },
-  ],
-}

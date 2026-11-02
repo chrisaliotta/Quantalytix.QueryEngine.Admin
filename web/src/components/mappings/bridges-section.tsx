@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { ConfirmDialog, EmptyState, Field, Mono, ProblemBanner, StatusBadge, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
+import { ConfirmDialog, EmptyState, Field, Mono, ProblemBanner, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
 import { SearchCombobox } from '@/components/report/shared/search-combobox'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
@@ -23,11 +23,8 @@ import {
   CARDINALITY_HELP,
   CARDINALITY_LABEL,
   canHaveBridges,
-  isEditableStatus,
-  liveVersionOf,
   newTempId,
   SETTINGS_VIOLATION_CODES,
-  type BridgeDetail,
   type BridgeListItem,
   type BridgeMapping,
   type BridgeVersion,
@@ -36,12 +33,11 @@ import {
   type MappingAllocationMode,
   type MappingCardinality,
   type MemberRef,
-  type ValidationReport,
 } from '@/lib/mappings/contract'
 import { bridgeMappingsToText, fmt, indexMembers, nearlyEqual, previewBridgePaste, violationsByTarget, type MemberIndex } from '@/lib/mappings/rules'
 import { useEditor } from '@/lib/report/store'
 import { cn } from '@/lib/utils'
-import { BlockedDeleteDialog, memberOptions, PinsList, PREVIEW_TONE, RowIssues, useMapCall, ValidationList, VersionBar, withoutKey } from './shared'
+import { BlockedDeleteDialog, memberOptions, PREVIEW_TONE, RowIssues, useMapCall, FindingsList, VersionBar } from './shared'
 
 export function BridgesSection({ dim }: { dim: DimensionDetail }) {
   const [br] = useSearchParam('br')
@@ -116,7 +112,7 @@ function BridgeTable({ title, empty, bridges, other, onOpen }: { title: string; 
             </thead>
             <tbody className="divide-y">
               {bridges.map((b) => {
-                const live = liveVersionOf(b.versions)
+                const live = b.versions[0]
                 const frozenCount = b.versions.length - 1
                 return (
                   <tr key={b.id} className={cn('hover:bg-muted/40', !b.isEnabled && 'text-muted-foreground')}>
@@ -146,9 +142,9 @@ function BridgeTable({ title, empty, bridges, other, onOpen }: { title: string; 
                       {CARDINALITY_LABEL[live.cardinality]} · {ALLOCATION_LABEL[live.allocationMode]}
                     </Td>
                     <Td className="tabular-nums">
-                      v{live.versionNumber} · {b.publishedMappingCount} rows
+                      {live.mappingCount} rows
                     </Td>
-                    <Td className="tabular-nums">{frozenCount ? `${frozenCount} version${frozenCount === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
+                    <Td className="tabular-nums">{frozenCount ? `${frozenCount} snapshot${frozenCount === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
                     <Td className="text-right tabular-nums">
                       {b.owner ? <OpenInReportEditor reportKey={b.owner.reportKey} /> : b.bindings.length ? `${b.bindings.length} binding${b.bindings.length === 1 ? '' : 's'}` : <span className="text-muted-foreground">Unused</span>}
                     </Td>
@@ -289,22 +285,20 @@ function BridgeEditor({ id, dimId, onBack }: { id: string; dimId: string; onBack
   )
 }
 
-function BridgePage({ bridge, dimId, onBack }: { bridge: BridgeDetail; dimId: string; onBack: () => void }) {
+function BridgePage({ bridge, dimId, onBack }: { bridge: BridgeListItem; dimId: string; onBack: () => void }) {
   const [brv, setBrv] = useSearchParam('brv')
-  const selected = bridge.versions.find((v) => v.id === brv) ?? liveVersionOf(bridge.versions)
+  const selected = bridge.versions.find((v) => v.id === brv) ?? bridge.versions[0]
   const { data: content } = useBridgeVersion(selected.id)
   const { data: srcMembers } = usePublishedMembers(bridge.sourceDimensionId)
   const { data: tgtMembers } = usePublishedMembers(bridge.targetDimensionId)
-  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
   const [filter, setFilter] = useState('')
   const ready = content && content.version.id === selected.id ? content : null
-  const report = reports[selected.id]
 
   return (
     <div className="flex flex-col gap-5">
       <BridgeHeader bridge={bridge} dimId={dimId} onBack={onBack} />
-      <VersionBar kind="bridge" versions={bridge.versions} selected={selected} pins={bridge.pins} onSelect={setBrv} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} />
-      {report && <ValidationList report={report} onFilter={setFilter} onDismiss={() => setReports((all) => withoutKey(all, selected.id))} />}
+      <VersionBar versions={bridge.versions} selected={selected} onSelect={setBrv} />
+      {ready && ready.violations.length > 0 && <FindingsList violations={ready.violations} onFilter={setFilter} />}
       {!ready ? (
         <p className="text-sm text-muted-foreground">Loading mappings…</p>
       ) : (
@@ -320,7 +314,7 @@ function BridgePage({ bridge, dimId, onBack }: { bridge: BridgeDetail; dimId: st
   )
 }
 
-function BridgeHeader({ bridge, dimId, onBack }: { bridge: BridgeDetail; dimId: string; onBack: () => void }) {
+function BridgeHeader({ bridge, dimId, onBack }: { bridge: BridgeListItem; dimId: string; onBack: () => void }) {
   const api = useMappingsApi()
   const mc = useMapCall()
   const dirty = useHasPendingChanges()
@@ -376,7 +370,7 @@ function SettingsCard({ version }: { version: BridgeVersion }) {
   const api = useMappingsApi()
   const mc = useMapCall()
   const history = useHistory()
-  const editable = isEditableStatus(version.status)
+  const editable = version.isLive
   const [flagged, setFlagged] = useState<{ settings: BridgeVersionPatch; count: number } | null>(null)
 
   const apply = async (next: BridgeVersionPatch) => {
@@ -392,7 +386,7 @@ function SettingsCard({ version }: { version: BridgeVersion }) {
   return (
     <section aria-labelledby="bs-h" className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <h3 id="bs-h" className="text-sm font-medium">
-        Settings · v{version.versionNumber}
+        Settings
       </h3>
       {editable ? (
         <>
@@ -445,7 +439,7 @@ function SettingsCard({ version }: { version: BridgeVersion }) {
   )
 }
 
-function BridgeUsage({ bridge }: { bridge: BridgeDetail }) {
+function BridgeUsage({ bridge }: { bridge: BridgeListItem }) {
   return (
     <section aria-labelledby="bu-h" className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <h3 id="bu-h" className="text-sm font-medium">
@@ -457,7 +451,6 @@ function BridgeUsage({ bridge }: { bridge: BridgeDetail }) {
             <li key={`${b.datasetVersionId}-${b.fieldKey}-${b.roleKey}`} className="flex flex-col">
               <span className="flex items-center gap-2">
                 <Mono className="text-foreground">{b.datasetKey}</Mono>
-                <StatusBadge status={b.status} label={`v${b.datasetVersionNumber}`} />
               </span>
               <span className="text-xs text-muted-foreground">
                 <Mono>{b.fieldKey}</Mono>: role <Mono>{b.sourceRoleKey}</Mono> → <Mono>{b.roleKey}</Mono>
@@ -468,7 +461,6 @@ function BridgeUsage({ bridge }: { bridge: BridgeDetail }) {
       ) : (
         <p className="text-sm text-muted-foreground">No dataset binds through this bridge yet.</p>
       )}
-      <PinsList pins={bridge.pins} />
     </section>
   )
 }
@@ -486,7 +478,7 @@ function MappingsTable({
   filter,
   setFilter,
 }: {
-  bridge: BridgeDetail
+  bridge: BridgeListItem
   content: BridgeVersionContent
   srcMembers: MemberRef[] | null | undefined
   tgtMembers: MemberRef[] | null | undefined
@@ -507,7 +499,7 @@ function MappingsTable({
   const [draft, setDraft] = useState<RowDraft>(blankRow)
   const [editing, setEditing] = useState<RowDraft | null>(null)
   const [pasting, setPasting] = useState(false)
-  const editable = isEditableStatus(version.status)
+  const editable = version.isLive
   const showSums = version.allocationMode === 'partition'
 
   const rowIssues = (m: BridgeMapping) => [...(issues.byId.get(m.id) ?? []), ...(issues.byKey.get(m.sourceMemberKey) ?? [])]
@@ -565,14 +557,14 @@ function MappingsTable({
         >
           <CopyIcon /> Copy
         </Button>
-        <WithReason reason={editable ? null : `v${version.versionNumber} is frozen and read-only`}>
+        <WithReason reason={editable ? null : 'This snapshot version is frozen and read-only'}>
           <Button size="sm" variant="outline" disabled={!editable} onClick={() => setPasting(true)}>
             <ClipboardPasteIcon /> Paste rows
           </Button>
         </WithReason>
       </div>
       <p className="text-sm text-muted-foreground">
-        {editable ? 'Live version. Edits stay pending until you save; saving is refused while any row is flagged.' : `v${version.versionNumber} is a frozen snapshot and read-only.`}
+        {editable ? 'Live version. Edits stay pending until you save; saving is refused while any row is flagged.' : 'A frozen snapshot holds this version; it is read-only.'}
       </p>
       {errors.length > 0 && (
         <ul role="alert" className="flex flex-col gap-0.5 text-sm text-destructive">

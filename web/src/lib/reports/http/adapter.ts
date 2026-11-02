@@ -43,6 +43,7 @@ export function createHttpReportsApi(http: HttpClient): ReportsApi {
       if (preview) return { ok: true, data: preview.state }
       return http.get<Schemas['ReportDocument']>(reportPath(id))
     },
+    getReportVersion: (versionId) => http.get<Schemas['ReportDocument']>(`/report-versions/${versionId}`),
     async getDiagnostics(id) {
       return pending(id)?.diagnostics ?? unwrap(http.get<Schemas['ReportDiagnostics']>(`${reportPath(id)}/diagnostics`))
     },

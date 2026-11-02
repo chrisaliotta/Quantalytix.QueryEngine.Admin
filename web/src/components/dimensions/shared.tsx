@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDeleteCheck, useRefreshDimensions } from '@/lib/dimensions/client'
-import { KIND_LABEL, type ApiResult, type DimensionDeleteTarget, type DimensionKind, type DimensionEditPolicy, type Problem, type VersionStatus } from '@/lib/dimensions/contract'
+import { KIND_LABEL, type ApiResult, type DimensionDeleteTarget, type DimensionKind, type DimensionEditPolicy, type Problem } from '@/lib/dimensions/contract'
 import { cn } from '@/lib/utils'
 
 export const KIND_ICON: Record<DimensionKind, LucideIcon> = { categorical: ListIcon, hierarchical: NetworkIcon, range: RulerIcon, time: CalendarIcon }
@@ -18,21 +18,6 @@ export function KindBadge({ kind, className }: { kind: DimensionKind; className?
     <Badge variant="outline" className={cn('gap-1 font-normal', className)}>
       <Icon aria-hidden className="size-3" />
       {KIND_LABEL[kind]}
-    </Badge>
-  )
-}
-
-export const STATUS_TONE: Record<VersionStatus, string> = {
-  draft: 'border-warning/50 bg-warning-muted text-warning-foreground',
-  validated: 'border-primary/40 bg-primary/10 text-primary',
-  published: 'border-success/40 bg-success-muted text-success-foreground',
-  retired: 'border-border bg-muted text-muted-foreground',
-}
-
-export function StatusBadge({ status, label, className }: { status: VersionStatus; label?: string; className?: string }) {
-  return (
-    <Badge variant="outline" className={cn('font-mono text-[11px] font-normal', STATUS_TONE[status], className)}>
-      {label ?? status}
     </Badge>
   )
 }

@@ -1,4 +1,6 @@
-import type { PublishedMember, TenantCatalog, Vocabularies } from '../contract'
+import { seedSnapshots } from '@/lib/snapshots/mock/data'
+import type { Snapshot } from '@/lib/snapshots/contract'
+import type { PublishedMember, TenantCatalog, TenantCatalogSnapshot, Vocabularies } from '../contract'
 
 /* ───────────────────────── Vocabularies ───────────────────────── */
 
@@ -8,13 +10,6 @@ const same = <V extends string>(...values: V[]) => values.map((v) => t(v, v))
 const dataTypes = same('boolean', 'int32', 'int64', 'decimal', 'string', 'date', 'datetime', 'timestamp')
 
 export const vocabularies: Vocabularies = {
-  versionStatus: [
-    t('draft', 'Draft', 'Editable. The engine does not read it.'),
-    t('validated', 'Validated', 'Passed publication rules; ready to publish.'),
-    t('published', 'Published', 'Immutable. A release can pin it.'),
-    t('retired', 'Retired', 'No longer offered to releases.'),
-  ],
-  assumptionSetStatus: [t('active', 'Active', 'The set queries resolve against.'), t('historical', 'Historical', 'A captured earlier state.')],
   dataType: [...dataTypes, t('json', 'json')],
   measureOutputDataType: dataTypes,
   sourceObjectKind: [t('table', 'Table'), t('view', 'View')],
@@ -166,18 +161,25 @@ export const vocabularies: Vocabularies = {
 
 /* ───────────────────────── Catalog ───────────────────────── */
 
+/** The catalog's snapshot list: the live snapshot first, then frozen ones by key. */
+export function catalogSnapshotsOf(snapshots: Snapshot[]): TenantCatalogSnapshot[] {
+  const row = ({ id, key, displayName, isLive }: Snapshot) => ({ id, key, displayName, isLive })
+  const frozen = snapshots.filter((s) => !s.isLive).sort((a, b) => a.key.localeCompare(b.key))
+  return [row(snapshots.find((s) => s.isLive)!), ...frozen.map(row)]
+}
+
 export const catalog: TenantCatalog = {
-  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 18, semanticRevision: 412, activeReleaseId: 'rel_2026_10' },
+  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 19, semanticRevision: 412 },
   datasets: [
-    { id: 'ds_loan_daily', key: 'loan_daily', displayName: 'Loan daily balances', isEnabled: true, activeVersionId: 'dsv_loan_daily_3' },
-    { id: 'ds_gl_balance', key: 'gl_balance', displayName: 'GL balances', isEnabled: true, activeVersionId: null },
+    { id: 'ds_loan_daily', key: 'loan_daily', displayName: 'Loan daily balances', isEnabled: true, liveVersionId: 'dsv_loan_daily_3' },
+    { id: 'ds_gl_balance', key: 'gl_balance', displayName: 'GL balances', isEnabled: true, liveVersionId: 'dsv_gl_balance_1' },
   ],
   dimensions: [
-    { id: 'dim_branch', key: 'branch', displayName: 'Branch', kind: 'categorical', purpose: 'analytical', origin: 'user', isEnabled: true, publishedVersionId: 'dimv_branch_2', publishedVersionNumber: 2, ownerReportId: null },
-    { id: 'dim_region', key: 'region', displayName: 'Region', kind: 'hierarchical', purpose: 'analytical', origin: 'user', isEnabled: true, publishedVersionId: 'dimv_region_1', publishedVersionNumber: 1, ownerReportId: null },
-    { id: 'dim_dpd_bucket', key: 'dpd_bucket', displayName: 'Days past due band', kind: 'range', purpose: 'analytical', origin: 'user', isEnabled: true, publishedVersionId: 'dimv_dpd_bucket_1', publishedVersionNumber: 1, ownerReportId: null },
-    { id: 'dim_business_date', key: 'business_date', displayName: 'Business date', kind: 'time', purpose: 'analytical', origin: 'system', isEnabled: true, publishedVersionId: null, publishedVersionNumber: null, ownerReportId: null },
-    { id: 'dim_rpt_income', key: 'rpt_income_statement', displayName: 'Income statement rows', kind: 'hierarchical', purpose: 'report', origin: 'user', isEnabled: true, publishedVersionId: 'dimv_rpt_income_1', publishedVersionNumber: 1, ownerReportId: 'rep_income_statement' },
+    { id: 'dim_branch', key: 'branch', displayName: 'Branch', kind: 'categorical', purpose: 'analytical', origin: 'user', isEnabled: true, liveVersionId: 'dimv_branch_2', ownerReportId: null },
+    { id: 'dim_region', key: 'region', displayName: 'Region', kind: 'hierarchical', purpose: 'analytical', origin: 'user', isEnabled: true, liveVersionId: 'dimv_region_1', ownerReportId: null },
+    { id: 'dim_dpd_bucket', key: 'dpd_bucket', displayName: 'Days past due band', kind: 'range', purpose: 'analytical', origin: 'user', isEnabled: true, liveVersionId: 'dimv_dpd_bucket_1', ownerReportId: null },
+    { id: 'dim_business_date', key: 'business_date', displayName: 'Business date', kind: 'time', purpose: 'analytical', origin: 'system', isEnabled: true, liveVersionId: 'dimv_business_date_1', ownerReportId: null },
+    { id: 'dim_rpt_income', key: 'rpt_income_statement', displayName: 'Income statement rows', kind: 'hierarchical', purpose: 'report', origin: 'user', isEnabled: true, liveVersionId: 'dimv_rpt_income_1', ownerReportId: 'rep_income_statement' },
   ],
   roles: [
     { id: 'role_servicing_branch', key: 'servicingBranch', displayName: 'Servicing branch', dimensionId: 'dim_branch' },
@@ -191,15 +193,11 @@ export const catalog: TenantCatalog = {
   ],
   models: [{ id: 'model_nii', key: 'net_interest_income', displayName: 'Net interest income', isEnabled: true }],
   reports: [{ id: 'rep_income_statement', key: 'income_statement', displayName: 'Income statement', isEnabled: true, modelId: 'model_nii', reportDimensionId: 'dim_rpt_income' }],
-  releases: [
-    { id: 'rel_2026_10', key: '2026.10', status: 'published', isActive: true },
-    { id: 'rel_2026_11', key: '2026.11', status: 'draft', isActive: false },
-  ],
-  assumptionSets: [{ id: 'as_current', key: 'current', displayName: 'Current', status: 'active' }],
+  snapshots: catalogSnapshotsOf(seedSnapshots),
 }
 
-/** The overview numbers the catalog cannot give: the active release's measures and the draft dataset versions. */
-export const overviewRows = { activeMeasures: 14, draftDatasetVersions: 1 }
+/** The overview number the catalog cannot give: the live dataset versions' measures. */
+export const liveMeasureCount = 14
 
 /* ───────────────────────── Published members ───────────────────────── */
 
@@ -212,6 +210,7 @@ export const publishedMembers: Record<string, PublishedMember[]> = {
     leaf('RG01', 'North', 'ALL', 'region'),
     leaf('RG02', 'South', 'ALL', 'region'),
   ],
+  dim_business_date: [],
   dim_dpd_bucket: [leaf('CURRENT', 'Current'), leaf('DPD_1_30', '1–30'), leaf('DPD_31_90', '31–90'), leaf('DPD_90P', '90+')],
   dim_rpt_income: [
     { key: 'NII', displayName: 'Net interest income', parentKey: null, isAssignable: false, levelKey: null },

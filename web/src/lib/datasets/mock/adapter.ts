@@ -2,7 +2,6 @@ import type {
   Dataset,
   DatasetBinding,
   DatasetBindingInput,
-  DatasetCreateDraftInput,
   DatasetCreateInput,
   DatasetField,
   DatasetFieldInput,
@@ -16,7 +15,6 @@ import type {
   DatasetSourceColumn,
   DatasetSourceObject,
   DatasetSourceObjectKind,
-  DatasetValidationReport,
   DatasetVersion,
   DatasetVersionSettings,
   DatasetVersionSummary,
@@ -28,8 +26,9 @@ import type { Vocabularies } from '../lookups'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
 import { managedTablesDroppedWith } from '../managed-tables'
 import { DOTTED_KEY_PATTERN, KEY_PATTERN } from '@/lib/api/contract'
-import { catalog, reId, seedDatasets, seedReleasePins, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
-import { dependentsOf, FIELD_REF, MEASURE_REF, publicationViolations, refsOf } from './rules'
+import { LIVE_SNAPSHOT_ID, seedSnapshots } from '@/lib/snapshots/mock/data'
+import { catalog, seedDatasets, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
+import { commitViolations, dependentsOf, FIELD_REF, MEASURE_REF, refsOf } from './rules'
 
 const JSON_PATH = /^\$(\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+$/
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -116,7 +115,6 @@ export function createMockDatasetsApi(): DatasetsApi {
   const versions: StoredVersion[] = structuredClone(seedVersions)
   const columns: Record<string, DatasetSourceColumn[]> = structuredClone(seedColumns)
   const objects: DatasetSourceObject[] = structuredClone(sourceObjects)
-  const pinsOf = (releaseId: string) => seedReleasePins[releaseId] ?? []
 
   const columnsOf = (name: string, kind?: DatasetSourceObjectKind) => {
     const obj = objects.find((o) => o.name === name && (!kind || o.kind === kind))
@@ -126,27 +124,22 @@ export function createMockDatasetsApi(): DatasetsApi {
   const summary = (v: StoredVersion): DatasetVersionSummary => ({
     id: v.id,
     datasetId: v.datasetId,
-    versionNumber: v.versionNumber,
-    status: v.status,
+    snapshotId: v.snapshotId,
+    isLive: v.isLive,
     sourceObject: v.settings.sourceObject,
     createdAt: v.createdAt,
-    publishedAt: v.publishedAt,
-    clonedFromVersionId: v.clonedFromVersionId,
-    releases: catalog.releases
-      .filter((r) => pinsOf(r.id).some((p) => p.versionId === v.id))
-      .map((r) => ({ releaseId: r.id, releaseKey: r.key, isActive: r.isActive })),
   })
 
+  const liveOf = (datasetId: string) => versions.find((v) => v.datasetId === datasetId && v.isLive)!
+
   const listItem = (d: Dataset): DatasetListItem => {
-    const activeRelease = catalog.releases.find((r) => r.isActive)
-    const active = activeRelease && pinsOf(activeRelease.id).find((p) => p.datasetId === d.id)
-    const own = versions.filter((v) => v.datasetId === d.id).sort((a, b) => b.versionNumber - a.versionNumber)
-    const source = own[0] && objects.find((o) => o.name === own[0].settings.sourceObject)
+    const live = liveOf(d.id)
+    const frozen = versions.filter((v) => v.datasetId === d.id && !v.isLive).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return {
       ...d,
-      versions: own.map(summary),
-      activeVersionId: active?.versionId ?? null,
-      storage: source?.stats ?? null,
+      versions: [live, ...frozen].map(summary),
+      liveVersionId: live.id,
+      storage: objects.find((o) => o.name === live.settings.sourceObject)?.stats ?? null,
     }
   }
 
@@ -166,11 +159,10 @@ export function createMockDatasetsApi(): DatasetsApi {
     const v = versions.find((x) => x.id === versionId)
     return v ? { ok: true, v } : problem(404, 'Version not found', {}, { detail: `No version '${versionId}'.` })
   }
-  const findDraft = (versionId: string): Found => {
+  const findLive = (versionId: string): Found => {
     const found = findVersion(versionId)
     if (!found.ok) return found
-    if (found.v.status !== 'draft')
-      return problem(409, 'This version is read-only', {}, { detail: `Version ${found.v.versionNumber} is ${found.v.status}. Only a draft can be edited; clone it to make changes.` })
+    if (!found.v.isLive) return problem(409, 'This version is frozen', {}, { detail: 'A frozen snapshot holds it, so it never changes. Edit the live version instead.' })
     return found
   }
 
@@ -189,30 +181,17 @@ export function createMockDatasetsApi(): DatasetsApi {
 
 
   const deleteCheck = (d: Dataset): DeleteCheck => {
-    const reasons: DeleteBlocker[] = [
-      ...versions
-        .filter((v) => v.datasetId === d.id && (v.status === 'published' || v.status === 'retired'))
-        .map((v) => ({ code: 'has_published_versions' as const, message: `Version ${v.versionNumber} is ${v.status}.` })),
-      ...catalog.releases
-        .filter((r) => pinsOf(r.id).some((p) => p.datasetId === d.id))
-        .map((r) => ({ code: 'referenced_by_release' as const, message: `Release ${r.key} lists it.` })),
-    ]
+    const reasons: DeleteBlocker[] = versions
+      .filter((v) => v.datasetId === d.id && !v.isLive)
+      .map((v) => ({ code: 'referenced_by_snapshot' as const, message: `Snapshot ${seedSnapshots.find((s) => s.id === v.snapshotId)!.key} holds a version of it.` }))
     return { allowed: reasons.length === 0, message: reasons.length ? `Dataset '${d.displayName}' cannot be deleted.` : null, reasons }
-  }
-
-  const versionDeleteCheck = (v: StoredVersion): DeleteCheck => {
-    const reasons: DeleteBlocker[] = [
-      ...(v.status === 'published' || v.status === 'retired' ? [{ code: 'published_version' as const, message: `Version ${v.versionNumber} is ${v.status}.` }] : []),
-      ...catalog.releases.filter((r) => pinsOf(r.id).some((p) => p.versionId === v.id)).map((r) => ({ code: 'referenced_by_release' as const, message: `Release ${r.key} pins it.` })),
-    ]
-    return { allowed: reasons.length === 0, message: reasons.length ? `Version ${v.versionNumber} cannot be deleted.` : null, reasons }
   }
 
   type Materializable = { ok: true; v: StoredVersion; f: DatasetField } | { ok: false; problem: Problem }
   const findMaterializable = (versionId: string, fieldId: string): Materializable => {
     const found = findVersion(versionId)
     if (!found.ok) return found
-    if (found.v.status === 'retired') return problem(409, 'This version is retired', {}, { detail: 'Retired versions are not read by the engine, so there is nothing to speed up.' })
+    if (!found.v.isLive) return problem(409, 'This version is frozen', {}, { detail: 'Only the live version is materialized.' })
     const f = found.v.fields.find((x) => x.id === fieldId)
     if (!f) return problem(404, 'Field not found')
     if (f.fieldSourceKind !== 'json_path') return problem(409, 'Only a JSON path field can be materialized', {}, { detail: 'Column fields already read stored values.' })
@@ -247,11 +226,7 @@ export function createMockDatasetsApi(): DatasetsApi {
         }
   }
 
-  const report = (v: StoredVersion): DatasetValidationReport => ({
-    versionId: v.id,
-    violations: publicationViolations(v, catalog, (n) => columnsOf(n, v.settings.sourceObjectKind)),
-    checkedAt: new Date().toISOString(),
-  })
+  const violationsOf = (v: StoredVersion) => commitViolations(v, catalog, (n) => columnsOf(n, v.settings.sourceObjectKind))
 
   return {
     ...createSnapshotChangeSet(
@@ -262,6 +237,10 @@ export function createMockDatasetsApi(): DatasetsApi {
         for (const key of Object.keys(columns)) delete columns[key]
         Object.assign(columns, snapshot.columns)
         resumeBuilds()
+      },
+      (before) => {
+        const saved = new Map(before.versions.map((v) => [v.id, JSON.stringify(v)]))
+        return versions.filter((v) => v.isLive && saved.get(v.id) !== JSON.stringify(v)).flatMap(violationsOf)
       },
     ),
     async listSourceObjects() {
@@ -287,15 +266,6 @@ export function createMockDatasetsApi(): DatasetsApi {
     async checkDeleteDataset(datasetId) {
       await delay()
       return deleteCheck(datasets.find((x) => x.id === datasetId)!)
-    },
-    async checkDeleteVersion(versionId) {
-      await delay()
-      return versionDeleteCheck(versions.find((v) => v.id === versionId)!)
-    },
-    async checkVersion(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      return found.ok ? ok(report(found.v)) : found
     },
     async createDataset(input: DatasetCreateInput) {
       await delay()
@@ -352,11 +322,9 @@ export function createMockDatasetsApi(): DatasetsApi {
       versions.push({
         id: newId('v'),
         datasetId: d.id,
-        versionNumber: 1,
-        status: 'draft',
+        snapshotId: LIVE_SNAPSHOT_ID,
+        isLive: true,
         createdAt: new Date().toISOString(),
-        publishedAt: null,
-        clonedFromVersionId: null,
         settings: { sourceObjectKind, sourceObject, supportsAggregate: true, supportsDetail: true, defaultTimeBindingId: null, expressionLanguageVersion: '1.0', securityPolicyKey: null, properties: '{}' },
         fields,
         grains: [],
@@ -367,7 +335,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async renameSourceTable(versionId, tableName) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const { v } = found
       const from = v.settings.sourceObject
@@ -414,99 +382,9 @@ export function createMockDatasetsApi(): DatasetsApi {
       const found = findVersion(versionId)
       return found.ok ? ok(detail(found.v)) : found
     },
-    async createDraft(datasetId, input: DatasetCreateDraftInput) {
-      await delay()
-      if (!datasets.some((d) => d.id === datasetId)) return problem(404, 'Dataset not found')
-      const own = versions.filter((v) => v.datasetId === datasetId)
-      const open = own.find((v) => v.status === 'draft' || v.status === 'validated')
-      if (open) return problem(409, 'This dataset already has an open version', {}, { detail: `Version ${open.versionNumber} is ${open.status}; finish or delete it first.` })
-      const versionNumber = Math.max(0, ...own.map((v) => v.versionNumber)) + 1
-      const base = { id: newId('v'), datasetId, versionNumber, status: 'draft' as const, createdAt: new Date().toISOString(), publishedAt: null }
-      if (input.mode === 'empty') {
-        const errors: Errors = {}
-        checkVocab(errors, 'sourceObjectKind', 'sourceObjectKind', input.sourceObjectKind)
-        if (!columnsOf(input.sourceObject, input.sourceObjectKind)) err(errors, 'sourceObject', `${input.sourceObjectKind} '${input.sourceObject}' does not exist in the tenant database.`)
-        if (Object.keys(errors).length) return problem(400, 'The draft could not be created', errors)
-        const v: StoredVersion = {
-          ...base,
-          clonedFromVersionId: null,
-          settings: { sourceObjectKind: input.sourceObjectKind, sourceObject: input.sourceObject, supportsAggregate: true, supportsDetail: true, defaultTimeBindingId: null, expressionLanguageVersion: '1.0', securityPolicyKey: null, properties: '{}' },
-          fields: [],
-          grains: [],
-          bindings: [],
-          measures: [],
-        }
-        versions.push(v)
-        return ok(summary(v))
-      }
-      const from = versions.find((v) => v.id === input.fromVersionId && v.datasetId === datasetId)
-      if (!from) return problem(404, 'Source version not found', { fromVersionId: ['Choose a version of this dataset.'] })
-      const { settings, fields, grains, bindings, measures } = from
-      const v: StoredVersion = { ...base, clonedFromVersionId: from.id, ...reId(structuredClone({ settings, fields, grains, bindings, measures }), `v${versionNumber}`) }
-      versions.push(v)
-      return ok(summary(v))
-    },
-    async deleteDraft(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      if (!found.ok) return found
-      const check = versionDeleteCheck(found.v)
-      if (!check.allowed) return problem(409, 'This version cannot be deleted', {}, { detail: check.message!, violations: check.reasons })
-      versions.splice(versions.indexOf(found.v), 1)
-      return ok(null)
-    },
-    async validateVersion(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      if (!found.ok) return found
-      const r = report(found.v)
-      if (found.v.status === 'draft' && r.violations.length === 0) found.v.status = 'validated'
-      if (found.v.status === 'validated' && r.violations.length > 0) found.v.status = 'draft'
-      return ok(r)
-    },
-    async publishVersion(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      if (!found.ok) return found
-      if (found.v.status !== 'draft' && found.v.status !== 'validated') return problem(409, 'Only a draft or validated version can be published')
-      const r = report(found.v)
-      if (r.violations.length === 0) {
-        found.v.status = 'published'
-        found.v.publishedAt = new Date().toISOString()
-      }
-      return ok(r)
-    },
-    async reopenVersion(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      if (!found.ok) return found
-      if (found.v.status !== 'validated') return problem(409, 'Only a validated version can return to draft', {}, { detail: 'Published versions are immutable; clone one to make changes.' })
-      found.v.status = 'draft'
-      return ok(summary(found.v))
-    },
-    async retireVersion(versionId) {
-      await delay()
-      const found = findVersion(versionId)
-      if (!found.ok) return found
-      if (found.v.status !== 'published') return problem(409, 'Only a published version can be retired')
-      const active = catalog.releases.find((r) => r.isActive && pinsOf(r.id).some((p) => p.versionId === versionId))
-      if (active)
-        return problem(422, 'This version is in the active release', {}, {
-          detail: `${active.key} pins it, so the engine reads it today. Pin another version in that release first.`,
-          violations: [
-            {
-              code: 'release_pins_retired_version',
-              message: `The active release '${active.key}' pins version v${found.v.versionNumber}; activate a release that pins another version before retiring it.`,
-            },
-          ],
-        })
-      found.v.status = 'retired'
-      return ok(summary(found.v))
-    },
-
     async saveField(versionId, input: DatasetFieldInput) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const existing = input.id ? v.fields.find((f) => f.id === input.id) : undefined
@@ -563,7 +441,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async deleteField(versionId, fieldId) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const blocked = refuseIfBlocked(found.v, fieldId, 'field')
       if (blocked) return blocked
@@ -572,7 +450,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async addFieldsFromColumns(versionId, names) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const cols = columnsOf(v.settings.sourceObject, v.settings.sourceObjectKind) ?? []
@@ -643,7 +521,7 @@ export function createMockDatasetsApi(): DatasetsApi {
 
     async saveGrain(versionId, input: DatasetGrainInput) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const existing = input.id ? v.grains.find((g) => g.id === input.id) : undefined
@@ -663,7 +541,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async deleteGrain(versionId, grainId) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const blocked = refuseIfBlocked(found.v, grainId, 'grain')
       if (blocked) return blocked
@@ -673,7 +551,7 @@ export function createMockDatasetsApi(): DatasetsApi {
 
     async saveBinding(versionId, input: DatasetBindingInput) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const existing = input.id ? v.bindings.find((b) => b.id === input.id) : undefined
@@ -749,7 +627,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async deleteBinding(versionId, bindingId) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const b = found.v.bindings.find((x) => x.id === bindingId)
       if (!b) return problem(404, 'Binding not found')
@@ -762,7 +640,7 @@ export function createMockDatasetsApi(): DatasetsApi {
 
     async saveMeasure(versionId, input: DatasetMeasureInput) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const existing = input.id ? v.measures.find((m) => m.id === input.id) : undefined
@@ -852,7 +730,7 @@ export function createMockDatasetsApi(): DatasetsApi {
     },
     async deleteMeasure(versionId, measureId) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       found.v.measures = found.v.measures.filter((m) => m.id !== measureId)
       return ok(null)
@@ -860,7 +738,7 @@ export function createMockDatasetsApi(): DatasetsApi {
 
     async saveSettings(versionId, s: DatasetVersionSettings) {
       await delay()
-      const found = findDraft(versionId)
+      const found = findLive(versionId)
       if (!found.ok) return found
       const v = found.v
       const errors: Errors = {}
@@ -871,7 +749,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       if (!parsesAsJson(s.properties)) err(errors, 'properties', 'Properties must be valid JSON.')
       if (Object.keys(errors).length) return problem(400, 'The settings could not be saved', errors)
       v.settings = { ...s, securityPolicyKey: s.securityPolicyKey?.trim() || null, properties: s.properties.trim() || '{}' }
-      const warnings = publicationViolations(v, catalog, (n) => columnsOf(n, v.settings.sourceObjectKind)).filter((x) => x.code === 'field_columns_exist')
+      const warnings = violationsOf(v).filter((x) => x.code === 'field_columns_exist')
       return ok({ settings: v.settings, warnings })
     },
   }

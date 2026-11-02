@@ -1,4 +1,5 @@
-import type { Dimension, DimensionProfile, DimensionVersion, DimensionLevel, DimensionMember, Periodicity, RangeBand, RangeDataType, DimensionRole, DimensionUsageReference, VersionStatus } from '../contract'
+import { frozenSnapshotOf, LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
+import type { Dimension, DimensionProfile, DimensionVersion, DimensionLevel, DimensionMember, Periodicity, RangeBand, RangeDataType, DimensionRole, DimensionUsageReference } from '../contract'
 
 export interface Db {
   profiles: DimensionProfile[]
@@ -147,13 +148,13 @@ const PROFILES: DimensionProfile[] = [
 type MemberSpec = [key: string, displayName: string, parentKey?: string | null, opts?: { level?: string; folder?: boolean; props?: Record<string, unknown>; description?: string }]
 type LevelSpec = [key: string, displayName: string, isLeaf?: boolean, periodicity?: Periodicity]
 
+/** A seed version in the shape the history was recorded in: the published one is live, retired ones are frozen, drafts are dropped. */
 interface VersionSpec {
   n: number
-  status: VersionStatus
+  status: 'draft' | 'published' | 'retired'
   created: string
   published?: string
   retired?: string
-  supersededBy?: number
   rangeDataType?: RangeDataType
   levels?: LevelSpec[]
   members?: MemberSpec[]
@@ -197,20 +198,12 @@ function build(specs: DimSpec[]): Db {
     for (const [key, displayName, description] of s.roles ?? []) db.roles.push({ id: `role-${key}`, dimensionId: dimId, key, displayName, description: description ?? null })
     db.usage[dimId] = s.usage ?? []
 
+    const live = s.versions.find((v) => v.status === 'published') ?? s.versions.at(-1)!
     for (const v of s.versions) {
+      const snapshotId = v === live ? LIVE_SNAPSHOT_ID : v.status === 'retired' ? frozenSnapshotOf(v.published!, v.retired!) : null
+      if (!snapshotId) continue
       const vid = `${dimId}-v${v.n}`
-      db.versions.push({
-        id: vid,
-        dimensionId: dimId,
-        versionNumber: v.n,
-        status: v.status,
-        rangeDataType: v.rangeDataType ?? null,
-        createdAt: v.created,
-        publishedAt: v.published ?? null,
-        retiredAt: v.retired ?? null,
-        supersededBy: v.supersededBy ?? null,
-        freezeNote: null,
-      })
+      db.versions.push({ id: vid, dimensionId: dimId, snapshotId, isLive: v === live, rangeDataType: v.rangeDataType ?? null, createdAt: v.created })
       const levelId = (k: string) => `${vid}-l-${k}`
       ;(v.levels ?? []).forEach(([key, displayName, isLeaf, periodicity], i) =>
         db.levels.push({ id: levelId(key), versionId: vid, key, displayName, ordinal: i + 1, isLeaf: !!isLeaf, periodicity: periodicity ?? null }),
@@ -331,21 +324,19 @@ export function createSeed(): Db {
         ['originationBranch', 'Origination branch', 'The branch where the loan was originated.'],
       ],
       versions: [
-        { n: 1, status: 'retired', created: '2023-01-09', published: '2023-01-16', retired: '2024-07-01', supersededBy: 2, levels: BRANCH_LEVELS, members: branchMembers(15) },
+        { n: 1, status: 'retired', created: '2023-01-09', published: '2023-01-16', retired: '2024-07-01', levels: BRANCH_LEVELS, members: branchMembers(15) },
         { n: 2, status: 'published', created: '2024-06-20', published: '2024-07-01', levels: BRANCH_LEVELS, members: branchMembers(18) },
       ],
       usage: [
-        { kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field servicing_branch_code · mapped', roleKey: 'servicingBranch', memberKeys: ['BR01'] },
-        { kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field origination_branch_code · direct', roleKey: 'originationBranch' },
-        { kind: 'dataset_binding', name: 'deposits.daily', label: "'deposits.daily' v2", detail: 'deposits.daily v2 · field branch_code · direct', roleKey: 'branch' },
-        { kind: 'dataset_binding', name: 'gl.balances', label: "'gl.balances' v5", detail: 'gl.balances v5 · field cost_centre_branch · mapped', roleKey: 'branch' },
+        { kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field servicing_branch_code · mapped', roleKey: 'servicingBranch', memberKeys: ['BR01'] },
+        { kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field origination_branch_code · direct', roleKey: 'originationBranch' },
+        { kind: 'dataset_binding', name: 'deposits.daily', detail: 'deposits.daily · field branch_code · direct', roleKey: 'branch' },
+        { kind: 'dataset_binding', name: 'gl.balances', detail: 'gl.balances · field cost_centre_branch · mapped', roleKey: 'branch' },
         { kind: 'mapping_set', name: 'loan.branch', detail: 'loan_servicing codes to branch keys · see the Mappings section', memberKeys: ['BR09', 'BR12'] },
         { kind: 'mapping_set', name: 'finance.branch', detail: 'gl codes to branch keys · see the Mappings section', memberKeys: ['BR02'] },
         { kind: 'bridge', name: 'branch_to_territory', detail: 'from Branch to Territory · many-to-one · see the Bridges section' },
         { kind: 'calculation_dimension', name: 'Branch profitability', detail: 'grouping by Region', roleKey: 'branch' },
         { kind: 'report_source', name: 'Regional scorecard', detail: 'ancestor grouping NORTH', roleKey: 'branch', memberKeys: ['NORTH'] },
-        { kind: 'assumption_set', name: 'active', detail: 'active → v2', pinsVersion: 2 },
-        { kind: 'assumption_set', name: '2024 baseline', detail: '2024 baseline → v1', pinsVersion: 1 },
       ],
     },
     {
@@ -372,7 +363,7 @@ export function createSeed(): Db {
           ],
         },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field officer_id · mapped', roleKey: 'officer', memberKeys: ['OF_UNASSIGNED'] }],
+      usage: [{ kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field officer_id · mapped', roleKey: 'officer', memberKeys: ['OF_UNASSIGNED'] }],
     },
     {
       key: 'Product',
@@ -403,7 +394,7 @@ export function createSeed(): Db {
         },
       ],
       usage: [
-        { kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field product_code · mapped', roleKey: 'product' },
+        { kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field product_code · mapped', roleKey: 'product' },
         { kind: 'calculation_dimension', name: 'Bank margin', detail: 'grouping by Product family', roleKey: 'product' },
       ],
     },
@@ -458,7 +449,7 @@ export function createSeed(): Db {
           ],
         },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'gl.balances', label: "'gl.balances' v5", detail: 'gl.balances v5 · field account_class · direct', roleKey: 'glAccountClass' }],
+      usage: [{ kind: 'dataset_binding', name: 'gl.balances', detail: 'gl.balances · field account_class · direct', roleKey: 'glAccountClass' }],
     },
     {
       key: 'SystemAccountClass',
@@ -485,7 +476,7 @@ export function createSeed(): Db {
           members: [...riskGrades(), ['RG5', 'Special mention', null, { description: 'Imported from the credit file; its key collides with Watch.' }]],
         },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field risk_grade · direct', roleKey: 'riskGrade' }],
+      usage: [{ kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field risk_grade · direct', roleKey: 'riskGrade' }],
     },
     {
       key: 'BalanceBand',
@@ -497,7 +488,7 @@ export function createSeed(): Db {
         { n: 1, status: 'published', created: '2024-03-01', published: '2024-03-04', rangeDataType: 'decimal', members: balanceMembers(), bands: balanceBands(100000) },
         { n: 2, status: 'draft', created: '2026-10-20', rangeDataType: 'decimal', members: balanceMembers(), bands: balanceBands(90000) },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'deposits.daily', label: "'deposits.daily' v2", detail: 'deposits.daily v2 · field ledger_balance · range', roleKey: 'balanceBand' }],
+      usage: [{ kind: 'dataset_binding', name: 'deposits.daily', detail: 'deposits.daily · field ledger_balance · range', roleKey: 'balanceBand' }],
     },
     {
       key: 'MaturityBucket',
@@ -526,7 +517,7 @@ export function createSeed(): Db {
           ],
         },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field maturity_date · range', roleKey: 'maturityBucket' }],
+      usage: [{ kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field maturity_date · range', roleKey: 'maturityBucket' }],
     },
     {
       key: 'FiscalCalendar',
@@ -547,7 +538,7 @@ export function createSeed(): Db {
           ],
         },
       ],
-      usage: [{ kind: 'dataset_binding', name: 'gl.balances', label: "'gl.balances' v5", detail: 'gl.balances v5 · field posting_date · time' }],
+      usage: [{ kind: 'dataset_binding', name: 'gl.balances', detail: 'gl.balances · field posting_date · time' }],
     },
     {
       key: 'Territory',
@@ -605,7 +596,7 @@ export function createSeed(): Db {
         },
       ],
       usage: [
-        { kind: 'dataset_binding', name: 'loans.details', label: "'loans.details' v3", detail: 'loans.details v3 · field purpose_code · mapped', roleKey: 'loanPurpose' },
+        { kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field purpose_code · mapped', roleKey: 'loanPurpose' },
         { kind: 'mapping_set', name: 'loan.purpose', detail: '14 entries · origination system codes', memberKeys: ['REFINANCE', 'OTHER'] },
       ],
     },

@@ -6,17 +6,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { EmptyState, Field, Mono, ProblemBanner, StatusBadge, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
+import { EmptyState, Field, Mono, ProblemBanner, TabIntro, Td, Th, WithReason } from '@/components/dimensions/shared'
 import { SearchCombobox } from '@/components/report/shared/search-combobox'
 import { SAVE_FIRST, useHasPendingChanges } from '@/components/shell/changes'
 import { useUndoAction } from '@/components/shell/history'
 import { useSearchParam, useSetSearchParams } from '@/lib/navigation'
 import type { DimensionDetail } from '@/lib/dimensions/contract'
 import { MappingSetEditScope, useMappingSet, useMappingSetDeleteCheck, useMappingSets, useMappingsApi, useMappingVersion, usePublishedMembers } from '@/lib/mappings/client'
-import { isEditableStatus, liveVersionOf, newTempId, type MappingEntry, type MappingSetDetail, type MappingVersionContent, type MemberRef, type ValidationReport, type Violation } from '@/lib/mappings/contract'
+import { newTempId, type MappingEntry, type MappingSetListItem, type MappingVersionContent, type MemberRef, type Violation } from '@/lib/mappings/contract'
 import { entriesToText, indexMembers, previewEntryPaste, sourceKeyMarkers, violationsByTarget, type MemberIndex } from '@/lib/mappings/rules'
 import { cn } from '@/lib/utils'
-import { BlockedDeleteDialog, memberOptions, PinsList, PREVIEW_TONE, RowIssues, SourceKey, useMapCall, ValidationList, VersionBar, withoutKey } from './shared'
+import { BlockedDeleteDialog, memberOptions, PREVIEW_TONE, RowIssues, SourceKey, useMapCall, FindingsList, VersionBar } from './shared'
 
 export function MappingSetsSection({ dim }: { dim: DimensionDetail }) {
   const [ms] = useSearchParam('ms')
@@ -71,7 +71,7 @@ function MappingSetList({ dim }: { dim: DimensionDetail }) {
             </thead>
             <tbody className="divide-y">
               {sets.map((s) => {
-                const live = liveVersionOf(s.versions)
+                const live = s.versions[0]
                 const frozenCount = s.versions.length - 1
                 return (
                   <tr key={s.id} className="hover:bg-muted/40">
@@ -85,9 +85,9 @@ function MappingSetList({ dim }: { dim: DimensionDetail }) {
                       <Mono className="text-foreground">{s.sourceNamespace}</Mono>
                     </Td>
                     <Td className="tabular-nums">
-                      v{live.versionNumber} · {s.publishedEntryCount} entries
+                      {live.entryCount} entries
                     </Td>
-                    <Td className="tabular-nums">{frozenCount ? `${frozenCount} version${frozenCount === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
+                    <Td className="tabular-nums">{frozenCount ? `${frozenCount} snapshot${frozenCount === 1 ? '' : 's'}` : <span className="text-muted-foreground">—</span>}</Td>
                     <Td className="text-right tabular-nums">{s.bindings.length ? `${s.bindings.length} binding${s.bindings.length === 1 ? '' : 's'}` : <span className="text-muted-foreground">Unused</span>}</Td>
                   </tr>
                 )
@@ -172,21 +172,19 @@ function MappingSetEditor({ id, onBack }: { id: string; onBack: () => void }) {
   )
 }
 
-function MappingSetPage({ set, onBack }: { set: MappingSetDetail; onBack: () => void }) {
+function MappingSetPage({ set, onBack }: { set: MappingSetListItem; onBack: () => void }) {
   const [msv, setMsv] = useSearchParam('msv')
-  const selected = set.versions.find((v) => v.id === msv) ?? liveVersionOf(set.versions)
+  const selected = set.versions.find((v) => v.id === msv) ?? set.versions[0]
   const { data: content } = useMappingVersion(selected.id)
   const { data: members } = usePublishedMembers(set.dimensionId)
-  const [reports, setReports] = useState<Record<string, ValidationReport>>({})
   const [filter, setFilter] = useState('')
   const ready = content && content.version.id === selected.id ? content : null
-  const report = reports[selected.id]
 
   return (
     <div className="flex flex-col gap-5">
       <SetHeader set={set} onBack={onBack} />
-      <VersionBar kind="mapping" versions={set.versions} selected={selected} pins={set.pins} onSelect={setMsv} onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))} />
-      {report && <ValidationList report={report} onFilter={setFilter} onDismiss={() => setReports((all) => withoutKey(all, selected.id))} />}
+      <VersionBar versions={set.versions} selected={selected} onSelect={setMsv} />
+      {ready && ready.violations.length > 0 && <FindingsList violations={ready.violations} onFilter={setFilter} />}
       {!ready ? (
         <p className="text-sm text-muted-foreground">Loading entries…</p>
       ) : (
@@ -202,7 +200,7 @@ function MappingSetPage({ set, onBack }: { set: MappingSetDetail; onBack: () => 
   )
 }
 
-function SetHeader({ set, onBack }: { set: MappingSetDetail; onBack: () => void }) {
+function SetHeader({ set, onBack }: { set: MappingSetListItem; onBack: () => void }) {
   const api = useMappingsApi()
   const mc = useMapCall()
   const dirty = useHasPendingChanges()
@@ -225,7 +223,6 @@ function SetHeader({ set, onBack }: { set: MappingSetDetail; onBack: () => void 
             </span>
             <span>
               to {set.dimension.displayName}
-              {set.dimension.publishedVersionNumber ? ` v${set.dimension.publishedVersionNumber}` : ''}
             </span>
           </p>
         </div>
@@ -257,7 +254,7 @@ function SetHeader({ set, onBack }: { set: MappingSetDetail; onBack: () => void 
   )
 }
 
-function RenameSetDialog({ set, open, onOpenChange }: { set: MappingSetDetail; open: boolean; onOpenChange: (o: boolean) => void }) {
+function RenameSetDialog({ set, open, onOpenChange }: { set: MappingSetListItem; open: boolean; onOpenChange: (o: boolean) => void }) {
   const api = useMappingsApi()
   const mc = useMapCall()
   const [form, setForm] = useState({ displayName: set.displayName, sourceNamespace: set.sourceNamespace })
@@ -313,7 +310,7 @@ function EntriesTable({
   filter,
   setFilter,
 }: {
-  set: MappingSetDetail
+  set: MappingSetListItem
   content: MappingVersionContent
   members: MemberRef[] | null | undefined
   filter: string
@@ -330,7 +327,7 @@ function EntriesTable({
   const [draft, setDraft] = useState({ sourceKeyValue: '', memberKey: '' })
   const [editing, setEditing] = useState<{ id: string; sourceKeyValue: string; memberKey: string } | null>(null)
   const [pasting, setPasting] = useState(false)
-  const editable = isEditableStatus(version.status)
+  const editable = version.isLive
 
   const q = filter.trim().toLowerCase()
   const rows = [...entries]
@@ -367,7 +364,7 @@ function EntriesTable({
         >
           <CopyIcon /> Copy
         </Button>
-        <WithReason reason={editable ? null : `v${version.versionNumber} is frozen and read-only`}>
+        <WithReason reason={editable ? null : 'This snapshot version is frozen and read-only'}>
           <Button size="sm" variant="outline" disabled={!editable} onClick={() => setPasting(true)}>
             <ClipboardPasteIcon /> Paste entries
           </Button>
@@ -375,7 +372,7 @@ function EntriesTable({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {editable ? 'Live version. Edits stay pending until you save; saving is refused while any entry is flagged.' : `v${version.versionNumber} is a frozen snapshot and read-only.`}
+        {editable ? 'Live version. Edits stay pending until you save; saving is refused while any entry is flagged.' : 'A frozen snapshot holds this version; it is read-only.'}
       </p>
 
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -627,7 +624,7 @@ function Coverage({ content, members }: { content: MappingVersionContent; member
   )
 }
 
-function SetUsage({ set }: { set: MappingSetDetail }) {
+function SetUsage({ set }: { set: MappingSetListItem }) {
   return (
     <section aria-labelledby="use-h" className="flex flex-col gap-3 rounded-lg border bg-card p-3">
       <h3 id="use-h" className="text-sm font-medium">
@@ -639,7 +636,6 @@ function SetUsage({ set }: { set: MappingSetDetail }) {
             <li key={`${b.datasetVersionId}-${b.fieldKey}`} className="flex flex-col">
               <span className="flex items-center gap-2">
                 <Mono className="text-foreground">{b.datasetKey}</Mono>
-                <StatusBadge status={b.status} label={`v${b.datasetVersionNumber}`} />
               </span>
               <span className="text-xs text-muted-foreground">
                 <Mono>{b.fieldKey}</Mono> as role <Mono>{b.roleKey}</Mono>
@@ -650,7 +646,6 @@ function SetUsage({ set }: { set: MappingSetDetail }) {
       ) : (
         <p className="text-sm text-muted-foreground">No dataset binds through this set yet.</p>
       )}
-      <PinsList pins={set.pins} />
     </section>
   )
 }

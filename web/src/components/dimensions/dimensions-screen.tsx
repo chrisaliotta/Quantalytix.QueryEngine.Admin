@@ -20,7 +20,7 @@ import { canHaveBridges, canHaveMappingSets } from '@/lib/mappings/contract'
 import { cn } from '@/lib/utils'
 import { CreateDimensionDialog } from './create-dimension-dialog'
 import { DimensionDetail } from './dimension-detail'
-import { DeleteDialog, EmptyState, KindBadge, Mono, PolicyBadge, StatusBadge, Td, Th, formatDate, useDimCall } from './shared'
+import { DeleteDialog, EmptyState, KindBadge, Mono, PolicyBadge, Td, Th, useDimCall } from './shared'
 
 export function DimensionsScreen({ dimensionId }: { dimensionId: string | null }) {
   const nav = useAppNav()
@@ -47,7 +47,7 @@ function DimensionList() {
   const rows = (data ?? []).filter((d) => {
     if (q && !d.key.toLowerCase().includes(q) && !d.displayName.toLowerCase().includes(q)) return false
     if (kind !== 'all' && d.kind !== kind) return false
-    if (status === 'frozen' && !d.versions.some((v) => v.status === 'retired')) return false
+    if (status === 'frozen' && !d.versions.some((v) => !v.isLive)) return false
     if (status === 'disabled' && d.isEnabled) return false
     return true
   })
@@ -56,7 +56,7 @@ function DimensionList() {
   return (
     <ListPage
       title="Dimensions"
-      description="Anything a query can group or filter by: branches, products, risk grades, balance bands, dates, plan scenarios. Define members, levels, range bands and roles, versioned and published."
+      description="Anything a query can group or filter by: branches, products, risk grades, balance bands, dates, plan scenarios. Define members, levels, range bands and roles, edited live; snapshots freeze copies."
       actions={
         <>
           {origin === 'user' && (
@@ -154,8 +154,7 @@ function DimensionTable({ rows, origin, loading }: { rows: DimensionListItem[]; 
             <Th className="text-right">Mappings</Th>
             <Th className="text-right">Bridges</Th>
             <Th className="text-right">Report bridges</Th>
-            <Th>Published</Th>
-            <Th>Frozen</Th>
+            <Th>Frozen copies</Th>
             <Th>Enabled</Th>
             <Th className="w-10">
               <span className="sr-only">Actions</span>
@@ -203,8 +202,7 @@ function CountCell({ value, tab, dimId, label }: { value: number | undefined; ta
 
 function DimensionRow({ d, system, counts }: { d: DimensionListItem; system: boolean; counts: DimensionMappingCounts | undefined }) {
   const nav = useAppNav()
-  const published = d.versions.find((v) => v.status === 'published')
-  const frozen = d.versions.filter((v) => v.status === 'retired').length
+  const frozen = d.versions.filter((v) => !v.isLive).length
   const open = () => nav.dimension(d.id)
   const mappable = canHaveMappingSets(d)
   const bridgeable = canHaveBridges(d)
@@ -248,19 +246,10 @@ function DimensionRow({ d, system, counts }: { d: DimensionListItem; system: boo
           <span className="text-muted-foreground">0</span>
         )}
       </Td>
-      <Td className="text-right tabular-nums">{d.publishedMemberCount ?? <span className="text-muted-foreground">—</span>}</Td>
+      <Td className="text-right tabular-nums">{d.liveMemberCount}</Td>
       <CountCell dimId={d.id} tab="mappings" label="mapping sets" value={mappable ? counts?.mappingSets : undefined} />
       <CountCell dimId={d.id} tab="bridges" label="bridges" value={bridgeable ? counts?.bridges : undefined} />
       <CountCell dimId={d.id} tab="bridges" label="report bridges" value={bridgeable ? counts?.reportBridges : undefined} />
-      <Td className="whitespace-nowrap">
-        {published ? (
-          <span className="text-xs">
-            <span className="font-mono">v{published.versionNumber}</span> <span className="text-muted-foreground">· {formatDate(published.publishedAt)}</span>
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </Td>
       <Td className="tabular-nums text-muted-foreground">{frozen ? frozen : '—'}</Td>
       <Td>
         <span className="inline-flex items-center gap-1.5 text-xs">

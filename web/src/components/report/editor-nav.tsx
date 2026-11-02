@@ -67,7 +67,7 @@ export function EditorNav() {
       items: g.items.map(({ id, label, icon, count }) => ({ id, label, icon, badge: count ? count(report) : undefined })),
     })),
     {
-      label: 'Release',
+      label: 'Checks',
       items: [
         {
           id: 'settings:publish',

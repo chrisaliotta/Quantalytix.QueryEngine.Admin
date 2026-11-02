@@ -2,8 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useNavigationGuard } from '@/components/shell/changes'
-import type { PinIdentity, ReleaseTab, SetTab } from '@/lib/releases/contract'
-import { reportKeyOf } from '@/lib/releases/mock/data'
+import type { SnapshotTab } from '@/lib/snapshots/contract'
 import { useEditor } from '@/lib/report/store'
 
 export const paths = {
@@ -15,10 +14,8 @@ export const paths = {
   dataset: (id: string) => `/datasets/${id}`,
   dimensions: '/dimensions',
   dimension: (id: string) => `/dimensions/${id}`,
-  releases: '/releases',
-  release: (id: string) => `/releases/${id}`,
-  sets: '/assumption-sets',
-  set: (id: string) => `/assumption-sets/${id}`,
+  snapshots: '/snapshots',
+  snapshot: (id: string) => `/snapshots/${id}`,
 }
 
 /** Query-string values; null or undefined leaves the key out. */
@@ -83,16 +80,12 @@ export function useAppNav() {
       dataset: (id: string, versionId?: string) => go(paths.dataset(id), { version: versionId }),
       dimensions: () => go(paths.dimensions),
       dimension: (id: string, values?: SearchValues) => go(paths.dimension(id), values),
-      releases: () => go(paths.releases),
-      release: (id: string, tab?: ReleaseTab) => go(paths.release(id), { tab: tab !== 'manifest' ? tab : null }),
-      sets: () => go(paths.sets),
-      set: (id: string, tab?: SetTab) => go(paths.set(id), { tab: tab !== 'pins' ? tab : null }),
-      identity: (i: PinIdentity, versionId?: string) => {
-        if (i.reportId) return reportByKey(reportKeyOf(i.reportId))
-        if (i.kind === 'dimension') go(paths.dimension(i.id), { version: versionId })
-        else if (i.kind === 'mapping_set') go(paths.dimension(i.dimensionId), { tab: 'mappings', ms: i.id, msv: versionId })
-        else go(paths.dimension(i.dimensionId), { tab: 'bridges', br: i.id, brv: versionId })
-      },
+      /** A mapping set is edited on its dimension's Mappings tab. */
+      mappingSet: (dimensionId: string, id: string, versionId?: string) => go(paths.dimension(dimensionId), { tab: 'mappings', ms: id, msv: versionId }),
+      /** An analytical bridge is edited on its source dimension's Bridges tab. */
+      bridge: (dimensionId: string, id: string, versionId?: string) => go(paths.dimension(dimensionId), { tab: 'bridges', br: id, brv: versionId }),
+      snapshots: () => go(paths.snapshots),
+      snapshot: (id: string, tab?: SnapshotTab) => go(paths.snapshot(id), { tab: tab !== 'contents' ? tab : null }),
     }
   }, [navigate, guard, library])
 }

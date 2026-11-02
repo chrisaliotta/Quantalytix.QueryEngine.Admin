@@ -129,6 +129,7 @@ export function ReportHeader() {
     id: 'report-editor',
     label: settings.name,
     count: dirty ? 1 : 0,
+    violations: [],
     saving: false,
     save: async () => commit(),
     discard: async () => discard(),

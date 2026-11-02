@@ -596,7 +596,7 @@ function BindingPanel({
                 </FormRow>
               )}
               {d.bindingKind === 'mapped' && (
-                <FormRow label="Mapping set" htmlFor="b-map" errors={errorsFor('mappingSetId')} hint={dim ? `Sets of ${dim.displayName}. The query's assumption set pins the version read.` : 'Choose a role first.'}>
+                <FormRow label="Mapping set" htmlFor="b-map" errors={errorsFor('mappingSetId')} hint={dim ? `Sets of ${dim.displayName}. A request reads the version held by the snapshot it names, live by default.` : 'Choose a role first.'}>
                   <SimpleSelect
                     id="b-map"
                     value={d.mappingSetId ?? ''}
@@ -649,7 +649,7 @@ function BindingPanel({
                 />
               </FormRow>
               {d.unmappedBehavior === 'unknown' && (
-                <FormRow label="Unknown member" htmlFor="b-unknown" errors={errorsFor('unknownMemberKey')} hint={dim ? `From the published version of ${dim.displayName}.` : 'Choose a role first.'}>
+                <FormRow label="Unknown member" htmlFor="b-unknown" errors={errorsFor('unknownMemberKey')} hint={dim ? `From the live version of ${dim.displayName}.` : 'Choose a role first.'}>
                   <SimpleSelect
                     id="b-unknown"
                     value={d.unknownMemberKey ?? ''}
@@ -724,7 +724,7 @@ function BindingPanel({
                     <AlertTriangleIcon aria-hidden className="size-4 shrink-0 text-warning-foreground" />
                     <div className="flex flex-col gap-1">
                       <p>
-                        {finerTicked.join(', ')} {finerTicked.length === 1 ? 'is' : 'are'} finer than {native}. Publishing needs every enabled measure on this axis to estimate partial intervals uniformly. These don&apos;t:
+                        {finerTicked.join(', ')} {finerTicked.length === 1 ? 'is' : 'are'} finer than {native}. Saving needs every enabled measure on this axis to estimate partial intervals uniformly. These don&apos;t:
                       </p>
                       <p className="flex flex-wrap gap-1.5">
                         {offenders.map((m) => (

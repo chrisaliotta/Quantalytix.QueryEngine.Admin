@@ -6,8 +6,6 @@ import {
   canHaveBridges,
   canHaveMappingSets,
   CARDINALITY_LABEL,
-  isEditableStatus,
-  liveVersionOf,
   type ApiResult,
   type Bridge,
   type BridgeListItem,
@@ -17,7 +15,6 @@ import {
   type BridgeVersionSummary,
   type DeleteBlocker,
   type DeleteCheck,
-  type MappingAssumptionPin,
   type MappingDimensionRef,
   type MappingEntry,
   type MappingSetListItem,
@@ -27,9 +24,9 @@ import {
   type MappingVersionContent,
   type MappingVersionSummary,
   type Problem,
-  type ValidationReport,
   type Violation,
 } from '../contract'
+import { LIVE_SNAPSHOT_ID, seedSnapshots } from '@/lib/snapshots/mock/data'
 import { indexMembers } from '../rules'
 import { createSeed, type Db } from './data'
 import { bridgeAllocation, bridgeViolations, mappingCoverage, mappingSetViolations } from './rules'
@@ -59,20 +56,20 @@ const blocked = <T,>(title: string, check: DeleteCheck) => fail<T>(409, title, {
 
 const deleteCheck = (message: string, reasons: DeleteBlocker[]): DeleteCheck => (reasons.length ? { allowed: false, message, reasons } : { allowed: true, message: null, reasons: [] })
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-
-type LivingVersion = MappingVersion | BridgeVersion
-const nextNumber = (versions: LivingVersion[]) => Math.max(...versions.map((v) => v.versionNumber)) + 1
+const snapshotKey = (id: string) => seedSnapshots.find((s) => s.id === id)!.key
 
 export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = createSeed()): MappingsApi {
   let db = seed
+  /** Live versions edited in the open change set, and their rule findings, which refuse the commit while any remains (B11). */
+  const touched = new Set<string>()
+  let findings: Violation[] = []
   const changes = createSnapshotChangeSet(
     () => db,
     (snapshot) => {
       db = snapshot
     },
+    () => findings,
   )
-  /** Live versions edited in the open change set; the commit refuses while any of them breaks a rule (B11). */
-  const touched = new Set<string>()
 
   /* ───────────── lookups ───────────── */
 
@@ -82,56 +79,48 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
   const bridgeVersion = (id: string) => db.bridgeVersions.find((v) => v.id === id)
   const nameOf = (refs: MappingDimensionRef[], id: string) => refs.find((d) => d.id === id)!.displayName
 
-  const pinsFor = (objectId: string): MappingAssumptionPin[] =>
-    db.assumptionSets.flatMap((a) => {
-      const versionId = a.pins[objectId]
-      if (!versionId) return []
-      const v = mappingVersion(versionId) ?? bridgeVersion(versionId)!
-      return [{ assumptionSetId: a.id, assumptionSetKey: a.key, assumptionSetDisplayName: a.displayName, isActive: a.isActive, versionId, versionNumber: v.versionNumber }]
-    })
-
   const mappingSummary = (v: MappingVersion): MappingVersionSummary => ({
     id: v.id,
-    versionNumber: v.versionNumber,
-    status: v.status,
+    snapshotId: v.snapshotId,
+    isLive: v.isLive,
     createdAt: v.createdAt,
-    publishedAt: v.publishedAt,
-    retiredAt: v.retiredAt,
-    freezeNote: v.freezeNote,
     entryCount: db.entries.filter((e) => e.versionId === v.id).length,
   })
 
   const bridgeSummary = (v: BridgeVersion): BridgeVersionSummary => ({
     id: v.id,
-    versionNumber: v.versionNumber,
-    status: v.status,
+    snapshotId: v.snapshotId,
+    isLive: v.isLive,
     cardinality: v.cardinality,
     allocationMode: v.allocationMode,
     createdAt: v.createdAt,
-    publishedAt: v.publishedAt,
-    retiredAt: v.retiredAt,
-    freezeNote: v.freezeNote,
     mappingCount: db.bridgeMappings.filter((m) => m.versionId === v.id).length,
   })
 
+  /** The live version first, then frozen ones newest first. */
+  const byPlace = <V extends { isLive: boolean; createdAt: string }>(versions: V[]) => [...versions].sort((a, b) => Number(b.isLive) - Number(a.isLive) || b.createdAt.localeCompare(a.createdAt))
+
   function setListItem(setId: string, refs: MappingDimensionRef[]): MappingSetListItem {
     const s = db.mappingSets.find((x) => x.id === setId)!
-    const versions = db.mappingVersions.filter((v) => v.mappingSetId === s.id).map(mappingSummary)
-    return { ...clone(s), dimension: refs.find((d) => d.id === s.dimensionId)!, versions, publishedEntryCount: liveVersionOf(versions).entryCount, bindings: clone(db.bindings[s.id]) }
+    const versions = byPlace(db.mappingVersions.filter((v) => v.mappingSetId === s.id)).map(mappingSummary)
+    return { ...clone(s), dimension: refs.find((d) => d.id === s.dimensionId)!, versions, liveVersionId: versions[0].id, liveEntryCount: versions[0].entryCount, bindings: clone(db.bindings[s.id]) }
   }
 
   function bridgeListItem(bridgeId: string, refs: MappingDimensionRef[]): BridgeListItem {
     const b = db.bridges.find((x) => x.id === bridgeId)!
-    const versions = db.bridgeVersions.filter((v) => v.bridgeId === b.id).map(bridgeSummary)
+    const versions = byPlace(db.bridgeVersions.filter((v) => v.bridgeId === b.id)).map(bridgeSummary)
     return {
       ...clone(b),
       source: refs.find((d) => d.id === b.sourceDimensionId)!,
       target: refs.find((d) => d.id === b.targetDimensionId)!,
       versions,
-      publishedMappingCount: liveVersionOf(versions).mappingCount,
+      liveVersionId: versions[0].id,
+      liveMappingCount: versions[0].mappingCount,
       bindings: clone(db.bindings[b.id]),
     }
   }
+  const liveMappingVersion = (setId: string) => db.mappingVersions.find((v) => v.mappingSetId === setId && v.isLive)!
+  const liveBridgeVersion = (bridgeId: string) => db.bridgeVersions.find((v) => v.bridgeId === bridgeId && v.isLive)!
 
   async function mappingContent(v: MappingVersion): Promise<MappingVersionContent> {
     const set = setOf(v)
@@ -155,36 +144,18 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     return { version: clone(v), mappings, allocation: bridgeAllocation(mappings), violations }
   }
 
-  const reportOf = (versionId: string, violations: Violation[]): ValidationReport => ({ versionId, checkedAt: now(), violations })
-
   function ownedByReport<T>(b: Bridge): ApiResult<T> | null {
     return b.owner ? fail(409, 'Owned by a report', { detail: `${b.displayName} is owned by ${b.owner.reportKey} and changes as you map rows on its Rows page.` }) : null
   }
 
-  /* ───────────── living lifecycle, shared by both kinds ───────────── */
-
-  const historicalPinsOn = (versionId: string) => db.assumptionSets.filter((a) => !a.isActive && Object.values(a.pins).includes(versionId))
-
-  /** Freezes `v` and continues in a live clone: retires n, inserts n+1 published, repoints the active set. */
-  function freeze<V extends LivingVersion>(v: V, store: V[], objectId: string, nextNumber: number, note: string | null): V {
-    const t = now()
-    const next: V = { ...clone(v), id: uid('ver'), versionNumber: nextNumber, status: 'published', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
-    Object.assign(v, { status: 'retired', retiredAt: t, freezeNote: note })
-    store.push(next)
-    db.assumptionSets.find((a) => a.isActive)!.pins[objectId] = next.id
-    return next
-  }
-
-  function versionDeleteCheck(v: LivingVersion): DeleteCheck {
-    const reasons: DeleteBlocker[] = historicalPinsOn(v.id).map((a) => ({ code: 'referenced_by_assumption_set' as const, message: `Pinned by the ${a.displayName} assumption set.` }))
-    if (v.status === 'published') reasons.unshift({ code: 'live_version', message: `v${v.versionNumber} is the live version; only frozen versions can be deleted.` })
-    return deleteCheck(`v${v.versionNumber} cannot be deleted.`, reasons)
-  }
+  /* ───────────── delete checks ───────────── */
 
   function identityDeleteCheck(objectId: string, label: string): DeleteCheck {
     const reasons: DeleteBlocker[] = [
-      ...db.bindings[objectId].map((b) => ({ code: 'referenced_by_dataset_binding' as const, message: `${b.datasetKey} v${b.datasetVersionNumber} binds ${b.fieldKey} → ${b.roleKey}` })),
-      ...db.assumptionSets.filter((a) => !a.isActive && a.pins[objectId]).map((a) => ({ code: 'referenced_by_assumption_set' as const, message: `Pinned by the ${a.displayName} assumption set` })),
+      ...db.bindings[objectId].map((b) => ({ code: 'referenced_by_dataset_binding' as const, message: `${b.datasetKey} binds ${b.fieldKey} → ${b.roleKey}` })),
+      ...[...db.mappingVersions.filter((v) => v.mappingSetId === objectId), ...db.bridgeVersions.filter((v) => v.bridgeId === objectId)]
+        .filter((v) => !v.isLive)
+        .map((v) => ({ code: 'referenced_by_snapshot' as const, message: `Snapshot ${snapshotKey(v.snapshotId)} holds a version of it` })),
     ]
     return deleteCheck(`This ${label} is in use (${plural(reasons.length, 'reference')}). Remove them first.`, reasons)
   }
@@ -193,11 +164,6 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     const { owner } = db.bridges.find((x) => x.id === id)!
     if (owner) return deleteCheck(`Owned by ${owner.reportKey}.`, [{ code: 'owned_by_report', message: `Remove source ${owner.sourceKey} from ${owner.reportKey} to delete its bridge.` }])
     return identityDeleteCheck(id, 'bridge')
-  }
-
-  function removeObject(objectId: string) {
-    for (const a of db.assumptionSets) delete a.pins[objectId]
-    delete db.bindings[objectId]
   }
 
   async function touchedViolations() {
@@ -210,18 +176,25 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     return found.flat()
   }
 
+  /** Records an edit of a live version and refreshes the batch's findings, as a preview does. */
+  async function touch(versionId: string) {
+    touched.add(versionId)
+    findings = await touchedViolations()
+  }
+
   /* ───────────── the port ───────────── */
 
   return {
     ...changes,
     async commitChanges() {
-      const violations = await touchedViolations()
-      if (violations.length) return fail(422, 'Fix the flagged rows before saving', { detail: `${plural(violations.length, 'rule violation')} remain on the live version.`, violations })
-      touched.clear()
-      return changes.commitChanges()
+      findings = await touchedViolations()
+      const result = await changes.commitChanges()
+      if (result.ok) touched.clear()
+      return result
     },
     async discardChanges() {
       touched.clear()
+      findings = []
       return changes.discardChanges()
     },
 
@@ -238,24 +211,16 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     async getMappingSet(id) {
       await delay()
       if (!db.mappingSets.some((s) => s.id === id)) return notFound('Mapping set')
-      return ok({ ...setListItem(id, await directory.listDimensionRefs()), pins: pinsFor(id) })
+      return ok(setListItem(id, await directory.listDimensionRefs()))
     },
     async getMappingVersion(versionId) {
       await delay()
       const v = mappingVersion(versionId)
       return v ? ok(await mappingContent(v)) : notFound('Mapping version')
     },
-    async checkMappingVersion(versionId) {
-      await delay()
-      return ok(reportOf(versionId, (await mappingContent(mappingVersion(versionId)!)).violations))
-    },
     async checkDeleteMappingSet(id) {
       await delay()
       return identityDeleteCheck(id, 'mapping set')
-    },
-    async checkDeleteMappingVersion(versionId) {
-      await delay()
-      return versionDeleteCheck(mappingVersion(versionId)!)
     },
 
     /* mapping set edits */
@@ -268,34 +233,34 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       if (Object.keys(errors).length) return invalid(errors)
       const s = db.mappingSets.find((x) => x.id === id)!
       Object.assign(s, { displayName: patch.displayName?.trim() ?? s.displayName, sourceNamespace: patch.sourceNamespace?.trim() ?? s.sourceNamespace })
-      touched.add(liveVersionOf(db.mappingVersions.filter((v) => v.mappingSetId === id)).id)
+      await touch(liveMappingVersion(id).id)
       return ok(clone(s))
     },
     async saveEntry(versionId, input) {
       await delay()
-      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      if (!mappingVersion(versionId)!.isLive) return frozen()
       const errors: Record<string, string[]> = {}
       if (input.sourceKeyValue === '') errors.sourceKeyValue = ['Source key is required.']
       if (!input.memberKey) errors.memberKey = ['Choose a member.']
       if (Object.keys(errors).length) return invalid(errors)
       const entry: MappingEntry = { id: input.id, versionId, sourceKeyValue: input.sourceKeyValue, memberKey: input.memberKey }
       db.entries = [...db.entries.filter((e) => e.id !== input.id), entry]
-      touched.add(versionId)
+      await touch(versionId)
       return ok(clone(entry))
     },
     async deleteEntry(versionId, entryId) {
       await delay()
-      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      if (!mappingVersion(versionId)!.isLive) return frozen()
       db.entries = db.entries.filter((e) => e.id !== entryId)
-      touched.add(versionId)
+      await touch(versionId)
       return ok(null)
     },
     async replaceEntries(versionId, entries) {
       await delay()
-      if (!isEditableStatus(mappingVersion(versionId)!.status)) return frozen()
+      if (!mappingVersion(versionId)!.isLive) return frozen()
       const next = entries.map((e) => ({ id: e.id, versionId, sourceKeyValue: e.sourceKeyValue, memberKey: e.memberKey }))
       db.entries = [...db.entries.filter((e) => e.versionId !== versionId), ...next]
-      touched.add(versionId)
+      await touch(versionId)
       return ok(clone(next))
     },
 
@@ -313,11 +278,10 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       if (!canHaveMappingSets(ref)) return fail(409, 'Dimension cannot receive mapping sets', { detail: `Only analytical categorical or hierarchical dimensions can; ${ref.displayName} cannot.` })
       const id = uid('ms')
       const t = now()
-      const v: MappingVersion = { id: uid('ver'), mappingSetId: id, versionNumber: 1, status: 'published', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
+      const v: MappingVersion = { id: uid('ver'), mappingSetId: id, snapshotId: LIVE_SNAPSHOT_ID, isLive: true, createdAt: t }
       db.mappingSets.push({ id, key: input.key, displayName: input.displayName.trim(), sourceNamespace: input.sourceNamespace.trim(), dimensionId: input.dimensionId })
       db.mappingVersions.push(v)
       db.bindings[id] = []
-      db.assumptionSets.find((a) => a.isActive)!.pins[id] = v.id
       return ok({ mappingSetId: id, versionId: v.id })
     },
     async deleteMappingSet(id) {
@@ -328,29 +292,9 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       db.entries = db.entries.filter((e) => !versionIds.has(e.versionId))
       db.mappingVersions = db.mappingVersions.filter((v) => !versionIds.has(v.id))
       db.mappingSets = db.mappingSets.filter((s) => s.id !== id)
-      removeObject(id)
+      delete db.bindings[id]
       return ok(null)
     },
-    async freezeMappingVersion(versionId, note) {
-      await delay()
-      const v = mappingVersion(versionId)!
-      if (!isEditableStatus(v.status)) return fail(409, 'Only the live version can be frozen')
-      const report = reportOf(versionId, (await mappingContent(v)).violations)
-      if (report.violations.length) return ok({ report, live: null })
-      const siblings = db.mappingVersions.filter((x) => x.mappingSetId === v.mappingSetId)
-      const next = freeze(v, db.mappingVersions, v.mappingSetId, nextNumber(siblings), note)
-      db.entries.push(...db.entries.filter((e) => e.versionId === v.id).map((e) => ({ ...e, id: uid('e'), versionId: next.id })))
-      return ok({ report, live: mappingSummary(next) })
-    },
-    async deleteMappingVersion(versionId) {
-      await delay()
-      const check = versionDeleteCheck(mappingVersion(versionId)!)
-      if (!check.allowed) return blocked('Version cannot be deleted', check)
-      db.entries = db.entries.filter((e) => e.versionId !== versionId)
-      db.mappingVersions = db.mappingVersions.filter((x) => x.id !== versionId)
-      return ok(null)
-    },
-
     /* bridge reads */
 
     async listBridges(filter) {
@@ -364,7 +308,7 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
     async getBridge(id) {
       await delay()
       if (!db.bridges.some((b) => b.id === id)) return notFound('Bridge')
-      return ok({ ...bridgeListItem(id, await directory.listDimensionRefs()), pins: pinsFor(id) })
+      return ok(bridgeListItem(id, await directory.listDimensionRefs()))
     },
     async findReportBridge(reportId, sourceKey) {
       await delay()
@@ -376,17 +320,9 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       const v = bridgeVersion(versionId)
       return v ? ok(await bridgeContent(v)) : notFound('Bridge version')
     },
-    async checkBridgeVersion(versionId) {
-      await delay()
-      return ok(reportOf(versionId, (await bridgeContent(bridgeVersion(versionId)!)).violations))
-    },
     async checkDeleteBridge(id) {
       await delay()
       return bridgeDeleteCheck(id)
-    },
-    async checkDeleteBridgeVersion(versionId) {
-      await delay()
-      return versionDeleteCheck(bridgeVersion(versionId)!)
     },
 
     /* bridge edits */
@@ -398,24 +334,24 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       if (refused) return refused
       if (patch.displayName !== undefined && !patch.displayName.trim()) return invalid({ displayName: ['Display name is required.'] })
       Object.assign(b, { ...patch, displayName: patch.displayName?.trim() ?? b.displayName })
-      touched.add(liveVersionOf(db.bridgeVersions.filter((v) => v.bridgeId === id)).id)
+      await touch(liveBridgeVersion(id).id)
       return ok(clone(b))
     },
     async updateBridgeVersion(versionId, patch) {
       await delay()
       const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<BridgeVersion>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeVersion>())
+      const refused = ownedByReport<BridgeVersion>(bridgeOf(v)) ?? (v.isLive ? null : frozen<BridgeVersion>())
       if (refused) return refused
       if (!allowedModes(patch.cardinality).includes(patch.allocationMode))
         return invalid({ allocationMode: [`${CARDINALITY_LABEL[patch.cardinality]} does not allow allocation ${ALLOCATION_LABEL[patch.allocationMode].toLowerCase()}.`] })
       Object.assign(v, patch)
-      touched.add(versionId)
+      await touch(versionId)
       return ok(clone(v))
     },
     async saveBridgeMapping(versionId, input) {
       await delay()
       const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<BridgeMapping>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeMapping>())
+      const refused = ownedByReport<BridgeMapping>(bridgeOf(v)) ?? (v.isLive ? null : frozen<BridgeMapping>())
       if (refused) return refused
       const errors: Record<string, string[]> = {}
       if (!input.sourceMemberKey) errors.sourceMemberKey = ['Choose a source member.']
@@ -426,26 +362,26 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       const existing = db.bridgeMappings.find((m) => m.id === input.id)
       const next: BridgeMapping = { ...input, versionId, sourceSelection: input.sourceSelection ?? existing?.sourceSelection ?? 'member' }
       db.bridgeMappings = [...db.bridgeMappings.filter((m) => m.id !== input.id), next]
-      touched.add(versionId)
+      await touch(versionId)
       return ok(clone(next))
     },
     async deleteBridgeMapping(versionId, mappingId) {
       await delay()
       const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<null>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<null>())
+      const refused = ownedByReport<null>(bridgeOf(v)) ?? (v.isLive ? null : frozen<null>())
       if (refused) return refused
       db.bridgeMappings = db.bridgeMappings.filter((m) => m.id !== mappingId)
-      touched.add(versionId)
+      await touch(versionId)
       return ok(null)
     },
     async replaceBridgeMappings(versionId, rows) {
       await delay()
       const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<BridgeMapping[]>(bridgeOf(v)) ?? (isEditableStatus(v.status) ? null : frozen<BridgeMapping[]>())
+      const refused = ownedByReport<BridgeMapping[]>(bridgeOf(v)) ?? (v.isLive ? null : frozen<BridgeMapping[]>())
       if (refused) return refused
       const next = rows.map((r): BridgeMapping => ({ ...r, versionId, sourceSelection: r.sourceSelection ?? 'member' }))
       db.bridgeMappings = [...db.bridgeMappings.filter((m) => m.versionId !== versionId), ...next]
-      touched.add(versionId)
+      await touch(versionId)
       return ok(clone(next))
     },
 
@@ -466,11 +402,10 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       if (src.purpose === 'report' || tgt.purpose === 'report') return fail(409, 'Report dimensions are bridged by their report', { detail: 'Bridges into report dimensions are created by mapping rows in a report.' })
       const id = uid('bridge')
       const t = now()
-      const v: BridgeVersion = { id: uid('ver'), bridgeId: id, versionNumber: 1, status: 'published', cardinality: 'many_to_one', allocationMode: 'none', createdAt: t, publishedAt: t, retiredAt: null, freezeNote: null }
+      const v: BridgeVersion = { id: uid('ver'), bridgeId: id, snapshotId: LIVE_SNAPSHOT_ID, isLive: true, cardinality: 'many_to_one', allocationMode: 'none', isEnabled: input.isEnabled, createdAt: t }
       db.bridges.push({ id, key: input.key, displayName: input.displayName.trim(), sourceDimensionId: src.id, targetDimensionId: tgt.id, isEnabled: input.isEnabled, owner: null })
       db.bridgeVersions.push(v)
       db.bindings[id] = []
-      db.assumptionSets.find((a) => a.isActive)!.pins[id] = v.id
       return ok({ bridgeId: id, versionId: v.id })
     },
     async deleteBridge(id) {
@@ -481,31 +416,7 @@ export function createMockMappingsApi(directory: MappingsDirectory, seed: Db = c
       db.bridgeMappings = db.bridgeMappings.filter((m) => !versionIds.has(m.versionId))
       db.bridgeVersions = db.bridgeVersions.filter((v) => !versionIds.has(v.id))
       db.bridges = db.bridges.filter((b) => b.id !== id)
-      removeObject(id)
-      return ok(null)
-    },
-    async freezeBridgeVersion(versionId, note) {
-      await delay()
-      const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<never>(bridgeOf(v))
-      if (refused) return refused
-      if (!isEditableStatus(v.status)) return fail(409, 'Only the live version can be frozen')
-      const report = reportOf(versionId, (await bridgeContent(v)).violations)
-      if (report.violations.length) return ok({ report, live: null })
-      const siblings = db.bridgeVersions.filter((x) => x.bridgeId === v.bridgeId)
-      const next = freeze(v, db.bridgeVersions, v.bridgeId, nextNumber(siblings), note)
-      db.bridgeMappings.push(...db.bridgeMappings.filter((m) => m.versionId === v.id).map((m) => ({ ...m, id: uid('m'), versionId: next.id })))
-      return ok({ report, live: bridgeSummary(next) })
-    },
-    async deleteBridgeVersion(versionId) {
-      await delay()
-      const v = bridgeVersion(versionId)!
-      const refused = ownedByReport<null>(bridgeOf(v))
-      if (refused) return refused
-      const check = versionDeleteCheck(v)
-      if (!check.allowed) return blocked('Version cannot be deleted', check)
-      db.bridgeMappings = db.bridgeMappings.filter((m) => m.versionId !== versionId)
-      db.bridgeVersions = db.bridgeVersions.filter((x) => x.id !== versionId)
+      delete db.bindings[id]
       return ok(null)
     },
   }

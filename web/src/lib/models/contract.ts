@@ -3,7 +3,7 @@
  * api/openapi/contract/models.yaml.
  */
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, DeleteCheck, Id, RoundingMode, VariableMissingBehavior } from '@/lib/api/contract'
+import type { ApiResult, DeleteCheck, Id, RoundingMode, SnapshotMembership, VariableMissingBehavior } from '@/lib/api/contract'
 
 export type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, DeleteCheck, Id, Problem, RoundingMode, VariableMissingBehavior, Violation } from '@/lib/api/contract'
 
@@ -12,8 +12,10 @@ export type AttributionMethod = 'shapley' | 'sequential'
 export type ModelParameterValueType = 'number' | 'text'
 export type ModelOutputDataType = 'decimal' | 'int64' | 'int32'
 
-export interface CalcModel {
+/** The model's identity with one version's settings; the live version is editable, a frozen one read-only. */
+export interface CalcModel extends SnapshotMembership {
   id: Id
+  versionId: Id
   /** Fixed after creation (C9). */
   key: string
   displayName: string
@@ -152,7 +154,10 @@ export type ModelRuleCode =
 export interface ModelsApi extends ChangeSetPort {
   // reads
   listModels(): Promise<ModelListItem[]>
+  /** The live version. */
   getModel(id: Id): Promise<ApiResult<ModelDocument>>
+  /** One version, live or frozen. */
+  getModelVersion(versionId: Id): Promise<ApiResult<ModelDocument>>
   /** Reads saved model state (OI-43). */
   checkFormula(id: Id, formula: string, selfKey: string | null): Promise<ModelFormulaCheck>
   checkDeleteModel(id: Id): Promise<DeleteCheck>

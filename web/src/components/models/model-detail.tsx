@@ -137,6 +137,7 @@ export function ModelDetail({ model: saved, onBack, onOpenReport }: ModelDetailP
     id: `model:${model.key}`,
     label: model.name,
     count: isDirty(model.key) ? 1 : 0,
+    violations: [],
     saving: false,
     save: async () => {
       const enabledChanged = model.enabled !== saved.enabled

@@ -40,32 +40,31 @@ describe.each(adapters)('TenantApi port over the $name adapter', ({ create }) =>
   it('reports one tenant state in the overview and the catalog', async () => {
     const [overview, catalog] = await Promise.all([api.getOverview(), api.getCatalog()])
 
-    const { counts: _counts, drafts: _drafts, ...info } = overview
+    const { counts: _counts, ...info } = overview
     expect(info).toEqual(catalog.tenant)
   })
 
   /** OI-22: the overview counts analytical dimensions and bridges only; report-owned ones are in the catalog only so references resolve. */
   it('counts the catalog without report-owned rows', async () => {
-    const [{ counts, drafts }, catalog] = await Promise.all([api.getOverview(), api.getCatalog()])
+    const [{ counts }, catalog] = await Promise.all([api.getOverview(), api.getCatalog()])
 
     expect(counts).toMatchObject({
       datasets: catalog.datasets.length,
       dimensions: catalog.dimensions.filter((d) => d.purpose === 'analytical').length,
       mappingSets: catalog.mappingSets.length,
       bridges: catalog.bridges.filter((b) => b.ownerReportId === null).length,
-      releases: catalog.releases.length,
-      assumptionSets: catalog.assumptionSets.length,
+      frozenSnapshots: catalog.snapshots.filter((s) => !s.isLive).length,
       models: catalog.models.length,
       reports: catalog.reports.length,
     })
-    expect(drafts.releases).toBe(catalog.releases.filter((r) => r.status === 'draft').length)
   })
 
-  /** Exactly the release the tenant points runtime queries at is active; a report dimension names its report. */
-  it('marks the active release and report ownership', async () => {
+  /** Exactly one snapshot is live, keyed `live` and listed first (blueprint 14, R2); a report dimension names its report. */
+  it('lists the live snapshot first and marks report ownership', async () => {
     const catalog = await api.getCatalog()
 
-    expect(catalog.releases.filter((r) => r.isActive).map((r) => r.id)).toEqual(catalog.tenant.activeReleaseId ? [catalog.tenant.activeReleaseId] : [])
+    expect(catalog.snapshots.filter((s) => s.isLive)).toEqual([catalog.snapshots[0]])
+    expect(catalog.snapshots[0].key).toBe('live')
     const reportIds = new Set(catalog.reports.map((r) => r.id))
     for (const dimension of catalog.dimensions) {
       expect(dimension.ownerReportId === null || reportIds.has(dimension.ownerReportId)).toBe(true)
@@ -74,12 +73,12 @@ describe.each(adapters)('TenantApi port over the $name adapter', ({ create }) =>
   })
 
   /** Pickers read members of the live version in hierarchy order: every parent precedes its children. */
-  it('reads the published members of a dimension in hierarchy order', async () => {
-    const dimension = (await api.getCatalog()).dimensions.find((d) => d.publishedVersionId !== null)!
+  it('reads the live members of a dimension in hierarchy order', async () => {
+    const dimension = (await api.getCatalog()).dimensions.find((d) => d.kind !== 'time')!
 
     const published = (await api.getPublishedMembers(dimension.id))!
 
-    expect(published).toMatchObject({ dimensionId: dimension.id, versionId: dimension.publishedVersionId })
+    expect(published).toMatchObject({ dimensionId: dimension.id, versionId: dimension.liveVersionId })
     const seen = new Set<string>()
     for (const member of published.members) {
       if (member.parentKey !== null) expect(seen).toContain(member.parentKey)

@@ -1,3 +1,4 @@
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import { catalog, publishedMembers } from '@/lib/tenant/mock/data'
 import type { Id, ReportDocument, ReportRow, ReportSource } from '../contract'
 
@@ -104,8 +105,12 @@ export function createSeed(): Db {
       {
         id: 'report-1',
         key: 'bank.margin_statement',
+        versionId: 'report-1-live',
+        snapshotId: LIVE_SNAPSHOT_ID,
+        isLive: true,
         isEnabled: true,
         modelId: 'model-1',
+        modelVersionId: 'model-1-live',
         reportDimensionId: 'report-1_dimension',
         reportDimensionVersionId: 'report-1_dimension_v1',
         settings: {
@@ -164,8 +169,12 @@ export function createSeed(): Db {
       {
         id: 'report-3',
         key: 'bank.branch_profitability',
+        versionId: 'report-3-live',
+        snapshotId: LIVE_SNAPSHOT_ID,
+        isLive: true,
         isEnabled: false,
         modelId: 'model-1',
+        modelVersionId: 'model-1-live',
         reportDimensionId: 'report-3_dimension',
         reportDimensionVersionId: 'report-3_dimension_v1',
         settings: {

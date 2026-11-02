@@ -9,9 +9,9 @@ import type {
   DatasetListItem,
   DatasetOperation,
   DatasetsApi,
-  DatasetValidationReport,
   DatasetVersion,
   DatasetVersionSummary,
+  DatasetViolation,
   Id,
   Problem,
 } from '../contract'
@@ -22,11 +22,7 @@ const datasetPath = (id: Id) => `/datasets/${id}`
 const versionPath = (id: Id) => `/dataset-versions/${id}`
 const fieldPath = (versionId: Id, fieldId: Id) => `${versionPath(versionId)}/fields/${fieldId}/materialization`
 
-/**
- * The contract's `ValidationReport` and read models are generic where this module's are narrow (dataset tabs as areas, the
- * module's vocabularies as unions); one cast each narrows them.
- */
-const asReport = (report: Schemas['ValidationReport']) => report as DatasetValidationReport
+/** The contract's read models are generic where this module's are narrow (the module's vocabularies as unions); one cast each narrows them. */
 const asVersion = (version: Schemas['DatasetVersion']) => version as DatasetVersion
 const asListItem = (item: Schemas['DatasetListItem']) => item as DatasetListItem
 
@@ -36,13 +32,6 @@ const INPUT_PREFIX = /^(input|patch|settings)\./
 function withoutInputPrefix(problem: Problem): Problem {
   const errors = Object.fromEntries(Object.entries(problem.errors).map(([path, messages]) => [path.replace(INPUT_PREFIX, ''), messages]))
   return { ...problem, errors }
-}
-
-/** A lifecycle step's 422 is a report of the rules it broke; its success is a report with none. */
-function reportOf(versionId: Id, result: ApiResult<unknown>): ApiResult<DatasetValidationReport> {
-  if (result.ok) return { ok: true, data: asReport({ versionId, checkedAt: new Date().toISOString(), violations: [] }) }
-  if (result.problem.status !== 422) return result
-  return { ok: true, data: asReport({ versionId, checkedAt: new Date().toISOString(), violations: result.problem.violations ?? [] }) }
 }
 
 const byId = <T extends { id: Id }>(items: T[], id: Id) => items.find((item) => item.id === id)!
@@ -65,17 +54,7 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
     return { ...item, ...pending.dataset, versions: item.versions.map((v) => (v.id === pending.id ? summaryOf(pending) : v)) }
   }
 
-  const summaryOf = ({ id, datasetId, versionNumber, status, sourceObject, createdAt, publishedAt, clonedFromVersionId, releases }: DatasetVersion): DatasetVersionSummary => ({
-    id,
-    datasetId,
-    versionNumber,
-    status,
-    sourceObject,
-    createdAt,
-    publishedAt,
-    clonedFromVersionId,
-    releases,
-  })
+  const summaryOf = ({ id, datasetId, snapshotId, isLive, sourceObject, createdAt }: DatasetVersion): DatasetVersionSummary => ({ id, datasetId, snapshotId, isLive, sourceObject, createdAt })
 
   async function getVersion(versionId: Id): Promise<ApiResult<DatasetVersion>> {
     const pending = changes.pending()?.state
@@ -96,13 +75,8 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
     return result.ok ? { ok: true, data: answer(result.data) } : result
   }
 
-  /** The version an identity edit stages on: the open change set's, else the dataset's draft, else its newest version. */
-  function editableVersionOf(datasetId: Id): Id {
-    const pending = changes.pending()?.state
-    if (pending?.datasetId === datasetId) return pending.id
-    const versions = datasets.get(datasetId)!.versions
-    return (versions.find((v) => v.status === 'draft') ?? versions[0]).id
-  }
+  /** Identity edits stage on the dataset's live version, the only one a change set edits. */
+  const liveVersionOf = (datasetId: Id) => datasets.get(datasetId)!.liveVersionId
 
   return {
     ...changes,
@@ -118,18 +92,13 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
       return result.ok ? { ok: true, data: pendingItem(remember(asListItem(result.data))) } : result
     },
     getVersion,
-    async checkVersion(versionId) {
-      const result = await http.post<Schemas['ValidationReport']>(`${versionPath(versionId)}/check`)
-      return result.ok ? { ok: true, data: asReport(result.data) } : result
-    },
     checkDeleteDataset: (datasetId) => unwrap(http.get<Schemas['DeleteCheck']>(`${datasetPath(datasetId)}/delete-check`)),
-    checkDeleteVersion: (versionId) => unwrap(http.get<Schemas['DeleteCheck']>(`${versionPath(versionId)}/delete-check`)),
 
-    updateDataset: (datasetId, patch) => edit(editableVersionOf(datasetId), { op: 'updateDataset', patch }, ({ state }): Dataset => state.dataset),
+    updateDataset: (datasetId, patch) => edit(liveVersionOf(datasetId), { op: 'updateDataset', patch }, ({ state }): Dataset => state.dataset),
     saveSettings: (versionId, settings) =>
       edit(versionId, { op: 'saveSettings', settings }, ({ state, violations }) => ({
         settings: state.settings,
-        warnings: violations.filter((v) => v.code === 'field_columns_exist') as DatasetValidationReport['violations'],
+        warnings: violations.filter((v) => v.code === 'field_columns_exist') as DatasetViolation[],
       })),
     renameSourceTable: (versionId, tableName) => edit(versionId, { op: 'renameSourceTable', tableName }, ({ state }) => state.settings),
     saveField(versionId, input) {
@@ -162,12 +131,6 @@ export function createHttpDatasetsApi(http: HttpClient): DatasetsApi {
       return result.ok ? { ok: true, data: remember(asListItem(result.data)) } : result
     },
     deleteDataset: (datasetId) => http.delete(datasetPath(datasetId)),
-    createDraft: (datasetId, input) => http.post<Schemas['DatasetVersionSummary']>(`${datasetPath(datasetId)}/versions`, input satisfies Schemas['DatasetCreateDraftInput']),
-    deleteDraft: (versionId) => http.delete(versionPath(versionId)),
-    validateVersion: async (versionId) => reportOf(versionId, await http.post(`${versionPath(versionId)}/validate`)),
-    publishVersion: async (versionId) => reportOf(versionId, await http.post(`${versionPath(versionId)}/publish`)),
-    reopenVersion: (versionId) => http.post<Schemas['DatasetVersionSummary']>(`${versionPath(versionId)}/reopen`),
-    retireVersion: (versionId) => http.post<Schemas['DatasetVersionSummary']>(`${versionPath(versionId)}/retire`),
     materializeField: (versionId, fieldId) => http.post<DatasetField>(fieldPath(versionId, fieldId)),
     refreshMaterialization: (versionId, fieldId) => http.post<DatasetField>(`${fieldPath(versionId, fieldId)}/refresh`),
     dematerializeField: (versionId, fieldId) => http.delete<DatasetField>(fieldPath(versionId, fieldId)),

@@ -1,3 +1,4 @@
+import { LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 import { createSnapshotChangeSet, refill } from '@/lib/api/changes'
 import type { Problem } from '@/lib/api/contract'
 import type {
@@ -29,7 +30,7 @@ const fail = (status: Problem['status'], title: string, extra: Partial<Problem> 
   ok: false,
   problem: { type: 'about:blank', title, status, errors: {}, ...extra },
 })
-type ReportContent = Omit<ReportDocument, 'id' | 'key' | 'isEnabled' | 'modelId' | 'reportDimensionId' | 'reportDimensionVersionId'>
+type ReportContent = Omit<ReportDocument, 'id' | 'key' | 'versionId' | 'snapshotId' | 'isLive' | 'isEnabled' | 'modelId' | 'modelVersionId' | 'reportDimensionId' | 'reportDimensionVersionId'>
 
 const violated = (violations: Violation[]) => fail(422, 'The change would break a report rule.', { type: 'urn:qe:problem:rules-violated', violations })
 const missing = (noun: string, key: string) => fail(409, 'Not in the report', { detail: `The report has no ${noun} '${key}'.` })
@@ -170,8 +171,12 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
       ...content,
       id,
       key: input.key,
+      versionId: `${id}-live`,
+      snapshotId: LIVE_SNAPSHOT_ID,
+      isLive: true,
       isEnabled: false,
       modelId: input.modelId,
+      modelVersionId: `${input.modelId}-live`,
       reportDimensionId: `${id}_dimension`,
       reportDimensionVersionId: `${id}_dimension_v1`,
       settings: { ...content.settings, displayName: input.displayName, reportType: input.reportType },
@@ -182,6 +187,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
   const changes = createSnapshotChangeSet(
     () => db.reports,
     (snapshot) => refill(db.reports, snapshot),
+    () => db.reports.filter((r) => r.isEnabled).flatMap((doc) => diagnose(doc).steps.flatMap((s) => (s.status === 'fail' ? s.violations : []))),
   )
 
   return {
@@ -195,6 +201,11 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
       await wait()
       const doc = db.reports.find((r) => r.id === id)
       return doc ? ok(doc) : fail(404, 'Report not found')
+    },
+    async getReportVersion(versionId) {
+      await wait()
+      const doc = db.reports.find((r) => r.versionId === versionId)
+      return doc ? ok(doc) : fail(404, 'Report version not found')
     },
     async getDiagnostics(id) {
       await wait()

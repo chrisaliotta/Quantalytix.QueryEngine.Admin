@@ -1,4 +1,4 @@
-import { ArrowRightLeftIcon, CircleCheckIcon, InfoIcon, LayersIcon, LinkIcon, OctagonXIcon, RulerIcon, SlidersHorizontalIcon, SplitIcon, TagIcon, UsersIcon, XIcon, type LucideIcon } from 'lucide-react'
+import { ArrowRightLeftIcon, InfoIcon, LayersIcon, LinkIcon, OctagonXIcon, RulerIcon, SlidersHorizontalIcon, SplitIcon, TagIcon, UsersIcon, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DetailShell, PageMessage, SectionNav, type NavGroup } from '@/components/shell/page-shell'
@@ -6,10 +6,10 @@ import { BridgesSection } from '@/components/mappings/bridges-section'
 import { MappingSetsSection } from '@/components/mappings/mapping-sets-section'
 import { DimensionEditScope, useDimension, useDimensionVersion } from '@/lib/dimensions/client'
 import { useSearchParam, useSetSearchParams } from '@/lib/navigation'
-import { useNavigationGuard } from '@/components/shell/changes'
-import { defaultVersion, isVersionEditable, SELF_VERSIONED_TABS, tabsForKind, type DimensionDetail as Detail, type DimensionTab, type DimensionEditPolicy, type DimensionValidationReport, type DimensionVersionContent } from '@/lib/dimensions/contract'
+import { useChangeScope, useNavigationGuard } from '@/components/shell/changes'
+import { FrozenVersionNote } from '@/components/snapshots/shared'
+import { isVersionEditable, SELF_VERSIONED_TABS, tabsForKind, type DimensionDetail as Detail, type DimensionTab, type DimensionEditPolicy, type DimensionVersionContent, type DimensionVersionSummary, type Violation } from '@/lib/dimensions/contract'
 import { useBridges, useMappingSets } from '@/lib/mappings/client'
-import { cn } from '@/lib/utils'
 import { BandsSection } from './bands-section'
 import { DimensionHeader } from './dimension-header'
 import { LevelsSection } from './levels-section'
@@ -40,17 +40,6 @@ const TAB_META: Record<DimensionTab, { label: string; icon: LucideIcon }> = {
 
 export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; onBack: () => void }) {
   const { data: dim, error } = useDimension(dimensionId)
-  const [versionParam, setVersionParam] = useSearchParam('version')
-  const [tabParam] = useSearchParam('tab')
-  const setSearchParams = useSetSearchParams()
-  const [reports, setReports] = useState<Record<string, DimensionValidationReport>>({})
-  const [focusId, setFocusId] = useState<string | null>(null)
-  const guard = useNavigationGuard()
-
-  const selected = dim ? (dim.versions.find((v) => v.id === versionParam) ?? defaultVersion(dim.versions)) : undefined
-  const { data: content } = useDimensionVersion(selected?.id ?? null)
-  const { data: mappingSets } = useMappingSets(dimensionId)
-  const { data: bridges } = useBridges(dimensionId)
 
   if (error) {
     return (
@@ -65,14 +54,32 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
       </PageMessage>
     )
   }
-  if (!dim || !selected) return <PageMessage>Loading dimension…</PageMessage>
+  if (!dim) return <PageMessage>Loading dimension…</PageMessage>
+  return (
+    <DimensionEditScope dimensionId={dim.id} label={dim.displayName}>
+      <DimensionPage dim={dim} onBack={onBack} />
+    </DimensionEditScope>
+  )
+}
+
+function DimensionPage({ dim, onBack }: { dim: Detail; onBack: () => void }) {
+  const [versionParam, setVersionParam] = useSearchParam('version')
+  const [tabParam] = useSearchParam('tab')
+  const setSearchParams = useSetSearchParams()
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const guard = useNavigationGuard()
+  const findings = useChangeScope()!.violations
+
+  const selected = dim.versions.find((v) => v.id === versionParam) ?? dim.versions.find((v) => v.isLive)!
+  const { data: content } = useDimensionVersion(selected.id)
+  const { data: mappingSets } = useMappingSets(dim.id)
+  const { data: bridges } = useBridges(dim.id)
 
   const tabs = tabsForKind(dim.kind, dim.purpose)
   const tab: DimensionTab = tabs.includes(tabParam as DimensionTab) ? (tabParam as DimensionTab) : 'properties'
   const selfVersioned = SELF_VERSIONED_TABS.includes(tab)
   const policy = dim.profile?.editPolicy ?? null
-  const editable = isVersionEditable(selected.status, policy)
-  const report = reports[selected.id] ?? null
+  const editable = isVersionEditable(selected, policy)
   const contentReady = content && content.version.id === selected.id ? content : null
 
   const go = (t: DimensionTab, itemId: string | null = null) => {
@@ -94,14 +101,13 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
   const groups: NavGroup<DimensionTab>[] = [
     {
       items: tabs.map((t) => {
-        const issues = report?.violations.filter((v) => v.target?.area === t).length ?? 0
+        const issues = findings.filter((v) => v.target?.area === t).length
         return { id: t, ...TAB_META[t], badge: issues > 0 ? issues : countFor(t), tone: issues > 0 ? ('bad' as const) : undefined }
       }),
     },
   ]
 
   return (
-    <DimensionEditScope dimensionId={dim.id} label={dim.displayName}>
     <DetailShell
       header={
         <DimensionHeader
@@ -114,7 +120,6 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
               setFocusId(null)
             })
           }
-          onReport={(r) => setReports((all) => ({ ...all, [r.versionId]: r }))}
         />
       }
       nav={<SectionNav label="Dimension sections" groups={groups} active={tab} onSelect={(t) => go(t)} />}
@@ -125,8 +130,8 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
                 Managed from the {dim.profile.owner} module.
               </div>
             )}
-            {!selfVersioned && report && <ValidationPanel report={report} onOpen={go} onDismiss={() => setReports(({ [selected.id]: _, ...rest }) => rest)} />}
-            {!selfVersioned && !editable && <ReadOnlyNote status={selected.status} locked={policy === 'locked'} owner={dim.profile?.owner} versionNumber={selected.versionNumber} />}
+            {!selfVersioned && findings.length > 0 && <FindingsPanel findings={findings} onOpen={go} />}
+            {!selfVersioned && !editable && <ReadOnlyNote version={selected} locked={policy === 'locked'} owner={dim.profile?.owner} />}
             {tab === 'mappings' ? (
               <MappingSetsSection dim={dim} />
             ) : tab === 'bridges' ? (
@@ -137,7 +142,6 @@ export function DimensionDetail({ dimensionId, onBack }: { dimensionId: string; 
               <TabBody tab={tab} props={{ dim, content: contentReady, editable, policy, focusId, clearFocus: () => setFocusId(null) }} />
             )}
     </DetailShell>
-    </DimensionEditScope>
   )
 }
 
@@ -161,43 +165,38 @@ function TabBody({ tab, props }: { tab: DimensionTab; props: SectionProps }) {
   }
 }
 
-function ReadOnlyNote({ status, locked, owner, versionNumber }: { status: string; locked: boolean; owner?: string; versionNumber: number }) {
+function ReadOnlyNote({ version, locked, owner }: { version: DimensionVersionSummary; locked: boolean; owner?: string }) {
+  if (!locked) return <FrozenVersionNote version={version} />
   return (
     <p className="flex items-center gap-2 text-sm text-muted-foreground">
       <InfoIcon aria-hidden className="size-4 shrink-0" />
-      {locked ? `Read-only. Managed by ${owner}.` : `v${versionNumber} is a frozen snapshot and read-only. Edit the live version instead.`}
+      Read-only. Managed by {owner}.
     </p>
   )
 }
 
-function ValidationPanel({ report, onOpen, onDismiss }: { report: DimensionValidationReport; onOpen: (tab: DimensionTab, id: string | null) => void; onDismiss: () => void }) {
-  const ok = !report.violations.length
+/** The commit rules' findings on the pending edits; Save stays blocked until none remains. */
+function FindingsPanel({ findings, onOpen }: { findings: Violation[]; onOpen: (tab: DimensionTab, id: string | null) => void }) {
   return (
-    <section
-      aria-label="Validation results"
-      className={cn('flex flex-col gap-2 rounded-lg border p-3', ok ? 'border-success/40 bg-success-muted' : 'border-destructive/50 bg-destructive/10')}
-    >
+    <section aria-label="Rule findings" className="flex flex-col gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
       <div className="flex items-center gap-2">
-        {ok ? <CircleCheckIcon aria-hidden className="size-4 text-success-foreground" /> : <OctagonXIcon aria-hidden className="size-4 text-destructive" />}
-        <h2 className="flex-1 text-sm font-medium">{ok ? 'No violations — ready to freeze.' : `${report.violations.length} violation${report.violations.length === 1 ? '' : 's'} block freezing`}</h2>
-        <Button variant="ghost" size="icon-sm" aria-label="Dismiss results" onClick={onDismiss}>
-          <XIcon />
-        </Button>
+        <OctagonXIcon aria-hidden className="size-4 text-destructive" />
+        <h2 className="flex-1 text-sm font-medium">
+          {findings.length} rule finding{findings.length === 1 ? '' : 's'} block saving
+        </h2>
       </div>
-      {!ok && (
-        <ul className="flex flex-col divide-y divide-destructive/20">
-          {report.violations.map((v, i) => (
-            <li key={`${v.code}-${i}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-              <span className="text-pretty">{v.message}</span>
-              {v.target && (
-                <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => onOpen(v.target!.area, v.target!.itemId ?? null)}>
-                  Go to {TAB_META[v.target.area].label.toLowerCase()}
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="flex flex-col divide-y divide-destructive/20">
+        {findings.map((v, i) => (
+          <li key={`${v.code}-${i}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+            <span className="text-pretty">{v.message}</span>
+            {v.target && (
+              <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => onOpen(v.target!.area as DimensionTab, v.target!.itemId ?? null)}>
+                Go to {TAB_META[v.target.area as DimensionTab].label.toLowerCase()}
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

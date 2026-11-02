@@ -5,9 +5,9 @@
  */
 
 import type { ChangeSetPort } from '@/lib/api/changes'
-import type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, FreezeResult, Id, Problem, SourceSelection, ValidationReport, VersionStatus, Violation } from '@/lib/api/contract'
+import type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, Id, Problem, SnapshotMembership, SourceSelection, Violation } from '@/lib/api/contract'
 
-export type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, FreezeResult, Id, Problem, SourceSelection, ValidationReport, VersionStatus, Violation }
+export type { ApiResult, DeleteBlocker, DeleteCheck, DimensionKind, DimensionPurpose, Id, Problem, SourceSelection, Violation }
 export { newTempId } from '@/lib/api/contract'
 
 export type MappingCardinality = 'many_to_one' | 'many_to_many'
@@ -20,8 +20,8 @@ export interface MappingDimensionRef {
   displayName: string
   kind: DimensionKind
   purpose: DimensionPurpose
-  publishedVersionId: Id | null
-  publishedVersionNumber: number | null
+  /** The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when it holds none. */
+  versionId: Id | null
 }
 
 /** A member of a dimension's live version, as the pickers and labels show it. */
@@ -32,10 +32,10 @@ export interface MemberRef {
   isAssignable: boolean
 }
 
-/** Dimension refs and published members the editors resolve keys against; served by `TenantApi` (OI-13). */
+/** Dimension refs and live members the editors resolve keys against; served by `TenantApi` (OI-13). */
 export interface MappingsDirectory {
   listDimensionRefs(): Promise<MappingDimensionRef[]>
-  /** Members of the dimension's live version; null when it has none. */
+  /** Members of the dimension's live version; null when the dimension does not exist. */
   getPublishedMembers(dimensionId: Id): Promise<MemberRef[] | null>
 }
 
@@ -43,27 +43,17 @@ export interface MappingsDirectory {
 export interface MappingBindingUsage {
   datasetId: Id
   datasetKey: string
+  /** The dataset version that holds the binding, in the same snapshot. */
   datasetVersionId: Id
-  datasetVersionNumber: number
-  status: VersionStatus
   fieldKey: string
   roleKey: string
   /** Bridge bindings: the role of the binding the bridge remaps. */
   sourceRoleKey: string | null
 }
 
-export interface MappingAssumptionPin {
-  assumptionSetId: Id
-  assumptionSetKey: string
-  assumptionSetDisplayName: string
-  isActive: boolean
-  versionId: Id
-  versionNumber: number
-}
-
-export type MappingViolationCode = 'source_key_unique' | 'dimension_version_published' | 'entry_member_in_version' | 'entry_member_assignable'
+export type MappingViolationCode = 'source_key_unique' | 'dimension_version_in_snapshot' | 'entry_member_in_version' | 'entry_member_assignable'
 export type BridgeViolationCode =
-  | 'endpoint_versions_published'
+  | 'endpoint_versions_in_snapshot'
   | 'mapping_members_in_endpoint_versions'
   | 'cardinality_many_to_one'
   | 'allocation_none'
@@ -82,16 +72,11 @@ export interface MappingSet {
   dimensionId: Id
 }
 
-/** `published` is the live version, `retired` a frozen snapshot. */
-export interface MappingVersion {
+/** The live version (edited in place) or a frozen snapshot's version (read-only). */
+export interface MappingVersion extends SnapshotMembership {
   id: Id
   mappingSetId: Id
-  versionNumber: number
-  status: VersionStatus
   createdAt: string
-  publishedAt: string | null
-  retiredAt: string | null
-  freezeNote: string | null
 }
 
 export interface MappingEntry {
@@ -101,26 +86,20 @@ export interface MappingEntry {
   memberKey: string
 }
 
-export interface MappingVersionSummary {
+export interface MappingVersionSummary extends SnapshotMembership {
   id: Id
-  versionNumber: number
-  status: VersionStatus
   createdAt: string
-  publishedAt: string | null
-  retiredAt: string | null
-  freezeNote: string | null
   entryCount: number
 }
 
 export interface MappingSetListItem extends MappingSet {
   dimension: MappingDimensionRef
+  /** One per snapshot holding the mapping set: the live version first, then frozen ones newest first. */
   versions: MappingVersionSummary[]
-  publishedEntryCount: number
+  /** The live version, which change sets edit. */
+  liveVersionId: Id
+  liveEntryCount: number
   bindings: MappingBindingUsage[]
-}
-
-export interface MappingSetDetail extends MappingSetListItem {
-  pins: MappingAssumptionPin[]
 }
 
 export interface MappingCoverage {
@@ -132,12 +111,12 @@ export interface MappingVersionContent {
   version: MappingVersion
   entries: MappingEntry[]
   coverage: MappingCoverage
-  /** Rule findings on this content; `target.itemId` is the entry at fault. Empty on a saved live version. */
+  /** Commit-rule findings on this content; `target.itemId` is the entry at fault. Empty on a saved live version. */
   violations: Violation[]
 }
 
 export interface MappingSetEditState {
-  set: MappingSetDetail
+  set: MappingSetListItem
   content: MappingVersionContent
 }
 
@@ -161,8 +140,6 @@ export interface MappingEntryInput {
   sourceKeyValue: string
   memberKey: string
 }
-
-export type MappingFreezeResult = FreezeResult<MappingVersionSummary>
 
 export type MappingOperation =
   | { op: 'updateMappingSet'; patch: MappingSetPatch }
@@ -189,18 +166,15 @@ export interface Bridge {
   owner: BridgeOwner | null
 }
 
-/** `published` is the live version, `retired` a frozen snapshot. */
-export interface BridgeVersion {
+/** The live version (edited in place) or a frozen snapshot's version (read-only). */
+export interface BridgeVersion extends SnapshotMembership {
   id: Id
   bridgeId: Id
-  versionNumber: number
-  status: VersionStatus
   cardinality: MappingCardinality
   allocationMode: MappingAllocationMode
+  /** Whether the engine offers the bridge in the version's snapshot. */
+  isEnabled: boolean
   createdAt: string
-  publishedAt: string | null
-  retiredAt: string | null
-  freezeNote: string | null
 }
 
 export interface BridgeMapping {
@@ -213,29 +187,23 @@ export interface BridgeMapping {
   sourceSelection: SourceSelection
 }
 
-export interface BridgeVersionSummary {
+export interface BridgeVersionSummary extends SnapshotMembership {
   id: Id
-  versionNumber: number
-  status: VersionStatus
   cardinality: MappingCardinality
   allocationMode: MappingAllocationMode
   createdAt: string
-  publishedAt: string | null
-  retiredAt: string | null
-  freezeNote: string | null
   mappingCount: number
 }
 
 export interface BridgeListItem extends Bridge {
   source: MappingDimensionRef
   target: MappingDimensionRef
+  /** One per snapshot holding the bridge: the live version first, then frozen ones newest first. */
   versions: BridgeVersionSummary[]
-  publishedMappingCount: number
+  /** The live version, which change sets edit. */
+  liveVersionId: Id
+  liveMappingCount: number
   bindings: MappingBindingUsage[]
-}
-
-export interface BridgeDetail extends BridgeListItem {
-  pins: MappingAssumptionPin[]
 }
 
 export interface BridgeSourceAllocation {
@@ -257,7 +225,7 @@ export interface BridgeVersionContent {
 }
 
 export interface BridgeEditState {
-  bridge: BridgeDetail
+  bridge: BridgeListItem
   content: BridgeVersionContent
 }
 
@@ -288,8 +256,6 @@ export interface BridgeMappingInput {
   sourceSelection?: SourceSelection
 }
 
-export type BridgeFreezeResult = FreezeResult<BridgeVersionSummary>
-
 export type BridgeOperation =
   | { op: 'updateBridge'; patch: BridgePatch }
   | { op: 'updateBridgeVersion'; versionId: Id; patch: BridgeVersionPatch }
@@ -300,25 +266,24 @@ export type BridgeOperation =
 /* ───────────────────────── the port ───────────────────────── */
 
 /**
- * Edits are staged per mapping set or analytical bridge (identity plus its live version) and saved by `commitChanges`.
- * Report bridges are read here and written only through their report's change set.
+ * Edits are staged per mapping set or analytical bridge (identity plus its live version) and saved by `commitChanges`, which the
+ * commit rules refuse while any finding remains. Frozen versions are read-only. Report bridges are read here and written only
+ * through their report's change set.
  */
 export interface MappingsApi extends ChangeSetPort {
   // reads
   listMappingSets(filter?: { dimensionId?: Id }): Promise<MappingSetListItem[]>
-  getMappingSet(id: Id): Promise<ApiResult<MappingSetDetail>>
+  getMappingSet(id: Id): Promise<ApiResult<MappingSetListItem>>
+  /** Any version, live or frozen. */
   getMappingVersion(versionId: Id): Promise<ApiResult<MappingVersionContent>>
-  checkMappingVersion(versionId: Id): Promise<ApiResult<ValidationReport>>
   checkDeleteMappingSet(id: Id): Promise<DeleteCheck>
-  checkDeleteMappingVersion(versionId: Id): Promise<DeleteCheck>
   listBridges(filter?: { dimensionId?: Id }): Promise<BridgeListItem[]>
-  getBridge(id: Id): Promise<ApiResult<BridgeDetail>>
+  getBridge(id: Id): Promise<ApiResult<BridgeListItem>>
   /** The report bridge a report source writes its row mappings to. */
   findReportBridge(reportId: Id, sourceKey: string): Promise<BridgeListItem | null>
+  /** Any version, live or frozen. */
   getBridgeVersion(versionId: Id): Promise<ApiResult<BridgeVersionContent>>
-  checkBridgeVersion(versionId: Id): Promise<ApiResult<ValidationReport>>
   checkDeleteBridge(id: Id): Promise<DeleteCheck>
-  checkDeleteBridgeVersion(versionId: Id): Promise<DeleteCheck>
 
   // edits: a mapping set's identity and its live version
   updateMappingSet(id: Id, patch: MappingSetPatch): Promise<ApiResult<MappingSet>>
@@ -336,29 +301,16 @@ export interface MappingsApi extends ChangeSetPort {
 
   // commands
   createMappingSet(input: CreateMappingSetInput): Promise<ApiResult<MappingSetCreated>>
+  /** Allowed only while no live binding uses it and no frozen snapshot holds it. */
   deleteMappingSet(id: Id): Promise<ApiResult<null>>
-  freezeMappingVersion(versionId: Id, note: string | null): Promise<ApiResult<MappingFreezeResult>>
-  /** Frozen versions only. */
-  deleteMappingVersion(versionId: Id): Promise<ApiResult<null>>
   createBridge(input: CreateBridgeInput): Promise<ApiResult<BridgeCreated>>
+  /** Allowed only while no live binding uses it and no frozen snapshot holds it. */
   deleteBridge(id: Id): Promise<ApiResult<null>>
-  freezeBridgeVersion(versionId: Id, note: string | null): Promise<ApiResult<BridgeFreezeResult>>
-  /** Frozen versions only. */
-  deleteBridgeVersion(versionId: Id): Promise<ApiResult<null>>
 }
 
 export const MAPPING_SET_EDITS = ['updateMappingSet', 'saveEntry', 'deleteEntry', 'replaceEntries'] as const satisfies readonly (MappingOperation['op'] & keyof MappingsApi)[]
 export const BRIDGE_EDITS = ['updateBridge', 'updateBridgeVersion', 'saveBridgeMapping', 'deleteBridgeMapping', 'replaceBridgeMappings'] as const satisfies readonly (BridgeOperation['op'] & keyof MappingsApi)[]
-export const MAPPINGS_COMMANDS = [
-  'createMappingSet',
-  'deleteMappingSet',
-  'freezeMappingVersion',
-  'deleteMappingVersion',
-  'createBridge',
-  'deleteBridge',
-  'freezeBridgeVersion',
-  'deleteBridgeVersion',
-] as const satisfies readonly (keyof MappingsApi)[]
+export const MAPPINGS_COMMANDS = ['createMappingSet', 'deleteMappingSet', 'createBridge', 'deleteBridge'] as const satisfies readonly (keyof MappingsApi)[]
 
 /* ───────────────────────── shared module rules ───────────────────────── */
 
@@ -389,17 +341,4 @@ export function canHaveMappingSets(d: Pick<MappingDimensionRef, 'kind' | 'purpos
 /** Bridges can connect any non-time dimension; report dimensions only receive report bridges. */
 export function canHaveBridges(d: Pick<MappingDimensionRef, 'kind'>) {
   return d.kind !== 'time'
-}
-
-/** Only the live version accepts edits. */
-export function isEditableStatus(s: VersionStatus) {
-  return s === 'published'
-}
-
-export function liveVersionOf<T extends { status: VersionStatus }>(versions: T[]): T {
-  return versions.find((v) => v.status === 'published')!
-}
-
-export function versionLabel(s: VersionStatus) {
-  return s === 'published' ? 'live' : 'frozen'
 }

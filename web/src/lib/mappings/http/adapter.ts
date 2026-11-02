@@ -1,5 +1,5 @@
 import { createHttpChangeSet } from '@/lib/api/changes'
-import { unwrap, type FreezeInput } from '@/lib/api/contract'
+import { unwrap } from '@/lib/api/contract'
 import type { HttpClient } from '@/lib/api/http'
 import type { components } from '@/lib/api/schema'
 import type {
@@ -7,14 +7,12 @@ import type {
   Bridge,
   BridgeEditState,
   BridgeOperation,
-  FreezeResult,
   Id,
   MappingOperation,
   MappingSet,
   MappingSetEditState,
   MappingsApi,
   Problem,
-  ValidationReport,
 } from '../contract'
 
 type Schemas = components['schemas']
@@ -42,14 +40,6 @@ function setFields({ id, key, displayName, sourceNamespace, dimensionId }: Mappi
 
 function bridgeFields({ id, key, displayName, sourceDimensionId, targetDimensionId, isEnabled, owner }: Bridge): Bridge {
   return { id, key, displayName, sourceDimensionId, targetDimensionId, isEnabled, owner }
-}
-
-/** A freeze answers 200 with the new live version, or 422 when a rule fails, which the port reports as `live: null`. */
-async function freeze<V>(http: HttpClient, path: string, versionId: Id, note: string | null): Promise<ApiResult<FreezeResult<V>>> {
-  const result = await http.post<FreezeResult<V>>(`${path}/freeze`, { note } satisfies FreezeInput)
-  if (result.ok || result.problem.status !== 422) return result
-  const report: ValidationReport = { versionId, checkedAt: new Date().toISOString(), violations: result.problem.violations ?? [] }
-  return { ok: true, data: { report, live: null } }
 }
 
 /**
@@ -95,7 +85,7 @@ export function createHttpMappingsApi(http: HttpClient): MappingsApi {
     async getMappingSet(id) {
       const staged = pendingSet()?.set
       if (staged?.id === id) return { ok: true, data: staged }
-      const result = await http.get<Schemas['MappingSetDetail']>(setPath(id))
+      const result = await http.get<Schemas['MappingSetListItem']>(setPath(id))
       if (result.ok) rememberSet(result.data)
       return result
     },
@@ -106,9 +96,7 @@ export function createHttpMappingsApi(http: HttpClient): MappingsApi {
       if (result.ok) versionSet.set(versionId, result.data.version.mappingSetId)
       return result
     },
-    checkMappingVersion: (versionId) => http.post<Schemas['ValidationReport']>(`${mappingVersionPath(versionId)}/check`),
     checkDeleteMappingSet: (id) => unwrap(http.get<Schemas['DeleteCheck']>(`${setPath(id)}/delete-check`)),
-    checkDeleteMappingVersion: (versionId) => unwrap(http.get<Schemas['DeleteCheck']>(`${mappingVersionPath(versionId)}/delete-check`)),
 
     async listBridges(filter) {
       const items = await unwrap(http.get<Schemas['BridgeListItem'][]>('/bridges', { dimensionId: filter?.dimensionId }))
@@ -118,7 +106,7 @@ export function createHttpMappingsApi(http: HttpClient): MappingsApi {
     async getBridge(id) {
       const staged = pendingBridge()?.bridge
       if (staged?.id === id) return { ok: true, data: staged }
-      const result = await http.get<Schemas['BridgeDetail']>(bridgePath(id))
+      const result = await http.get<Schemas['BridgeListItem']>(bridgePath(id))
       if (result.ok) rememberBridge(result.data)
       return result
     },
@@ -133,9 +121,7 @@ export function createHttpMappingsApi(http: HttpClient): MappingsApi {
       if (result.ok) versionBridge.set(versionId, result.data.version.bridgeId)
       return result
     },
-    checkBridgeVersion: (versionId) => http.post<Schemas['ValidationReport']>(`${bridgeVersionPath(versionId)}/check`),
     checkDeleteBridge: (id) => unwrap(http.get<Schemas['DeleteCheck']>(`${bridgePath(id)}/delete-check`)),
-    checkDeleteBridgeVersion: (versionId) => unwrap(http.get<Schemas['DeleteCheck']>(`${bridgeVersionPath(versionId)}/delete-check`)),
 
     updateMappingSet: (id, patch) => editSet(id, { op: 'updateMappingSet', patch }, (s) => setFields(s.set)),
     saveEntry: (versionId, input) => editMappingVersion({ op: 'saveEntry', versionId, input }, (s) => byId(s.content.entries, input.id)),
@@ -154,23 +140,11 @@ export function createHttpMappingsApi(http: HttpClient): MappingsApi {
       return result
     },
     deleteMappingSet: (id) => http.delete(setPath(id)),
-    async freezeMappingVersion(versionId, note) {
-      const result = await freeze<Schemas['MappingVersionSummary']>(http, mappingVersionPath(versionId), versionId, note)
-      if (result.ok && result.data.live) versionSet.set(result.data.live.id, versionSet.get(versionId)!)
-      return result
-    },
-    deleteMappingVersion: (versionId) => http.delete(mappingVersionPath(versionId)),
     async createBridge(input) {
       const result = await http.post<Schemas['BridgeCreated']>('/bridges', input satisfies Schemas['CreateBridgeInput'])
       if (result.ok) versionBridge.set(result.data.versionId, result.data.bridgeId)
       return result
     },
     deleteBridge: (id) => http.delete(bridgePath(id)),
-    async freezeBridgeVersion(versionId, note) {
-      const result = await freeze<Schemas['BridgeVersionSummary']>(http, bridgeVersionPath(versionId), versionId, note)
-      if (result.ok && result.data.live) versionBridge.set(result.data.live.id, versionBridge.get(versionId)!)
-      return result
-    },
-    deleteBridgeVersion: (versionId) => http.delete(bridgeVersionPath(versionId)),
   }
 }

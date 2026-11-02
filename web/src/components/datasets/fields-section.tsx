@@ -85,7 +85,7 @@ function DatasetIdentity({ version }: { version: DatasetVersion }) {
   const { run, errorsFor, problem, setProblem } = useApiCall()
   const table = version.settings.sourceObject
   const source = sources?.find((s) => s.name === table && s.kind === version.settings.sourceObjectKind)
-  const canRename = version.status === 'draft' && version.settings.sourceObjectKind === 'table' && !!source?.isManaged && dataset?.versions.length === 1
+  const canRename = version.isLive && version.settings.sourceObjectKind === 'table' && !!source?.isManaged && dataset?.versions.length === 1
   if (!dataset) return null
   const tableHint = canRename ? 'Managed table created for this dataset.' : source?.isManaged ? 'Managed table. Shared by other versions, so it keeps its name.' : `Existing ${version.settings.sourceObjectKind} registered with this dataset.`
 
@@ -129,7 +129,7 @@ export function FieldsSection({ version, readOnly, editingId, onEdit, onOpen }: 
   const [creating, setCreating] = useState(false)
   const newRef = useRef(newDraft)
   const timeIds = timeFieldIds(version)
-  const canMaterialize = version.status !== 'retired'
+  const canMaterialize = version.isLive
   const kindLabel = (k: string) => vocab?.fieldSourceKind.find((t) => t.value === k)?.label ?? k
   const kindOptions = (vocab?.fieldSourceKind ?? []).map((t) => ({ value: t.value, label: t.label }))
   const focused = editingId ? version.fields.find((f) => f.id === editingId) : undefined
@@ -758,7 +758,7 @@ function MaterializationSection({ version, field }: { version: DatasetVersion; f
   const api = useDatasetsApi()
   const call = useApiCall()
   const m = field.materialization
-  const canAct = version.status !== 'retired'
+  const canAct = version.isLive
   const go = async (fn: MatCall, msg: string) => {
     const r = await call.run(() => fn(api, version.id, field.id))
     if (r) toast.success(msg)

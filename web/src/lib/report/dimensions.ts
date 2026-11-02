@@ -12,11 +12,10 @@ export interface DimLevel {
   label: string
 }
 
-/** A shared dimension, as read from its published version. */
+/** A shared dimension, as read from its live version. */
 export interface Dimension {
   key: string
   name: string
-  version: number
   levels: DimLevel[]
   members: DimNode[]
 }
@@ -31,7 +30,6 @@ interface IndexedNode {
 const BRANCH: Dimension = {
   key: 'branch',
   name: 'Branch',
-  version: 1,
   levels: [
     { key: 'root', label: 'Root' },
     { key: 'region', label: 'Region' },
@@ -71,7 +69,6 @@ const BRANCH: Dimension = {
 const OFFICER: Dimension = {
   key: 'officer',
   name: 'Officer',
-  version: 3,
   levels: [],
   members: [
     { key: 'OF01', label: 'A. Okafor' },
@@ -92,7 +89,6 @@ function accountDimension(accounts: DimMember[]): Dimension {
   return {
     key: 'account',
     name: 'Account',
-    version: 2,
     levels: [
       { key: 'root', label: 'Root' },
       { key: 'category', label: 'Category' },
@@ -105,7 +101,6 @@ function accountDimension(accounts: DimMember[]): Dimension {
 const RATE_SHOCK: Dimension = {
   key: 'rateShock',
   name: 'RateShock',
-  version: 1,
   levels: [],
   members: [
     { key: 'BASE', label: 'Base rates' },
@@ -116,7 +111,7 @@ const RATE_SHOCK: Dimension = {
 
 function scenarioDimension(members: ScenarioMember[]): Dimension {
   const toNode = (m: ScenarioMember): DimNode => ({ key: m.key, label: m.label, children: m.children?.map(toNode) })
-  return { key: 'scenario', name: 'Scenario', version: 1, levels: [], members: members.map(toNode) }
+  return { key: 'scenario', name: 'Scenario', levels: [], members: members.map(toNode) }
 }
 
 export interface RoleInfo {
@@ -170,10 +165,6 @@ export function dimensionForRole(state: ReportState, role: string): Dimension | 
   if (key === 'scenario') return scenarioDimension(state.scenarios)
   if (key === 'rateShock') return RATE_SHOCK
   return undefined
-}
-
-export function versionLabel(dim: Dimension) {
-  return `${dim.name} · v${dim.version} published`
 }
 
 export function isFlat(dim: Dimension) {
@@ -377,7 +368,7 @@ export function groupingIssue(state: ReportState, d: BreakoutDimension): Groupin
   const missing = fieldError(d.grouping)
   if (missing) return { message: `${d.name}: ${missing}` }
   const where = `Report '${state.settings.key}' calculation dimension '${d.key}'`
-  const published = `v${dim.version}, the published version of its dimension.`
+  const published = 'the live version of its dimension.'
   if (d.grouping.kind === 'level' && !dim.levels.some((l) => l.key === (d.grouping as { level: string }).level)) {
     return { rule: 'calculation_grouping_resolve', message: `${where} groups at level '${d.grouping.level}', which is not a level of ${published}` }
   }

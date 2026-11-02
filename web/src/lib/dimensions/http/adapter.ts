@@ -1,5 +1,5 @@
 import { createHttpChangeSet } from '@/lib/api/changes'
-import { newTempId, unwrap, type FreezeInput } from '@/lib/api/contract'
+import { newTempId, unwrap } from '@/lib/api/contract'
 import type { HttpClient } from '@/lib/api/http'
 import type { components } from '@/lib/api/schema'
 import type {
@@ -13,7 +13,6 @@ import type {
   DimensionListItem,
   DimensionOperation,
   DimensionsApi,
-  DimensionValidationReport,
   DimensionVersionContent,
   Id,
   Problem,
@@ -28,8 +27,6 @@ function deleteCheckPath(target: DimensionDeleteTarget) {
   switch (target.type) {
     case 'dimension':
       return `${dimensionPath(target.dimensionId)}/delete-check`
-    case 'version':
-      return `${versionPath(target.versionId)}/delete-check`
     case 'member':
       return `${versionPath(target.versionId)}/members/${target.memberId}/delete-check`
     case 'level':
@@ -38,9 +35,6 @@ function deleteCheckPath(target: DimensionDeleteTarget) {
       return `/dimension-roles/${target.roleId}/delete-check`
   }
 }
-
-/** The contract's `ValidationReport` is generic; this module's areas narrow it. */
-const asReport = (report: Schemas['ValidationReport']) => report as DimensionValidationReport
 
 const INPUT_PREFIX = /^(input|patch)\./
 
@@ -115,10 +109,6 @@ export function createHttpDimensionsApi(http: HttpClient): DimensionsApi {
     listAvailableProfiles: () => unwrap(http.get<Schemas['AvailableDimensionProfile'][]>('/dimension-profiles', { available: true })),
     getDimension,
     getVersion,
-    async checkVersion(versionId) {
-      const result = await http.post<Schemas['ValidationReport']>(`${versionPath(versionId)}/check`)
-      return result.ok ? { ok: true, data: asReport(result.data) } : result
-    },
     checkDelete: (target) => unwrap(http.get<Schemas['DeleteCheck']>(deleteCheckPath(target))),
 
     updateDimension: (id, patch) => edit(id, { op: 'updateDimension', patch }, (s) => dimensionFields(s.dimension)),
@@ -170,13 +160,5 @@ export function createHttpDimensionsApi(http: HttpClient): DimensionsApi {
     defineSystemDimension: async (profileKey) =>
       rememberCreated(await http.post<Schemas['DimensionCreated']>(`/dimension-profiles/${encodeURIComponent(profileKey)}/define`)),
     deleteDimension: (id) => http.delete(dimensionPath(id)),
-    async freezeVersion(versionId, note) {
-      const result = await http.post<Schemas['DimensionFreezeResult']>(`${versionPath(versionId)}/freeze`, { note } satisfies FreezeInput)
-      if (result.ok) return { ok: true, data: { report: asReport(result.data.report), live: result.data.live } }
-      if (result.problem.status !== 422) return result
-      const report = { versionId, checkedAt: new Date().toISOString(), violations: result.problem.violations ?? [] }
-      return { ok: true, data: { report: asReport(report), live: null } }
-    },
-    deleteVersion: (versionId) => http.delete(versionPath(versionId)),
   }
 }

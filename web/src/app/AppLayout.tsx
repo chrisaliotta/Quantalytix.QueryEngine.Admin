@@ -7,8 +7,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { DimensionsApiProvider } from '@/lib/dimensions/client'
 import { MappingsApiProvider } from '@/lib/mappings/client'
 import { ModelsProvider } from '@/lib/model/store'
-import { ReleasesApiProvider } from '@/lib/releases/client'
 import { EditorProvider } from '@/lib/report/store'
+import { SnapshotsApiProvider } from '@/lib/snapshots/client'
 
 /** Workspace shell: the shared stores and adapters, the section sidebar and the routed page. */
 export function AppLayout() {
@@ -18,7 +18,7 @@ export function AppLayout() {
         <EditorProvider>
           <DimensionsApiProvider>
             <MappingsApiProvider>
-              <ReleasesApiProvider>
+              <SnapshotsApiProvider>
                 <TooltipProvider delay={300}>
                   <ChangesProvider>
                     <div className="flex h-dvh min-h-0 flex-col md:flex-row">
@@ -30,7 +30,7 @@ export function AppLayout() {
                     </div>
                   </ChangesProvider>
                 </TooltipProvider>
-              </ReleasesApiProvider>
+              </SnapshotsApiProvider>
             </MappingsApiProvider>
           </DimensionsApiProvider>
         </EditorProvider>

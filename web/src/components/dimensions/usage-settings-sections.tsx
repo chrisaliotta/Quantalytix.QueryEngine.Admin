@@ -4,16 +4,16 @@ import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useDimensionsApi } from '@/lib/dimensions/client'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { KIND_LABEL, RANGE_TYPE_LABEL, USAGE_KIND_LABEL, versionLabel, type RangeDataType, type DimensionUsageKind, type DimensionUsageReference } from '@/lib/dimensions/contract'
+import { KIND_LABEL, RANGE_TYPE_LABEL, USAGE_KIND_LABEL, type RangeDataType, type DimensionUsageKind, type DimensionUsageReference } from '@/lib/dimensions/contract'
 import type { SectionProps } from './dimension-detail'
-import { ConfirmDialog, EmptyState, Field, Mono, ReadValue, StatusBadge, formatDate, useDimCall } from './shared'
+import { VersionBadge } from '@/components/snapshots/shared'
+import { ConfirmDialog, EmptyState, Field, Mono, ReadValue, formatDate, useDimCall } from './shared'
 
 const GROUPS: { title: string; kinds: DimensionUsageKind[] }[] = [
   { title: 'Dataset bindings', kinds: ['dataset_binding'] },
   { title: 'Mapping sets', kinds: ['mapping_set'] },
   { title: 'Bridges', kinds: ['bridge'] },
   { title: 'Reports', kinds: ['calculation_dimension', 'report_scenario', 'report_source'] },
-  { title: 'Assumption sets', kinds: ['assumption_set'] },
 ]
 
 export function UsageSection({ dim }: SectionProps) {
@@ -53,7 +53,6 @@ function UsageCard({ usage }: { usage: DimensionUsageReference }) {
               role <Mono>{usage.roleKey}</Mono>
             </span>
           )}
-          {usage.pinsVersion && <span className="font-mono">→ v{usage.pinsVersion}</span>}
           {usage.memberKeys?.length ? (
             <span className="text-muted-foreground">
               names <Mono>{usage.memberKeys.slice(0, 4).join(', ')}</Mono>
@@ -103,7 +102,7 @@ export function PropertiesSection({ dim, content, editable }: SectionProps) {
                   <TriangleAlertIcon aria-hidden className="size-3.5 shrink-0" /> Changing the type clears the bands&apos; bounds.
                 </span>
               ) : (
-                `Bounds of every band use this type. Set per version${editable ? '' : ` — v${v.versionNumber} is frozen`}.`
+                `Bounds of every band use this type. Set per version${editable ? '' : ' — this version is frozen'}.`
               )}
             </p>
           </div>
@@ -115,19 +114,10 @@ export function PropertiesSection({ dim, content, editable }: SectionProps) {
       <section className="flex flex-col gap-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">This version</h2>
         <div className="grid grid-cols-2 gap-4 rounded-lg border p-4 sm:grid-cols-4">
-          <ReadValue label="Version" mono>
-            v{v.versionNumber}
-          </ReadValue>
-          <ReadValue label="Status">
-            <StatusBadge status={v.status} label={versionLabel(v.status)} />
+          <ReadValue label="Snapshot">
+            <VersionBadge version={v} />
           </ReadValue>
           <ReadValue label="Created">{formatDate(v.createdAt)}</ReadValue>
-          {v.retiredAt ? <ReadValue label="Frozen">{formatDate(v.retiredAt)}</ReadValue> : <ReadValue label="Live since">{v.publishedAt ? formatDate(v.publishedAt) : null}</ReadValue>}
-          {v.freezeNote && (
-            <div className="col-span-full">
-              <ReadValue label="Freeze note">{v.freezeNote}</ReadValue>
-            </div>
-          )}
         </div>
       </section>
       <ConfirmDialog

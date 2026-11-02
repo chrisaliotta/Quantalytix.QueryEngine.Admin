@@ -9,7 +9,6 @@ export type { PublishedMembers } from '@/lib/tenant/contract'
 
 export type Vocabularies = Pick<
   AllVocabularies,
-  | 'versionStatus'
   | 'fieldSourceKind'
   | 'dataType'
   | 'grainKind'
@@ -43,7 +42,7 @@ export type Vocabularies = Pick<
   | 'timeZone'
 >
 
-export type TenantCatalog = Pick<FullTenantCatalog, 'dimensions' | 'roles' | 'mappingSets' | 'bridges' | 'releases'>
+export type TenantCatalog = Pick<FullTenantCatalog, 'dimensions' | 'roles' | 'mappingSets' | 'bridges'>
 
 export interface TenantLookups extends Pick<TenantApi, 'getPublishedMembers'> {
   getCatalog(): Promise<TenantCatalog>

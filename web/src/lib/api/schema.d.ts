@@ -112,7 +112,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Read the members of a dimension's published version */
+        /** Read the members of a dimension's live version */
         get: operations["getPublishedMembers"];
         put?: never;
         post?: never;
@@ -258,8 +258,8 @@ export interface paths {
         get: operations["listDatasets"];
         put?: never;
         /**
-         * Create a dataset and its draft version 1
-         * @description Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a draft whose fields read them.
+         * Create a dataset and its live version
+         * @description Mode `existing` registers a table or view that already exists. Mode `new` creates a managed table (OI-33) with the given columns, then a live version whose fields read them. Advances `semanticRevision`.
          */
         post: operations["createDataset"];
         delete?: never;
@@ -284,8 +284,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete a dataset and all its versions
-         * @description Allowed only when every version is a draft or validated and no release lists the dataset (D10, OI-17).
+         * Delete a dataset and its live version
+         * @description Allowed only when no frozen snapshot holds a version of the dataset (D10). Advances `semanticRevision`.
          */
         delete: operations["deleteDataset"];
         options?: never;
@@ -306,32 +306,11 @@ export interface paths {
         };
         /**
          * Tell whether a dataset can be deleted, and why not
-         * @description Never writes. Reasons carry the codes `has_published_versions` (a version is published or retired) and `referenced_by_release` (a release lists the dataset).
+         * @description Never writes. Reasons carry the code `referenced_by_snapshot` (a frozen snapshot holds a version of the dataset).
          */
         get: operations["checkDeleteDataset"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/datasets/{datasetId}/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                datasetId: components["parameters"]["DatasetIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a draft version, empty or cloned from another version of the dataset */
-        post: operations["createDatasetDraft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -350,34 +329,8 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get the whole content of one dataset version */
+        /** Get the whole content of one dataset version, live or frozen */
         get: operations["getDatasetVersion"];
-        put?: never;
-        post?: never;
-        /** Delete a draft or validated version that no release pins */
-        delete: operations["deleteDatasetDraft"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/delete-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Tell whether a dataset version can be deleted, and why not
-         * @description Never writes. Reasons carry the codes `published_version` (the version is published or retired) and `referenced_by_release` (a release pins the version).
-         */
-        get: operations["checkDeleteDatasetVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -401,8 +354,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply staged operations to a dataset version in memory and return the result
-         * @description Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01).
+         * Apply staged operations to the live dataset version in memory and return the result
+         * @description Never writes. `errors` keys of a refused operation are prefixed `operations[n].` (OI-01). `violations` are the commit rules' findings. Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `bound_dimensions_resolvable`, `mapped_bindings_resolvable`, `bridge_bindings_resolvable`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`, and the report rules `report_sources_resolve` and `report_factors_apply` of the enabled reports over the dataset. Each violation's `target.area` is a `DatasetTab`.
          */
         post: operations["previewDatasetChanges"];
         delete?: never;
@@ -426,126 +379,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply and write staged operations to a dataset version
-         * @description Replays the operations onto the stored version (last write wins, OI-02) and writes them; any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column.
+         * Apply and write staged operations to the live dataset version
+         * @description Replays the operations onto the stored version (last write wins, OI-02) and writes them; a commit-rule finding refuses with 422. Any failure writes nothing except DDL already run for `createColumn`, which leaves an unread column. Advances `semanticRevision`.
          */
         post: operations["commitDatasetChanges"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run the publication rules on a dataset version without writing
-         * @description Rule codes: `source_object_exists`, `version_supports_a_mode`, `default_time_binding_in_version`, `field_key_unique`, `field_columns_exist`, `expression_field_references`, `expression_field_acyclic`, `grain_key_unique`, `grain_fields_in_version`, `series_grain_excludes_time_field`, `binding_fields_in_version`, `binding_source_field_groupable`, `bound_roles_distinct`, `mapped_binding_mapping_set_dimension`, `range_binding_dimension_kind`, `time_binding_dimension_kind`, `bridge_binding_route`, `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`, `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`, `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is a `DatasetTab`.
-         */
-        post: operations["checkDatasetVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Move a draft to validated when every publication rule passes */
-        post: operations["validateDatasetVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Publish a draft or validated version when every publication rule passes
-         * @description A draft is validated first, in the same call.
-         */
-        post: operations["publishDatasetVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/reopen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Return a validated version to draft */
-        post: operations["reopenDatasetVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dataset-versions/{versionId}/retire": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Retire a published version that the active release does not pin */
-        post: operations["retireDatasetVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -570,7 +407,7 @@ export interface paths {
         put?: never;
         /**
          * Add a JSON path field to its source object's materialized view
-         * @description Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on any non-retired version: storage does not change what the version means.
+         * @description Returns at once with `materialization.state` = `building`; poll the version for `ready` or `failed` (OI-32). Allowed on the live version only.
          */
         post: operations["materializeDatasetField"];
         /**
@@ -625,7 +462,7 @@ export interface paths {
         put?: never;
         /**
          * Create a user dimension with a live version 1
-         * @description Creates origin `user`, purpose `analytical`; version 1 is created live (published).
+         * @description Creates origin `user`, purpose `analytical`; its version is created live. Advances `semanticRevision`.
          */
         post: operations["createDimension"];
         delete?: never;
@@ -780,75 +617,8 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get the content of a dimension version */
+        /** Get the content of a dimension version, live or frozen */
         get: operations["getDimensionVersion"];
-        put?: never;
-        post?: never;
-        /** Delete a frozen dimension version */
-        delete: operations["deleteDimensionVersion"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{versionId}/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run the dimension rules on a version without writing */
-        post: operations["checkDimensionVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{versionId}/freeze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Freeze the live version and continue in a new live clone
-         * @description Runs every dimension rule; when they pass, clones the live version n to n+1 live, retires n with the note, repoints the active assumption set and advances `semantic_revision` (OI-14, OI-15).
-         */
-        post: operations["freezeDimensionVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/dimension-versions/{versionId}/delete-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        /** Check whether a dimension version can be deleted */
-        get: operations["checkDimensionVersionDelete"];
         put?: never;
         post?: never;
         delete?: never;
@@ -966,7 +736,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a mapping set
-         * @description Deletes the mapping set and every version when no binding uses it and no historical set pins it (B12).
+         * @description Deletes the mapping set with its live version when no live binding uses it and no frozen snapshot holds it (B12).
          */
         delete: operations["deleteMappingSet"];
         options?: never;
@@ -1054,78 +824,8 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get a mapping version's content */
+        /** Get a mapping version's content, live or frozen */
         get: operations["getMappingVersion"];
-        put?: never;
-        post?: never;
-        /** Delete a frozen mapping version */
-        delete: operations["deleteMappingVersion"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run the mapping version rules
-         * @description Runs every mapping version rule on any version and writes nothing (OI-30).
-         */
-        post: operations["checkMappingVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/freeze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Freeze the live mapping version
-         * @description Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone (12, The version model).
-         */
-        post: operations["freezeMappingVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/mapping-versions/{mappingVersionId}/delete-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        /** Check whether a mapping version can be deleted */
-        get: operations["checkDeleteMappingVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1178,7 +878,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an analytical bridge
-         * @description Deletes the bridge and every version when no binding uses it and no historical set pins it (B12).
+         * @description Deletes the bridge with its live version when no live binding uses it and no frozen snapshot holds it (B12).
          */
         delete: operations["deleteBridge"];
         options?: never;
@@ -1266,471 +966,128 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get a bridge version's content */
+        /** Get a bridge version's content, live or frozen */
         get: operations["getBridgeVersion"];
         put?: never;
         post?: never;
-        /** Delete a frozen bridge version */
-        delete: operations["deleteBridgeVersion"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/check": {
+    "/api/tenants/{tenantId}/snapshots": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The tenant directory key. */
                 tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
+            };
+            cookie?: never;
+        };
+        /** List the live snapshot and the frozen ones with their version counts */
+        get: operations["listSnapshots"];
+        put?: never;
+        /**
+         * Capture every live version into a new frozen snapshot
+         * @description Copies every live version of the six kinds, report dimensions and report bridges included, then stores the snapshot. The semantic revision is read before and after the copies; when a commit landed in between, the copies are deleted and the capture is refused with 409. Advances `semanticRevision`.
+         */
+        post: operations["captureSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/snapshots/capture-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** Count the live versions a capture would copy */
+        get: operations["previewSnapshotCapture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/snapshots/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        /** Compare the identities and versions two snapshots hold */
+        get: operations["compareSnapshots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/snapshots/{snapshotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
+            };
+            cookie?: never;
+        };
+        /** Get a snapshot with the version it holds of each identity and its restores */
+        get: operations["getSnapshot"];
+        /**
+         * Change a frozen snapshot's display name and description
+         * @description The key and the versions never change. Does not advance `semanticRevision`.
+         */
+        put: operations["relabelSnapshot"];
+        post?: never;
+        /**
+         * Delete a frozen snapshot with every version it holds
+         * @description Deletes the snapshot, its restore log and every version it holds with their content, and each identity no other snapshot holds. Advances `semanticRevision`.
+         */
+        delete: operations["deleteSnapshot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/snapshots/{snapshotId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /**
-         * Run the bridge version rules
-         * @description Runs every bridge version rule on any version and writes nothing (OI-30).
+         * Make live equal a frozen snapshot
+         * @description Every version the snapshot holds must first pass its kind's rules against the database as it is now; any violation refuses with 422 and nothing changes. Then each frozen version replaces its identity's live content, or joins live when live lacks the identity; the live version of an identity the snapshot lacks is deleted, with the identity when no frozen snapshot holds it. The restore is logged. Advances `semanticRevision`.
          */
-        post: operations["checkBridgeVersion"];
+        post: operations["restoreSnapshot"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/freeze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Freeze the live bridge version
-         * @description Runs the rules; when they pass, makes the live version a frozen snapshot and continues in a live clone with the same settings and mappings (12, The version model).
-         */
-        post: operations["freezeBridgeVersion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/bridge-versions/{bridgeVersionId}/delete-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        /** Check whether a bridge version can be deleted */
-        get: operations["checkDeleteBridgeVersion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** List releases with their activity and their difference from the active release */
-        get: operations["listReleases"];
-        put?: never;
-        /** Create a draft release, empty or copying another release's manifest */
-        post: operations["createRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/diff": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** Compare the manifests of two releases */
-        get: operations["diffReleases"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        /** Get a release with its manifest and activation history */
-        get: operations["getRelease"];
-        put?: never;
-        post?: never;
-        /** Delete a draft release and its manifest */
-        delete: operations["deleteRelease"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/changes/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Apply staged manifest operations in memory, then check and diff the result */
-        post: operations["previewReleaseChanges"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/changes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Apply and write staged manifest operations */
-        post: operations["commitReleaseChanges"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run the release rules over the saved manifest without writing */
-        post: operations["checkRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Move a draft to validated when every release rule passes */
-        post: operations["validateRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Publish a validated release and compute its content hash
-         * @description Publishing activates and retires nothing.
-         */
-        post: operations["publishRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/reopen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Return a validated release to draft */
-        post: operations["backToDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/retire": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Retire a published release that is not active */
-        post: operations["retireRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/releases/{releaseId}/activate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Make a published release the active one
-         * @description Sets the tenant's active release, writes an activation log row and advances `semanticRevision`. Activating an older release is a rollback. Every enabled report is re-checked against the release first.
-         */
-        post: operations["activateRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/manifest-datasets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** List the datasets a manifest can pin, with every version */
-        get: operations["listManifestDatasets"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/identities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** List the dimensions, mapping sets and bridges an assumption set pins, with their versions */
-        get: operations["listIdentities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/report-reads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** List what each report reads from releases and assumption sets */
-        get: operations["listReportReads"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** List the active set and the historical sets with their pin counts */
-        get: operations["listSets"];
-        put?: never;
-        /**
-         * Capture the active set's analytical pins and the active release into a historical set
-         * @description Report dimensions and bridges into them are left out. Advances `semanticRevision`.
-         */
-        post: operations["captureSet"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets/capture-preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** Count what a capture would pin and leave out */
-        get: operations["capturePreview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets/compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        /** Compare the pins and the releases of two assumption sets */
-        get: operations["compareSets"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tenants/{tenantId}/assumption-sets/{setId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                setId: components["parameters"]["AssumptionSetIdPath"];
-            };
-            cookie?: never;
-        };
-        /** Get an assumption set with its pins and, for a historical set, per-report readiness */
-        get: operations["getSet"];
-        /**
-         * Change a historical set's display name and description
-         * @description The key, the pins and the release never change. Does not advance `semanticRevision`.
-         */
-        put: operations["relabelSet"];
-        post?: never;
-        /**
-         * Delete a historical set and its pins
-         * @description Advances `semanticRevision`.
-         */
-        delete: operations["deleteSet"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1769,12 +1126,34 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Read one model with its variables, measures, parameters, attributions, effective drivers and readers. */
+        /** Read one model's live version with its variables, measures, parameters, attributions, effective drivers and readers. */
         get: operations["getModel"];
         put?: never;
         post?: never;
-        /** Delete a model that no report reads (command, C8). */
+        /** Delete a model that no live report reads and no frozen snapshot holds (command, C8). */
         delete: operations["deleteModel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/calculation-model-versions/{modelVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A calculation model version id. */
+                modelVersionId: components["parameters"]["ModelVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Read one model version, live or frozen, with its content, effective drivers and the reports of its snapshot that read it. */
+        get: operations["getModelVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1816,7 +1195,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse a formula against the saved model and report errors, reads, parameters and the language it needs (OI-43). */
+        /** Parse a formula against the saved live version and report errors, reads, parameters and the language it needs (OI-43). */
         post: operations["checkFormula"];
         delete?: never;
         options?: never;
@@ -1903,15 +1282,37 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Read a report's whole document. */
+        /** Read a report's whole live document. */
         get: operations["getReport"];
         put?: never;
         post?: never;
         /**
          * Delete a report with its report dimension, report bridges and content.
-         * @description Never blocked (P12).
+         * @description Blocked only while a frozen snapshot holds a version of the report (P12). Advances `semanticRevision`.
          */
         delete: operations["deleteReport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{tenantId}/report-versions/{reportVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A report version id. */
+                reportVersionId: components["parameters"]["ReportVersionId"];
+            };
+            cookie?: never;
+        };
+        /** Read a report version's whole document, live or frozen. */
+        get: operations["getReportVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2057,15 +1458,11 @@ export interface components {
          */
         Timestamp: string;
         /** @enum {string} */
-        VersionStatus: "draft" | "validated" | "published" | "retired";
-        /** @enum {string} */
         DimensionKind: "categorical" | "hierarchical" | "range" | "time";
         /** @enum {string} */
         DimensionPurpose: "analytical" | "report";
         /** @enum {string} */
         DefinitionOrigin: "system" | "user";
-        /** @enum {string} */
-        AssumptionSetStatus: "active" | "historical";
         /** @enum {string} */
         BindingKind: "direct" | "mapped" | "range" | "bridge" | "time";
         /** @enum {string} */
@@ -2116,7 +1513,7 @@ export interface components {
         };
         /** @description Where to take the user to fix a violation. */
         ViolationTarget: {
-            /** @description Module-specific area such as a dataset tab, a dimension tab, a release manifest row or a report section. */
+            /** @description Module-specific area such as a dataset tab, a dimension tab or a report section. */
             area: string;
             itemId?: components["schemas"]["Id"];
             itemKey?: string;
@@ -2138,13 +1535,7 @@ export interface components {
          * @description One list for every module (01, Delete checks). `referenced_by_<kind>` names the kind of object that still reads the target; the other codes name a state of the target itself.
          * @enum {string}
          */
-        DeleteBlockerCode: "not_removable" | "system_dimension" | "published_version" | "live_version" | "has_published_versions" | "has_children" | "required_by_profile" | "assigned_by_bands" | "named_by_consumers" | "owned_by_report" | "referenced_by_member" | "referenced_by_dataset_binding" | "referenced_by_mapping_set" | "referenced_by_bridge" | "referenced_by_calculation_dimension" | "referenced_by_report_scenario" | "referenced_by_report_source" | "referenced_by_assumption_set" | "referenced_by_release" | "referenced_by_report";
-        /** @description Answer of a read-only `check`; never writes. */
-        ValidationReport: {
-            versionId: components["schemas"]["Id"];
-            checkedAt: components["schemas"]["Timestamp"];
-            violations: components["schemas"]["Violation"][];
-        };
+        DeleteBlockerCode: "not_removable" | "system_dimension" | "has_children" | "required_by_profile" | "assigned_by_bands" | "named_by_consumers" | "owned_by_report" | "referenced_by_member" | "referenced_by_dataset_binding" | "referenced_by_mapping_set" | "referenced_by_bridge" | "referenced_by_calculation_dimension" | "referenced_by_report_scenario" | "referenced_by_report_source" | "referenced_by_snapshot" | "referenced_by_report";
         /** @description Body of `POST <aggregate>/changes/preview` and `POST <aggregate>/changes` (OI-01). Generic over the aggregate's operation union: an aggregate specializes it with `allOf` and a narrowed `operations.items` (see README.md). */
         ChangeSetRequest: {
             operations: unknown[];
@@ -2153,7 +1544,7 @@ export interface components {
         ChangeSetPreview: {
             /** @description The aggregate content after the operations apply; what the editor renders. */
             state: unknown;
-            /** @description Publication-rule findings that do not block saving. */
+            /** @description Commit-rule findings, which refuse the commit while any remains. */
             violations: components["schemas"]["Violation"][];
         };
         /** @description 200 answer of `POST <aggregate>/changes`: every operation applied and was written. Generic over the aggregate content: an aggregate specializes it with `allOf` and a narrowed `state`. */
@@ -2164,17 +1555,6 @@ export interface components {
             idMap: {
                 [key: string]: components["schemas"]["Id"];
             };
-        };
-        /** @description Body of `POST <kind>-versions/{versionId}/freeze` for dimensions, mapping sets and bridges (OI-14). */
-        FreezeInput: {
-            /** @description Why the version is frozen, e.g. "FY26 close"; stored as `freeze_note` (OI-15). */
-            note: string | null;
-        };
-        /** @description 200 answer of a freeze: every rule passed, version n is frozen and `live` is the new live version n+1. Generic over the version summary: each living kind specializes `live` with `allOf`. Over HTTP a failed rule answers 422 and changes nothing, so a 200 always carries a non-null `live`; the web HTTP adapter turns the 422 into the port's `live: null` (01, Results and errors). */
-        FreezeResult: {
-            report: components["schemas"]["ValidationReport"];
-            /** @description The new live version. */
-            live: unknown;
         };
         /** @description How a role's members group. */
         Grouping: components["schemas"]["GroupingMember"] | components["schemas"]["GroupingLevel"] | components["schemas"]["GroupingAncestor"] | components["schemas"]["GroupingDepth"];
@@ -2299,13 +1679,10 @@ export interface components {
              * @description Advances once per commit or command that changes what the engine reads.
              */
             semanticRevision: number;
-            /** @description The release runtime queries use; null when the tenant has none. */
-            activeReleaseId: string | null;
         };
         /** @description The tenant at a glance for the overview screen. */
         TenantOverview: components["schemas"]["TenantInfo"] & {
             counts: components["schemas"]["TenantOverviewCounts"];
-            drafts: components["schemas"]["TenantOverviewDrafts"];
         };
         /** @description How much metadata the tenant holds. */
         TenantOverviewCounts: {
@@ -2315,19 +1692,13 @@ export interface components {
             mappingSets: number;
             /** @description Analytical bridges; report-owned bridges are not counted (OI-22). */
             bridges: number;
-            releases: number;
-            assumptionSets: number;
+            frozenSnapshots: number;
             models: number;
             reports: number;
-            /** @description Measures of the dataset versions the active release pins. */
-            activeMeasures: number;
+            /** @description Measures of the live dataset versions, which requests that name no snapshot read. */
+            liveMeasures: number;
         };
-        /** @description Work in progress: the kinds that still have a draft status. Dimensions, mapping sets and bridges follow the living lifecycle and have no drafts (OI-14). */
-        TenantOverviewDrafts: {
-            datasetVersions: number;
-            releases: number;
-        };
-        /** @description The union of what every module's pickers and cross-module links read (OI-13). */
+        /** @description The union of what every module's pickers and cross-module links read (OI-13): every identity the live snapshot holds, and every snapshot. */
         TenantCatalog: {
             tenant: components["schemas"]["TenantInfo"];
             datasets: components["schemas"]["TenantCatalogDataset"][];
@@ -2337,16 +1708,16 @@ export interface components {
             bridges: components["schemas"]["TenantCatalogBridge"][];
             models: components["schemas"]["TenantCatalogModel"][];
             reports: components["schemas"]["TenantCatalogReport"][];
-            releases: components["schemas"]["TenantCatalogRelease"][];
-            assumptionSets: components["schemas"]["TenantCatalogAssumptionSet"][];
+            /** @description The live snapshot first, then frozen ones by key. */
+            snapshots: components["schemas"]["TenantCatalogSnapshot"][];
         };
         TenantCatalogDataset: {
             id: components["schemas"]["Id"];
             key: components["schemas"]["DottedKey"];
             displayName: string;
             isEnabled: boolean;
-            /** @description The dataset version the active release pins; null when it pins none. */
-            activeVersionId: string | null;
+            /** @description The live version. */
+            liveVersionId: components["schemas"]["Id"];
         };
         TenantCatalogDimension: {
             id: components["schemas"]["Id"];
@@ -2356,9 +1727,8 @@ export interface components {
             purpose: components["schemas"]["DimensionPurpose"];
             origin: components["schemas"]["DefinitionOrigin"];
             isEnabled: boolean;
-            /** @description The live version; null when none is published. */
-            publishedVersionId: string | null;
-            publishedVersionNumber: number | null;
+            /** @description The live version. */
+            liveVersionId: components["schemas"]["Id"];
             /** @description The report that owns a `report` purpose dimension; null otherwise. */
             ownerReportId: string | null;
         };
@@ -2397,20 +1767,14 @@ export interface components {
             modelId: components["schemas"]["Id"];
             reportDimensionId: components["schemas"]["Id"];
         };
-        /** @description A release has a key and no display name (OI-39). */
-        TenantCatalogRelease: {
-            id: components["schemas"]["Id"];
-            key: string;
-            status: components["schemas"]["VersionStatus"];
-            isActive: boolean;
-        };
-        TenantCatalogAssumptionSet: {
+        /** @description A snapshot a request or a comparison can name. */
+        TenantCatalogSnapshot: {
             id: components["schemas"]["Id"];
             key: string;
             displayName: string;
-            status: components["schemas"]["AssumptionSetStatus"];
+            isLive: boolean;
         };
-        /** @description The members of a dimension's published version, fetched per picker. */
+        /** @description The members of a dimension's live version, fetched per picker. */
         PublishedMembers: {
             dimensionId: components["schemas"]["Id"];
             versionId: components["schemas"]["Id"];
@@ -2425,12 +1789,6 @@ export interface components {
         };
         /** @description Every enumeration a select renders, keyed by name (OI-11). Values are the schema's; open vocabularies (`expressionLanguageVersion`, `displayFormat`, `timeZone`) list the offered values of a free-text column. */
         Vocabularies: {
-            versionStatus: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["VersionStatus"];
-            })[];
-            assumptionSetStatus: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["AssumptionSetStatus"];
-            })[];
             dataType: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetDataType"];
             })[];
@@ -2746,42 +2104,35 @@ export interface components {
             /** @description The API added the column on a field's behalf (`createColumn`). */
             isGenerated: boolean;
         };
-        /** @description The dataset identity (`qe_dataset`), shared by every version. */
+        /** @description The dataset identity (`qe_dataset`), shared by every version, with one version's enabled flag. */
         Dataset: {
             id: components["schemas"]["Id"];
             key: components["schemas"]["DottedKey"];
             displayName: string;
+            /** @description The live version's flag, or a frozen version's own. */
             isEnabled: boolean;
         };
-        /** @description Identity edits; the key is fixed after creation (OI-36). */
+        /** @description Identity edits and the live version's enabled flag; the key is fixed after creation (OI-36). */
         DatasetPatch: {
             displayName?: string;
             isEnabled?: boolean;
         };
-        /** @description A release that pins the version. */
-        DatasetReleasePin: {
-            releaseId: components["schemas"]["Id"];
-            releaseKey: string;
-            isActive: boolean;
-        };
+        /** @description One version of a dataset and the snapshot it belongs to. */
         DatasetVersionSummary: {
             id: components["schemas"]["Id"];
             datasetId: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            /** @description The live version is editable; a frozen version is read-only. */
+            isLive: boolean;
             sourceObject: string;
             createdAt: components["schemas"]["Timestamp"];
-            publishedAt: components["schemas"]["Timestamp"] | null;
-            /** @description The version this one was cloned from (SG-04, OI-12). */
-            clonedFromVersionId: string | null;
-            releases: components["schemas"]["DatasetReleasePin"][];
         };
         DatasetListItem: components["schemas"]["Dataset"] & {
-            /** @description Newest first. */
+            /** @description One per snapshot holding the dataset, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["DatasetVersionSummary"][];
-            /** @description The version the active release pins; what the engine reads. */
-            activeVersionId: string | null;
-            /** @description Statistics of the latest version's source object. */
+            /** @description The live version, which change sets edit and requests that name no snapshot read. */
+            liveVersionId: components["schemas"]["Id"];
+            /** @description Statistics of the live version's source object. */
             storage: components["schemas"]["DatasetSourceObjectStats"] | null;
         };
         DatasetVersionSettings: {
@@ -2987,7 +2338,7 @@ export interface components {
             sourceObjectKind: components["schemas"]["DatasetSourceObjectKind"];
             sourceObject: string;
         };
-        /** @description Creates and registers a managed table with these columns (possibly none), then a draft whose fields read them. */
+        /** @description Creates and registers a managed table with these columns (possibly none), then a live version whose fields read them. */
         DatasetCreateWithNewTableInput: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -2999,27 +2350,9 @@ export interface components {
             tableName: string;
             columns: components["schemas"]["DatasetNewColumnInput"][];
         };
-        DatasetCreateDraftInput: components["schemas"]["DatasetCreateEmptyDraftInput"] | components["schemas"]["DatasetCloneDraftInput"];
-        DatasetCreateEmptyDraftInput: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "empty";
-            sourceObjectKind: components["schemas"]["DatasetSourceObjectKind"];
-            sourceObject: string;
-        };
-        DatasetCloneDraftInput: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            mode: "clone";
-            fromVersionId: components["schemas"]["Id"];
-        };
         /** @description One staged edit of a dataset version, named after the `DatasetsApi` edit method it records. */
         DatasetOperation: components["schemas"]["DatasetUpdateDatasetOperation"] | components["schemas"]["DatasetSaveSettingsOperation"] | components["schemas"]["DatasetRenameSourceTableOperation"] | components["schemas"]["DatasetSaveFieldOperation"] | components["schemas"]["DatasetDeleteFieldOperation"] | components["schemas"]["DatasetAddFieldsFromColumnsOperation"] | components["schemas"]["DatasetSaveGrainOperation"] | components["schemas"]["DatasetDeleteGrainOperation"] | components["schemas"]["DatasetSaveBindingOperation"] | components["schemas"]["DatasetDeleteBindingOperation"] | components["schemas"]["DatasetSaveMeasureOperation"] | components["schemas"]["DatasetDeleteMeasureOperation"];
-        /** @description Edits the dataset identity; the only operation a version that is not a draft accepts. */
+        /** @description Edits the display name and the live version's enabled flag. */
         DatasetUpdateDatasetOperation: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3036,7 +2369,7 @@ export interface components {
             op: "saveSettings";
             settings: components["schemas"]["DatasetVersionSettings"];
         };
-        /** @description Renames the managed table the draft reads; refused while a published version reads it (OI-33). */
+        /** @description Renames the managed table the live version reads; refused while another version, live or frozen, reads it (OI-33). */
         DatasetRenameSourceTableOperation: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3128,7 +2461,7 @@ export interface components {
             state: components["schemas"]["DatasetVersion"];
         };
         /**
-         * @description `locked` refuses every edit and freeze (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).
+         * @description `locked` refuses every edit (changed through provisioning, OI-24); `extend` refuses deleting or re-keying a required member or role; `open` allows everything except delete (M11).
          * @enum {string}
          */
         DimensionEditPolicy: "open" | "extend" | "locked";
@@ -3145,7 +2478,7 @@ export interface components {
          */
         DimensionViolationCode: "range_data_type_matches_kind" | "level_key_unique" | "member_key_unique" | "member_parent_in_version" | "member_level_in_version" | "hierarchy_acyclic" | "band_boundary_family" | "band_bounds_ordered" | "bands_non_overlapping" | "band_open_bounds_at_ends" | "band_member_in_version" | "dimension_consumers_resolve" | "profile_required_keys_present" | "profile_properties_valid";
         /** @enum {string} */
-        DimensionUsageKind: "dataset_binding" | "mapping_set" | "bridge" | "calculation_dimension" | "report_scenario" | "report_source" | "assumption_set";
+        DimensionUsageKind: "dataset_binding" | "mapping_set" | "bridge" | "calculation_dimension" | "report_scenario" | "report_source";
         /** @description One member property of a profile's schema; the server validates system dimension members against it (OI-18). */
         DimensionPropertyField: {
             key: string;
@@ -3207,37 +2540,21 @@ export interface components {
             reportKey: components["schemas"]["DottedKey"];
             reportName: string;
         };
-        /** @description Live (stored `published`, exactly one, edited in place) or frozen (stored `retired`, read-only). There are no drafts (M3, OI-14). */
+        /** @description The live version (edited in place) or a frozen snapshot's version (read-only). */
         DimensionVersion: {
             id: components["schemas"]["Id"];
             dimensionId: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
             /** @description Range dimensions only. */
             rangeDataType: components["schemas"]["RangeDataType"] | null;
             createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /**
-             * Format: date-time
-             * @description When the version was frozen (SG-04).
-             */
-            retiredAt: string | null;
-            /** @description Derived; the next version number once frozen (OI-12). */
-            supersededBy: number | null;
-            /** @description Why the version was frozen (SG-05, OI-15). */
-            freezeNote: string | null;
         };
         DimensionVersionSummary: {
             id: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** Format: date-time */
-            retiredAt: string | null;
-            supersededBy: number | null;
-            freezeNote: string | null;
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
+            createdAt: components["schemas"]["Timestamp"];
             memberCount: number;
         };
         DimensionRole: {
@@ -3291,20 +2608,21 @@ export interface components {
             roleKey?: string;
             /** @description Member keys this object names; deleting them is blocked and `dimension_consumers_resolve` requires them. */
             memberKeys?: string[];
-            /** @description Assumption sets only; the version number pinned. */
-            pinsVersion?: number;
-            /** @description Display label for blocker phrasing, e.g. a dataset version "'loans.details' v3". */
+            /** @description Display label for blocker phrasing, when the name does not say it. */
             label?: string;
         };
         DimensionListItem: components["schemas"]["Dimension"] & {
             profile: components["schemas"]["DimensionProfile"] | null;
             roles: components["schemas"]["DimensionRole"][];
+            /** @description One per snapshot holding the dimension, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["DimensionVersionSummary"][];
+            /** @description The live version, which change sets edit. */
+            liveVersionId: components["schemas"]["Id"];
             /** @description Members in the live version. */
-            publishedMemberCount: number | null;
+            liveMemberCount: number;
         };
         DimensionDetail: components["schemas"]["DimensionListItem"] & {
-            /** @description Computed from bindings, mapping sets, bridges, calculation dimensions, report scenarios, report sources and assumption set pins. */
+            /** @description Computed from the live bindings, mapping sets, bridges, calculation dimensions, report scenarios and report sources. */
             usage: components["schemas"]["DimensionUsageReference"][];
         };
         DimensionVersionContent: {
@@ -3320,11 +2638,8 @@ export interface components {
         };
         DimensionCreated: {
             dimensionId: components["schemas"]["Id"];
-            /** @description The live version 1. */
+            /** @description The live version. */
             versionId: components["schemas"]["Id"];
-        };
-        DimensionFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["DimensionVersionSummary"];
         };
         CreateDimensionInput: {
             key: components["schemas"]["Key"];
@@ -3540,42 +2855,30 @@ export interface components {
             kind: "categorical" | "hierarchical" | "range" | "time";
             /** @enum {string} */
             purpose: "analytical" | "report";
-            /** @description The live version, whose members entry and mapping keys resolve against. */
-            publishedVersionId: string | null;
-            publishedVersionNumber: number | null;
+            /** @description The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none. */
+            versionId: string | null;
         };
         /** @description A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers. */
         MappingBindingUsage: {
             datasetId: components["schemas"]["Id"];
             datasetKey: components["schemas"]["DottedKey"];
+            /** @description The dataset version that holds the binding, in the same snapshot. */
             datasetVersionId: components["schemas"]["Id"];
-            datasetVersionNumber: number;
-            status: components["schemas"]["VersionStatus"];
             fieldKey: components["schemas"]["Key"];
             roleKey: components["schemas"]["Key"];
             /** @description Bridge bindings only, the role of the binding the bridge remaps; null for mapping sets. */
             sourceRoleKey: string | null;
         };
-        /** @description An assumption set that pins one version of a mapping set or bridge. */
-        MappingAssumptionPin: {
-            assumptionSetId: components["schemas"]["Id"];
-            assumptionSetKey: string;
-            assumptionSetDisplayName: string;
-            /** @description The active set always pins the live version; historical sets keep the version they captured. */
-            isActive: boolean;
-            versionId: components["schemas"]["Id"];
-            versionNumber: number;
-        };
         /**
          * @description Rule codes of mapping versions.
          * @enum {string}
          */
-        MappingViolationCode: "source_key_unique" | "dimension_version_published" | "entry_member_in_version" | "entry_member_assignable";
+        MappingViolationCode: "source_key_unique" | "dimension_version_in_snapshot" | "entry_member_in_version" | "entry_member_assignable";
         /**
          * @description Rule codes of bridge versions.
          * @enum {string}
          */
-        BridgeViolationCode: "endpoint_versions_published" | "mapping_members_in_endpoint_versions" | "cardinality_many_to_one" | "allocation_none" | "allocation_partition" | "allocation_replicate" | "pair_unique" | "descendants_report_only";
+        BridgeViolationCode: "endpoint_versions_in_snapshot" | "mapping_members_in_endpoint_versions" | "cardinality_many_to_one" | "allocation_none" | "allocation_partition" | "allocation_replicate" | "pair_unique" | "descendants_report_only";
         MappingSet: {
             id: components["schemas"]["Id"];
             key: components["schemas"]["DottedKey"];
@@ -3584,21 +2887,13 @@ export interface components {
             sourceNamespace: string;
             dimensionId: components["schemas"]["Id"];
         };
-        /** @description Stored `published` is the live version and `retired` a frozen snapshot (B10). */
+        /** @description The live version (edited in place) or a frozen snapshot's version (read-only) (B10). */
         MappingVersion: {
             id: components["schemas"]["Id"];
             mappingSetId: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
             createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /**
-             * Format: date-time
-             * @description When it was frozen.
-             */
-            retiredAt: string | null;
-            freezeNote: string | null;
         };
         MappingEntry: {
             id: components["schemas"]["Id"];
@@ -3609,25 +2904,20 @@ export interface components {
         };
         MappingVersionSummary: {
             id: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
             createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** Format: date-time */
-            retiredAt: string | null;
-            freezeNote: string | null;
             entryCount: number;
         };
         MappingSetListItem: components["schemas"]["MappingSet"] & {
             dimension: components["schemas"]["MappingDimensionRef"];
+            /** @description One per snapshot holding the mapping set, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["MappingVersionSummary"][];
+            /** @description The live version, which change sets edit. */
+            liveVersionId: components["schemas"]["Id"];
             /** @description Entries of the live version. */
-            publishedEntryCount: number;
+            liveEntryCount: number;
             bindings: components["schemas"]["MappingBindingUsage"][];
-        };
-        MappingSetDetail: components["schemas"]["MappingSetListItem"] & {
-            pins: components["schemas"]["MappingAssumptionPin"][];
         };
         /** @description Assignable members of the dimension's live version and those no entry maps to. */
         MappingCoverage: {
@@ -3643,7 +2933,7 @@ export interface components {
         };
         /** @description What the mapping set editor renders; the state of a mapping set change set. */
         MappingSetEditState: {
-            set: components["schemas"]["MappingSetDetail"];
+            set: components["schemas"]["MappingSetListItem"];
             content: components["schemas"]["MappingVersionContent"];
         };
         CreateMappingSetInput: {
@@ -3667,9 +2957,6 @@ export interface components {
             id: components["schemas"]["Id"];
             sourceKeyValue: string;
             memberKey: string;
-        };
-        MappingFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["MappingVersionSummary"];
         };
         MappingSetUpdateOperation: {
             /**
@@ -3735,23 +3022,17 @@ export interface components {
             /** @description Set for report bridges, which are written only through their report's change set. */
             owner: components["schemas"]["BridgeOwner"] | null;
         };
-        /** @description Stored `published` is the live version and `retired` a frozen snapshot (B10). */
+        /** @description The live version (edited in place) or a frozen snapshot's version (read-only) (B10). */
         BridgeVersion: {
             id: components["schemas"]["Id"];
             bridgeId: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
             cardinality: components["schemas"]["MappingCardinality"];
             allocationMode: components["schemas"]["MappingAllocationMode"];
+            /** @description Whether the engine offers the bridge in the version's snapshot. */
+            isEnabled: boolean;
             createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /**
-             * Format: date-time
-             * @description When it was frozen.
-             */
-            retiredAt: string | null;
-            freezeNote: string | null;
         };
         BridgeMapping: {
             id: components["schemas"]["Id"];
@@ -3765,28 +3046,23 @@ export interface components {
         };
         BridgeVersionSummary: {
             id: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
+            snapshotId: components["schemas"]["Id"];
+            isLive: boolean;
             cardinality: components["schemas"]["MappingCardinality"];
             allocationMode: components["schemas"]["MappingAllocationMode"];
             createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** Format: date-time */
-            retiredAt: string | null;
-            freezeNote: string | null;
             mappingCount: number;
         };
         BridgeListItem: components["schemas"]["Bridge"] & {
             source: components["schemas"]["MappingDimensionRef"];
             target: components["schemas"]["MappingDimensionRef"];
+            /** @description One per snapshot holding the bridge, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["BridgeVersionSummary"][];
+            /** @description The live version, which change sets edit. */
+            liveVersionId: components["schemas"]["Id"];
             /** @description Mappings of the live version. */
-            publishedMappingCount: number;
+            liveMappingCount: number;
             bindings: components["schemas"]["MappingBindingUsage"][];
-        };
-        BridgeDetail: components["schemas"]["BridgeListItem"] & {
-            pins: components["schemas"]["MappingAssumptionPin"][];
         };
         /** @description One source member's targets and the sum of its allocation weights. */
         BridgeSourceAllocation: {
@@ -3807,7 +3083,7 @@ export interface components {
         };
         /** @description What the bridge editor renders; the state of a bridge change set. */
         BridgeEditState: {
-            bridge: components["schemas"]["BridgeDetail"];
+            bridge: components["schemas"]["BridgeListItem"];
             content: components["schemas"]["BridgeVersionContent"];
         };
         /** @description Endpoints are fixed at creation, differ, and are never `time` dimensions, source or target (B4); neither is a report dimension, whose bridges its report's sources create. */
@@ -3842,9 +3118,6 @@ export interface components {
             allocationWeight: number;
             /** @description Accepted only on report bridges, written by the report editor; absent means `member` (OI-28). */
             sourceSelection?: components["schemas"]["SourceSelection"];
-        };
-        BridgeFreezeResult: components["schemas"]["FreezeResult"] & {
-            live: components["schemas"]["BridgeVersionSummary"];
         };
         BridgeUpdateOperation: {
             /**
@@ -3904,317 +3177,101 @@ export interface components {
             state: components["schemas"]["BridgeEditState"];
         };
         /**
-         * @description Natural key of a release, fixed after creation; screens show it as the release's name (R7, OI-39).
-         * @example prod/2026-q4
-         */
-        ReleaseKey: string;
-        /** @description One row of `qe_semantic_release`. */
-        Release: {
-            id: components["schemas"]["Id"];
-            key: components["schemas"]["ReleaseKey"];
-            status: components["schemas"]["VersionStatus"];
-            createdAt: components["schemas"]["Timestamp"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** @description Hash of the sorted manifest (`datasetId`, `datasetVersionId` pairs), computed on publish (OI-41). */
-            contentHash: string | null;
-        };
-        /** @description One row of the activation log, `qe_release_activation` (OI-40). */
-        ReleaseActivation: {
-            releaseId: components["schemas"]["Id"];
-            /** @description The release that was active before; null for the tenant's first activation. */
-            previousReleaseId: string | null;
-            activatedAt: components["schemas"]["Timestamp"];
-            /** @description The token subject of the caller. */
-            activatedBy: string;
-        };
-        ReleaseListItem: components["schemas"]["Release"] & {
-            isActive: boolean;
-            datasetCount: number;
-            /** @description What activating this release would change; null for the active release itself. */
-            diffVsActive: components["schemas"]["ReleaseDiff"] | null;
-            /**
-             * Format: date-time
-             * @description When the active release was last activated; null for every other release.
-             */
-            activatedAt: string | null;
-            /** @description Who last activated the active release; null for every other release. */
-            activatedBy: string | null;
-        };
-        /** @description One pinned dataset version, a row of `qe_release_dataset`. */
-        ManifestEntry: {
-            datasetId: components["schemas"]["Id"];
-            datasetVersionId: components["schemas"]["Id"];
-        };
-        /** @description A release page's read model; also the state of a manifest change set. */
-        ReleaseDetail: {
-            release: components["schemas"]["Release"];
-            isActive: boolean;
-            manifest: components["schemas"]["ManifestEntry"][];
-            /** @description Every activation of this release, newest first. */
-            activations: components["schemas"]["ReleaseActivation"][];
-        };
-        ReleaseDiffEntry: {
-            datasetId: components["schemas"]["Id"];
-            /** @description The pinned dataset version. */
-            versionId: components["schemas"]["Id"];
-        };
-        ReleaseDiffRemoval: components["schemas"]["ReleaseDiffEntry"] & {
-            /** @description Keys of the enabled reports with a source on the dataset. */
-            readBy: string[];
-        };
-        ReleaseDiffChange: {
-            datasetId: components["schemas"]["Id"];
-            fromVersionId: components["schemas"]["Id"];
-            toVersionId: components["schemas"]["Id"];
-        };
-        /** @description The manifest set difference going from one release to another (OI-38). */
-        ReleaseDiff: {
-            fromReleaseId: components["schemas"]["Id"];
-            toReleaseId: components["schemas"]["Id"];
-            added: components["schemas"]["ReleaseDiffEntry"][];
-            removed: components["schemas"]["ReleaseDiffRemoval"][];
-            changed: components["schemas"]["ReleaseDiffChange"][];
-            /** @description Datasets pinned at the same version in both. */
-            unchanged: number;
-        };
-        /**
-         * @description The release rules, in the order the API runs them.
-         * @enum {string}
-         */
-        ReleaseRuleCode: "manifest_not_empty" | "pinned_version_belongs_to_dataset" | "pinned_version_published" | "bound_dimensions_resolvable" | "mapped_bindings_resolvable" | "bridge_bindings_resolvable" | "report_sources_resolve" | "report_factors_apply";
-        /**
-         * @description What a release finding points at; the identity kinds name a dimension, mapping set or bridge.
-         * @enum {string}
-         */
-        ReleaseTargetArea: "dataset" | "dimension" | "mapping_set" | "bridge" | "report";
-        /** @description A dataset (`itemId` = dataset id), an identity (`area` = its kind, `itemId` = identity id) or a report source (`itemId` = report id, `itemKey` = source key). */
-        ReleaseViolationTarget: components["schemas"]["ViolationTarget"] & {
-            area: components["schemas"]["ReleaseTargetArea"];
-        };
-        ReleaseViolation: components["schemas"]["Violation"] & {
-            code: components["schemas"]["ReleaseRuleCode"];
-            /** @description The manifest row the finding belongs to, for inline issue icons. */
-            datasetId: string | null;
-            target?: components["schemas"]["ReleaseViolationTarget"];
-        };
-        ReleaseCheckReport: {
-            releaseId: components["schemas"]["Id"];
-            /** @description True when the rules ran over staged, unsaved manifest operations (a change-set preview). */
-            unsaved: boolean;
-            checkedAt: components["schemas"]["Timestamp"];
-            violations: components["schemas"]["ReleaseViolation"][];
-        };
-        /** @description Answer of `validate` and `publish`. */
-        ReleaseTransitionResult: {
-            release: components["schemas"]["Release"];
-            report: components["schemas"]["ReleaseCheckReport"];
-        };
-        CreateReleaseInput: {
-            key: components["schemas"]["ReleaseKey"];
-            /** @description The release whose manifest the draft starts from; null starts empty. */
-            copyFromReleaseId: string | null;
-        };
-        /** @description Replaces the whole manifest; the release editor keeps the manifest as its pending state. */
-        ReleaseSaveManifestOperation: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            op: "saveManifest";
-            manifest: components["schemas"]["ManifestEntry"][];
-        };
-        ReleaseOperation: components["schemas"]["ReleaseSaveManifestOperation"];
-        ReleaseChangeSetRequest: components["schemas"]["ChangeSetRequest"] & {
-            operations: components["schemas"]["ReleaseOperation"][];
-        };
-        ReleaseChangeSetPreview: components["schemas"]["ChangeSetPreview"] & {
-            state: components["schemas"]["ReleaseDetail"];
-            /** @description The same findings as `report.violations`. */
-            violations: components["schemas"]["ReleaseViolation"][];
-            /** @description The release rules over the pending manifest; `unsaved` is true (OI-37). */
-            report: components["schemas"]["ReleaseCheckReport"];
-            /** @description The pending manifest compared with the active release; null when no release is active. */
-            diffVsActive: components["schemas"]["ReleaseDiff"] | null;
-        };
-        ReleaseChangeSetCommit: components["schemas"]["ChangeSetCommit"] & {
-            state: components["schemas"]["ReleaseDetail"];
-        };
-        /** @description A binding of a dataset version, with the identities it resolves through. */
-        ManifestBinding: {
-            displayName: string;
-            kind: components["schemas"]["BindingKind"];
-            dimensionId: components["schemas"]["Id"];
-            mappingSetId: string | null;
-            bridgeId: string | null;
-        };
-        ManifestMeasure: {
-            key: string;
-            appliesBridgeFactors: boolean;
-        };
-        ManifestDatasetVersion: {
-            id: components["schemas"]["Id"];
-            versionNumber: number;
-            status: components["schemas"]["VersionStatus"];
-            /** Format: date-time */
-            publishedAt: string | null;
-            bindings: components["schemas"]["ManifestBinding"][];
-            measures: components["schemas"]["ManifestMeasure"][];
-        };
-        /** @description A dataset as the manifest editor shows it, with every version. */
-        ManifestDataset: {
-            id: components["schemas"]["Id"];
-            key: components["schemas"]["DottedKey"];
-            displayName: string;
-            isEnabled: boolean;
-            /** @description Newest first. */
-            versions: components["schemas"]["ManifestDatasetVersion"][];
-        };
-        /** @enum {string} */
-        PinKind: "dimension" | "mapping_set" | "bridge";
-        /** @description A version of a living kind; it is live (published) or frozen (retired) (OI-14). */
-        PinIdentityVersion: {
-            id: components["schemas"]["Id"];
-            versionNumber: number;
-            /** @enum {string} */
-            status: "published" | "retired";
-            publishedAt: components["schemas"]["Timestamp"];
-        };
-        /** @description A dimension, mapping set or bridge that an assumption set pins a version of. */
-        PinIdentity: {
-            kind: components["schemas"]["PinKind"];
-            id: components["schemas"]["Id"];
-            /** @description A dimension key, or a mapping set or bridge dotted key. */
-            key: string;
-            displayName: string;
-            /** @description The dimension itself, a mapping set's dimension, or a bridge's target dimension. */
-            dimensionId: components["schemas"]["Id"];
-            /** @description The owning report of a report dimension or of a bridge into one. */
-            reportId: string | null;
-            createdAt: components["schemas"]["Timestamp"];
-            versions: components["schemas"]["PinIdentityVersion"][];
-        };
-        ReleaseReportSource: {
-            key: string;
-            datasetId: components["schemas"]["Id"];
-            /** @description The source adds items into rows with factors other than 1, computed from the report's bridges. */
-            usesFactors: boolean;
-            measureKeys: string[];
-        };
-        ReleaseReportRead: {
-            kind: components["schemas"]["PinKind"];
-            identityId: components["schemas"]["Id"];
-        };
-        /** @description What a report reads from a release (its sources) and from an assumption set (its identities). */
-        ReleaseReportRef: {
-            id: components["schemas"]["Id"];
-            key: string;
-            displayName: string;
-            isEnabled: boolean;
-            sources: components["schemas"]["ReleaseReportSource"][];
-            /** @description The analytical identities the report reads, computed by the server. */
-            reads: components["schemas"]["ReleaseReportRead"][];
-        };
-        /**
-         * @description Natural key of an assumption set, fixed after creation (R11); requests name the set by it.
+         * @description Natural key of a snapshot, fixed after capture; requests name the snapshot by it. The live snapshot is `live`.
          * @example fy2026_q3_close
          */
-        AssumptionSetKey: string;
-        /** @description One row of `qe_assumption_set`. */
-        AssumptionSet: {
-            id: components["schemas"]["Id"];
-            key: components["schemas"]["AssumptionSetKey"];
-            displayName: string;
-            description: string | null;
-            status: components["schemas"]["AssumptionSetStatus"];
-            /** @description The captured release; null for the active set, which reads the active release. */
-            releaseId: string | null;
-            /** Format: date-time */
-            capturedAt: string | null;
-            createdAt: components["schemas"]["Timestamp"];
-        };
-        SetListItem: components["schemas"]["AssumptionSet"] & {
-            pinCount: number;
-            /** @description Pins whose version is still published. */
-            livePins: number;
-            /** @description Pins whose identity now publishes another version; 0 for the active set. */
-            changedSinceCapture: number;
-        };
-        AssumptionSetList: {
-            active: components["schemas"]["SetListItem"];
-            /** @description Newest capture first. */
-            historical: components["schemas"]["SetListItem"][];
-        };
+        SnapshotKey: string;
         /**
-         * @description `live`: the pinned version is published; `frozen`: it is retired; `report_owned`: the identity belongs to a report (active set only, captures leave these out).
+         * @description The identities a snapshot holds one version of, in capture order.
          * @enum {string}
          */
-        PinState: "live" | "frozen" | "report_owned";
-        PinRow: {
-            kind: components["schemas"]["PinKind"];
+        SnapshotKind: "dataset" | "dimension" | "mapping_set" | "bridge" | "calculation_model" | "report";
+        /** @description One row of `qe_snapshot`. */
+        Snapshot: {
+            id: components["schemas"]["Id"];
+            key: components["schemas"]["SnapshotKey"];
+            displayName: string;
+            description: string | null;
+            /** @description The live snapshot is edited in place; it is never relabelled, deleted or restored. */
+            isLive: boolean;
+            /**
+             * Format: date-time
+             * @description When a frozen snapshot was captured; null for the live snapshot.
+             */
+            capturedAt: string | null;
+            /** @description The token subject of whoever captured a frozen snapshot; null for the live snapshot. */
+            capturedBy: string | null;
+            createdAt: components["schemas"]["Timestamp"];
+        };
+        /** @description How many versions a snapshot holds, or a capture would copy, of each kind. */
+        SnapshotCounts: {
+            datasets: number;
+            /** @description Report dimensions included. */
+            dimensions: number;
+            mappingSets: number;
+            /** @description Report bridges included. */
+            bridges: number;
+            calculationModels: number;
+            reports: number;
+        };
+        /** @description One row of the restore log, `qe_snapshot_restore`. */
+        SnapshotRestore: {
+            snapshotId: components["schemas"]["Id"];
+            restoredAt: components["schemas"]["Timestamp"];
+            /** @description The token subject of the caller. */
+            restoredBy: string;
+        };
+        SnapshotListItem: components["schemas"]["Snapshot"] & {
+            counts: components["schemas"]["SnapshotCounts"];
+            /** @description The snapshot's latest restore into live; null when never restored, and always for the live snapshot. */
+            lastRestore: components["schemas"]["SnapshotRestore"] | null;
+        };
+        SnapshotList: {
+            live: components["schemas"]["SnapshotListItem"];
+            /** @description Newest capture first. */
+            frozen: components["schemas"]["SnapshotListItem"][];
+        };
+        /** @description The version a snapshot holds of one identity; the kind's version read shows it. */
+        SnapshotEntry: {
+            kind: components["schemas"]["SnapshotKind"];
             identityId: components["schemas"]["Id"];
+            key: string;
+            /** @description The identity's name; a model's or report's as its version names it. */
+            displayName: string;
             versionId: components["schemas"]["Id"];
-            /** @description The identity's published version now. */
-            publishedVersionId: string | null;
-            state: components["schemas"]["PinState"];
         };
-        SetReadinessReason: {
-            message: string;
-            target: components["schemas"]["ReleaseViolationTarget"];
+        SnapshotDetail: {
+            snapshot: components["schemas"]["Snapshot"];
+            /** @description Kind by kind in capture order, each by key. */
+            entries: components["schemas"]["SnapshotEntry"][];
+            /** @description Restores of the snapshot into live, newest first; none for the live snapshot. */
+            restores: components["schemas"]["SnapshotRestore"][];
         };
-        /** @description Whether a report comparison can name the set: every analytical identity the report reads is pinned and every source dataset is in the set's release. */
-        SetReadiness: {
-            reportId: components["schemas"]["Id"];
-            ready: boolean;
-            reasons: components["schemas"]["SetReadinessReason"][];
-        };
-        SetDetail: {
-            set: components["schemas"]["AssumptionSet"];
-            /** @description The release the set reads; the active release for the active set. */
-            readsReleaseId: components["schemas"]["Id"];
-            pins: components["schemas"]["PinRow"][];
-            /** @description One entry per enabled report for a historical set; null for the active set. */
-            readiness: components["schemas"]["SetReadiness"][] | null;
-        };
-        SetPinEntry: {
-            kind: components["schemas"]["PinKind"];
+        /** @description An identity both compared snapshots hold, with each one's version. */
+        SnapshotPair: {
+            kind: components["schemas"]["SnapshotKind"];
             identityId: components["schemas"]["Id"];
-            versionId: components["schemas"]["Id"];
-        };
-        SetPinChange: {
-            kind: components["schemas"]["PinKind"];
-            identityId: components["schemas"]["Id"];
+            key: string;
             fromVersionId: components["schemas"]["Id"];
             toVersionId: components["schemas"]["Id"];
         };
-        /** @description What `toSetId` pins differently from `fromSetId`; report-owned identities are left out. */
-        SetComparison: {
-            fromSetId: components["schemas"]["Id"];
-            toSetId: components["schemas"]["Id"];
-            added: components["schemas"]["SetPinEntry"][];
-            removed: components["schemas"]["SetPinEntry"][];
-            changed: components["schemas"]["SetPinChange"][];
-            unchanged: number;
-            /** @description The difference of the two sets' releases; null when both read the same release. */
-            release: components["schemas"]["ReleaseDiff"] | null;
+        /** @description What `toSnapshotId` holds that `fromSnapshotId` does not, the reverse, and what both hold. */
+        SnapshotComparison: {
+            fromSnapshotId: components["schemas"]["Id"];
+            toSnapshotId: components["schemas"]["Id"];
+            /** @description Identities only `to` holds, with `to`'s version. */
+            added: components["schemas"]["SnapshotEntry"][];
+            /** @description Identities only `from` holds, with `from`'s version. */
+            removed: components["schemas"]["SnapshotEntry"][];
+            /** @description Identities both hold, with both versions. */
+            common: components["schemas"]["SnapshotPair"][];
         };
-        SetCapturePreview: {
-            dimensions: number;
-            mappingSets: number;
-            bridges: number;
-            /** @description Report dimensions a capture leaves out. */
-            leftOutDimensions: number;
-            /** @description Bridges into report dimensions a capture leaves out. */
-            leftOutBridges: number;
-            /** @description The active release, which the capture records. */
-            releaseId: components["schemas"]["Id"];
-        };
-        CaptureSetInput: {
-            key: components["schemas"]["AssumptionSetKey"];
+        CaptureSnapshotInput: {
+            key: components["schemas"]["SnapshotKey"];
             displayName: string;
             description: string | null;
         };
-        RelabelSetInput: {
+        RelabelSnapshotInput: {
             displayName: string;
             description: string | null;
         };
@@ -4229,9 +3286,13 @@ export interface components {
         ModelParameterValueType: "number" | "text";
         /** @enum {string} */
         ModelOutputDataType: "decimal" | "int64" | "int32";
-        /** @description The model's own settings (`qe_calculation_model`). */
+        /** @description The model's identity with one version's settings (`qe_calculation_model_version`). */
         CalcModel: {
             id: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            snapshotId: components["schemas"]["Id"];
+            /** @description The live version is editable; a frozen version is read-only. */
+            isLive: boolean;
             /** @description Fixed after creation (C9). */
             key: components["schemas"]["DottedKey"];
             displayName: string;
@@ -4293,7 +3354,7 @@ export interface components {
             weightVariableKey: string | null;
             drivers: components["schemas"]["AttributionDriver"][];
         };
-        /** @description A report that reads the model (`qe_report.calculation_model_id`, OI-44). */
+        /** @description A report whose version in the model version's snapshot reads it (OI-44). */
         ModelReportUse: {
             reportId: components["schemas"]["Id"];
             reportKey: components["schemas"]["DottedKey"];
@@ -4619,12 +3680,20 @@ export interface components {
             indent: number | null;
         };
         ReportColor: string | null;
+        /** @description A report's whole content in one version; the live version is the change set's state. */
         ReportDocument: {
             id: components["schemas"]["Id"];
             key: components["schemas"]["DottedKey"];
+            versionId: components["schemas"]["Id"];
+            snapshotId: components["schemas"]["Id"];
+            /** @description The live version is editable; a frozen version is read-only. */
+            isLive: boolean;
             isEnabled: boolean;
             modelId: components["schemas"]["Id"];
+            /** @description The model's version in the same snapshot, whose metrics the report reads. */
+            modelVersionId: components["schemas"]["Id"];
             reportDimensionId: components["schemas"]["Id"];
+            /** @description The report dimension's version in the same snapshot, whose members are the member rows. */
             reportDimensionVersionId: components["schemas"]["Id"];
             settings: components["schemas"]["ReportSettings"];
             /** @description Hierarchy order. */
@@ -4909,7 +3978,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description A precondition failed (not a draft, not editable, owned by a report, delete blocked, release not published). */
+        /** @description A precondition failed (a frozen version, not editable, owned by a report, delete blocked, the live snapshot). */
         Conflict: {
             headers: {
                 [name: string]: unknown;
@@ -4949,19 +4018,18 @@ export interface components {
         MappingVersionId: components["schemas"]["Id"];
         BridgeId: components["schemas"]["Id"];
         BridgeVersionId: components["schemas"]["Id"];
-        ReleaseIdPath: components["schemas"]["Id"];
-        /** @description The release compared from. */
-        ReleaseDiffFrom: components["schemas"]["Id"];
-        /** @description The release compared to. */
-        ReleaseDiffTo: components["schemas"]["Id"];
-        AssumptionSetIdPath: components["schemas"]["Id"];
-        /** @description The assumption set compared from. */
-        SetCompareFrom: components["schemas"]["Id"];
-        /** @description The assumption set compared to. */
-        SetCompareTo: components["schemas"]["Id"];
+        SnapshotIdPath: components["schemas"]["Id"];
+        /** @description The snapshot compared from. */
+        SnapshotCompareFrom: components["schemas"]["Id"];
+        /** @description The snapshot compared to. */
+        SnapshotCompareTo: components["schemas"]["Id"];
         /** @description The calculation model id. */
         ModelId: components["schemas"]["Id"];
+        /** @description A calculation model version id. */
+        ModelVersionId: components["schemas"]["Id"];
         ReportId: components["schemas"]["Id"];
+        /** @description A report version id. */
+        ReportVersionId: components["schemas"]["Id"];
         ReportSourceKey: string;
     };
     requestBodies: never;
@@ -5096,7 +4164,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The published version's members, in hierarchy order. */
+            /** @description The live version's members, in hierarchy order. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5107,7 +4175,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description The dimension does not exist or has no published version. */
+            /** @description The dimension does not exist or the live snapshot holds no version of it. */
             404: components["responses"]["NotFound"];
         };
     };
@@ -5376,7 +4444,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The dataset, with draft version 1. */
+            /** @description The dataset, with its live version. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5474,40 +4542,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    createDatasetDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                datasetId: components["parameters"]["DatasetIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DatasetCreateDraftInput"];
-            };
-        };
-        responses: {
-            /** @description The new draft. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DatasetVersionSummary"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The dataset already has an open (draft or validated) version (OI-23). */
-            409: components["responses"]["Conflict"];
-        };
-    };
     getDatasetVersion: {
         parameters: {
             query?: never;
@@ -5529,63 +4563,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatasetVersion"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    deleteDatasetDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Delete blocked; `violations` are the reasons of the delete check. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    checkDeleteDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The delete check. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteCheck"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -5624,7 +4601,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents. */
+            /** @description The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents. */
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableContent"];
         };
@@ -5660,167 +4637,8 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Not a draft (only `updateDataset` applies then), not a managed table, or an item delete is blocked by its dependents. */
+            /** @description The version is frozen, the table is not a managed one, or an item delete is blocked by its dependents. */
             409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    checkDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The rule report. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationReport"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    validateDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The validated version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DatasetVersionSummary"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not a draft. */
-            409: components["responses"]["Conflict"];
-            /** @description A publication rule fails; nothing was written. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    publishDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The published version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DatasetVersionSummary"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not a draft or validated. */
-            409: components["responses"]["Conflict"];
-            /** @description A publication rule fails; nothing was written. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    reopenDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The draft. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DatasetVersionSummary"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not validated. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    retireDatasetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                /** @description A dataset version id. */
-                versionId: components["parameters"]["DatasetVersionIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The retired version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DatasetVersionSummary"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not published. */
-            409: components["responses"]["Conflict"];
-            /** @description The active release pins the version. */
             422: components["responses"]["UnprocessableContent"];
         };
     };
@@ -5853,7 +4671,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description The version is retired or the field is not a JSON path field. */
+            /** @description The version is frozen or the field is not a JSON path field. */
             409: components["responses"]["Conflict"];
         };
     };
@@ -5886,7 +4704,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description The version is retired or the field is not a JSON path field. */
+            /** @description The version is frozen or the field is not a JSON path field. */
             409: components["responses"]["Conflict"];
         };
     };
@@ -5919,7 +4737,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description The version is retired or the field is not materialized. */
+            /** @description The version is frozen or the field is not materialized. */
             409: components["responses"]["Conflict"];
         };
     };
@@ -6224,125 +5042,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    deleteDimensionVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The live version, or pinned by a historical assumption set (see `violations`). */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    checkDimensionVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The rule report; codes are `DimensionViolationCode` values. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationReport"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    freezeDimensionVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FreezeInput"];
-            };
-        };
-        responses: {
-            /** @description Frozen; `live` is the new live version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DimensionFreezeResult"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not the live version, or locked by its profile. */
-            409: components["responses"]["Conflict"];
-            /** @description A rule fails; nothing changed. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    checkDimensionVersionDelete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                versionId: components["parameters"]["DimensionVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The delete check. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteCheck"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
     checkDimensionMemberDelete: {
         parameters: {
             query?: never;
@@ -6500,13 +5199,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The mapping set with its bindings and assumption set pins. */
+            /** @description The mapping set with its versions and the live bindings that use it. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MappingSetDetail"];
+                    "application/json": components["schemas"]["MappingSetListItem"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -6667,125 +5366,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    deleteMappingVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The version is live, or a historical assumption set pins it. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    checkMappingVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The rule report. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationReport"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    freezeMappingVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FreezeInput"];
-            };
-        };
-        responses: {
-            /** @description Frozen; `live` is the new live version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MappingFreezeResult"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The version is not live. */
-            409: components["responses"]["Conflict"];
-            /** @description A rule failed; see `violations`. Nothing was written. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    checkDeleteMappingVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                mappingVersionId: components["parameters"]["MappingVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Whether the delete is allowed, and why not. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteCheck"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
     listBridges: {
         parameters: {
             query?: {
@@ -6864,13 +5444,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The bridge with its bindings and assumption set pins. */
+            /** @description The bridge with its versions and the live bindings that use it. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BridgeDetail"];
+                    "application/json": components["schemas"]["BridgeListItem"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -7031,126 +5611,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    deleteBridgeVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The version is live, a historical assumption set pins it, or the bridge is owned by a report. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    checkBridgeVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The rule report. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationReport"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    freezeBridgeVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FreezeInput"];
-            };
-        };
-        responses: {
-            /** @description Frozen; `live` is the new live version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BridgeFreezeResult"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The version is not live, or the bridge is owned by a report. */
-            409: components["responses"]["Conflict"];
-            /** @description A rule failed; see `violations`. Nothing was written. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    checkDeleteBridgeVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                bridgeVersionId: components["parameters"]["BridgeVersionId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Whether the delete is allowed, and why not. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteCheck"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    listReleases: {
+    listSnapshots: {
         parameters: {
             query?: never;
             header?: never;
@@ -7162,20 +5623,20 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every release, newest first. */
+            /** @description The live snapshot and every frozen one, newest capture first. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReleaseListItem"][];
+                    "application/json": components["schemas"]["SnapshotList"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };
     };
-    createRelease: {
+    captureSnapshot: {
         parameters: {
             query?: never;
             header?: never;
@@ -7187,33 +5648,58 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateReleaseInput"];
+                "application/json": components["schemas"]["CaptureSnapshotInput"];
             };
         };
         responses: {
-            /** @description The new draft. */
+            /** @description The new frozen snapshot. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Release"];
+                    "application/json": components["schemas"]["Snapshot"];
                 };
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description The key is taken. */
+            /** @description The key is taken, or live changed during the capture. */
             409: components["responses"]["Conflict"];
         };
     };
-    diffReleases: {
+    previewSnapshotCapture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live versions of each kind. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnapshotCounts"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    compareSnapshots: {
         parameters: {
             query: {
-                /** @description The release compared from. */
-                from: components["parameters"]["ReleaseDiffFrom"];
-                /** @description The release compared to. */
-                to: components["parameters"]["ReleaseDiffTo"];
+                /** @description The snapshot compared from. */
+                from: components["parameters"]["SnapshotCompareFrom"];
+                /** @description The snapshot compared to. */
+                to: components["parameters"]["SnapshotCompareTo"];
             };
             header?: never;
             path: {
@@ -7224,41 +5710,41 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description What changes going from `from` to `to`. */
+            /** @description What `to` holds that `from` does not, the reverse, and what both hold. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReleaseDiff"];
+                    "application/json": components["schemas"]["SnapshotComparison"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `from` or `to` names no release. */
+            /** @description `from` or `to` names no snapshot. */
             404: components["responses"]["NotFound"];
         };
     };
-    getRelease: {
+    getSnapshot: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The tenant directory key. */
                 tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The release. */
+            /** @description The snapshot. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReleaseDetail"];
+                    "application/json": components["schemas"]["SnapshotDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -7266,14 +5752,48 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    deleteRelease: {
+    relabelSnapshot: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The tenant directory key. */
                 tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelabelSnapshotInput"];
+            };
+        };
+        responses: {
+            /** @description The relabelled snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snapshot"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The live snapshot. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
             };
             cookie?: never;
         };
@@ -7290,250 +5810,24 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Not a draft. */
+            /** @description The live snapshot. */
             409: components["responses"]["Conflict"];
         };
     };
-    previewReleaseChanges: {
+    restoreSnapshot: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The tenant directory key. */
                 tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReleaseChangeSetRequest"];
-            };
-        };
-        responses: {
-            /** @description The operations apply; nothing was written. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseChangeSetPreview"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not a draft. */
-            409: components["responses"]["Conflict"];
-            /** @description A pinned version is not one of its dataset's versions or is not published. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    commitReleaseChanges: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReleaseChangeSetRequest"];
-            };
-        };
-        responses: {
-            /** @description Every operation applied and was written. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseChangeSetCommit"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not a draft. */
-            409: components["responses"]["Conflict"];
-            /** @description A pinned version is not one of its dataset's versions or is not published. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    checkRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
+                snapshotId: components["parameters"]["SnapshotIdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The rule findings; `unsaved` is false. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseCheckReport"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    validateRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validated; the report has no violations. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseTransitionResult"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not a draft. */
-            409: components["responses"]["Conflict"];
-            /** @description A release rule fails; `violations` are `ReleaseViolation`s. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    publishRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Published; `release.contentHash` is set and the report has no violations. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseTransitionResult"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not validated. */
-            409: components["responses"]["Conflict"];
-            /** @description A release rule fails; `violations` are `ReleaseViolation`s. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    backToDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A draft again. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Release"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not validated. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    retireRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Retired. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Release"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description Not published. */
-            409: components["responses"]["Conflict"];
-            /** @description `release_not_active`: the release is the active one. */
-            422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    activateRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                releaseId: components["parameters"]["ReleaseIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The tenant state the activation produced: the new `activeReleaseId` and the advanced `semanticRevision`. The activation log row appears in the release detail's `activations`. */
+            /** @description The tenant state the restore produced. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -7546,288 +5840,10 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Not published. */
+            /** @description The live snapshot. */
             409: components["responses"]["Conflict"];
-            /** @description An enabled report's rules fail on the release. */
+            /** @description A version breaks a rule; nothing was restored. */
             422: components["responses"]["UnprocessableContent"];
-        };
-    };
-    listManifestDatasets: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Every dataset with its versions, newest version first. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ManifestDataset"][];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    listIdentities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Every identity, report-owned ones included. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PinIdentity"][];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    listReportReads: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Every report with its sources and the identities it reads. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseReportRef"][];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    listSets: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The active set and every historical set, newest capture first. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AssumptionSetList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    captureSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CaptureSetInput"];
-            };
-        };
-        responses: {
-            /** @description The new historical set. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AssumptionSet"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            /** @description The key is taken. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    capturePreview: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The counts and the release a capture would record. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SetCapturePreview"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    compareSets: {
-        parameters: {
-            query: {
-                /** @description The assumption set compared from. */
-                from: components["parameters"]["SetCompareFrom"];
-                /** @description The assumption set compared to. */
-                to: components["parameters"]["SetCompareTo"];
-            };
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description What `to` pins differently from `from`, and how their releases differ. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SetComparison"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            /** @description `from` or `to` names no assumption set. */
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                setId: components["parameters"]["AssumptionSetIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The assumption set. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SetDetail"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    relabelSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                setId: components["parameters"]["AssumptionSetIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RelabelSetInput"];
-            };
-        };
-        responses: {
-            /** @description The relabelled set. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AssumptionSet"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The active set. */
-            409: components["responses"]["Conflict"];
-        };
-    };
-    deleteSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tenant directory key. */
-                tenantId: components["parameters"]["TenantId"];
-                setId: components["parameters"]["AssumptionSetIdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            /** @description The active set. */
-            409: components["responses"]["Conflict"];
         };
     };
     listModels: {
@@ -7940,8 +5956,36 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description A report reads the model; `violations` carry `referenced_by_report` per report. */
+            /** @description A live report reads the model or a frozen snapshot holds it; `violations` carry `referenced_by_report` per report and `referenced_by_snapshot`. */
             409: components["responses"]["Conflict"];
+        };
+    };
+    getModelVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A calculation model version id. */
+                modelVersionId: components["parameters"]["ModelVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The model version's document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelDocument"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     checkDeleteModel: {
@@ -8180,6 +6224,36 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description A frozen snapshot holds a version of the report; `violations` carry `referenced_by_snapshot`. */
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getReportVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tenant directory key. */
+                tenantId: components["parameters"]["TenantId"];
+                /** @description A report version id. */
+                reportVersionId: components["parameters"]["ReportVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report version as stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

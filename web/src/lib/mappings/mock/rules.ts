@@ -21,7 +21,7 @@ const MAPPINGS = 'mappings'
 export function mappingSetViolations(entries: MappingEntry[], members: MemberIndex | null, dimensionName: string): Violation[] {
   const out: Violation[] = []
   if (!members) {
-    out.push({ code: 'dimension_version_published', message: `${dimensionName} has no live version, so member keys cannot be resolved.` })
+    out.push({ code: 'dimension_version_in_snapshot', message: `${dimensionName} has no version in this snapshot, so member keys cannot be resolved.` })
   }
   const seen = new Map<string, MappingEntry>()
   for (const e of entries) {
@@ -83,7 +83,7 @@ export function bridgeViolations(
 ): Violation[] {
   const out: Violation[] = []
   for (const end of [source, target]) {
-    if (!end.members) out.push({ code: 'endpoint_versions_published', message: `${end.name} has no live version, so its member keys cannot be resolved.` })
+    if (!end.members) out.push({ code: 'endpoint_versions_in_snapshot', message: `${end.name} has no version in this snapshot, so its member keys cannot be resolved.` })
   }
   const seen = new Set<string>()
   for (const m of mappings) {

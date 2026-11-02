@@ -5,7 +5,7 @@ import type { TenantApi, TenantCatalogDimension } from '@/lib/tenant/contract'
  * module's adapter satisfies as is.
  */
 
-export type MappingCatalogDimension = Pick<TenantCatalogDimension, 'id' | 'key' | 'displayName' | 'kind' | 'purpose' | 'publishedVersionId' | 'publishedVersionNumber'>
+export type MappingCatalogDimension = Pick<TenantCatalogDimension, 'id' | 'key' | 'displayName' | 'kind' | 'purpose' | 'liveVersionId'>
 
 export interface MappingLookups extends Pick<TenantApi, 'getPublishedMembers'> {
   getCatalog(): Promise<{ dimensions: MappingCatalogDimension[] }>

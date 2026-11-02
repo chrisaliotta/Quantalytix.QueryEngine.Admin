@@ -4,35 +4,32 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { EditorSheet, Field, ReadValue } from '@/components/dimensions/shared'
-import { useCapturePreview, useLookup, useRelCall, useReleasesApi, useSetList } from '@/lib/releases/client'
-import { SET_KEY_PATTERN, type AssumptionSet } from '@/lib/releases/contract'
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+import { useCapturePreview, useSnapshotCall, useSnapshotList, useSnapshotsApi } from '@/lib/snapshots/client'
+import { COUNT_OF, KIND_LABEL, SNAPSHOT_KEY_PATTERN, SNAPSHOT_KINDS, type Snapshot } from '@/lib/snapshots/contract'
 
 export function CaptureSheet({ open, onClose, onCaptured }: { open: boolean; onClose: () => void; onCaptured: (id: string) => void }) {
   return open ? <CaptureForm onClose={onClose} onCaptured={onCaptured} /> : null
 }
 
 function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured: (id: string) => void }) {
-  const api = useReleasesApi()
-  const lookup = useLookup()
-  const { data: sets } = useSetList()
-  const { data: preview } = useCapturePreview(true)
-  const { run, saving, errorsFor, setProblem } = useRelCall()
+  const api = useSnapshotsApi()
+  const { data: list } = useSnapshotList()
+  const { data: preview } = useCapturePreview()
+  const { run, saving, errorsFor, setProblem } = useSnapshotCall()
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [touched, setTouched] = useState(false)
 
   const k = key.trim()
-  const all = sets ? [sets.active, ...sets.historical] : []
-  const keyError = !touched || !k ? null : !SET_KEY_PATTERN.test(k) ? 'Use a letter, then letters, digits or underscores (128 at most).' : all.some((s) => s.key === k) ? `An assumption set with key '${k}' already exists.` : null
+  const taken = list ? [list.live, ...list.frozen].some((s) => s.key === k) : false
+  const keyError = !touched || !k ? null : !SNAPSHOT_KEY_PATTERN.test(k) ? 'Use a letter, then letters, digits or underscores (128 at most).' : taken ? `A snapshot with key '${k}' already exists.` : null
   const nameError = touched && !name.trim() ? 'Enter a display name.' : null
 
   const submit = async () => {
     setTouched(true)
     if (!k || keyError || !name.trim()) return
-    const res = await run(() => api.captureSet({ key: k, displayName: name.trim(), description: description.trim() || null }), (s) => `Captured ${s.key}.`)
+    const res = await run(() => api.captureSnapshot({ key: k, displayName: name.trim(), description: description.trim() || null }), (s) => `Captured ${s.key}.`)
     if (res.ok) onCaptured(res.data.id)
   }
 
@@ -41,8 +38,8 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
       open
       onClose={onClose}
       dirty={!!(k || name || description)}
-      title="Capture the active set"
-      description="Copies the active set's pins as they are now into a historical set that requests and report comparisons can name."
+      title="Capture live"
+      description="Copies every live version into a new frozen snapshot that requests and report comparisons can name. Live stays as it is."
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -64,13 +61,13 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
       >
         <Field
           label="Key"
-          htmlFor="set-key"
+          htmlFor="snapshot-key"
           required
           errors={keyError ? [keyError] : errorsFor('key')}
           hint="The name requests use, such as fy2026_q3_close: a letter, then letters, digits or underscores. Fixed once captured."
         >
           <Input
-            id="set-key"
+            id="snapshot-key"
             autoFocus
             value={key}
             onChange={(e) => {
@@ -83,23 +80,27 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
             aria-invalid={!!keyError}
           />
         </Field>
-        <Field label="Display name" htmlFor="set-name" required errors={nameError ? [nameError] : errorsFor('displayName')}>
-          <Input id="set-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="FY2026 Q3 close" aria-invalid={!!nameError} />
+        <Field label="Display name" htmlFor="snapshot-name" required errors={nameError ? [nameError] : errorsFor('displayName')}>
+          <Input id="snapshot-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="FY2026 Q3 close" aria-invalid={!!nameError} />
         </Field>
-        <Field label="Description" htmlFor="set-desc" hint={`${description.length} / 1,024`}>
-          <Textarea id="set-desc" value={description} maxLength={1024} onChange={(e) => setDescription(e.target.value)} placeholder="What this snapshot is for" rows={3} />
+        <Field label="Description" htmlFor="snapshot-desc" hint={`${description.length} / 1,024`}>
+          <Textarea id="snapshot-desc" value={description} maxLength={1024} onChange={(e) => setDescription(e.target.value)} placeholder="What this snapshot is for" rows={3} />
         </Field>
         <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-sm text-pretty">
-          <span className="text-xs font-medium text-muted-foreground">Preview</span>
+          <span className="text-xs font-medium text-muted-foreground">Copies</span>
           {preview ? (
-            <p>
-              Pins {plural(preview.dimensions, 'dimension')}, {plural(preview.mappingSets, 'mapping set')} and {plural(preview.bridges, 'bridge')} as published now, and release{' '}
-              <span className="font-mono font-semibold">{lookup.release(preview.releaseId)?.key}</span>. Leaves out {plural(preview.leftOutDimensions, 'report dimension')} and{' '}
-              {plural(preview.leftOutBridges, 'report bridge')}, which reports always read from the active set.
-            </p>
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {SNAPSHOT_KINDS.map((kind) => (
+                <li key={kind} className="flex justify-between gap-2">
+                  <span>{KIND_LABEL[kind]}</span>
+                  <span className="font-mono tabular-nums">{preview[COUNT_OF[kind]]}</span>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-muted-foreground">Counting pins…</p>
+            <p className="text-muted-foreground">Counting live versions…</p>
           )}
+          <p className="text-xs text-muted-foreground">Report dimensions and report bridges are included. If someone saves while the capture runs, it is refused and nothing is kept.</p>
         </div>
         <button type="submit" hidden />
       </form>
@@ -107,20 +108,20 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
   )
 }
 
-export function RelabelSheet({ set, onClose }: { set: AssumptionSet | null; onClose: () => void }) {
-  return set ? <RelabelForm key={set.id} set={set} onClose={onClose} /> : null
+export function RelabelSheet({ snapshot, onClose }: { snapshot: Snapshot | null; onClose: () => void }) {
+  return snapshot ? <RelabelForm key={snapshot.id} snapshot={snapshot} onClose={onClose} /> : null
 }
 
-function RelabelForm({ set, onClose }: { set: AssumptionSet; onClose: () => void }) {
-  const api = useReleasesApi()
-  const { run, saving, errorsFor } = useRelCall()
-  const [name, setName] = useState(set.displayName)
-  const [description, setDescription] = useState(set.description ?? '')
-  const dirty = name !== set.displayName || description !== (set.description ?? '')
+function RelabelForm({ snapshot, onClose }: { snapshot: Snapshot; onClose: () => void }) {
+  const api = useSnapshotsApi()
+  const { run, saving, errorsFor } = useSnapshotCall()
+  const [name, setName] = useState(snapshot.displayName)
+  const [description, setDescription] = useState(snapshot.description ?? '')
+  const dirty = name !== snapshot.displayName || description !== (snapshot.description ?? '')
 
   const submit = async () => {
     if (!name.trim()) return
-    const res = await run(() => api.relabelSet(set.id, { displayName: name.trim(), description: description.trim() || null }), `Updated ${set.key}.`)
+    const res = await run(() => api.relabelSnapshot(snapshot.id, { displayName: name.trim(), description: description.trim() || null }), () => `Updated ${snapshot.key}.`)
     if (res.ok) onClose()
   }
 
@@ -129,8 +130,8 @@ function RelabelForm({ set, onClose }: { set: AssumptionSet; onClose: () => void
       open
       onClose={onClose}
       dirty={dirty}
-      title={`Edit ${set.key}`}
-      description="Relabelling does not change what the set pins or which release it reads."
+      title={`Edit ${snapshot.key}`}
+      description="Relabelling never changes the key or the versions the snapshot holds."
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -143,7 +144,7 @@ function RelabelForm({ set, onClose }: { set: AssumptionSet; onClose: () => void
       }
     >
       <ReadValue label="Key" mono>
-        {set.key}
+        {snapshot.key}
       </ReadValue>
       <Field label="Display name" htmlFor="relabel-name" required errors={!name.trim() ? ['Enter a display name.'] : errorsFor('displayName')}>
         <Input id="relabel-name" value={name} onChange={(e) => setName(e.target.value)} />

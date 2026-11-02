@@ -17,8 +17,11 @@ function withoutInputPrefix(problem: Problem): Problem {
   return { ...problem, errors }
 }
 
-const settingsOf = ({ id, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled }: ModelDocument): CalcModel => ({
+const settingsOf = ({ id, versionId, snapshotId, isLive, key, displayName, currencyCode, calendarKey, formulaLanguage, attributionMethod, isEnabled }: ModelDocument): CalcModel => ({
   id,
+  versionId,
+  snapshotId,
+  isLive,
   key,
   displayName,
   currencyCode,
@@ -48,6 +51,7 @@ export function createHttpModelsApi(http: HttpClient): ModelsApi {
       if (pending?.id === id) return { ok: true, data: pending }
       return http.get<Schemas['ModelDocument']>(modelPath(id))
     },
+    getModelVersion: (versionId) => http.get<Schemas['ModelDocument']>(`/calculation-model-versions/${versionId}`),
     checkFormula: (id, formula, selfKey) =>
       unwrap(http.post<Schemas['ModelFormulaCheck']>(`${modelPath(id)}/formula-check`, { formula, selfKey } satisfies Schemas['ModelFormulaCheckRequest'])),
     checkDeleteModel: (id) => unwrap(http.get<Schemas['DeleteCheck']>(`${modelPath(id)}/delete-check`)),

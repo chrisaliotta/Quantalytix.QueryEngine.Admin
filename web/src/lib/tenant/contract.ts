@@ -1,5 +1,4 @@
 import type {
-  AssumptionSetStatus,
   BindingKind,
   ComponentRole,
   DefinitionOrigin,
@@ -11,12 +10,10 @@ import type {
   RoundingMode,
   SourceSelection,
   VariableMissingBehavior,
-  VersionStatus,
   VocabularyTerm,
 } from '@/lib/api/contract'
 
 export type {
-  AssumptionSetStatus,
   BindingKind,
   ComponentRole,
   DefinitionOrigin,
@@ -28,7 +25,6 @@ export type {
   RoundingMode,
   SourceSelection,
   VariableMissingBehavior,
-  VersionStatus,
   VocabularyTerm,
 } from '@/lib/api/contract'
 
@@ -92,8 +88,6 @@ export type VocabularyComponentRoleRequirements = { role: ComponentRole; require
  * `expressionLanguageVersion`, `displayFormat` and `timeZone` offer values of free-text columns.
  */
 export interface Vocabularies {
-  versionStatus: VocabularyTerm<VersionStatus>[]
-  assumptionSetStatus: VocabularyTerm<AssumptionSetStatus>[]
   dataType: VocabularyTerm<DataType>[]
   measureOutputDataType: VocabularyTerm<MeasureOutputDataType>[]
   sourceObjectKind: VocabularyTerm<SourceObjectKind>[]
@@ -157,9 +151,8 @@ export interface Vocabularies {
 export interface TenantInfo {
   tenantKey: string
   metadataSchemaVersion: number
-  /** The engine's cache key; clients revalidate the catalog when it changes. */
+  /** The engine's cache key; advances once per commit or command that changes what the engine reads. */
   semanticRevision: number
-  activeReleaseId: Id | null
 }
 
 export interface TenantOverviewCounts {
@@ -169,23 +162,15 @@ export interface TenantOverviewCounts {
   mappingSets: number
   /** Analytical bridges only (OI-22). */
   bridges: number
-  releases: number
-  assumptionSets: number
+  frozenSnapshots: number
   models: number
   reports: number
-  /** Measures of the dataset versions the active release pins. */
-  activeMeasures: number
-}
-
-/** Kinds that still have drafts; dimensions, mapping sets and bridges follow the living lifecycle (OI-14). */
-export interface TenantOverviewDrafts {
-  datasetVersions: number
-  releases: number
+  /** Measures of the live dataset versions, which requests that name no snapshot read. */
+  liveMeasures: number
 }
 
 export interface TenantOverview extends TenantInfo {
   counts: TenantOverviewCounts
-  drafts: TenantOverviewDrafts
 }
 
 /* ───────────────────────── Catalog ───────────────────────── */
@@ -195,8 +180,7 @@ export interface TenantCatalogDataset {
   key: string
   displayName: string
   isEnabled: boolean
-  /** The dataset version the active release pins. */
-  activeVersionId: Id | null
+  liveVersionId: Id
 }
 
 export interface TenantCatalogDimension {
@@ -207,8 +191,7 @@ export interface TenantCatalogDimension {
   purpose: DimensionPurpose
   origin: DefinitionOrigin
   isEnabled: boolean
-  publishedVersionId: Id | null
-  publishedVersionNumber: number | null
+  liveVersionId: Id
   ownerReportId: Id | null
 }
 
@@ -251,19 +234,12 @@ export interface TenantCatalogReport {
   reportDimensionId: Id
 }
 
-/** A release has a key and no display name (OI-39). */
-export interface TenantCatalogRelease {
-  id: Id
-  key: string
-  status: VersionStatus
-  isActive: boolean
-}
-
-export interface TenantCatalogAssumptionSet {
+/** A snapshot a request or a comparison can name. */
+export interface TenantCatalogSnapshot {
   id: Id
   key: string
   displayName: string
-  status: AssumptionSetStatus
+  isLive: boolean
 }
 
 /**
@@ -280,8 +256,8 @@ export interface TenantCatalog {
   bridges: TenantCatalogBridge[]
   models: TenantCatalogModel[]
   reports: TenantCatalogReport[]
-  releases: TenantCatalogRelease[]
-  assumptionSets: TenantCatalogAssumptionSet[]
+  /** The live snapshot first, then frozen ones by key. */
+  snapshots: TenantCatalogSnapshot[]
 }
 
 export interface PublishedMember {
@@ -305,7 +281,7 @@ export interface TenantApi {
   getOverview(): Promise<TenantOverview>
   /** `GET /api/tenants/{t}/catalog` */
   getCatalog(): Promise<TenantCatalog>
-  /** Members of a dimension's published version, or null when none is published. */
+  /** Members of a dimension's live version, or null when the dimension does not exist. */
   getPublishedMembers(dimensionId: Id): Promise<PublishedMembers | null>
   /** `GET /api/vocabularies` */
   getVocabularies(): Promise<Vocabularies>

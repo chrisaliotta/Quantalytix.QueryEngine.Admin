@@ -11,15 +11,7 @@ import type {
   SourceSelection,
   MappingVersion,
 } from '../contract'
-
-export interface AssumptionSet {
-  id: string
-  key: string
-  displayName: string
-  isActive: boolean
-  /** Object id (mapping set or bridge) → pinned version id. */
-  pins: Record<string, string>
-}
+import { frozenSnapshotOf, LIVE_SNAPSHOT_ID } from '@/lib/snapshots/mock/data'
 
 export interface Db {
   mappingSets: MappingSet[]
@@ -30,7 +22,6 @@ export interface Db {
   bridgeMappings: BridgeMapping[]
   /** Object id → dataset bindings that name it. */
   bindings: Record<string, MappingBindingUsage[]>
-  assumptionSets: AssumptionSet[]
 }
 
 const dim = (key: string) => `dim-${key}`
@@ -38,9 +29,9 @@ const pad = (n: number, w = 3) => String(n).padStart(w, '0')
 const br = (n: number) => `BR${pad(n, 2)}`
 const at = (date: string) => `${date}T09:00:00Z`
 
+/** When a version stopped being live. */
 interface Frozen {
   on: string
-  note: string | null
 }
 
 /** Versions are listed oldest first: every one but the last is frozen, the last is live. */
@@ -80,30 +71,22 @@ interface BrSpec {
   bindings?: MappingBindingUsage[]
 }
 
-const lifecycle = (v: { created: string; frozen?: Frozen }) => ({
-  status: v.frozen ? ('retired' as const) : ('published' as const),
-  createdAt: at(v.created),
-  publishedAt: at(v.created),
-  retiredAt: v.frozen ? at(v.frozen.on) : null,
-  freezeNote: v.frozen?.note ?? null,
-})
+/** The live version, or the frozen snapshot captured while a frozen version was live; null drops a version no capture holds. */
+const snapshotOf = (v: { created: string; frozen?: Frozen }) => (v.frozen ? frozenSnapshotOf(at(v.created), at(v.frozen.on)) : LIVE_SNAPSHOT_ID)
 
-function build(sets: MsSpec[], bridges: BrSpec[], baseline: Record<string, number>): Db {
-  const db: Db = { mappingSets: [], mappingVersions: [], entries: [], bridges: [], bridgeVersions: [], bridgeMappings: [], bindings: {}, assumptionSets: [] }
-  const active: AssumptionSet = { id: 'as-active', key: 'active', displayName: 'Active', isActive: true, pins: {} }
-  const historical: AssumptionSet = { id: 'as-baseline_2024', key: 'baseline_2024', displayName: '2024 baseline', isActive: false, pins: {} }
+function build(sets: MsSpec[], bridges: BrSpec[]): Db {
+  const db: Db = { mappingSets: [], mappingVersions: [], entries: [], bridges: [], bridgeVersions: [], bridgeMappings: [], bindings: {} }
 
   for (const s of sets) {
     const id = `ms-${s.key}`
     db.mappingSets.push({ id, key: s.key, displayName: s.displayName, sourceNamespace: s.namespace, dimensionId: dim(s.dimension) })
     db.bindings[id] = s.bindings ?? []
     s.versions.forEach((v, i) => {
-      const n = i + 1
-      const vid = `${id}-v${n}`
-      db.mappingVersions.push({ id: vid, mappingSetId: id, versionNumber: n, ...lifecycle(v) })
+      const snapshotId = snapshotOf(v)
+      if (!snapshotId) return
+      const vid = `${id}-v${i + 1}`
+      db.mappingVersions.push({ id: vid, mappingSetId: id, snapshotId, isLive: !v.frozen, createdAt: at(v.created) })
       v.entries.forEach(([sourceKeyValue, memberKey], j) => db.entries.push({ id: `${vid}-e${j + 1}`, versionId: vid, sourceKeyValue, memberKey }))
-      if (!v.frozen) active.pins[id] = vid
-      if (baseline[s.key] === n) historical.pins[id] = vid
     })
   }
 
@@ -112,18 +95,16 @@ function build(sets: MsSpec[], bridges: BrSpec[], baseline: Record<string, numbe
     db.bridges.push({ id, key: b.key, displayName: b.displayName, sourceDimensionId: dim(b.source), targetDimensionId: dim(b.target), isEnabled: b.isEnabled ?? true, owner: b.owner ?? null })
     db.bindings[id] = b.bindings ?? []
     b.versions.forEach((v, i) => {
-      const n = i + 1
-      const vid = `${id}-v${n}`
-      db.bridgeVersions.push({ id: vid, bridgeId: id, versionNumber: n, cardinality: v.cardinality, allocationMode: v.mode, ...lifecycle(v) })
+      const snapshotId = snapshotOf(v)
+      if (!snapshotId) return
+      const vid = `${id}-v${i + 1}`
+      db.bridgeVersions.push({ id: vid, bridgeId: id, snapshotId, isLive: !v.frozen, cardinality: v.cardinality, allocationMode: v.mode, isEnabled: b.isEnabled ?? true, createdAt: at(v.created) })
       v.mappings.forEach(([sourceMemberKey, targetMemberKey, factor, weight, selection], j) =>
         db.bridgeMappings.push({ id: `${vid}-m${j + 1}`, versionId: vid, sourceMemberKey, targetMemberKey, factor: factor ?? 1, allocationWeight: weight ?? 1, sourceSelection: selection ?? 'member' }),
       )
-      if (!v.frozen) active.pins[id] = vid
-      if (baseline[b.key] === n) historical.pins[id] = vid
     })
   }
 
-  db.assumptionSets = [active, historical]
   return db
 }
 
@@ -131,8 +112,6 @@ const binding = (datasetKey: string, datasetVersionNumber: number, fieldKey: str
   datasetId: `ds-${datasetKey}`,
   datasetKey,
   datasetVersionId: `ds-${datasetKey}-v${datasetVersionNumber}`,
-  datasetVersionNumber,
-  status: 'published',
   fieldKey,
   roleKey,
   sourceRoleKey,
@@ -164,7 +143,7 @@ const MAPPING_SETS: MsSpec[] = [
     namespace: 'loan_servicing',
     dimension: 'Branch',
     versions: [
-      { created: '2023-01-20', frozen: { on: '2024-07-02', note: 'Before the 2024 branch consolidation' }, entries: loanBranchEntries(15) },
+      { created: '2023-01-20', frozen: { on: '2024-07-02' }, entries: loanBranchEntries(15) },
       { created: '2024-07-02', entries: [...loanBranchEntries(18), ['0100', 'BR01'], [' 007', 'BR07']] },
     ],
     bindings: [binding('loans.details', 3, 'servicing_branch_code', 'servicingBranch'), binding('loans.details', 3, 'origination_branch_code', 'originationBranch')],
@@ -183,7 +162,7 @@ const MAPPING_SETS: MsSpec[] = [
     namespace: 'loan_servicing',
     dimension: 'Product',
     versions: [
-      { created: '2024-02-01', frozen: { on: '2026-10-19', note: 'FY26 close' }, entries: PRODUCT_V1 },
+      { created: '2024-02-01', frozen: { on: '2026-10-19' }, entries: PRODUCT_V1 },
       { created: '2026-10-19', entries: PRODUCT_V1 },
     ],
     bindings: [binding('loans.details', 3, 'product_code', 'product')],
@@ -268,7 +247,7 @@ const BRIDGES: BrSpec[] = [
         cardinality: 'many_to_many',
         mode: 'partition',
         created: '2025-03-05',
-        frozen: { on: '2026-10-22', note: 'FY26 cost allocation' },
+        frozen: { on: '2026-10-22' },
         mappings: [
           ['CC_100', 'DEPT_RETAIL', 1, 0.6],
           ['CC_100', 'DEPT_COMMERCIAL', 1, 0.4],
@@ -406,5 +385,5 @@ const BRIDGES: BrSpec[] = [
 ]
 
 export function createSeed(): Db {
-  return build(MAPPING_SETS, BRIDGES, { 'loan.branch': 1, gl_account_to_account_group: 1 })
+  return build(MAPPING_SETS, BRIDGES)
 }

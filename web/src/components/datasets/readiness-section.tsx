@@ -1,65 +1,31 @@
-import { CircleCheckIcon, CircleXIcon, ShieldCheckIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useDatasetsApi } from '@/lib/datasets/client'
-import type { DatasetTab, DatasetVersion, DatasetValidationReport } from '@/lib/datasets/contract'
-import { ProblemBanner, SectionHeader, TAB_LABEL, useApiCall } from './shared'
+import { CircleCheckIcon, CircleXIcon } from 'lucide-react'
+import type { DatasetTab, DatasetVersion, DatasetViolation, Violation } from '@/lib/datasets/contract'
+import { SectionHeader, TAB_LABEL } from './shared'
 
 const TAB_ORDER: DatasetTab[] = ['settings', 'fields', 'grains', 'bindings', 'measures']
 
-export function ReadinessSection({
-  version,
-  report,
-  onReport,
-  onOpen,
-}: {
-  version: DatasetVersion
-  report: DatasetValidationReport | null
-  onReport: (r: DatasetValidationReport) => void
-  onOpen: (tab: DatasetTab, itemId: string | null) => void
-}) {
-  const api = useDatasetsApi()
-  const { run, saving, problem } = useApiCall()
-  const canValidate = version.status === 'draft' || version.status === 'validated'
-
-  async function validate() {
-    const r = await run(() => api.validateVersion(version.id))
-    if (r) onReport(r)
-  }
-
-  const grouped = TAB_ORDER.map((tab) => ({ tab, items: (report?.violations ?? []).filter((v) => v.target.area === tab) })).filter((g) => g.items.length)
+/** The commit rules' findings on the pending edits of the live version; saving is blocked until none remains. */
+export function ReadinessSection({ version, findings, onOpen }: { version: DatasetVersion; findings: Violation[]; onOpen: (tab: DatasetTab, itemId: string | null) => void }) {
+  const violations = findings as DatasetViolation[]
+  const grouped = TAB_ORDER.map((tab) => ({ tab, items: violations.filter((v) => v.target.area === tab) })).filter((g) => g.items.length)
 
   return (
     <div className="flex max-w-4xl flex-col gap-4">
-      <SectionHeader
-        title="Publication readiness"
-        help="Every publication rule the API runs on validate and publish. Each issue links to the item at fault."
-        action={
-          canValidate && (
-            <Button onClick={validate} disabled={saving}>
-              <ShieldCheckIcon /> {report ? 'Validate again' : 'Validate'}
-            </Button>
-          )
-        }
-      />
-      {problem && <ProblemBanner problem={problem} />}
-      {!canValidate ? (
-        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          Version {version.versionNumber} is {version.status}. It passed every rule when it was published and can no longer change.
-        </p>
-      ) : !report ? (
-        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">Not checked yet. Validate to run every publication rule against this draft.</p>
-      ) : !report.violations.length ? (
+      <SectionHeader title="Rule findings" help="Every commit rule the API runs on your unsaved edits. Saving is blocked until none remains; each finding links to the item at fault." />
+      {!version.isLive ? (
+        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">A frozen version passed every rule while it was live and never changes.</p>
+      ) : !violations.length ? (
         <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
           <CircleCheckIcon aria-hidden className="size-5 text-primary" />
           <div className="flex flex-col">
-            <span className="text-sm font-medium">Ready to publish</span>
-            <span className="text-xs text-muted-foreground">Every rule passed · checked {new Date(report.checkedAt).toLocaleTimeString()}</span>
+            <span className="text-sm font-medium">No findings</span>
+            <span className="text-xs text-muted-foreground">The live version and your unsaved edits pass every rule.</span>
           </div>
         </div>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            {report.violations.length} issue{report.violations.length === 1 ? '' : 's'} across {grouped.length} tab{grouped.length === 1 ? '' : 's'} · checked {new Date(report.checkedAt).toLocaleTimeString()}
+            {violations.length} finding{violations.length === 1 ? '' : 's'} across {grouped.length} tab{grouped.length === 1 ? '' : 's'}
           </p>
           {grouped.map((g) => (
             <section key={g.tab} aria-labelledby={`rd-${g.tab}`} className="overflow-hidden rounded-lg border bg-card">
