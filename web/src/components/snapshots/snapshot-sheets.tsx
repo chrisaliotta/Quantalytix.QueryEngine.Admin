@@ -23,7 +23,7 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
 
   const k = key.trim()
   const taken = list ? [list.live, ...list.frozen].some((s) => s.key === k) : false
-  const keyError = !touched || !k ? null : !SNAPSHOT_KEY_PATTERN.test(k) ? 'Use a letter, then letters, digits or underscores (128 at most).' : taken ? `A snapshot with key '${k}' already exists.` : null
+  const keyError = !touched || !k ? null : !SNAPSHOT_KEY_PATTERN.test(k) ? 'Use a letter, then letters, digits, underscores or dots (128 at most).' : taken ? `A snapshot with key '${k}' already exists.` : null
   const nameError = touched && !name.trim() ? 'Enter a display name.' : null
 
   const submit = async () => {
@@ -64,7 +64,7 @@ function CaptureForm({ onClose, onCaptured }: { onClose: () => void; onCaptured:
           htmlFor="snapshot-key"
           required
           errors={keyError ? [keyError] : errorsFor('key')}
-          hint="The name requests use, such as fy2026_q3_close: a letter, then letters, digits or underscores. Fixed once captured."
+          hint="The name requests use, such as fy2026_q3_close: a letter, then letters, digits, underscores or dots. Fixed once captured."
         >
           <Input
             id="snapshot-key"

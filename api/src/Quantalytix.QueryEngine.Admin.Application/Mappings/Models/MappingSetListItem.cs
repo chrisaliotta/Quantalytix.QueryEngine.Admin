@@ -18,7 +18,7 @@ public sealed record MappingSetListItem
     /// <summary>The dimension the entries map into, fixed after creation.</summary>
     public required long DimensionId { get; init; }
 
-    /// <summary>The dimension.</summary>
+    /// <summary>The dimension, with its live version.</summary>
     public required MappingDimensionRef Dimension { get; init; }
 
     /// <summary>Every version, one per snapshot holding the mapping set: the live one first, then frozen ones, newest first.</summary>

@@ -299,7 +299,22 @@ function CompareTab({ detail }: { detail: Detail }) {
     ? [
         { title: 'Only here', tone: DIFF_TONE.added, mark: '+', empty: `Everything here is also in ${other?.key}.`, rows: c.added.map((e) => ({ id: e.identityId, kind: e.kind, body: entry(e) })) },
         { title: `Only in ${other?.key}`, tone: DIFF_TONE.removed, mark: '−', empty: `Everything ${other?.key} holds is here too.`, rows: c.removed.map((e) => ({ id: e.identityId, kind: e.kind, body: <span className="font-mono text-xs">{e.key}</span> })) },
-        { title: 'In both', tone: DIFF_TONE.common, mark: '=', empty: 'The two snapshots share no identity.', rows: c.common.map((p) => ({ id: p.identityId, kind: p.kind, body: <span className="font-mono text-xs">{p.key}</span> })) },
+        {
+          title: 'In both',
+          tone: DIFF_TONE.common,
+          mark: '=',
+          empty: 'The two snapshots share no identity.',
+          rows: c.common.map((p) => ({
+            id: p.identityId,
+            kind: p.kind,
+            body: (
+              <>
+                <span className="font-mono text-xs">{p.key}</span>
+                <span className={cn('text-xs', p.differs ? 'font-medium text-foreground' : 'text-muted-foreground')}>{p.differs ? 'changed' : 'unchanged'}</span>
+              </>
+            ),
+          })),
+        },
       ]
     : []
 
@@ -323,7 +338,7 @@ function CompareTab({ detail }: { detail: Detail }) {
           </div>
         }
       >
-        Identities only this snapshot holds, only the chosen one holds, and both hold. Each snapshot holds its own copy of every version.
+        Identities only this snapshot holds, only the chosen one holds, and both hold. Each snapshot holds its own copy of every version; an identity both hold is changed when the two copies' content differs.
       </TabIntro>
       {!list ? (
         <p className="text-sm text-muted-foreground">Loading snapshots…</p>

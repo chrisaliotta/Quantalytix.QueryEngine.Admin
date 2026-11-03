@@ -17,4 +17,10 @@ public sealed record SnapshotEntry
 
     /// <summary>The version the snapshot holds, which the kind's version read shows.</summary>
     public required long VersionId { get; init; }
+
+    /// <summary>A mapping set's dimension, or a bridge's source dimension; null for every other kind.</summary>
+    public required long? DimensionId { get; init; }
+
+    /// <summary>The report that owns a report dimension or a report bridge; null for every other identity.</summary>
+    public required long? ReportId { get; init; }
 }

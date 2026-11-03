@@ -5721,7 +5721,7 @@ components:
           type:
             - string
             - 'null'
-          description: The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none.
+          description: The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none. On the identity-level list items (`MappingSetListItem.dimension`, `BridgeListItem.source` and `target`) the snapshot is live, so this is the dimension's live version.
     MappingBindingUsage:
       type: object
       description: A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers.
@@ -5858,6 +5858,7 @@ components:
           properties:
             dimension:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The mapping set's dimension; its `versionId` is the dimension's live version.
             versions:
               type: array
               description: One per snapshot holding the mapping set, the live version first, then frozen ones newest first.
@@ -6206,8 +6207,10 @@ components:
           properties:
             source:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The source dimension; its `versionId` is the dimension's live version.
             target:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The target dimension; its `versionId` is the dimension's live version.
             versions:
               type: array
               description: One per snapshot holding the bridge, the live version first, then frozen ones newest first.
@@ -6469,10 +6472,11 @@ components:
               $ref: '#/components/schemas/BridgeEditState'
     SnapshotKey:
       type: string
-      pattern: ^[A-Za-z][A-Za-z0-9_]{0,127}$
+      pattern: ^[A-Za-z][A-Za-z0-9_.]{0,127}$
       description: Natural key of a snapshot, fixed after capture; requests name the snapshot by it. The live snapshot is `live`.
       examples:
         - fy2026_q3_close
+        - seed.assumptions.2024
     SnapshotKind:
       type: string
       description: The identities a snapshot holds one version of, in capture order.
@@ -6605,6 +6609,8 @@ components:
         - key
         - displayName
         - versionId
+        - dimensionId
+        - reportId
       properties:
         kind:
           $ref: '#/components/schemas/SnapshotKind'
@@ -6617,6 +6623,16 @@ components:
           description: The identity's name; a model's or report's as its version names it.
         versionId:
           $ref: '#/components/schemas/Id'
+        dimensionId:
+          type:
+            - string
+            - 'null'
+          description: A mapping set's dimension, or a bridge's source dimension; null for every other kind.
+        reportId:
+          type:
+            - string
+            - 'null'
+          description: The report that owns a report dimension or a report bridge; null for every other identity.
     SnapshotDetail:
       type: object
       required:
@@ -6645,6 +6661,7 @@ components:
         - key
         - fromVersionId
         - toVersionId
+        - differs
       properties:
         kind:
           $ref: '#/components/schemas/SnapshotKind'
@@ -6656,6 +6673,9 @@ components:
           $ref: '#/components/schemas/Id'
         toVersionId:
           $ref: '#/components/schemas/Id'
+        differs:
+          type: boolean
+          description: Whether the two versions' engine-visible content differs. Content is compared by keys, never by surrogate ids, so a version and its untouched copy are equal.
     SnapshotComparison:
       type: object
       description: What `toSnapshotId` holds that `fromSnapshotId` does not, the reverse, and what both hold.
@@ -6682,7 +6702,7 @@ components:
             $ref: '#/components/schemas/SnapshotEntry'
         common:
           type: array
-          description: Identities both hold, with both versions.
+          description: Identities both hold, with both versions and whether their content differs.
           items:
             $ref: '#/components/schemas/SnapshotPair'
     CaptureSnapshotInput:

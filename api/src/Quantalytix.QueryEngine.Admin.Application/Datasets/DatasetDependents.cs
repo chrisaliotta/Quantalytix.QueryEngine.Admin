@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Datasets;
 /// <summary>
 /// The delete-blocker graph of a dataset version (OI-35): what reads each item. A reference by id (a grain component, a binding's
 /// source field, a time policy's grain) blocks the item's delete; a reference by key inside an expression or formula does not, and
-/// the publication rules report it once the item is gone.
+/// the commit rules refuse a change set that leaves it dangling.
 /// </summary>
 public static class DatasetDependents
 {

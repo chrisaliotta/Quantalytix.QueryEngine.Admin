@@ -10,6 +10,6 @@ public sealed record ChangeSetPreview<TState>
     /// <summary>The aggregate's content after the operations apply; what the editor renders.</summary>
     public required TState State { get; init; }
 
-    /// <summary>Publication-rule findings that do not block saving.</summary>
+    /// <summary>Commit-rule findings, which refuse the commit while any remains.</summary>
     public required IReadOnlyList<RuleViolation> Violations { get; init; }
 }

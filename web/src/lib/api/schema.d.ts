@@ -2855,7 +2855,7 @@ export interface components {
             kind: "categorical" | "hierarchical" | "range" | "time";
             /** @enum {string} */
             purpose: "analytical" | "report";
-            /** @description The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none. */
+            /** @description The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when the snapshot holds none. On the identity-level list items (`MappingSetListItem.dimension`, `BridgeListItem.source` and `target`) the snapshot is live, so this is the dimension's live version. */
             versionId: string | null;
         };
         /** @description A dataset binding that names a mapping set or bridge by identity (B13); drives Used by and delete blockers. */
@@ -2910,6 +2910,7 @@ export interface components {
             entryCount: number;
         };
         MappingSetListItem: components["schemas"]["MappingSet"] & {
+            /** @description The mapping set's dimension; its `versionId` is the dimension's live version. */
             dimension: components["schemas"]["MappingDimensionRef"];
             /** @description One per snapshot holding the mapping set, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["MappingVersionSummary"][];
@@ -3054,7 +3055,9 @@ export interface components {
             mappingCount: number;
         };
         BridgeListItem: components["schemas"]["Bridge"] & {
+            /** @description The source dimension; its `versionId` is the dimension's live version. */
             source: components["schemas"]["MappingDimensionRef"];
+            /** @description The target dimension; its `versionId` is the dimension's live version. */
             target: components["schemas"]["MappingDimensionRef"];
             /** @description One per snapshot holding the bridge, the live version first, then frozen ones newest first. */
             versions: components["schemas"]["BridgeVersionSummary"][];
@@ -3179,6 +3182,7 @@ export interface components {
         /**
          * @description Natural key of a snapshot, fixed after capture; requests name the snapshot by it. The live snapshot is `live`.
          * @example fy2026_q3_close
+         * @example seed.assumptions.2024
          */
         SnapshotKey: string;
         /**
@@ -3239,6 +3243,10 @@ export interface components {
             /** @description The identity's name; a model's or report's as its version names it. */
             displayName: string;
             versionId: components["schemas"]["Id"];
+            /** @description A mapping set's dimension, or a bridge's source dimension; null for every other kind. */
+            dimensionId: string | null;
+            /** @description The report that owns a report dimension or a report bridge; null for every other identity. */
+            reportId: string | null;
         };
         SnapshotDetail: {
             snapshot: components["schemas"]["Snapshot"];
@@ -3254,6 +3262,8 @@ export interface components {
             key: string;
             fromVersionId: components["schemas"]["Id"];
             toVersionId: components["schemas"]["Id"];
+            /** @description Whether the two versions' engine-visible content differs. Content is compared by keys, never by surrogate ids, so a version and its untouched copy are equal. */
+            differs: boolean;
         };
         /** @description What `toSnapshotId` holds that `fromSnapshotId` does not, the reverse, and what both hold. */
         SnapshotComparison: {
@@ -3263,7 +3273,7 @@ export interface components {
             added: components["schemas"]["SnapshotEntry"][];
             /** @description Identities only `from` holds, with `from`'s version. */
             removed: components["schemas"]["SnapshotEntry"][];
-            /** @description Identities both hold, with both versions. */
+            /** @description Identities both hold, with both versions and whether their content differs. */
             common: components["schemas"]["SnapshotPair"][];
         };
         CaptureSnapshotInput: {

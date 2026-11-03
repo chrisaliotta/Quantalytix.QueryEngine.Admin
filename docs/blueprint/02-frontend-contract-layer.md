@@ -143,7 +143,9 @@ The HTTP implementation per aggregate:
 | `discardChanges` | Clear locally. |
 
 `commitChanges` returns the kernel `ApiResult` (it was `{ ok, problem: { title, detail } }`) so the save bar can show
-field-level problems.
+field-level problems. The change set also exposes the last preview's `violations`, the commit rules' findings on the pending
+state; the editors list them (a findings panel naming each item at fault) and keep Save blocked until none remains, because
+the commit would refuse them with 422.
 
 `lib/api/changes.ts` implements this table once, as `createHttpChangeSet<Op, State>(http)`. An HTTP adapter spreads
 it into its port, implements each edit method as `stage(aggregatePath, { op: '<method>', ...args })` and answers
@@ -166,7 +168,7 @@ atomic and the blueprint does not make them so; a failed save stops the sequence
 | Datasets | Port + `ChangeSetPort` + staged proxy | Keep; add HTTP adapter; move `createDataset` from edits to commands (it creates an aggregate, it does not edit one); the draft, publish, retire and clone actions are removed |
 | Dimensions | Port + `ChangeSetPort` + staged proxy | Keep; HTTP adapter; `listHiddenDimensions` removed (OI-14, OI-22) |
 | Mapping sets, bridges | Port with versions; edits write immediately | `MappingsApi` extends `ChangeSetPort`; edits staged per mapping set or bridge; drafts, validate, publish and reopen removed: the live version is edited like a dimension's (OI-01, OI-14) |
-| Snapshots | Releases and assumption sets ports | New `SnapshotsApi` port of reads and commands, no change set ([14](14-snapshots.md)) |
+| Snapshots | Releases and assumption sets ports | New `SnapshotsApi` port of reads and commands, no change set, behind the Snapshots page at `/snapshots` and the shell's `live · rev N` chip ([14](14-snapshots.md)) |
 | Calculation models | React store with per-model pending copies, rules in the browser | New `ModelsApi` port extending `ChangeSetPort`; refusals come from preview (OI-42); formulas checked by `checkFormula` (OI-43) |
 | Reports | React store holding whole `ReportState` documents | New `ReportsApi` port extending `ChangeSetPort`, over the `ReportDocument` read model ([16](16-reports.md)) |
 

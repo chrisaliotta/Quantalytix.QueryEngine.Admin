@@ -12,7 +12,7 @@ import {
   type SnapshotRestore,
   type SnapshotsApi,
 } from '../contract'
-import { seedEntries, seedRestores, seedSnapshots } from './data'
+import { seedContent, seedEntries, seedRestores, seedSnapshots } from './data'
 
 const LATENCY = 90
 const wait = () => new Promise((r) => setTimeout(r, LATENCY))
@@ -48,6 +48,7 @@ function labelErrors(displayName: string, description: string | null) {
 export function createMockSnapshotsApi(): SnapshotsApi {
   const snapshots = clone(seedSnapshots)
   const entries = clone(seedEntries)
+  const content = clone(seedContent)
   const restores = clone(seedRestores)
   let seq = 0
 
@@ -81,7 +82,7 @@ export function createMockSnapshotsApi(): SnapshotsApi {
       const result: SnapshotComparison = { fromSnapshotId: fromId, toSnapshotId: toId, added: [], removed: [], common: [] }
       for (const [id, e] of to) {
         const f = from.get(id)
-        if (f) result.common.push({ kind: e.kind, identityId: id, key: e.key, fromVersionId: f.versionId, toVersionId: e.versionId })
+        if (f) result.common.push({ kind: e.kind, identityId: id, key: e.key, fromVersionId: f.versionId, toVersionId: e.versionId, differs: content[fromId][id] !== content[toId][id] })
         else result.added.push(e)
       }
       for (const [id, e] of from) if (!to.has(id)) result.removed.push(e)
@@ -96,13 +97,14 @@ export function createMockSnapshotsApi(): SnapshotsApi {
     async captureSnapshot({ key, displayName, description }) {
       await wait()
       const errors = labelErrors(displayName, description)
-      if (!SNAPSHOT_KEY_PATTERN.test(key)) errors.key = ['Use a letter, then letters, digits or underscores (128 at most).']
+      if (!SNAPSHOT_KEY_PATTERN.test(key)) errors.key = ['Use a letter, then letters, digits, underscores or dots (128 at most).']
       if (Object.keys(errors).length) return fail(400, 'Cannot capture', { errors })
       if (snapshots.some((s) => s.key === key)) return fail(409, 'Key taken', { errors: { key: [`A snapshot with key '${key}' already exists.`] } })
       const at = now()
       const s: Snapshot = { id: `snap_${key}_${seq++}`, key, displayName: displayName.trim(), description: description?.trim() || null, isLive: false, capturedAt: at, capturedBy: CALLER, createdAt: at }
       snapshots.push(s)
       entries[s.id] = entries[live().id].map((e) => ({ ...e, versionId: `${e.identityId}@${key}` }))
+      content[s.id] = { ...content[live().id] }
       advance()
       return ok(s)
     },
@@ -115,6 +117,7 @@ export function createMockSnapshotsApi(): SnapshotsApi {
       const liveId = live().id
       const liveVersions = new Map(entries[liveId].map((e) => [e.identityId, e.versionId]))
       entries[liveId] = entries[id].map((e) => ({ ...e, versionId: liveVersions.get(e.identityId) ?? `${e.identityId}@live.${seq++}` }))
+      content[liveId] = { ...content[id] }
       restores.push({ snapshotId: id, restoredAt: now(), restoredBy: CALLER } satisfies SnapshotRestore)
       advance()
       return ok(tenantCatalog.tenant)
@@ -140,6 +143,7 @@ export function createMockSnapshotsApi(): SnapshotsApi {
       if (s.isLive) return liveRefused('deleted')
       snapshots.splice(snapshots.indexOf(s), 1)
       delete entries[id]
+      delete content[id]
       restores.splice(0, restores.length, ...restores.filter((r) => r.snapshotId !== id))
       advance()
       return ok(null)

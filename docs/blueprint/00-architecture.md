@@ -85,7 +85,7 @@ Snapshots themselves have no change set: capture, restore, relabel and delete ar
 ## The engine boundary (Agreed)
 
 - The engine reads metadata only through `vw_qe_*` views and caches metadata by tenant, snapshot,
-  `semantic_revision` and dataset or report. Every committed change the engine can see must advance
+  `semantic_revision` and dataset or report. Every commit and snapshot command that changes metadata must advance
   `qe_database_info.semantic_revision` exactly once per commit ([01](01-api-conventions.md#semantic-revision-agreed)).
 - The engine lists and runs **enabled** reports only, on the live snapshot unless a comparison names a frozen one. Report preview and run from the
   admin are out of scope for this refactor (OI-53).

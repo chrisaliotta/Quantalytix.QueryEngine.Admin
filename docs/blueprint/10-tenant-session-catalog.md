@@ -15,7 +15,7 @@ Sources: current `SessionController`, `TenantsController`, `SystemTenantsControl
 - **Agreed:** exactly one live snapshot per tenant, with key `live`; the API refuses a tenant database without one
   ([schema README](../../../database/srdb_ebm/README.md), "Applying the schema").
 - **Agreed:** every version the editors show and edit is the live snapshot's; the engine's cache key is
-  `qe_database_info.semantic_revision`, which every engine-visible commit advances.
+  `qe_database_info.semantic_revision`, which every commit advances.
 - **Agreed:** tenant connection strings live in `query_control.qe_tenant_directory` and are visible to system admins
   only.
 
@@ -49,7 +49,7 @@ export interface TenantInfo {
 }
 
 export interface TenantOverview extends TenantInfo {
-  counts: TenantOverviewCounts // datasets, analytical dimensions, mapping sets, analytical bridges, snapshots, models, reports, activeMeasures
+  counts: TenantOverviewCounts // datasets, dimensions, mappingSets, bridges (analytical only), frozenSnapshots, models, reports, liveMeasures
 }
 
 // Dataset, model, report, mapping set and bridge keys are DottedKey (OI-29).
@@ -74,7 +74,7 @@ export interface TenantCatalog {
   bridges: TenantCatalogBridge[]
   models: TenantCatalogModel[]
   reports: TenantCatalogReport[]
-  snapshots: TenantCatalogSnapshot[]
+  snapshots: TenantCatalogSnapshot[]          // the live snapshot first, then the frozen ones
 }
 
 export interface PublishedMember { key: string; displayName: string; parentKey: string | null; isAssignable: boolean; levelKey: string | null }
@@ -90,7 +90,8 @@ export interface TenantApi {
 ```
 
 `TenantInfo` is also the answer of a snapshot restore ([14](14-snapshots.md#http-api)), so a client updates its revision
-display from the command's own result. The tenant chip shows the live `semanticRevision`.
+display from the command's own result. The shell's live revision chip (`live · rev N`)
+shows the live `semanticRevision` and opens the Snapshots page ([14](14-snapshots.md)).
 
 Report-owned dimensions and bridges are in the catalog only so cross-module references resolve (a report source's
 bridge, a snapshot's version); no picker or list offers them (OI-22).

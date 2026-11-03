@@ -52,11 +52,11 @@ Copy `web/.env.example` to `web/.env.local` (it sets `VITE_API_MODE=http` and `V
 
 | Module | Check |
 |---|---|
-| Tenant and catalog | The overview counts match the tenant and the tenant chip shows the live revision; switching tenants as a system administrator works. |
-| Datasets | Create a dataset over an existing table; edit fields, grains, bindings and measures in one change set with preview and commit, a commit-rule finding blocking Save until it is fixed; source object statistics and distinct values load. |
+| Tenant and catalog | The overview counts (frozen snapshots and live measures included) match the tenant and the `live · rev N` chip shows the live revision; switching tenants as a system administrator works. |
+| Datasets | Create a dataset over an existing table; edit fields, grains, bindings and measures in one change set with preview and commit, a commit-rule finding blocking Save until it is fixed, and a frozen version refusing edits; source object statistics and distinct values load. |
 | Dimensions | Edit the live version's levels, members and range bands; a blocked delete shows its reasons. |
 | Mapping sets and bridges | Edit entries and mappings on the live version; report-owned bridges read as owned. |
-| Snapshots | Capture a snapshot, browse it read-only, compare it with live, edit live, restore the snapshot and see live return to it; relabel and delete the snapshot. |
+| Snapshots | On `/snapshots`: capture a snapshot, browse its entries read-only, compare it with live (`differs` flags changed pairs), edit live, restore the snapshot and see live return to it and the revision chip advance; relabel and delete the snapshot. |
 | Calculation models | Edit variables and measures; the formula check reports errors in place. |
 | Reports | Edit sources and rules, profiles, columns and rows in one change set; coverage lists unmapped items, including a direct source's values; enable and disable. |
 
@@ -76,7 +76,7 @@ It creates a dataset over a new managed table, deletes it, and expects the table
 list. Then check StarRocks itself, with `PREFIX` a new prefix per run:
 
 1. **Frozen guard.** With a snapshot captured that holds a dataset, deleting the dataset answers 409 with the blocker
-   `referenced_by_snapshot`, and renaming its managed table in a change set answers 422; after deleting the snapshot
+   `referenced_by_snapshot`, and renaming its managed table in a change set answers 409 "Table is read by other versions"; after deleting the snapshot
    both succeed.
 2. **Table dropped.** Create a dataset with `mode: 'new'`, table `${PREFIX}drop_t`, and one `json` column, then
    `SHOW TABLES LIKE '${PREFIX}drop_t'` lists it and `qe_managed_source_object` has its row. Delete the dataset (204).

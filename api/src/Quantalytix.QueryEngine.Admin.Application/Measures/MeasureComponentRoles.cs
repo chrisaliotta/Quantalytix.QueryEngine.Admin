@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 /// The component roles each measure kind reads (schema section 13): an aggregate reads a value, except that a count without
 /// one counts the rows its row filter admits; weighted measures read a value and a weight; a period average reads a value
 /// and may verify the source's period length; a formula reads other measures and no fields; a specialized implementation
-/// may read any role. The measure input validator and the <c>component_roles_match_kind</c> publication rule share this
+/// may read any role. The measure input validator and the <c>component_roles_match_kind</c> commit rule share this
 /// table.
 /// </summary>
 public static class MeasureComponentRoles

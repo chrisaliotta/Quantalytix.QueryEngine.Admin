@@ -12,7 +12,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Dimensions;
 /// Confirms the dimension change set the dimension editor saves through (blueprint 12, OI-01): edits apply to the live version
 /// in memory, a preview names what it creates by the client's temporary ids so later edits can reference them, a commit writes
 /// the rows with the closure rebuilt and maps the temporary ids, and the refusals the editor shows come back with their status:
-/// 400 for input, 409 for a frozen version, a locked profile or a blocked delete, and publication findings that track the pending
+/// 400 for input, 409 for a frozen version, a locked profile or a blocked delete, and commit findings that track the pending
 /// edits rather than the stored version.
 /// </summary>
 public sealed class DimensionChangeSetTests

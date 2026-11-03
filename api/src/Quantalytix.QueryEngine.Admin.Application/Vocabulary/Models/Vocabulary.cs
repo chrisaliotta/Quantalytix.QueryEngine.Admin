@@ -7,11 +7,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 /// </summary>
 public sealed record Vocabulary
 {
-    /// <summary>The schema's vocabulary name, such as <c>publication_status</c>, which validator messages quote.</summary>
+    /// <summary>The schema's vocabulary name, such as <c>binding_kind</c>, which validator messages quote.</summary>
     public required string Name { get; init; }
 
     /// <summary>
-    /// The vocabulary's key in <c>GET /api/vocabularies</c>, such as <c>versionStatus</c>; null for a vocabulary only
+    /// The vocabulary's key in <c>GET /api/vocabularies</c>, such as <c>bindingKind</c>; null for a vocabulary only
     /// validators read.
     /// </summary>
     public string? Key { get; init; }

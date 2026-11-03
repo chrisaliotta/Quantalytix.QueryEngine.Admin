@@ -20,7 +20,10 @@ export interface MappingDimensionRef {
   displayName: string
   kind: DimensionKind
   purpose: DimensionPurpose
-  /** The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when it holds none. */
+  /**
+   * The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when it holds none.
+   * On list items (`MappingSetListItem.dimension`, `BridgeListItem.source` and `target`) the snapshot is live.
+   */
   versionId: Id | null
 }
 

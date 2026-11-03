@@ -5,7 +5,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// <c>profile_properties_valid</c> (OI-18): every member of a system dimension has the properties its profile's schema requires,
-/// with the field types. A publication finding, because members stored before the schema changed keep loading.
+/// with the field types. A commit rule rather than a gate, because members stored before the schema changed keep loading.
 /// </summary>
 public sealed class ProfilePropertiesValidRule : DimensionRule
 {

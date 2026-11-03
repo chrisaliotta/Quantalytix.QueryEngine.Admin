@@ -36,7 +36,7 @@ public sealed class DatasetReportsResolveRule(ReportGraphReader reader, IEnumera
             .. reports.SelectMany(report => reading.SelectMany(rule => rule.Evaluate(report, scope)).Select(violation => new RuleViolation
             {
                 Code = violation.Code,
-                Message = $"Report '{report.ReportKey}': {violation.Message}",
+                Message = violation.Message,
                 Target = new ViolationTarget { Area = DatasetTabs.Settings, ItemKey = report.ReportKey }
             }))
         ];

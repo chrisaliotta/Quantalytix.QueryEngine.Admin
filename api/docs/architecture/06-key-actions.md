@@ -71,8 +71,8 @@ sequenceDiagram
 ```
 
 Schema statements run before every row write because DDL cannot be rolled back; `DatasetSchemaChanges` derives them from
-the difference between the stored and changed physical catalog, so a replay after a partial commit plans none. The DDL never
-renames or drops a table or column that a frozen snapshot's dataset version reads. Because the version is live, the change
+the difference between the stored and changed physical catalog, so a replay after a partial commit plans none. A rename of a
+managed table that another dataset version, live or frozen, reads is refused with 409 before any DDL is planned. Because the version is live, the change
 reaches the next query once the revision advances.
 
 ## Snapshot capture
@@ -87,16 +87,17 @@ sequenceDiagram
     participant Snap as qe_snapshot
     participant Rev as SemanticRevision
     Ctl->>Cmd: CaptureAsync(key, displayName, description)
+    Cmd->>Snap: key taken? (409 "Key taken")
     Cmd->>Info: read semantic_revision
-    loop each kind, each live version
+    loop each live version SnapshotIndex lists, in SnapshotKinds order
         Cmd->>Cp: CopyAsync(liveVersionId, newSnapshotId, null)
     end
-    Cmd->>Snap: insert the frozen snapshot row
     Cmd->>Info: read semantic_revision again
     alt revision changed
-        Cmd->>Rm: RemoveVersionAsync for every copy
-        Cmd-->>Ctl: 409
+        Cmd->>Rm: RemoveVersionAsync for every copy, newest first
+        Cmd-->>Ctl: 409 "Live changed during the capture"
     else unchanged
+        Cmd->>Snap: insert the frozen snapshot row
         Cmd->>Rev: AdvanceAsync
         Cmd-->>Ctl: 201 snapshot
     end
@@ -160,11 +161,11 @@ sequenceDiagram
         Cmd->>Cp: CopyAsync(frozenVersionId, liveSnapshotId, liveVersionId or null)
     end
     loop each live identity the snapshot lacks
-        Cmd->>Rm: RemoveVersionAsync(liveVersionId), RemoveIdentityAsync when no snapshot holds it
+        Cmd->>Rm: RemoveVersionAsync(liveVersionId), RemoveIdentityAsync when no frozen snapshot holds it
     end
     Cmd->>Log: insert the restore with restored_by
     Cmd->>Rev: AdvanceAsync
-    Cmd-->>Ctl: 200
+    Cmd-->>Ctl: 200 TenantInfo
 ```
 
 Every rule runs before anything is written, so a snapshot whose versions no longer pass, for example because a physical table

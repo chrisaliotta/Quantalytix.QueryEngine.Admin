@@ -20,7 +20,7 @@ public static class VocabularyCatalog
     private static readonly FrozenDictionary<string, Vocabulary> ByName = All.ToFrozenDictionary(vocabulary => vocabulary.Name, StringComparer.Ordinal);
 
     /// <summary>Finds a vocabulary by its name.</summary>
-    /// <param name="name">A vocabulary name, such as <c>publication_status</c>.</param>
+    /// <param name="name">A vocabulary name, such as <c>binding_kind</c>.</param>
     /// <returns>The vocabulary, or null when no vocabulary has the name.</returns>
     public static Vocabulary? Find(string name)
     {

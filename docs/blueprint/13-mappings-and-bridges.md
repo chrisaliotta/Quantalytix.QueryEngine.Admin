@@ -114,7 +114,7 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `mapping-sets/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteMappingSet` |
 | DELETE | `mapping-sets/{id}` | | `204` | 409 blocked | `deleteMappingSet` |
 | POST | `mapping-sets/{id}/changes/preview` | `ChangeSetRequest<MappingOperation>` | `ChangeSetPreview<MappingSetEditState>` | 400, 409, 422 | edits |
-| POST | `mapping-sets/{id}/changes` | `ChangeSetRequest<MappingOperation>` | `ChangeSetCommit<MappingSetEditState>` | 400, 409, 422 | `commitChanges` |
+| POST | `mapping-sets/{id}/changes` | `ChangeSetRequest<MappingOperation>` | `ChangeSetCommit<MappingSetEditState>` | 400, 422 | `commitChanges` |
 | GET | `mapping-versions/{id}` | | `MappingVersionContent` | 404 | `getMappingVersion` |
 | GET | `bridges?dimensionId=` | | `BridgeListItem[]` (both directions, analytical and report) | | `listBridges` |
 | GET | `bridges?reportId=&sourceKey=` | | `BridgeListItem[]` (0 or 1) | | `findReportBridge` (`listBridges` with a filter) |
@@ -152,9 +152,8 @@ refuses while any remain (B11).
 
 ## Rule codes
 
-All are commit rules. Mapping versions: `source_key_unique`, `dimension_version_published` (the set's dimension has a version
-in the same snapshot), `entry_member_in_version`, `entry_member_assignable`. Bridge versions: `endpoint_versions_published`
-(both endpoints have a version in the same snapshot), `mapping_members_in_endpoint_versions`,
+All are commit rules. Mapping versions: `source_key_unique`, `dimension_version_in_snapshot`, `entry_member_in_version`,
+`entry_member_assignable`. Bridge versions: `endpoint_versions_in_snapshot`, `mapping_members_in_endpoint_versions`,
 `cardinality_many_to_one`, `allocation_none`, `allocation_partition`, `allocation_replicate`, `pair_unique`,
 `descendants_report_only` (B8).
 

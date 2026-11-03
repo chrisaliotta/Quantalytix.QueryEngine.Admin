@@ -64,4 +64,21 @@ public sealed class CalculationModelVersionCopier(
         await drivers.InsertManyAsync([.. (await drivers.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = copyId })], cancellationToken);
         return copyId;
     }
+
+    /// <summary>The version's settings and content: variables, calculated measures, parameters, attributions and drivers, all by key.</summary>
+    /// <param name="versionId">The version.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The content key.</returns>
+    public async Task<string> ContentKeyAsync(long versionId, CancellationToken cancellationToken)
+    {
+        var owner = new { CalculationModelVersionId = versionId };
+        var version = await versions.GetAsync(owner, cancellationToken);
+        return ContentKey.Of(
+            [version with { CalculationModelVersionId = 0, SnapshotId = 0, CreatedAt = default }],
+            (await variables.ListAsync(owner, cancellationToken)).Select(row => row with { VariableId = 0, CalculationModelVersionId = 0 }),
+            (await measures.ListAsync(owner, cancellationToken)).Select(row => row with { CalculatedMeasureId = 0, CalculationModelVersionId = 0 }),
+            (await parameters.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = 0 }),
+            (await attributions.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = 0 }),
+            (await drivers.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = 0 }));
+    }
 }

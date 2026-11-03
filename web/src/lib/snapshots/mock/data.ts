@@ -60,17 +60,48 @@ const IDENTITIES: IdentitySpec[] = [
   ['report', 'rep-bank.margin_statement', 'bank.margin_statement', 'Margin statement', '2023-06-01T09:00:00Z'],
 ]
 
+/** What each mapping set and bridge routes under (its dimension), and the report that owns a report dimension or bridge. */
+const ROUTES: Record<string, Pick<SnapshotEntry, 'dimensionId' | 'reportId'>> = {
+  'dim-MarginStatement': { dimensionId: null, reportId: 'report-1' },
+  'ms-loan.branch': { dimensionId: 'dim-Branch', reportId: null },
+  'ms-loan.product': { dimensionId: 'dim-Product', reportId: null },
+  'bridge-branch_to_territory': { dimensionId: 'dim-Branch', reportId: null },
+  'bridge-margin.gl_monthly': { dimensionId: 'dim-Account', reportId: 'report-1' },
+}
+
+/** When live edited an identity's content after creating it; a snapshot captured between two edits holds the content of the first. */
+const EDITS: Record<string, string[]> = {
+  ds_loans: ['2024-06-01T09:00:00Z', '2026-03-01T09:00:00Z'],
+  'dim-Branch': ['2025-09-01T09:00:00Z'],
+  'ms-loan.branch': ['2024-02-01T09:00:00Z', '2026-05-01T09:00:00Z'],
+  model_nii: ['2026-09-01T09:00:00Z'],
+  'rep-bank.margin_statement': ['2025-03-01T09:00:00Z', '2026-09-15T09:00:00Z'],
+}
+
+const heldBy = (snapshot: Snapshot) => IDENTITIES.filter(([, , , , createdAt]) => snapshot.isLive || createdAt < snapshot.capturedAt!)
+
 /** Every snapshot holds a version of each identity created before it was captured; live holds them all. */
 function entriesOf(snapshot: Snapshot): SnapshotEntry[] {
-  return IDENTITIES.filter(([, , , , createdAt]) => snapshot.isLive || createdAt < snapshot.capturedAt!).map(([kind, identityId, key, displayName]) => ({
+  return heldBy(snapshot).map(([kind, identityId, key, displayName]) => ({
     kind,
     identityId,
     key,
     displayName,
     versionId: `${identityId}@${snapshot.key}`,
+    ...(ROUTES[identityId] ?? { dimensionId: null, reportId: null }),
   }))
 }
 
+/** A tag of the content each version holds: the identity and how many edits it had seen; equal tags mean equal content. */
+function contentOf(snapshot: Snapshot): Record<string, string> {
+  return Object.fromEntries(
+    heldBy(snapshot).map(([, identityId]) => [identityId, `${identityId}#${(EDITS[identityId] ?? []).filter((at) => snapshot.isLive || at < snapshot.capturedAt!).length}`]),
+  )
+}
+
 export const seedEntries: Record<string, SnapshotEntry[]> = Object.fromEntries(seedSnapshots.map((s) => [s.id, entriesOf(s)]))
+
+/** The content tag of every version, by snapshot and identity. */
+export const seedContent: Record<string, Record<string, string>> = Object.fromEntries(seedSnapshots.map((s) => [s.id, contentOf(s)]))
 
 export const seedRestores: SnapshotRestore[] = [{ snapshotId: 'snap_fy2025_close', restoredAt: '2026-02-03T08:30:00Z', restoredBy: 'controller@bank.example' }]

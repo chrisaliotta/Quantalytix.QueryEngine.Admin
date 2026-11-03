@@ -18,7 +18,7 @@ public sealed record SnapshotComparison
     /// <summary>Identities only <c>from</c> holds, with <c>from</c>'s version.</summary>
     public required IReadOnlyList<SnapshotEntry> Removed { get; init; }
 
-    /// <summary>Identities both hold, each with both versions, which the kind's version reads compare.</summary>
+    /// <summary>Identities both hold, each with both versions and whether their content differs.</summary>
     public required IReadOnlyList<SnapshotPair> Common { get; init; }
 }
 
@@ -39,4 +39,7 @@ public sealed record SnapshotPair
 
     /// <summary>The version <c>to</c> holds.</summary>
     public required long ToVersionId { get; init; }
+
+    /// <summary>Whether the two versions' content differs as the engine reads it, compared by keys rather than surrogate ids.</summary>
+    public required bool Differs { get; init; }
 }

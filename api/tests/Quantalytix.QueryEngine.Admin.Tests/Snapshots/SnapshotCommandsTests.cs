@@ -189,5 +189,14 @@ public sealed class SnapshotCommandsTests
             await revision.AdvanceAsync(cancellationToken);
             return await inner.CopyAsync(versionId, targetSnapshotId, targetVersionId, cancellationToken);
         }
+
+        /// <summary>The inner copier's content key.</summary>
+        /// <param name="versionId">The version.</param>
+        /// <param name="cancellationToken">Cancels the reads.</param>
+        /// <returns>The content key.</returns>
+        public Task<string> ContentKeyAsync(long versionId, CancellationToken cancellationToken)
+        {
+            return inner.ContentKeyAsync(versionId, cancellationToken);
+        }
     }
 }

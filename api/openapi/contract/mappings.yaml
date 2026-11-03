@@ -455,7 +455,8 @@ components:
           type: [string, 'null']
           description: >-
             The dimension's version in the same snapshot, whose members entry and mapping keys resolve against; null when
-            the snapshot holds none.
+            the snapshot holds none. On the identity-level list items (`MappingSetListItem.dimension`,
+            `BridgeListItem.source` and `target`) the snapshot is live, so this is the dimension's live version.
 
     MappingBindingUsage:
       type: object
@@ -566,6 +567,7 @@ components:
           properties:
             dimension:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The mapping set's dimension; its `versionId` is the dimension's live version.
             versions:
               type: array
               description: One per snapshot holding the mapping set, the live version first, then frozen ones newest first.
@@ -870,8 +872,10 @@ components:
           properties:
             source:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The source dimension; its `versionId` is the dimension's live version.
             target:
               $ref: '#/components/schemas/MappingDimensionRef'
+              description: The target dimension; its `versionId` is the dimension's live version.
             versions:
               type: array
               description: One per snapshot holding the bridge, the live version first, then frozen ones newest first.

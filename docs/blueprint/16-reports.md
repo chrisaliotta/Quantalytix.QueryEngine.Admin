@@ -23,7 +23,7 @@ and how it maps to the schema (OI-46).
 | # | Rule | Source |
 |---|---|---|
 | P1 | A report has one version per snapshot ([14](14-snapshots.md)); the live version is edited in place. `qe_report_version.is_enabled` decides whether the engine sees a report in a snapshot; a new report starts disabled. | Schema README 3.0.0 |
-| P2 | Enabling a report checks it against every report rule; every later write to an enabled report is checked before it is made. | API README; schema doc §15–16 |
+| P2 | Enabling a report checks it against every report rule; every later write to an enabled report is checked before it is made (`ReportGateRule`), and a disabled report's violations are commit findings that block its Save (`ReportFindingsRule`). | API README; schema doc §15–16 |
 | P3 | A report owns one report dimension (`dimension_purpose = report`), created with the report's key and name, either with a single root or copied from a categorical or hierarchical "start from" dimension. Its live version is edited in place through the report, and snapshots copy it with the report. | Schema README 2.18.0, 2.19.0; API `NewReportInput` |
 | P4 | `report_dimension_id` and `calculation_model_id` are fixed after creation; `report_key` is fixed. | Schema; API (OI-47) |
 | P5 | Rows are the report dimension's members in hierarchy order, plus overlay `section` and `formula` lines; member options relabel, hide or make headers of members. Overlay keys never collide with member keys. Row keys are fixed once created. | Schema README 2.17.0 item 7; API `ReportRowInput` |
@@ -33,7 +33,7 @@ and how it maps to the schema (OI-46).
 | P9 | A role is a scenario of a report at most once and never also one of its calculation dimensions; a scenario's dimension has exactly one role. | §18 rule 7 |
 | P10 | Row parameters name a row and a model parameter, set the value its type names, within allowed values. | §18 rule 10 |
 | P11 | Styles: at most one per default role; colors `#RRGGBB`; a style a row names belongs to the report. | §18 rule 11 |
-| P12 | Deleting a report cascades to its dimension, bridges and content; it is never blocked. | API |
+| P12 | Deleting a report cascades to its live version, dimension, bridges and content; it is blocked only while a frozen snapshot holds a version of the report (`referenced_by_snapshot`). | Contract |
 
 ## Report storage: one source of truth (Agreed, OI-48 to OI-50)
 
@@ -233,7 +233,8 @@ resolve in the new model and starts disabled (OI-47).
 
 **Enable is a command.** `web` toggles `enabled` as a staged edit and refuses Save while an enabled report is not
 ready. `setEnabled` runs on saved state; enabling answers 422 with the failing rules; while enabled,
-every commit passes the report gate or is refused with 422 (the current API's behavior).
+every commit passes the report gate or is refused with 422, and while disabled every commit is refused while the report
+rules find a violation, so Save stays blocked until the findings are fixed.
 
 ### Sources and report bridges
 
@@ -256,12 +257,13 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `reports` | | `ReportSummary[]` | | `listReports` |
 | POST | `reports` | `ReportCreateInput` | `201 ReportSummary` | 400, 409 key taken | `createReport` |
 | GET | `reports/{id}` | | `ReportDocument` | 404 | `getReport` |
+| GET | `report-versions/{id}` | | a live or frozen report version's whole document | 404 | |
 | GET | `reports/{id}/diagnostics` | | `ReportDiagnostics` | 404 | `getDiagnostics` |
 | GET | `reports/{id}/sources/{sourceKey}/unmapped` | | `string[]` | 404 | `getUnmappedItems` |
 | POST | `reports/{id}/changes/preview` | `ChangeSetRequest<ReportOperation>` | `ChangeSetPreview<ReportDocument> & { diagnostics: ReportDiagnostics }` | 400, 409, 422 (enabled report gate) | edits |
-| POST | `reports/{id}/changes` | `ChangeSetRequest<ReportOperation>` | `ChangeSetCommit<ReportDocument>` | 400, 422 | `commitChanges` |
+| POST | `reports/{id}/changes` | `ChangeSetRequest<ReportOperation>` | `ChangeSetCommit<ReportDocument>` | 400, 409, 422 (gate, or a disabled report's findings) | `commitChanges` |
 | PUT | `reports/{id}/enabled` | `ReportEnabledInput` | `ReportSummary` | 422 rules | `setEnabled` |
-| DELETE | `reports/{id}` | | `204` | 404 | `deleteReport` |
+| DELETE | `reports/{id}` | | `204` | 404, 409 `referenced_by_snapshot` | `deleteReport` |
 
 Preview responses include `diagnostics`, so the readiness badge, coverage dialog, profile matrix and "what this row
 shows" panel render the pending state without browser-side rules.

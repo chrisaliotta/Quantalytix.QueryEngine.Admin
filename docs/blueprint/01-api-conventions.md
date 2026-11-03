@@ -95,7 +95,7 @@ export interface ViolationTarget {
 | 400 | Body, route or query does not bind, or an input validator fails | `errors` |
 | 401 / 403 | No valid token / no tenant access; `SystemAdmin` missing on `/api/system/*` | title only |
 | 404 | An id in the route names no row in the tenant; a shared existence check runs before every action | title only |
-| 409 | A precondition fails: not editable (locked), owned by a report, delete blocked, the live snapshot relabelled or deleted, the revision changed during a capture | `violations` for delete blockers; `detail` otherwise |
+| 409 | A precondition fails: not editable (locked, or a dataset version that is frozen: "Version is frozen"), owned by a report, delete blocked, a key taken, the live snapshot relabelled, deleted or restored, live changed during a capture | `violations` for delete blockers; `detail` otherwise |
 | 422 | The change would break a rule: gate and commit rules, report gate, model gate, a restore's rules | `violations` |
 | 500 | Unhandled | `traceId` |
 
@@ -181,8 +181,8 @@ Every module implements it with this protocol.
    - `400` / `409` / `422` with a `Problem` whose `errors` keys are prefixed by the failing operation index
      (`operations[3].memberKey`): the last operation is refused and is not recorded.
 3. **Save commits once.** `POST <aggregate>/changes` with the same body applies all operations in memory to the
-   aggregate as currently stored, runs input validators, gates and cascades, writes, advances `semantic_revision` once
-   if the engine can see the change, and returns the new read model. Any failure writes nothing.
+   aggregate as currently stored, runs input validators, gates, commit rules and cascades, writes, advances `semantic_revision`
+   once, and returns the new read model. Any failure writes nothing.
 4. **Discard is local.** Nothing was written.
 5. **Commands** (create, delete, enable, capture, restore) are separate endpoints; the client
    blocks them while a change set is open, as `useStagedApi` does today.
@@ -231,16 +231,13 @@ reconsidered only if partial commits are observed ([91](91-schema-gaps.md#sg-02-
 
 ## Semantic revision (Agreed)
 
-`qe_database_info.semantic_revision` advances once per commit or command that changes what the engine reads (schema
-doc §18):
+`qe_database_info.semantic_revision` advances once per write (schema doc §18):
 
-- any write to a **live** version of a dataset, dimension, mapping set or bridge;
-- any write to an **enabled** report, enabling or disabling a report;
-- any write to a calculation model that an enabled report reads;
-- capturing, restoring, relabelling or deleting a snapshot;
-- identity flags the catalog reads (`isEnabled`, display names) on datasets, dimensions and bridges.
+- every change-set commit, on any live version, a disabled report's or model's included;
+- creating or deleting an identity, enabling or disabling a report, materializing or dematerializing a field;
+- capturing, restoring or deleting a snapshot.
 
-Writes to disabled reports do not advance it.
+Relabelling a snapshot does not advance it, because requests name a snapshot by its key, which never changes.
 
 ## Caching hints
 

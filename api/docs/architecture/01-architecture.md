@@ -89,9 +89,9 @@ documents into its output.
 | 7 | `AddAdminOpenApi` | The OpenAPI document and its transformers |
 | 8 | `AddAdminCors` | A default policy for `Cors:AllowedOrigins` |
 | 9 | `AddHealthChecks` | `/health` |
-| 10 | `AddAdminApplication` | `LiveSnapshot`, `SemanticRevision`, `SnapshotCommands`, `SnapshotQueries` |
+| 10 | `AddAdminApplication` | `AccessibleTenantsService`, `LiveSnapshot`, `SnapshotHolders`, `SemanticRevision`, `SnapshotRuleRunner<>` |
 | 11 | `AddStarRocksInfrastructure` | Connections, `ITableGateway<>`, `IIdGenerator`, `TimeProvider` |
-| 12 to 18 | `AddTenantFeature`, `AddDatasetsFeature`, `AddDimensionsFeature`, `AddMappingsAndBridgesFeature`, `AddBindingsAndMeasuresFeature`, `AddSnapshotsAndSystemFeature`, `AddCalculationModelsAndReportsFeature` | Each module's route resources, services, change-set aggregate, snapshot rules, and its kind's `IVersionCopier`, `IVersionRemover` and `IVersionRules` |
+| 12 to 18 | `AddTenantFeature`, `AddDatasetsFeature`, `AddDimensionsFeature`, `AddMappingsAndBridgesFeature`, `AddBindingsAndMeasuresFeature`, `AddSnapshotsFeature`, `AddCalculationModelsAndReportsFeature` | Each module's route resources, services, change-set aggregate, snapshot rules, and its kind's `IVersionCopier`, `IVersionRemover` and `IVersionRules`; `AddSnapshotsFeature` registers the `snapshots` route resource, `SnapshotIndex`, `SnapshotQueries` and `SnapshotCommands` |
 
 The middleware runs `UseExceptionHandler` and `UseStatusCodePages` (both write a `Problem`), then `UseCors`,
 `UseAuthentication`, `UseAuthorization`, and maps OpenAPI, the controllers and `/health`. Services are scoped to the request.
@@ -107,17 +107,19 @@ Paths after the first in a row are relative to `/api/tenants/{tenantId}`. Tenant
 | Session and tenants | `/api/me`, `/api/tenants`, `/api/vocabularies`, `catalog`, `dimensions/{id}/published-members`, `overview` | none |
 | System tenants | `/api/system/tenants` | none |
 | Source objects | `source-objects`, `source-objects/{kind}/{name}/columns` | none |
-| Datasets | `datasets`, `datasets/{id}/versions`, `dataset-versions/{id}` with `changes`, `fields/{id}/materialization` | dataset with its live version (with its bindings and measures) |
+| Datasets | `datasets`, `dataset-versions/{id}` with `changes`, `fields/{id}/materialization` | dataset with its live version (with its bindings and measures) |
 | Dimensions | `dimensions`, `dimension-profiles`, `dimension-roles/{id}/delete-check`, `dimension-versions/{id}` with member and level delete checks | dimension with its live version |
 | Mappings | `mapping-sets`, `mapping-versions/{id}` | mapping set with its live version |
 | Bridges | `bridges`, `bridge-versions/{id}` | analytical bridge with its live version |
-| Snapshots | `snapshots` with capture, the capture preview, compare, and per snapshot restore, relabel and delete | none |
-| Calculation models | `calculation-models`, `calculation-models/{id}/formula-check` | calculation model with its live version |
-| Reports | `reports`, `reports/{id}/diagnostics`, `reports/{id}/sources/{sourceKey}/unmapped`, `reports/{id}/enabled` | report with its live version |
+| Snapshots | `snapshots` (list, capture), `snapshots/capture-preview`, `snapshots/compare`, `snapshots/{id}` (detail, relabel, delete), `snapshots/{id}/restore` | none |
+| Calculation models | `calculation-models`, `calculation-models/{id}/formula-check`, `calculation-model-versions/{id}` | calculation model with its live version |
+| Reports | `reports`, `reports/{id}/diagnostics`, `reports/{id}/sources/{sourceKey}/unmapped`, `reports/{id}/enabled`, `report-versions/{id}` | report with its live version |
 
-Every aggregate has `POST .../changes/preview` and `POST .../changes`. Datasets, dataset versions, dimensions, dimension
-versions, mapping sets, mapping versions, bridges, bridge versions and calculation models have `GET .../delete-check` next
-to their `DELETE`, and roles, members and levels have a delete check for the delete operation of their change set.
+Every aggregate has `POST .../changes/preview` and `POST .../changes`. Datasets, dimensions, mapping sets, bridges and calculation
+models have `GET .../delete-check` next to their `DELETE`; versions are never deleted one by one. Only datasets take change sets
+on a version (`dataset-versions/{id}/changes`), so only they refuse one aimed at a frozen version, with 409 "Version is frozen";
+every other kind's change set is posted on the identity and always edits its live version, so a frozen version has no edit route.
+Roles, members and levels have a delete check for the delete operation of their change set.
 [Feature classes](05-feature-classes.md) describes each module.
 
 ## How web consumes the API

@@ -172,9 +172,9 @@ components:
   schemas:
     SnapshotKey:
       type: string
-      pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$'
+      pattern: '^[A-Za-z][A-Za-z0-9_.]{0,127}$'
       description: Natural key of a snapshot, fixed after capture; requests name the snapshot by it. The live snapshot is `live`.
-      examples: [fy2026_q3_close]
+      examples: [fy2026_q3_close, seed.assumptions.2024]
 
     SnapshotKind:
       type: string
@@ -257,7 +257,7 @@ components:
     SnapshotEntry:
       type: object
       description: The version a snapshot holds of one identity; the kind's version read shows it.
-      required: [kind, identityId, key, displayName, versionId]
+      required: [kind, identityId, key, displayName, versionId, dimensionId, reportId]
       properties:
         kind: { $ref: '#/components/schemas/SnapshotKind' }
         identityId: { $ref: './common.yaml#/components/schemas/Id' }
@@ -266,6 +266,12 @@ components:
           type: string
           description: The identity's name; a model's or report's as its version names it.
         versionId: { $ref: './common.yaml#/components/schemas/Id' }
+        dimensionId:
+          type: [string, 'null']
+          description: A mapping set's dimension, or a bridge's source dimension; null for every other kind.
+        reportId:
+          type: [string, 'null']
+          description: The report that owns a report dimension or a report bridge; null for every other identity.
 
     SnapshotDetail:
       type: object
@@ -284,13 +290,18 @@ components:
     SnapshotPair:
       type: object
       description: An identity both compared snapshots hold, with each one's version.
-      required: [kind, identityId, key, fromVersionId, toVersionId]
+      required: [kind, identityId, key, fromVersionId, toVersionId, differs]
       properties:
         kind: { $ref: '#/components/schemas/SnapshotKind' }
         identityId: { $ref: './common.yaml#/components/schemas/Id' }
         key: { type: string }
         fromVersionId: { $ref: './common.yaml#/components/schemas/Id' }
         toVersionId: { $ref: './common.yaml#/components/schemas/Id' }
+        differs:
+          type: boolean
+          description: >-
+            Whether the two versions' engine-visible content differs. Content is compared by keys, never by surrogate ids, so
+            a version and its untouched copy are equal.
 
     SnapshotComparison:
       type: object
@@ -309,7 +320,7 @@ components:
           items: { $ref: '#/components/schemas/SnapshotEntry' }
         common:
           type: array
-          description: Identities both hold, with both versions.
+          description: Identities both hold, with both versions and whether their content differs.
           items: { $ref: '#/components/schemas/SnapshotPair' }
 
     CaptureSnapshotInput:

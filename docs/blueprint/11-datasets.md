@@ -17,17 +17,17 @@ Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contrac
 |---|---|---|
 | D1 | A dataset has at most one version per snapshot. The live version is edited in place; a frozen snapshot's version never changes. | Agreed; schema README 3.0.0 item 3 |
 | D2 | The live version reaches queries as soon as a commit writes it; a frozen version only when a request names its snapshot. | Agreed |
-| D3 | Every commit runs every dataset rule, including the checks against the rest of live (bound dimensions, mapped and bridge bindings resolvable, binding identity, and the enabled reports that read the dataset), and is refused with 422 when one fails. | Plan, Decisions |
+| D3 | Every commit runs every dataset rule, including the checks against the rest of live (the binding identity rules: bound dimensions, mapped and bridge bindings resolvable; and the enabled reports that read the dataset), and is refused with 422 when one fails. A change set aimed at a frozen version is refused with 409 "Version is frozen". | Plan, Decisions |
 | D4 | `dataset_key`, `field_key`, `grain_key`, `measure_key` are fixed after creation and unique in scope. | Agreed (OI-36 for `datasetKey`) |
 | D5 | `field_source_kind`: `column` needs `source_column`; `json_path` needs `source_column` and `json_path`; `expression` needs `expression_text`. | Schema doc |
 | D6 | A version binds each role at most once, and a bound role's key names no other field of the version. | Schema doc §18 rule 22 |
 | D7 | Measure component roles fit the measure kind; measure and expression dependency graphs are acyclic. | §18 rules 28–29 |
 | D8 | A time policy's selection grain is a `series` grain of the same version. | §18 rule 30 |
 | D9 | A time binding allows a periodicity finer than its native one only when its interval measures use `uniform_estimate`. | §18 rule 31 |
-| D10 | A dataset can be deleted only while no frozen snapshot holds a version of it (`referenced_by_snapshot`) and no report reads it. Versions are not deleted one by one. | Plan, §3; OI-17 |
+| D10 | A dataset can be deleted only while no frozen snapshot holds a version of it (`referenced_by_snapshot`); the delete takes its live version. Versions are not deleted one by one. | Plan, §3; OI-17 |
 | D14 | Deleting a dataset drops each registered managed table its live version reads that no version of another dataset reads, with the table's materialized view and registry row ([below](#managed-tables-on-dataset-delete-agreed-oi-33)). | OI-33, decided 2026-10-27 |
 | D11 | The UI never hard-codes an enumeration; vocabularies come from the server. | `datasets/contract.ts` header |
-| D13 | Managed-table DDL refuses to rename or drop a table or column that any version, live or frozen, reads. | Plan, Decisions |
+| D13 | Renaming a managed table is refused with 409 "Table is read by other versions" while any other dataset version, live or frozen, reads it. | `DatasetSettingsEdits` |
 
 ## Frontend contract
 
@@ -44,7 +44,7 @@ Sources: [`web/src/lib/datasets/contract.ts`](../../web/src/lib/datasets/contrac
 | `createDataset` | Moves from the edit list to the command list | It creates an aggregate; it cannot be staged inside another one's change set |
 | `updateDataset` patch | Drops `datasetKey` | D4; OI-36 |
 | `DatasetFieldMaterialization` | Kept: materialized view per source object, async refresh ([below](#json-field-materialization-agreed-oi-32)) | OI-32 |
-| `DatasetSourceObject.isManaged`, `createColumn`, `DatasetNewColumnInput`, `renameSourceTable`, `DatasetCreateInput.mode = 'new'` | Kept; backed by the managed-object registry (SG-08); DDL only on registered objects; no rename or drop of a table or column any version, live or frozen, reads | OI-33 |
+| `DatasetSourceObject.isManaged`, `createColumn`, `DatasetNewColumnInput`, `renameSourceTable`, `DatasetCreateInput.mode = 'new'` | Kept; backed by the managed-object registry (SG-08); DDL only on registered objects; no rename while another version, live or frozen, reads the table | OI-33 |
 | `DatasetSourceObject.stats`, `DatasetListItem.storage` | Kept; read live from `information_schema` with a short cache | OI-34 |
 | `DatasetVersion.dependents` | Computed by the server from the delete-blocker graph | OI-35 |
 | `RoundingMode` | Add `truncate` (schema allows it); shared kernel type with models | Schema `qe_measure.rounding_mode` |
@@ -104,13 +104,12 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `source-objects/{kind}/{name}/columns` | | `DatasetSourceColumn[]` | 404 | `getSourceColumns` |
 | GET | `datasets` | | `DatasetListItem[]` | | `listDatasets` |
 | POST | `datasets` | `DatasetCreateInput` | `201 DatasetListItem` (creates the live version) | 400, 409 key taken | `createDataset` |
-| GET | `datasets/{id}` | | `DatasetListItem` | 404 | `getDataset` |
+| GET | `datasets/{id}` | | the dataset with its version summaries, one per snapshot | 404 | `getDataset` |
 | GET | `datasets/{id}/delete-check` | | `DeleteCheck` | 404 | `checkDeleteDataset` |
-| DELETE | `datasets/{id}` | | `204` (drops managed tables only it reads, D14) | 404, 409 blocked (`referenced_by_snapshot`, `referenced_by_report`) | `deleteDataset` |
-| GET | `datasets/{id}/versions` | | `DatasetVersionSummary[]`, one per snapshot | 404 | `getDataset` (its `versions`) |
-| GET | `dataset-versions/{id}` | | `DatasetVersion` (settings, fields, grains, bindings, measures, dependents) | 404 | `getVersion` |
+| DELETE | `datasets/{id}` | | `204` (drops managed tables only it reads, D14) | 404, 409 blocked (`referenced_by_snapshot`) | `deleteDataset` |
+| GET | `dataset-versions/{id}` | | `DatasetVersion` (settings, fields, grains, bindings, measures, dependents), live or frozen | 404 | `getVersion` |
 | POST | `dataset-versions/{id}/changes/preview` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetPreview<DatasetVersion>` | 400, 409, 422 | edits |
-| POST | `dataset-versions/{id}/changes` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetCommit<DatasetVersion>` | 400, 409 not live, 422 | `commitChanges` |
+| POST | `dataset-versions/{id}/changes` | `ChangeSetRequest<DatasetOperation>` | `ChangeSetCommit<DatasetVersion>` | 400, 409 version is frozen, 422 | `commitChanges` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` (`state: building`) | 409 cannot be materialized | `materializeField` |
 | POST | `dataset-versions/{id}/fields/{fieldId}/materialization/refresh` | | `DatasetField` | 409 | `refreshMaterialization` |
 | DELETE | `dataset-versions/{id}/fields/{fieldId}/materialization` | | `DatasetField` | 409 | `dematerializeField` |
@@ -184,9 +183,10 @@ Kept from the current API (`dataset_version` rules): `source_object_exists`, `ve
 `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is the
 `DatasetTab` the rule belongs to.
 
-Checks against the rest of live (D3): `bound_dimensions_resolvable`, `mapped_bindings_resolvable`,
-`bridge_bindings_resolvable`, the binding identity rule, and the report checks `report_sources_resolve` and
-`report_factors_apply` of the enabled reports that read the dataset. All are commit rules.
+Checks against the rest of live (D3): the binding identity rules `bound_dimensions_resolvable`,
+`mapped_bindings_resolvable` and `bridge_bindings_resolvable` (base `BindingIdentityRule`), and `DatasetReportsResolveRule`,
+which runs the report checks `report_sources_resolve` and `report_factors_apply` of the enabled reports that read the
+dataset. All are commit rules.
 
 ## Schema mapping
 

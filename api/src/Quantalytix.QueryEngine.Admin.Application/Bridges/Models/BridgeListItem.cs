@@ -29,10 +29,10 @@ public sealed record BridgeListItem
     /// <summary>The report source of a report bridge, which is written only through its report; null for an analytical bridge.</summary>
     public required BridgeOwner? Owner { get; init; }
 
-    /// <summary>The source dimension.</summary>
+    /// <summary>The source dimension, with its live version.</summary>
     public required MappingDimensionRef Source { get; init; }
 
-    /// <summary>The target dimension.</summary>
+    /// <summary>The target dimension, with its live version.</summary>
     public required MappingDimensionRef Target { get; init; }
 
     /// <summary>Every version, one per snapshot holding the bridge: the live one first, then frozen ones, newest first.</summary>

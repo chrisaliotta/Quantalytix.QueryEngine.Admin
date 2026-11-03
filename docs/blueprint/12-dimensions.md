@@ -44,7 +44,8 @@ stateDiagram-v2
 
 - Every commit runs every rule of the kind on the result and refuses with 422 when one fails, so the live version is always
   valid. The preview reports the commit rules' findings in `violations`.
-- A frozen version accepts no edits, and is read through the same version content route as the live one.
+- A frozen version accepts no edits: the change set is posted on the dimension and always edits its live version, so a frozen
+  version has no edit route. It is read through the same version content route as the live one.
 - Capture copies every live version of every kind, with new ids for levels, members and bands; the live ids never change.
 - Restore replaces the live version's content with a copy of the frozen version, keeping the live version's id.
 

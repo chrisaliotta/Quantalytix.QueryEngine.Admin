@@ -40,8 +40,8 @@ function useLookups() {
 }
 
 /**
- * Batches every draft edit inside one dataset until Save. Lifecycle steps and engine jobs (validate, publish,
- * materialize) only run on saved state. Children keep calling `useDatasetsApi()` and receive the staged port.
+ * Batches every edit to one dataset's live version until Save. Commands (create, delete, materialize) only run on
+ * saved state. Children keep calling `useDatasetsApi()` and receive the staged port.
  */
 export function DatasetEditScope({ datasetId, label, children }: { datasetId: string; label: string; children: ReactNode }) {
   const base = useDatasetsApi()

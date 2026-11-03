@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// The band operation of the dimension change set (M5): a range version's bands are replaced as a whole set, each assigning a
-/// member of the version, with bounds of the version's range data type. Order, overlap and open ends are publication findings.
+/// member of the version, with bounds of the version's range data type. Order, overlap and open ends are commit findings.
 /// </summary>
 internal static class DimensionBandEdits
 {

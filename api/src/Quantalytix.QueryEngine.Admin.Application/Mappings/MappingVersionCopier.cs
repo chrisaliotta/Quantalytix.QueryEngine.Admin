@@ -45,4 +45,14 @@ public sealed class MappingVersionCopier(
         await entries.InsertManyAsync([.. copied.Select(entry => entry with { DimensionMappingId = ids.NextId(), MappingVersionId = copy.MappingVersionId })], cancellationToken);
         return copy.MappingVersionId;
     }
+
+    /// <summary>The version's entries, each a source key value and the member key it maps to.</summary>
+    /// <param name="versionId">The version.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The content key.</returns>
+    public async Task<string> ContentKeyAsync(long versionId, CancellationToken cancellationToken)
+    {
+        var rows = await entries.ListAsync(new { MappingVersionId = versionId }, cancellationToken);
+        return ContentKey.Of(rows.Select(entry => entry with { DimensionMappingId = 0, MappingVersionId = 0 }));
+    }
 }

@@ -45,7 +45,10 @@ describe.each(adapters)('SnapshotsApi port over the $name adapter', ({ create })
     expect(results.map((r) => (r.ok ? 200 : r.problem.status))).toEqual([409, 409, 409])
   })
 
-  /** R4: capture copies every live version of every kind, so the new snapshot holds what the preview counted, under new version ids. */
+  /**
+   * R4: capture copies every live version of every kind, so the new snapshot holds what the preview counted, under new version ids
+   * whose content equals live's.
+   */
   it('captures every live version into a frozen snapshot', async () => {
     const preview = await api.capturePreview()
 
@@ -59,6 +62,7 @@ describe.each(adapters)('SnapshotsApi port over the $name adapter', ({ create })
     const comparison = await api.compareSnapshots(live.id, snapshot.id)
     expect(comparison).toMatchObject({ added: [], removed: [] })
     expect(comparison.common.every((p) => p.fromVersionId !== p.toVersionId)).toBe(true)
+    expect(comparison.common.filter((p) => p.differs)).toEqual([])
   })
 
   /** R12: snapshot keys are unique; a second capture under a taken key is refused. */

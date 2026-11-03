@@ -166,7 +166,7 @@ internal sealed class DimensionFixture
     public DimensionVersionCopier Copier()
     {
         var ids = new SequentialIdGenerator(FirstNewId);
-        return new DimensionVersionCopier(Versions, Cloner(ids), Remover(), ids, new FakeTimeProvider());
+        return new DimensionVersionCopier(Versions, Levels, Members, Bands, Cloner(ids), Remover(), ids, new FakeTimeProvider());
     }
 
     /// <summary>The remover snapshot deletes and restores use.</summary>

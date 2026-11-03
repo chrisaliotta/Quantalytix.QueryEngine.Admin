@@ -43,4 +43,17 @@ public sealed class BridgeVersionCopier(
         await store.CopyMappingsAsync(versionId, copy.BridgeVersionId, cancellationToken);
         return copy.BridgeVersionId;
     }
+
+    /// <summary>The version's settings and its mappings, each by member keys with its factor, weight and selection.</summary>
+    /// <param name="versionId">The version.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The content key.</returns>
+    public async Task<string> ContentKeyAsync(long versionId, CancellationToken cancellationToken)
+    {
+        var version = await versions.GetAsync(new { BridgeVersionId = versionId }, cancellationToken);
+        var rows = await mappings.ListAsync(new { BridgeVersionId = versionId }, cancellationToken);
+        return ContentKey.Of(
+            [version with { BridgeVersionId = 0, SnapshotId = 0, CreatedAt = default }],
+            rows.Select(mapping => mapping with { BridgeMappingId = 0, BridgeVersionId = 0 }));
+    }
 }

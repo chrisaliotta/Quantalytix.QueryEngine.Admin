@@ -1,16 +1,19 @@
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Snapshots;
 
 /// <summary>
 /// The snapshot reads: the live snapshot and the frozen ones with their version counts, a snapshot with the version it holds of each
-/// identity, the comparison of two snapshots, and the counts a capture would copy.
+/// identity, the comparison of two snapshots, and the counts a capture would copy. The comparison asks each kind's copier for the
+/// content keys of both versions, so it flags only versions whose content differs.
 /// </summary>
 public sealed class SnapshotQueries(
     ITableGateway<SnapshotRecord> snapshots,
     ITableGateway<SnapshotRestoreRecord> restores,
     SnapshotIndex index,
-    LiveSnapshot live)
+    LiveSnapshot live,
+    IEnumerable<IVersionCopier> copiers)
 {
     /// <summary>The live snapshot and every frozen one, newest capture first, with their counts and latest restore.</summary>
     /// <param name="cancellationToken">Cancels the reads.</param>
@@ -53,7 +56,10 @@ public sealed class SnapshotQueries(
         return SnapshotCounts.Of(SnapshotIndex.Of(await index.ReadAsync(cancellationToken), await live.IdAsync(cancellationToken)));
     }
 
-    /// <summary>What one snapshot holds that another does not, and the identities both hold with each one's version.</summary>
+    /// <summary>
+    /// What one snapshot holds that another does not, and the identities both hold with each one's version and whether their content
+    /// differs.
+    /// </summary>
     /// <param name="fromSnapshotId">The snapshot compared from.</param>
     /// <param name="toSnapshotId">The snapshot compared to.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
@@ -65,23 +71,29 @@ public sealed class SnapshotQueries(
         var holdings = await index.ReadAsync(cancellationToken);
         var before = SnapshotIndex.Of(holdings, fromSnapshotId).ToDictionary(entry => (entry.Kind, entry.IdentityId));
         var after = SnapshotIndex.Of(holdings, toSnapshotId).ToDictionary(entry => (entry.Kind, entry.IdentityId));
+        var common = new List<SnapshotPair>();
+        foreach (var (key, entry) in after.Where(pair => before.ContainsKey(pair.Key)))
+        {
+            var copier = copiers.Single(candidate => candidate.Kind == entry.Kind);
+            var fromVersionId = before[key].VersionId;
+            common.Add(new SnapshotPair
+            {
+                Kind = entry.Kind,
+                IdentityId = entry.IdentityId,
+                Key = entry.Key,
+                FromVersionId = fromVersionId,
+                ToVersionId = entry.VersionId,
+                Differs = await copier.ContentKeyAsync(fromVersionId, cancellationToken) != await copier.ContentKeyAsync(entry.VersionId, cancellationToken)
+            });
+        }
+
         return new SnapshotComparison
         {
             FromSnapshotId = fromSnapshotId,
             ToSnapshotId = toSnapshotId,
             Added = [.. after.Where(pair => !before.ContainsKey(pair.Key)).Select(pair => pair.Value)],
             Removed = [.. before.Where(pair => !after.ContainsKey(pair.Key)).Select(pair => pair.Value)],
-            Common =
-            [
-                .. after.Where(pair => before.ContainsKey(pair.Key)).Select(pair => new SnapshotPair
-                {
-                    Kind = pair.Value.Kind,
-                    IdentityId = pair.Value.IdentityId,
-                    Key = pair.Value.Key,
-                    FromVersionId = before[pair.Key].VersionId,
-                    ToVersionId = pair.Value.VersionId
-                })
-            ]
+            Common = common
         };
     }
 }

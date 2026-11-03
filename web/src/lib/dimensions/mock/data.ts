@@ -148,13 +148,11 @@ const PROFILES: DimensionProfile[] = [
 type MemberSpec = [key: string, displayName: string, parentKey?: string | null, opts?: { level?: string; folder?: boolean; props?: Record<string, unknown>; description?: string }]
 type LevelSpec = [key: string, displayName: string, isLeaf?: boolean, periodicity?: Periodicity]
 
-/** A seed version in the shape the history was recorded in: the published one is live, retired ones are frozen, drafts are dropped. */
+/** A seed version. The last one is live; an earlier one names the dates it was live between and joins the last snapshot captured then. */
 interface VersionSpec {
   n: number
-  status: 'draft' | 'published' | 'retired'
   created: string
-  published?: string
-  retired?: string
+  frozen?: [liveFrom: string, liveUntil: string]
   rangeDataType?: RangeDataType
   levels?: LevelSpec[]
   members?: MemberSpec[]
@@ -198,9 +196,9 @@ function build(specs: DimSpec[]): Db {
     for (const [key, displayName, description] of s.roles ?? []) db.roles.push({ id: `role-${key}`, dimensionId: dimId, key, displayName, description: description ?? null })
     db.usage[dimId] = s.usage ?? []
 
-    const live = s.versions.find((v) => v.status === 'published') ?? s.versions.at(-1)!
+    const live = s.versions.at(-1)!
     for (const v of s.versions) {
-      const snapshotId = v === live ? LIVE_SNAPSHOT_ID : v.status === 'retired' ? frozenSnapshotOf(v.published!, v.retired!) : null
+      const snapshotId = v === live ? LIVE_SNAPSHOT_ID : frozenSnapshotOf(...v.frozen!)
       if (!snapshotId) continue
       const vid = `${dimId}-v${v.n}`
       db.versions.push({ id: vid, dimensionId: dimId, snapshotId, isLive: v === live, rangeDataType: v.rangeDataType ?? null, createdAt: v.created })
@@ -324,8 +322,8 @@ export function createSeed(): Db {
         ['originationBranch', 'Origination branch', 'The branch where the loan was originated.'],
       ],
       versions: [
-        { n: 1, status: 'retired', created: '2023-01-09', published: '2023-01-16', retired: '2024-07-01', levels: BRANCH_LEVELS, members: branchMembers(15) },
-        { n: 2, status: 'published', created: '2024-06-20', published: '2024-07-01', levels: BRANCH_LEVELS, members: branchMembers(18) },
+        { n: 1, created: '2023-01-09', frozen: ['2023-01-16', '2024-07-01'], levels: BRANCH_LEVELS, members: branchMembers(15) },
+        { n: 2, created: '2024-06-20', levels: BRANCH_LEVELS, members: branchMembers(18) },
       ],
       usage: [
         { kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field servicing_branch_code · mapped', roleKey: 'servicingBranch', memberKeys: ['BR01'] },
@@ -349,9 +347,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2023-02-01',
-          published: '2023-02-03',
           members: [
             ['OF_ADAMS', 'Rachel Adams', null, { props: { email: 'r.adams@meridian.bank', photoUrl: '/images/dimensions/officer-1.png', title: 'Senior loan officer' } }],
             ['OF_BAKER', 'Marcus Baker', null, { props: { email: 'm.baker@meridian.bank', photoUrl: '/images/dimensions/officer-2.png', title: 'Commercial banker' } }],
@@ -375,9 +371,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2023-01-05',
-          published: '2023-01-06',
           levels: [
             ['family', 'Product family'],
             ['product', 'Product', true],
@@ -408,9 +402,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2024-09-01',
-          published: '2024-09-02',
           members: [
             ['BUDGETS', 'Budgets', null, { folder: true }],
             ['BUD2025', 'Budget 2025', 'BUDGETS', { props: { kind: 'budget', horizonStart: '2025-01-01', horizonEnd: '2025-12-31', asOf: '2024-11-15', status: 'locked' } }],
@@ -437,9 +429,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2023-01-02',
-          published: '2023-01-02',
           members: [
             ['ASSET', 'Asset', null, { props: { normalBalance: 'debit' } }],
             ['LIABILITY', 'Liability', null, { props: { normalBalance: 'credit' } }],
@@ -457,7 +447,7 @@ export function createSeed(): Db {
       kind: 'categorical',
       origin: 'system',
       profileKey: 'systemAccountClass',
-      versions: [{ n: 1, status: 'published', created: '2023-01-01', published: '2023-01-01', members: [['SUSPENSE', 'Suspense']] }],
+      versions: [{ n: 1, created: '2023-01-01', members: [['SUSPENSE', 'Suspense']] }],
     },
 
     /* user dimensions */
@@ -468,13 +458,7 @@ export function createSeed(): Db {
       origin: 'user',
       roles: [['riskGrade', 'Risk grade', 'Internal credit risk rating.']],
       versions: [
-        { n: 1, status: 'published', created: '2024-02-10', published: '2024-02-12', members: riskGrades() },
-        {
-          n: 2,
-          status: 'draft',
-          created: '2026-10-14',
-          members: [...riskGrades(), ['RG5', 'Special mention', null, { description: 'Imported from the credit file; its key collides with Watch.' }]],
-        },
+        { n: 1, created: '2024-02-10', members: riskGrades() },
       ],
       usage: [{ kind: 'dataset_binding', name: 'loans.details', detail: 'loans.details · field risk_grade · direct', roleKey: 'riskGrade' }],
     },
@@ -485,8 +469,7 @@ export function createSeed(): Db {
       origin: 'user',
       roles: [['balanceBand', 'Balance band']],
       versions: [
-        { n: 1, status: 'published', created: '2024-03-01', published: '2024-03-04', rangeDataType: 'decimal', members: balanceMembers(), bands: balanceBands(100000) },
-        { n: 2, status: 'draft', created: '2026-10-20', rangeDataType: 'decimal', members: balanceMembers(), bands: balanceBands(90000) },
+        { n: 1, created: '2024-03-01', rangeDataType: 'decimal', members: balanceMembers(), bands: balanceBands(100000) },
       ],
       usage: [{ kind: 'dataset_binding', name: 'deposits.daily', detail: 'deposits.daily · field ledger_balance · range', roleKey: 'balanceBand' }],
     },
@@ -499,9 +482,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-01-03',
-          published: '2025-01-06',
           rangeDataType: 'date',
           members: [
             ['M_PAST', 'Matured'],
@@ -527,9 +508,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2023-01-02',
-          published: '2023-01-03',
           levels: [
             ['YEAR', 'Fiscal year', false, 'year'],
             ['QUARTER', 'Fiscal quarter', false, 'quarter'],
@@ -547,8 +526,7 @@ export function createSeed(): Db {
       origin: 'user',
       roles: [['territory', 'Sales territory']],
       versions: [
-        { n: 1, status: 'published', created: '2025-04-01', published: '2025-04-03', levels: BRANCH_LEVELS, members: territoryMembers() },
-        { n: 2, status: 'draft', created: '2026-10-18', levels: BRANCH_LEVELS, members: territoryMembers(), parentOverrides: { T_N_METRO: 'T_BR02' } },
+        { n: 1, created: '2025-04-01', levels: BRANCH_LEVELS, members: territoryMembers() },
       ],
       usage: [{ kind: 'bridge', name: 'branch_to_territory', detail: 'from Branch to Territory · many-to-one' }],
     },
@@ -561,7 +539,6 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'draft',
           created: '2026-10-21',
           members: [
             ['REAL_ESTATE', 'Real estate'],
@@ -582,9 +559,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2024-05-06',
-          published: '2024-05-07',
           members: [
             ['HOME_PURCHASE', 'Home purchase'],
             ['REFINANCE', 'Refinance'],
@@ -609,9 +584,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 3,
-          status: 'published',
           created: '2025-06-02',
-          published: '2025-06-09',
           levels: [
             ['class', 'Account class'],
             ['group', 'Account group'],
@@ -630,9 +603,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-06-02',
-          published: '2025-06-09',
           members: [
             ['AG_CASH', 'Cash and equivalents'],
             ['AG_LOANS', 'Loans'],
@@ -658,9 +629,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-08-11',
-          published: '2025-08-12',
           members: [
             ['RC_LOW', 'Low risk'],
             ['RC_MEDIUM', 'Medium risk'],
@@ -678,9 +647,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-03-03',
-          published: '2025-03-04',
           members: [
             ['CC_100', 'Branch operations'],
             ['CC_200', 'Shared technology'],
@@ -699,9 +666,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-03-03',
-          published: '2025-03-04',
           members: [
             ['DEPT_RETAIL', 'Retail banking'],
             ['DEPT_COMMERCIAL', 'Commercial banking'],
@@ -723,9 +688,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-02-01',
-          published: '2025-02-01',
           members: [
             ['TOTAL', 'Total', null, { folder: true }],
             ['ASSETS', 'Assets', 'TOTAL', { folder: true }],
@@ -752,9 +715,7 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'published',
           created: '2025-03-10',
-          published: '2025-03-10',
           members: [
             ['DP_TOTAL', 'Total deposits', null, { folder: true }],
             ['DP_RETAIL', 'Retail deposits', 'DP_TOTAL', { folder: true }],
@@ -781,7 +742,6 @@ export function createSeed(): Db {
       versions: [
         {
           n: 1,
-          status: 'draft',
           created: '2026-09-18',
           members: [
             ['BP_CONTRIBUTION', 'Branch contribution', null, { folder: true }],

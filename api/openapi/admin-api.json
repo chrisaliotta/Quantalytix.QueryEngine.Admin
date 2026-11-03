@@ -24806,11 +24806,11 @@
             ]
           },
           "source": {
-            "description": "The source dimension.",
+            "description": "The source dimension, with its live version.",
             "$ref": "#/components/schemas/MappingDimensionRef"
           },
           "target": {
-            "description": "The target dimension.",
+            "description": "The target dimension, with its live version.",
             "$ref": "#/components/schemas/MappingDimensionRef"
           },
           "versions": {
@@ -25582,7 +25582,7 @@
             "items": {
               "$ref": "#/components/schemas/RuleViolation"
             },
-            "description": "Publication-rule findings that do not block saving."
+            "description": "Commit-rule findings, which refuse the commit while any remains."
           }
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
@@ -25603,7 +25603,7 @@
             "items": {
               "$ref": "#/components/schemas/RuleViolation"
             },
-            "description": "Publication-rule findings that do not block saving."
+            "description": "Commit-rule findings, which refuse the commit while any remains."
           }
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
@@ -25624,7 +25624,7 @@
             "items": {
               "$ref": "#/components/schemas/RuleViolation"
             },
-            "description": "Publication-rule findings that do not block saving."
+            "description": "Commit-rule findings, which refuse the commit while any remains."
           }
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
@@ -25645,7 +25645,7 @@
             "items": {
               "$ref": "#/components/schemas/RuleViolation"
             },
-            "description": "Publication-rule findings that do not block saving."
+            "description": "Commit-rule findings, which refuse the commit while any remains."
           }
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
@@ -25666,7 +25666,7 @@
             "items": {
               "$ref": "#/components/schemas/RuleViolation"
             },
-            "description": "Publication-rule findings that do not block saving."
+            "description": "Commit-rule findings, which refuse the commit while any remains."
           }
         },
         "description": "The 200 answer of `POST &lt;aggregate&gt;/changes/preview`: the operations apply; nothing was written."
@@ -29855,7 +29855,7 @@
             "description": "The dimension the entries map into, fixed after creation."
           },
           "dimension": {
-            "description": "The dimension.",
+            "description": "The dimension, with its live version.",
             "$ref": "#/components/schemas/MappingDimensionRef"
           },
           "versions": {
@@ -32550,7 +32550,7 @@
             "items": {
               "$ref": "#/components/schemas/SnapshotPair"
             },
-            "description": "Identities both hold, each with both versions, which the kind's version reads compare."
+            "description": "Identities both hold, each with both versions and whether their content differs."
           }
         },
         "description": "The contract's `SnapshotComparison`: the identities `to` holds that `from` does not, the reverse, and those both hold,\neach with the version on its side."
@@ -32634,7 +32634,9 @@
           "identityId",
           "key",
           "displayName",
-          "versionId"
+          "versionId",
+          "dimensionId",
+          "reportId"
         ],
         "type": "object",
         "properties": {
@@ -32657,6 +32659,20 @@
           "versionId": {
             "type": "string",
             "description": "The version the snapshot holds, which the kind's version read shows."
+          },
+          "dimensionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A mapping set's dimension, or a bridge's source dimension; null for every other kind."
+          },
+          "reportId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The report that owns a report dimension or a report bridge; null for every other identity."
           }
         },
         "description": "The contract's `SnapshotEntry`: the version a snapshot holds of one identity."
@@ -32756,7 +32772,8 @@
           "identityId",
           "key",
           "fromVersionId",
-          "toVersionId"
+          "toVersionId",
+          "differs"
         ],
         "type": "object",
         "properties": {
@@ -32779,6 +32796,10 @@
           "toVersionId": {
             "type": "string",
             "description": "The version `to` holds."
+          },
+          "differs": {
+            "type": "boolean",
+            "description": "Whether the two versions' content differs as the engine reads it, compared by keys rather than surrogate ids."
           }
         },
         "description": "The contract's `SnapshotPair`: an identity both compared snapshots hold, with each one's version."

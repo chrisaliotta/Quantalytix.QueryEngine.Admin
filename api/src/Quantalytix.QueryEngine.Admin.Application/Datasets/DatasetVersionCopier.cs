@@ -50,6 +50,53 @@ public sealed class DatasetVersionCopier(
         return copy.DatasetVersionId;
     }
 
+    /// <summary>
+    /// The version's settings and content: fields, grains, measures by key; bindings by their role, or a time binding by its source
+    /// field's key; and every reference between them by the key it names.
+    /// </summary>
+    /// <param name="versionId">The version.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The content key.</returns>
+    public async Task<string> ContentKeyAsync(long versionId, CancellationToken cancellationToken)
+    {
+        var version = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
+        var rows = await content.LoadAsync([versionId], cancellationToken);
+        var fieldKeys = rows.Fields.ToDictionary(field => field.FieldId, field => field.FieldKey);
+        var grainKeys = rows.Grains.ToDictionary(grain => grain.DatasetGrainId, grain => grain.GrainKey);
+        var measureKeys = rows.Measures.ToDictionary(measure => measure.MeasureId, measure => measure.MeasureKey);
+        var bindingKeys = rows.Bindings.ToDictionary(
+            binding => binding.DimensionBindingId,
+            binding => binding.DimensionRoleId is { } roleId ? $"role:{roleId}" : $"field:{fieldKeys[binding.SourceFieldId!.Value]}");
+        return ContentKey.Of(
+            [new { Version = version with { DatasetVersionId = 0, SnapshotId = 0, DefaultTimeBindingId = null, CreatedAt = default }, DefaultTimeBinding = ContentKey.KeyOf(bindingKeys, version.DefaultTimeBindingId) }],
+            rows.Fields.Select(field => field with { FieldId = 0, DatasetVersionId = 0 }),
+            rows.Grains.Select(grain => grain with { DatasetGrainId = 0, DatasetVersionId = 0 }),
+            rows.GrainFields.Select(component => new { component.Ordinal, Grain = grainKeys[component.DatasetGrainId], Field = fieldKeys[component.FieldId] }),
+            rows.Bindings.Select(binding => new
+            {
+                Binding = binding with { DimensionBindingId = 0, DatasetVersionId = 0, SourceFieldId = null, SourceDimensionBindingId = null },
+                Key = bindingKeys[binding.DimensionBindingId],
+                SourceField = ContentKey.KeyOf(fieldKeys, binding.SourceFieldId),
+                SourceBinding = ContentKey.KeyOf(bindingKeys, binding.SourceDimensionBindingId)
+            }),
+            rows.TimeBindings.Select(timeBinding => new
+            {
+                TimeBinding = timeBinding with { DimensionBindingId = 0, IntervalEndFieldId = null },
+                Binding = bindingKeys[timeBinding.DimensionBindingId],
+                IntervalEndField = ContentKey.KeyOf(fieldKeys, timeBinding.IntervalEndFieldId)
+            }),
+            rows.Measures.Select(measure => measure with { MeasureId = 0, DatasetVersionId = 0 }),
+            rows.Components.Select(component => new { component.ComponentRole, Measure = measureKeys[component.MeasureId], Field = fieldKeys[component.FieldId] }),
+            rows.Dependencies.Select(dependency => new { Measure = measureKeys[dependency.MeasureId], DependsOn = measureKeys[dependency.DependencyMeasureId] }),
+            rows.TimePolicies.Select(policy => new
+            {
+                Policy = policy with { MeasureId = 0, RequiredTimeBindingId = null, SelectionDatasetGrainId = null },
+                Measure = measureKeys[policy.MeasureId],
+                RequiredTimeBinding = ContentKey.KeyOf(bindingKeys, policy.RequiredTimeBindingId),
+                SelectionGrain = ContentKey.KeyOf(grainKeys, policy.SelectionDatasetGrainId)
+            }));
+    }
+
     /// <summary>The content rows of the copy: new IDs, the new version, and internal references remapped.</summary>
     private static DatasetVersionContent Remap(DatasetVersionContent source, long versionId, IdRemap remap)
     {

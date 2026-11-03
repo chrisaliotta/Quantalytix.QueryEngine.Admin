@@ -26,7 +26,7 @@ This file defines the contract.
 | C5 | A parameter sets exactly the default its type names; only text parameters have allowed values, and they include the default; a parameter that formulas or row values use is never deleted or re-keyed. | §18 rule 8 |
 | C6 | An attribution names a metric of its model; its expression reads only model keys and day parameters; drivers (at most 8, never `residual`) cover each reference exactly once; its weight variable is a variable of the model; a variable needs an expression. | §18 rule 6; engine A.7 |
 | C7 | Every write to the live version is applied in memory and refused, writing nothing, when it breaks a model rule or an enabled live report over the model. | Schema doc §15–16; API model gate |
-| C8 | A model is deleted only when no report reads it and no frozen snapshot holds a version of it. | API; plan |
+| C8 | A model is deleted only when no live report reads it and no frozen snapshot holds a version of it. | API |
 | C9 | `model_key` is fixed. | Agreed (OI-45) |
 
 ## Frontend contract (Agreed, new `lib/models/contract.ts`)
@@ -140,14 +140,14 @@ already matches.
 ## Refusal semantics (Agreed, OI-42)
 
 `web` refuses an edit at once, before it is staged, when it **introduces** a violation (the store compares rule
-results before and after the edit) and shows "This change was refused". Saving the pending changes is then always accepted. The
-current API refuses each individual write that breaks a rule.
+results before and after the edit) and shows "This change was refused". A violation the model already had shows as a
+finding, and Save stays blocked until none remains, a disabled model's included.
 
 Preview implements the refusal. Each edit posts the operations so far to
 `calculation-models/{id}/changes/preview`; the server applies them and answers `422` with `violations` when the last
 operation introduces a violation of a model rule or a report rule of any enabled report over the model; the staged port
-drops the operation and the UI shows `RefusalAlert`. Commit re-runs the same gate and the commit rules. Because every commit and every restore leaves the live model valid,
-there are no older violations for a change set to inherit.
+drops the operation and the UI shows `RefusalAlert`. Commit re-runs the same gate, then `ModelFindingsRule`, a commit rule, refuses the commit while any violation remains.
+Because every commit and every restore leaves the live model valid, there are normally no older violations to inherit.
 
 This makes the two report-side refusals `web` fakes against the open report (`parameter_filter_clash`,
 `parameter_allowed_values`) real, and checks every enabled report, not just the open one.
@@ -161,9 +161,10 @@ Prefix `/api/tenants/{t}`. Open to any tenant user (OI-09).
 | GET | `calculation-models` | | `ModelListItem[]` | | `listModels` |
 | POST | `calculation-models` | `CalcModelCreateInput` | `201 CalcModel` (disabled, empty) | 400, 409 key taken | `createModel` |
 | GET | `calculation-models/{id}` | | `ModelDocument` | 404 | `getModel` |
+| GET | `calculation-model-versions/{id}` | | a live or frozen model version with its content, effective drivers and the reports of its snapshot that read it | 404 | |
 | POST | `calculation-models/{id}/formula-check` | `ModelFormulaCheckRequest` (`{ formula, selfKey }`) | `ModelFormulaCheck` | 404 | `checkFormula` |
 | GET | `calculation-models/{id}/delete-check` | | `DeleteCheck` | | `checkDeleteModel` |
-| DELETE | `calculation-models/{id}` | | `204` | 409 `referenced_by_report` | `deleteModel` |
+| DELETE | `calculation-models/{id}` | | `204` | 409 `referenced_by_report` or `referenced_by_snapshot` | `deleteModel` |
 | POST | `calculation-models/{id}/changes/preview` | `ChangeSetRequest<ModelOperation>` | `ChangeSetPreview<ModelDocument>` | 400, 422 refused | edits |
 | POST | `calculation-models/{id}/changes` | `ChangeSetRequest<ModelOperation>` | `ChangeSetCommit<ModelDocument>` | 400, 422 | `commitChanges` |
 
@@ -186,7 +187,7 @@ type ModelOperation =
   | { op: 'clearAttribution'; metricKey: string }
 ```
 
-A commit that changes a live model version read by an enabled report advances `semantic_revision`.
+Every commit advances `semantic_revision`.
 
 ## Rule codes
 

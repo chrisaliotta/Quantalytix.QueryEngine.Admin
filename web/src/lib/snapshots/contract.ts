@@ -17,7 +17,7 @@ export type SnapshotKind = 'dataset' | 'dimension' | 'mapping_set' | 'bridge' | 
 export const SNAPSHOT_KINDS: readonly SnapshotKind[] = ['dataset', 'dimension', 'mapping_set', 'bridge', 'calculation_model', 'report']
 
 /** `SnapshotKey`: fixed after capture; requests name the snapshot by it. */
-export const SNAPSHOT_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,127}$/
+export const SNAPSHOT_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.]{0,127}$/
 export const LIVE_SNAPSHOT_KEY = 'live'
 
 /** One row of `qe_snapshot`. */
@@ -72,6 +72,10 @@ export interface SnapshotEntry {
   /** A model's or report's as its version names it. */
   displayName: string
   versionId: Id
+  /** A mapping set's dimension, or a bridge's source dimension; null for every other kind. */
+  dimensionId: Id | null
+  /** The report that owns a report dimension or a report bridge; null for every other identity. */
+  reportId: Id | null
 }
 
 export interface SnapshotDetail {
@@ -89,6 +93,8 @@ export interface SnapshotPair {
   key: string
   fromVersionId: Id
   toVersionId: Id
+  /** Whether the two versions' engine-visible content differs, compared by keys rather than surrogate ids. */
+  differs: boolean
 }
 
 /** What `to` holds that `from` does not (`added`), the reverse (`removed`), and what both hold (`common`). */

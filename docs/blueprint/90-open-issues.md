@@ -394,7 +394,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 - **Recommendation:** registry table; DDL only on registered objects; rename allowed only while no published version
   reads it.
 - **Status:** Decided 2026-10-26. Managed-object registry (SG-08); DDL only on registered objects.
-  **Amended 2026-11-02:** no rename or drop of a table or column that any dataset version, live or frozen, reads.
+  **Amended 2026-11-02:** no rename while any other dataset version, live or frozen, reads the table.
 - **Follow-up (dataset delete):** whether deleting a dataset drops the managed table it was created over. Decided
   2026-10-27 by the user: when the dataset's live version reads a registered managed table that no version of another dataset
   reads, the delete drops the table and the materialized view the API defined over it, and deletes its

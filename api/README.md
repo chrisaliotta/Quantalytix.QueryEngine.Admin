@@ -133,7 +133,9 @@ default and also on the HTTP adapters against a running API with `QE_LIVE_API=1`
 
 [Live verification](../docs/blueprint/04-live-verification.md) lists the checks to run against a live tenant after a
 change. `tools/acceptance/qe-acceptance.sh` proves end to end that metadata authored through the API reaches the engine: it
-authors a dataset, a calculation model and a report in the live snapshot, and runs catalog and query requests on the engine. Its header documents its modes, environment variables and the objects it leaves behind. Run it
+authors a dataset, a calculation model and a report in the live snapshot, captures snapshot `${PREFIX}backtest`, renames
+the report's yield column in live, runs catalog, query and report requests on the engine, checks that `GetCatalog` naming
+`${PREFIX}backtest` reads that snapshot, then deletes the snapshot. Its header documents its modes, environment variables and the objects it leaves behind. Run it
 outside any shell sandbox with the API on `http://localhost:5186` (or set `ADMIN`), `QueryEngineRoot` set, and a new
 `PREFIX` per run:
 

@@ -1,10 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ReadValue, Td, Th } from '@/components/dimensions/shared'
-import type { ApiResult } from '@/lib/api/contract'
-import { useDimensionsApi } from '@/lib/dimensions/client'
-import { useMappingsApi } from '@/lib/mappings/client'
 import { useModelVersion } from '@/lib/models/client'
 import { useAppNav } from '@/lib/navigation'
 import { useReportVersion } from '@/lib/reports/client'
@@ -16,19 +12,12 @@ type Viewing = { kind: 'calculation_model' | 'report'; versionId: string; title:
 /**
  * Opens the version a snapshot holds of one identity. Datasets, dimensions, mapping sets and analytical bridges open on their own
  * pages, which show a frozen version read-only; report-owned dimensions and bridges open their report. Frozen model and report
- * versions open in a read-only sheet, since their editors edit live only.
+ * versions open in a read-only sheet, since their editors edit live only. The entry names the dimension and owning report it routes
+ * under, so nothing is read first.
  */
 export function useEntryBrowser() {
   const nav = useAppNav()
-  const dimensions = useDimensionsApi()
-  const mappings = useMappingsApi()
   const [viewing, setViewing] = useState<Viewing>(null)
-
-  async function resolve<T>(read: Promise<ApiResult<T>>, go: (data: T) => void) {
-    const result = await read
-    if (result.ok) go(result.data)
-    else toast.error(result.problem.title, { description: result.problem.detail })
-  }
 
   function open(entry: SnapshotEntry, isLive: boolean) {
     const version = isLive ? undefined : entry.versionId
@@ -36,11 +25,11 @@ export function useEntryBrowser() {
       case 'dataset':
         return nav.dataset(entry.identityId, version)
       case 'dimension':
-        return resolve(dimensions.getDimension(entry.identityId), (d) => (d.ownerReport ? nav.reportByKey(d.ownerReport.reportKey) : nav.dimension(d.id, { version })))
+        return entry.reportId ? nav.report(entry.reportId) : nav.dimension(entry.identityId, { version })
       case 'mapping_set':
-        return resolve(mappings.getMappingSet(entry.identityId), (s) => nav.mappingSet(s.dimensionId, s.id, version))
+        return nav.mappingSet(entry.dimensionId!, entry.identityId, version)
       case 'bridge':
-        return resolve(mappings.getBridge(entry.identityId), (b) => (b.owner ? nav.reportByKey(b.owner.reportKey) : nav.bridge(b.sourceDimensionId, b.id, version)))
+        return entry.reportId ? nav.report(entry.reportId) : nav.bridge(entry.dimensionId!, entry.identityId, version)
       case 'calculation_model':
         return isLive ? nav.model(entry.key) : setViewing({ kind: entry.kind, versionId: entry.versionId, title: entry.displayName })
       case 'report':

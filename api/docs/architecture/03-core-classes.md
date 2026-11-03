@@ -102,13 +102,14 @@ an operation whose target another author deleted fails with the usual 400, 409 o
 | Stage | Preview | Commit | Restore | Used for |
 |---|---|---|---|---|
 | `Gate` | refused with 422 | refused with 422 | blocks | What the engine would read as saved: member and level key uniqueness, parents and levels in the version, hierarchy acyclic, consumers resolve, profile-required keys (dimensions); the report gate; the model gate |
-| `Commit` | reported in `violations` | refused with 422 | blocks | Every other rule, because saved content is live at once: every dataset rule, including the binding checks and the checks of the enabled reports that read the dataset; band and property rules of dimensions; unknown members in a binding's version; every mapping set rule (`MappingRule`) and analytical bridge rule (`BridgeRule`); report findings; model findings |
+| `Commit` | reported in `violations` | refused with 422 | blocks | Every other rule, because saved content is live at once: every dataset rule, including the binding checks and the checks of the enabled reports that read the dataset; band and property rules of dimensions; unknown members in a binding's version; every mapping set rule (`MappingRule`) and analytical bridge rule (`BridgeRule`); report findings and model findings, a disabled report's or model's included |
 
 There is no publication stage: live is always valid, so a capture copies it without validating. Rules run in registration order. A rule targets the offending item with its stored id; the pipeline rewrites ids of items
 the change set created to their temporary ids, so findings match the preview's `state`. To run the same rules on stored
 versions, each module also registers one `IVersionRules` (`DatasetVersionRules`, `DimensionVersionRules`,
-`MappingVersionRules`, `BridgeVersionRules`, and the report and model rules) that loads the stored version and runs its
-rules, resolving what it names in the version's own snapshot; restore calls it on every version of the snapshot it restores.
+`MappingVersionRules`, `BridgeVersionRules`, `CalculationModelVersionRules`, `ReportVersionRules`) that loads the stored
+version and runs every snapshot rule through `SnapshotRuleRunner<TSnapshot>`, resolving what it names in the version's own
+snapshot; restore calls it on every version of the snapshot it restores.
 
 ### The write plan
 
@@ -145,7 +146,7 @@ allocate no temporary ids, so their read models carry stored ids only.
 Services return `Outcome<T>` (a value or a `Refusal`) or `Refusal?` for commands without a value. `Refusal` has four kinds:
 `Invalid` (errors by input path), `Conflict` (title and detail), `DeleteBlocked` (the blockers and their sentence) and
 `RulesViolated` (violations). The WebApi maps them with `Problems.From` ([Request pipeline](02-request-pipeline.md#the-problem-shape)).
-Commands (create, delete, enable, capture, restore, relabel and delete a snapshot) are services on
+Commands (create, delete, enable, materialize; capture, restore, relabel and delete a snapshot) are services on
 stored state and are never staged; the client blocks them while a change set is open.
 
 ## Delete checks

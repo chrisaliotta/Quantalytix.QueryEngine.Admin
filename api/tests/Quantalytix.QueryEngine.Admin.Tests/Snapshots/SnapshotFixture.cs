@@ -89,6 +89,13 @@ internal sealed class SnapshotFixture
             Removers(), rules, Revision(), new TenantInfoReader(Tables.DatabaseInfo), _ids, _time);
     }
 
+    /// <summary>The snapshot reads with every kind's copier, as the API registers them.</summary>
+    /// <returns>The reads.</returns>
+    public SnapshotQueries Queries()
+    {
+        return new SnapshotQueries(Tables.Snapshots, Restores, Index(), Live(), Copiers());
+    }
+
     /// <summary>Every kind's copier.</summary>
     /// <returns>The copiers, in capture order.</returns>
     public IReadOnlyList<IVersionCopier> Copiers()
@@ -97,7 +104,7 @@ internal sealed class SnapshotFixture
         return
         [
             new DatasetVersionCopier(t.DatasetVersions, DatasetContent(), _ids, _time),
-            new DimensionVersionCopier(t.DimensionVersions, new DimensionVersionCloner(t.Levels, t.Members, Bands, t.Closure, _ids), DimensionRemover(), _ids, _time),
+            new DimensionVersionCopier(t.DimensionVersions, t.Levels, t.Members, Bands, new DimensionVersionCloner(t.Levels, t.Members, Bands, t.Closure, _ids), DimensionRemover(), _ids, _time),
             new MappingVersionCopier(MappingVersions, Entries, _ids, _time),
             new BridgeVersionCopier(t.BridgeVersions, t.BridgeMappings, new BridgeStore(t.Bridges, t.BridgeVersions, t.BridgeMappings, Live(), _ids, _time), _ids, _time),
             new CalculationModelVersionCopier(t.ModelVersions, t.Variables, t.CalculatedMeasures, t.Parameters, Attributions, AttributionDrivers, ModelRemover(), _ids, _time),
@@ -137,7 +144,7 @@ internal sealed class SnapshotFixture
         var t = Tables;
         return new SnapshotIndex(
             t.Datasets, t.DatasetVersions, t.Dimensions, t.DimensionVersions, MappingSets, MappingVersions, t.Bridges, t.BridgeVersions, t.Models, t.ModelVersions,
-            t.Reports, t.ReportVersions);
+            t.Reports, t.ReportVersions, t.Sources);
     }
 
     /// <summary>Every kind's remover.</summary>

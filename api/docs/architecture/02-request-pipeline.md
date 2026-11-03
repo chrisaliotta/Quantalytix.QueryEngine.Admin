@@ -83,7 +83,7 @@ Every error is `application/problem+json` with one body, `Problem` (`WebApi/Erro
 | 401 | `unauthorized` | title only | No valid bearer token |
 | 403 | `forbidden` | title only | No access to the route tenant, or `SystemAdmin` missing |
 | 404 | `not-found` | title only | `RouteResourceFilter`, a hidden row, an unknown route |
-| 409 | `conflict` | `detail` | A failed precondition: the live snapshot relabelled or deleted, a capture that saw the revision change, owned by a report, locked by a profile, key taken |
+| 409 | `conflict` | `detail` | A failed precondition: the live snapshot relabelled, deleted or restored, a capture that saw live change, a dataset change set or materialization on a frozen version ("Version is frozen"), owned by a report, locked by a profile, key taken |
 | 409 | `delete-blocked` | `detail` and `violations` (the blockers) | A delete whose `DeleteCheck` is not allowed |
 | 422 | `rules-violated` | `violations` | A gate or commit rule in a change set, a failed enable or restore |
 | 500 | `internal` | `traceId` | Unhandled exceptions |
