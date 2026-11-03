@@ -1,6 +1,7 @@
-import { PlusIcon, XIcon } from 'lucide-react'
+import { ChevronRightIcon, PlusIcon, XIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FocusEvent, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -422,18 +423,62 @@ export function PropertiesPanel({
   )
 }
 
-export function PanelSection({ title, children, action, description }: { title: string; children: ReactNode; action?: ReactNode; description?: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3 border-t pt-4 first:border-t-0 first:pt-0">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{title}</h4>
-          {description && <p className="text-xs text-pretty text-muted-foreground">{description}</p>}
+/**
+ * A titled group inside a properties panel. `collapsible` sections start closed and open from their title, and show their
+ * description only when open; `emphasized` sections draw as a tinted card so the panel's key settings stand out.
+ */
+export function PanelSection({
+  title,
+  children,
+  action,
+  description,
+  icon,
+  collapsible = false,
+  emphasized = false,
+}: {
+  title: string
+  children: ReactNode
+  action?: ReactNode
+  description?: ReactNode
+  icon?: ReactNode
+  collapsible?: boolean
+  emphasized?: boolean
+}) {
+  const heading = (
+    <h4 className={cn('flex items-center gap-1.5 font-medium', emphasized ? 'text-sm text-primary [&_svg]:size-4' : 'text-xs tracking-wide text-muted-foreground uppercase')}>
+      {collapsible && <ChevronRightIcon aria-hidden className="size-3.5 shrink-0 transition-transform group-data-[panel-open]/section:rotate-90" />}
+      {icon}
+      {title}
+    </h4>
+  )
+  const summary = description && <p className="text-xs text-pretty text-muted-foreground">{description}</p>
+  const sectionClass = cn('flex flex-col gap-3 border-t pt-4 first:border-t-0 first:pt-0', emphasized && 'rounded-lg border border-primary/30 bg-primary/5 p-3 first:border-t first:p-3')
+
+  if (!collapsible)
+    return (
+      <section className={sectionClass}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {heading}
+            {summary}
+          </div>
+          {action}
         </div>
+        {children}
+      </section>
+    )
+
+  return (
+    <Collapsible render={<section />} className={cn(sectionClass, 'gap-0')}>
+      <div className="flex items-start justify-between gap-2">
+        <CollapsibleTrigger className="group/section -mx-1 flex min-w-0 flex-1 rounded-md px-1 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/60">{heading}</CollapsibleTrigger>
         {action}
       </div>
-      {children}
-    </section>
+      <CollapsibleContent className="flex flex-col gap-3 pt-3">
+        {summary}
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 

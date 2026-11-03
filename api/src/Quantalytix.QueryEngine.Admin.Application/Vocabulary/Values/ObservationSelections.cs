@@ -26,11 +26,11 @@ public static class ObservationSelections
         Description = "Which observations of each series a time-aware measure uses.",
         Values =
         [
-            new() { Value = All, Label = "All", Description = "Use every eligible observation in the interval; typical for flow sums and period averages." },
-            new() { Value = FirstInPeriod, Label = "First in period", Description = "Select the earliest observation inside each requested period for each series." },
-            new() { Value = LastInPeriod, Label = "Last in period", Description = "Select the latest observation inside each requested period for each series." },
-            new() { Value = AtStart, Label = "At start", Description = "Resolve state at the period's inclusive start boundary using the boundary match and lookback rules." },
-            new() { Value = AtEnd, Label = "At end", Description = "Resolve state at the period's exclusive end boundary using the boundary match rules." }
+            new() { Value = AtStart, Label = "Start of Period", Description = "Resolve state at the period's inclusive start boundary using the boundary match and lookback rules." },
+            new() { Value = AtEnd, Label = "End of Period", Description = "Resolve state at the period's exclusive end boundary using the boundary match rules." },
+            new() { Value = FirstInPeriod, Label = "First in Period", Description = "Select the earliest observation inside each requested period for each series." },
+            new() { Value = LastInPeriod, Label = "Last in Period", Description = "Select the latest observation inside each requested period for each series." },
+            new() { Value = All, Label = "Cumulative Observations", Description = "Use every eligible observation in the interval; typical for flow sums and period averages." }
         ]
     };
 }

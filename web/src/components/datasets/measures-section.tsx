@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { useCatalog, useDatasetsApi, useRefreshDatasets, useVocabularies } from '@/lib/datasets/client'
-import type { ComponentRole, DatasetVersion, DatasetMeasureInput, MeasureKind, DatasetMeasureTimePolicy, Problem } from '@/lib/datasets/contract'
+import { LOOKBACK_UNIT_OPTIONS, LOOKBACK_UNIT_SECONDS, fromSeconds, lookbackUnitOf, toSeconds, type LookbackUnit } from '@/lib/datasets/lookback'
+import type { ComponentRole, DatasetVersion, DatasetMeasureInput, MeasureKind, DatasetMeasureTimePolicy, DatasetObservationSelection, Problem } from '@/lib/datasets/contract'
 import { cn } from '@/lib/utils'
 import { bindingLabel } from './bindings-section'
 import type { SectionProps } from './dataset-detail'
@@ -43,15 +44,18 @@ const blankPolicy = (): DatasetMeasureTimePolicy => ({
   missingPeriodBehavior: 'null',
 })
 
-const PRESETS: { label: string; description: string; patch: Partial<DatasetMeasureTimePolicy> }[] = [
-  {
-    label: 'Ending balance',
-    description: 'Last value at or before the period end',
-    patch: { observationSelection: 'at_end', boundaryMatch: 'on_or_before', maxLookbackSeconds: 2_678_400, valueTimeRole: 'point' },
-  },
-  { label: 'Daily activity sum', description: 'Every observation in the period', patch: { observationSelection: 'all', boundaryMatch: 'exact', maxLookbackSeconds: null } },
-  { label: 'Period average', description: 'All observations, weighted by calendar days', patch: { observationSelection: 'all', durationUnit: 'calendar_day', boundaryMatch: 'exact', maxLookbackSeconds: null } },
-]
+/**
+ * What choosing an observation selection sets alongside it. A boundary selection reads only the boundary day: the period's first
+ * day at the start, its last day at the end. The other selections read inside the period and need no lookback. All of it stays
+ * editable afterwards.
+ */
+const SELECTION_DEFAULTS: Record<DatasetObservationSelection, Partial<DatasetMeasureTimePolicy>> = {
+  at_start: { boundaryMatch: 'on_or_before', maxLookbackSeconds: LOOKBACK_UNIT_SECONDS.days, valueTimeRole: 'point' },
+  at_end: { boundaryMatch: 'on_or_before', maxLookbackSeconds: LOOKBACK_UNIT_SECONDS.days, valueTimeRole: 'point' },
+  first_in_period: { boundaryMatch: 'exact', maxLookbackSeconds: null },
+  last_in_period: { boundaryMatch: 'exact', maxLookbackSeconds: null },
+  all: { boundaryMatch: 'exact', maxLookbackSeconds: null, selectionDatasetGrainId: null },
+}
 
 const blankMeasure = (): DatasetMeasureInput => ({
   key: '',
@@ -118,6 +122,7 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
   const newRef = useRef(newDraft)
   const fieldKey = (id: string) => version.fields.find((f) => f.id === id)?.key ?? '?'
   const kindLabel = (k: string) => vocab?.measureKind.find((t) => t.value === k)?.label ?? k
+  const selectionLabel = (s: string) => vocab?.observationSelection.find((t) => t.value === s)?.label ?? s
   const kindOptions = (vocab?.measureKind ?? []).map((t) => ({ value: t.value, label: t.label }))
   const aggOptions = (vocab?.aggregationFunction ?? []).map((t) => ({ value: t.value, label: t.label }))
   const allowedRoles = (k: MeasureKind) => new Set<string>((vocab?.componentRolesByKind[k] ?? []).map((r) => r.role))
@@ -249,7 +254,7 @@ export function MeasuresSection({ version, readOnly, editingId, onEdit, onOpen }
                 <Td>
                   {m.timePolicy ? (
                     <Chip tone="primary">
-                      <ClockIcon className="size-3" /> {m.timePolicy.observationSelection.replaceAll('_', ' ')}
+                      <ClockIcon className="size-3" /> {selectionLabel(m.timePolicy.observationSelection)}
                     </Chip>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
@@ -403,6 +408,33 @@ function NewMeasureRow({
   )
 }
 
+/**
+ * A lookback entered as an amount and a unit and saved as seconds. The chosen unit is kept while the amount is a whole number
+ * of it; a value set elsewhere (a preset) that isn't opens in the largest unit it is a whole number of.
+ */
+function LookbackInput({ id, seconds, onChange }: { id: string; seconds: number | null; onChange: (seconds: number | null) => void }) {
+  const [chosen, setChosen] = useState<LookbackUnit>(() => (seconds == null ? 'days' : lookbackUnitOf(seconds)))
+  const unit = seconds != null && !Number.isInteger(fromSeconds(seconds, chosen)) ? lookbackUnitOf(seconds) : chosen
+  const amount = seconds == null ? '' : fromSeconds(seconds, unit)
+
+  return (
+    <div className="flex gap-2">
+      <Input id={id} type="number" min={0} value={amount} onChange={(e) => onChange(e.target.value === '' ? null : toSeconds(Number(e.target.value), unit))} className="min-w-0 flex-1" />
+      <SimpleSelect
+        aria-label="Lookback unit"
+        value={unit}
+        options={LOOKBACK_UNIT_OPTIONS}
+        onChange={(v) => {
+          const next = v as LookbackUnit
+          setChosen(next)
+          if (amount !== '') onChange(toSeconds(amount, next))
+        }}
+        className="w-28"
+      />
+    </div>
+  )
+}
+
 function MeasurePanel({
   version,
   readOnly,
@@ -492,7 +524,7 @@ function MeasurePanel({
         </PanelSection>
       )}
       {existing && (
-        <PanelSection title="Read by">
+        <PanelSection collapsible title="Read by">
           <DependentsList dependents={deps} onOpen={(x) => onOpen(x.tab, x.itemId)} empty="No formula reads this measure." />
           {!!deps.length && (
             <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -543,6 +575,10 @@ function MeasurePanel({
     >
       {problem && <ProblemBanner problem={problem} onDismiss={() => (setProblem(null), onDismissCreateProblem?.())} onOpen={onOpen} />}
         <fieldset disabled={readOnly} className="contents">
+          <PanelSection title="Availability">
+            <CheckRow checked={d.isEnabled} onChange={(v) => set('isEnabled', v)} label="Enabled" description="Disabled measures can't be requested." disabled={readOnly} />
+          </PanelSection>
+
           <PanelSection title="Identity and kind" description={vocab?.measureKind.find((t) => t.value === d.measureKind)?.description}>
             <div className="grid gap-4 @md:grid-cols-2">
               <FormRow label="Measure key" htmlFor="m-key" errors={errorsFor('key')} hint={existing ? 'Fixed. Formulas reference it as [m.key].' : 'e.g. ending_balance'}>
@@ -619,24 +655,89 @@ function MeasurePanel({
             </PanelSection>
           )}
 
-          {d.measureKind !== 'formula' && (
-            <PanelSection title="Row filter" description="Optional predicate restricting which rows feed this measure only.">
-              <FormRow label="Filter expression" htmlFor="m-filter" errors={errorsFor('rowFilterExpression')}>
-                <ExpressionInput
-                  id="m-filter"
-                  prefix="f"
-                  value={d.rowFilterExpression ?? ''}
-                  onChange={(v) => set('rowFilterExpression', v || null)}
-                  items={version.fields.map((f) => ({ key: f.key, label: f.displayName }))}
-                  placeholder="[f.status] = 'open'"
-                  invalid={!!errorsFor('rowFilterExpression')}
-                  disabled={readOnly}
-                />
-              </FormRow>
-            </PanelSection>
-          )}
+          <PanelSection
+            emphasized
+            icon={<ClockIcon aria-hidden />}
+            title="Time policy"
+            description={policyForced ? 'Period averages always carry a time policy.' : 'Optional. Decides which observation per series counts in a period.'}
+            action={
+              !policyForced &&
+              !readOnly && (
+                <Button variant="outline" size="sm" onClick={() => set('timePolicy', p ? null : blankPolicy())}>
+                  {p ? 'Remove time policy' : 'Add time policy'}
+                </Button>
+              )
+            }
+          >
+            {errorsFor('timePolicy')?.map((e) => (
+              <p key={e} className="text-xs text-destructive">
+                {e}
+              </p>
+            ))}
+            {p ? (
+              <>
+                <div className="grid gap-4 @md:grid-cols-2">
+                  <FormRow label="Time binding" htmlFor="tp-bind" errors={errorsFor('timePolicy.requiredTimeBindingId')} hint="Empty uses the query's axis or the version default.">
+                    <SimpleSelect
+                      id="tp-bind"
+                      value={p.requiredTimeBindingId ?? NONE}
+                      onChange={(v) => setPolicy({ requiredTimeBindingId: v === NONE ? null : v })}
+                      options={[{ value: NONE, label: 'Query axis or default' }, ...timeBindings.map((b) => ({ value: b.id, label: bindingLabel(b, version, catalog), hint: version.settings.defaultTimeBindingId === b.id ? 'default' : undefined }))]}
+                    />
+                  </FormRow>
+                  <FormRow
+                    label="Observation selection"
+                    htmlFor="tp-sel"
+                    errors={errorsFor('timePolicy.observationSelection')}
+                    hint={vocab?.observationSelection.find((t) => t.value === p.observationSelection)?.description}
+                  >
+                    <VocabSelect id="tp-sel" terms={vocab?.observationSelection} value={p.observationSelection} onChange={(v) => v && setPolicy({ observationSelection: v, ...SELECTION_DEFAULTS[v] })} />
+                  </FormRow>
+                  {p.observationSelection !== 'all' && (
+                    <FormRow label="Series grain" htmlFor="tp-grain" errors={errorsFor('timePolicy.selectionDatasetGrainId')} hint="Partition the selection runs within.">
+                      <SimpleSelect
+                        id="tp-grain"
+                        value={p.selectionDatasetGrainId ?? ''}
+                        placeholder={seriesGrains.length ? 'Choose…' : 'No series grain yet'}
+                        onChange={(v) => setPolicy({ selectionDatasetGrainId: v })}
+                        options={seriesGrains.map((g) => ({ value: g.id, label: g.key }))}
+                        className="font-mono"
+                      />
+                    </FormRow>
+                  )}
+                  <FormRow label="Value time role" htmlFor="tp-role" errors={errorsFor('timePolicy.valueTimeRole')}>
+                    <VocabSelect id="tp-role" terms={vocab?.valueTimeRole} value={p.valueTimeRole} onChange={(v) => v && setPolicy({ valueTimeRole: v })} />
+                  </FormRow>
+                  <FormRow label="Boundary match" htmlFor="tp-bm" errors={errorsFor('timePolicy.boundaryMatch')}>
+                    <VocabSelect id="tp-bm" terms={vocab?.boundaryMatch} value={p.boundaryMatch} onChange={(v) => v && setPolicy({ boundaryMatch: v, maxLookbackSeconds: v === 'exact' ? null : p.maxLookbackSeconds })} />
+                  </FormRow>
+                  {p.boundaryMatch !== 'exact' && (
+                    <FormRow
+                      label="Max lookback"
+                      htmlFor="tp-lb"
+                      errors={errorsFor('timePolicy.maxLookbackSeconds')}
+                      hint={p.maxLookbackSeconds ? `= ${p.maxLookbackSeconds.toLocaleString()} seconds. A month counts as 31 days.` : 'Required and finite.'}
+                    >
+                      <LookbackInput id="tp-lb" seconds={p.maxLookbackSeconds} onChange={(s) => setPolicy({ maxLookbackSeconds: s })} />
+                    </FormRow>
+                  )}
+                  <FormRow label="Duration unit" htmlFor="tp-du" errors={errorsFor('timePolicy.durationUnit')}>
+                    <VocabSelect id="tp-du" terms={vocab?.durationUnit} value={p.durationUnit} onChange={(v) => v && setPolicy({ durationUnit: v })} />
+                  </FormRow>
+                  <FormRow label="Partial intervals" htmlFor="tp-pi" errors={errorsFor('timePolicy.partialIntervalBehavior')}>
+                    <VocabSelect id="tp-pi" terms={vocab?.partialIntervalBehavior} value={p.partialIntervalBehavior} onChange={(v) => v && setPolicy({ partialIntervalBehavior: v })} />
+                  </FormRow>
+                  <FormRow label="Missing periods" htmlFor="tp-mp" errors={errorsFor('timePolicy.missingPeriodBehavior')}>
+                    <VocabSelect id="tp-mp" terms={vocab?.missingPeriodBehavior} value={p.missingPeriodBehavior} onChange={(v) => v && setPolicy({ missingPeriodBehavior: v })} />
+                  </FormRow>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">No time policy: every row in range contributes.</p>
+            )}
+          </PanelSection>
 
-          <PanelSection title="Behaviors">
+          <PanelSection collapsible title="Behaviors">
             <div className="grid gap-4 @md:grid-cols-2">
               {(
                 [
@@ -655,7 +756,7 @@ function MeasurePanel({
             </div>
           </PanelSection>
 
-          <PanelSection title="Output" description="Rounding applies to client display only; the engine never rounds. An accumulator that overflows yields null.">
+          <PanelSection collapsible title="Output" description="Rounding applies to client display only; the engine never rounds. An accumulator that overflows yields null.">
             <div className="grid gap-4 @md:grid-cols-4">
               <FormRow label="Output type" htmlFor="m-otype" errors={errorsFor('outputDataType')} className="@md:col-span-2">
                 <VocabSelect
@@ -690,89 +791,22 @@ function MeasurePanel({
             </div>
           </PanelSection>
 
-          <PanelSection
-            title="Time policy"
-            description={policyForced ? 'Period averages always carry a time policy.' : 'Optional. Decides which observation per series counts in a period.'}
-            action={
-              !policyForced &&
-              !readOnly && (
-                <Button variant="outline" size="sm" onClick={() => set('timePolicy', p ? null : blankPolicy())}>
-                  {p ? 'Remove time policy' : 'Add time policy'}
-                </Button>
-              )
-            }
-          >
-            {errorsFor('timePolicy')?.map((e) => (
-              <p key={e} className="text-xs text-destructive">
-                {e}
-              </p>
-            ))}
-            {p ? (
-              <>
-                {!readOnly && (
-                  <div className="flex flex-wrap gap-2">
-                    {PRESETS.map((pr) => (
-                      <button key={pr.label} type="button" onClick={() => setPolicy(pr.patch)} className="flex flex-col rounded-md border px-3 py-1.5 text-left hover:bg-muted">
-                        <span className="text-xs font-medium">{pr.label}</span>
-                        <span className="text-[11px] text-muted-foreground">{pr.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="grid gap-4 @md:grid-cols-2">
-                  <FormRow label="Time binding" htmlFor="tp-bind" errors={errorsFor('timePolicy.requiredTimeBindingId')} hint="Empty uses the query's axis or the version default.">
-                    <SimpleSelect
-                      id="tp-bind"
-                      value={p.requiredTimeBindingId ?? NONE}
-                      onChange={(v) => setPolicy({ requiredTimeBindingId: v === NONE ? null : v })}
-                      options={[{ value: NONE, label: 'Query axis or default' }, ...timeBindings.map((b) => ({ value: b.id, label: bindingLabel(b, version, catalog), hint: version.settings.defaultTimeBindingId === b.id ? 'default' : undefined }))]}
-                    />
-                  </FormRow>
-                  <FormRow label="Observation selection" htmlFor="tp-sel" errors={errorsFor('timePolicy.observationSelection')}>
-                    <VocabSelect id="tp-sel" terms={vocab?.observationSelection} value={p.observationSelection} onChange={(v) => v && setPolicy({ observationSelection: v, selectionDatasetGrainId: v === 'all' ? null : p.selectionDatasetGrainId })} />
-                  </FormRow>
-                  {p.observationSelection !== 'all' && (
-                    <FormRow label="Series grain" htmlFor="tp-grain" errors={errorsFor('timePolicy.selectionDatasetGrainId')} hint="Partition the selection runs within.">
-                      <SimpleSelect
-                        id="tp-grain"
-                        value={p.selectionDatasetGrainId ?? ''}
-                        placeholder={seriesGrains.length ? 'Choose…' : 'No series grain yet'}
-                        onChange={(v) => setPolicy({ selectionDatasetGrainId: v })}
-                        options={seriesGrains.map((g) => ({ value: g.id, label: g.key }))}
-                        className="font-mono"
-                      />
-                    </FormRow>
-                  )}
-                  <FormRow label="Value time role" htmlFor="tp-role" errors={errorsFor('timePolicy.valueTimeRole')}>
-                    <VocabSelect id="tp-role" terms={vocab?.valueTimeRole} value={p.valueTimeRole} onChange={(v) => v && setPolicy({ valueTimeRole: v })} />
-                  </FormRow>
-                  <FormRow label="Boundary match" htmlFor="tp-bm" errors={errorsFor('timePolicy.boundaryMatch')}>
-                    <VocabSelect id="tp-bm" terms={vocab?.boundaryMatch} value={p.boundaryMatch} onChange={(v) => v && setPolicy({ boundaryMatch: v, maxLookbackSeconds: v === 'exact' ? null : p.maxLookbackSeconds })} />
-                  </FormRow>
-                  {p.boundaryMatch !== 'exact' && (
-                    <FormRow label="Max lookback (seconds)" htmlFor="tp-lb" errors={errorsFor('timePolicy.maxLookbackSeconds')} hint={p.maxLookbackSeconds ? `≈ ${Math.round(p.maxLookbackSeconds / 86400)} days` : 'Required and finite.'}>
-                      <Input id="tp-lb" type="number" value={p.maxLookbackSeconds ?? ''} onChange={(e) => setPolicy({ maxLookbackSeconds: e.target.value === '' ? null : Number(e.target.value) })} />
-                    </FormRow>
-                  )}
-                  <FormRow label="Duration unit" htmlFor="tp-du" errors={errorsFor('timePolicy.durationUnit')}>
-                    <VocabSelect id="tp-du" terms={vocab?.durationUnit} value={p.durationUnit} onChange={(v) => v && setPolicy({ durationUnit: v })} />
-                  </FormRow>
-                  <FormRow label="Partial intervals" htmlFor="tp-pi" errors={errorsFor('timePolicy.partialIntervalBehavior')}>
-                    <VocabSelect id="tp-pi" terms={vocab?.partialIntervalBehavior} value={p.partialIntervalBehavior} onChange={(v) => v && setPolicy({ partialIntervalBehavior: v })} />
-                  </FormRow>
-                  <FormRow label="Missing periods" htmlFor="tp-mp" errors={errorsFor('timePolicy.missingPeriodBehavior')}>
-                    <VocabSelect id="tp-mp" terms={vocab?.missingPeriodBehavior} value={p.missingPeriodBehavior} onChange={(v) => v && setPolicy({ missingPeriodBehavior: v })} />
-                  </FormRow>
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">No time policy: every row in range contributes.</p>
-            )}
-          </PanelSection>
-
-          <PanelSection title="Availability">
-            <CheckRow checked={d.isEnabled} onChange={(v) => set('isEnabled', v)} label="Enabled" description="Disabled measures can't be requested." disabled={readOnly} />
-          </PanelSection>
+          {d.measureKind !== 'formula' && (
+            <PanelSection collapsible title="Row filter" description="Optional predicate restricting which rows feed this measure only.">
+              <FormRow label="Filter expression" htmlFor="m-filter" errors={errorsFor('rowFilterExpression')}>
+                <ExpressionInput
+                  id="m-filter"
+                  prefix="f"
+                  value={d.rowFilterExpression ?? ''}
+                  onChange={(v) => set('rowFilterExpression', v || null)}
+                  items={version.fields.map((f) => ({ key: f.key, label: f.displayName }))}
+                  placeholder="[f.status] = 'open'"
+                  invalid={!!errorsFor('rowFilterExpression')}
+                  disabled={readOnly}
+                />
+              </FormRow>
+            </PanelSection>
+          )}
         </fieldset>
       {relations}
     </PropertiesPanel>
