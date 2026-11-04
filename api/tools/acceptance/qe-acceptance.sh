@@ -4,7 +4,7 @@
 #   PREFIX=zz_w2_ ./qe-acceptance.sh
 #     Creates dataset ${PREFIX}loans over loan_daily (its live version gets a field per readable column) and commits one change set
 #     on it: 2 grains, a mapped binding of the seed branch role through the seed mapping set loan.branch, a time binding on the seed
-#     Calendar dimension, 4 measures and the default time binding. It creates calculation model ${PREFIX}margin in US dollars and
+#     As At Date dimension, 4 measures and the default time binding. It creates calculation model ${PREFIX}margin in US dollars and
 #     commits its 2 variables, a yield measure and enabling it. It creates report ${PREFIX}margin over the model, its report
 #     dimension a copy of the seed MarginStatement dimension, and commits one change set: 2 GL monthly bridge sources on the seed
 #     account role (gl_balance takes the seed report's gl_monthly rules row by row, gl_income copies gl_balance's rules), their
@@ -87,7 +87,7 @@ author_dataset() {
   call GET "$V" 200
   keep version
 
-  # Seed objects are only referenced: the Calendar time dimension, the loan.branch mapping set onto Branch, and Branch's branch
+  # Seed objects are only referenced: the As At Date time dimension, the loan.branch mapping set onto Branch, and Branch's branch
   # role. Items the change set creates are named by temporary ids, which later operations of the same change set reference.
   changes "$V" '
 import json, sys
@@ -125,7 +125,7 @@ operations = [
         "missingPeriodBehavior": "null"}),
     {"op": "saveSettings", "settings": dict(version["settings"], defaultTimeBindingId="tmp:time")},
 ]
-print(json.dumps({"operations": operations}))' "$(cat_id dimensions Calendar)" "$(cat_id mappingSets loan.branch)" "$(cat_id roles branch)"
+print(json.dumps({"operations": operations}))' "$(cat_id dimensions AsAtDate)" "$(cat_id mappingSets loan.branch)" "$(cat_id roles branch)"
   echo "Dataset content: $(py "[(k, len(r['state'][k])) for k in ['fields', 'grains', 'bindings', 'measures']]")"
 
   if [ "${AUTHOR_CHECK_ONLY:-}" = 1 ]; then

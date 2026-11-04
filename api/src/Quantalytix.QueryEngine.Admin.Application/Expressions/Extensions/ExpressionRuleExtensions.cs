@@ -7,13 +7,15 @@ namespace Quantalytix.QueryEngine.Admin.Application.Expressions;
 public static class ExpressionRuleExtensions
 {
     /// <summary>
-    /// Requires non-empty text to parse as an expression language 1.0 expression that reads no <c>@name</c> request
-    /// parameters and no <c>[d.key]</c> dimension members; null or empty text passes. A syntax failure carries the engine's
-    /// message, which names the failing character. Metadata expressions read no request parameters: the query engine renders
-    /// field expressions and row filters with none bound, and the catalog declares none that a request would know to send for
-    /// a formula. Dimension member references belong to a query's <c>where</c> filter, which resolves members first. Every
-    /// dataset version's expressions are language 1.0, so they call no <c>POWER</c>, which only language 1.1 has, and no
-    /// <c>YEARFRAC</c>, which only model formulas of formula language 1.2 call.
+    /// Requires non-empty text to parse as a dataset expression that reads no <c>@name</c> request parameters and no
+    /// <c>[d.key]</c> dimension members; null or empty text passes. A syntax failure carries the engine's message, which names
+    /// the failing character. Metadata expressions read no request parameters: the query engine renders field expressions and
+    /// row filters with none bound, and the catalog declares none that a request would know to send for a formula. Dimension
+    /// member references belong to a query's <c>where</c> filter, which resolves members first. Dataset expressions call no
+    /// <c>POWER</c>, which only formula language 1.1 has, and no <c>YEARFRAC</c>, which only model formulas of formula language
+    /// 1.2 call. They may call <c>MONTHS_BETWEEN</c>, which dataset expression language 1.1 adds; whether the version declares
+    /// it is <see cref="Datasets.ExpressionsFitLanguageRule"/>'s, because the version's language can change after the expression
+    /// is written.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for an expression property of the input.</param>

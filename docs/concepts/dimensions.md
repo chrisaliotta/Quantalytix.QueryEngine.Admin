@@ -442,7 +442,8 @@ section 3.4 references it or its roles. Drafts are hard-deleted with their conte
   existing mechanism for hiding a dimension from the dimension manager (see "Hidden dimensions" in §1).
 - `properties` on members holds structured metadata by convention only (the plan-version precedent in 5.3).
 
-In the seed, `Branch` and `Calendar` are `system` and not removable, and `MarginStatement`, `BalanceSheet` and
+Every tenant's default metadata holds the time dimension `AsAtDate` (As At Date), which is `system` and not removable. In
+the seed, `Branch` is also `system` and not removable, and `MarginStatement`, `BalanceSheet` and
 `KeyRatios` are the report dimensions of the three seeded reports. Every other dimension is `user`, `analytical` and
 removable, including `Product`, so no module dependency is modelled today.
 

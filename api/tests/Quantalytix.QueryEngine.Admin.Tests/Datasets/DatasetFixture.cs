@@ -265,6 +265,7 @@ internal sealed class DatasetFixture
             new FieldColumnsExistRule(),
             new ExpressionFieldReferencesRule(),
             new ExpressionFieldAcyclicRule(),
+            new ExpressionsFitLanguageRule(),
             new GrainKeyUniqueRule(),
             new GrainFieldsInVersionRule(),
             new SeriesGrainExcludesTimeFieldRule(),

@@ -131,7 +131,7 @@ export const vocabularies: Vocabularies = {
     t('uniform_estimate', 'Uniform estimate', 'Spread an interval evenly across finer periods.'),
   ],
   missingPeriodBehavior: [t('null', 'Null'), t('zero', 'Zero')],
-  expressionLanguageVersion: [t('1.0', '1.0', 'Current grammar')],
+  expressionLanguageVersion: [t('1.0', '1.0', 'Original grammar.'), t('1.1', '1.1', 'Adds MONTHS_BETWEEN.')],
   timeZone: same('UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Frankfurt', 'Asia/Singapore', 'Asia/Tokyo'),
   cardinality: [t('many_to_one', 'Many to one'), t('many_to_many', 'Many to many')],
   allocationMode: [t('none', 'None'), t('partition', 'Partition'), t('replicate', 'Replicate')],

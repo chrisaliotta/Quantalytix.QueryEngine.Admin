@@ -164,7 +164,7 @@ paths:
         `bridge_binding_route`, `bound_dimensions_resolvable`, `mapped_bindings_resolvable`, `bridge_bindings_resolvable`,
         `unknown_members_in_version`, `interval_estimates_for_finer_periods`, `measure_key_unique`,
         `component_fields_in_version`, `component_roles_match_kind`, `formula_references_known_measures`,
-        `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`, and the report rules
+        `formula_acyclic`, `time_policy_series_grain`, `time_policy_time_binding_in_version`, `expressions_fit_language`, and the report rules
         `report_sources_resolve` and `report_factors_apply` of the enabled reports over the dataset. Each violation's
         `target.area` is a `DatasetTab`.
       tags: [datasets]

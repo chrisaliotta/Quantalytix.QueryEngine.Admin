@@ -148,7 +148,7 @@ export const vocabularies: Vocabularies = {
   ],
   missingPeriodBehavior: [t('null', 'Null'), t('zero', 'Zero')],
   sourceObjectKind: [t('table', 'Table'), t('view', 'View')],
-  expressionLanguageVersion: [t('1.0', '1.0', 'Current grammar')],
+  expressionLanguageVersion: [t('1.0', '1.0', 'Original grammar.'), t('1.1', '1.1', 'Adds MONTHS_BETWEEN.')],
   timeZone: ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Frankfurt', 'Asia/Singapore', 'Asia/Tokyo'].map(
     (z) => t(z, z),
   ),

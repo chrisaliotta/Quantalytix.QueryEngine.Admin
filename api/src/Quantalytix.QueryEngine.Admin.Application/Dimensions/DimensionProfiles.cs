@@ -4,8 +4,8 @@ using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
-/// The code registry of system dimension profiles (OI-16). <c>branch</c> and <c>calendar</c> match the seeded system dimensions
-/// (Branch keeps role <c>branch</c> and member <c>BR01</c>; Calendar is a time dimension without roles); the others are the types
+/// The code registry of system dimension profiles (OI-16). <c>branch</c> and <c>asAtDate</c> match the seeded system dimensions
+/// (Branch keeps role <c>branch</c> and member <c>BR01</c>; As At Date is a time dimension without roles); the others are the types
 /// the dimension manager offers to define.
 /// </summary>
 public static class DimensionProfiles
@@ -48,8 +48,8 @@ public static class DimensionProfiles
         },
         new()
         {
-            Key = "calendar",
-            DisplayName = "Calendar",
+            Key = "asAtDate",
+            DisplayName = "As At Date",
             Kind = DimensionKinds.Time,
             Owner = "Platform",
             EditPolicy = DimensionEditPolicies.Locked,

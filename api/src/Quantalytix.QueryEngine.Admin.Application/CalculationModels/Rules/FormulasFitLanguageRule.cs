@@ -8,13 +8,17 @@ namespace Quantalytix.QueryEngine.Admin.Application.CalculationModels;
 /// <summary>
 /// <c>formulas_fit_language</c>: the model's formulas and attribution expressions use only what its formula language has. <c>POWER</c>
 /// needs language 1.1; <c>YEARFRAC</c>, string literals and the model's declared parameters need 1.2. <c>@periodDays</c> and
-/// <c>@yearDays</c> are in every language. The engine evaluates a model's formulas in the model's language, and the language can
-/// change after a formula is written, so the rule checks every formula on every write.
+/// <c>@yearDays</c> are in every language. No formula language has <c>MONTHS_BETWEEN</c>, which reads row dates a model formula over
+/// aligned report values has none of. The engine evaluates a model's formulas in the model's language, and the language can change
+/// after a formula is written, so the rule checks every formula on every write.
 /// </summary>
 public static class FormulasFitLanguageRule
 {
     /// <summary>The rule code violations carry.</summary>
     public const string Code = "formulas_fit_language";
+
+    /// <summary>The problem of a formula that calls MONTHS_BETWEEN, completing a sentence that starts with the formula's subject.</summary>
+    public const string CallsMonthsBetween = "calls MONTHS_BETWEEN, which reads row dates and no formula language has; only dataset field expressions and row filters call it";
 
     /// <summary>Reports each use of something the model's formula language lacks, once per formula.</summary>
     /// <param name="model">The model, its metrics, attributions and parameters.</param>
@@ -25,9 +29,20 @@ public static class FormulasFitLanguageRule
         var declared = model.Parameters.Select(parameter => parameter.ParameterKey).ToHashSet(StringComparer.Ordinal);
         return model.Formulas
             .OrderBy(formula => formula.Subject, StringComparer.Ordinal)
-            .SelectMany(formula => Uses(ExpressionInspector.Inspect(formula.Expression), declared)
-                .Where(use => !FormulaLanguageVersions.Includes(version, use.Version))
-                .Select(use => new RuleViolation { Code = Code, Message = $"{formula.Subject} {Lacks(use, version)}.", Target = formula.Target }));
+            .SelectMany(formula => Problems(ExpressionInspector.Inspect(formula.Expression), declared, version)
+                .Select(problem => new RuleViolation { Code = Code, Message = $"{formula.Subject} {problem}.", Target = formula.Target }));
+    }
+
+    /// <summary>The problems of a formula the model's language does not fit, each completing a sentence that starts with the formula's subject.</summary>
+    /// <param name="inspection">The formula's inspection.</param>
+    /// <param name="declared">The model's parameter keys.</param>
+    /// <param name="version">The model's formula language.</param>
+    /// <returns>Each problem, in a fixed order.</returns>
+    public static IEnumerable<string> Problems(ExpressionInspection inspection, IReadOnlySet<string> declared, string version)
+    {
+        if (inspection.Functions.Contains(ExpressionFunction.MonthsBetween)) yield return CallsMonthsBetween;
+        foreach (var use in Uses(inspection, declared).Where(use => !FormulaLanguageVersions.Includes(version, use.Version)))
+            yield return Lacks(use, version);
     }
 
     /// <summary>The problem of a use the model's language lacks, completing a sentence that starts with the formula's subject.</summary>

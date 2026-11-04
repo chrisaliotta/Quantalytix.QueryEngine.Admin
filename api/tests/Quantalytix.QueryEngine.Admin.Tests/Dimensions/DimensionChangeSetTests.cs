@@ -78,7 +78,7 @@ public sealed class DimensionChangeSetTests
     [Fact]
     public async Task LockedProfile_RefusesEveryEdit()
     {
-        await _fixture.FollowProfileAsync("calendar");
+        await _fixture.FollowProfileAsync("asAtDate");
 
         var outcome = await _fixture.Pipeline().PreviewAsync(
             DimensionFixture.DimensionId, Request(new DimensionUpdateDimensionOperation { Patch = new DimensionPatch { DisplayName = "Renamed" } }), Token);

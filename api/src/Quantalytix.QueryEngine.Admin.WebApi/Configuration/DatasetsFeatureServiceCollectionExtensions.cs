@@ -58,6 +58,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DatasetSnapshot, FieldColumnsExistRule>();
         services.AddSnapshotRule<DatasetSnapshot, ExpressionFieldReferencesRule>();
         services.AddSnapshotRule<DatasetSnapshot, ExpressionFieldAcyclicRule>();
+        services.AddSnapshotRule<DatasetSnapshot, ExpressionsFitLanguageRule>();
         services.AddSnapshotRule<DatasetSnapshot, GrainKeyUniqueRule>();
         services.AddSnapshotRule<DatasetSnapshot, GrainFieldsInVersionRule>();
         services.AddSnapshotRule<DatasetSnapshot, SeriesGrainExcludesTimeFieldRule>();

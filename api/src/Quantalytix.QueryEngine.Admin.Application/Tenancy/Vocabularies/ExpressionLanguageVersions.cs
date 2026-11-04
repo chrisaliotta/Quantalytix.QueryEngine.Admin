@@ -6,8 +6,11 @@ namespace Quantalytix.QueryEngine.Admin.Application.Tenancy;
 /// </summary>
 public static class ExpressionLanguageVersions
 {
-    /// <summary>The current grammar.</summary>
+    /// <summary>The original grammar.</summary>
     public const string Version10 = "1.0";
+
+    /// <summary>Grammar 1.0 plus <c>MONTHS_BETWEEN(start, end)</c>.</summary>
+    public const string Version11 = "1.1";
 
     /// <summary>The vocabulary's definition, as the web client reads it.</summary>
     public static readonly Vocabulary.Vocabulary Definition = new()
@@ -17,7 +20,8 @@ public static class ExpressionLanguageVersions
         Description = "Grammar versions a dataset version's expressions may declare.",
         Values =
         [
-            new() { Value = Version10, Label = "1.0", Description = "Current grammar." }
+            new() { Value = Version10, Label = "1.0", Description = "Original grammar." },
+            new() { Value = Version11, Label = "1.1", Description = "Adds MONTHS_BETWEEN." }
         ]
     };
 }

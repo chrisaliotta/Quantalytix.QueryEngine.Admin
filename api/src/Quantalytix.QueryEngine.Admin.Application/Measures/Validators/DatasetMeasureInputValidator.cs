@@ -3,6 +3,7 @@ using Quantalytix.QueryEngine.Admin.Application.Changes;
 using Quantalytix.QueryEngine.Admin.Application.Expressions;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
+using Quantalytix.QueryEngine.Domain.Expressions;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 
@@ -87,7 +88,9 @@ public sealed class DatasetMeasureInputValidator : AbstractValidator<DatasetMeas
                 .WithMessage(KindRequires(MeasureKinds.Formula))
                 .MustBeValidExpression()
                 .Must(text => ExpressionInspector.Inspect(text!).FieldKeys.Count == 0)
-                .WithMessage("A formula combines other measures of the version, such as [m.interest] / [m.balance]; it cannot reference fields.");
+                .WithMessage("A formula combines other measures of the version, such as [m.interest] / [m.balance]; it cannot reference fields.")
+                .Must(text => !ExpressionInspector.Inspect(text!).Functions.Contains(ExpressionFunction.MonthsBetween))
+                .WithMessage("MONTHS_BETWEEN reads the dates of each source row, which a formula over measures has none of; call it in a field expression.");
         }).Otherwise(() =>
         {
             RuleFor(input => input.ExpressionText).Null().WithMessage("Only formula measures have an expression, so '{PropertyName}' must be empty.");

@@ -52,8 +52,8 @@ public static class ModelFormulaChecker
                 .SelectMany(name => At(formula, Parameter(name), $"The formula {FormulaParametersResolveRule.UndeclaredProblem(name)}.")),
             .. FormulaParametersResolveRule.Misplaced(expression, parameters).Distinct(StringComparer.Ordinal)
                 .Select(problem => Whole(formula, $"The formula {problem}.")),
-            .. uses.Where(use => !FormulaLanguageVersions.Includes(language, use.Version))
-                .Select(use => Whole(formula, $"The formula {FormulasFitLanguageRule.Lacks(use, language)}."))
+            .. FormulasFitLanguageRule.Problems(inspection, declared, language)
+                .Select(problem => Whole(formula, $"The formula {problem}."))
         ];
 
         return new ModelFormulaCheck
