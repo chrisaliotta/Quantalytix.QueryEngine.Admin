@@ -12,10 +12,10 @@ public static class ExpressionRuleExtensions
     /// the failing character. Metadata expressions read no request parameters: the query engine renders field expressions and
     /// row filters with none bound, and the catalog declares none that a request would know to send for a formula. Dimension
     /// member references belong to a query's <c>where</c> filter, which resolves members first. Dataset expressions call no
-    /// <c>POWER</c>, which only formula language 1.1 has, and no <c>YEARFRAC</c>, which only model formulas of formula language
-    /// 1.2 call. They may call <c>MONTHS_BETWEEN</c>, which dataset expression language 1.1 adds; whether the version declares
-    /// it is <see cref="Datasets.ExpressionsFitLanguageRule"/>'s, because the version's language can change after the expression
-    /// is written.
+    /// <c>YEARFRAC</c>, which only model formulas of formula language 1.2 call. They may call <c>MONTHS_BETWEEN</c> and
+    /// <c>POWER</c>, which dataset expression language 1.1 adds; whether the version declares it is
+    /// <see cref="Datasets.ExpressionsFitLanguageRule"/>'s, because the version's language can change after the expression is
+    /// written.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for an expression property of the input.</param>
@@ -38,10 +38,8 @@ public static class ExpressionRuleExtensions
                 context.AddFailure($"Metadata expressions read fields, not dimension members, so '{context.DisplayName}' cannot read {dimensions}.");
             }
 
-            if (inspection.Functions.Contains(ExpressionFunction.Power))
-                context.AddFailure($"Metadata expressions are expression language 1.0, which has no POWER, so '{context.DisplayName}' cannot call it.");
             if (inspection.Functions.Contains(ExpressionFunction.YearFrac))
-                context.AddFailure($"Metadata expressions are expression language 1.0, which has no YEARFRAC, so '{context.DisplayName}' cannot call it.");
+                context.AddFailure($"Dataset expression languages have no YEARFRAC, so '{context.DisplayName}' cannot call it.");
 
             if (inspection.ParameterNames.Count == 0) return;
             var parameters = string.Join(", ", inspection.ParameterNames.Select(name => $"'@{name}'"));

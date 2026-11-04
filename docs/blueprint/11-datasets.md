@@ -183,8 +183,8 @@ Kept from the current API (`dataset_version` rules): `source_object_exists`, `ve
 `time_policy_series_grain`, `time_policy_time_binding_in_version`. Each violation's `target.area` is the
 `DatasetTab` the rule belongs to.
 
-New: `expressions_fit_language`, which refuses a field expression or measure row filter that calls `MONTHS_BETWEEN` on a
-version that does not declare expression language 1.1.
+New: `expressions_fit_language`, which refuses a field expression, measure row filter or measure formula that calls
+`MONTHS_BETWEEN` or `POWER` on a version that does not declare expression language 1.1.
 
 Checks against the rest of live (D3): the binding identity rules `bound_dimensions_resolvable`,
 `mapped_bindings_resolvable` and `bridge_bindings_resolvable` (base `BindingIdentityRule`), and `DatasetReportsResolveRule`,

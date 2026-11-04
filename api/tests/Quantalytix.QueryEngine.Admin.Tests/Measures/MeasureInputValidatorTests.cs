@@ -125,21 +125,6 @@ public sealed class MeasureInputValidatorTests
     }
 
     /// <summary>
-    /// Dataset expressions stay on expression language 1.0, so a measure formula or row filter that calls POWER fails, though the
-    /// shared parser reads it: only model formulas on formula language 1.1 may call it.
-    /// </summary>
-    [Fact]
-    public void DatasetExpressions_CannotCallPower()
-    {
-        var formula = Measure(MeasureKinds.Formula) with { ExpressionText = "POWER([m.rate] + 1, 12) - 1" };
-        var rowFilter = Measure(MeasureKinds.Aggregate) with { RowFilterExpression = "POWER([f.balance], 2) > 4" };
-
-        _validator.TestValidate(formula).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
-            .WithErrorMessage("Metadata expressions are expression language 1.0, which has no POWER, so 'Expression Text' cannot call it.");
-        _validator.TestValidate(rowFilter).ShouldHaveValidationErrorFor(measure => measure.RowFilterExpression);
-    }
-
-    /// <summary>
     /// YEARFRAC reads the period a report evaluates a model formula for, which a query has none of, so a dataset expression that calls
     /// it fails, though the shared parser reads it.
     /// </summary>
@@ -149,7 +134,7 @@ public sealed class MeasureInputValidatorTests
         var formula = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] / YEARFRAC('actual_360')" };
 
         _validator.TestValidate(formula).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
-            .WithErrorMessage("Metadata expressions are expression language 1.0, which has no YEARFRAC, so 'Expression Text' cannot call it.");
+            .WithErrorMessage("Dataset expression languages have no YEARFRAC, so 'Expression Text' cannot call it.");
     }
 
     /// <summary>Only formulas have an expression.</summary>
