@@ -49,6 +49,23 @@ public sealed class MeasureDependenciesTests
         Assert.Equal([Row(3, 1)], Sorted(rows));
     }
 
+    /// <summary>
+    /// A compound measure's rate names its inputs as a formula does, and the engine builds the compound's step plan from these rows,
+    /// so the rate's references give rows too.
+    /// </summary>
+    [Fact]
+    public void CompoundRates_GiveRows()
+    {
+        var rows = MeasureDependencies.Of(
+        [
+            DatasetRows.Measure(1, VersionId, "prepayAmt", MeasureKinds.Aggregate),
+            DatasetRows.Measure(2, VersionId, "balance", MeasureKinds.Aggregate),
+            DatasetRows.Measure(3, VersionId, "smm", MeasureKinds.Compound) with { ExpressionText = "[m.prepayAmt] / [m.balance]" }
+        ]);
+
+        Assert.Equal([Row(3, 1), Row(3, 2)], Sorted(rows));
+    }
+
     /// <summary>A formula measure of the version.</summary>
     private static MeasureRecord Formula(long measureId, string measureKey, string expressionText)
     {

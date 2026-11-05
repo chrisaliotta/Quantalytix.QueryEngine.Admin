@@ -35,12 +35,6 @@ public static class FormulaLanguageVersions
     /// <returns>True when <paramref name="version"/> is <paramref name="required"/> or later.</returns>
     public static bool Includes(string version, string required)
     {
-        return Order(version) >= Order(required);
-    }
-
-    /// <summary>A version's place in the vocabulary, which lists the versions oldest first.</summary>
-    private static int Order(string version)
-    {
-        return Definition.Values.Select(value => value.Value).ToList().IndexOf(version);
+        return Definition.IsAtLeast(version, required);
     }
 }

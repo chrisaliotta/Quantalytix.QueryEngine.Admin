@@ -11,40 +11,62 @@ public static class ExpressionRuleExtensions
     /// <c>[d.key]</c> dimension members; null or empty text passes. A syntax failure carries the engine's message, which names
     /// the failing character. Metadata expressions read no request parameters: the query engine renders field expressions and
     /// row filters with none bound, and the catalog declares none that a request would know to send for a formula. Dimension
-    /// member references belong to a query's <c>where</c> filter, which resolves members first. Dataset expressions call no
-    /// <c>YEARFRAC</c>, which only model formulas of formula language 1.2 call. They may call <c>MONTHS_BETWEEN</c> and
-    /// <c>POWER</c>, which dataset expression language 1.1 adds; whether the version declares it is
-    /// <see cref="Datasets.ExpressionsFitLanguageRule"/>'s, because the version's language can change after the expression is
-    /// written.
+    /// member references belong to a query's <c>where</c> filter, which resolves members first. Field expressions, row filters and
+    /// compound rates read no period, so they call no <c>YEARFRAC</c> and read no <c>@periodDays</c> or <c>@yearDays</c>; only
+    /// measure formulas do (<see cref="MustBeMeasureFormula{T}"/>). They may call <c>MONTHS_BETWEEN</c> and <c>POWER</c>, which
+    /// dataset expression language 1.1 adds; whether the version declares it is <see cref="Datasets.ExpressionsFitLanguageRule"/>'s,
+    /// because the version's language can change after the expression is written.
     /// </summary>
     /// <typeparam name="T">The validated input type.</typeparam>
     /// <param name="rule">The rule for an expression property of the input.</param>
     /// <returns>The rule, for further configuration.</returns>
     public static IRuleBuilderOptionsConditions<T, string?> MustBeValidExpression<T>(this IRuleBuilder<T, string?> rule)
     {
-        return rule.Custom((text, context) =>
+        return rule.Custom((text, context) => Check(text, context, readsPeriod: false));
+    }
+
+    /// <summary>
+    /// <see cref="MustBeValidExpression{T}"/> for a formula measure, which the engine evaluates once per period: it may also read
+    /// <c>@periodDays</c> and <c>@yearDays</c> and call <c>YEARFRAC</c> with a day count convention in quotes, since a dataset binds
+    /// no parameter that could hold one. That they need expression language 1.2 is <see cref="Datasets.ExpressionsFitLanguageRule"/>'s.
+    /// </summary>
+    /// <typeparam name="T">The validated input type.</typeparam>
+    /// <param name="rule">The rule for the formula text.</param>
+    /// <returns>The rule, for further configuration.</returns>
+    public static IRuleBuilderOptionsConditions<T, string?> MustBeMeasureFormula<T>(this IRuleBuilder<T, string?> rule)
+    {
+        return rule.Custom((text, context) => Check(text, context, readsPeriod: true));
+    }
+
+    /// <summary>The checks of a metadata expression, which reads the period only when <paramref name="readsPeriod"/> is set.</summary>
+    private static void Check<T>(string? text, ValidationContext<T> context, bool readsPeriod)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        var inspection = ExpressionInspector.Inspect(text);
+        if (!inspection.IsValid)
         {
-            if (string.IsNullOrEmpty(text)) return;
-            var inspection = ExpressionInspector.Inspect(text);
-            if (!inspection.IsValid)
-            {
-                context.AddFailure(inspection.Error!);
-                return;
-            }
+            context.AddFailure(inspection.Error!);
+            return;
+        }
 
-            if (inspection.DimensionKeys.Count > 0)
-            {
-                var dimensions = string.Join(", ", inspection.DimensionKeys.Select(key => $"'[d.{key}]'"));
-                context.AddFailure($"Metadata expressions read fields, not dimension members, so '{context.DisplayName}' cannot read {dimensions}.");
-            }
+        if (inspection.DimensionKeys.Count > 0)
+        {
+            var dimensions = string.Join(", ", inspection.DimensionKeys.Select(key => $"'[d.{key}]'"));
+            context.AddFailure($"Metadata expressions read fields, not dimension members, so '{context.DisplayName}' cannot read {dimensions}.");
+        }
 
-            if (inspection.Functions.Contains(ExpressionFunction.YearFrac))
-                context.AddFailure($"Dataset expression languages have no YEARFRAC, so '{context.DisplayName}' cannot call it.");
+        if (readsPeriod)
+        {
+            foreach (var problem in YearFracCalls.LiteralProblems(ExpressionParser.Parse(text))) context.AddFailure($"'{context.DisplayName}' {problem}.");
+        }
+        else if (inspection.Functions.Contains(ExpressionFunction.YearFrac))
+            context.AddFailure($"Only formula measures call YEARFRAC, so '{context.DisplayName}' cannot call it.");
 
-            if (inspection.ParameterNames.Count == 0) return;
-            var parameters = string.Join(", ", inspection.ParameterNames.Select(name => $"'@{name}'"));
-            context.AddFailure($"Metadata expressions bind no request parameters, so '{context.DisplayName}' cannot read {parameters}.");
-        });
+        var names = inspection.ParameterNames.Where(name => !readsPeriod || !FormulaContext.ParameterNames.Contains(name)).ToList();
+        if (names.Count == 0) return;
+        var parameters = string.Join(", ", names.Select(name => $"'@{name}'"));
+        var period = readsPeriod ? "; formula measures read only @periodDays and @yearDays" : "";
+        context.AddFailure($"Metadata expressions bind no request parameters{period}, so '{context.DisplayName}' cannot read {parameters}.");
     }
 
     /// <summary>

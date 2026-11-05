@@ -28,7 +28,7 @@ import { managedTablesDroppedWith } from '../managed-tables'
 import { DOTTED_KEY_PATTERN, KEY_PATTERN } from '@/lib/api/contract'
 import { LIVE_SNAPSHOT_ID, seedSnapshots } from '@/lib/snapshots/mock/data'
 import { catalog, seedDatasets, seedVersions, sourceColumns as seedColumns, sourceObjects, vocabularies, type StoredVersion } from './data'
-import { commitViolations, dependentsOf, FIELD_REF, MEASURE_REF, refsOf } from './rules'
+import { commitViolations, composesMeasures, dependentsOf, FIELD_REF, MEASURE_REF, refsOf } from './rules'
 
 const JSON_PATH = /^\$(\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+$/
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -660,15 +660,25 @@ export function createMockDatasetsApi(): DatasetsApi {
       } else if (kind === 'specialized') checkVocab(errors, 'aggregationFunction', 'aggregationFunction', input.aggregationFunction, true)
       else next.aggregationFunction = null
 
-      if (kind === 'formula') {
+      if (composesMeasures(kind)) {
         next.components = []
-        if (!input.expressionText?.trim()) err(errors, 'expressionText', 'Enter a formula over other measures, e.g. [m.a] / [m.b].')
+        if (!input.expressionText?.trim()) err(errors, 'expressionText', 'Enter an expression over other measures, e.g. [m.a] / [m.b].')
         else {
           checkBrackets(errors, 'expressionText', input.expressionText)
-          if (refsOf(input.expressionText, MEASURE_REF).includes(input.key)) err(errors, 'expressionText', 'A formula cannot reference its own measure.')
-          if (refsOf(input.expressionText, FIELD_REF).length) err(errors, 'expressionText', 'Formulas compose measures ([m.key]); fields belong in components.')
+          if (refsOf(input.expressionText, MEASURE_REF).includes(input.key)) err(errors, 'expressionText', 'An expression cannot reference its own measure.')
+          if (refsOf(input.expressionText, FIELD_REF).length) err(errors, 'expressionText', 'Expressions compose measures ([m.key]); fields belong in components.')
         }
       } else next.expressionText = null
+
+      if (kind === 'compound') {
+        if (!input.compoundingPeriodicity) err(errors, 'compoundingPeriodicity', 'Choose the step the rate compounds over.')
+        else checkVocab(errors, 'compoundingPeriodicity', 'periodicity', input.compoundingPeriodicity)
+        if (!input.compoundingForm) err(errors, 'compoundingForm', 'Choose how the steps link.')
+        else checkVocab(errors, 'compoundingForm', 'compoundingForm', input.compoundingForm)
+      } else {
+        next.compoundingPeriodicity = null
+        next.compoundingForm = null
+      }
 
       if (kind === 'specialized') {
         if (!input.implementationKey?.trim()) err(errors, 'implementationKey', 'Enter the implementation key.')

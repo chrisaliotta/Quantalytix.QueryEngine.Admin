@@ -180,11 +180,11 @@ string; `StarRocksConnectionFactory` resolves the request tenant's connection th
 
 ## Tenant schema check
 
-The API reads and writes tenant metadata schema 3.0.0, which records metadata schema version 19 in `qe_database_info`.
+The API reads and writes tenant metadata schema 3.0.0, which records metadata schema version 20 in `qe_database_info`.
 `TenantConnectionVerification` (run by the create and update validators of `/api/system/tenants` and by
 `POST /api/system/tenants/verify`) refuses a
 connection string whose database names another tenant, has a `metadata_schema_version` other than
-`SupportedSchemaVersion = 19`, or does not have exactly one live snapshot.
+`SupportedSchemaVersion = 20`, or does not have exactly one live snapshot.
 
 ## Contract conformance
 

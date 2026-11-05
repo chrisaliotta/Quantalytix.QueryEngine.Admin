@@ -45,6 +45,8 @@ internal static class DatasetMeasureEdits
             MeasureKind = input.MeasureKind,
             AggregationFunction = input.AggregationFunction,
             ExpressionText = input.ExpressionText,
+            CompoundingPeriodicity = input.CompoundingPeriodicity,
+            CompoundingForm = input.CompoundingForm,
             RowFilterExpression = input.RowFilterExpression,
             ValueNullBehavior = input.ValueNullBehavior,
             NegativeWeightBehavior = input.NegativeWeightBehavior,

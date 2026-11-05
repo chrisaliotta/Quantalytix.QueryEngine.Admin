@@ -1468,7 +1468,7 @@ export interface components {
         /** @enum {string} */
         Periodicity: "day" | "month" | "quarter" | "year";
         /** @enum {string} */
-        MeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized";
+        MeasureKind: "aggregate" | "weighted_sum" | "weighted_average" | "period_average" | "formula" | "specialized" | "compound";
         /** @enum {string} */
         ComponentRole: "value" | "weight" | "period_days" | "numerator" | "denominator";
         /** @enum {string} */
@@ -1853,6 +1853,9 @@ export interface components {
             measureKind: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["MeasureKind"];
             })[];
+            compoundingForm: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["DatasetCompoundingForm"];
+            })[];
             aggregationFunction: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetAggregationFunction"];
             })[];
@@ -1902,7 +1905,7 @@ export interface components {
             missingPeriodBehavior: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetMissingPeriodBehavior"];
             })[];
-            /** @description Grammar versions a dataset version's expressions may declare. */
+            /** @description Grammar versions a dataset version's expressions may declare, oldest first: 1.1 adds MONTHS_BETWEEN and POWER, 1.2 adds @periodDays, @yearDays and YEARFRAC in measure formulas. */
             expressionLanguageVersion: components["schemas"]["VocabularyTerm"][];
             /** @description IANA time zones offered for source and query time zones. */
             timeZone: components["schemas"]["VocabularyTerm"][];
@@ -2043,6 +2046,8 @@ export interface components {
         DatasetCumulativeOrigin: "output_range_start" | "fixed_start";
         /** @enum {string} */
         DatasetAggregationFunction: "sum" | "avg" | "min" | "max" | "count" | "count_distinct";
+        /** @enum {string} */
+        DatasetCompoundingForm: "decay" | "growth";
         /** @enum {string} */
         DatasetValueNullBehavior: "exclude" | "zero";
         /** @enum {string} */
@@ -2287,8 +2292,12 @@ export interface components {
             isEnabled: boolean;
             measureKind: components["schemas"]["MeasureKind"];
             aggregationFunction: components["schemas"]["DatasetAggregationFunction"] | null;
-            /** @description Formula measures; composes other measures (`[m.key]`). */
+            /** @description Formula measures, and the per-step rate of compound measures; composes other measures (`[m.key]`). Only formulas read `@periodDays`, `@yearDays` and `YEARFRAC('<convention>')`, from expression language 1.2. */
             expressionText: string | null;
+            /** @description Compound measures; the step the rate compounds over. */
+            compoundingPeriodicity: components["schemas"]["Periodicity"] | null;
+            /** @description Compound measures; `decay` is 1 - prod(1 - r), `growth` is prod(1 + r) - 1. */
+            compoundingForm: components["schemas"]["DatasetCompoundingForm"] | null;
             implementationKey: string | null;
             implementationVersion: string | null;
             configurationJson: string | null;

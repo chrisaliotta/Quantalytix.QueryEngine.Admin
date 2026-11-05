@@ -27,7 +27,7 @@ export type DimensionPurpose = 'analytical' | 'report'
 export type DefinitionOrigin = 'system' | 'user'
 export type BindingKind = 'direct' | 'mapped' | 'range' | 'bridge' | 'time'
 export type Periodicity = 'day' | 'month' | 'quarter' | 'year'
-export type MeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized'
+export type MeasureKind = 'aggregate' | 'weighted_sum' | 'weighted_average' | 'period_average' | 'formula' | 'specialized' | 'compound'
 export type ComponentRole = 'value' | 'weight' | 'period_days' | 'numerator' | 'denominator'
 export type RoundingMode = 'half_even' | 'half_up' | 'down' | 'up' | 'truncate'
 /** `descendants` is used only by report bridges and report rules (OI-28). */

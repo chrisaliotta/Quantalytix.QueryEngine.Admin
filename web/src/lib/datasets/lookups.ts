@@ -21,6 +21,7 @@ export type Vocabularies = Pick<
   | 'periodicity'
   | 'cumulativeOrigin'
   | 'measureKind'
+  | 'compoundingForm'
   | 'aggregationFunction'
   | 'componentRole'
   | 'componentRolesByKind'

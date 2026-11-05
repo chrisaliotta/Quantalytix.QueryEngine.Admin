@@ -15428,41 +15428,6 @@
         }
       }
     },
-    "/development/token": {
-      "post": {
-        "tags": [
-          "DevelopmentToken"
-        ],
-        "summary": "Issues a bearer token for a tenant, optionally with the SystemAdmin role.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The signed token, valid for eight hours or until the host restarts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentTokenResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tenants/{tenantId}/datasets": {
       "get": {
         "tags": [
@@ -26726,6 +26691,8 @@
           "measureKind",
           "aggregationFunction",
           "expressionText",
+          "compoundingPeriodicity",
+          "compoundingForm",
           "implementationKey",
           "implementationVersion",
           "configurationJson",
@@ -26780,7 +26747,21 @@
               "null",
               "string"
             ],
-            "description": "The formula of a formula measure, composing other measures (`[m.key]`)."
+            "description": "The formula of a formula measure, or the per-step rate of a compound measure, composing other measures (`[m.key]`)."
+          },
+          "compoundingPeriodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value: the step a compound measure compounds over."
+          },
+          "compoundingForm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `compounding_form` value of a compound measure."
           },
           "implementationKey": {
             "type": [
@@ -26925,6 +26906,8 @@
           "measureKind",
           "aggregationFunction",
           "expressionText",
+          "compoundingPeriodicity",
+          "compoundingForm",
           "implementationKey",
           "implementationVersion",
           "configurationJson",
@@ -26979,7 +26962,21 @@
               "null",
               "string"
             ],
-            "description": "The formula of a formula measure, composing other measures (`[m.key]`)."
+            "description": "The formula of a formula measure, or the per-step rate of a compound measure, composing other measures (`[m.key]`)."
+          },
+          "compoundingPeriodicity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `periodicity` value: the step a compound measure compounds over."
+          },
+          "compoundingForm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `compounding_form` value of a compound measure."
           },
           "implementationKey": {
             "type": [
@@ -27912,52 +27909,6 @@
           }
         },
         "description": "The answer of `GET &lt;resource&gt;/delete-check` (blueprint 01, OI-07); `DELETE &lt;resource&gt;` answers 409 with the\nsame reasons when the check does not allow it. Built by DeleteCheck DeleteBlockers.Check()."
-      },
-      "DevelopmentTokenRequest": {
-        "required": [
-          "tenantId"
-        ],
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries, such as `development`."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role, which admits every tenant. Defaults to false."
-          }
-        },
-        "description": "The tenant a development token names, and whether it carries the SystemAdmin role."
-      },
-      "DevelopmentTokenResponse": {
-        "required": [
-          "accessToken",
-          "tenantId",
-          "systemAdmin",
-          "expiresUtc"
-        ],
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "The signed JWT to send as `Authorization: Bearer ...`."
-          },
-          "tenantId": {
-            "type": "string",
-            "description": "The tenant claim the token carries."
-          },
-          "systemAdmin": {
-            "type": "boolean",
-            "description": "Whether the token carries the SystemAdmin role."
-          },
-          "expiresUtc": {
-            "type": "string",
-            "description": "When the token expires.",
-            "format": "date-time"
-          }
-        },
-        "description": "A bearer token issued by a Development host."
       },
       "DimensionCreated": {
         "required": [
@@ -33555,6 +33506,7 @@
           "bridgeFactorBehavior",
           "cardinality",
           "componentRole",
+          "compoundingForm",
           "cumulativeOrigin",
           "dataType",
           "dayCountConvention",
@@ -33607,331 +33559,1457 @@
           "aggregationFunction": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "allocationMode": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "attributionMethod": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "bindingKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "borderStyle": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "boundaryMatch": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "bridgeAllocationBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "bridgeFactorBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "cardinality": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "componentRole": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
+            }
+          },
+          "compoundingForm": {
+            "type": "array",
+            "items": {
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "cumulativeOrigin": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "dataType": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "dayCountConvention": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "periodAlignment": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "definitionOrigin": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "dimensionKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "dimensionPurpose": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "displayFormat": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "durationUnit": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "editPolicy": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "emptySetBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "expressionLanguageVersion": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "fieldSourceKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "fontWeight": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "formulaLanguageVersion": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "grainKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "groupingMode": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "measureKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "measureOutputDataType": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "missingPeriodBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "negativeWeightBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "observationKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "observationSelection": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "parameterValueType": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "partialIntervalBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "periodicity": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "provider": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "raggedBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "rangeDataType": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "layout": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "mappingMethod": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "columnValueKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "roundingMode": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "styleRole": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "selectionScope": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "sourceObjectKind": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "sourceSelection": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "subtotalPosition": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "timeValueType": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "timeZone": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "totalBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "unmappedBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "valueNullBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "valueTimeRole": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "variableMissingBehavior": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VocabularyValue"
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
           "componentRolesByKind": {
@@ -34044,9 +35122,6 @@
     },
     {
       "name": "DimensionVersions"
-    },
-    {
-      "name": "DevelopmentToken"
     },
     {
       "name": "Datasets"

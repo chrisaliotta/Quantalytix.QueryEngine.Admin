@@ -8,8 +8,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Measures;
 
 /// <summary>
 /// Confirms the measure input rules of schema sections 13, 14 and 18: each measure kind's aggregation function, component
-/// roles, formula, time policy and implementation; formulas that read measures only and row filters that read fields
-/// only, both parsed by the query engine; decimal outputs with a precision and scale; accumulators StarRocks supports; and
+/// roles, formula, compounding, time policy and implementation; formulas and compound rates that read measures only, with only
+/// formulas reading the period, and row filters that read fields only, all parsed by the query engine; decimal outputs with a precision and scale; accumulators StarRocks supports; and
 /// a finite lookback for every boundary match that searches back for an observation. The engine computes measures from
 /// exactly these columns, so a measure that breaks them fails or miscalculates at query time.
 /// </summary>
@@ -27,6 +27,7 @@ public sealed class MeasureInputValidatorTests
     [InlineData(MeasureKinds.PeriodAverage)]
     [InlineData(MeasureKinds.Formula)]
     [InlineData(MeasureKinds.Specialized)]
+    [InlineData(MeasureKinds.Compound)]
     public void ValidMeasureOfEachKind_Passes(string kind)
     {
         _validator.TestValidate(Measure(kind)).ShouldNotHaveAnyValidationErrors();
@@ -125,25 +126,95 @@ public sealed class MeasureInputValidatorTests
     }
 
     /// <summary>
-    /// YEARFRAC reads the period a report evaluates a model formula for, which a query has none of, so a dataset expression that calls
-    /// it fails, though the shared parser reads it.
+    /// The engine evaluates a formula measure once per period and renders its period context, so an annualizing formula such as the
+    /// kit's CPR may read @periodDays and @yearDays and call YEARFRAC with a day count convention in quotes. Expression language 1.2
+    /// is the version rule's to require.
     /// </summary>
     [Fact]
-    public void DatasetExpressions_CannotCallYearFrac()
+    public void Formula_MayReadThePeriod()
     {
-        var formula = Measure(MeasureKinds.Formula) with { ExpressionText = "[m.interest] / YEARFRAC('actual_360')" };
+        var annualized = Measure(MeasureKinds.Formula) with
+        {
+            ExpressionText = "1 - POWER(1 - [m.prepaymentMortality], 1 / YEARFRAC('actual_365')) + 0 * @periodDays / @yearDays"
+        };
 
-        _validator.TestValidate(formula).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
-            .WithErrorMessage("Dataset expression languages have no YEARFRAC, so 'Expression Text' cannot call it.");
+        _validator.TestValidate(annualized).ShouldNotHaveAnyValidationErrors();
     }
 
-    /// <summary>Only formulas have an expression.</summary>
-    [Fact]
-    public void ExpressionOnAnotherKind_IsRejected()
+    /// <summary>
+    /// A dataset binds no parameter that could hold a convention, so a formula's YEARFRAC takes one in quotes; an unknown
+    /// convention, any other argument or any request parameter besides the period context fails, naming the problem.
+    /// </summary>
+    /// <param name="expression">The formula sent.</param>
+    /// <param name="message">The failure it reports.</param>
+    [Theory]
+    [InlineData("[m.smm] / YEARFRAC('actual_366')", "'Expression Text' calls YEARFRAC with 'actual_366', which is no day count convention.")]
+    [InlineData("[m.smm] / YEARFRAC([m.convention])",
+        "'Expression Text' calls YEARFRAC with something other than a day count convention, which it takes in quotes, such as 'actual_365'.")]
+    [InlineData("[m.smm] * @scale",
+        "Metadata expressions bind no request parameters; formula measures read only @periodDays and @yearDays, so 'Expression Text' cannot read '@scale'.")]
+    public void FormulaPeriodContext_MustBeAConventionInQuotes(string expression, string message)
     {
-        var input = Measure(MeasureKinds.Aggregate) with { ExpressionText = "[m.interest]" };
+        var input = Measure(MeasureKinds.Formula) with { ExpressionText = expression };
 
-        _validator.TestValidate(input).ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
+        _validator.TestValidate(input).ShouldHaveValidationErrorFor(measure => measure.ExpressionText).WithErrorMessage(message);
+    }
+
+    /// <summary>
+    /// Row filters and compound rates are evaluated per source row and per step, which have no period of their own, so they call no
+    /// YEARFRAC and read no @periodDays; the period is the formula over the compound measure's output.
+    /// </summary>
+    [Fact]
+    public void RowFiltersAndCompoundRates_CannotReadThePeriod()
+    {
+        var rowFilter = Measure(MeasureKinds.Aggregate) with { RowFilterExpression = "[f.days] < @periodDays" };
+        var rate = Measure(MeasureKinds.Compound) with { ExpressionText = "[m.prepayAmt] / [m.balance] / YEARFRAC('actual_365')" };
+
+        _validator.TestValidate(rowFilter).ShouldHaveValidationErrorFor(measure => measure.RowFilterExpression)
+            .WithErrorMessage("Metadata expressions bind no request parameters, so 'Row Filter Expression' cannot read '@periodDays'.");
+        _validator.TestValidate(rate).ShouldHaveValidationErrorFor(measure => measure.ExpressionText)
+            .WithErrorMessage("Only formula measures call YEARFRAC, so 'Expression Text' cannot call it.");
+    }
+
+    /// <summary>
+    /// A compound measure links a per-step rate over measures, so it needs the rate, a vocabulary periodicity to step by and a
+    /// vocabulary form to link with; like a formula it reads no fields and takes no aggregation function.
+    /// </summary>
+    [Fact]
+    public void Compound_RequiresARateOverMeasuresAPeriodicityAndAForm()
+    {
+        var missing = Measure(MeasureKinds.Compound) with { ExpressionText = null, CompoundingPeriodicity = null, CompoundingForm = null };
+        var unknown = Measure(MeasureKinds.Compound) with { CompoundingPeriodicity = "week", CompoundingForm = "simple" };
+        var readingFields = Measure(MeasureKinds.Compound) with { ExpressionText = "[f.prepayAmt] / [m.balance]", AggregationFunction = AggregationFunctions.Sum };
+
+        var result = _validator.TestValidate(missing);
+        result.ShouldHaveValidationErrorFor(measure => measure.ExpressionText).WithErrorMessage("'Expression Text' is required for compound measures.");
+        result.ShouldHaveValidationErrorFor(measure => measure.CompoundingPeriodicity).WithErrorMessage("'Compounding Periodicity' is required for compound measures.");
+        result.ShouldHaveValidationErrorFor(measure => measure.CompoundingForm).WithErrorMessage("'Compounding Form' is required for compound measures.");
+        var unknownResult = _validator.TestValidate(unknown);
+        unknownResult.ShouldHaveValidationErrorFor(measure => measure.CompoundingPeriodicity);
+        unknownResult.ShouldHaveValidationErrorFor(measure => measure.CompoundingForm);
+        var fieldsResult = _validator.TestValidate(readingFields);
+        fieldsResult.ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
+        fieldsResult.ShouldHaveValidationErrorFor(measure => measure.AggregationFunction);
+    }
+
+    /// <summary>Only formula and compound measures have an expression, and only compound measures compound.</summary>
+    [Fact]
+    public void ExpressionAndCompoundingOnAnotherKind_AreRejected()
+    {
+        var input = Measure(MeasureKinds.Aggregate) with
+        {
+            ExpressionText = "[m.interest]",
+            CompoundingPeriodicity = Periodicities.Month,
+            CompoundingForm = CompoundingForms.Growth
+        };
+
+        var result = _validator.TestValidate(input);
+
+        result.ShouldHaveValidationErrorFor(measure => measure.ExpressionText);
+        result.ShouldHaveValidationErrorFor(measure => measure.CompoundingPeriodicity);
+        result.ShouldHaveValidationErrorFor(measure => measure.CompoundingForm);
     }
 
     /// <summary>A row filter must parse and read fields only, never measures or request parameters.</summary>
@@ -288,6 +359,8 @@ public sealed class MeasureInputValidatorTests
             MeasureKind = kind,
             AggregationFunction = null,
             ExpressionText = null,
+            CompoundingPeriodicity = null,
+            CompoundingForm = null,
             ImplementationKey = null,
             ImplementationVersion = null,
             ConfigurationJson = null,
@@ -315,6 +388,13 @@ public sealed class MeasureInputValidatorTests
             MeasureKinds.WeightedSum or MeasureKinds.WeightedAverage => measure with { Components = [Component(ComponentRoles.Value, 1), Component(ComponentRoles.Weight, 2)] },
             MeasureKinds.PeriodAverage => measure with { TimePolicy = TimePolicy() },
             MeasureKinds.Formula => measure with { ExpressionText = "[m.interest] / [m.balance]", Components = [] },
+            MeasureKinds.Compound => measure with
+            {
+                ExpressionText = "[m.prepayAmt] / [m.averageBeginningBalance]",
+                CompoundingPeriodicity = Periodicities.Month,
+                CompoundingForm = CompoundingForms.Decay,
+                Components = []
+            },
             _ => measure with { ImplementationKey = "irr", ImplementationVersion = "1.0", ConfigurationJson = """{"periods":12}""" }
         };
     }

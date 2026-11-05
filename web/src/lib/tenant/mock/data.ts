@@ -77,6 +77,11 @@ export const vocabularies: Vocabularies = {
     t('period_average', 'Period average', 'Average of a value across the days of a period.'),
     t('formula', 'Formula', 'Composes other measures of this version.'),
     t('specialized', 'Specialized', 'A registered implementation with its own configuration.'),
+    t('compound', 'Compound', 'Links a per-step rate over measures geometrically across each period.'),
+  ],
+  compoundingForm: [
+    t('decay', 'Decay', '1 - prod(1 - r), such as a survival-based mortality rate.'),
+    t('growth', 'Growth', 'prod(1 + r) - 1, such as a compounded return.'),
   ],
   aggregationFunction: [...same('sum', 'avg', 'min', 'max', 'count'), t('count_distinct', 'count distinct')],
   componentRole: [t('value', 'Value'), t('weight', 'Weight'), t('period_days', 'Period days'), t('numerator', 'Numerator'), t('denominator', 'Denominator')],
@@ -102,6 +107,7 @@ export const vocabularies: Vocabularies = {
       { role: 'numerator', required: false },
       { role: 'denominator', required: false },
     ],
+    compound: [],
   },
   valueNullBehavior: [t('exclude', 'Exclude'), t('zero', 'Treat as zero')],
   negativeWeightBehavior: [t('allow', 'Allow'), t('exclude', 'Exclude row')],
@@ -131,7 +137,11 @@ export const vocabularies: Vocabularies = {
     t('uniform_estimate', 'Uniform estimate', 'Spread an interval evenly across finer periods.'),
   ],
   missingPeriodBehavior: [t('null', 'Null'), t('zero', 'Zero')],
-  expressionLanguageVersion: [t('1.0', '1.0', 'Original grammar.'), t('1.1', '1.1', 'Adds MONTHS_BETWEEN and POWER.')],
+  expressionLanguageVersion: [
+    t('1.0', '1.0', 'Original grammar.'),
+    t('1.1', '1.1', 'Adds MONTHS_BETWEEN and POWER.'),
+    t('1.2', '1.2', 'Adds @periodDays, @yearDays and YEARFRAC in measure formulas.'),
+  ],
   timeZone: same('UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Frankfurt', 'Asia/Singapore', 'Asia/Tokyo'),
   cardinality: [t('many_to_one', 'Many to one'), t('many_to_many', 'Many to many')],
   allocationMode: [t('none', 'None'), t('partition', 'Partition'), t('replicate', 'Replicate')],
@@ -169,7 +179,7 @@ export function catalogSnapshotsOf(snapshots: Snapshot[]): TenantCatalogSnapshot
 }
 
 export const catalog: TenantCatalog = {
-  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 19, semanticRevision: 412 },
+  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 20, semanticRevision: 412 },
   datasets: [
     { id: 'ds_loan_daily', key: 'loan_daily', displayName: 'Loan daily balances', isEnabled: true, liveVersionId: 'dsv_loan_daily_3' },
     { id: 'ds_gl_balance', key: 'gl_balance', displayName: 'GL balances', isEnabled: true, liveVersionId: 'dsv_gl_balance_1' },

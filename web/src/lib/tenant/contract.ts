@@ -52,6 +52,7 @@ export type TimeValueType = 'date' | 'timestamp'
 export type ObservationKind = 'instant' | 'snapshot' | 'interval'
 export type CumulativeOrigin = 'output_range_start' | 'fixed_start'
 export type AggregationFunction = 'sum' | 'avg' | 'min' | 'max' | 'count' | 'count_distinct'
+export type CompoundingForm = 'decay' | 'growth'
 export type ValueNullBehavior = 'exclude' | 'zero'
 export type NegativeWeightBehavior = 'allow' | 'exclude'
 export type EmptySetBehavior = 'null' | 'zero'
@@ -108,6 +109,7 @@ export interface Vocabularies {
   periodicity: VocabularyTerm<Periodicity>[]
   cumulativeOrigin: VocabularyTerm<CumulativeOrigin>[]
   measureKind: VocabularyTerm<MeasureKind>[]
+  compoundingForm: VocabularyTerm<CompoundingForm>[]
   aggregationFunction: VocabularyTerm<AggregationFunction>[]
   componentRole: VocabularyTerm<ComponentRole>[]
   componentRolesByKind: Record<MeasureKind, VocabularyComponentRoleRequirements>

@@ -21,8 +21,14 @@ public sealed record MeasureRecord
     /// <summary>An <c>aggregation_function</c> value for ordinary aggregate measures.</summary>
     public string? AggregationFunction { get; init; }
 
-    /// <summary>Validated measure-level expression for <c>formula</c> measures.</summary>
+    /// <summary>Validated measure-level expression for <c>formula</c> measures, and the per-step rate of <c>compound</c> measures.</summary>
     public string? ExpressionText { get; init; }
+
+    /// <summary>A <c>periodicity</c> value: the step a <c>compound</c> measure compounds over.</summary>
+    public string? CompoundingPeriodicity { get; init; }
+
+    /// <summary>A <c>compounding_form</c> value for <c>compound</c> measures.</summary>
+    public string? CompoundingForm { get; init; }
 
     /// <summary>Optional validated source-row eligibility predicate.</summary>
     public string? RowFilterExpression { get; init; }

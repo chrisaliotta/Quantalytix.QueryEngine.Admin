@@ -152,7 +152,7 @@ internal sealed class MappingsFixture
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 19,
+        MetadataSchemaVersion = 20,
         SemanticRevision = StartingRevision,
         UpdatedAt = DateTime.UnixEpoch
     });

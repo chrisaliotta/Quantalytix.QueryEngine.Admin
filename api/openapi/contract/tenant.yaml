@@ -455,6 +455,7 @@ components:
         - periodicity
         - cumulativeOrigin
         - measureKind
+        - compoundingForm
         - aggregationFunction
         - componentRole
         - componentRolesByKind
@@ -614,6 +615,12 @@ components:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
               - { required: [value], properties: { value: { $ref: './common.yaml#/components/schemas/MeasureKind' } } }
+        compoundingForm:
+          type: array
+          items:
+            allOf:
+              - $ref: './common.yaml#/components/schemas/VocabularyTerm'
+              - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetCompoundingForm' } } }
         aggregationFunction:
           type: array
           items:
@@ -711,7 +718,9 @@ components:
               - { required: [value], properties: { value: { $ref: './datasets.yaml#/components/schemas/DatasetMissingPeriodBehavior' } } }
         expressionLanguageVersion:
           type: array
-          description: Grammar versions a dataset version's expressions may declare.
+          description: >-
+            Grammar versions a dataset version's expressions may declare, oldest first: 1.1 adds MONTHS_BETWEEN and POWER,
+            1.2 adds @periodDays, @yearDays and YEARFRAC in measure formulas.
           items: { $ref: './common.yaml#/components/schemas/VocabularyTerm' }
         timeZone:
           type: array

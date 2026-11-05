@@ -105,7 +105,7 @@ internal sealed class DatasetFixture
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 19,
+        MetadataSchemaVersion = 20,
         SemanticRevision = StartingRevision,
         UpdatedAt = DateTime.UnixEpoch
     });
@@ -286,6 +286,7 @@ internal sealed class DatasetFixture
             new ComponentRolesMatchKindRule(),
             new FormulaReferencesKnownMeasuresRule(),
             new FormulaAcyclicRule(),
+            new CompoundInputsRule(),
             new TimePolicySeriesGrainRule(),
             new TimePolicyTimeBindingInVersionRule()
         ];

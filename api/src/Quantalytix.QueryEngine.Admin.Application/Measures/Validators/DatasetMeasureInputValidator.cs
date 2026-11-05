@@ -9,8 +9,9 @@ namespace Quantalytix.QueryEngine.Admin.Application.Measures;
 
 /// <summary>
 /// The shape of a measure input (D7): known vocabulary values, the component roles its kind reads, an aggregation function only
-/// where the kind takes one, a formula over measures only for formula measures, an implementation only for specialized measures,
-/// output precision only for decimal outputs, and a time policy for period averages.
+/// where the kind takes one, an expression over measures only for formula and compound measures, a compounding periodicity and form
+/// only for compound measures, an implementation only for specialized measures, output precision only for decimal outputs, and a
+/// time policy for period averages.
 /// </summary>
 public sealed class DatasetMeasureInputValidator : AbstractValidator<DatasetMeasureInput>
 {
@@ -20,8 +21,12 @@ public sealed class DatasetMeasureInputValidator : AbstractValidator<DatasetMeas
     /// <summary>Every measure kind.</summary>
     private static readonly string[] Kinds = [.. MeasureKinds.Definition.Values.Select(value => value.Value)];
 
+    /// <summary>The message of a compounding field on a measure that is not compound.</summary>
+    private const string OnlyCompoundUses = "Only compound measures compound, so '{PropertyName}' must be empty.";
+
     /// <summary>The kinds that take no aggregation function.</summary>
-    private static readonly string[] KindsWithoutFunction = [MeasureKinds.WeightedSum, MeasureKinds.WeightedAverage, MeasureKinds.PeriodAverage, MeasureKinds.Formula];
+    private static readonly string[] KindsWithoutFunction =
+        [MeasureKinds.WeightedSum, MeasureKinds.WeightedAverage, MeasureKinds.PeriodAverage, MeasureKinds.Formula, MeasureKinds.Compound];
 
     /// <summary>Declares the rules.</summary>
     public DatasetMeasureInputValidator()
@@ -82,18 +87,21 @@ public sealed class DatasetMeasureInputValidator : AbstractValidator<DatasetMeas
         });
         When(input => input.MeasureKind == MeasureKinds.Formula, () =>
         {
-            RuleFor(input => input.ExpressionText)
-                .Cascade(CascadeMode.Stop)
-                .NotEmpty()
-                .WithMessage(KindRequires(MeasureKinds.Formula))
-                .MustBeValidExpression()
-                .Must(text => ExpressionInspector.Inspect(text!).FieldKeys.Count == 0)
-                .WithMessage("A formula combines other measures of the version, such as [m.interest] / [m.balance]; it cannot reference fields.")
-                .Must(text => !ExpressionInspector.Inspect(text!).Functions.Contains(ExpressionFunction.MonthsBetween))
-                .WithMessage("MONTHS_BETWEEN reads the dates of each source row, which a formula over measures has none of; call it in a field expression.");
+            OverMeasures(RuleFor(input => input.ExpressionText), MeasureKinds.Formula).MustBeMeasureFormula();
+        });
+        When(input => input.MeasureKind == MeasureKinds.Compound, () =>
+        {
+            OverMeasures(RuleFor(input => input.ExpressionText), MeasureKinds.Compound).MustBeValidExpression();
+            RuleFor(input => input.CompoundingPeriodicity).NotNull().WithMessage(KindRequires(MeasureKinds.Compound)).MustBeIn(Periodicities.Definition);
+            RuleFor(input => input.CompoundingForm).NotNull().WithMessage(KindRequires(MeasureKinds.Compound)).MustBeIn(CompoundingForms.Definition);
         }).Otherwise(() =>
         {
-            RuleFor(input => input.ExpressionText).Null().WithMessage("Only formula measures have an expression, so '{PropertyName}' must be empty.");
+            RuleFor(input => input.CompoundingPeriodicity).Null().WithMessage(OnlyCompoundUses);
+            RuleFor(input => input.CompoundingForm).Null().WithMessage(OnlyCompoundUses);
+        });
+        When(input => !MeasureKinds.ComposesMeasures(input.MeasureKind), () =>
+        {
+            RuleFor(input => input.ExpressionText).Null().WithMessage("Only formula and compound measures have an expression, so '{PropertyName}' must be empty.");
         });
         When(input => input.MeasureKind == MeasureKinds.PeriodAverage, () =>
         {
@@ -125,5 +133,22 @@ public sealed class DatasetMeasureInputValidator : AbstractValidator<DatasetMeas
     private static string KindRequires(string measureKind)
     {
         return $"'{{PropertyName}}' is required for {measureKind} measures.";
+    }
+
+    /// <summary>
+    /// The rule a formula's and a compound rate's expression share: required, and over other measures of the version only, so no
+    /// field references and no <c>MONTHS_BETWEEN</c>, which read source rows an expression over measures has none of. Stops at the
+    /// first failure, so the kind's parse check that follows sees non-empty text.
+    /// </summary>
+    private static IRuleBuilderOptions<DatasetMeasureInput, string?> OverMeasures(IRuleBuilderInitial<DatasetMeasureInput, string?> rule, string measureKind)
+    {
+        return rule
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty()
+            .WithMessage(KindRequires(measureKind))
+            .Must(text => ExpressionInspector.Inspect(text!).FieldKeys.Count == 0)
+            .WithMessage($"A {measureKind} expression combines other measures of the version, such as [m.interest] / [m.balance]; it cannot reference fields.")
+            .Must(text => !ExpressionInspector.Inspect(text!).Functions.Contains(ExpressionFunction.MonthsBetween))
+            .WithMessage($"MONTHS_BETWEEN reads the dates of each source row, which a {measureKind} expression over measures has none of; call it in a field expression.");
     }
 }

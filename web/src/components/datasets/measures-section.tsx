@@ -32,6 +32,9 @@ export function formulaRefs(expression: string | null) {
   return [...(expression ?? '').matchAll(/\[m\.([\w.-]+)\]/g)].map((m) => m[1])
 }
 
+/** Formula and compound measures compose other measures through an expression, and read no fields. */
+const composesMeasures = (kind: MeasureKind) => kind === 'formula' || kind === 'compound'
+
 const blankPolicy = (): DatasetMeasureTimePolicy => ({
   requiredTimeBindingId: null,
   selectionDatasetGrainId: null,
@@ -64,6 +67,8 @@ const blankMeasure = (): DatasetMeasureInput => ({
   measureKind: 'aggregate',
   aggregationFunction: 'sum',
   expressionText: null,
+  compoundingPeriodicity: null,
+  compoundingForm: null,
   implementationKey: null,
   implementationVersion: null,
   configurationJson: null,
@@ -86,7 +91,7 @@ const blankMeasure = (): DatasetMeasureInput => ({
 })
 
 function measureSummary(m: DatasetMeasureInput) {
-  if (m.measureKind === 'formula') return m.expressionText ?? '—'
+  if (composesMeasures(m.measureKind)) return m.expressionText ?? '—'
   if (m.measureKind === 'specialized') return `${m.implementationKey ?? '?'}@${m.implementationVersion ?? '?'}`
   if (m.measureKind === 'aggregate') return m.aggregationFunction ?? '—'
   return m.measureKind.replace('_', ' ')
@@ -100,9 +105,11 @@ function withMeasureKind(x: DatasetMeasureInput, kind: MeasureKind, allowedRoles
   return {
     ...x,
     measureKind: kind,
-    components: kind === 'formula' ? [] : x.components.filter((c) => allowedRoles.has(c.role)),
+    components: composesMeasures(kind) ? [] : x.components.filter((c) => allowedRoles.has(c.role)),
     aggregationFunction: kind === 'aggregate' ? (x.aggregationFunction ?? 'sum') : kind === 'specialized' ? x.aggregationFunction : null,
-    expressionText: kind === 'formula' ? x.expressionText : null,
+    expressionText: composesMeasures(kind) ? x.expressionText : null,
+    compoundingPeriodicity: kind === 'compound' ? (x.compoundingPeriodicity ?? 'month') : null,
+    compoundingForm: kind === 'compound' ? (x.compoundingForm ?? 'decay') : null,
     implementationKey: kind === 'specialized' ? x.implementationKey : null,
     implementationVersion: kind === 'specialized' ? x.implementationVersion : null,
     configurationJson: kind === 'specialized' ? x.configurationJson : null,
@@ -381,7 +388,7 @@ function NewMeasureRow({
             className="w-28 text-xs"
           />
         ) : (
-          <span className="block pt-2 text-xs text-muted-foreground">{draft.measureKind === 'formula' ? 'Write the formula in the panel' : 'Set in the panel'}</span>
+          <span className="block pt-2 text-xs text-muted-foreground">{composesMeasures(draft.measureKind) ? 'Write the expression in the panel' : 'Set in the panel'}</span>
         )}
       </Td>
       <Td>
@@ -393,7 +400,7 @@ function NewMeasureRow({
               </Chip>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">{draft.measureKind === 'formula' ? '—' : 'Pick in the panel'}</span>
+            <span className="text-xs text-muted-foreground">{composesMeasures(draft.measureKind) ? '—' : 'Pick in the panel'}</span>
           )}
         </span>
       </Td>
@@ -477,7 +484,7 @@ function MeasurePanel({
   const roles = vocab?.componentRolesByKind[d.measureKind] ?? []
   const deps = existing ? (version.dependents[existing.id] ?? []) : []
   const blocking = deps.filter((x) => x.blocksDelete)
-  const reads = d.measureKind === 'formula' ? formulaRefs(d.expressionText) : []
+  const reads = composesMeasures(d.measureKind) ? formulaRefs(d.expressionText) : []
   const timeBindings = version.bindings.filter((b) => b.bindingKind === 'time')
   const seriesGrains = version.grains.filter((g) => g.grainKind === 'series')
   const fieldOptions = version.fields.map((f) => ({ value: f.id, label: f.key, hint: f.dataType }))
@@ -498,7 +505,7 @@ function MeasurePanel({
 
   const relations = (
     <>
-      {d.measureKind === 'formula' && (
+      {composesMeasures(d.measureKind) && (
         <PanelSection title="Reads">
                 {reads.length ? (
                   <ul className="flex flex-col gap-1">
@@ -519,7 +526,7 @@ function MeasurePanel({
                     })}
                   </ul>
                 ) : (
-                  <p className="text-xs text-muted-foreground">The formula references no measures yet.</p>
+                  <p className="text-xs text-muted-foreground">The expression references no measures yet.</p>
                 )}
         </PanelSection>
       )}
@@ -601,19 +608,44 @@ function MeasurePanel({
                   />
                 </FormRow>
               )}
-              {d.measureKind === 'formula' && (
-                <FormRow label="Formula" htmlFor="m-expr" errors={errorsFor('expressionText')} className="@md:col-span-2">
+              {composesMeasures(d.measureKind) && (
+                <FormRow
+                  label={d.measureKind === 'compound' ? 'Per-step rate' : 'Formula'}
+                  htmlFor="m-expr"
+                  errors={errorsFor('expressionText')}
+                  hint={
+                    d.measureKind === 'compound'
+                      ? 'Evaluated for each step, then linked across the period by the form.'
+                      : 'Expression language 1.2 adds @periodDays, @yearDays and YEARFRAC(\'actual_365\').'
+                  }
+                  className="@md:col-span-2"
+                >
                   <ExpressionInput
                     id="m-expr"
                     prefix="m"
                     value={d.expressionText ?? ''}
                     onChange={(v) => set('expressionText', v || null)}
                     items={version.measures.filter((m) => m.id !== existing?.id).map((m) => ({ key: m.key, label: m.displayName }))}
-                    placeholder="[m.interest_income] / [m.average_balance]"
+                    placeholder={d.measureKind === 'compound' ? '[m.prepay_amt] / [m.average_beginning_balance]' : '[m.interest_income] / [m.average_balance]'}
                     invalid={!!errorsFor('expressionText')}
                     disabled={readOnly}
                   />
                 </FormRow>
+              )}
+              {d.measureKind === 'compound' && (
+                <>
+                  <FormRow label="Compounding periodicity" htmlFor="m-cper" errors={errorsFor('compoundingPeriodicity')} hint="The step; the time binding must allow it.">
+                    <VocabSelect id="m-cper" terms={vocab?.periodicity} value={d.compoundingPeriodicity} onChange={(v) => set('compoundingPeriodicity', v)} />
+                  </FormRow>
+                  <FormRow
+                    label="Compounding form"
+                    htmlFor="m-cform"
+                    errors={errorsFor('compoundingForm')}
+                    hint={vocab?.compoundingForm.find((t) => t.value === d.compoundingForm)?.description}
+                  >
+                    <VocabSelect id="m-cform" terms={vocab?.compoundingForm} value={d.compoundingForm} onChange={(v) => set('compoundingForm', v)} />
+                  </FormRow>
+                </>
               )}
               {d.measureKind === 'specialized' && (
                 <>
@@ -631,7 +663,7 @@ function MeasurePanel({
             </div>
           </PanelSection>
 
-          {d.measureKind !== 'formula' && (
+          {!composesMeasures(d.measureKind) && (
             <PanelSection title="Components" description="One field per role. The kind decides which roles apply.">
               {errorsFor('components')?.map((e) => (
                 <p key={e} className="text-xs text-destructive">
@@ -791,7 +823,7 @@ function MeasurePanel({
             </div>
           </PanelSection>
 
-          {d.measureKind !== 'formula' && (
+          {!composesMeasures(d.measureKind) && (
             <PanelSection collapsible title="Row filter" description="Optional predicate restricting which rows feed this measure only.">
               <FormRow label="Filter expression" htmlFor="m-filter" errors={errorsFor('rowFilterExpression')}>
                 <ExpressionInput

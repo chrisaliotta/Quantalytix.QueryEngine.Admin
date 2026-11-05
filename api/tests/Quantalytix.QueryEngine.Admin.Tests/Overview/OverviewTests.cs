@@ -18,7 +18,7 @@ public sealed class OverviewTests
     {
         var overview = await new TenantTables().Overview().GetAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(("sandbox", 19, 12L), (overview.TenantKey, overview.MetadataSchemaVersion, overview.SemanticRevision));
+        Assert.Equal(("sandbox", 20, 12L), (overview.TenantKey, overview.MetadataSchemaVersion, overview.SemanticRevision));
         Assert.Equal(
             new TenantOverviewCounts
             {

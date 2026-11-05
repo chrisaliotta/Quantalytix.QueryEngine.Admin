@@ -1,4 +1,4 @@
-import type { DatasetDependent, Periodicity, DatasetSourceColumn, DatasetTab, DatasetViolation } from '../contract'
+import type { DatasetDependent, MeasureKind, Periodicity, DatasetSourceColumn, DatasetTab, DatasetViolation } from '../contract'
 import type { TenantCatalog } from '../lookups'
 import { publishedMembers, type StoredVersion } from './data'
 
@@ -6,6 +6,9 @@ const PERIOD_RANK: Record<Periodicity, number> = { day: 0, month: 1, quarter: 2,
 
 export const FIELD_REF = /\[f\.([A-Za-z0-9_]+)\]/g
 export const MEASURE_REF = /\[m\.([A-Za-z0-9_]+)\]/g
+
+/** Formula and compound measures compose other measures through an expression. */
+export const composesMeasures = (kind: MeasureKind) => kind === 'formula' || kind === 'compound'
 
 export function refsOf(text: string | null | undefined, pattern: RegExp): string[] {
   if (!text) return []
@@ -124,7 +127,7 @@ export function commitViolations(v: StoredVersion, catalog: TenantCatalog, colum
       const finer = native ? b.time.allowedPeriodicities.filter((p) => PERIOD_RANK[p] < PERIOD_RANK[native]) : []
       if (finer.length) {
         const offending = v.measures.filter(
-          (m) => m.isEnabled && m.measureKind !== 'formula' && (m.timePolicy?.requiredTimeBindingId ?? v.settings.defaultTimeBindingId) === b.id && m.timePolicy?.partialIntervalBehavior !== 'uniform_estimate',
+          (m) => m.isEnabled && !composesMeasures(m.measureKind) && (m.timePolicy?.requiredTimeBindingId ?? v.settings.defaultTimeBindingId) === b.id && m.timePolicy?.partialIntervalBehavior !== 'uniform_estimate',
         )
         if (offending.length)
           push('interval_estimates_for_finer_periods', 'bindings', item, `${finer.join(', ')} is finer than native ${native}; ${offending.map((m) => m.key).join(', ')} must use uniform_estimate.`)
@@ -135,7 +138,7 @@ export function commitViolations(v: StoredVersion, catalog: TenantCatalog, colum
   /* Measures */
   duplicates(v.measures, (m) => m.key).forEach((m) => push('measure_key_unique', 'measures', m, `Measure key '${m.key}' is used by more than one measure.`))
   for (const m of v.measures) {
-    if (m.measureKind === 'formula') {
+    if (composesMeasures(m.measureKind)) {
       for (const ref of refsOf(m.expressionText, MEASURE_REF)) if (!measureByKey.has(ref)) push('formula_references_known_measures', 'measures', m, `[m.${ref}] is not a measure of this version.`)
     }
     if (m.components.some((cp) => !fieldById.has(cp.fieldId))) push('component_fields_in_version', 'measures', m, 'Every component must be a field of this version.')
@@ -156,7 +159,7 @@ export function commitViolations(v: StoredVersion, catalog: TenantCatalog, colum
   const mCyclic = new Set<string>()
   const mWalk = (key: string, stack: string[]) => {
     const m = measureByKey.get(key)
-    if (!m || m.measureKind !== 'formula' || mDone.has(key)) return
+    if (!m || !composesMeasures(m.measureKind) || mDone.has(key)) return
     if (mVisiting.has(key)) {
       stack.slice(stack.indexOf(key)).forEach((k) => mCyclic.add(k))
       return
@@ -168,6 +171,23 @@ export function commitViolations(v: StoredVersion, catalog: TenantCatalog, colum
   }
   v.measures.forEach((m) => mWalk(m.key, []))
   mCyclic.forEach((k) => push('formula_acyclic', 'measures', measureByKey.get(k)!, `[m.${k}] depends on itself through other formulas.`))
+  // Compound measures step over ordinary inputs at a periodicity their time binding allows.
+  const inputsOf = (key: string, seen = new Set<string>()): Set<string> => {
+    for (const ref of refsOf(measureByKey.get(key)?.expressionText, MEASURE_REF)) {
+      if (seen.has(ref)) continue
+      seen.add(ref)
+      inputsOf(ref, seen)
+    }
+    return seen
+  }
+  for (const m of v.measures.filter((x) => x.measureKind === 'compound')) {
+    for (const ref of [...inputsOf(m.key)].filter((k) => k !== m.key && measureByKey.get(k)?.measureKind === 'compound').sort())
+      push('compound_inputs', 'measures', m, `Compound measure '${m.key}' reads compound measure '${ref}'; a compound rate reads ordinary measures only.`)
+    const time = bindingById.get(m.timePolicy?.requiredTimeBindingId ?? v.settings.defaultTimeBindingId ?? '')?.time
+    if (!time) push('compound_inputs', 'measures', m, `Compound measure '${m.key}' compounds over periods, so it needs a time binding.`)
+    else if (!time.allowedPeriodicities.includes(m.compoundingPeriodicity!))
+      push('compound_inputs', 'measures', m, `Compound measure '${m.key}' compounds by ${m.compoundingPeriodicity}, which its time binding does not allow.`)
+  }
 
   return out
 }

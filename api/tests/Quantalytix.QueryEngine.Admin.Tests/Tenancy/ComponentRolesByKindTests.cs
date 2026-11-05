@@ -21,6 +21,7 @@ public sealed class ComponentRolesByKindTests
         Assert.Equal([(ComponentRoles.Value, true), (ComponentRoles.Weight, true)], Roles(byKind[MeasureKinds.WeightedAverage]));
         Assert.Equal([(ComponentRoles.Value, true), (ComponentRoles.PeriodDays, false)], Roles(byKind[MeasureKinds.PeriodAverage]));
         Assert.Empty(byKind[MeasureKinds.Formula]);
+        Assert.Empty(byKind[MeasureKinds.Compound]);
         Assert.All(byKind[MeasureKinds.Specialized], requirement => Assert.False(requirement.Required));
         Assert.Equal(ComponentRoles.Definition.Values.Count, byKind[MeasureKinds.Specialized].Count);
     }

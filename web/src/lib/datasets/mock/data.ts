@@ -80,6 +80,11 @@ export const vocabularies: Vocabularies = {
     t('period_average', 'Period average', 'Average of a value across the days of a period.'),
     t('formula', 'Formula', 'Composes other measures of this version.'),
     t('specialized', 'Specialized', 'A registered implementation with its own configuration.'),
+    t('compound', 'Compound', 'Links a per-step rate over measures geometrically across each period.'),
+  ],
+  compoundingForm: [
+    t('decay', 'Decay', '1 - prod(1 - r), such as a survival-based mortality rate.'),
+    t('growth', 'Growth', 'prod(1 + r) - 1, such as a compounded return.'),
   ],
   aggregationFunction: [
     t('sum', 'sum'),
@@ -118,6 +123,7 @@ export const vocabularies: Vocabularies = {
       { role: 'numerator', required: false },
       { role: 'denominator', required: false },
     ],
+    compound: [],
   },
   valueNullBehavior: [t('exclude', 'Exclude'), t('zero', 'Treat as zero')],
   negativeWeightBehavior: [t('allow', 'Allow'), t('exclude', 'Exclude row')],
@@ -148,7 +154,11 @@ export const vocabularies: Vocabularies = {
   ],
   missingPeriodBehavior: [t('null', 'Null'), t('zero', 'Zero')],
   sourceObjectKind: [t('table', 'Table'), t('view', 'View')],
-  expressionLanguageVersion: [t('1.0', '1.0', 'Original grammar.'), t('1.1', '1.1', 'Adds MONTHS_BETWEEN and POWER.')],
+  expressionLanguageVersion: [
+    t('1.0', '1.0', 'Original grammar.'),
+    t('1.1', '1.1', 'Adds MONTHS_BETWEEN and POWER.'),
+    t('1.2', '1.2', 'Adds @periodDays, @yearDays and YEARFRAC in measure formulas.'),
+  ],
   timeZone: ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Frankfurt', 'Asia/Singapore', 'Asia/Tokyo'].map(
     (z) => t(z, z),
   ),
@@ -370,6 +380,8 @@ export function emptyMeasure(): Omit<DatasetMeasure, 'id'> {
     measureKind: 'aggregate',
     aggregationFunction: 'sum',
     expressionText: null,
+    compoundingPeriodicity: null,
+    compoundingForm: null,
     implementationKey: null,
     implementationVersion: null,
     configurationJson: null,

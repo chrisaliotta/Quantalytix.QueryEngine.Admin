@@ -348,6 +348,9 @@ components:
     DatasetAggregationFunction:
       type: string
       enum: [sum, avg, min, max, count, count_distinct]
+    DatasetCompoundingForm:
+      type: string
+      enum: [decay, growth]
     DatasetValueNullBehavior:
       type: string
       enum: [exclude, zero]
@@ -845,7 +848,7 @@ components:
 
     DatasetMeasureDefinition:
       type: object
-      required: [key, displayName, isEnabled, measureKind, aggregationFunction, expressionText, implementationKey, implementationVersion, configurationJson, components, rowFilterExpression, valueNullBehavior, negativeWeightBehavior, emptySetBehavior, bridgeFactorBehavior, bridgeAllocationBehavior, totalBehavior, outputDataType, outputPrecision, outputScale, roundingMode, unitKey, accumulatorPrecision, accumulatorScale, timePolicy]
+      required: [key, displayName, isEnabled, measureKind, aggregationFunction, expressionText, compoundingPeriodicity, compoundingForm, implementationKey, implementationVersion, configurationJson, components, rowFilterExpression, valueNullBehavior, negativeWeightBehavior, emptySetBehavior, bridgeFactorBehavior, bridgeAllocationBehavior, totalBehavior, outputDataType, outputPrecision, outputScale, roundingMode, unitKey, accumulatorPrecision, accumulatorScale, timePolicy]
       properties:
         key:
           $ref: './common.yaml#/components/schemas/Key'
@@ -861,7 +864,19 @@ components:
             - type: 'null'
         expressionText:
           type: [string, 'null']
-          description: Formula measures; composes other measures (`[m.key]`).
+          description: >-
+            Formula measures, and the per-step rate of compound measures; composes other measures (`[m.key]`). Only formulas
+            read `@periodDays`, `@yearDays` and `YEARFRAC('<convention>')`, from expression language 1.2.
+        compoundingPeriodicity:
+          oneOf:
+            - $ref: './common.yaml#/components/schemas/Periodicity'
+            - type: 'null'
+          description: Compound measures; the step the rate compounds over.
+        compoundingForm:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetCompoundingForm'
+            - type: 'null'
+          description: Compound measures; `decay` is 1 - prod(1 - r), `growth` is prod(1 + r) - 1.
         implementationKey:
           type: [string, 'null']
         implementationVersion:

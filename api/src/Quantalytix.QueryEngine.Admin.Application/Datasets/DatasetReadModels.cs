@@ -223,6 +223,8 @@ public static class DatasetReadModels
             MeasureKind = measure.MeasureKind,
             AggregationFunction = measure.AggregationFunction,
             ExpressionText = measure.ExpressionText,
+            CompoundingPeriodicity = measure.CompoundingPeriodicity,
+            CompoundingForm = measure.CompoundingForm,
             ImplementationKey = measure.ImplementationKey,
             ImplementationVersion = measure.ImplementationVersion,
             ConfigurationJson = measure.ConfigurationJson,

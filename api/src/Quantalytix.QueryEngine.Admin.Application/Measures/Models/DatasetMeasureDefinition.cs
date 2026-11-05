@@ -18,8 +18,14 @@ public abstract record DatasetMeasureDefinition
     /// <summary>An <c>aggregation_function</c> value.</summary>
     public required string? AggregationFunction { get; init; }
 
-    /// <summary>The formula of a formula measure, composing other measures (<c>[m.key]</c>).</summary>
+    /// <summary>The formula of a formula measure, or the per-step rate of a compound measure, composing other measures (<c>[m.key]</c>).</summary>
     public required string? ExpressionText { get; init; }
+
+    /// <summary>A <c>periodicity</c> value: the step a compound measure compounds over.</summary>
+    public required string? CompoundingPeriodicity { get; init; }
+
+    /// <summary>A <c>compounding_form</c> value of a compound measure.</summary>
+    public required string? CompoundingForm { get; init; }
 
     /// <summary>The implementation of a specialized measure.</summary>
     public required string? ImplementationKey { get; init; }

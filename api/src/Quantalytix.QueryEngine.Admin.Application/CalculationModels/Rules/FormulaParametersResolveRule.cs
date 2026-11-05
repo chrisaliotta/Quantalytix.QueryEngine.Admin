@@ -154,7 +154,7 @@ public static class FormulaParametersResolveRule
     {
         return argument switch
         {
-            Literal { Value: string text } => DayCountConventions.Contains(text) ? [] : [$"calls YEARFRAC with '{text}', which is no day count convention"],
+            Literal { Value: string text } => YearFracCalls.LiteralProblem(text) is { } problem ? [problem] : [],
             ParameterReference reference when TypeOf(reference.Name, parameters) is null => [],
             ParameterReference reference when TypeOf(reference.Name, parameters) == Slot.Text => parameters[reference.Name].AllowedValues is { Count: > 0 } allowed
                 && allowed.All(DayCountConventions.Contains)

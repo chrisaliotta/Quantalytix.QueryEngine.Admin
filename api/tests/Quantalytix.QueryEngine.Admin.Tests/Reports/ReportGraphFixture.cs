@@ -65,7 +65,7 @@ internal sealed class ReportGraphFixture
     {
         SingletonId = 1,
         TenantKey = "bank",
-        MetadataSchemaVersion = 19,
+        MetadataSchemaVersion = 20,
         SemanticRevision = 1,
         UpdatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
     });

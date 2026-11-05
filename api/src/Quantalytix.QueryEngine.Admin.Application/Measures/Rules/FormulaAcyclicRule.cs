@@ -15,7 +15,7 @@ public sealed class FormulaAcyclicRule : MeasureRule
     protected override IEnumerable<RuleViolation> Evaluate(DatasetSnapshot snapshot)
     {
         var edges = snapshot.Dependencies.ToLookup(dependency => dependency.MeasureId, dependency => dependency.DependencyMeasureId);
-        var reachable = snapshot.Measures.ToDictionary(measure => measure.MeasureId, measure => Reachable(measure.MeasureId, edges));
+        var reachable = snapshot.Measures.ToDictionary(measure => measure.MeasureId, measure => MeasureDependencies.Reachable(measure.MeasureId, edges));
         var onCycle = ByKey(snapshot).Where(measure => reachable[measure.MeasureId].Contains(measure.MeasureId)).ToList();
         var reported = new HashSet<long>();
         foreach (var measure in onCycle.Where(measure => !reported.Contains(measure.MeasureId)))
@@ -24,21 +24,6 @@ public sealed class FormulaAcyclicRule : MeasureRule
             reported.UnionWith(cycle.Select(member => member.MeasureId));
             yield return Violation(measure, CycleMessage([.. cycle.Select(member => member.MeasureKey)]));
         }
-    }
-
-    /// <summary>The measures a measure's formula reaches.</summary>
-    private static HashSet<long> Reachable(long measureId, ILookup<long, long> edges)
-    {
-        var reached = new HashSet<long>();
-        var pending = new Stack<long>(edges[measureId]);
-        while (pending.Count > 0)
-        {
-            var next = pending.Pop();
-            if (!reached.Add(next)) continue;
-            foreach (var dependency in edges[next]) pending.Push(dependency);
-        }
-
-        return reached;
     }
 
     /// <summary>The message naming a cycle's measures.</summary>

@@ -21,4 +21,14 @@ public sealed record Vocabulary
 
     /// <summary>The allowed values, in the schema's order.</summary>
     public required IReadOnlyList<VocabularyValue> Values { get; init; }
+
+    /// <summary>Whether a value comes no earlier than another in a vocabulary that lists versions oldest first.</summary>
+    /// <param name="value">A value of the vocabulary.</param>
+    /// <param name="earliest">The value it must reach.</param>
+    /// <returns>True when <paramref name="value"/> is <paramref name="earliest"/> or later.</returns>
+    public bool IsAtLeast(string value, string earliest)
+    {
+        var order = Values.Select(item => item.Value).ToList();
+        return order.IndexOf(value) >= order.IndexOf(earliest);
+    }
 }

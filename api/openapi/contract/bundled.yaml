@@ -2189,6 +2189,7 @@ components:
         - period_average
         - formula
         - specialized
+        - compound
     ComponentRole:
       type: string
       enum:
@@ -2958,6 +2959,7 @@ components:
         - periodicity
         - cumulativeOrigin
         - measureKind
+        - compoundingForm
         - aggregationFunction
         - componentRole
         - componentRolesByKind
@@ -3211,6 +3213,16 @@ components:
                 properties:
                   value:
                     $ref: '#/components/schemas/MeasureKind'
+        compoundingForm:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/VocabularyTerm'
+              - required:
+                  - value
+                properties:
+                  value:
+                    $ref: '#/components/schemas/DatasetCompoundingForm'
         aggregationFunction:
           type: array
           items:
@@ -3370,7 +3382,7 @@ components:
                     $ref: '#/components/schemas/DatasetMissingPeriodBehavior'
         expressionLanguageVersion:
           type: array
-          description: Grammar versions a dataset version's expressions may declare.
+          description: 'Grammar versions a dataset version''s expressions may declare, oldest first: 1.1 adds MONTHS_BETWEEN and POWER, 1.2 adds @periodDays, @yearDays and YEARFRAC in measure formulas.'
           items:
             $ref: '#/components/schemas/VocabularyTerm'
         timeZone:
@@ -3748,6 +3760,11 @@ components:
         - max
         - count
         - count_distinct
+    DatasetCompoundingForm:
+      type: string
+      enum:
+        - decay
+        - growth
     DatasetValueNullBehavior:
       type: string
       enum:
@@ -4411,6 +4428,8 @@ components:
         - measureKind
         - aggregationFunction
         - expressionText
+        - compoundingPeriodicity
+        - compoundingForm
         - implementationKey
         - implementationVersion
         - configurationJson
@@ -4447,7 +4466,17 @@ components:
           type:
             - string
             - 'null'
-          description: Formula measures; composes other measures (`[m.key]`).
+          description: Formula measures, and the per-step rate of compound measures; composes other measures (`[m.key]`). Only formulas read `@periodDays`, `@yearDays` and `YEARFRAC('<convention>')`, from expression language 1.2.
+        compoundingPeriodicity:
+          oneOf:
+            - $ref: '#/components/schemas/Periodicity'
+            - type: 'null'
+          description: Compound measures; the step the rate compounds over.
+        compoundingForm:
+          oneOf:
+            - $ref: '#/components/schemas/DatasetCompoundingForm'
+            - type: 'null'
+          description: Compound measures; `decay` is 1 - prod(1 - r), `growth` is prod(1 + r) - 1.
         implementationKey:
           type:
             - string

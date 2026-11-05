@@ -27,6 +27,7 @@ export type DatasetTimeValueType = 'date' | 'timestamp'
 export type DatasetObservationKind = 'instant' | 'snapshot' | 'interval'
 export type DatasetCumulativeOrigin = 'output_range_start' | 'fixed_start'
 export type DatasetAggregationFunction = 'sum' | 'avg' | 'min' | 'max' | 'count' | 'count_distinct'
+export type DatasetCompoundingForm = 'decay' | 'growth'
 export type DatasetValueNullBehavior = 'exclude' | 'zero'
 export type DatasetNegativeWeightBehavior = 'allow' | 'exclude'
 export type DatasetEmptySetBehavior = 'null' | 'zero'
@@ -279,7 +280,12 @@ export interface DatasetMeasureDefinition {
   isEnabled: boolean
   measureKind: MeasureKind
   aggregationFunction: DatasetAggregationFunction | null
+  /** Formula measures, and the per-step rate of compound measures; only formulas read the period (expression language 1.2). */
   expressionText: string | null
+  /** Compound measures: the step the rate compounds over. */
+  compoundingPeriodicity: Periodicity | null
+  /** Compound measures: decay is 1 - prod(1 - r), growth is prod(1 + r) - 1. */
+  compoundingForm: DatasetCompoundingForm | null
   implementationKey: string | null
   implementationVersion: string | null
   configurationJson: string | null

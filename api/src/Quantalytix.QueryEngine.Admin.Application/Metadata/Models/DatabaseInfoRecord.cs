@@ -9,7 +9,7 @@ public sealed record DatabaseInfoRecord
     /// <summary>Tenant-local identity marker.</summary>
     public required string TenantKey { get; init; }
 
-    /// <summary>Database metadata contract version (currently <c>19</c>).</summary>
+    /// <summary>Database metadata contract version (currently <c>20</c>).</summary>
     public required int MetadataSchemaVersion { get; init; }
 
     /// <summary>Monotonic revision the query engine uses to invalidate cached metadata.</summary>

@@ -79,6 +79,7 @@ public static class DatasetsFeatureServiceCollectionExtensions
         services.AddSnapshotRule<DatasetSnapshot, ComponentRolesMatchKindRule>();
         services.AddSnapshotRule<DatasetSnapshot, FormulaReferencesKnownMeasuresRule>();
         services.AddSnapshotRule<DatasetSnapshot, FormulaAcyclicRule>();
+        services.AddSnapshotRule<DatasetSnapshot, CompoundInputsRule>();
         services.AddSnapshotRule<DatasetSnapshot, TimePolicySeriesGrainRule>();
         services.AddSnapshotRule<DatasetSnapshot, TimePolicyTimeBindingInVersionRule>();
         services.AddSnapshotRule<DatasetSnapshot, DatasetReportsResolveRule>();

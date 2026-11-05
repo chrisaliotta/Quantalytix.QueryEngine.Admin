@@ -58,7 +58,7 @@ components:
 
     MeasureKind:
       type: string
-      enum: [aggregate, weighted_sum, weighted_average, period_average, formula, specialized]
+      enum: [aggregate, weighted_sum, weighted_average, period_average, formula, specialized, compound]
 
     ComponentRole:
       type: string
