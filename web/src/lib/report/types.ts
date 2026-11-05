@@ -1,5 +1,8 @@
 export type RowKind = 'line' | 'subtotal' | 'heading' | 'formula'
 
+/** Where a group's total shows relative to its rows; renderers place rows by it (layout.ts). */
+export type GroupPresentation = 'total_above' | 'total_below' | 'header_and_total' | 'step'
+
 export interface RowNode {
   key: string
   label: string
@@ -11,6 +14,14 @@ export interface RowNode {
   styleKey?: string
   /** Own parameter values; missing keys inherit. */
   parameters?: Record<string, string | number>
+  /** Subtotal rows; empty follows the report's default presentation. */
+  presentation?: GroupPresentation
+  /** Subtotal rows shown as header and total: the total line's label; empty repeats the row label. */
+  totalLabel?: string
+  /** Member rows: the displayed value is negated, here and on the rows under it. */
+  reverseSign?: boolean
+  /** Formula rows: the member row the formula is evaluated at; empty is the whole report. */
+  scopeKey?: string
   children: RowNode[]
 }
 
@@ -182,7 +193,7 @@ export interface ReportSettings {
   currency: string
   periodicity: 'Day' | 'Month' | 'Quarter' | 'Year'
   layout: 'Statement' | 'List'
-  subtotals: 'Above' | 'Below'
+  defaultPresentation: GroupPresentation
   defaultProfile: string
   defaultBreakout: string[]
   defaultFilters: Filter[]

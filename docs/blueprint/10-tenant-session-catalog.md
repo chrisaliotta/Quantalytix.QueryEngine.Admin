@@ -116,7 +116,7 @@ than one module reads (`DimensionKind`, `DimensionPurpose`, `DefinitionOrigin`, 
 file otherwise (`DatasetDataType`, `MappingCardinality`, `ReportLayout`). The dataset contract's `Vocabularies` interface is the starting point and grows with the other
 modules' unions: `dimensionKind`, `rangeDataType`, `editPolicy`, `cardinality`, `allocationMode`, `sourceSelection`,
 `mappingMethod`, `groupingMode`, `selectionScope`, `formulaLanguageVersion`, `attributionMethod`, `parameterValueType`,
-`displayFormat`, `subtotalPosition`, `styleRole`, `fontWeight`, `borderStyle`, `layout`, `periodicity`,
+`displayFormat`, `groupPresentation`, `styleRole`, `fontWeight`, `borderStyle`, `layout`, `periodicity`,
 `dayCountConvention`.
 
 ## HTTP API

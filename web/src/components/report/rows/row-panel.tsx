@@ -139,7 +139,7 @@ function GroupRowNote({ row }: { row: RowNode }) {
   const lines = allRows(row.children).filter((r) => r.kind === 'line')
   const note =
     row.kind === 'subtotal'
-      ? 'A subtotal totals the rows under it; map data on the lines below.'
+      ? 'A subtotal totals the rows under it and shows the total where its presentation places it; map data on the lines below.'
       : 'A heading labels a group and shows no values; map data on the lines below.'
 
   return (

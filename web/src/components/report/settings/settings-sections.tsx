@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label'
 import { useEditor } from '@/lib/report/store'
 import { filterValues } from '@/lib/report/dimensions'
 import type { ReportSettings } from '@/lib/report/types'
-import { KeyText } from '../shared/bits'
+import { KeyText, PRESENTATION_HINT, PRESENTATION_LABEL, PRESENTATIONS } from '../shared/bits'
 import { FilterBuilder } from '../shared/filter-builder'
 import { Segmented } from '../shared/segmented'
 
@@ -70,15 +70,15 @@ export function DefaultsSection() {
           ]}
         />
       </Field>
-      <Field label="Subtotals" hint="Show subtotal values above or below the rows they total. Viewers can change this.">
+      <Field
+        label="Subtotal presentation"
+        hint={`${PRESENTATION_HINT[settings.defaultPresentation]} Subtotals set to Inherit follow this.`}
+      >
         <Segmented
-          aria-label="Subtotals"
-          value={settings.subtotals}
-          onChange={(v) => set('subtotals', v)}
-          options={[
-            { value: 'Above', label: 'Above' },
-            { value: 'Below', label: 'Below' },
-          ]}
+          aria-label="Subtotal presentation"
+          value={settings.defaultPresentation}
+          onChange={(v) => set('defaultPresentation', v)}
+          options={PRESENTATIONS.map((p) => ({ value: p, label: PRESENTATION_LABEL[p] }))}
         />
       </Field>
       <Field label="Default breakout" hint={settings.defaultBreakout.length === 0 ? 'No breakout. The report opens ungrouped.' : 'Applied in the order listed.'}>

@@ -1,6 +1,6 @@
 import { CalculatorIcon, FolderIcon, HeadingIcon, MinusIcon, SigmaIcon } from 'lucide-react'
 import type { ComponentProps } from 'react'
-import type { RowKind } from '@/lib/report/types'
+import type { GroupPresentation, RowKind } from '@/lib/report/types'
 import { cn } from '@/lib/utils'
 
 export const KIND_LABEL: Record<RowKind, string> = {
@@ -9,6 +9,22 @@ export const KIND_LABEL: Record<RowKind, string> = {
   heading: 'Heading',
   formula: 'Formula',
 }
+
+export const PRESENTATION_LABEL: Record<GroupPresentation, string> = {
+  total_above: 'Total above',
+  total_below: 'Total below',
+  header_and_total: 'Header and total',
+  step: 'Step',
+}
+
+export const PRESENTATION_HINT: Record<GroupPresentation, string> = {
+  total_above: 'The total, then the rows under it, indented.',
+  total_below: 'The rows under it, indented, then the total.',
+  header_and_total: 'A header, the rows under it, indented, then a total line.',
+  step: 'The rows under it at the same level, then the total, as in a multi-step income statement.',
+}
+
+export const PRESENTATIONS = Object.keys(PRESENTATION_LABEL) as GroupPresentation[]
 
 export function KindGlyph({ kind, className }: { kind: RowKind; className?: string }) {
   const Icon = { line: MinusIcon, subtotal: SigmaIcon, heading: HeadingIcon, formula: CalculatorIcon }[kind]

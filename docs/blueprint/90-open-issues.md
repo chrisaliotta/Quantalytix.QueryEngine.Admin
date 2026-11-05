@@ -21,7 +21,7 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 | Datasets | [32](#oi-32) [33](#oi-33) [34](#oi-34) [35](#oi-35) [36](#oi-36) |
 | Releases and assumption sets (withdrawn) | [37](#oi-37) [38](#oi-38) [39](#oi-39) [40](#oi-40) [41](#oi-41) |
 | Calculation models | [42](#oi-42) [43](#oi-43) [44](#oi-44) [45](#oi-45) |
-| Reports | [46](#oi-46) [47](#oi-47) [48](#oi-48) [49](#oi-49) [50](#oi-50) [51](#oi-51) [52](#oi-52) [53](#oi-53) [54](#oi-54) [55](#oi-55) [56](#oi-56) |
+| Reports | [46](#oi-46) [47](#oi-47) [48](#oi-48) [49](#oi-49) [50](#oi-50) [51](#oi-51) [52](#oi-52) [53](#oi-53) [54](#oi-54) [55](#oi-55) [56](#oi-56) [58](#oi-58) |
 
 ---
 
@@ -610,3 +610,23 @@ Path shorthand: `web/` = `Quantalytix.QueryEngine.Admin/web/src/`, `api/` = `Qua
 - **Recommendation:** the server performs every cascade listed in [16](16-reports.md#change-set-operations) and refuses
   what it cannot cascade.
 - **Status:** Decided 2026-10-26. Server performs every cascade listed in doc 16 and refuses what it cannot cascade.
+
+<a id="oi-58"></a>
+### OI-58 Who places a report's rows
+
+- **Statement:** `qe_report_version.subtotal_position` (`above`, `below`) let the engine order a group's row before or
+  after its children, one setting for the whole report. Statements need more per group: a header and a total line, a
+  multi-step income statement whose children keep the group's indent, a total label, and expenses shown as positive.
+  Ratios were always evaluated at the report's root.
+- **Sources:** `api/openapi/contract/reports.yaml` (`ReportSettings`, `ReportRow`); schema `qe_report_version`,
+  `qe_report_member_option`, `qe_report_line`; engine report contract 2.3.
+- **Options:**
+  1. The engine keeps placing rows and learns every new presentation.
+  2. The engine returns every row in hierarchy order with its resolved metadata, and renderers place the rows.
+- **Recommendation:** option 2.
+- **Status:** Decided 2026-11-05. Renderers place rows. One `group_presentation` vocabulary (`total_above`,
+  `total_below`, `header_and_total`, `step`) replaces `subtotal_position`: `ReportSettings.defaultPresentation` is the
+  report's default and `ReportRow.presentation` a group row's own, null inheriting it. `totalLabel` labels a
+  `header_and_total` total line, `reverseSign` negates a member row's displayed values and those of the member rows
+  under it, and `scopeMemberKey` names the member a formula row is evaluated at, null for the root. The web editor's
+  `lib/report/layout.ts` holds the one implementation of the placement rules ([16](16-reports.md#row-presentation)).

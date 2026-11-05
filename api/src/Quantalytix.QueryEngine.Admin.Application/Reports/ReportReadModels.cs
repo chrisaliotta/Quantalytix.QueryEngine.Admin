@@ -99,6 +99,10 @@ public static class ReportReadModels
                         CalculatedMeasureKey = null,
                         ValueColumnKey = null,
                         StyleKey = option?.StyleKey,
+                        Presentation = option?.Presentation,
+                        TotalLabel = option?.TotalLabel,
+                        ReverseSign = option?.ReverseSign ?? false,
+                        ScopeMemberKey = null,
                         Parameters = parameters
                     };
                 }
@@ -115,6 +119,10 @@ public static class ReportReadModels
                     CalculatedMeasureKey = line.CalculatedMeasureKey,
                     ValueColumnKey = line.ValueReportColumnId is { } columnId ? columnKeys[columnId] : null,
                     StyleKey = line.StyleKey,
+                    Presentation = null,
+                    TotalLabel = null,
+                    ReverseSign = false,
+                    ScopeMemberKey = line.ScopeMemberKey,
                     Parameters = parameters
                 };
             })

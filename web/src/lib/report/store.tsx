@@ -17,6 +17,7 @@ export type DialogState =
   | { type: 'deleteProfile'; profileKey: string }
   | { type: 'coverage'; sourceKey: string }
   | { type: 'deleteRow'; rowKey: string }
+  | { type: 'subtotalRows'; rowKeys: string[] }
   | { type: 'renameReport' }
   | { type: 'renameReportKey' }
   | { type: 'deleteReport' }
@@ -31,6 +32,8 @@ export interface UiState {
   view: 'editor' | 'settings'
   settingsSection: SettingsSectionId
   selectedRowKey: string | null
+  /** A shift-click range of siblings from `selectedRowKey`; selecting any single row clears it. */
+  selectedRowKeys: string[]
   rowPanelTab: RowPanelTab
   collapsed: string[]
   /** The profile the editor is viewed "as". */
@@ -108,6 +111,7 @@ function uiForReport(report: ReportState): Partial<UiState> {
     tab: 'rows',
     settingsSection: 'defaults',
     selectedRowKey: report.rows[0]?.key ?? null,
+    selectedRowKeys: [],
     rowPanelTab: 'mapping',
     collapsed: [],
     activeProfile: report.settings.defaultProfile,
@@ -165,6 +169,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     view: 'editor',
     settingsSection: 'defaults',
     selectedRowKey: persistence.initialRowKey,
+    selectedRowKeys: [],
     rowPanelTab: 'mapping',
     collapsed: [],
     activeProfile: initialReport.settings.defaultProfile,
@@ -216,7 +221,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   )
 
   const setUi = useCallback((patch: Partial<UiState> | ((ui: UiState) => Partial<UiState>)) => {
-    setUiState((prev) => ({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) }))
+    setUiState((prev) => {
+      const next = typeof patch === 'function' ? patch(prev) : patch
+      return { ...prev, ...('selectedRowKey' in next ? { selectedRowKeys: [] } : {}), ...next }
+    })
   }, [])
 
   const library = useMemo<LibraryItem[]>(

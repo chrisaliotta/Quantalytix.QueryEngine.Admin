@@ -28,7 +28,7 @@ public static class ReportSettingsColumns
         {
             DisplayName = report.DisplayName,
             ReportType = report.ReportType,
-            SubtotalPosition = report.SubtotalPosition,
+            DefaultPresentation = report.DefaultPresentation,
             DefaultProfileKey = report.DefaultProfileKey,
             Periodicity = (string?)settings["periodicity"],
             Layout = (string?)settings["layout"] ?? ReportLayouts.Statement,
@@ -50,7 +50,7 @@ public static class ReportSettingsColumns
         {
             DisplayName = patch.DisplayName ?? report.DisplayName,
             ReportType = patch.ReportType ?? report.ReportType,
-            SubtotalPosition = patch.SubtotalPosition ?? report.SubtotalPosition,
+            DefaultPresentation = patch.DefaultPresentation ?? report.DefaultPresentation,
             DefaultProfileKey = patch.SetsDefaultProfileKey ? patch.DefaultProfileKey : report.DefaultProfileKey,
             DefaultSettingsJson = settings.ToJsonString(),
             DefaultPivotJson = patch.DefaultBreakout is { } breakout ? WithBreakout(report.DefaultPivotJson, breakout) : report.DefaultPivotJson,

@@ -2990,7 +2990,7 @@ components:
         - mappingMethod
         - selectionScope
         - columnValueKind
-        - subtotalPosition
+        - groupPresentation
         - styleRole
         - fontWeight
         - borderStyle
@@ -3504,8 +3504,9 @@ components:
                 properties:
                   value:
                     $ref: '#/components/schemas/ReportColumnValueKind'
-        subtotalPosition:
+        groupPresentation:
           type: array
+          description: How renderers place a report's groups.
           items:
             allOf:
               - $ref: '#/components/schemas/VocabularyTerm'
@@ -3513,7 +3514,7 @@ components:
                   - value
                 properties:
                   value:
-                    $ref: '#/components/schemas/ReportSubtotalPosition'
+                    $ref: '#/components/schemas/ReportGroupPresentation'
         styleRole:
           type: array
           description: The row role a report style applies to by default.
@@ -7312,11 +7313,14 @@ components:
       enum:
         - statement
         - list
-    ReportSubtotalPosition:
+    ReportGroupPresentation:
       type: string
+      description: 'How a renderer places a group, a member row that shows values and has rows under it: its total before or after the rows under it, a header before them and a total after, or a step whose rows keep the group''s indent. The engine returns rows in hierarchy order; renderers place them.'
       enum:
-        - above
-        - below
+        - total_above
+        - total_below
+        - header_and_total
+        - step
     ReportRowKind:
       type: string
       description: '`data` and `group` rows are report dimension members (a `group` has members under it); `section` and `formula` rows are overlay lines (OI-48).'
@@ -7408,7 +7412,7 @@ components:
       required:
         - displayName
         - reportType
-        - subtotalPosition
+        - defaultPresentation
         - defaultProfileKey
         - periodicity
         - layout
@@ -7419,8 +7423,9 @@ components:
           type: string
         reportType:
           type: string
-        subtotalPosition:
-          $ref: '#/components/schemas/ReportSubtotalPosition'
+        defaultPresentation:
+          $ref: '#/components/schemas/ReportGroupPresentation'
+          description: The presentation of every group whose row names none.
         defaultProfileKey:
           type:
             - string
@@ -7449,8 +7454,8 @@ components:
           type: string
         reportType:
           type: string
-        subtotalPosition:
-          $ref: '#/components/schemas/ReportSubtotalPosition'
+        defaultPresentation:
+          $ref: '#/components/schemas/ReportGroupPresentation'
         defaultProfileKey:
           type:
             - string
@@ -7481,6 +7486,10 @@ components:
         - calculatedMeasureKey
         - valueColumnKey
         - styleKey
+        - presentation
+        - totalLabel
+        - reverseSign
+        - scopeMemberKey
         - parameters
       properties:
         key:
@@ -7512,6 +7521,24 @@ components:
           type:
             - string
             - 'null'
+        presentation:
+          description: Group rows that show values; null inherits the report's `defaultPresentation`.
+          oneOf:
+            - $ref: '#/components/schemas/ReportGroupPresentation'
+            - type: 'null'
+        totalLabel:
+          type:
+            - string
+            - 'null'
+          description: Group rows presented `header_and_total`; the total line's label, null for the row's label.
+        reverseSign:
+          type: boolean
+          description: Member rows; true shows the row's values, and those of every member row under it, negated. Display only; false for the other kinds.
+        scopeMemberKey:
+          type:
+            - string
+            - 'null'
+          description: Formula rows; the member row the formula is evaluated at, whose parameters it inherits. Null for the report's total.
         parameters:
           type: object
           description: The row's own model parameter values; missing keys inherit.
@@ -8099,7 +8126,7 @@ components:
           $ref: '#/components/schemas/ReportRowPosition'
     ReportDeleteRowOperation:
       type: object
-      description: Children move up; the row's rules, scopes, parameters and member option go (OI-56).
+      description: Children move up; the row's rules, scopes, parameters and member option go (OI-56). Formula rows evaluated at a deleted member are evaluated at its parent.
       required:
         - op
         - key

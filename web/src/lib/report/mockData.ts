@@ -20,7 +20,7 @@ export const initialReport: ReportState = {
   periodicity: 'Month',
 
     layout: 'Statement',
-    subtotals: 'Above',
+    defaultPresentation: 'total_above',
     defaultProfile: 'gl_monthly',
     defaultBreakout: [],
     defaultFilters: [],
@@ -518,4 +518,45 @@ export const branchProfitabilityReport = variant(initialReport, (d) => {
   setMatchedLines(d, ['MORTGAGE', 'AUTO', 'COMMERCIAL', 'BP_DEPOSIT_SPREAD', 'BP_FEES', 'BP_STAFF', 'BP_OCCUPANCY'])
 })
 
-export const sampleReports: ReportState[] = [initialReport, depositPricingReport, branchProfitabilityReport]
+/** A multi-step statement: step groups, expenses shown as positive and a ratio evaluated at one product. */
+export const incomeStatementReport = variant(initialReport, (d) => {
+  d.settings.key = 'bank.income_statement'
+  d.settings.name = 'Bank income statement'
+  d.settings.type = 'income_statement'
+  d.profiles = d.profiles.filter((p) => p.key === 'gl_monthly')
+  d.settings.defaultProfile = 'gl_monthly'
+  d.rows = [
+    row('IS_NET_INCOME', 'Net income', 'subtotal', [
+      row('IS_PRE_TAX', 'Income before taxes', 'subtotal', [
+        row('IS_NII', 'Net interest income', 'subtotal', [
+          row('IS_INTEREST_INCOME', 'Interest income', 'subtotal', [
+            row('IS_LOANS', 'Loans', 'subtotal', [
+              row('MORTGAGE', 'Mortgage loans', 'line'),
+              row('AUTO', 'Auto loans', 'line'),
+              row('COMMERCIAL', 'Commercial loans', 'line'),
+            ]),
+            row('IS_SECURITIES', 'Securities', 'line'),
+          ]),
+          row('IS_INTEREST_EXPENSE', 'Interest expense', 'line', [], { reverseSign: true }),
+        ], { presentation: 'step' }),
+        row('IS_PROVISION', 'Provision for credit losses', 'line', [], { reverseSign: true }),
+        row('IS_FEES', 'Noninterest income', 'line'),
+        row('IS_OPEX', 'Noninterest expense', 'subtotal', [
+          row('IS_SALARIES', 'Salaries and benefits', 'line'),
+          row('IS_OCCUPANCY', 'Occupancy', 'line'),
+        ], { presentation: 'header_and_total', totalLabel: 'Total noninterest expense', reverseSign: true }),
+      ], { presentation: 'step' }),
+      row('IS_TAXES', 'Income taxes', 'line', [], { reverseSign: true }),
+    ], { presentation: 'step', parameters: { dayCount: 'actual_actual' } }),
+    row('commercial_yield', 'Yield on commercial loans', 'formula', [], { measureKey: 'YIELD', columnKey: 'yield', scopeKey: 'COMMERCIAL' }),
+  ]
+  d.rowScopes = []
+  remapSources(d, 'is', {
+    gl_monthly: [['MORTGAGE', '1100'], ['AUTO', '1100'], ['COMMERCIAL', '1100'], ['IS_SECURITIES', '1200']],
+    gl_daily: [['COMMERCIAL', '1100'], ['IS_SECURITIES', '1200']],
+    gl_income: [['MORTGAGE', '4000'], ['IS_INTEREST_EXPENSE', '5000'], ['IS_FEES', '4100'], ['IS_SALARIES', '5100']],
+  })
+  setMatchedLines(d, ['MORTGAGE', 'AUTO', 'COMMERCIAL', 'IS_SECURITIES', 'IS_INTEREST_EXPENSE', 'IS_PROVISION', 'IS_FEES', 'IS_SALARIES', 'IS_OCCUPANCY', 'IS_TAXES'])
+})
+
+export const sampleReports: ReportState[] = [initialReport, depositPricingReport, branchProfitabilityReport, incomeStatementReport]

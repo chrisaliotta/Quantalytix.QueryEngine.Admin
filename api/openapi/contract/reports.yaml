@@ -228,9 +228,13 @@ components:
     ReportLayout:
       type: string
       enum: [statement, list]
-    ReportSubtotalPosition:
+    ReportGroupPresentation:
       type: string
-      enum: [above, below]
+      description: >-
+        How a renderer places a group, a member row that shows values and has rows under it: its total before or after the
+        rows under it, a header before them and a total after, or a step whose rows keep the group's indent. The engine returns
+        rows in hierarchy order; renderers place them.
+      enum: [total_above, total_below, header_and_total, step]
     ReportRowKind:
       type: string
       description: >-
@@ -280,11 +284,13 @@ components:
 
     ReportSettings:
       type: object
-      required: [displayName, reportType, subtotalPosition, defaultProfileKey, periodicity, layout, defaultBreakout, defaultFilter]
+      required: [displayName, reportType, defaultPresentation, defaultProfileKey, periodicity, layout, defaultBreakout, defaultFilter]
       properties:
         displayName: { type: string }
         reportType: { type: string }
-        subtotalPosition: { $ref: '#/components/schemas/ReportSubtotalPosition' }
+        defaultPresentation:
+          $ref: '#/components/schemas/ReportGroupPresentation'
+          description: The presentation of every group whose row names none.
         defaultProfileKey: { type: [string, 'null'] }
         periodicity:
           oneOf:
@@ -307,7 +313,7 @@ components:
       properties:
         displayName: { type: string }
         reportType: { type: string }
-        subtotalPosition: { $ref: '#/components/schemas/ReportSubtotalPosition' }
+        defaultPresentation: { $ref: '#/components/schemas/ReportGroupPresentation' }
         defaultProfileKey: { type: [string, 'null'] }
         periodicity:
           oneOf:
@@ -324,7 +330,7 @@ components:
 
     ReportRow:
       type: object
-      required: [key, label, kind, parentKey, isVisible, showsValues, calculatedMeasureKey, valueColumnKey, styleKey, parameters]
+      required: [key, label, kind, parentKey, isVisible, showsValues, calculatedMeasureKey, valueColumnKey, styleKey, presentation, totalLabel, reverseSign, scopeMemberKey, parameters]
       properties:
         key: { $ref: './common.yaml#/components/schemas/Key' }
         label: { type: string }
@@ -341,6 +347,22 @@ components:
           type: [string, 'null']
           description: Formula rows.
         styleKey: { type: [string, 'null'] }
+        presentation:
+          description: Group rows that show values; null inherits the report's `defaultPresentation`.
+          oneOf:
+            - $ref: '#/components/schemas/ReportGroupPresentation'
+            - type: 'null'
+        totalLabel:
+          type: [string, 'null']
+          description: Group rows presented `header_and_total`; the total line's label, null for the row's label.
+        reverseSign:
+          type: boolean
+          description: >-
+            Member rows; true shows the row's values, and those of every member row under it, negated. Display only; false for the
+            other kinds.
+        scopeMemberKey:
+          type: [string, 'null']
+          description: Formula rows; the member row the formula is evaluated at, whose parameters it inherits. Null for the report's total.
         parameters:
           type: object
           description: The row's own model parameter values; missing keys inherit.
@@ -733,7 +755,9 @@ components:
         to: { $ref: '#/components/schemas/ReportRowPosition' }
     ReportDeleteRowOperation:
       type: object
-      description: Children move up; the row's rules, scopes, parameters and member option go (OI-56).
+      description: >-
+        Children move up; the row's rules, scopes, parameters and member option go (OI-56). Formula rows evaluated at a deleted
+        member are evaluated at its parent.
       required: [op, key]
       properties:
         op: { const: deleteRow }

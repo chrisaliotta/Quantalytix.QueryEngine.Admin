@@ -1,4 +1,22 @@
-import type { RowNode } from './types'
+import type { RowKind, RowNode } from './types'
+
+/** Lines and subtotals are report dimension members; headings and formulas may be overlay lines (OI-48). */
+export const isMemberKind = (kind: RowKind) => kind === 'line' || kind === 'subtotal'
+
+/** Changes a row's kind and drops the fields the new kind does not carry. */
+export function setRowKind(row: RowNode, kind: RowKind) {
+  row.kind = kind
+  if (kind !== 'formula') {
+    delete row.measureKey
+    delete row.columnKey
+    delete row.scopeKey
+  }
+  if (kind !== 'subtotal') {
+    delete row.presentation
+    delete row.totalLabel
+  }
+  if (!isMemberKind(kind)) delete row.reverseSign
+}
 
 export interface FlatRow {
   node: RowNode
@@ -84,6 +102,31 @@ export function insertRow(rows: RowNode[], parentKey: string | null, index: numb
   const siblings = parentKey ? findRow(rows, parentKey)?.children : rows
   if (!siblings) return
   siblings.splice(Math.max(0, Math.min(index, siblings.length)), 0, node)
+}
+
+/** The keys of the siblings from `fromKey` through `toKey`, in tree order; null when the two rows are not siblings. */
+export function siblingRange(rows: RowNode[], fromKey: string, toKey: string): string[] | null {
+  const from = locate(rows, fromKey)
+  const to = locate(rows, toKey)
+  if (!from || !to || from.siblings !== to.siblings) return null
+  return from.siblings.slice(Math.min(from.index, to.index), Math.max(from.index, to.index) + 1).map((r) => r.key)
+}
+
+/** True when `keys` are two or more consecutive siblings, in order, under a member row: rows a new subtotal can wrap. */
+export function canWrapRows(rows: RowNode[], keys: string[]) {
+  const first = locate(rows, keys[0])
+  return (
+    keys.length > 1 &&
+    !!first?.parent &&
+    isMemberKind(first.parent.kind) &&
+    keys.every((key, i) => first.siblings[first.index + i]?.key === key)
+  )
+}
+
+/** Puts `node` in the place of the consecutive siblings `keys` and moves them under it. */
+export function wrapRows(rows: RowNode[], keys: string[], node: RowNode) {
+  const first = locate(rows, keys[0])!
+  node.children = first.siblings.splice(first.index, keys.length, node)
 }
 
 /** Removes a row and lifts its children into its place. */

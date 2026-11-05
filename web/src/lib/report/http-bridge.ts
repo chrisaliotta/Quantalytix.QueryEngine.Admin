@@ -16,7 +16,7 @@ import type {
 } from '@/lib/reports/contract'
 import type { CalcModel } from '@/lib/model/types'
 import type { ReportCatalog } from './http-catalog'
-import { allRows } from './tree'
+import { allRows, isMemberKind } from './tree'
 import type {
   Binding,
   BreakoutDimension,
@@ -140,8 +140,6 @@ function rowKindOf(row: ReportRow): RowKind {
   return row.kind === 'section' ? 'heading' : 'formula'
 }
 
-const isMemberKind = (kind: RowKind) => kind === 'line' || kind === 'subtotal'
-
 /** A stored heading keeps its kind; a new one is a member `group` when it has member rows under it, else a `section` (OI-48). */
 function apiRowKind(node: RowNode, stored: ReportRow | undefined): ReportRowKind {
   if (node.kind === 'line') return 'data'
@@ -164,6 +162,10 @@ function rowTree(rows: ReportRow[]): RowNode[] {
       ...(r.valueColumnKey ? { columnKey: r.valueColumnKey } : {}),
       ...(r.styleKey ? { styleKey: r.styleKey } : {}),
       ...(Object.keys(r.parameters).length ? { parameters: r.parameters } : {}),
+      ...(r.presentation ? { presentation: r.presentation } : {}),
+      ...(r.totalLabel ? { totalLabel: r.totalLabel } : {}),
+      ...(r.reverseSign ? { reverseSign: true } : {}),
+      ...(r.scopeMemberKey ? { scopeKey: r.scopeMemberKey } : {}),
       children: [],
     }
     nodes.set(r.key, node)
@@ -196,6 +198,10 @@ function apiRow({ node, parentKey }: PlacedRow, stored: ReportRow | undefined): 
     valueColumnKey: node.columnKey ?? null,
     styleKey: node.styleKey ?? null,
     parameters: node.parameters ?? {},
+    presentation: node.presentation ?? null,
+    totalLabel: node.totalLabel ?? null,
+    reverseSign: node.reverseSign ?? false,
+    scopeMemberKey: node.scopeKey ?? null,
   }
 }
 
@@ -367,7 +373,7 @@ export function reportFromDocument(doc: ReportDocument, ctx: BridgeContext): Rep
       currency: ctx.model?.currency ?? '',
       periodicity: PERIODICITY[s.periodicity ?? 'month'],
       layout: s.layout === 'list' ? 'List' : 'Statement',
-      subtotals: s.subtotalPosition === 'below' ? 'Below' : 'Above',
+      defaultPresentation: s.defaultPresentation,
       defaultProfile: s.defaultProfileKey ?? '',
       defaultBreakout: s.defaultBreakout,
       defaultFilters: filtersOf(s.defaultFilter) ?? [],
@@ -440,7 +446,7 @@ function settingsPatch(prev: ReportState, next: ReportState, stored: ApiSettings
   const patch: Partial<ApiSettings> = {}
   if (a.name !== b.name) patch.displayName = b.name
   if (a.type !== b.type) patch.reportType = b.type
-  if (a.subtotals !== b.subtotals) patch.subtotalPosition = b.subtotals === 'Below' ? 'below' : 'above'
+  if (a.defaultPresentation !== b.defaultPresentation) patch.defaultPresentation = b.defaultPresentation
   if (a.defaultProfile !== b.defaultProfile) patch.defaultProfileKey = b.defaultProfile || null
   if (a.periodicity !== b.periodicity) patch.periodicity = periodicityOf(b.periodicity)
   if (a.layout !== b.layout) patch.layout = b.layout === 'List' ? 'list' : 'statement'

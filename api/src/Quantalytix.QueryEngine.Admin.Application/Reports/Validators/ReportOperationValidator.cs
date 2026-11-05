@@ -124,7 +124,7 @@ public sealed class ReportOperationValidator : AbstractValidator<ReportOperation
         {
             RuleFor(patch => patch.DisplayName).NotEmpty().MustFitVarchar(256).When(patch => patch.DisplayName is not null);
             RuleFor(patch => patch.ReportType).NotEmpty().MustFitVarchar(32).When(patch => patch.ReportType is not null);
-            RuleFor(patch => patch.SubtotalPosition).MustBeIn(SubtotalPositions.Definition);
+            RuleFor(patch => patch.DefaultPresentation).MustBeIn(GroupPresentations.Definition);
             RuleFor(patch => patch.DefaultProfileKey).MustFitVarchar(128);
             RuleFor(patch => patch.Periodicity).MustBeIn(Periodicities.Definition);
             RuleFor(patch => patch.Layout).MustBeIn(ReportLayouts.Definition);
@@ -153,6 +153,17 @@ public sealed class ReportOperationValidator : AbstractValidator<ReportOperation
             RuleFor(row => row.ValueColumnKey).Null().When(row => row.Kind != ReportRowKinds.Formula)
                 .WithMessage("Only formula rows place a value in a column, so '{PropertyName}' must be empty.");
             RuleFor(row => row.StyleKey).MustFitVarchar(128);
+            RuleFor(row => row.Presentation).MustBeIn(GroupPresentations.Definition);
+            RuleFor(row => row.Presentation).Null().When(row => row.Kind != ReportRowKinds.Group || !row.ShowsValues)
+                .WithMessage("Only a group row that shows values is placed as a group, so '{PropertyName}' must be empty.");
+            RuleFor(row => row.TotalLabel).NotEmpty().MustFitVarchar(256).When(row => row.TotalLabel is not null);
+            RuleFor(row => row.TotalLabel).Null().When(row => row.Presentation != GroupPresentations.HeaderAndTotal)
+                .WithMessage("Only a group presented header_and_total has a total line to label, so '{PropertyName}' must be empty.");
+            RuleFor(row => row.ReverseSign).Equal(false).When(row => !ReportRowKinds.IsMember(row.Kind))
+                .WithMessage("Only member rows show values a sign can reverse, so '{PropertyName}' must be false.");
+            RuleFor(row => row.ScopeMemberKey).NotEmpty().MustFitVarchar(128).When(row => row.ScopeMemberKey is not null);
+            RuleFor(row => row.ScopeMemberKey).Null().When(row => row.Kind != ReportRowKinds.Formula)
+                .WithMessage("Only formula rows are evaluated at a member, so '{PropertyName}' must be empty.");
             RuleForEach(row => row.Parameters).Must(value => ValueFits(value.Value))
                 .WithMessage("A row parameter value is a number that fits DECIMAL(38, 12) or a text of at most 256 bytes.");
         }

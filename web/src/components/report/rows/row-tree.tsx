@@ -35,10 +35,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { readSourcesOnRow, rowGaps } from '@/lib/report/profiles'
 import { useEditor } from '@/lib/report/store'
 import { ProfileSwitcher, useActiveProfile } from '../shared/profile-switcher'
-import { allRows, flatten, locate, type FlatRow } from '@/lib/report/tree'
+import { Segmented } from '../shared/segmented'
+import { allRows, flatten, locate, siblingRange, type FlatRow } from '@/lib/report/tree'
 import type { RowKind } from '@/lib/report/types'
 import { PendingRow, RowItem } from './row-item'
+import { StatementView } from './statement-view'
 import { focusRow, useRowActions } from './use-row-actions'
+
+type RowsView = 'structure' | 'statement'
 
 const ADD_LINE_TYPES: { kind: RowKind; hint: string }[] = [
   { kind: 'line', hint: 'Shows mapped ledger data' },
@@ -85,8 +89,10 @@ export function RowTree() {
   const [pending, setPending] = useState<Pending | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ activeId: string; overId: string; offsetX: number } | null>(null)
+  const [view, setView] = useState<RowsView>('structure')
 
   const collapsed = useMemo(() => new Set(ui.collapsed), [ui.collapsed])
+  const range = useMemo(() => new Set(ui.selectedRowKeys.length > 1 ? ui.selectedRowKeys : []), [ui.selectedRowKeys])
   const items = useMemo(
     () => flatten(report.rows, drag ? new Set([...collapsed, drag.activeId]) : collapsed),
     [report.rows, collapsed, drag],
@@ -95,6 +101,11 @@ export function RowTree() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const select = (key: string) => setUi({ selectedRowKey: key })
+  const extend = (key: string) => {
+    const keys = ui.selectedRowKey ? siblingRange(report.rows, ui.selectedRowKey, key) : null
+    if (keys) setUi({ selectedRowKeys: keys })
+    else select(key)
+  }
   const toggle = (key: string) =>
     setUi((u) => ({ collapsed: u.collapsed.includes(key) ? u.collapsed.filter((k) => k !== key) : [...u.collapsed, key] }))
 
@@ -221,25 +232,33 @@ export function RowTree() {
       <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3">
         <div className="flex min-w-0 items-center gap-3">
           <h2 className="font-medium">Rows</h2>
+          <Segmented
+            aria-label="Rows view"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'structure', label: 'Structure' },
+              { value: 'statement', label: 'Statement' },
+            ]}
+          />
           <ProfileSwitcher />
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Expand all"
-            onClick={() => setUi({ collapsed: [] })}
-          >
-            <ChevronsUpDownIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Collapse all"
-            onClick={() => setUi({ collapsed: allRows(report.rows).filter((r) => r.children.length).map((r) => r.key) })}
-          >
-            <ChevronsDownUpIcon />
-          </Button>
+          {view === 'structure' && (
+            <>
+              <Button variant="ghost" size="icon-sm" aria-label="Expand all" onClick={() => setUi({ collapsed: [] })}>
+                <ChevronsUpDownIcon />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Collapse all"
+                onClick={() => setUi({ collapsed: allRows(report.rows).filter((r) => r.children.length).map((r) => r.key) })}
+              >
+                <ChevronsDownUpIcon />
+              </Button>
+            </>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
               <FileStackIcon />
@@ -265,30 +284,34 @@ export function RowTree() {
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-              <PlusIcon data-icon="inline-start" />
-              Add line
-              <ChevronDownIcon data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuGroup>
-                {ADD_LINE_TYPES.map((t) => (
-                  <DropdownMenuItem key={t.kind} onClick={() => startAdd(ui.selectedRowKey, t.kind)} className="items-start">
-                    <KindGlyph kind={t.kind} className="mt-0.5 size-4" />
-                    <span className="flex flex-col">
-                      <span>{KIND_LABEL[t.kind]}</span>
-                      <span className="text-xs text-muted-foreground">{t.hint}</span>
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {view === 'structure' && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+                <PlusIcon data-icon="inline-start" />
+                Add line
+                <ChevronDownIcon data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuGroup>
+                  {ADD_LINE_TYPES.map((t) => (
+                    <DropdownMenuItem key={t.kind} onClick={() => startAdd(ui.selectedRowKey, t.kind)} className="items-start">
+                      <KindGlyph kind={t.kind} className="mt-0.5 size-4" />
+                      <span className="flex flex-col">
+                        <span>{KIND_LABEL[t.kind]}</span>
+                        <span className="text-xs text-muted-foreground">{t.hint}</span>
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
-      {items.length === 0 && !pending ? (
+      {view === 'statement' ? (
+        <StatementView />
+      ) : items.length === 0 && !pending ? (
         <EmptyRows onAdd={() => startAdd(null, 'line')} />
       ) : (
         <ScrollArea className="min-h-0 flex-1">
@@ -318,6 +341,7 @@ export function RowTree() {
                         posInSet={siblings.indexOf(flat.node) + 1}
                         setSize={siblings.length}
                         selected={ui.selectedRowKey === flat.node.key}
+                        inRange={range.has(flat.node.key)}
                         collapsed={collapsed.has(flat.node.key)}
                         advanced={ui.advanced}
                         sourceCount={
@@ -329,6 +353,7 @@ export function RowTree() {
                         renaming={renaming === flat.node.key}
                         actions={actions}
                         onSelect={() => select(flat.node.key)}
+                        onExtend={() => extend(flat.node.key)}
                         onToggle={() => toggle(flat.node.key)}
                         onKeyDown={(e) => onKeyDown(e, flat, at)}
                         onAdd={(kind) => startAdd(flat.node.key, kind)}
@@ -352,8 +377,15 @@ export function RowTree() {
       )}
 
       <p className="shrink-0 border-t px-3 py-2 text-xs text-muted-foreground">
-        <kbd className="font-mono">Enter</kbd> adds a line · <kbd className="font-mono">F2</kbd> renames ·{' '}
-        <kbd className="font-mono">Tab</kbd> nests · <kbd className="font-mono">Alt ↑↓</kbd> moves
+        {view === 'statement' ? (
+          'The statement as the report places its rows. Click a line to select its row.'
+        ) : (
+          <>
+            <kbd className="font-mono">Enter</kbd> adds a line · <kbd className="font-mono">F2</kbd> renames ·{' '}
+            <kbd className="font-mono">Tab</kbd> nests · <kbd className="font-mono">Alt ↑↓</kbd> moves ·{' '}
+            <kbd className="font-mono">Shift</kbd>-click selects rows to subtotal
+          </>
+        )}
       </p>
     </div>
   )

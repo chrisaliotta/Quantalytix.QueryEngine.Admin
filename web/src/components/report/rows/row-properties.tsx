@@ -7,19 +7,20 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { uid, useEditor } from '@/lib/report/store'
 import { useCalcModel } from '@/lib/report/use-calc-model'
-import { findRow } from '@/lib/report/tree'
-import type { RowKind, RowNode, RowScope } from '@/lib/report/types'
-import { KIND_LABEL, SectionLabel } from '../shared/bits'
+import { allRows, findRow, flatten, isMemberKind, setRowKind } from '@/lib/report/tree'
+import type { GroupPresentation, RowKind, RowNode, RowScope } from '@/lib/report/types'
+import { KIND_LABEL, PRESENTATION_HINT, PRESENTATION_LABEL, PRESENTATIONS, SectionLabel } from '../shared/bits'
 import { SearchCombobox } from '../shared/search-combobox'
 import { Segmented } from '../shared/segmented'
 import { SimpleSelect } from '../shared/simple-select'
 
 const KINDS: RowKind[] = ['line', 'subtotal', 'heading', 'formula']
 const ROW_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
+const INHERIT = 'inherit'
 
 const KIND_HINT: Record<RowKind, string> = {
   line: 'Shows values mapped from sources.',
-  subtotal: 'Totals the rows under it.',
+  subtotal: 'Totals the rows under it; its presentation places the total above, below or around them.',
   heading: 'Labels a group and shows no values.',
   formula: 'Shows a calculated measure.',
 }
@@ -62,11 +63,7 @@ function RowPropertiesForm({ row }: { row: RowNode }) {
     mutate((d) => {
       const r = findRow(d.rows, rowKey)
       if (!r) return
-      r.kind = kind
-      if (kind !== 'formula') {
-        delete r.measureKey
-        delete r.columnKey
-      }
+      setRowKind(r, kind)
       if (drops) for (const s of d.sources) s.mappings = s.mappings.filter((m) => m.rowKey !== rowKey)
     })
     if (drops) {
@@ -122,11 +119,33 @@ function RowPropertiesForm({ row }: { row: RowNode }) {
                 placeholder="First visible column"
               />
             </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="rp-scope">Evaluate at</Label>
+              <SearchCombobox
+                id="rp-scope"
+                value={row.scopeKey ?? ''}
+                onChange={(v) =>
+                  updateRow((r) => {
+                    r.scopeKey = v || undefined
+                  })
+                }
+                options={[
+                  { value: '', label: 'Whole report' },
+                  ...flatten(report.rows)
+                    .filter((f) => isMemberKind(f.node.kind))
+                    .map((f) => ({ value: f.node.key, label: f.node.label, depth: f.depth, ...(ui.advanced ? { hint: f.node.key } : {}) })),
+                ]}
+              />
+              <p className="text-xs text-muted-foreground">
+                The formula reads its variables and parameters at this row; a ratio for one product reads that product's totals.
+              </p>
+            </div>
           </div>
         )}
       </Field>
 
       <Field id="rp-display" title="Display">
+        {row.kind === 'subtotal' && <PresentationField row={row} updateRow={updateRow} />}
         <label className="flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5">
           <span className="flex flex-col gap-0.5">
             <span className="font-medium">Hide this row</span>
@@ -141,6 +160,24 @@ function RowPropertiesForm({ row }: { row: RowNode }) {
             }
           />
         </label>
+        {isMemberKind(row.kind) && (
+          <label className="flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5">
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium">Show as positive</span>
+              <span className="text-xs text-muted-foreground">
+                Reverses the sign shown, so costs stored as negatives read as positive. Rows under it follow.
+              </span>
+            </span>
+            <Switch
+              checked={row.reverseSign ?? false}
+              onCheckedChange={(on) =>
+                updateRow((r) => {
+                  r.reverseSign = on || undefined
+                })
+              }
+            />
+          </label>
+        )}
       </Field>
 
       {ui.advanced && (
@@ -148,6 +185,51 @@ function RowPropertiesForm({ row }: { row: RowNode }) {
           <RowKeyField row={row} />
           <RowScopesField row={row} />
         </Field>
+      )}
+    </div>
+  )
+}
+
+function PresentationField({ row, updateRow }: { row: RowNode; updateRow: (fn: (r: RowNode) => void) => void }) {
+  const { report } = useEditor()
+  const inherited = report.settings.defaultPresentation
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="rp-presentation">Presentation</Label>
+        <SimpleSelect
+          id="rp-presentation"
+          value={row.presentation ?? INHERIT}
+          onChange={(v) =>
+            updateRow((r) => {
+              r.presentation = v === INHERIT ? undefined : (v as GroupPresentation)
+              if (r.presentation !== 'header_and_total') delete r.totalLabel
+            })
+          }
+          options={[
+            { value: INHERIT, label: `Inherit (${PRESENTATION_LABEL[inherited]})` },
+            ...PRESENTATIONS.map((p) => ({ value: p, label: PRESENTATION_LABEL[p] })),
+          ]}
+        />
+        <p className="text-xs text-muted-foreground">{PRESENTATION_HINT[row.presentation ?? inherited]}</p>
+      </div>
+      {row.presentation === 'header_and_total' && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="rp-total-label">Total label</Label>
+          <Input
+            id="rp-total-label"
+            key={row.totalLabel}
+            defaultValue={row.totalLabel}
+            placeholder={row.label}
+            onBlur={(e) =>
+              updateRow((r) => {
+                r.totalLabel = e.target.value.trim() || undefined
+              })
+            }
+          />
+          <p className="text-xs text-muted-foreground">Labels the total line; empty repeats the row label.</p>
+        </div>
       )}
     </div>
   )
@@ -179,6 +261,7 @@ function RowKeyField({ row }: { row: RowNode }) {
       r.key = nextKey
       for (const s of d.sources) for (const m of s.mappings) if (m.rowKey === rowKey) m.rowKey = nextKey
       for (const s of d.rowScopes) if (s.rowKey === rowKey) s.rowKey = nextKey
+      for (const f of allRows(d.rows)) if (f.scopeKey === rowKey) f.scopeKey = nextKey
     })
     setUi({
       selectedRowKey: ui.selectedRowKey === rowKey ? nextKey : ui.selectedRowKey,

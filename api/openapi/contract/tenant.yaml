@@ -486,7 +486,7 @@ components:
         - mappingMethod
         - selectionScope
         - columnValueKind
-        - subtotalPosition
+        - groupPresentation
         - styleRole
         - fontWeight
         - borderStyle
@@ -798,12 +798,13 @@ components:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
               - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportColumnValueKind' } } }
-        subtotalPosition:
+        groupPresentation:
           type: array
+          description: How renderers place a report's groups.
           items:
             allOf:
               - $ref: './common.yaml#/components/schemas/VocabularyTerm'
-              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportSubtotalPosition' } } }
+              - { required: [value], properties: { value: { $ref: './reports.yaml#/components/schemas/ReportGroupPresentation' } } }
         styleRole:
           type: array
           description: The row role a report style applies to by default.

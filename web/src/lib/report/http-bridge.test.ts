@@ -126,4 +126,26 @@ describe('report http bridge', () => {
     // A column that follows its metric's label keeps following it.
     expect(stored.columns.find((c) => c.key === 'balance')!.displayName).toBeNull()
   })
+
+  /** A group's presentation and total label, a member's reverse sign, a formula's scope and the report's default presentation survive a save and a reload. */
+  it('stores the presentation, sign and scope the editor sets', async () => {
+    const { api, id, doc } = await margin()
+    const saved = reportFromDocument(doc, context)
+    const edited: ReportState = structuredClone(saved)
+    edited.settings.defaultPresentation = 'step'
+    const total = edited.rows.find((r) => r.key === 'total')!
+    total.presentation = 'header_and_total'
+    total.totalLabel = 'Net margin'
+    total.children.find((r) => r.key === 'DEPOSITS')!.reverseSign = true
+    total.children.find((r) => r.key === 'NIM_LINE')!.scopeKey = 'LOANS'
+
+    api.beginChanges()
+    for (const op of reportOperations(doc, saved, edited, context)) expect((await apply(api, id, op)).ok).toBe(true)
+    const stored = await unwrap(api.getReport(id))
+    const reloaded = reportFromDocument(stored, context)
+
+    expect(reloaded.settings).toEqual(edited.settings)
+    expect(reloaded.rows).toEqual(edited.rows)
+    expect(stored.rows.find((r) => r.key === 'NIM_LINE')).toMatchObject({ scopeMemberKey: 'LOANS', presentation: null, reverseSign: false })
+  })
 })

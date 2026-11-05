@@ -75,7 +75,7 @@ public sealed class ReportCommands(
                 DisplayName = input.DisplayName,
                 ReportType = input.ReportType,
                 CalculationModelId = input.ModelId,
-                SubtotalPosition = SubtotalPositions.Above,
+                DefaultPresentation = GroupPresentations.TotalAbove,
                 IsEnabled = false,
                 DefaultSettingsJson = ReportSettingsColumns.DefaultSettingsJson,
                 CreatedAt = time.GetUtcNow().UtcDateTime

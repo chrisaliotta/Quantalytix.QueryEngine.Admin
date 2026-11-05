@@ -27,7 +27,7 @@ import {
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useEditor } from '@/lib/report/store'
-import { locate } from '@/lib/report/tree'
+import { canWrapRows, locate } from '@/lib/report/tree'
 import type { RowKind, RowNode } from '@/lib/report/types'
 import { KIND_LABEL, KindGlyph } from '../shared/bits'
 import { focusRow, type RowActions } from './use-row-actions'
@@ -75,8 +75,10 @@ interface RowMenuItemsProps {
 }
 
 export function RowMenuItems({ kit: K, row, actions, onAdd, onRename }: RowMenuItemsProps) {
-  const { report, openDialog, setUi } = useEditor()
+  const { report, ui, openDialog, setUi } = useEditor()
   const openProperties = () => setUi({ selectedRowKey: row.key, rowPanelTab: 'properties' })
+  const range = ui.selectedRowKeys
+  const canSubtotal = range.includes(row.key) && canWrapRows(report.rows, range)
   const loc = locate(report.rows, row.key)
   const isFirst = !loc || loc.index === 0
   const isLast = !loc || loc.index === loc.siblings.length - 1
@@ -87,6 +89,15 @@ export function RowMenuItems({ kit: K, row, actions, onAdd, onRename }: RowMenuI
 
   return (
     <>
+      {canSubtotal && (
+        <>
+          <K.Item onClick={() => openDialog({ type: 'subtotalRows', rowKeys: range })}>
+            <KindGlyph kind="subtotal" className="size-4" />
+            Subtotal these {range.length} rows…
+          </K.Item>
+          <K.Separator />
+        </>
+      )}
       {ADD_ITEMS.map((item) => (
         <K.Item key={item.kind} onClick={() => onAdd(item.kind)}>
           {item.kind === 'line' ? <PlusIcon /> : <KindGlyph kind={item.kind} className="size-4" />}

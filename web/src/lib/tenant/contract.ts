@@ -74,7 +74,7 @@ export type DayCountConvention = 'actual_actual' | 'actual_365' | 'actual_360' |
 export type MappingMethod = 'bridge' | 'direct'
 export type SelectionScope = 'exact' | 'descendants'
 export type ColumnValueKind = 'variable' | 'calculated'
-export type SubtotalPosition = 'above' | 'below'
+export type GroupPresentation = 'total_above' | 'total_below' | 'header_and_total' | 'step'
 export type StyleRole = 'header' | 'subtotal' | 'total' | 'detail' | 'formula'
 export type FontWeight = 'normal' | 'medium' | 'semibold' | 'bold'
 export type BorderStyle = 'none' | 'thin' | 'medium' | 'thick' | 'double'
@@ -140,7 +140,7 @@ export interface Vocabularies {
   mappingMethod: VocabularyTerm<MappingMethod>[]
   selectionScope: VocabularyTerm<SelectionScope>[]
   columnValueKind: VocabularyTerm<ColumnValueKind>[]
-  subtotalPosition: VocabularyTerm<SubtotalPosition>[]
+  groupPresentation: VocabularyTerm<GroupPresentation>[]
   styleRole: VocabularyTerm<StyleRole>[]
   fontWeight: VocabularyTerm<FontWeight>[]
   borderStyle: VocabularyTerm<BorderStyle>[]

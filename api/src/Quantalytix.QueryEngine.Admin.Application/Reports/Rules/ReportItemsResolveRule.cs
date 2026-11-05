@@ -5,8 +5,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// <c>report_items_resolve</c>: the report's rows are one tree, and every key that names a row or an item resolves. The report
-/// dimension has one root; member options, the parents of overlay rows that are no overlay row, and variable scopes name members of
-/// the report dimension; no overlay row has a member's key, because rows are keyed by both. Each bridge source's rules add into data
+/// dimension has one root; member options, the parents of overlay rows that are no overlay row, the members formula rows are
+/// evaluated at, and variable scopes name members of the report dimension; no overlay row has a member's key, because rows are keyed by both. Each bridge source's rules add into data
 /// rows and take members of the snapshot's version of their role's dimension, an assignable one when a rule takes the member alone.
 /// </summary>
 public sealed class ReportItemsResolveRule : IReportRule
@@ -30,6 +30,8 @@ public sealed class ReportItemsResolveRule : IReportRule
             yield return Violation($"{subject} has an option for row '{option.MemberKey}', which is no member row.", Row(option.MemberKey));
         foreach (var line in report.Lines.Where(line => line.ParentKey is { } parent && !overlayKeys.Contains(parent) && !memberKeys.Contains(parent)))
             yield return Violation($"{subject} row '{line.LineKey}' sits under '{line.ParentKey}', which is no row of the report.", Row(line.LineKey));
+        foreach (var line in report.Lines.Where(line => line.ScopeMemberKey is { } scopeKey && !memberKeys.Contains(scopeKey)))
+            yield return Violation($"{subject} row '{line.LineKey}' is evaluated at '{line.ScopeMemberKey}', which is no member row.", Row(line.LineKey));
         foreach (var line in report.Lines.Where(line => memberKeys.Contains(line.LineKey)))
             yield return Violation($"{subject} row '{line.LineKey}' has the key of a member row; rows are keyed by both.", Row(line.LineKey));
         foreach (var scoped in report.Scopes.Where(scoped => !memberKeys.Contains(scoped.ScopeMemberKey)))

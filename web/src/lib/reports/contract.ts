@@ -12,7 +12,8 @@ export type { ApiResult, FilterNode, FilterOperand, Grouping, Id, Periodicity, S
 /* ───────────────────────── vocabularies ───────────────────────── */
 
 export type ReportLayout = 'statement' | 'list'
-export type ReportSubtotalPosition = 'above' | 'below'
+/** Where a group's total shows relative to its rows; the engine returns rows in hierarchy order and renderers place them. */
+export type ReportGroupPresentation = 'total_above' | 'total_below' | 'header_and_total' | 'step'
 /** `data` and `group` rows are report dimension members; `section` and `formula` rows are overlay lines (OI-48). */
 export type ReportRowKind = 'data' | 'group' | 'section' | 'formula'
 export type ReportMappingMethod = 'bridge' | 'direct'
@@ -41,7 +42,8 @@ export interface ReportSummary {
 export interface ReportSettings {
   displayName: string
   reportType: string
-  subtotalPosition: ReportSubtotalPosition
+  /** What a group row with a null `presentation` follows. */
+  defaultPresentation: ReportGroupPresentation
   defaultProfileKey: string | null
   periodicity: Periodicity | null
   layout: ReportLayout
@@ -68,6 +70,14 @@ export interface ReportRow {
   styleKey: string | null
   /** Own model parameter values; missing keys inherit. */
   parameters: Record<string, string | number>
+  /** `group` rows that show values; null follows the report's `defaultPresentation`. */
+  presentation: ReportGroupPresentation | null
+  /** `header_and_total` groups: the total line's label; null repeats `label`. */
+  totalLabel: string | null
+  /** Member rows: the displayed value is negated, on this row and the member rows under it. */
+  reverseSign: boolean
+  /** Formula rows: the member the formula is evaluated at; null is the root. */
+  scopeMemberKey: string | null
 }
 
 export interface ReportRowPosition {

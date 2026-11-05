@@ -22,6 +22,8 @@ interface RowItemProps {
   posInSet: number
   setSize: number
   selected: boolean
+  /** Part of a shift-click range; right-clicking it keeps the range so its menu can act on every row in it. */
+  inRange: boolean
   collapsed: boolean
   advanced: boolean
   /** Sources on the row the active profile reads. */
@@ -33,6 +35,8 @@ interface RowItemProps {
   renaming: boolean
   actions: RowActions
   onSelect: () => void
+  /** Shift-click: selects the siblings from the selected row through this one. */
+  onExtend: () => void
   onToggle: () => void
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
   onAdd: (kind: RowKind) => void
@@ -41,7 +45,8 @@ interface RowItemProps {
 }
 
 export function RowItem(props: RowItemProps) {
-  const { row, depth, selected, collapsed, advanced, sourceCount, renaming, actions } = props
+  const { row, depth, selected, inRange, collapsed, advanced, sourceCount, renaming, actions } = props
+  const point = inRange ? undefined : props.onSelect
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: row.key,
     disabled: renaming,
@@ -63,18 +68,18 @@ export function RowItem(props: RowItemProps) {
               aria-level={props.level}
               aria-posinset={props.posInSet}
               aria-setsize={props.setSize}
-              aria-selected={selected}
+              aria-selected={selected || inRange}
               aria-expanded={hasChildren ? !collapsed : undefined}
               data-row-key={row.key}
               data-selected={selected}
               tabIndex={selected ? 0 : -1}
-              onClick={props.onSelect}
-              onContextMenu={props.onSelect}
+              onClick={(e) => (e.shiftKey ? props.onExtend() : props.onSelect())}
+              onContextMenu={point}
               onKeyDown={renaming ? undefined : props.onKeyDown}
               className={cn(
                 'group flex h-8 cursor-default items-center gap-1.5 rounded-md pr-1 outline-none select-none',
                 'hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/60',
-                selected && 'bg-accent text-accent-foreground hover:bg-accent',
+                (selected || inRange) && 'bg-accent text-accent-foreground hover:bg-accent',
                 isDragging && 'bg-card shadow-md ring-1 ring-border',
               )}
               style={{ paddingLeft: depth * INDENT + 2 }}
@@ -185,7 +190,7 @@ export function RowItem(props: RowItemProps) {
                     aria-label={`Actions for ${row.label}`}
                     onClick={(e) => {
                       e.stopPropagation()
-                      props.onSelect()
+                      point?.()
                     }}
                     className="opacity-0 group-hover:opacity-100 group-data-[selected=true]:opacity-100 data-popup-open:opacity-100"
                   />

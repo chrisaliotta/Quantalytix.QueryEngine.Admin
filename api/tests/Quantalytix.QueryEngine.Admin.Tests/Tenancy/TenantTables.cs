@@ -139,7 +139,7 @@ internal sealed class TenantTables
         DisplayName = "Income statement",
         ReportType = "financial",
         CalculationModelId = 401,
-        SubtotalPosition = SubtotalPositions.Above,
+        DefaultPresentation = GroupPresentations.TotalAbove,
         IsEnabled = true,
         CreatedAt = Created
     });

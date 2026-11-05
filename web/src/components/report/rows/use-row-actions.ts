@@ -13,8 +13,10 @@ import {
   moveAmongSiblings,
   outdentRow,
   removeRow,
+  setRowKind,
   toRowKey,
   uniqueKey,
+  wrapRows,
 } from '@/lib/report/tree'
 import type { RowKind, RowNode } from '@/lib/report/types'
 
@@ -35,22 +37,39 @@ export function useRowActions() {
     [setUi],
   )
 
+  const newRow = useCallback(
+    (kind: RowKind, label: string): RowNode => ({
+      key: uniqueKey(toRowKey(label), allRows(report.rows).map((r) => r.key)),
+      label: label.trim(),
+      kind,
+      hidden: false,
+      children: [],
+    }),
+    [report.rows],
+  )
+
   const create = useCallback(
     (parentKey: string | null, index: number, kind: RowKind, label: string) => {
-      const key = uniqueKey(toRowKey(label), allRows(report.rows).map((r) => r.key))
-      const node: RowNode = { key, label: label.trim(), kind, hidden: false, children: [] }
+      const node = newRow(kind, label)
       mutate((d) => insertRow(d.rows, parentKey, index, node))
       expand(parentKey)
-      setUi({ selectedRowKey: key })
-      focusRow(key)
-      return key
+      setUi({ selectedRowKey: node.key })
+      focusRow(node.key)
+      return node.key
     },
-    [report.rows, mutate, expand, setUi],
+    [newRow, mutate, expand, setUi],
   )
 
   return useMemo(
     () => ({
       create,
+      /** Wraps consecutive sibling rows in a new subtotal shown as a step: the rows, then its total. */
+      subtotal: (keys: string[], label: string) => {
+        const node: RowNode = { ...newRow('subtotal', label), presentation: 'step' }
+        mutate((d) => wrapRows(d.rows, keys, node), `Subtotal ${keys.length} rows`)
+        setUi({ selectedRowKey: node.key })
+        focusRow(node.key)
+      },
       rename: (key: string, label: string) => {
         if (!label.trim()) return
         mutate((d) => {
@@ -61,12 +80,7 @@ export function useRowActions() {
       setKind: (key: string, kind: RowKind) =>
         mutate((d) => {
           const row = findRow(d.rows, key)
-          if (!row) return
-          row.kind = kind
-          if (kind !== 'formula') {
-            delete row.measureKey
-            delete row.columnKey
-          }
+          if (row) setRowKind(row, kind)
         }),
       toggleHidden: (key: string) =>
         mutate((d) => {
@@ -107,9 +121,11 @@ export function useRowActions() {
         const label = findRow(report.rows, key)?.label ?? key
         const before = report
         mutate((d) => {
+          const parentKey = locate(d.rows, key)?.parent?.key
           deleteRowKeepChildren(d.rows, key)
           for (const s of d.sources) s.mappings = s.mappings.filter((m) => m.rowKey !== key)
           d.rowScopes = d.rowScopes.filter((s) => s.rowKey !== key)
+          for (const r of allRows(d.rows)) if (r.scopeKey === key) r.scopeKey = parentKey
         })
         const neighbor = visible[at + 1]?.node.key ?? visible[at - 1]?.node.key ?? null
         setUi({ selectedRowKey: neighbor === key ? null : neighbor, dialog: null })
@@ -117,7 +133,7 @@ export function useRowActions() {
         toast(`Deleted "${label}"`, { action: undoAction() })
       },
     }),
-    [create, mutate, setReport, report, ui.collapsed, expand, setUi],
+    [create, newRow, mutate, setReport, report, ui.collapsed, expand, setUi],
   )
 }
 

@@ -48,13 +48,15 @@ report bridges with versions and row counts that the editor never writes. The sc
 | `settings.model` | `qe_report_version.calculation_model_id` | fixed in the schema; `web` lets the user change it (OI-47) |
 | `settings.currency` | the model's `currency_code` | read-only on the report |
 | `settings.periodicity`, `layout` | `default_settings_json.periodicity`, `.layout` | (OI-54) |
-| `settings.subtotals` | `subtotal_position` | |
+| `settings.defaultPresentation` | `default_presentation` | replaces `subtotal_position` (OI-58) |
 | `settings.defaultProfile` | `default_profile_key` | |
 | `settings.defaultBreakout` | `default_pivot_json.rowDimensions` | (OI-54) |
 | `settings.defaultFilters` | `default_filter_json` (`filterNode` over calculation dimensions) | (OI-54) |
 | `enabled` | `qe_report_version.is_enabled` (a command, not an edit; see below) | |
 | `rows` (`line`, `subtotal`, `heading`, `formula`) | report dimension members + `qe_report_member_option` + `qe_report_line` | kinds map to `data`, `group`, `section`, `formula` (OI-48) |
 | `rows[].styleKey`, `hidden` | `qe_report_member_option` / `qe_report_line` `style_key`, `is_visible` | |
+| `rows[].presentation`, `totalLabel`, `reverseSign` | `qe_report_member_option` `presentation`, `total_label`, `reverse_sign` | member rows (OI-58) |
+| `rows[].scopeKey` | `qe_report_line.scope_member_key` | formula rows; null for the root (OI-58) |
 | `rows[].parameters` | `qe_report_row_parameter` | |
 | `sources` (`mapped`, `matched`) | `qe_report_source` (`bridge`, `direct`) | `matched` = `direct` with `field_key` |
 | `sources[].mappings` (`factor` ±1, `multiplier`) | the source's report bridge: `qe_bridge_mapping` rules (`source_selection`, `factor`); the multiplier is dropped and the factor is the only number users edit | (OI-49, OI-52) |
@@ -78,7 +80,7 @@ report bridges with versions and row counts that the editor never writes. The sc
 export type ReportRowKind = 'data' | 'group' | 'section' | 'formula'
 export type ReportMappingMethod = 'bridge' | 'direct'
 export type ReportSelectionScope = 'exact' | 'descendants'
-// ReportLayout, ReportSubtotalPosition, ReportStyleRole, ReportFontWeight, ReportBorderStyle, ReportColumnValueKind: the schema's values
+// ReportLayout, ReportGroupPresentation, ReportStyleRole, ReportFontWeight, ReportBorderStyle, ReportColumnValueKind: the schema's values
 
 export interface ReportSummary {
   id: Id; key: string; displayName: string; reportType: string          // key: DottedKey (OI-29)
@@ -89,7 +91,7 @@ export interface ReportSummary {
 export interface ReportSettings {
   displayName: string
   reportType: string
-  subtotalPosition: ReportSubtotalPosition
+  defaultPresentation: ReportGroupPresentation   // 'total_above' | 'total_below' | 'header_and_total' | 'step'
   defaultProfileKey: string | null
   periodicity: Periodicity | null
   layout: ReportLayout
@@ -109,6 +111,11 @@ export interface ReportRow {
   calculatedMeasureKey: string | null       // formula rows
   valueColumnKey: string | null             // formula rows
   styleKey: string | null
+  /** Group rows that show values; null inherits settings.defaultPresentation. */
+  presentation: ReportGroupPresentation | null
+  totalLabel: string | null                 // group rows presented header_and_total; null for the label
+  reverseSign: boolean                      // member rows; display only
+  scopeMemberKey: string | null             // formula rows; null for the report's total
   parameters: Record<string, string | number>
 }
 export interface ReportRowPosition { parentKey: string | null; index: number }
@@ -236,6 +243,22 @@ ready. `setEnabled` runs on saved state; enabling answers 422 with the failing r
 every commit passes the report gate or is refused with 422, and while disabled every commit is refused while the report
 rules find a violation, so Save stays blocked until the findings are fixed.
 
+### Row presentation
+
+The engine returns rows in hierarchy order with each row's resolved metadata; renderers place them (OI-58). A *group* is
+a member row that shows values and has rows under it. `settings.defaultPresentation` places every group whose row names
+no `presentation`; the web editor's `lib/report/layout.ts` holds the one implementation of the placement rules, which
+the engine README documents for other renderers. The change set checks the fields as input:
+
+- `presentation` only on a `group` row that shows values;
+- `totalLabel` only with `presentation: 'header_and_total'`;
+- `reverseSign` only on member rows (`data`, `group`); it negates the displayed values of the row and the member rows
+  under it, never a value a formula reads;
+- `scopeMemberKey` only on `formula` rows; `report_items_resolve` requires it to name a member row.
+
+A member row stores a member option only while one of its settings differs from the default, so a row that sets
+`presentation`, `totalLabel` or `reverseSign` gets one.
+
 ### Sources and report bridges
 
 A bridge source owns one report bridge. Creating a bridge source creates the bridge (a live version, `many_to_many`,
@@ -296,7 +319,7 @@ type ReportOperation =
 
 | Operation | Cascade |
 |---|---|
-| `deleteRow` | children move up; its bridge rules, scopes, row parameters and member option go; formula rows naming it as parent move up |
+| `deleteRow` | children move up; its bridge rules, scopes, row parameters and member option go; formula rows naming it as parent move up; formula rows evaluated at it are evaluated at its parent |
 | `deleteSource` | its bridge goes; profile picks naming it are cleared (`web` leaves them dangling) |
 | `deleteCalculationDimension` | removed from default breakout **and** default filter (`web` cleans breakout only) |
 | `deleteStyle` | refused with `report_styles_resolve` while a row names it |

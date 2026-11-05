@@ -25,9 +25,9 @@ public sealed record ReportSettingsPatch
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ReportType { get; init; }
 
-    /// <summary>The new <c>subtotal_position</c> value.</summary>
+    /// <summary>The new <c>group_presentation</c> default.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? SubtotalPosition { get; init; }
+    public string? DefaultPresentation { get; init; }
 
     /// <summary>The new default profile key; null clears it.</summary>
     public string? DefaultProfileKey
@@ -85,6 +85,6 @@ public sealed record ReportSettingsPatch
     /// <summary>Whether the patch names no setting.</summary>
     [JsonIgnore]
     public bool IsEmpty =>
-        DisplayName is null && ReportType is null && SubtotalPosition is null && Layout is null && DefaultBreakout is null
+        DisplayName is null && ReportType is null && DefaultPresentation is null && Layout is null && DefaultBreakout is null
         && !SetsDefaultProfileKey && !SetsPeriodicity && !SetsDefaultFilter;
 }

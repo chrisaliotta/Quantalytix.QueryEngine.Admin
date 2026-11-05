@@ -27,8 +27,8 @@ public sealed record ReportVersionRecord
     /// <summary>The key of the profile a request runs under when it names none; required to enable the report.</summary>
     public string? DefaultProfileKey { get; init; }
 
-    /// <summary>A <c>subtotal_position</c> value: whether a member row that shows values precedes or follows its descendants.</summary>
-    public required string SubtotalPosition { get; init; }
+    /// <summary>A <c>group_presentation</c> value: how renderers place every group whose member option names none.</summary>
+    public required string DefaultPresentation { get; init; }
 
     /// <summary>Whether the engine offers the report; an enabled report always passes the report rules.</summary>
     public required bool IsEnabled { get; init; }

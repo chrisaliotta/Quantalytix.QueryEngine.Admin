@@ -142,5 +142,6 @@ export const reportRefs: ReportRef[] = [
   { key: 'bank.margin_statement', name: 'Bank margin', type: 'margin_analysis', model: 'bank.margin_model', layout: 'statement', defaultProfile: 'gl_monthly', enabled: true },
   { key: 'bank.deposit_pricing', name: 'Deposit pricing', type: 'deposit_pricing', model: 'bank.margin_model', layout: 'statement', defaultProfile: 'gl_monthly', enabled: true },
   { key: 'bank.branch_profitability', name: 'Branch profitability', type: 'branch_profitability', model: 'bank.margin_model', layout: 'statement', defaultProfile: 'loan_based', enabled: false },
+  { key: 'bank.income_statement', name: 'Bank income statement', type: 'income_statement', model: 'bank.margin_model', layout: 'statement', defaultProfile: 'gl_monthly', enabled: true },
   { key: 'consolidated.balance_sheet', name: 'Consolidated balance sheet', type: 'balance_sheet', model: 'consolidated.balances', layout: 'statement', defaultProfile: 'gl_monthly', enabled: true },
 ]

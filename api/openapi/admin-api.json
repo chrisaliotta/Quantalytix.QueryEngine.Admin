@@ -31871,6 +31871,10 @@
           "calculatedMeasureKey",
           "valueColumnKey",
           "styleKey",
+          "presentation",
+          "totalLabel",
+          "reverseSign",
+          "scopeMemberKey",
           "parameters"
         ],
         "type": "object",
@@ -31922,6 +31926,31 @@
               "string"
             ],
             "description": "The key of the report's style the row shows; null for its role's default."
+          },
+          "presentation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A `group_presentation` value placing a group row that shows values; null inherits the report's default."
+          },
+          "totalLabel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The total line's label of a group row presented `header_and_total`; null for the row's label."
+          },
+          "reverseSign": {
+            "type": "boolean",
+            "description": "Whether a member row's values, and those of every member row under it, show negated; false for overlay rows."
+          },
+          "scopeMemberKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The member row a formula row is evaluated at, whose parameters it inherits; null for the report's total."
           },
           "parameters": {
             "type": "object",
@@ -31975,7 +32004,7 @@
         "required": [
           "displayName",
           "reportType",
-          "subtotalPosition",
+          "defaultPresentation",
           "defaultProfileKey",
           "periodicity",
           "layout",
@@ -31992,9 +32021,9 @@
             "type": "string",
             "description": "Free-form classification."
           },
-          "subtotalPosition": {
+          "defaultPresentation": {
             "type": "string",
-            "description": "A `subtotal_position` value."
+            "description": "A `group_presentation` value: the presentation of every group whose row names none."
           },
           "defaultProfileKey": {
             "type": [
@@ -32046,9 +32075,9 @@
             "type": "string",
             "description": "The new classification."
           },
-          "subtotalPosition": {
+          "defaultPresentation": {
             "type": "string",
-            "description": "The new `subtotal_position` value."
+            "description": "The new `group_presentation` default."
           },
           "defaultProfileKey": {
             "type": [
@@ -33604,6 +33633,7 @@
           "fontWeight",
           "formulaLanguageVersion",
           "grainKind",
+          "groupPresentation",
           "groupingMode",
           "measureKind",
           "measureOutputDataType",
@@ -33625,7 +33655,6 @@
           "selectionScope",
           "sourceObjectKind",
           "sourceSelection",
-          "subtotalPosition",
           "timeValueType",
           "timeZone",
           "totalBehavior",
@@ -34339,6 +34368,32 @@
               "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
             }
           },
+          "groupPresentation": {
+            "type": "array",
+            "items": {
+              "required": [
+                "value",
+                "label",
+                "description"
+              ],
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value exactly as stored in the metadata column."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "The value as a select shows it."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "The schema's definition of the value, condensed to one sentence."
+                }
+              },
+              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
+            }
+          },
           "groupingMode": {
             "type": "array",
             "items": {
@@ -34860,32 +34915,6 @@
             }
           },
           "sourceSelection": {
-            "type": "array",
-            "items": {
-              "required": [
-                "value",
-                "label",
-                "description"
-              ],
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "string",
-                  "description": "The value exactly as stored in the metadata column."
-                },
-                "label": {
-                  "type": "string",
-                  "description": "The value as a select shows it."
-                },
-                "description": {
-                  "type": "string",
-                  "description": "The schema's definition of the value, condensed to one sentence."
-                }
-              },
-              "description": "One allowed value of a controlled vocabulary: the contract's `VocabularyTerm`."
-            }
-          },
-          "subtotalPosition": {
             "type": "array",
             "items": {
               "required": [

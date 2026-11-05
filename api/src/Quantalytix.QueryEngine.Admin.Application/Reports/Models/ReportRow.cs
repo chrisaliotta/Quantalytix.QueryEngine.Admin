@@ -35,6 +35,18 @@ public sealed record ReportRow
     /// <summary>The key of the report's style the row shows; null for its role's default.</summary>
     public required string? StyleKey { get; init; }
 
+    /// <summary>A <c>group_presentation</c> value placing a group row that shows values; null inherits the report's default.</summary>
+    public required string? Presentation { get; init; }
+
+    /// <summary>The total line's label of a group row presented <c>header_and_total</c>; null for the row's label.</summary>
+    public required string? TotalLabel { get; init; }
+
+    /// <summary>Whether a member row's values, and those of every member row under it, show negated; false for overlay rows.</summary>
+    public required bool ReverseSign { get; init; }
+
+    /// <summary>The member row a formula row is evaluated at, whose parameters it inherits; null for the report's total.</summary>
+    public required string? ScopeMemberKey { get; init; }
+
     /// <summary>The row's own model parameter values, a number or a text as the parameter's type says; missing keys inherit.</summary>
     public required IReadOnlyDictionary<string, JsonElement> Parameters { get; init; }
 }

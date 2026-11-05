@@ -47,7 +47,7 @@ public static class ReportCopy
             {
                 Patch = new ReportSettingsPatch
                 {
-                    SubtotalPosition = settings.SubtotalPosition,
+                    DefaultPresentation = settings.DefaultPresentation,
                     DefaultProfileKey = settings.DefaultProfileKey,
                     Periodicity = settings.Periodicity,
                     Layout = settings.Layout,

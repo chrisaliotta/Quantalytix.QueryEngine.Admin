@@ -44,4 +44,7 @@ public sealed record ReportLineRecord
 
     /// <summary>The key of the report style the row shows; null for its role's default style.</summary>
     public string? StyleKey { get; init; }
+
+    /// <summary>The member of the report dimension a <c>formula</c> row is evaluated at, whose parameters it inherits; null for the root.</summary>
+    public string? ScopeMemberKey { get; init; }
 }

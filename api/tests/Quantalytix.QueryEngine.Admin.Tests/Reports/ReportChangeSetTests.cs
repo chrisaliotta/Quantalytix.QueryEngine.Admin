@@ -110,6 +110,99 @@ public sealed class ReportChangeSetTests
         Assert.DoesNotContain(_fixture.Members.All, member => member.MemberKey == "LOANS");
     }
 
+    /// <summary>
+    /// A group's presentation and total label, and a member row's reversed sign, are stored in the member option, which a row needs
+    /// only when one of its settings differs from the default; the document reads them back.
+    /// </summary>
+    /// <returns>A task that completes when the commit is checked.</returns>
+    [Fact]
+    public async Task SaveRow_StoresPresentationAndSignInTheMemberOption()
+    {
+        var assets = SaveRow("ASSETS", ReportRowKinds.Group, "TOTAL", 0);
+        var cash = SaveRow("CASH", ReportRowKinds.Data, "TOTAL", 2);
+
+        var state = (await _fixture.Changes().CommitAsync(
+            ReportId,
+            Request(
+                assets with { Row = assets.Row with { Presentation = GroupPresentations.HeaderAndTotal, TotalLabel = "Total assets" } },
+                cash with { Row = cash.Row with { ReverseSign = true } }),
+            Token)).Value!.State;
+
+        var options = _fixture.MemberOptions.All.ToDictionary(option => option.MemberKey);
+        Assert.Equal((GroupPresentations.HeaderAndTotal, "Total assets", false), (options["ASSETS"].Presentation, options["ASSETS"].TotalLabel, options["ASSETS"].ReverseSign));
+        Assert.Equal((null, null, true), (options["CASH"].Presentation, options["CASH"].TotalLabel, options["CASH"].ReverseSign));
+        var rows = state.Rows.ToDictionary(row => row.Key);
+        Assert.Equal((GroupPresentations.HeaderAndTotal, "Total assets"), (rows["ASSETS"].Presentation, rows["ASSETS"].TotalLabel));
+        Assert.True(rows["CASH"].ReverseSign);
+    }
+
+    /// <summary>
+    /// Presentation, total label, sign and scope are checked as input: only a group row that shows values is placed as a group, only
+    /// <c>header_and_total</c> has a total line to label, only member rows show values to negate, and only formula rows are evaluated
+    /// at a member.
+    /// </summary>
+    /// <returns>A task that completes when the preview is checked.</returns>
+    [Fact]
+    public async Task SaveRow_RefusesPresentationSignAndScopeOnOtherRows()
+    {
+        var data = SaveRow("CASH", ReportRowKinds.Data, "TOTAL", 1);
+        var group = SaveRow("ASSETS", ReportRowKinds.Group, "TOTAL", 0);
+        var header = group with { Row = group.Row with { ShowsValues = false } };
+        var section = SaveRow("NOTES", ReportRowKinds.Section, "TOTAL", 0);
+
+        Assert.Equal(
+            ["operations[0].Row.Presentation", "operations[0].Row.ScopeMemberKey"],
+            await InvalidFieldsAsync(data with { Row = data.Row with { Presentation = GroupPresentations.Step, ScopeMemberKey = "TOTAL" } }));
+        Assert.Equal(
+            ["operations[0].Row.TotalLabel"],
+            await InvalidFieldsAsync(group with { Row = group.Row with { Presentation = GroupPresentations.TotalBelow, TotalLabel = "Total assets" } }));
+        Assert.Equal(["operations[0].Row.Presentation"], await InvalidFieldsAsync(header with { Row = header.Row with { Presentation = GroupPresentations.Step } }));
+        Assert.Equal(["operations[0].Row.ReverseSign"], await InvalidFieldsAsync(section with { Row = section.Row with { ReverseSign = true } }));
+
+        async Task<IEnumerable<string>> InvalidFieldsAsync(ReportSaveRowOperation save)
+        {
+            var refusal = (await _fixture.Changes().PreviewAsync(ReportId, Request(save), Token)).Refusal!;
+            Assert.Equal(RefusalKind.Invalid, refusal.Kind);
+            return refusal.Errors.Keys.Order(StringComparer.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Deleting a member that formula rows are evaluated at moves their scope to its parent, so they keep inheriting the nearest
+    /// parameters instead of naming a row that is gone.
+    /// </summary>
+    /// <returns>A task that completes when the preview is checked.</returns>
+    [Fact]
+    public async Task DeleteRow_MovesFormulaScopesToItsParent()
+    {
+        var ratio = SaveRow("RATIO", ReportRowKinds.Formula, "TOTAL", 2);
+
+        var preview = (await _fixture.Changes().PreviewAsync(
+            ReportId,
+            Request(
+                SaveRow("ASSETS", ReportRowKinds.Group, "TOTAL", 0),
+                new ReportMoveRowOperation { Key = "LOANS", To = new ReportRowPosition { ParentKey = "ASSETS", Index = 0 } },
+                ratio with { Row = ratio.Row with { CalculatedMeasureKey = "yield", ValueColumnKey = "amount", ScopeMemberKey = "ASSETS" } },
+                new ReportDeleteRowOperation { Key = "ASSETS" }),
+            Token)).Value!;
+
+        Assert.Equal("TOTAL", preview.State.Rows.Single(row => row.Key == "RATIO").ScopeMemberKey);
+    }
+
+    /// <summary>The default presentation is a typed setting stored in its own column and read back into the settings.</summary>
+    /// <returns>A task that completes when the commit is checked.</returns>
+    [Fact]
+    public async Task UpdateSettings_StoresTheDefaultPresentation()
+    {
+        var state = (await _fixture.Changes().CommitAsync(
+            ReportId,
+            Request(new ReportUpdateSettingsOperation { Patch = new ReportSettingsPatch { DefaultPresentation = GroupPresentations.Step } }),
+            Token)).Value!.State;
+
+        Assert.Equal(GroupPresentations.Step, _fixture.ReportVersions.All.Single().DefaultPresentation);
+        Assert.Equal(GroupPresentations.Step, state.Settings.DefaultPresentation);
+    }
+
     /// <summary>A new bridge source has no bridge in a preview; its commit creates the report bridge it owns, into the report dimension.</summary>
     /// <returns>A task that completes when the preview and commit are checked.</returns>
     [Fact]
@@ -375,6 +468,10 @@ public sealed class ReportChangeSetTests
                 CalculatedMeasureKey = null,
                 ValueColumnKey = null,
                 StyleKey = null,
+                Presentation = null,
+                TotalLabel = null,
+                ReverseSign = false,
+                ScopeMemberKey = null,
                 Parameters = new Dictionary<string, JsonElement>()
             },
             Index = index

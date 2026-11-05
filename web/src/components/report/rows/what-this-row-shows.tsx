@@ -292,6 +292,7 @@ export function FormulaRowShows({ rowKey }: { rowKey: string }) {
   const calc = useCalcModel()
   const { key } = useActiveProfile()
   const row = findRow(report.rows, rowKey)
+  const scope = row?.scopeKey ? findRow(report.rows, row.scopeKey) : null
   const column = report.columns.find((c) => c.key === row?.columnKey)
   const tree = row?.measureKey ? metricTree(row.measureKey, calc) : null
   const usedParams = tree ? parametersIn(tree, calc.measures, calc.parameters.map((p) => p.key)) : []
@@ -313,7 +314,14 @@ export function FormulaRowShows({ rowKey }: { rowKey: string }) {
           <p className="text-pretty">
             This row shows <MetricChip metric={row.measureKey} resolve={resolve} /> in column{' '}
             <span className="font-medium">{column.label}</span>
-            <KeyText className="ml-1.5">{column.key}</KeyText>, using report-level totals.
+            <KeyText className="ml-1.5">{column.key}</KeyText>,{' '}
+            {scope ? (
+              <>
+                using the totals of <span className="font-medium">{scope.label}</span>.
+              </>
+            ) : (
+              'using report-level totals.'
+            )}
           </p>
           <MetricBreakdown node={tree} resolve={resolve} />
           {usedParams.length > 0 && (
@@ -341,7 +349,8 @@ export function FormulaRowShows({ rowKey }: { rowKey: string }) {
             </ul>
           )}
           <p className="text-xs text-muted-foreground">
-            Variables resolve across the whole report through {key}&apos;s picks, not through this row&apos;s mappings.
+            Variables resolve {scope ? `at ${scope.label}` : 'across the whole report'} through {key}&apos;s picks, not through this
+            row&apos;s mappings.
           </p>
         </div>
       ) : (

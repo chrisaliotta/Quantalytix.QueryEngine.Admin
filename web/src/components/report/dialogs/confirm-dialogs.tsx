@@ -48,6 +48,54 @@ export function DeleteRowDialog({ rowKey, onClose }: { rowKey: string; onClose: 
   )
 }
 
+export function SubtotalRowsDialog({ rowKeys, onClose }: { rowKeys: string[]; onClose: () => void }) {
+  const actions = useRowActions()
+  const [label, setLabel] = useState('')
+  const invalid = !label.trim()
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (invalid) return
+            actions.subtotal(rowKeys, label)
+            onClose()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Subtotal {rowKeys.length} rows</DialogTitle>
+            <DialogDescription>
+              A new subtotal totals these rows and shows as a step: the rows stay at their level, then the total follows.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="subtotal-rows">Label</Label>
+            <Input
+              id="subtotal-rows"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Net interest income"
+              autoFocus
+              aria-invalid={invalid}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={invalid}>
+              Add subtotal
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function RenameReportDialog({ onClose }: { onClose: () => void }) {
   const { report, mutate } = useEditor()
   const [name, setName] = useState(report.settings.name)

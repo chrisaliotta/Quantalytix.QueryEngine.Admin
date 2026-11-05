@@ -13,8 +13,8 @@ public sealed record ReportSettings
     /// <summary>Free-form classification.</summary>
     public required string ReportType { get; init; }
 
-    /// <summary>A <c>subtotal_position</c> value.</summary>
-    public required string SubtotalPosition { get; init; }
+    /// <summary>A <c>group_presentation</c> value: the presentation of every group whose row names none.</summary>
+    public required string DefaultPresentation { get; init; }
 
     /// <summary>The profile a request runs under when it names none; null for none.</summary>
     public required string? DefaultProfileKey { get; init; }

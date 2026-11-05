@@ -1946,8 +1946,9 @@ export interface components {
             columnValueKind: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["ReportColumnValueKind"];
             })[];
-            subtotalPosition: (components["schemas"]["VocabularyTerm"] & {
-                value: components["schemas"]["ReportSubtotalPosition"];
+            /** @description How renderers place a report's groups. */
+            groupPresentation: (components["schemas"]["VocabularyTerm"] & {
+                value: components["schemas"]["ReportGroupPresentation"];
             })[];
             /** @description The row role a report style applies to by default. */
             styleRole: (components["schemas"]["VocabularyTerm"] & {
@@ -3528,8 +3529,11 @@ export interface components {
         };
         /** @enum {string} */
         ReportLayout: "statement" | "list";
-        /** @enum {string} */
-        ReportSubtotalPosition: "above" | "below";
+        /**
+         * @description How a renderer places a group, a member row that shows values and has rows under it: its total before or after the rows under it, a header before them and a total after, or a step whose rows keep the group's indent. The engine returns rows in hierarchy order; renderers place them.
+         * @enum {string}
+         */
+        ReportGroupPresentation: "total_above" | "total_below" | "header_and_total" | "step";
         /**
          * @description `data` and `group` rows are report dimension members (a `group` has members under it); `section` and `formula` rows are overlay lines (OI-48).
          * @enum {string}
@@ -3568,7 +3572,8 @@ export interface components {
         ReportSettings: {
             displayName: string;
             reportType: string;
-            subtotalPosition: components["schemas"]["ReportSubtotalPosition"];
+            /** @description The presentation of every group whose row names none. */
+            defaultPresentation: components["schemas"]["ReportGroupPresentation"];
             defaultProfileKey: string | null;
             periodicity: components["schemas"]["Periodicity"] | null;
             layout: components["schemas"]["ReportLayout"];
@@ -3581,7 +3586,7 @@ export interface components {
         ReportSettingsPatch: {
             displayName?: string;
             reportType?: string;
-            subtotalPosition?: components["schemas"]["ReportSubtotalPosition"];
+            defaultPresentation?: components["schemas"]["ReportGroupPresentation"];
             defaultProfileKey?: string | null;
             periodicity?: components["schemas"]["Periodicity"] | null;
             layout?: components["schemas"]["ReportLayout"];
@@ -3601,6 +3606,14 @@ export interface components {
             /** @description Formula rows. */
             valueColumnKey: string | null;
             styleKey: string | null;
+            /** @description Group rows that show values; null inherits the report's `defaultPresentation`. */
+            presentation: components["schemas"]["ReportGroupPresentation"] | null;
+            /** @description Group rows presented `header_and_total`; the total line's label, null for the row's label. */
+            totalLabel: string | null;
+            /** @description Member rows; true shows the row's values, and those of every member row under it, negated. Display only; false for the other kinds. */
+            reverseSign: boolean;
+            /** @description Formula rows; the member row the formula is evaluated at, whose parameters it inherits. Null for the report's total. */
+            scopeMemberKey: string | null;
             /** @description The row's own model parameter values; missing keys inherit. */
             parameters: {
                 [key: string]: string | number;
@@ -3816,7 +3829,7 @@ export interface components {
             key: string;
             to: components["schemas"]["ReportRowPosition"];
         };
-        /** @description Children move up; the row's rules, scopes, parameters and member option go (OI-56). */
+        /** @description Children move up; the row's rules, scopes, parameters and member option go (OI-56). Formula rows evaluated at a deleted member are evaluated at its parent. */
         ReportDeleteRowOperation: {
             /**
              * @description discriminator enum property added by openapi-typescript

@@ -161,7 +161,7 @@ export const vocabularies: Vocabularies = {
   mappingMethod: [t('bridge', 'Bridge'), t('direct', 'Direct')],
   selectionScope: [t('exact', 'Exact'), t('descendants', 'Descendants')],
   columnValueKind: [t('variable', 'Variable'), t('calculated', 'Calculated')],
-  subtotalPosition: [t('above', 'Above'), t('below', 'Below')],
+  groupPresentation: [t('total_above', 'Total above'), t('total_below', 'Total below'), t('header_and_total', 'Header and total'), t('step', 'Step')],
   styleRole: [t('header', 'Header'), t('subtotal', 'Subtotal'), t('total', 'Total'), t('detail', 'Detail'), t('formula', 'Formula')],
   fontWeight: [t('normal', 'Normal'), t('medium', 'Medium'), t('semibold', 'Semibold'), t('bold', 'Bold')],
   borderStyle: [t('none', 'None'), t('thin', 'Thin'), t('medium', 'Medium'), t('thick', 'Thick'), t('double', 'Double')],

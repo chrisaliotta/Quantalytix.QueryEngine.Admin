@@ -1,5 +1,5 @@
 import { useEditor } from '@/lib/report/store'
-import { DeleteReportDialog, DeleteRowDialog, RenameReportDialog, RenameReportKeyDialog } from './confirm-dialogs'
+import { DeleteReportDialog, DeleteRowDialog, RenameReportDialog, RenameReportKeyDialog, SubtotalRowsDialog } from './confirm-dialogs'
 import { ChangeModelDialog } from './change-model-dialog'
 import { CoverageDialog } from './coverage-dialog'
 import { MappingDialog } from './mapping-dialog'
@@ -23,6 +23,8 @@ export function DialogHost() {
       return <CoverageDialog sourceKey={d.sourceKey} onClose={closeDialog} />
     case 'deleteRow':
       return <DeleteRowDialog rowKey={d.rowKey} onClose={closeDialog} />
+    case 'subtotalRows':
+      return <SubtotalRowsDialog rowKeys={d.rowKeys} onClose={closeDialog} />
     case 'renameReport':
       return <RenameReportDialog onClose={closeDialog} />
     case 'renameReportKey':

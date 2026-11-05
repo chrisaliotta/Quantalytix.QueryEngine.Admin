@@ -7,7 +7,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Reports;
 
 /// <summary>
 /// The row operations (P5, OI-48). <c>data</c> and <c>group</c> rows are members of the report dimension's one version, with a member
-/// option when hidden, a header or styled; <c>section</c> and <c>formula</c> rows are overlay lines. A member row stays a member row
+/// option when hidden, a header, styled, presented or sign-reversed; <c>section</c> and <c>formula</c> rows are overlay lines. A member row stays a member row
 /// and a line a line; keys are fixed. The members are one tree with one root, the report's total, and sit under members; nothing sits
 /// under a formula row. Deleting a row moves its children up and takes what names it with it (OI-56).
 /// </summary>
@@ -64,7 +64,10 @@ internal static class ReportRowEdits
         return Place(reparented, move.Key, move.To.ParentKey, move.To.Index);
     }
 
-    /// <summary>Removes a row; its children take its place, and its option, parameter values, scopes and bridge rules go.</summary>
+    /// <summary>
+    /// Removes a row; its children take its place, formula rows evaluated at it are evaluated at its parent, and its option, parameter
+    /// values, scopes and bridge rules go.
+    /// </summary>
     public static ReportGraph Delete(ReportGraph report, ReportDeleteRowOperation delete, ChangeContext context)
     {
         var rows = ReportRowTree.Of(report);
@@ -87,7 +90,13 @@ internal static class ReportRowEdits
                     .Where(member => member.MemberKey != delete.Key)
                     .Select(member => deleted.Member is { } removed && member.ParentDimensionMemberId == removed.DimensionMemberId ? member with { ParentDimensionMemberId = parentId } : member)
             ],
-            Lines = [.. report.Lines.Where(line => line.LineKey != delete.Key).Select(line => line.ParentKey == delete.Key ? line with { ParentKey = deleted.ParentKey } : line)],
+            Lines =
+            [
+                .. report.Lines
+                    .Where(line => line.LineKey != delete.Key)
+                    .Select(line => line.ParentKey == delete.Key ? line with { ParentKey = deleted.ParentKey } : line)
+                    .Select(line => line.ScopeMemberKey == delete.Key ? line with { ScopeMemberKey = deleted.ParentKey } : line)
+            ],
             MemberOptions = [.. report.MemberOptions.Where(option => option.MemberKey != delete.Key)],
             RowParameters = [.. report.RowParameters.Where(value => value.RowKey != delete.Key)],
             Scopes = [.. report.Scopes.Where(scope => scope.ScopeMemberKey != delete.Key)],
@@ -136,8 +145,21 @@ internal static class ReportRowEdits
                 SortOrder = 0
             }
             : stored with { DisplayName = row.Label, ParentDimensionMemberId = parentId, IsAssignable = isAssignable };
-        ReportMemberOptionRecord[] option = !row.IsVisible || !row.ShowsValues || row.StyleKey is not null
-            ? [new ReportMemberOptionRecord { ReportVersionId = report.Version.ReportVersionId, MemberKey = row.Key, IsVisible = row.IsVisible, ShowsValues = row.ShowsValues, StyleKey = row.StyleKey }]
+        ReportMemberOptionRecord[] option = !row.IsVisible || !row.ShowsValues || row.StyleKey is not null || row.Presentation is not null || row.TotalLabel is not null || row.ReverseSign
+            ?
+            [
+                new ReportMemberOptionRecord
+                {
+                    ReportVersionId = report.Version.ReportVersionId,
+                    MemberKey = row.Key,
+                    IsVisible = row.IsVisible,
+                    ShowsValues = row.ShowsValues,
+                    StyleKey = row.StyleKey,
+                    Presentation = row.Presentation,
+                    TotalLabel = row.TotalLabel,
+                    ReverseSign = row.ReverseSign
+                }
+            ]
             : [];
         return report with
         {
@@ -164,7 +186,8 @@ internal static class ReportRowEdits
             PayloadJson = stored?.PayloadJson,
             FilterJson = stored?.FilterJson,
             SettingsJson = stored?.SettingsJson,
-            StyleKey = row.StyleKey
+            StyleKey = row.StyleKey,
+            ScopeMemberKey = row.ScopeMemberKey
         };
         return report with { Lines = [.. report.Lines.Where(other => other.LineKey != row.Key), line] };
     }

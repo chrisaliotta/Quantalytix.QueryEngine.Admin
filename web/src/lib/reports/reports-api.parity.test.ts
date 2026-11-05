@@ -34,6 +34,10 @@ const row = (key: string, kind: ReportRow['kind'], parentKey: string | null): Re
   valueColumnKey: null,
   styleKey: null,
   parameters: {},
+  presentation: null,
+  totalLabel: null,
+  reverseSign: false,
+  scopeMemberKey: null,
 })
 
 describe.each(adapters)('ReportsApi port over the $name adapter', ({ create }) => {
@@ -92,6 +96,33 @@ describe.each(adapters)('ReportsApi port over the $name adapter', ({ create }) =
     const stored = await unwrap(api.getReport(report.id))
     expect(stored.rows.map((r) => r.key)).toEqual([root.key, 'LOANS'])
     expect(stored.rows[1].parentKey).toBe(root.key)
+  })
+
+  /**
+   * A group's presentation, total label and sign reversal, and a formula row's scope, are stored as saved; deleting the scope
+   * member moves the formula row's scope to that member's parent (blueprint 16), so renderers place and evaluate rows alike on both.
+   */
+  it('round-trips presentation and scope, moving a deleted scope to its parent', async () => {
+    const report = await ownReport(await seeded())
+    const document = await unwrap(api.getReport(report.id))
+    const root = document.rows[0]
+    const formula = document.rows.find((r) => r.kind === 'formula')!
+    const group = { ...row('LENDING', 'group', root.key), presentation: 'header_and_total', totalLabel: 'Total lending', reverseSign: true } satisfies ReportRow
+
+    api.beginChanges()
+    await unwrap(api.saveRow(report.id, { ...group, index: 0 }))
+    await unwrap(api.saveRow(report.id, { ...formula, scopeMemberKey: group.key, index: 0 }))
+    await unwrap(api.commitChanges())
+
+    const stored = await unwrap(api.getReport(report.id))
+    expect(stored.rows.find((r) => r.key === group.key)).toEqual(group)
+    expect(stored.rows.find((r) => r.key === formula.key)!.scopeMemberKey).toBe(group.key)
+
+    api.beginChanges()
+    await unwrap(api.deleteRow(report.id, group.key))
+    await unwrap(api.commitChanges())
+
+    expect((await unwrap(api.getReport(report.id))).rows.find((r) => r.key === formula.key)!.scopeMemberKey).toBe(root.key)
   })
 
   /** The total is the one top-level member row, so deleting it is refused as invalid input (400). */

@@ -19,7 +19,7 @@ import type {
   ReportsApi,
   Violation,
 } from '../contract'
-import { createSeed, flattenItems, type Db, type ItemNode } from './data'
+import { createSeed, flattenItems, reportRow, type Db, type ItemNode } from './data'
 
 const LATENCY = 90
 const wait = () => new Promise((r) => setTimeout(r, LATENCY))
@@ -148,8 +148,8 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
     const content: ReportContent = input.copyFromReportId
       ? clone(report(input.copyFromReportId))
       : {
-          settings: { displayName: input.displayName, reportType: input.reportType, subtotalPosition: 'above', defaultProfileKey: null, periodicity: null, layout: 'statement', defaultBreakout: [], defaultFilter: null },
-          rows: [{ key: 'total', label: input.displayName, kind: 'group', parentKey: null, isVisible: true, showsValues: true, calculatedMeasureKey: null, valueColumnKey: null, styleKey: null, parameters: {} }],
+          settings: { displayName: input.displayName, reportType: input.reportType, defaultPresentation: 'total_above', defaultProfileKey: null, periodicity: null, layout: 'statement', defaultBreakout: [], defaultFilter: null },
+          rows: [reportRow('total', input.displayName, 'group', null)],
           sources: [],
           profiles: [],
           calculationDimensions: [],
@@ -245,6 +245,7 @@ export function createMockReportsApi(db: Db = createSeed()): ReportsApi {
       if (!row) return missing('row', key)
       if (row.parentKey === null && row.kind !== 'section' && row.kind !== 'formula') return invalid('key', `Row '${key}' is the report's total; it stays.`)
       for (const child of doc.rows.filter((r) => r.parentKey === key)) child.parentKey = row.parentKey
+      for (const scoped of doc.rows.filter((r) => r.scopeMemberKey === key)) scoped.scopeMemberKey = row.parentKey
       doc.rows.splice(doc.rows.indexOf(row), 1)
       for (const s of doc.sources) delete s.rules[key]
       doc.variableScopes = doc.variableScopes.filter((sc) => sc.scopeMemberKey !== key)

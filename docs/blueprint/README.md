@@ -96,6 +96,7 @@ Record resolved open issues here, newest first, with the date, the issue, the ch
 
 | Date | Issue | Decision | By |
 |---|---|---|---|
+| 2026-11-05 | [OI-58](90-open-issues.md#oi-58) Who places a report's rows | The engine returns rows in hierarchy order with resolved metadata; renderers place them. `group_presentation` (`total_above`, `total_below`, `header_and_total`, `step`) replaces `subtotal_position`, per report and per group, with a total label, display-only sign reversal and formula row scope ([16](16-reports.md#row-presentation)). | User |
 | 2026-11-02 | Snapshot versioning | Snapshots replace semantic releases, draft and publish versioning, freeze and assumption sets. One live snapshot is edited in place and validated on every commit; capture copies every live version of all six kinds into a frozen snapshot, and restore copies one back ([14](14-snapshots.md)). | User |
 | 2026-10-27 | [OI-32](90-open-issues.md#oi-32) | Deleting a dataset over an ordinary (unmanaged) table neither redefines nor drops the table's materialized view; the next materialize or dematerialize on the table redefines it without the deleted fields' columns. | User |
 | 2026-10-27 | [OI-33](90-open-issues.md#oi-33) | Deleting a dataset drops each registered managed table that only its versions read, with the materialized view the API defined over it, and deletes the table's `qe_managed_source_object` row, as write-plan schema statements of the delete. | User |

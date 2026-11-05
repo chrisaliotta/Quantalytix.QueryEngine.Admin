@@ -29,7 +29,8 @@ function itemsByRole(): Record<Id, ItemNode[]> {
   return Object.fromEntries(catalog.roles.map((role) => [role.id, tree(publishedMembers[role.dimensionId] ?? [], null)]))
 }
 
-const row = (key: string, label: string, kind: ReportRow['kind'], parentKey: string | null, extra: Partial<ReportRow> = {}): ReportRow => ({
+/** A report row with every optional field at its default. */
+export const reportRow = (key: string, label: string, kind: ReportRow['kind'], parentKey: string | null, extra: Partial<ReportRow> = {}): ReportRow => ({
   key,
   label,
   kind,
@@ -40,6 +41,10 @@ const row = (key: string, label: string, kind: ReportRow['kind'], parentKey: str
   valueColumnKey: null,
   styleKey: null,
   parameters: {},
+  presentation: null,
+  totalLabel: null,
+  reverseSign: false,
+  scopeMemberKey: null,
   ...extra,
 })
 
@@ -116,7 +121,7 @@ export function createSeed(): Db {
         settings: {
           displayName: 'Bank margin',
           reportType: 'financial',
-          subtotalPosition: 'above',
+          defaultPresentation: 'total_above',
           defaultProfileKey: 'base',
           periodicity: 'month',
           layout: 'statement',
@@ -124,10 +129,10 @@ export function createSeed(): Db {
           defaultFilter: null,
         },
         rows: [
-          row('total', 'Net interest margin', 'group', null, { styleKey: 'total' }),
-          row('LOANS', 'Loans', 'data', 'total'),
-          row('DEPOSITS', 'Deposits', 'data', 'total'),
-          row('NIM_LINE', 'Net interest margin %', 'formula', 'total', { calculatedMeasureKey: 'NIM', valueColumnKey: 'nim' }),
+          reportRow('total', 'Net interest margin', 'group', null, { styleKey: 'total' }),
+          reportRow('LOANS', 'Loans', 'data', 'total'),
+          reportRow('DEPOSITS', 'Deposits', 'data', 'total'),
+          reportRow('NIM_LINE', 'Net interest margin %', 'formula', 'total', { calculatedMeasureKey: 'NIM', valueColumnKey: 'nim' }),
         ],
         sources: [glDirect, loansByBranch],
         profiles: [
@@ -180,14 +185,14 @@ export function createSeed(): Db {
         settings: {
           displayName: 'Branch profitability',
           reportType: 'financial',
-          subtotalPosition: 'above',
+          defaultPresentation: 'total_above',
           defaultProfileKey: null,
           periodicity: 'month',
           layout: 'statement',
           defaultBreakout: [],
           defaultFilter: null,
         },
-        rows: [row('total', 'Branch profitability', 'group', null)],
+        rows: [reportRow('total', 'Branch profitability', 'group', null)],
         sources: [],
         profiles: [],
         calculationDimensions: [],

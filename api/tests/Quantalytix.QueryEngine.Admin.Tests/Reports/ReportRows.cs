@@ -26,7 +26,7 @@ internal static class ReportRows
         return new ReportRecord { ReportId = ReportId, ReportKey = "balance_sheet", ReportDimensionId = ReportDimensionId };
     }
 
-    /// <summary>The report's enabled live version 61, which reads model 40 with subtotals above.</summary>
+    /// <summary>The report's enabled live version 61, which reads model 40 with totals above their groups.</summary>
     public static ReportVersionRecord Version()
     {
         return new ReportVersionRecord
@@ -37,7 +37,7 @@ internal static class ReportRows
             DisplayName = "Balance sheet",
             ReportType = "financial",
             CalculationModelId = ModelRows.CalculationModelId,
-            SubtotalPosition = SubtotalPositions.Above,
+            DefaultPresentation = GroupPresentations.TotalAbove,
             IsEnabled = true,
             CreatedAt = DateTime.UnixEpoch
         };
@@ -78,7 +78,7 @@ internal static class ReportRows
     /// <summary>A member option that makes a member a header.</summary>
     public static ReportMemberOptionRecord MemberOption(string memberKey)
     {
-        return new ReportMemberOptionRecord { ReportVersionId = ReportVersionId, MemberKey = memberKey, IsVisible = true, ShowsValues = false };
+        return new ReportMemberOptionRecord { ReportVersionId = ReportVersionId, MemberKey = memberKey, IsVisible = true, ShowsValues = false, ReverseSign = false };
     }
 
     /// <summary>A scope that reads a variable at a member and its descendants.</summary>

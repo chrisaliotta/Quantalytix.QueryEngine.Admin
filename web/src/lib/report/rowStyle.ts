@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react'
 import type { ModelParameter } from '@/lib/model/types'
+import { isMemberKind } from './tree'
 import type { BorderStyle, FontWeight, ReportStyle, RowNode, RowRole } from './types'
 
 export const ROLES: RowRole[] = ['header', 'subtotal', 'total', 'detail', 'formula']
 export const WEIGHTS: FontWeight[] = ['normal', 'medium', 'semibold', 'bold']
 export const BORDERS: BorderStyle[] = ['none', 'thin', 'medium', 'thick', 'double']
 
-const isMember = (r: RowNode) => r.kind !== 'heading' && r.kind !== 'formula'
+const isMember = (r: RowNode) => isMemberKind(r.kind)
 
 interface Located {
   row: RowNode
@@ -63,7 +64,7 @@ export function resolveParameter(rows: RowNode[], rowKey: string, param: ModelPa
     return total && total.key !== loc.row.key && v !== undefined && v !== '' ? { value: v, source: total.key } : fallback
   }
 
-  if (loc.row.kind === 'formula') return fromTotal()
+  if (loc.row.kind === 'formula') return loc.row.scopeKey ? resolveParameter(rows, loc.row.scopeKey, param) : fromTotal()
   for (const a of [...loc.ancestors].reverse()) {
     const v = a.parameters?.[param.key]
     if (v !== undefined && v !== '') return { value: v, source: a.key }
