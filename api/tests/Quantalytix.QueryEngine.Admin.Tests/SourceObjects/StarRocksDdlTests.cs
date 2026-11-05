@@ -31,13 +31,17 @@ public sealed class StarRocksDdlTests
         DatasetNewColumnInput[] columns =
         [
             new() { Name = "amount", DataType = DataTypes.Decimal, NumericPrecision = 18, NumericScale = 2, IsNullable = false },
-            new() { Name = "note", DataType = DataTypes.String, NumericPrecision = null, NumericScale = null, IsNullable = true }
+            new() { Name = "note", DataType = DataTypes.String, NumericPrecision = null, NumericScale = null, IsNullable = true },
+            new() { Name = "ratio", DataType = DataTypes.Float, NumericPrecision = null, NumericScale = null, IsNullable = true },
+            new() { Name = "rate", DataType = DataTypes.Double, NumericPrecision = null, NumericScale = null, IsNullable = true }
         ];
 
-        Assert.Equal("ALTER TABLE `budget` ADD COLUMN (`amount` DECIMAL(18, 2) NOT NULL, `note` VARCHAR(65533) NULL)", ManagedTableSql.AddColumns("budget", columns));
+        Assert.Equal(
+            "ALTER TABLE `budget` ADD COLUMN (`amount` DECIMAL(18, 2) NOT NULL, `note` VARCHAR(65533) NULL, `ratio` FLOAT NULL, `rate` DOUBLE NULL)",
+            ManagedTableSql.AddColumns("budget", columns));
     }
 
-    /// <summary>A view reads the object's columns and each extraction: strings as text, JSON as JSON, other types cast.</summary>
+    /// <summary>A view reads the object's columns and each extraction: strings as text, JSON as JSON, other types (a double included) cast.</summary>
     [Fact]
     public void MaterializedView_ReadsTheObjectAndEachExtraction()
     {
@@ -49,6 +53,7 @@ public sealed class StarRocksDdlTests
             [
                 Column("attributes_risk_string", DataTypes.String),
                 Column("attributes_risk_int32", DataTypes.Int32),
+                Column("attributes_risk_double", DataTypes.Double),
                 Column("attributes_risk_json", DataTypes.Json)
             ]
         };
@@ -57,6 +62,7 @@ public sealed class StarRocksDdlTests
             "CREATE MATERIALIZED VIEW `qe_mv_loans` REFRESH ASYNC AS SELECT `loans`.*, " +
             "get_json_string(`loans`.`attributes`, '$.risk') AS `attributes_risk_string`, " +
             "CAST(get_json_string(`loans`.`attributes`, '$.risk') AS INT) AS `attributes_risk_int32`, " +
+            "CAST(get_json_string(`loans`.`attributes`, '$.risk') AS DOUBLE) AS `attributes_risk_double`, " +
             "json_query(`loans`.`attributes`, '$.risk') AS `attributes_risk_json` FROM `loans`",
             MaterializedViewSql.Create(definition));
     }

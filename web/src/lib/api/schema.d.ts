@@ -1792,10 +1792,9 @@ export interface components {
             dataType: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetDataType"];
             })[];
-            /** @description Every `dataType` except `json`. */
+            /** @description Every `dataType` except `float` and `json`. */
             measureOutputDataType: (components["schemas"]["VocabularyTerm"] & {
-                /** @enum {string} */
-                value: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp";
+                value: components["schemas"]["DatasetMeasureOutputDataType"];
             })[];
             sourceObjectKind: (components["schemas"]["VocabularyTerm"] & {
                 value: components["schemas"]["DatasetSourceObjectKind"];
@@ -2023,7 +2022,12 @@ export interface components {
         /** @enum {string} */
         DatasetFieldSourceKind: "column" | "json_path" | "expression";
         /** @enum {string} */
-        DatasetDataType: "boolean" | "int32" | "int64" | "decimal" | "string" | "date" | "datetime" | "timestamp" | "json";
+        DatasetDataType: "boolean" | "int32" | "int64" | "decimal" | "float" | "double" | "string" | "date" | "datetime" | "timestamp" | "json";
+        /**
+         * @description Every `DatasetDataType` except `float` and `json`.
+         * @enum {string}
+         */
+        DatasetMeasureOutputDataType: "boolean" | "int32" | "int64" | "decimal" | "double" | "string" | "date" | "datetime" | "timestamp";
         /** @enum {string} */
         DatasetGrainKind: "row" | "series";
         /**
@@ -2309,7 +2313,7 @@ export interface components {
             bridgeFactorBehavior: components["schemas"]["DatasetBridgeFactorBehavior"];
             bridgeAllocationBehavior: components["schemas"]["DatasetBridgeAllocationBehavior"];
             totalBehavior: components["schemas"]["DatasetTotalBehavior"];
-            outputDataType: components["schemas"]["DatasetDataType"];
+            outputDataType: components["schemas"]["DatasetMeasureOutputDataType"];
             outputPrecision: number | null;
             outputScale: number | null;
             /** @description Null when the measure names none, which the engine reads as no rounding. */
@@ -3304,7 +3308,7 @@ export interface components {
         /** @enum {string} */
         ModelParameterValueType: "number" | "text";
         /** @enum {string} */
-        ModelOutputDataType: "decimal" | "int64" | "int32";
+        ModelOutputDataType: "decimal" | "double" | "int64" | "int32";
         /** @description The model's identity with one version's settings (`qe_calculation_model_version`). */
         CalcModel: {
             id: components["schemas"]["Id"];

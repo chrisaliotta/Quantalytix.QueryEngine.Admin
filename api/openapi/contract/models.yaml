@@ -208,7 +208,7 @@ components:
 
     ModelOutputDataType:
       type: string
-      enum: [decimal, int64, int32]
+      enum: [decimal, double, int64, int32]
 
     CalcModel:
       type: object

@@ -3009,7 +3009,7 @@ components:
                     $ref: '#/components/schemas/DatasetDataType'
         measureOutputDataType:
           type: array
-          description: Every `dataType` except `json`.
+          description: Every `dataType` except `float` and `json`.
           items:
             allOf:
               - $ref: '#/components/schemas/VocabularyTerm'
@@ -3017,16 +3017,7 @@ components:
                   - value
                 properties:
                   value:
-                    type: string
-                    enum:
-                      - boolean
-                      - int32
-                      - int64
-                      - decimal
-                      - string
-                      - date
-                      - datetime
-                      - timestamp
+                    $ref: '#/components/schemas/DatasetMeasureOutputDataType'
         sourceObjectKind:
           type: array
           items:
@@ -3705,11 +3696,26 @@ components:
         - int32
         - int64
         - decimal
+        - float
+        - double
         - string
         - date
         - datetime
         - timestamp
         - json
+    DatasetMeasureOutputDataType:
+      type: string
+      description: Every `DatasetDataType` except `float` and `json`.
+      enum:
+        - boolean
+        - int32
+        - int64
+        - decimal
+        - double
+        - string
+        - date
+        - datetime
+        - timestamp
     DatasetGrainKind:
       type: string
       enum:
@@ -4510,7 +4516,7 @@ components:
         totalBehavior:
           $ref: '#/components/schemas/DatasetTotalBehavior'
         outputDataType:
-          $ref: '#/components/schemas/DatasetDataType'
+          $ref: '#/components/schemas/DatasetMeasureOutputDataType'
         outputPrecision:
           type:
             - integer
@@ -6786,6 +6792,7 @@ components:
       type: string
       enum:
         - decimal
+        - double
         - int64
         - int32
     CalcModel:

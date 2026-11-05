@@ -793,7 +793,7 @@ function MeasurePanel({
               <FormRow label="Output type" htmlFor="m-otype" errors={errorsFor('outputDataType')} className="@md:col-span-2">
                 <VocabSelect
                   id="m-otype"
-                  terms={vocab?.dataType}
+                  terms={vocab?.measureOutputDataType}
                   value={d.outputDataType}
                   onChange={(t) => setD((x) => ({ ...x, outputDataType: t ?? 'decimal', outputPrecision: t === 'decimal' ? (x.outputPrecision ?? 18) : null, outputScale: t === 'decimal' ? (x.outputScale ?? 2) : null }))}
                 />

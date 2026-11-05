@@ -91,7 +91,7 @@ const COLUMN_NAME = /^[a-z][a-z0-9_]{0,62}$/
 const MATERIALIZE_MS = 2400
 
 function nativeTypeOf(c: Pick<DatasetNewColumnInput, 'dataType' | 'numericPrecision' | 'numericScale'>) {
-  const map: Record<string, string> = { boolean: 'boolean', int32: 'integer', int64: 'bigint', string: 'text', date: 'date', datetime: 'timestamp', timestamp: 'timestamptz', json: 'jsonb' }
+  const map: Record<string, string> = { boolean: 'boolean', int32: 'integer', int64: 'bigint', float: 'real', double: 'double precision', string: 'text', date: 'date', datetime: 'timestamp', timestamp: 'timestamptz', json: 'jsonb' }
   return c.dataType === 'decimal' ? `numeric(${c.numericPrecision ?? 18},${c.numericScale ?? 2})` : (map[c.dataType] ?? 'text')
 }
 
@@ -707,7 +707,7 @@ export function createMockDatasetsApi(): DatasetsApi {
       checkVocab(errors, 'bridgeFactorBehavior', 'bridgeFactorBehavior', input.bridgeFactorBehavior)
       checkVocab(errors, 'bridgeAllocationBehavior', 'bridgeAllocationBehavior', input.bridgeAllocationBehavior)
       checkVocab(errors, 'totalBehavior', 'totalBehavior', input.totalBehavior)
-      checkVocab(errors, 'outputDataType', 'dataType', input.outputDataType)
+      checkVocab(errors, 'outputDataType', 'measureOutputDataType', input.outputDataType)
       checkVocab(errors, 'roundingMode', 'roundingMode', input.roundingMode, true)
       if (input.outputDataType === 'decimal') checkPrecision(errors, 'output', input.outputPrecision, input.outputScale)
       else {

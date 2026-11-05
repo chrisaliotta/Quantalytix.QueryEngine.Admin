@@ -15,6 +15,12 @@ public static class DataTypes
     /// <summary>Fixed-precision decimal; precision and scale are required where applicable.</summary>
     public const string Decimal = "decimal";
 
+    /// <summary>32-bit floating point; fields only, never a measure output.</summary>
+    public const string Float = "float";
+
+    /// <summary>64-bit floating point.</summary>
+    public const string Double = "double";
+
     /// <summary>Character string value.</summary>
     public const string String = "string";
 
@@ -42,6 +48,8 @@ public static class DataTypes
             new() { Value = Int32, Label = "Int32", Description = "Signed 32-bit integer." },
             new() { Value = Int64, Label = "Int64", Description = "Signed 64-bit integer." },
             new() { Value = Decimal, Label = "Decimal", Description = "Fixed-precision decimal; precision and scale are required where applicable." },
+            new() { Value = Float, Label = "Float", Description = "32-bit floating point; fields only, never a measure output." },
+            new() { Value = Double, Label = "Double", Description = "64-bit floating point." },
             new() { Value = String, Label = "String", Description = "Character string value." },
             new() { Value = Date, Label = "Date", Description = "Calendar date without a time of day or time zone." },
             new() { Value = Datetime, Label = "Datetime", Description = "Date and time without a request-specific time zone conversion." },

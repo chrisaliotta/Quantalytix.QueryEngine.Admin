@@ -9,7 +9,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Measures;
 /// <summary>
 /// Confirms the measure input rules of schema sections 13, 14 and 18: each measure kind's aggregation function, component
 /// roles, formula, compounding, time policy and implementation; formulas and compound rates that read measures only, with only
-/// formulas reading the period, and row filters that read fields only, all parsed by the query engine; decimal outputs with a precision and scale; accumulators StarRocks supports; and
+/// formulas reading the period, and row filters that read fields only, all parsed by the query engine; decimal outputs with a precision and scale, double outputs without, and no float outputs; accumulators StarRocks supports; and
 /// a finite lookback for every boundary match that searches back for an observation. The engine computes measures from
 /// exactly these columns, so a measure that breaks them fails or miscalculates at query time.
 /// </summary>
@@ -277,6 +277,8 @@ public sealed class MeasureInputValidatorTests
     [InlineData(MeasureOutputDataTypes.Decimal, 10, 11, false, true)]
     [InlineData(MeasureOutputDataTypes.Int64, null, null, false, false)]
     [InlineData(MeasureOutputDataTypes.Int64, 18, 0, true, true)]
+    [InlineData(MeasureOutputDataTypes.Double, null, null, false, false)]
+    [InlineData(MeasureOutputDataTypes.Double, 18, 6, true, true)]
     public void DecimalOutput_RequiresPrecisionAndScaleInRange(string dataType, int? precision, int? scale, bool precisionFails, bool scaleFails)
     {
         var input = Measure(MeasureKinds.Aggregate) with { OutputDataType = dataType, OutputPrecision = precision, OutputScale = scale };
@@ -285,6 +287,15 @@ public sealed class MeasureInputValidatorTests
 
         Assert.Equal(precisionFails, HasError(result, nameof(DatasetMeasureInput.OutputPrecision)));
         Assert.Equal(scaleFails, HasError(result, nameof(DatasetMeasureInput.OutputScale)));
+    }
+
+    /// <summary>A measure may output a double but not a float, which the engine allows for fields only.</summary>
+    [Fact]
+    public void FloatOutput_IsRejected()
+    {
+        var input = Measure(MeasureKinds.Aggregate) with { OutputDataType = DataTypes.Float, OutputPrecision = null, OutputScale = null };
+
+        _validator.TestValidate(input).ShouldHaveValidationErrorFor(measure => measure.OutputDataType);
     }
 
     /// <summary>The accumulator is a StarRocks decimal: a precision of 1-38 and a scale from 0 up to it.</summary>

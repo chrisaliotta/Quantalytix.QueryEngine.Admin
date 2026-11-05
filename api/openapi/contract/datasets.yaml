@@ -321,7 +321,11 @@ components:
       enum: [column, json_path, expression]
     DatasetDataType:
       type: string
-      enum: [boolean, int32, int64, decimal, string, date, datetime, timestamp, json]
+      enum: [boolean, int32, int64, decimal, float, double, string, date, datetime, timestamp, json]
+    DatasetMeasureOutputDataType:
+      type: string
+      description: Every `DatasetDataType` except `float` and `json`.
+      enum: [boolean, int32, int64, decimal, double, string, date, datetime, timestamp]
     DatasetGrainKind:
       type: string
       enum: [row, series]
@@ -902,7 +906,7 @@ components:
         totalBehavior:
           $ref: '#/components/schemas/DatasetTotalBehavior'
         outputDataType:
-          $ref: '#/components/schemas/DatasetDataType'
+          $ref: '#/components/schemas/DatasetMeasureOutputDataType'
         outputPrecision:
           type: [integer, 'null']
         outputScale:

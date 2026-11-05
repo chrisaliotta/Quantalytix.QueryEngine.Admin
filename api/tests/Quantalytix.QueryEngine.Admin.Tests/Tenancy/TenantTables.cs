@@ -23,7 +23,7 @@ internal sealed class TenantTables
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 20,
+        MetadataSchemaVersion = 21,
         SemanticRevision = 12,
         UpdatedAt = Created
     });

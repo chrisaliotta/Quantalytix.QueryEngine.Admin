@@ -6,10 +6,12 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { FORMAT_LABEL } from '@/components/report/columns/column-dialog'
 import { Segmented } from '@/components/report/shared/segmented'
 import { SimpleSelect } from '@/components/report/shared/simple-select'
-import { formulaError } from '@/lib/model/rules'
+import { DEFAULT_OUTPUT, formulaError } from '@/lib/model/rules'
 import type { AttributionMethod, CalcModel, FormulaLanguage, MissingValue, ModelMeasure, ModelVariable, Rounding } from '@/lib/model/types'
+import type { ModelOutputDataType } from '@/lib/models/contract'
 import type { DisplayFormat } from '@/lib/report/types'
 import { FormulaEditor } from './formula-editor'
+import { OUTPUT_TYPE_OPTIONS } from './table-kit'
 
 const FORMAT_OPTIONS = (Object.keys(FORMAT_LABEL) as DisplayFormat[]).map((f) => ({ value: f, label: FORMAT_LABEL[f] }))
 const ROUNDING_OPTIONS: { value: Rounding; label: string }[] = [
@@ -183,7 +185,7 @@ export function MeasureSheet({
 
 function MeasureFields({ model, measure, onSave }: { model: CalcModel; measure: ModelMeasure | null; onSave: (m: ModelMeasure, originalKey?: string) => void }) {
   const [m, setM] = useState<ModelMeasure>(
-    measure ?? { key: '', name: '', formula: '', precision: 28, scale: 6, rounding: 'half_even', unit: '', format: 'percent' },
+    measure ?? { key: '', name: '', formula: '', ...DEFAULT_OUTPUT, rounding: 'half_even', unit: '', format: 'percent' },
   )
   const [submitted, setSubmitted] = useState(false)
   const taken = [...model.variables, ...model.measures].map((x) => x.key)
@@ -216,14 +218,18 @@ function MeasureFields({ model, measure, onSave }: { model: CalcModel; measure: 
       <fieldset className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <legend className="mb-2 text-sm font-medium">Output</legend>
         <Field id="ms-type" label="Type">
-          <Input id="ms-type" value={`decimal(${m.precision},${m.scale})`} readOnly className="font-mono text-muted-foreground" />
+          <SimpleSelect id="ms-type" value={m.outputType} onChange={(t) => setM({ ...m, outputType: t as ModelOutputDataType })} options={OUTPUT_TYPE_OPTIONS} />
         </Field>
-        <Field id="ms-precision" label="Precision">
-          <Input id="ms-precision" type="number" min={1} max={38} value={m.precision} onChange={(e) => setM({ ...m, precision: Number(e.target.value) })} />
-        </Field>
-        <Field id="ms-scale" label="Scale">
-          <Input id="ms-scale" type="number" min={0} max={m.precision} value={m.scale} onChange={(e) => setM({ ...m, scale: Number(e.target.value) })} />
-        </Field>
+        {m.outputType === 'decimal' && (
+          <>
+            <Field id="ms-precision" label="Precision">
+              <Input id="ms-precision" type="number" min={1} max={38} value={m.precision} onChange={(e) => setM({ ...m, precision: Number(e.target.value) })} />
+            </Field>
+            <Field id="ms-scale" label="Scale">
+              <Input id="ms-scale" type="number" min={0} max={m.precision} value={m.scale} onChange={(e) => setM({ ...m, scale: Number(e.target.value) })} />
+            </Field>
+          </>
+        )}
         <Field id="ms-rounding" label="Rounding">
           <SimpleSelect id="ms-rounding" value={m.rounding} onChange={(r) => setM({ ...m, rounding: r as Rounding })} options={ROUNDING_OPTIONS} />
         </Field>

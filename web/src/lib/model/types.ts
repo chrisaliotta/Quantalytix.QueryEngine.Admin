@@ -1,3 +1,4 @@
+import type { ModelOutputDataType } from '@/lib/models/contract'
 import type { DisplayFormat } from '@/lib/report/types'
 
 export type MissingValue = 'null' | 'zero'
@@ -47,7 +48,10 @@ export interface ModelMeasure {
   key: string
   name: string
   formula: string
+  outputType: ModelOutputDataType
+  /** Decimal outputs only. */
   precision: number
+  /** Decimal outputs only. */
   scale: number
   rounding: Rounding
   unit: string

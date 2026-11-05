@@ -11,6 +11,7 @@ export type Vocabularies = Pick<
   AllVocabularies,
   | 'fieldSourceKind'
   | 'dataType'
+  | 'measureOutputDataType'
   | 'grainKind'
   | 'bindingKind'
   | 'raggedBehavior'

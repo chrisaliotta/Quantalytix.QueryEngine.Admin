@@ -1,17 +1,17 @@
 import { seedSnapshots } from '@/lib/snapshots/mock/data'
 import type { Snapshot } from '@/lib/snapshots/contract'
-import type { PublishedMember, TenantCatalog, TenantCatalogSnapshot, Vocabularies } from '../contract'
+import type { MeasureOutputDataType, PublishedMember, TenantCatalog, TenantCatalogSnapshot, Vocabularies } from '../contract'
 
 /* ───────────────────────── Vocabularies ───────────────────────── */
 
 const t = <V extends string>(value: V, label: string, description?: string) => ({ value, label, description })
 const same = <V extends string>(...values: V[]) => values.map((v) => t(v, v))
 
-const dataTypes = same('boolean', 'int32', 'int64', 'decimal', 'string', 'date', 'datetime', 'timestamp')
+const dataTypes = same('boolean', 'int32', 'int64', 'decimal', 'float', 'double', 'string', 'date', 'datetime', 'timestamp', 'json')
 
 export const vocabularies: Vocabularies = {
-  dataType: [...dataTypes, t('json', 'json')],
-  measureOutputDataType: dataTypes,
+  dataType: dataTypes,
+  measureOutputDataType: dataTypes.filter((term): term is typeof term & { value: MeasureOutputDataType } => term.value !== 'float' && term.value !== 'json'),
   sourceObjectKind: [t('table', 'Table'), t('view', 'View')],
   fieldSourceKind: [
     t('column', 'Column', 'Reads a physical column of the source object.'),
@@ -179,7 +179,7 @@ export function catalogSnapshotsOf(snapshots: Snapshot[]): TenantCatalogSnapshot
 }
 
 export const catalog: TenantCatalog = {
-  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 20, semanticRevision: 412 },
+  tenant: { tenantKey: 'demo_bank', metadataSchemaVersion: 21, semanticRevision: 412 },
   datasets: [
     { id: 'ds_loan_daily', key: 'loan_daily', displayName: 'Loan daily balances', isEnabled: true, liveVersionId: 'dsv_loan_daily_3' },
     { id: 'ds_gl_balance', key: 'gl_balance', displayName: 'GL balances', isEnabled: true, liveVersionId: 'dsv_gl_balance_1' },

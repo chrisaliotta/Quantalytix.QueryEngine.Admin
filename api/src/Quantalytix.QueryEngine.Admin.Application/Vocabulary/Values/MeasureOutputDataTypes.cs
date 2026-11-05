@@ -1,6 +1,6 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 
-/// <summary>The <c>measure_output_data_type</c> vocabulary: every <see cref="DataTypes"/> value except <c>json</c>.</summary>
+/// <summary>The <c>measure_output_data_type</c> vocabulary: every <see cref="DataTypes"/> value except <c>float</c> and <c>json</c>.</summary>
 public static class MeasureOutputDataTypes
 {
     /// <summary>Logical true/false value.</summary>
@@ -14,6 +14,9 @@ public static class MeasureOutputDataTypes
 
     /// <summary>Fixed-precision decimal; precision and scale are required where applicable.</summary>
     public const string Decimal = DataTypes.Decimal;
+
+    /// <summary>64-bit floating point.</summary>
+    public const string Double = DataTypes.Double;
 
     /// <summary>Character string value.</summary>
     public const string String = DataTypes.String;
@@ -32,7 +35,7 @@ public static class MeasureOutputDataTypes
     {
         Name = "measure_output_data_type",
         Key = "measureOutputDataType",
-        Description = "Logical data type of a measure's output: every data type except json.",
-        Values = [.. DataTypes.Definition.Values.Where(value => value.Value != DataTypes.Json)]
+        Description = "Logical data type of a measure's output: every data type except float and json.",
+        Values = [.. DataTypes.Definition.Values.Where(value => value.Value is not (DataTypes.Float or DataTypes.Json))]
     };
 }

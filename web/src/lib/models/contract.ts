@@ -10,7 +10,7 @@ export type { ApiResult, ChangeSetCommit, ChangeSetPreview, ChangeSetRequest, De
 export type ModelFormulaLanguage = '1.0' | '1.1' | '1.2'
 export type AttributionMethod = 'shapley' | 'sequential'
 export type ModelParameterValueType = 'number' | 'text'
-export type ModelOutputDataType = 'decimal' | 'int64' | 'int32'
+export type ModelOutputDataType = 'decimal' | 'double' | 'int64' | 'int32'
 
 /** The model's identity with one version's settings; the live version is editable, a frozen one read-only. */
 export interface CalcModel extends SnapshotMembership {

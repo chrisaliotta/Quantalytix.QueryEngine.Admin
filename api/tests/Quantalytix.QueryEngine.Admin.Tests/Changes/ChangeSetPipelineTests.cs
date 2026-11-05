@@ -38,7 +38,7 @@ public sealed class ChangeSetPipelineTests
     {
         SingletonId = 1,
         TenantKey = "sandbox",
-        MetadataSchemaVersion = 20,
+        MetadataSchemaVersion = 21,
         SemanticRevision = StartingRevision,
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     });

@@ -5,6 +5,7 @@ import type {
   DatasetField,
   DatasetGrain,
   DatasetMeasure,
+  DatasetMeasureOutputDataType,
   DatasetMeasureTimePolicy,
   DatasetSourceColumn,
   DatasetSourceObject,
@@ -19,23 +20,16 @@ import type { PublishedMembers, TenantCatalog, Vocabularies } from '../lookups'
 
 const t = <V extends string>(value: V, label: string, description?: string) => ({ value, label, description })
 
+const dataTypes = (['boolean', 'int32', 'int64', 'decimal', 'float', 'double', 'string', 'date', 'datetime', 'timestamp', 'json'] as const).map((v) => t(v, v))
+
 export const vocabularies: Vocabularies = {
   fieldSourceKind: [
     t('column', 'Column', 'Reads a physical column of the source object.'),
     t('json_path', 'JSON path', 'Reads a property inside a JSON column.'),
     t('expression', 'Expression', 'A row expression over other fields.'),
   ],
-  dataType: [
-    t('boolean', 'boolean'),
-    t('int32', 'int32'),
-    t('int64', 'int64'),
-    t('decimal', 'decimal'),
-    t('string', 'string'),
-    t('date', 'date'),
-    t('datetime', 'datetime'),
-    t('timestamp', 'timestamp'),
-    t('json', 'json'),
-  ],
+  dataType: dataTypes,
+  measureOutputDataType: dataTypes.filter((term): term is typeof term & { value: DatasetMeasureOutputDataType } => term.value !== 'float' && term.value !== 'json'),
   grainKind: [
     t('row', 'Row', 'Identifies one logical detail row.'),
     t('series', 'Series', 'Identifies one trajectory over time, excluding observation time.'),

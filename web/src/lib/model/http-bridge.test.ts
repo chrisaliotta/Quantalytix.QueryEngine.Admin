@@ -8,7 +8,8 @@ import type { CalcModel } from './types'
 /**
  * In http mode the models screen loads a `ModelDocument` into the prototype's `CalcModel` and saves a model's draft as one change
  * set (persistence.ts). These tests run that translation against the ModelsApi mock adapter: a model saved without edits writes
- * nothing, and the operations of an edit, applied by the port, store what the screen shows.
+ * nothing, and the operations of an edit, applied by the port, store what the screen shows, a double measure's null precision and
+ * scale included.
  */
 
 function apply(api: ModelsApi, id: Id, op: ModelOperation) {
@@ -52,7 +53,7 @@ describe('model http bridge', () => {
     const edited: CalcModel = structuredClone(saved)
     edited.name = 'Bank margin (edited)'
     edited.variables.find((v) => v.key === 'INTEREST_EXPENSE')!.name = 'Interest paid'
-    edited.measures.push({ key: 'SPREAD', name: 'Spread', formula: '[m.YIELD] - [m.COST_OF_FUNDS]', precision: 28, scale: 6, rounding: 'half_even', unit: '', format: 'percent' })
+    edited.measures.push({ key: 'SPREAD', name: 'Spread', formula: '[m.YIELD] - [m.COST_OF_FUNDS]', outputType: 'decimal', precision: 28, scale: 6, rounding: 'half_even', unit: '', format: 'percent' })
     edited.measures.find((m) => m.key === 'SPREAD')!.attribution = {
       useDefault: false,
       drivers: [
@@ -66,5 +67,21 @@ describe('model http bridge', () => {
     const reloaded = modelFromDocument(await unwrap(api.getModel(id)))
 
     expect(reloaded).toEqual(edited)
+  })
+
+  it('keeps a double measure double, with no precision or scale, when the screen edits it', async () => {
+    const api = createMockModelsApi()
+    const { id } = (await api.listModels()).find((m) => m.key === 'bank.margin_model')!
+    const doc = await unwrap(api.getModel(id))
+    const saved = modelFromDocument(doc)
+    const edited: CalcModel = structuredClone(saved)
+    Object.assign(edited.measures[0], { outputType: 'double', name: 'Yield (double)' })
+
+    api.beginChanges()
+    for (const op of modelOperations(doc, saved, edited)) expect((await apply(api, id, op)).ok).toBe(true)
+    const stored = (await unwrap(api.getModel(id))).measures.find((m) => m.key === edited.measures[0].key)
+
+    expect(stored).toMatchObject({ outputDataType: 'double', outputPrecision: null, outputScale: null })
+    expect(modelFromDocument(await unwrap(api.getModel(id))).measures[0]).toMatchObject({ outputType: 'double', name: 'Yield (double)' })
   })
 })

@@ -41,7 +41,7 @@ public sealed class TenantInputValidatorTests
     {
         var result = await ValidateCreateAsync(Reached(TenantId, 3));
 
-        Assert.Equal("The database has metadata schema version 3; this API requires version 20.", ConnectionStringError(result));
+        Assert.Equal("The database has metadata schema version 3; this API requires version 21.", ConnectionStringError(result));
     }
 
     /// <summary>A database without a live snapshot, or with two, fails, because every edit writes the one live snapshot.</summary>

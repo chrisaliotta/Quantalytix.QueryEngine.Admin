@@ -122,6 +122,19 @@ describe.each(adapters)('DatasetsApi port over the $name adapter', ({ create }) 
     expect((await unwrap(api.getDataset(dataset.id))).displayName).toBe('Parity renamed')
   })
 
+  /** Floating-point fields carry no precision or scale: a double field is stored as sent, with both null. */
+  it('stores a double field without a precision or scale', async () => {
+    const { versionId } = await liveDataset()
+    const readsKey = await columnFieldKey(versionId)
+
+    api.beginChanges()
+    await unwrap(api.saveField(versionId, { ...expressionField('parityRate', readsKey), dataType: 'double', numericPrecision: null, numericScale: null }))
+    await unwrap(api.commitChanges())
+
+    const stored = (await unwrap(api.getVersion(versionId))).fields.find((f) => f.key === 'parityRate')
+    expect(stored).toMatchObject({ dataType: 'double', numericPrecision: null, numericScale: null })
+  })
+
   /** Discard drops every pending edit; nothing reaches the stored version. */
   it('discards pending edits', async () => {
     const { versionId } = await liveDataset()

@@ -31,6 +31,8 @@ internal static class StarRocksDdl
             DataTypes.Int32 => "INT",
             DataTypes.Int64 => "BIGINT",
             DataTypes.Decimal => string.Create(CultureInfo.InvariantCulture, $"DECIMAL({precision}, {scale})"),
+            DataTypes.Float => "FLOAT",
+            DataTypes.Double => "DOUBLE",
             DataTypes.Date => "DATE",
             DataTypes.Json => "JSON",
             _ => "DATETIME"

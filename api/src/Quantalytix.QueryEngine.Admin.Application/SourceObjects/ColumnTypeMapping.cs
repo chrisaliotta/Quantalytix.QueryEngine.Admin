@@ -11,11 +11,8 @@ namespace Quantalytix.QueryEngine.Admin.Application.SourceObjects;
 /// </summary>
 public static partial class ColumnTypeMapping
 {
-    /// <summary>The largest decimal precision StarRocks supports, which LARGEINT and floating-point columns map to.</summary>
+    /// <summary>The largest decimal precision StarRocks supports, which LARGEINT columns map to.</summary>
     private const int MaxPrecision = 38;
-
-    /// <summary>The scale floating-point columns map to.</summary>
-    private const int FloatingPointScale = 12;
 
     /// <summary>How information_schema writes a BOOLEAN column; a TINYINT column reads <c>tinyint(4)</c>.</summary>
     private const string BooleanColumnType = "tinyint(1)";
@@ -41,7 +38,8 @@ public static partial class ColumnTypeMapping
             "varchar" or "char" => Logical(DataTypes.String),
             "tinyint" or "smallint" or "int" => Logical(DataTypes.Int32),
             "bigint" => Logical(DataTypes.Int64),
-            "float" or "double" => Decimal(MaxPrecision, FloatingPointScale),
+            "float" => Logical(DataTypes.Float),
+            "double" => Logical(DataTypes.Double),
             "date" => Logical(DataTypes.Date),
             "datetime" => Logical(DataTypes.Datetime),
             "json" => Logical(DataTypes.Json),
@@ -65,6 +63,8 @@ public static partial class ColumnTypeMapping
             DataTypes.Int32 => "int(11)",
             DataTypes.Int64 => "bigint(20)",
             DataTypes.Decimal => string.Create(CultureInfo.InvariantCulture, $"decimal({precision},{scale})"),
+            DataTypes.Float => "float",
+            DataTypes.Double => "double",
             DataTypes.String => "varchar(65533)",
             DataTypes.Date => "date",
             DataTypes.Json => "json",

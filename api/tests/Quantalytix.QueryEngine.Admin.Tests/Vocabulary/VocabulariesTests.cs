@@ -32,6 +32,21 @@ public sealed class VocabulariesTests
         Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
     }
 
+    /// <summary>
+    /// Fields may be float or double, but measure outputs only double: the engine accepts float for fields alone, and the web's
+    /// output type pickers read this vocabulary.
+    /// </summary>
+    [Fact]
+    public void MeasureOutputTypes_AreTheFieldTypesExceptFloatAndJson()
+    {
+        string[] fieldTypes = [.. DataTypes.Definition.Values.Select(term => term.Value)];
+        string[] outputTypes = [.. MeasureOutputDataTypes.Definition.Values.Select(term => term.Value)];
+
+        Assert.Contains(DataTypes.Float, fieldTypes);
+        Assert.Contains(DataTypes.Double, fieldTypes);
+        Assert.Equal(fieldTypes.Except([DataTypes.Float, DataTypes.Json]), outputTypes);
+    }
+
     /// <summary>The answer is keyed by contract key, and each term carries its value, label and description.</summary>
     [Fact]
     public void Answer_KeysTermsByContractKey()

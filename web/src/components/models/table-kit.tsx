@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { FORMAT_LABEL } from '@/components/report/columns/column-dialog'
 import type { MissingValue, Rounding, RuleViolation } from '@/lib/model/types'
+import type { ModelOutputDataType } from '@/lib/models/contract'
 import type { DisplayFormat } from '@/lib/report/types'
 import { RuleList } from './refusal-alert'
 
@@ -17,6 +18,12 @@ export const ROUNDING_OPTIONS: { value: Rounding; label: string }[] = [
   { value: 'half_even', label: 'Half even' },
   { value: 'half_up', label: 'Half up' },
   { value: 'down', label: 'Down' },
+]
+export const OUTPUT_TYPE_OPTIONS: { value: ModelOutputDataType; label: string }[] = [
+  { value: 'decimal', label: 'Decimal' },
+  { value: 'double', label: 'Double' },
+  { value: 'int64', label: 'Int64' },
+  { value: 'int32', label: 'Int32' },
 ]
 export const MISSING_OPTIONS: { value: MissingValue; label: string }[] = [
   { value: 'null', label: 'Null' },

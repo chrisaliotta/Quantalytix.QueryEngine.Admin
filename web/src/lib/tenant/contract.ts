@@ -37,8 +37,8 @@ export type {
 
 /* ───────────────────────── Vocabulary values ───────────────────────── */
 
-export type DataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
-export type MeasureOutputDataType = Exclude<DataType, 'json'>
+export type DataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'float' | 'double' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
+export type MeasureOutputDataType = Exclude<DataType, 'float' | 'json'>
 export type SourceObjectKind = 'table' | 'view'
 export type FieldSourceKind = 'column' | 'json_path' | 'expression'
 export type GrainKind = 'row' | 'series'

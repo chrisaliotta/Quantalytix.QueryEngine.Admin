@@ -9,12 +9,13 @@ import type {
   ModelVariable as ApiVariable,
 } from '@/lib/models/contract'
 import { refusalOf } from '@/lib/reports/client'
+import { DEFAULT_OUTPUT } from './rules'
 import type { DisplayFormat } from '@/lib/report/types'
 import type { Attribution, CalcModel, Driver, ModelMeasure, ModelParameter, ModelVariable, ReportRef, Rounding, RuleViolation } from './types'
 
 /**
  * Translation between the editor's `CalcModel` and the API's `ModelDocument` (blueprint 15). An item the user did not touch keeps
- * the stored values the editor cannot show (a null precision, scale or rounding mode, the output data type).
+ * the stored values the editor cannot show (a null rounding mode).
  */
 
 const driverOf = (d: { key: string; displayName: string; inputs: string[] }): Driver => ({ key: d.key, name: d.displayName, inputs: d.inputs })
@@ -64,8 +65,9 @@ export function modelFromDocument(doc: ModelDocument): CalcModel {
       key: m.key,
       name: m.displayName,
       formula: m.formula,
-      precision: m.outputPrecision ?? 0,
-      scale: m.outputScale ?? 0,
+      outputType: m.outputDataType,
+      precision: m.outputPrecision ?? DEFAULT_OUTPUT.precision,
+      scale: m.outputScale ?? DEFAULT_OUTPUT.scale,
       rounding: (m.roundingMode ?? 'half_even') as Rounding,
       unit: m.unitKey ?? '',
       format: m.displayFormat as DisplayFormat,
@@ -97,9 +99,9 @@ function measureInput(m: ModelMeasure, prev: ModelMeasure | undefined, stored: A
     key: m.key,
     displayName: m.name,
     formula: m.formula,
-    outputDataType: stored?.outputDataType ?? 'decimal',
-    outputPrecision: kept(prev?.precision, m.precision, stored?.outputPrecision, (v) => v),
-    outputScale: kept(prev?.scale, m.scale, stored?.outputScale, (v) => v),
+    outputDataType: m.outputType,
+    outputPrecision: m.outputType === 'decimal' ? m.precision : null,
+    outputScale: m.outputType === 'decimal' ? m.scale : null,
     roundingMode: kept(prev?.rounding, m.rounding, stored?.roundingMode, (v) => v),
     unitKey: nullIfEmpty(m.unit),
     displayFormat: m.format,

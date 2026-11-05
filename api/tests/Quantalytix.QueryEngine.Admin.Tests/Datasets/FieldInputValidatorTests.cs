@@ -54,6 +54,15 @@ public sealed class FieldInputValidatorTests
         result.ShouldHaveValidationErrorFor(field => field.ExpressionText);
     }
 
+    /// <summary>A JSON path may extract a double, which its materialized view casts to <c>DOUBLE</c>.</summary>
+    [Fact]
+    public void JsonPathField_MayBeDouble()
+    {
+        var input = Field(FieldSourceKinds.JsonPath) with { DataType = DataTypes.Double };
+
+        _validator.TestValidate(input).ShouldNotHaveAnyValidationErrors();
+    }
+
     /// <summary>An expression field reads no columns directly, and its expression must parse; the error carries the engine's message.</summary>
     [Fact]
     public void ExpressionField_RequiresAParsingExpressionAndForbidsColumns()
@@ -113,11 +122,15 @@ public sealed class FieldInputValidatorTests
         Assert.Equal(scaleFails, HasError(result, nameof(DatasetFieldInput.NumericScale)));
     }
 
-    /// <summary>Only decimals have a precision and scale.</summary>
-    [Fact]
-    public void NonDecimal_ForbidsPrecisionAndScale()
+    /// <summary>Only decimals have a precision and scale; floating-point fields carry neither.</summary>
+    /// <param name="dataType">The non-decimal data type sent.</param>
+    [Theory]
+    [InlineData(DataTypes.Int64)]
+    [InlineData(DataTypes.Float)]
+    [InlineData(DataTypes.Double)]
+    public void NonDecimal_ForbidsPrecisionAndScale(string dataType)
     {
-        var input = Field(FieldSourceKinds.Column) with { DataType = DataTypes.Int64, NumericPrecision = 18, NumericScale = 0 };
+        var input = Field(FieldSourceKinds.Column) with { DataType = dataType, NumericPrecision = 18, NumericScale = 0 };
 
         var result = _validator.TestValidate(input);
 

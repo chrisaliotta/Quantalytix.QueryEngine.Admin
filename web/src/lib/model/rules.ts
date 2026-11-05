@@ -4,6 +4,14 @@ export const DAY_PARAMS = ['@periodDays', '@yearDays'] as const
 export const FUNCTIONS = ['CASE', 'COALESCE', 'NULLIF', 'ABS', 'POWER', 'YEARFRAC'] as const
 export const MAX_DRIVERS = 8
 
+/** The output a new calculated measure starts with, and the precision and scale a non-decimal one takes should it become decimal. */
+export const DEFAULT_OUTPUT = { outputType: 'decimal', precision: 28, scale: 6 } as const
+
+/** A measure's output type as it reads: a decimal with its precision and scale, any other type by name. */
+export function outputTypeLabel(m: ModelMeasure) {
+  return m.outputType === 'decimal' ? `decimal(${m.precision},${m.scale})` : m.outputType
+}
+
 export type Metric = (ModelVariable & { type: 'variable' }) | (ModelMeasure & { type: 'measure' })
 
 export function metricsOf(model: CalcModel): Metric[] {

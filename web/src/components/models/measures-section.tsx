@@ -7,16 +7,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { SimpleSelect } from '@/components/report/shared/simple-select'
 import { CommitInput, InlineSelect, InlineText, PanelSection, PropertiesPanel, SplitView, focusRowClass, keyFromName, usePanelDraft } from '@/components/shell/inline-table'
 import { FormRow, RowEditActions, SectionHeader, Td, Th } from '@/components/datasets/shared'
-import { formulaError } from '@/lib/model/rules'
+import { DEFAULT_OUTPUT, formulaError, outputTypeLabel } from '@/lib/model/rules'
 import type { CalcModel, ModelMeasure, Rounding, RuleViolation } from '@/lib/model/types'
+import type { ModelOutputDataType } from '@/lib/models/contract'
 import type { DisplayFormat } from '@/lib/report/types'
 import { cn } from '@/lib/utils'
 import { AttributionChip } from './attribution-editor'
 import { FormulaEditor, FormulaText } from './formula-editor'
 import { RefusalAlert } from './refusal-alert'
-import { FORMAT_OPTIONS, NEW_ROW_ID, PanelRefusal, ROUNDING_OPTIONS, metricKeyError, pendingRowKeys, rowInputClass, scrollToRow, type ModelSectionProps } from './table-kit'
+import { FORMAT_OPTIONS, NEW_ROW_ID, OUTPUT_TYPE_OPTIONS, PanelRefusal, ROUNDING_OPTIONS, metricKeyError, pendingRowKeys, rowInputClass, scrollToRow, type ModelSectionProps } from './table-kit'
 
-const blankMeasure = (): ModelMeasure => ({ key: '', name: '', formula: '', precision: 28, scale: 6, rounding: 'half_even', unit: '', format: 'percent' })
+const blankMeasure = (): ModelMeasure => ({ key: '', name: '', formula: '', ...DEFAULT_OUTPUT, rounding: 'half_even', unit: '', format: 'percent' })
 
 interface MeasureErrors {
   key: string | null
@@ -27,8 +28,8 @@ interface MeasureErrors {
 
 function measureErrors(model: CalcModel, m: ModelMeasure, isNew: boolean): MeasureErrors {
   const taken = [...model.variables, ...model.measures].map((x) => x.key)
-  const precisionOk = Number.isInteger(m.precision) && m.precision >= 1 && m.precision <= 38
-  const scaleOk = Number.isInteger(m.scale) && m.scale >= 0 && m.scale <= m.precision
+  const precisionOk = m.outputType !== 'decimal' || (Number.isInteger(m.precision) && m.precision >= 1 && m.precision <= 38)
+  const scaleOk = m.outputType !== 'decimal' || (Number.isInteger(m.scale) && m.scale >= 0 && m.scale <= m.precision)
   return {
     key: isNew ? metricKeyError(m.key, taken) : null,
     name: m.name.trim() ? null : 'Enter a name.',
@@ -159,9 +160,7 @@ export function MeasuresSection({ model, focusKey, onFocus, apply, onAttribution
                       </TooltipContent>
                     </Tooltip>
                   </Td>
-                  <Td className="font-mono text-xs text-muted-foreground">
-                    decimal({m.precision},{m.scale})
-                  </Td>
+                  <Td className="font-mono text-xs text-muted-foreground">{outputTypeLabel(m)}</Td>
                   <Td>
                     <InlineSelect aria-label={`Format of ${m.key}`} value={m.format} options={FORMAT_OPTIONS} onCommit={(f) => update(m.key, { format: f as DisplayFormat })} className="w-28 text-xs" />
                   </Td>
@@ -245,9 +244,7 @@ function NewMeasureRow({
             <span className={cn('block truncate text-xs', errors?.formula ? 'text-destructive' : 'text-muted-foreground')}>Set in properties panel</span>
           )}
         </Td>
-        <Td className="pt-3.5 font-mono text-xs text-muted-foreground">
-          decimal({draft.precision},{draft.scale})
-        </Td>
+        <Td className="pt-3.5 font-mono text-xs text-muted-foreground">{outputTypeLabel(draft)}</Td>
         <Td>
           <InlineSelect aria-label="New measure: format" value={draft.format} options={FORMAT_OPTIONS} onCommit={(f) => onChange({ format: f as DisplayFormat })} className="w-28 text-xs" />
         </Td>
@@ -355,32 +352,39 @@ function MeasurePanel({
           error={shown?.formula ?? null}
         />
       </PanelSection>
-      <PanelSection title="Output" description={`Computed as decimal(${draft.precision},${draft.scale}).`}>
-        <div className="grid grid-cols-3 gap-4">
-          <FormRow label="Precision" htmlFor="ms-precision">
-            <Input
-              id="ms-precision"
-              type="number"
-              min={1}
-              max={38}
-              value={draft.precision}
-              onChange={(e) => setDraft((d) => ({ ...d, precision: Number(e.target.value) }))}
-              aria-invalid={!!shown?.output}
-              className="tabular-nums"
-            />
+      <PanelSection title="Output" description={`Computed as ${outputTypeLabel(draft)}.`}>
+        <div className="grid grid-cols-4 gap-4">
+          <FormRow label="Type" htmlFor="ms-type">
+            <SimpleSelect id="ms-type" value={draft.outputType} onChange={(t) => setDraft((d) => ({ ...d, outputType: t as ModelOutputDataType }))} options={OUTPUT_TYPE_OPTIONS} />
           </FormRow>
-          <FormRow label="Scale" htmlFor="ms-scale">
-            <Input
-              id="ms-scale"
-              type="number"
-              min={0}
-              max={draft.precision}
-              value={draft.scale}
-              onChange={(e) => setDraft((d) => ({ ...d, scale: Number(e.target.value) }))}
-              aria-invalid={!!shown?.output}
-              className="tabular-nums"
-            />
-          </FormRow>
+          {draft.outputType === 'decimal' && (
+            <>
+              <FormRow label="Precision" htmlFor="ms-precision">
+                <Input
+                  id="ms-precision"
+                  type="number"
+                  min={1}
+                  max={38}
+                  value={draft.precision}
+                  onChange={(e) => setDraft((d) => ({ ...d, precision: Number(e.target.value) }))}
+                  aria-invalid={!!shown?.output}
+                  className="tabular-nums"
+                />
+              </FormRow>
+              <FormRow label="Scale" htmlFor="ms-scale">
+                <Input
+                  id="ms-scale"
+                  type="number"
+                  min={0}
+                  max={draft.precision}
+                  value={draft.scale}
+                  onChange={(e) => setDraft((d) => ({ ...d, scale: Number(e.target.value) }))}
+                  aria-invalid={!!shown?.output}
+                  className="tabular-nums"
+                />
+              </FormRow>
+            </>
+          )}
           <FormRow label="Rounding" htmlFor="ms-rounding">
             <SimpleSelect id="ms-rounding" value={draft.rounding} onChange={(r) => setDraft((d) => ({ ...d, rounding: r as Rounding }))} options={ROUNDING_OPTIONS} />
           </FormRow>

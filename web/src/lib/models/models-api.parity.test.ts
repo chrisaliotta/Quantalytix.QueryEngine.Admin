@@ -110,6 +110,19 @@ describe.each(adapters)('ModelsApi port over the $name adapter', ({ create }) =>
     expect(Object.keys(duplicate.problem.errors)).toContain('key')
   })
 
+  /** A rate measure may output a double, which the engine evaluates in floating point; it carries no precision or scale. */
+  it('stores a double calculated measure without a precision or scale', async () => {
+    const model = await ownModel()
+    await withVariables(model.id)
+
+    api.beginChanges()
+    await unwrap(api.saveMeasure(model.id, { ...measure('RATE', '[m.INCOME] / [m.BALANCE]'), outputDataType: 'double', outputPrecision: null, outputScale: null }))
+    await unwrap(api.commitChanges())
+
+    const stored = (await unwrap(api.getModel(model.id))).measures.find((m) => m.key === 'RATE')
+    expect(stored).toMatchObject({ outputDataType: 'double', outputPrecision: null, outputScale: null })
+  })
+
   /** C5, C9: keys are fixed once saved; an edit that changes one is invalid input on `key`. */
   it('refuses changing a saved key', async () => {
     const model = await ownModel()

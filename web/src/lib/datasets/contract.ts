@@ -16,7 +16,8 @@ export type { ApiResult, BindingKind, ComponentRole, DeleteBlocker, DeleteCheck,
 
 export type DatasetSourceObjectKind = 'table' | 'view'
 export type DatasetFieldSourceKind = 'column' | 'json_path' | 'expression'
-export type DatasetDataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
+export type DatasetDataType = 'boolean' | 'int32' | 'int64' | 'decimal' | 'float' | 'double' | 'string' | 'date' | 'datetime' | 'timestamp' | 'json'
+export type DatasetMeasureOutputDataType = Exclude<DatasetDataType, 'float' | 'json'>
 export type DatasetGrainKind = 'row' | 'series'
 /** `null` reads a null member (the schema's value, not JSON null). */
 export type DatasetRaggedBehavior = 'null' | 'self' | 'exclude'
@@ -297,7 +298,7 @@ export interface DatasetMeasureDefinition {
   bridgeFactorBehavior: DatasetBridgeFactorBehavior
   bridgeAllocationBehavior: DatasetBridgeAllocationBehavior
   totalBehavior: DatasetTotalBehavior
-  outputDataType: DatasetDataType
+  outputDataType: DatasetMeasureOutputDataType
   outputPrecision: number | null
   outputScale: number | null
   roundingMode: RoundingMode | null

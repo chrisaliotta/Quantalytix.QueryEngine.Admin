@@ -6,8 +6,8 @@ namespace Quantalytix.QueryEngine.Admin.Tests.SourceObjects;
 
 /// <summary>
 /// Confirms the mapping from StarRocks column types, spelled as information_schema writes them, to field types: character
-/// types are strings, small integers int32, BIGINT int64, DECIMAL keeps its precision and scale, floating point is
-/// decimal(38,12), and DATE, DATETIME and JSON map to their namesakes. BOOLEAN and LARGEINT have no names of their own
+/// types are strings, small integers int32, BIGINT int64, DECIMAL keeps its precision and scale, and FLOAT, DOUBLE, DATE,
+/// DATETIME and JSON map to their namesakes, so floating-point columns are no longer declared decimal. BOOLEAN and LARGEINT have no names of their own
 /// there: they read <c>tinyint(1)</c> and <c>bigint(20) unsigned</c>, and must still map to boolean and decimal(38,0)
 /// rather than to the TINYINT and BIGINT types, as the live sandbox showed. Case and other display widths are ignored.
 /// Every other type maps to nothing, so the pickers never offer a column the query engine cannot type. The columns
@@ -33,14 +33,39 @@ public sealed class ColumnTypeMappingTests
     [InlineData("decimal(20,2)", DataTypes.Decimal, 20, 2)]
     [InlineData("DECIMAL(9, 6)", DataTypes.Decimal, 9, 6)]
     [InlineData("decimal128(38,10)", DataTypes.Decimal, 38, 10)]
-    [InlineData("float", DataTypes.Decimal, 38, 12)]
-    [InlineData("double", DataTypes.Decimal, 38, 12)]
+    [InlineData("float", DataTypes.Float, null, null)]
+    [InlineData("double", DataTypes.Double, null, null)]
     [InlineData("date", DataTypes.Date, null, null)]
     [InlineData("datetime", DataTypes.Datetime, null, null)]
     [InlineData("json", DataTypes.Json, null, null)]
     public void SupportedType_MapsToItsFieldType(string columnType, string dataType, int? precision, int? scale)
     {
         Assert.Equal(new FieldType { DataType = dataType, NumericPrecision = precision, NumericScale = scale }, ColumnTypeMapping.Map(columnType));
+    }
+
+    /// <summary>
+    /// The column a managed table creates for a field type maps back to that type, so a field added to a managed table reads its
+    /// own column; timestamp is the one exception, stored as datetime.
+    /// </summary>
+    /// <param name="dataType">The field's data type.</param>
+    /// <param name="precision">The field's decimal precision.</param>
+    /// <param name="scale">The field's decimal scale.</param>
+    [Theory]
+    [InlineData(DataTypes.Boolean, null, null)]
+    [InlineData(DataTypes.Int32, null, null)]
+    [InlineData(DataTypes.Int64, null, null)]
+    [InlineData(DataTypes.Decimal, 18, 2)]
+    [InlineData(DataTypes.Float, null, null)]
+    [InlineData(DataTypes.Double, null, null)]
+    [InlineData(DataTypes.String, null, null)]
+    [InlineData(DataTypes.Date, null, null)]
+    [InlineData(DataTypes.Datetime, null, null)]
+    [InlineData(DataTypes.Json, null, null)]
+    public void ManagedColumnType_MapsBackToItsFieldType(string dataType, int? precision, int? scale)
+    {
+        var type = new FieldType { DataType = dataType, NumericPrecision = precision, NumericScale = scale };
+
+        Assert.Equal(type, ColumnTypeMapping.Map(ColumnTypeMapping.ColumnTypeOf(dataType, precision, scale)));
     }
 
     /// <summary>A type without a logical equivalent maps to nothing.</summary>
